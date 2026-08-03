@@ -57,9 +57,10 @@ _TRANSIENT_CONNECT_ERRORS = (
 async def _connect_with_retry(*args: object, **kwargs: object) -> asyncpg.Connection:
     """Connect hook for asyncpg's pool with bounded retry on transient setup errors.
 
-    Passed as create_pool(connect=...) so both the min_size warm-up and every
-    later acquire-time connection route through the retry — not just create_pool
-    itself, which Pool._get_new_connection only calls once at startup.
+    Passed as create_pool(connect=...) so every connection the pool opens routes
+    through the retry: the min_size warm-up AND each later acquire-time
+    connection (asyncpg's Pool._get_new_connection always calls this hook).
+    Retrying around the create_pool() call instead would only cover startup.
     """
     for attempt in range(_CONNECT_ATTEMPTS):
         try:

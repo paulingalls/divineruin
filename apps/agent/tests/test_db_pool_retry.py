@@ -1,6 +1,6 @@
 """Tests for the bounded connect-retry hook used by db.get_pool()."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 
 import asyncpg
 import pytest
@@ -8,11 +8,20 @@ import pytest
 import db
 
 
+@pytest.mark.parametrize(
+    "transient",
+    [
+        ConnectionError("...rejected SSL upgrade"),
+        asyncpg.CannotConnectNowError("the database system is starting up"),
+        asyncpg.TooManyConnectionsError("sorry, too many clients already"),
+    ],
+    ids=["rejected_ssl_upgrade", "starting_up", "too_many_clients"],
+)
 @pytest.mark.asyncio
-async def test_retries_transient_error_then_succeeds(monkeypatch, caplog):
-    """A transient ConnectionError on the first attempt should be retried and succeed."""
+async def test_retries_transient_error_then_succeeds(monkeypatch, caplog, transient):
+    """Each transient connect-setup error on the first attempt is retried, then succeeds."""
     mock_conn = object()
-    fake_connect = AsyncMock(side_effect=[ConnectionError("...rejected SSL upgrade"), mock_conn])
+    fake_connect = AsyncMock(side_effect=[transient, mock_conn])
     monkeypatch.setattr(asyncpg, "connect", fake_connect)
     fake_sleep = AsyncMock()
     monkeypatch.setattr("db.asyncio.sleep", fake_sleep)
@@ -27,18 +36,48 @@ async def test_retries_transient_error_then_succeeds(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_raises_original_exception_after_exhausting_budget(monkeypatch):
-    """A persistent transient error should propagate the original exception after all attempts."""
-    original = ConnectionError("...rejected SSL upgrade")
-    fake_connect = AsyncMock(side_effect=[original, original, original])
+async def test_forwards_pool_connect_arguments_unchanged(monkeypatch):
+    """asyncpg's Pool calls the hook with the DSN plus loop/connection_class/record_class.
+
+    Every attempt must forward them through untouched — a dropped connection_class
+    makes Pool._get_new_connection reject the connection with an InterfaceError.
+    """
+    mock_conn = object()
+    fake_connect = AsyncMock(side_effect=[ConnectionError("boom"), mock_conn])
+    monkeypatch.setattr(asyncpg, "connect", fake_connect)
+    monkeypatch.setattr("db.asyncio.sleep", AsyncMock())
+    sentinel_loop = object()
+
+    result = await db._connect_with_retry(
+        "postgres://test",
+        loop=sentinel_loop,
+        connection_class=asyncpg.Connection,
+        record_class=asyncpg.Record,
+    )
+
+    assert result is mock_conn
+    expected = call(
+        "postgres://test",
+        loop=sentinel_loop,
+        connection_class=asyncpg.Connection,
+        record_class=asyncpg.Record,
+    )
+    assert fake_connect.await_args_list == [expected, expected]
+
+
+@pytest.mark.asyncio
+async def test_raises_last_exception_after_exhausting_budget(monkeypatch):
+    """A persistent transient error propagates — the last failure — after all attempts."""
+    failures = [ConnectionError(f"...rejected SSL upgrade #{i}") for i in range(3)]
+    fake_connect = AsyncMock(side_effect=failures)
     monkeypatch.setattr(asyncpg, "connect", fake_connect)
     monkeypatch.setattr("db.asyncio.sleep", AsyncMock())
 
     with pytest.raises(ConnectionError) as exc_info:
         await db._connect_with_retry("postgres://test")
 
-    assert exc_info.value is original
-    assert fake_connect.await_count == db._CONNECT_ATTEMPTS
+    assert exc_info.value is failures[-1]
+    assert fake_connect.await_count == db._CONNECT_ATTEMPTS == len(failures)
 
 
 @pytest.mark.asyncio
