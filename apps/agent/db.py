@@ -46,6 +46,11 @@ _redis_lock = asyncio.Lock()
 
 _CONNECT_ATTEMPTS = 3
 _CONNECT_BACKOFF_SECONDS = 0.25  # linear: 0.25s, then 0.5s
+# Per-ATTEMPT connect timeout. asyncpg's own default is 60s, which retrying would
+# have turned into a 3x180s worst case for a black-holed (dropped, not refused) TCP
+# connect — while the warm-up attempt holds _pool_lock and every get_pool() caller
+# queues behind it. 3 x 20s keeps the total at the pre-retry 60s.
+_CONNECT_TIMEOUT_SECONDS = 20
 
 _TRANSIENT_CONNECT_ERRORS = (
     OSError,  # includes ConnectionError — the "rejected SSL upgrade" case
@@ -61,9 +66,14 @@ async def _connect_with_retry(*args: object, **kwargs: object) -> asyncpg.Connec
     through the retry: the min_size warm-up AND each later acquire-time
     connection (asyncpg's Pool._get_new_connection always calls this hook).
     Retrying around the create_pool() call instead would only cover startup.
+
+    Each attempt is bounded by _CONNECT_TIMEOUT_SECONDS (setdefault, so an explicit
+    caller timeout still wins) — without it, retrying would multiply asyncpg's 60s
+    default into a 180s hang on a black-holed connect.
     """
     for attempt in range(_CONNECT_ATTEMPTS):
         try:
+            kwargs.setdefault("timeout", _CONNECT_TIMEOUT_SECONDS)
             return await asyncpg.connect(*args, **kwargs)
         except _TRANSIENT_CONNECT_ERRORS as e:
             if attempt >= _CONNECT_ATTEMPTS - 1:

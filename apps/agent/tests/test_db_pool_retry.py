@@ -40,7 +40,8 @@ async def test_forwards_pool_connect_arguments_unchanged(monkeypatch):
     """asyncpg's Pool calls the hook with the DSN plus loop/connection_class/record_class.
 
     Every attempt must forward them through untouched — a dropped connection_class
-    makes Pool._get_new_connection reject the connection with an InterfaceError.
+    makes Pool._get_new_connection reject the connection with an InterfaceError. The
+    hook's own per-attempt `timeout` default is the ONE addition it is allowed to make.
     """
     mock_conn = object()
     fake_connect = AsyncMock(side_effect=[ConnectionError("boom"), mock_conn])
@@ -61,6 +62,7 @@ async def test_forwards_pool_connect_arguments_unchanged(monkeypatch):
         loop=sentinel_loop,
         connection_class=asyncpg.Connection,
         record_class=asyncpg.Record,
+        timeout=db._CONNECT_TIMEOUT_SECONDS,
     )
     assert fake_connect.await_args_list == [expected, expected]
 
@@ -109,3 +111,35 @@ async def test_backoff_sequence_is_linear(monkeypatch):
 
     sleep_calls = [call.args[0] for call in fake_sleep.await_args_list]
     assert sleep_calls == [0.25, 0.5]
+
+
+@pytest.mark.asyncio
+async def test_each_attempt_is_timeout_bounded(monkeypatch):
+    """Each attempt carries a connect timeout, so retrying cannot multiply a hang.
+
+    Without it, a black-holed (dropped, not refused) TCP connect would take
+    asyncpg's 60s default x _CONNECT_ATTEMPTS, all while the warm-up attempt holds
+    _pool_lock. The bound keeps the worst case at the pre-retry 60s.
+    """
+    mock_conn = object()
+    fake_connect = AsyncMock(side_effect=[ConnectionError("boom"), mock_conn])
+    monkeypatch.setattr(asyncpg, "connect", fake_connect)
+    monkeypatch.setattr("db.asyncio.sleep", AsyncMock())
+
+    await db._connect_with_retry("postgres://test")
+
+    timeouts = [c.kwargs["timeout"] for c in fake_connect.await_args_list]
+    assert timeouts == [db._CONNECT_TIMEOUT_SECONDS] * 2
+    assert db._CONNECT_TIMEOUT_SECONDS * db._CONNECT_ATTEMPTS <= 60
+
+
+@pytest.mark.asyncio
+async def test_explicit_caller_timeout_is_not_overridden(monkeypatch):
+    """setdefault, not assignment — a caller that asks for its own timeout keeps it."""
+    mock_conn = object()
+    fake_connect = AsyncMock(return_value=mock_conn)
+    monkeypatch.setattr(asyncpg, "connect", fake_connect)
+
+    await db._connect_with_retry("postgres://test", timeout=5)
+
+    assert fake_connect.await_args_list[0].kwargs["timeout"] == 5
