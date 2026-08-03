@@ -225,8 +225,9 @@ async def distribute_xp(
 
     Every seat routes through ``_award_xp_core``, the single XP/milestone Resolve (M28) — so a
     combat level-up applies its L10/15/20 auto-grant and surfaces its L5 fork exactly as a quest
-    reward does, inside THIS transaction. Runs AFTER the currency pass so the RNG consumption order
-    upstream is untouched, and locks each row FOR UPDATE in seat order.
+    reward does, inside THIS transaction. Consumes no RNG (all of it was spent in the ROLL pass) and
+    locks each ``players`` row FOR UPDATE in seat order — the same ascending order the currency pass
+    took them in, so re-locking a row this transaction already holds can never invert.
 
     A share that floors to 0 grants nothing rather than publishing a "+0 XP" toast: the core has no
     positivity guard of its own, and ``award_xp`` rejects amount <= 0.
@@ -283,34 +284,37 @@ async def grant_victory_rewards(
     """The whole victory payout, in the one order that must not drift: ROLL the shared spoils, then
     hand out items, coin and XP along ``seat_order``.
 
-    XP goes last so the two RNG-consuming passes keep their pre-M18 positions — a seeded run stays
-    byte-identical. Everything runs in the caller's transaction and buffers into ``channel``.
+    The single ROLL is the RNG boundary — every distribution below consumes none, so a seeded run
+    stays byte-identical to the pre-M18 per-enemy path however the passes are ordered. XP still runs
+    last so its XP_AWARDED / LEVEL_UP land after the haul on the wire, the order the DM narrates in.
+    Each pass is awaited as its own statement: the sequence is the contract, not an argument list
+    whose evaluation order a cosmetic reorder could silently change.
+
+    Everything runs in the caller's transaction and buffers into ``channel``.
     """
     spoils = await roll_encounter_spoils(participants, rng, content=content)
     seat_order = seat_order_for(participants)
-    return VictoryRewards(
-        spoils=spoils,
-        primary_loot=await distribute_loot(
-            spoils.loot_pool, seat_order, primary_id=primary_id, mutations=mutations, conn=conn, channel=channel
-        ),
-        primary_currency_gold=await distribute_currency(
-            spoils.currency_silver,
-            seat_order,
-            primary_id=primary_id,
-            mutations=mutations,
-            queries=queries,
-            pricing=pricing,
-            conn=conn,
-            channel=channel,
-        ),
-        xp=await distribute_xp(
-            spoils.xp_total,
-            seat_order,
-            primary_id=primary_id,
-            reason=reason,
-            mutations=mutations,
-            queries=queries,
-            conn=conn,
-            channel=channel,
-        ),
+    primary_loot = await distribute_loot(
+        spoils.loot_pool, seat_order, primary_id=primary_id, mutations=mutations, conn=conn, channel=channel
     )
+    primary_currency_gold = await distribute_currency(
+        spoils.currency_silver,
+        seat_order,
+        primary_id=primary_id,
+        mutations=mutations,
+        queries=queries,
+        pricing=pricing,
+        conn=conn,
+        channel=channel,
+    )
+    xp = await distribute_xp(
+        spoils.xp_total,
+        seat_order,
+        primary_id=primary_id,
+        reason=reason,
+        mutations=mutations,
+        queries=queries,
+        conn=conn,
+        channel=channel,
+    )
+    return VictoryRewards(spoils=spoils, primary_loot=primary_loot, primary_currency_gold=primary_currency_gold, xp=xp)

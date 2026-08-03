@@ -28,8 +28,9 @@ logger = logging.getLogger("divineruin.tools")
 
 @dataclass(frozen=True)
 class PendingChoice:
-    """A choice surfaced on level-up that the player must resolve via the select
-    verb (story-003). choice_id == the milestone id select resolves against."""
+    """A choice surfaced on level-up that the player resolves via the select verb.
+    choice_id == the milestone id select resolves against — but select takes that id
+    from the tap/voice call, not from this object (see AwardXpResult.pending_choice)."""
 
     choice_id: str
     options: list[dict]
@@ -37,8 +38,14 @@ class PendingChoice:
 
 @dataclass(frozen=True)
 class AwardXpResult:
-    """Outcome of the shared XP/milestone Resolve. Consumed by award_xp,
-    update_quest (story-002), and the select verb (story-003)."""
+    """Outcome of the shared XP/milestone Resolve. ``result`` and ``milestone_grants`` are read by
+    every award path (award_xp, update_quest, the combat-end Resolve) to build its tool response.
+
+    ``pending_choice`` currently has NO reader: select derives the fork from the player's own
+    committed level/class under FOR UPDATE rather than from in-memory hand-off state, so the L5
+    fork reaches the player as the SPECIALIZATION_CHOICE event plus the response's
+    ``specialization_fork`` flag. Kept only because the constructing branch is asserted by
+    test_progression_tools."""
 
     result: "rules_engine.LevelUpResult"
     milestone_grants: list[dict]
