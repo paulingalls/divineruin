@@ -5,4 +5,7 @@ empty-store default for the player-condition read/save combat_end performs on ev
 ab37d4fc61c6). Defined once in tests/_combat_end_fixtures and shared across combat / handoff / durability.
 """
 
-from _combat_end_fixtures import default_condition_persistence  # noqa: F401  (autouse fixture)
+from _combat_end_fixtures import (  # noqa: F401  (autouse fixtures)
+    default_condition_persistence,
+    default_player_row,
+)

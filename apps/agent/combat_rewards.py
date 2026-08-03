@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 import combat_resolution
 import encounter_loot
 import event_types as E
+import progression_tools
 from combat_events import EventSink, emit_or_publish
 
 if TYPE_CHECKING:
@@ -50,6 +51,16 @@ class RewardChannel:
 
 
 @dataclass
+class XpGrant:
+    """What the PRIMARY got out of the XP pass — the only member the single-session tool response
+    and session_xp_earned speak for. Every other seat's award reaches its own client on the wire."""
+
+    xp_granted: int = 0
+    milestone_grants: list[dict] = field(default_factory=list)
+    specialization_fork: bool = False
+
+
+@dataclass
 class EncounterSpoils:
     """Everything the defeated enemies yielded, rolled but not yet granted to anyone."""
 
@@ -57,6 +68,17 @@ class EncounterSpoils:
     currency_silver: int = 0
     loot_pool: list[dict] = field(default_factory=list)
     defeated_enemies: list[str] = field(default_factory=list)
+
+
+@dataclass
+class VictoryRewards:
+    """Everything a won fight paid out. Constructed empty for a defeat / fled / deescalated end,
+    where nothing is rolled and nothing is granted."""
+
+    spoils: EncounterSpoils = field(default_factory=EncounterSpoils)
+    primary_loot: list[dict] = field(default_factory=list)
+    primary_currency_gold: float = 0
+    xp: XpGrant = field(default_factory=XpGrant)
 
 
 def seat_order_for(participants) -> list[str]:
@@ -163,7 +185,7 @@ async def distribute_currency(
     if currency_silver <= 0 or not seat_order:
         return 0
     silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
-    share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
+    share_silver = currency_silver * encounter_loot.party_reward_multiplier(len(seat_order)) / len(seat_order)
     share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
     primary_currency_gold: float = 0
     for pid in seat_order:
@@ -184,3 +206,111 @@ async def distribute_currency(
             },
         )
     return primary_currency_gold
+
+
+async def distribute_xp(
+    xp_total: int,
+    seat_order: list[str],
+    *,
+    primary_id: str,
+    reason: str,
+    mutations,
+    queries,
+    conn,
+    channel: RewardChannel,
+) -> XpGrant:
+    """DISTRIBUTE pass — experience: the encounter total takes the SAME party curve as coin
+    (decision 91967897c88c) and splits evenly, so grouping never pays differently for progression
+    than it does for gold. Solo N=1 -> multiplier 1.0: the primary receives the whole total.
+
+    Every seat routes through ``_award_xp_core``, the single XP/milestone Resolve (M28) — so a
+    combat level-up applies its L10/15/20 auto-grant and surfaces its L5 fork exactly as a quest
+    reward does, inside THIS transaction. Runs AFTER the currency pass so the RNG consumption order
+    upstream is untouched, and locks each row FOR UPDATE in seat order.
+
+    A share that floors to 0 grants nothing rather than publishing a "+0 XP" toast: the core has no
+    positivity guard of its own, and ``award_xp`` rejects amount <= 0.
+    """
+    if xp_total <= 0 or not seat_order:
+        return XpGrant()
+    share = int(xp_total * encounter_loot.party_reward_multiplier(len(seat_order)) / len(seat_order))
+    if share <= 0:
+        return XpGrant()
+
+    # The core buffers into a caller-owned list; forward it into the channel so the XP events
+    # release post-commit alongside ITEM_ACQUIRED / CURRENCY_GAINED. No new event plumbing.
+    pending_events: list[tuple[str, dict]] = []
+    grant = XpGrant()
+    for pid in seat_order:
+        player = await queries.get_player(pid, conn=conn, for_update=True)
+        if player is None:
+            # Symmetric with the currency pass's tolerance: a seat with no players.data row gets
+            # nothing rather than aborting the whole combat-end tx over a non-critical reward.
+            continue
+        outcome = await progression_tools._award_xp_core(
+            player_id=pid,
+            player=player,
+            amount=share,
+            reason=reason,
+            conn=conn,
+            pending_events=pending_events,
+            mutations=mutations,
+        )
+        if pid == primary_id:
+            grant = XpGrant(
+                xp_granted=share,
+                milestone_grants=outcome.milestone_grants,
+                specialization_fork=outcome.result.specialization_fork,
+            )
+    for event_type, payload in pending_events:
+        await channel.emit(event_type, payload)
+    return grant
+
+
+async def grant_victory_rewards(
+    participants,
+    rng: random.Random,
+    *,
+    primary_id: str,
+    reason: str,
+    mutations,
+    queries,
+    pricing,
+    content,
+    conn,
+    channel: RewardChannel,
+) -> VictoryRewards:
+    """The whole victory payout, in the one order that must not drift: ROLL the shared spoils, then
+    hand out items, coin and XP along ``seat_order``.
+
+    XP goes last so the two RNG-consuming passes keep their pre-M18 positions — a seeded run stays
+    byte-identical. Everything runs in the caller's transaction and buffers into ``channel``.
+    """
+    spoils = await roll_encounter_spoils(participants, rng, content=content)
+    seat_order = seat_order_for(participants)
+    return VictoryRewards(
+        spoils=spoils,
+        primary_loot=await distribute_loot(
+            spoils.loot_pool, seat_order, primary_id=primary_id, mutations=mutations, conn=conn, channel=channel
+        ),
+        primary_currency_gold=await distribute_currency(
+            spoils.currency_silver,
+            seat_order,
+            primary_id=primary_id,
+            mutations=mutations,
+            queries=queries,
+            pricing=pricing,
+            conn=conn,
+            channel=channel,
+        ),
+        xp=await distribute_xp(
+            spoils.xp_total,
+            seat_order,
+            primary_id=primary_id,
+            reason=reason,
+            mutations=mutations,
+            queries=queries,
+            conn=conn,
+            channel=channel,
+        ),
+    )

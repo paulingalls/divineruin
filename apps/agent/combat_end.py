@@ -112,8 +112,9 @@ async def end_combat(
     outcome: str,
 ) -> str | tuple:
     """End the current combat. Outcome must be 'victory', 'defeat', or 'fled'.
-    On victory, calculates XP from defeated enemies (call award_xp separately
-    with the returned total). Clears all combat state."""
+    On victory, XP and loot from the defeated enemies are granted automatically —
+    narrate the returned xp_granted, any milestone_grants, and the specialization
+    fork if one opened. Clears all combat state."""
     return await _end_combat_impl(context, outcome)
 
 
@@ -172,34 +173,24 @@ async def _end_combat_db(
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     rng = rng or random.Random()
-    channel = combat_rewards.RewardChannel(sink, session.room, session.event_bus)
-    spoils = combat_rewards.EncounterSpoils()
-    primary_loot: list[dict] = []
-    primary_currency_gold: float = 0
+    # Loot, coin and XP live in combat_rewards (decision dcc9c1cc1221). All of it runs in THIS
+    # transaction and buffers into ``sink``, so a rolled-back phase un-grants every reward and drops
+    # the unflushed events. XP is a Resolve now (M28 story-001), not a "call award_xp with this
+    # total" note to the LLM — transactional with the fight that earned it, so it can't be
+    # forgotten, doubled, or invented, and every player participant is paid, not just the primary.
+    rewards = combat_rewards.VictoryRewards()
     if outcome == "victory":
-        # The reward passes live in combat_rewards (decision dcc9c1cc1221) — ROLL the shared spoils
-        # upstream of every DISTRIBUTE so the RNG sequence stays byte-identical, then hand each haul
-        # out along seat_order. All of it runs in THIS transaction and buffers into ``sink``, so a
-        # rolled-back phase un-grants the reward and drops the unflushed events.
-        spoils = await combat_rewards.roll_encounter_spoils(cs.participants, rng, content=content)
-        seat_order = combat_rewards.seat_order_for(cs.participants)
-        primary_loot = await combat_rewards.distribute_loot(
-            spoils.loot_pool,
-            seat_order,
+        rewards = await combat_rewards.grant_victory_rewards(
+            cs.participants,
+            rng,
             primary_id=session.player_id,
-            mutations=mutations,
-            conn=conn,
-            channel=channel,
-        )
-        primary_currency_gold = await combat_rewards.distribute_currency(
-            spoils.currency_silver,
-            seat_order,
-            primary_id=session.player_id,
+            reason=f"Victory at {cs.location_id}",
             mutations=mutations,
             queries=queries,
             pricing=pricing,
+            content=content,
             conn=conn,
-            channel=channel,
+            channel=combat_rewards.RewardChannel(sink, session.room, session.event_bus),
         )
 
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
@@ -376,18 +367,21 @@ async def _end_combat_db(
         sink,
         session.room,
         E.COMBAT_ENDED,
-        {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": spoils.xp_total},
+        {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": rewards.spoils.xp_total},
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, [_STINGER_SOUND[outcome]], sink=sink)
 
     return {
-        "xp_total": spoils.xp_total,
-        "defeated_enemies": spoils.defeated_enemies,
+        "xp_total": rewards.spoils.xp_total,
+        "xp_granted": rewards.xp.xp_granted,
+        "milestone_grants": rewards.xp.milestone_grants,
+        "specialization_fork": rewards.xp.specialization_fork,
+        "defeated_enemies": rewards.spoils.defeated_enemies,
         "weapon_durability": weapon_durability,
         "death_context": death_context,
-        "primary_loot": primary_loot,
-        "primary_currency_gold": primary_currency_gold,
+        "primary_loot": rewards.primary_loot,
+        "primary_currency_gold": rewards.primary_currency_gold,
         "ward_light_synced": ward_light_synced,
         "resolved_location_ward": resolved_location_ward,
     }
@@ -403,6 +397,7 @@ def _end_combat_finish(
     the per-encounter flags, clears combat_state, records the event/memory, and returns the
     (gameplay_agent, json) handoff. No DB, no events — nothing here is reachable on a rollback."""
     xp_total = end_data["xp_total"]
+    xp_granted = end_data["xp_granted"]
     defeated_enemies = end_data["defeated_enemies"]
 
     # M18 story-003: reset EVERY member's per-encounter weapon flags (mirror combat_init).
@@ -430,20 +425,30 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
+    # The session metric is the PRIMARY's own award (matching award_xp), not the party total.
+    session.session_xp_earned += xp_granted
+
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
+        # The XP is already GRANTED (M28 story-001) — there is no follow-up award_xp call to cue.
+        # The DM narrates the level-up beats from this response, not from the event bus:
+        # milestone_grants voices each L10/15/20 auto-grant, and specialization_fork cues the L5
+        # choice the generic select verb resolves.
+        "xp_granted": xp_granted,
+        "milestone_grants": end_data["milestone_grants"],
+        "specialization_fork": end_data["specialization_fork"],
         "defeated_enemies": defeated_enemies,
         "weapon_durability": end_data["weapon_durability"],
         "loot": loot,
         "currency_gold": currency_gold,
-        "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
     logger.info(
-        "end_combat result: %s, xp=%d, loot=%d item(s), currency=%.1fgp",
+        "end_combat result: %s, xp=%d granted (encounter total %d), loot=%d item(s), currency=%.1fgp",
         outcome,
+        xp_granted,
         xp_total,
         len(loot),
         currency_gold,
@@ -455,8 +460,10 @@ def _end_combat_finish(
     from gameplay_agent import create_gameplay_agent
 
     summary_parts = [f"Combat resolved: {outcome}."]
-    if xp_total > 0:
-        summary_parts.append(f"XP earned: {xp_total}.")
+    # The player's OWN share, not the encounter total — in a party the two differ, and narrating
+    # the total would promise XP nobody received.
+    if xp_granted > 0:
+        summary_parts.append(f"XP earned: {xp_granted}.")
     if defeated_enemies:
         summary_parts.append(f"Defeated: {', '.join(defeated_enemies)}.")
     # Surface the haul so the DM can voice it (loot is a headline beat). Quantities collapse per

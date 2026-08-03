@@ -15,8 +15,9 @@ project convention for resolve_phase tests.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
+from _combat_end_fixtures import combat_end_queries
 from combat._helpers import _damage_resolver, _resolution_state
 
 import combat_turn
@@ -104,10 +105,9 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     # Enemy starts at 1 HP; the player's 5-damage swing drops it -> wrap reports victory.
     session.combat_state = _resolution_state(combat_id=combat_id, player_id=player_id, enemy_id=enemy_id, enemy_hp=1)
 
-    # end_combat reads player inventory for durability accrual; no items equipped
-    # in this fixture, so a zero-row stub keeps the path silent.
-    queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])
+    # end_combat reads each player's row (XP grant) + inventory (durability accrual); no items
+    # equipped in this fixture, so a zero-row inventory keeps the durability path silent.
+    queries = combat_end_queries()
 
     try:
         await combat_turn._resolve_phase_impl(

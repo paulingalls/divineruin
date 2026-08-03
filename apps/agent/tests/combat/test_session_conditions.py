@@ -13,6 +13,7 @@ player id + cleanup, per the fast-lane real-PG convention.
 import json
 from unittest.mock import AsyncMock, MagicMock
 
+from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import _make_combat_state
 
 import db_mutations_conditions
@@ -125,8 +126,9 @@ def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
 
 def _end_combat_mocks():
     session = SessionData(player_id="player_1", location_id="accord_guild_hall", room=None)
-    mutations = MagicMock(delete_combat_state=AsyncMock())
-    return session, mutations, MagicMock()
+    mutations = combat_end_mutations()
+    queries = combat_end_queries()
+    return session, mutations, queries
 
 
 async def test_end_combat_merges_acquired_cross_encounter_conditions(monkeypatch):
