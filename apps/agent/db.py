@@ -44,6 +44,38 @@ _pool_lock = asyncio.Lock()
 _redis: aioredis.Redis | None = None
 _redis_lock = asyncio.Lock()
 
+_CONNECT_ATTEMPTS = 3
+_CONNECT_BACKOFF_SECONDS = 0.25  # linear: 0.25s, then 0.5s
+
+_TRANSIENT_CONNECT_ERRORS = (
+    OSError,  # includes ConnectionError — the "rejected SSL upgrade" case
+    asyncpg.CannotConnectNowError,  # server still starting up
+    asyncpg.TooManyConnectionsError,  # momentary connection-slot exhaustion
+)
+
+
+async def _connect_with_retry(*args: object, **kwargs: object) -> asyncpg.Connection:
+    """Connect hook for asyncpg's pool with bounded retry on transient setup errors.
+
+    Passed as create_pool(connect=...) so both the min_size warm-up and every
+    later acquire-time connection route through the retry — not just create_pool
+    itself, which Pool._get_new_connection only calls once at startup.
+    """
+    for attempt in range(_CONNECT_ATTEMPTS):
+        try:
+            return await asyncpg.connect(*args, **kwargs)
+        except _TRANSIENT_CONNECT_ERRORS as e:
+            if attempt >= _CONNECT_ATTEMPTS - 1:
+                raise
+            logger.warning(
+                "Transient DB connect error on attempt %d/%d: %s",
+                attempt + 1,
+                _CONNECT_ATTEMPTS,
+                e,
+            )
+            await asyncio.sleep(_CONNECT_BACKOFF_SECONDS * (attempt + 1))
+    raise AssertionError("unreachable")
+
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
@@ -55,6 +87,7 @@ async def get_pool() -> asyncpg.Pool:
                 os.environ["DATABASE_URL"],
                 min_size=2,
                 max_size=5,
+                connect=_connect_with_retry,
             )
         return _pool
 
