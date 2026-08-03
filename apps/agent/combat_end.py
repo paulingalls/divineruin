@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
+import combat_rewards
 import conditions
 import db
 import db_content_queries
@@ -16,7 +17,6 @@ import db_mutations_conditions
 import db_mutations_reputation
 import db_mutations_veil_ward
 import db_queries
-import encounter_loot
 import event_types as E
 import pricing_queries
 import resurrection
@@ -105,26 +105,6 @@ def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
     return _key(before) != _key(after)
 
 
-async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list[dict]]:
-    """Roll ONE defeated enemy's role-scaled currency + loot drops WITHOUT granting them.
-
-    Returns (silver, drops). Currency is rolled BEFORE loot, preserving the pre-M18 per-enemy RNG
-    consumption order so a seeded run is byte-identical — the caller distributes the returned drops
-    across the party (M18 story-003), which consumes no RNG. Currency is 0 for a Minion (D79).
-    Untagged/legacy enemies (no category / loot_table_id) are inert — the empty-string defaults mean
-    pre-story-002 content drops nothing rather than crashing."""
-    currency = 0
-    if p.category:
-        tier = encounter_loot.tier_for_level(p.level)
-        currency = encounter_loot.calculate_currency_drop(p.category, tier, p.role, rng)
-    drops: list[dict] = []
-    if p.loot_table_id:
-        table = await content.get_loot_table(p.loot_table_id)
-        if table is not None:
-            drops = encounter_loot.derive_role_loot(table, p.role, rng)
-    return currency, drops
-
-
 @function_tool()
 @db_tool
 async def end_combat(
@@ -132,8 +112,9 @@ async def end_combat(
     outcome: str,
 ) -> str | tuple:
     """End the current combat. Outcome must be 'victory', 'defeat', or 'fled'.
-    On victory, calculates XP from defeated enemies (call award_xp separately
-    with the returned total). Clears all combat state."""
+    On victory, XP and loot from the defeated enemies are granted automatically —
+    narrate the returned xp_granted, any milestone_grants, and the specialization
+    fork if one opened. Clears all combat state."""
     return await _end_combat_impl(context, outcome)
 
 
@@ -192,90 +173,25 @@ async def _end_combat_db(
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     rng = rng or random.Random()
-    xp_total = 0
-    defeated_enemies: list[str] = []
-    primary_loot: list[dict] = []
-    currency_silver = 0
-    primary_currency_gold: float = 0
+    # Loot, coin and XP live in combat_rewards (decision dcc9c1cc1221). All of it runs in THIS
+    # transaction and buffers into ``sink``, so a rolled-back phase un-grants every reward and drops
+    # the unflushed events. XP is a Resolve now (M28 story-001), not a "call award_xp with this
+    # total" note to the LLM — transactional with the fight that earned it, so it can't be
+    # forgotten, doubled, or invented, and every player participant is paid, not just the primary.
+    rewards = combat_rewards.VictoryRewards()
     if outcome == "victory":
-        # ROLL pass (M18 story-003): iterate the defeated enemies in participant order, rolling each
-        # one's currency + loot into a SHARED pool. Rolling is kept fully upstream of distribution so
-        # the RNG consumption sequence is byte-identical to the pre-M18 per-enemy path.
-        enemy_dicts = []
-        loot_pool: list[dict] = []
-        for p in cs.participants:
-            if p.type != "enemy":
-                continue
-            enemy_dicts.append({"xp_value": p.xp_value})
-            defeated_enemies.append(p.name)
-            enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, content=content)
-            currency_silver += enemy_silver
-            loot_pool.extend(enemy_drops)
-        xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
-
-        # DISTRIBUTE pass — items: round-robin the shared pool across members in ascending player_id
-        # seat order (customer decision f437f4475a40). Keyed on the player PARTICIPANTS who fought —
-        # NOT session.party.member_ids — so a mid-combat room joiner (appended to the party by
-        # participant_lifecycle but never a combatant) can't dilute or steal the haul. Each rolled
-        # drop lands in ONE participant's inventory, so items stay scarce (no per-member duplication).
-        # Distribution consumes no RNG. Solo = 1 participant, so every drop goes to the primary.
-        seat_order = sorted(p.id for p in cs.participants if p.type == "player")
-        # Defensive (concern ab4ced4c2110): _wrap guarantees >=1 standing player on an auto victory
-        # (any_player_standing gate), but a MANUAL end_combat('victory') is ungated — a solo primary
-        # that rose as an echo leaves seat_order empty. Skip distribution rather than divide by zero:
-        # there is no player-life to receive the haul.
-        for i, drop in enumerate(loot_pool if seat_order else []):
-            recipient = seat_order[i % len(seat_order)]
-            await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
-            if recipient == session.player_id:
-                primary_loot.append(drop)
-            await emit_or_publish(
-                sink,
-                session.room,
-                E.ITEM_ACQUIRED,
-                {
-                    "item_id": drop["item_id"],
-                    "quantity": drop["quantity"],
-                    "source": "combat_loot",
-                    "player_id": recipient,
-                },
-                event_bus=session.event_bus,
-            )
-
-        # DISTRIBUTE pass — currency: the party's enemy-silver haul gets a party multiplier (rewards
-        # grouping without N x farming, customer decision f437f4475a40) then splits evenly; each
-        # member's share converts to gold crowns at its own grant boundary (the silver_per_gold SSOT,
-        # symmetric with repair/crafting). Each grant is a FOR UPDATE read-modify-write; the locks
-        # are acquired in ASCENDING player_id order (deadlock-free SSOT 5da95d657255). One
-        # CURRENCY_GAINED per member; end_data.primary_currency_gold is only the PRIMARY's own
-        # share, not the party total — the DM's single-session handoff narrates the primary's own
-        # haul (story-001), never the summed party gold. Inside this tx — a rollback un-grants the
-        # coin and drops the unflushed events. Minions contribute 0 (D79). Solo N=1 -> multiplier
-        # 1.0, one member: byte-identical.
-        if currency_silver > 0 and seat_order:  # seat_order guard: see the loot-distribution note above
-            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
-            share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
-            share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
-            for pid in seat_order:
-                player = await queries.get_player(pid, conn=conn, for_update=True)
-                prior_gold = (player or {}).get("gold", 0) or 0
-                new_balance = prior_gold + share_gold
-                await mutations.update_player_gold(pid, new_balance, conn=conn)
-                if pid == session.player_id:
-                    primary_currency_gold = share_gold
-                await emit_or_publish(
-                    sink,
-                    session.room,
-                    E.CURRENCY_GAINED,
-                    {
-                        "player_id": pid,
-                        "amount": share_gold,
-                        "currency": "gold",
-                        "source": "combat",
-                        "new_balance": new_balance,
-                    },
-                    event_bus=session.event_bus,
-                )
+        rewards = await combat_rewards.grant_victory_rewards(
+            cs.participants,
+            rng,
+            primary_id=session.player_id,
+            reason=f"Victory at {cs.location_id}",
+            mutations=mutations,
+            queries=queries,
+            pricing=pricing,
+            content=content,
+            conn=conn,
+            channel=combat_rewards.RewardChannel(sink, session.room, session.event_bus),
+        )
 
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
     # hollow-doubled. Reads each member's own weapon flags (set live during the loop); the flag
@@ -451,18 +367,21 @@ async def _end_combat_db(
         sink,
         session.room,
         E.COMBAT_ENDED,
-        {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": xp_total},
+        {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": rewards.spoils.xp_total},
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, [_STINGER_SOUND[outcome]], sink=sink)
 
     return {
-        "xp_total": xp_total,
-        "defeated_enemies": defeated_enemies,
+        "xp_total": rewards.spoils.xp_total,
+        "xp_granted": rewards.xp.xp_granted,
+        "milestone_grants": rewards.xp.milestone_grants,
+        "specialization_fork": rewards.xp.specialization_fork,
+        "defeated_enemies": rewards.spoils.defeated_enemies,
         "weapon_durability": weapon_durability,
         "death_context": death_context,
-        "primary_loot": primary_loot,
-        "primary_currency_gold": primary_currency_gold,
+        "primary_loot": rewards.primary_loot,
+        "primary_currency_gold": rewards.primary_currency_gold,
         "ward_light_synced": ward_light_synced,
         "resolved_location_ward": resolved_location_ward,
     }
@@ -478,6 +397,7 @@ def _end_combat_finish(
     the per-encounter flags, clears combat_state, records the event/memory, and returns the
     (gameplay_agent, json) handoff. No DB, no events — nothing here is reachable on a rollback."""
     xp_total = end_data["xp_total"]
+    xp_granted = end_data["xp_granted"]
     defeated_enemies = end_data["defeated_enemies"]
 
     # M18 story-003: reset EVERY member's per-encounter weapon flags (mirror combat_init).
@@ -505,20 +425,30 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
+    # The session metric is the PRIMARY's own award (matching award_xp), not the party total.
+    session.session_xp_earned += xp_granted
+
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
+        # The XP is already GRANTED (M28 story-001) — there is no follow-up award_xp call to cue.
+        # The DM narrates the level-up beats from this response, not from the event bus:
+        # milestone_grants voices each L10/15/20 auto-grant, and specialization_fork cues the L5
+        # choice the generic select verb resolves.
+        "xp_granted": xp_granted,
+        "milestone_grants": end_data["milestone_grants"],
+        "specialization_fork": end_data["specialization_fork"],
         "defeated_enemies": defeated_enemies,
         "weapon_durability": end_data["weapon_durability"],
         "loot": loot,
         "currency_gold": currency_gold,
-        "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
     logger.info(
-        "end_combat result: %s, xp=%d, loot=%d item(s), currency=%.1fgp",
+        "end_combat result: %s, xp=%d granted (encounter total %d), loot=%d item(s), currency=%.1fgp",
         outcome,
+        xp_granted,
         xp_total,
         len(loot),
         currency_gold,
@@ -530,8 +460,10 @@ def _end_combat_finish(
     from gameplay_agent import create_gameplay_agent
 
     summary_parts = [f"Combat resolved: {outcome}."]
-    if xp_total > 0:
-        summary_parts.append(f"XP earned: {xp_total}.")
+    # The player's OWN share, not the encounter total — in a party the two differ, and narrating
+    # the total would promise XP nobody received.
+    if xp_granted > 0:
+        summary_parts.append(f"XP earned: {xp_granted}.")
     if defeated_enemies:
         summary_parts.append(f"Defeated: {', '.join(defeated_enemies)}.")
     # Surface the haul so the DM can voice it (loot is a headline beat). Quantities collapse per

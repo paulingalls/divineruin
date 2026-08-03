@@ -10,6 +10,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations
 from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _resolution_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
@@ -20,10 +21,9 @@ from session_data import CombatParticipant
 
 
 def _make_mutations():
-    m = MagicMock()
+    m = combat_end_mutations()
     m.save_combat_state = AsyncMock()
     m.update_player_hp = AsyncMock()
-    m.delete_combat_state = AsyncMock()
     return m
 
 

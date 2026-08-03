@@ -13,6 +13,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import combat_end_queries
 from combat._helpers import _damage_resolver
 
 import combat_events
@@ -63,9 +64,8 @@ def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> Comba
 
 
 def _no_durability_queries() -> MagicMock:
-    queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability events
-    return queries
+    # no equipped items -> no durability events
+    return combat_end_queries(get_player_inventory=AsyncMock(return_value=[]))
 
 
 def _no_concentration_break() -> MagicMock:
@@ -560,7 +560,7 @@ def _tx_e2e_state(combat_id: str, player_id: str, enemy_id: str, companion_id: s
 def _equipped_weapon_queries(weapon_id: str) -> MagicMock:
     """queries whose get_player_inventory returns one equipped, durable weapon — so end_combat
     accrues a real (in-tx) durability hit on it."""
-    queries = MagicMock()
+    queries = combat_end_queries()
     queries.get_player_inventory = AsyncMock(
         return_value=[
             {

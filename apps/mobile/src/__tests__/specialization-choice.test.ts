@@ -103,8 +103,8 @@ test("xp_awarded level-up pushes a level_up overlay and does NOT set the choice 
     type: "xp_awarded",
     new_xp: 1000,
     new_level: 5,
-    level_up: true,
-    xp_gained: 100,
+    leveled_up: true,
+    amount: 100,
   });
   expect(hudStore.getState().specializationChoice).toBeNull();
   expect(hudStore.getState().overlays.some((o) => o.type === "level_up")).toBe(true);

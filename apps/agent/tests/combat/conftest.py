@@ -10,4 +10,7 @@ real-PG tests (dev_db_pool) and tests with their own monkeypatch override it. De
 tests/_combat_end_fixtures so the combat / handoff / durability suites share one copy.
 """
 
-from _combat_end_fixtures import default_condition_persistence  # noqa: F401  (autouse fixture)
+from _combat_end_fixtures import (  # noqa: F401  (autouse fixtures)
+    default_condition_persistence,
+    default_player_row,
+)

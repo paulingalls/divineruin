@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
 from sample_fixtures import make_context as _make_context
 
@@ -20,9 +21,8 @@ class TestRoundTrip:
         from combat_end import _end_combat_impl
         from combat_init import _start_combat_impl
 
-        mock_mutations = MagicMock()
+        mock_mutations = combat_end_mutations()
         mock_mutations.save_combat_state = AsyncMock()
-        mock_mutations.delete_combat_state = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()

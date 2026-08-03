@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import (
     _damage_resolver,
     _fake_db_mod,
@@ -19,9 +20,7 @@ from combat_end import _end_combat_impl
 
 def _make_end_combat_mocks():
     """Create mock modules for end_combat DI params."""
-    mock_mutations = MagicMock()
-    mock_mutations.delete_combat_state = AsyncMock()
-    return mock_mutations
+    return combat_end_mutations()
 
 
 class TestEndCombat:
@@ -155,8 +154,7 @@ class TestPhaseLoopExit:
 
         # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
         resolver = _damage_resolver(3)
-        queries = MagicMock()
-        queries.get_player_inventory = AsyncMock(return_value=[])
+        queries = combat_end_queries()
         break_mod = MagicMock()
         break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
 

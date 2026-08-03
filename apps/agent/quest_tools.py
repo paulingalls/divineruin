@@ -204,7 +204,7 @@ async def _update_quest_impl(
                     # apply L10/15/20 auto-grants + surface the L5 fork — which the old inline
                     # copy dropped (debt ee947a154b10). XP_AWARDED/LEVEL_UP are byte-identical.
                     outcome = await progression_tools._award_xp_core(
-                        session=session,
+                        player_id=session.player_id,
                         player=player,
                         amount=xp_reward,
                         reason=f"Quest '{quest.get('name', quest_id)}' stage completed",

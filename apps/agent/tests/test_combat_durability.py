@@ -23,7 +23,10 @@ async accrual/wiring tests inject AsyncMock mutations/queries (test_combat_tools
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from _combat_end_fixtures import default_condition_persistence  # noqa: F401  (autouse fixture)
+from _combat_end_fixtures import (  # noqa: F401  (autouse fixtures)
+    default_condition_persistence,
+    default_player_row,
+)
 
 import combat_durability
 import combat_events
