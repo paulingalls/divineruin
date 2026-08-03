@@ -113,7 +113,9 @@ test("resonance_changed for another party member is still filtered out", () => {
 // Both lanes now assert this fixture, so the next rename goes red instead of silent.
 
 test("xp_awarded fixture drives the character store and the level-up overlay", () => {
-  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
   handleGameEvent({ ...EVENTS.xp_awarded });
   const char = characterStore.getState().character!;
   expect(char.xp).toBe(EVENTS.xp_awarded.new_xp);
@@ -127,7 +129,9 @@ test("xp_awarded fixture drives the character store and the level-up overlay", (
 test("xp_awarded without a level-up toasts the fixture's real amount", () => {
   // The +0 XP bug lived here: the handler defaulted a missing `xp_gained` to 0, so the
   // toast rendered "+0 XP" for every real award. Pin the toast to `amount`.
-  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
   handleGameEvent({ ...EVENTS.xp_awarded, leveled_up: false, specialization_fork: false });
   const overlay = hudStore.getState().overlays[0];
   expect(overlay.type).toBe("xp_toast");
