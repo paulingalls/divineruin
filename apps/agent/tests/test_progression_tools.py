@@ -205,10 +205,9 @@ async def _core_for_levels(from_level, from_xp, amount, *, archetype="warrior", 
     mutations = MagicMock()
     mutations.update_player_xp = AsyncMock()
     mutations.set_player_flag = AsyncMock()
-    session = make_context(room=make_mock_room()).userdata
     pending_events: list[tuple[str, dict]] = []
     result = await _award_xp_core(
-        session=session,
+        player_id="player_1",
         player=player,
         amount=amount,
         reason="milestone reached",
@@ -242,6 +241,8 @@ async def test_core_l5_fork_surfaces_pending_choice():
 async def test_core_l5_fork_emits_specialization_choice_event():
     # The HUD overlay consumes SPECIALIZATION_CHOICE {milestone_id, options} (unchanged
     # from resolve_milestone's payload) — the core publishes it on the level-up path.
+    # player_id is the RECIPIENT (story-001): a party member's fork must reach only their
+    # own client, so every payload the core emits carries whose award it is.
     pending_events, _, _, _ = await _core_for_levels(from_level=4, from_xp=750, amount=300)
     assert (
         E.SPECIALIZATION_CHOICE,
@@ -251,6 +252,7 @@ async def test_core_l5_fork_emits_specialization_choice_event():
                 {"id": "battle_master", "name": "Battle Master", "description": "Tactical maneuvers."},
                 {"id": "berserker", "name": "Berserker", "description": "Reckless fury."},
             ],
+            "player_id": "player_1",
         },
     ) in pending_events
 

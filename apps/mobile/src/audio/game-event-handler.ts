@@ -184,14 +184,26 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.XP_AWARDED:
-      if (typeof event.new_xp === "number" && typeof event.new_level === "number") {
+      // Keys are the PYTHON emitter's: `amount` / `leveled_up`. The handler used to read
+      // `xp_gained` / `level_up`, which no publisher has ever sent — so a real award toasted
+      // "+0 XP" and the level-up overlay never fired (story-001). packages/shared/fixtures/
+      // event_wire.json pins the shape in both lanes now.
+      //
+      // Party-wide XP: every member's award reaches every client, so filter to the local
+      // player or a teammate's grant would overwrite this client's own bar.
+      if (
+        isEventForLocalPlayer(event.player_id) &&
+        typeof event.new_xp === "number" &&
+        typeof event.new_level === "number"
+      ) {
         characterStore.getState().updateXp(event.new_xp, event.new_level);
-        if (event.level_up) {
+        const xpGained = typeof event.amount === "number" ? event.amount : 0;
+        if (event.leveled_up) {
           hudStore.getState().pushOverlay(
             "level_up",
             {
               newLevel: event.new_level,
-              xpGained: event.xp_gained,
+              xpGained,
               className: characterStore.getState().character?.className,
             },
             5000,
@@ -199,13 +211,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           playSfx("level_up_sting");
           hapticLevelUp();
         } else {
-          hudStore.getState().pushOverlay(
-            "xp_toast",
-            {
-              xpGained: typeof event.xp_gained === "number" ? event.xp_gained : 0,
-            },
-            2500,
-          );
+          hudStore.getState().pushOverlay("xp_toast", { xpGained }, 2500);
         }
       }
       break;
@@ -419,6 +425,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
       // The milestoneId is the choice_id the tap echoes back to the agent's select
       // verb; without it every tap would be silently dropped agent-side, so a
       // choice missing it is a no-op (fail at the boundary, not on the tap).
+      // The fork belongs to ONE party member (story-001): without the recipient gate a
+      // non-primary's L5 crossing would pop the choice UI on every client, and the tap
+      // would resolve a milestone that is not this player's.
+      if (!isEventForLocalPlayer(event.player_id)) break;
       const milestoneId = typeof event.milestone_id === "string" ? event.milestone_id : "";
       const rawOptions = Array.isArray(event.options)
         ? (event.options as Record<string, unknown>[])

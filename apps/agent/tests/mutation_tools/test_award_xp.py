@@ -102,6 +102,10 @@ class TestAwardXp:
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.XP_AWARDED
         assert call_data["amount"] == 50
+        # The recipient rides the wire (story-001): party-wide XP means every client sees
+        # every member's award, so each one filters on player_id. Pinned in both lanes via
+        # packages/shared/fixtures/event_wire.json.
+        assert call_data["player_id"] == "player_1"
 
     @pytest.mark.asyncio
     async def test_max_level_no_level_up(self):

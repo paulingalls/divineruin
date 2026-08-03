@@ -1,7 +1,13 @@
 import { test, expect, beforeEach } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
-import { HOLLOW_ECHO_RESULT, RESONANCE_CHANGED, VEIL_WARD_CHANGED } from "@/audio/event-types";
+import {
+  HOLLOW_ECHO_RESULT,
+  RESONANCE_CHANGED,
+  SPECIALIZATION_CHOICE,
+  VEIL_WARD_CHANGED,
+  XP_AWARDED,
+} from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
@@ -25,6 +31,8 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.resonance_changed.type).toBe(RESONANCE_CHANGED);
   expect(EVENTS.hollow_echo_result.type).toBe(HOLLOW_ECHO_RESULT);
   expect(EVENTS.veil_ward_changed.type).toBe(VEIL_WARD_CHANGED);
+  expect(EVENTS.xp_awarded.type).toBe(XP_AWARDED);
+  expect(EVENTS.specialization_choice.type).toBe(SPECIALIZATION_CHOICE);
 });
 
 test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
@@ -96,6 +104,72 @@ test("resonance_changed for another party member is still filtered out", () => {
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
   handleGameEvent({ ...EVENTS.resonance_changed });
   expect(hudStore.getState().resonanceState).toBe(before);
+});
+
+// --- xp_awarded / specialization_choice: the Python key names ARE the contract (story-001) ---
+//
+// The handler read `xp_gained`/`level_up` while every Python emitter published `amount`/
+// `leveled_up`, so a real agent award rendered "+0 XP" and never fired the level-up overlay.
+// Both lanes now assert this fixture, so the next rename goes red instead of silent.
+
+test("xp_awarded fixture drives the character store and the level-up overlay", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  handleGameEvent({ ...EVENTS.xp_awarded });
+  const char = characterStore.getState().character!;
+  expect(char.xp).toBe(EVENTS.xp_awarded.new_xp);
+  expect(char.level).toBe(EVENTS.xp_awarded.new_level);
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("level_up");
+  expect(overlay.payload.newLevel).toBe(EVENTS.xp_awarded.new_level);
+  expect(overlay.payload.xpGained).toBe(EVENTS.xp_awarded.amount);
+});
+
+test("xp_awarded without a level-up toasts the fixture's real amount", () => {
+  // The +0 XP bug lived here: the handler defaulted a missing `xp_gained` to 0, so the
+  // toast rendered "+0 XP" for every real award. Pin the toast to `amount`.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  handleGameEvent({ ...EVENTS.xp_awarded, leveled_up: false, specialization_fork: false });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("xp_toast");
+  expect(overlay.payload.xpGained).toBe(EVENTS.xp_awarded.amount);
+});
+
+test("xp_awarded for another party member never touches the local character", () => {
+  // Party-wide XP (story-001): every client sees every member's award. Without the
+  // player_id gate a teammate's XP would overwrite this client's own bar.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.xp_awarded });
+  expect(characterStore.getState().character!.xp).toBe(SAMPLE_CHARACTER.xp);
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("xp_awarded with no player_id still counts as local (back-compat)", () => {
+  // The gate deliberately admits a non-string id: emitters that predate the stamp
+  // (and the debug/e2e fakes) must keep working.
+  const { player_id: _dropped, ...noRecipient } = EVENTS.xp_awarded;
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...noRecipient });
+  expect(characterStore.getState().character!.xp).toBe(EVENTS.xp_awarded.new_xp);
+});
+
+test("specialization_choice fixture sets the L5 fork choice state", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.specialization_choice.player_id });
+  handleGameEvent({ ...EVENTS.specialization_choice });
+  const choice = hudStore.getState().specializationChoice!;
+  expect(choice.milestoneId).toBe(EVENTS.specialization_choice.milestone_id);
+  expect(choice.options.map((o) => o.id)).toEqual(
+    EVENTS.specialization_choice.options.map((o) => o.id),
+  );
+});
+
+test("specialization_choice for another party member does NOT pop the local fork UI", () => {
+  // A non-primary's L5 fork must not hijack every client's overlay — the tap would
+  // resolve someone else's milestone.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.specialization_choice });
+  expect(hudStore.getState().specializationChoice).toBeNull();
 });
 
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {

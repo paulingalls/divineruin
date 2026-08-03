@@ -7,6 +7,26 @@
       "caster_id": "player_1"
     },
     "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
+    "xp_awarded": {
+      "type": "xp_awarded",
+      "amount": 450,
+      "reason": "defeated goblin scouts",
+      "new_xp": 1050,
+      "new_level": 5,
+      "leveled_up": true,
+      "attribute_points": 2,
+      "specialization_fork": true,
+      "player_id": "player_1"
+    },
+    "specialization_choice": {
+      "type": "specialization_choice",
+      "milestone_id": "warrior_identity",
+      "options": [
+        { "id": "battle_master", "name": "Battle Master", "description": "Tactical maneuvers." },
+        { "id": "berserker", "name": "Berserker", "description": "Reckless fury." }
+      ],
+      "player_id": "player_1"
+    },
     "veil_ward_changed": {
       "type": "veil_ward_changed",
       "active": true,

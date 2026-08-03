@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
 
 import db_session_queries
 import event_types
@@ -22,6 +23,7 @@ import hollow_echo_events
 import resonance_events
 import veil_ward_events
 from hollow_echo import HollowEchoResult
+from progression_tools import _award_xp_core
 from spells import Spell
 from veil_ward import WardScope
 
@@ -45,6 +47,8 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["resonance_changed"]["type"] == event_types.RESONANCE_CHANGED
     assert FIXTURE["events"]["hollow_echo_result"]["type"] == event_types.HOLLOW_ECHO_RESULT
     assert FIXTURE["events"]["veil_ward_changed"]["type"] == event_types.VEIL_WARD_CHANGED
+    assert FIXTURE["events"]["xp_awarded"]["type"] == event_types.XP_AWARDED
+    assert FIXTURE["events"]["specialization_choice"]["type"] == event_types.SPECIALIZATION_CHOICE
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
@@ -96,6 +100,55 @@ def test_veil_ward_fixture_carries_no_caster_id() -> None:
     does not. A reader who 'restores consistency' by adding caster_id back fails here."""
     assert "caster_id" not in FIXTURE["events"]["veil_ward_changed"]
     assert "caster_id" in FIXTURE["events"]["resonance_changed"]
+
+
+async def _core_pending_events() -> dict[str, dict]:
+    """Drive _award_xp_core over the fixture's own award (L3 @600xp + 450 -> L5) and return
+    the buffered {type: payload} it appended. The core buffers rather than publishes (it runs
+    in the caller's transaction), so the wire object is {type, **payload} the same way
+    publish_game_event flat-merges it post-commit."""
+    expected = FIXTURE["events"]["xp_awarded"]
+    player = {**GUILD_PLAYER, "class": "warrior", "level": 3, "xp": expected["new_xp"] - expected["amount"]}
+    mutations = MagicMock()
+    mutations.update_player_xp = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    pending: list[tuple[str, dict]] = []
+    await _award_xp_core(
+        player_id=expected["player_id"],
+        player=player,
+        amount=expected["amount"],
+        reason=expected["reason"],
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        milestones_mod=_milestones_mod_for(_WARRIOR_MILESTONES, "warrior"),
+    )
+    return {event_type: {"type": event_type, **payload} for event_type, payload in pending}
+
+
+@pytest.mark.asyncio
+async def test_xp_awarded_serializes_to_fixture() -> None:
+    # story-001: the mobile handler read xp_gained/level_up while every Python emitter published
+    # amount/leveled_up, so a real award toasted "+0 XP". Both lanes assert this fixture now.
+    # player_id is the RECIPIENT — combat-end grants party-wide, so each client filters on it.
+    wire = await _core_pending_events()
+    assert wire[event_types.XP_AWARDED] == FIXTURE["events"]["xp_awarded"]
+
+
+@pytest.mark.asyncio
+async def test_specialization_choice_serializes_to_fixture() -> None:
+    # The same L5 crossing surfaces the fork cue, stamped with the same recipient so a
+    # non-primary's fork does not pop the choice UI on every client.
+    wire = await _core_pending_events()
+    assert wire[event_types.SPECIALIZATION_CHOICE] == FIXTURE["events"]["specialization_choice"]
+
+
+@pytest.mark.asyncio
+async def test_level_up_carries_the_recipient() -> None:
+    # LEVEL_UP rides the same award; without the stamp a teammate's level-up would be
+    # indistinguishable from the local player's.
+    wire = await _core_pending_events()
+    assert wire[event_types.LEVEL_UP]["player_id"] == FIXTURE["events"]["xp_awarded"]["player_id"]
 
 
 def test_spell_row_builder_matches_fixture() -> None:

@@ -75,10 +75,10 @@ test.describe("Session HUD overlays", () => {
     await sessionPage.injectSessionInit();
     await sessionPage.injectEvent({
       type: "xp_awarded",
-      xp_gained: 150,
+      amount: 150,
       new_xp: 600,
       new_level: 3,
-      level_up: false,
+      leveled_up: false,
     });
 
     const toast = sessionPage.page.getByTestId("xp-toast");
@@ -92,10 +92,10 @@ test.describe("Session HUD overlays", () => {
     await sessionPage.injectSessionInit();
     await sessionPage.injectEvent({
       type: "xp_awarded",
-      xp_gained: 300,
+      amount: 300,
       new_xp: 750,
       new_level: 4,
-      level_up: true,
+      leveled_up: true,
     });
 
     const overlay = sessionPage.page.getByTestId("level-up-overlay");
@@ -275,10 +275,10 @@ test.describe("Session HUD overlays", () => {
     // XP toast has a 2500ms TTL
     await sessionPage.injectEvent({
       type: "xp_awarded",
-      xp_gained: 50,
+      amount: 50,
       new_xp: 500,
       new_level: 3,
-      level_up: false,
+      leveled_up: false,
     });
 
     const toast = sessionPage.page.getByTestId("xp-toast");
