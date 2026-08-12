@@ -126,6 +126,10 @@ const webWebServer = {
 export default defineConfig({
   testDir: "./specs",
   testMatch: "*.e2e.ts",
+  // Warm the Metro bundle before any spec runs — see global-setup.ts. Gated on
+  // the same runsNonWeb flag as mobileWebServer itself: a web-only run never
+  // starts :8082, so warming it would hang against a server that isn't there.
+  globalSetup: runsNonWeb ? "./global-setup.ts" : undefined,
   // Distribute tests across workers (not just files). Safe because the
   // testUser fixture is worker-scoped (each worker gets its own account, see
   // e2e/fixtures/auth.ts ~L131), and Playwright still runs tests serially
