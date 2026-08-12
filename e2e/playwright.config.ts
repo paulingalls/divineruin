@@ -77,12 +77,13 @@ const mobileWebServer = {
   command: "cd apps/mobile && bunx expo start --web --port 8082 --non-interactive",
   cwd: "../",
   // Wait on an HTTP probe of the served page, NOT a bare TCP port: Expo opens :8082
-  // BEFORE Metro has bundled the web app, so a `port` probe goes ready early and the first
-  // spec's page.goto("/") pays the cold Metro bundle — which, under the pre-push gate's
-  // concurrent CPU load (Docker acceptance + the apps/web build), can exceed the 30s test
-  // timeout (the authenticatedPage-setup goto timeout seen on session-transcript). `url`
-  // polls for a real 200 so Playwright only starts specs once Metro actually serves; the
-  // 120s timeout gives the bundle headroom. Mirrors webWebServer's port-probe-race fix.
+  // BEFORE it will answer HTTP at all, so a `port` probe goes ready early. `url` polls
+  // for a real 200; the 120s timeout gives it headroom. Mirrors webWebServer's
+  // port-probe-race fix.
+  //
+  // This probe alone is NOT enough: a 200 only proves the HTML shell is served, and Metro
+  // compiles the JS bundle on demand, so the first specs still raced the compile past the
+  // 30s test timeout. globalSetup (./global-setup.ts) pays that compile off the clock.
   url: "http://localhost:8082/",
   timeout: 120_000,
   reuseExistingServer: false,

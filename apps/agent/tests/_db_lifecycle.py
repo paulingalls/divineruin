@@ -1,7 +1,8 @@
 """Test-session DB lifecycle: make `pytest` self-heal when docker isn't up.
 
-Many non-acceptance tests open a real connection to the docker-compose Postgres
-at :55432 (the canonical dev DB). When that DB isn't running, a bare `pytest`
+Many non-acceptance tests open a real connection to this checkout's
+docker-compose Postgres (see `resolve_database_url` for how its DSN is found —
+the primary checkout's is :55432). When that DB isn't running, a bare `pytest`
 fails with connection errors. This helper, driven by conftest's
 pytest_sessionstart/sessionfinish hooks (gated to the xdist controller),
 detects reachability and — only if the DB is down — runs `docker compose up -d`
@@ -226,7 +227,7 @@ def _start_compose(host: str, port: int, user: str) -> None:
     raise RuntimeError(f"Postgres at {host}:{port} did not accept queries within {_READY_TIMEOUT_SECONDS}s")
 
 
-def ensure_db_up() -> bool:
+def ensure_db_up(database_url: str | None = None) -> bool:
     """Ensure the dev Postgres accepts queries, starting docker compose if not.
 
     Returns True iff THIS call ran `docker compose up`. The caller still
@@ -235,8 +236,12 @@ def ensure_db_up() -> bool:
     file, keyed on host:port — every concurrent `pytest` run sharing the one
     physical dev DB container joins the same count, so a run that only joined
     an already-up DB never tears it down under a run still using it.
+
+    Pass `database_url` to pin the DSN (and so the state file) for the whole
+    session; omit it to resolve fresh. See stop_if_started for why the caller
+    resolves once and hands the same DSN to both.
     """
-    database_url = resolve_database_url()
+    database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
@@ -260,19 +265,24 @@ def ensure_db_up() -> bool:
         return True
 
 
-def stop_if_started(started: bool) -> None:
+def stop_if_started(started: bool, database_url: str | None = None) -> None:
     """Down the compose services once the shared refcount hits zero.
 
-    `started` is this call's own start flag, kept because conftest.py (out of
-    this module's file domain) passes it and its signature must not change.
-    It's used only as a fallback when no state file exists at all — e.g. a
-    caller that bypasses ensure_db_up entirely. Otherwise the real decision is
-    the cross-process refcount: whichever concurrent run finishes LAST does
-    the teardown, even if that run itself didn't start the DB (`started` may
-    be False there). A DB a developer started by hand (`harness_started`
-    False in the state file) is never torn down, at any count.
+    `started` is this call's own start flag. It's used only as a fallback when
+    no state file exists at all — e.g. a caller that bypasses ensure_db_up
+    entirely. Otherwise the real decision is the cross-process refcount:
+    whichever concurrent run finishes LAST does the teardown, even if that run
+    itself didn't start the DB (`started` may be False there). A DB a developer
+    started by hand (`harness_started` False in the state file) is never torn
+    down, at any count.
+
+    `database_url` must be the SAME DSN ensure_db_up was given, so both ends key
+    the same host:port state file. Re-resolving here would read whatever
+    os.environ holds at session END, and the acceptance lane's bdd fixture
+    assigns DATABASE_URL to its testcontainer without restoring it — which would
+    decrement a state file the dev DB's count never went into.
     """
-    database_url = resolve_database_url()
+    database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
 

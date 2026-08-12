@@ -20,8 +20,11 @@ from training_config_fixture import setup_training_config_fixture
 import db
 
 # Tracks whether THIS process started docker compose, so sessionfinish only
-# stops what sessionstart started.
+# stops what sessionstart started, plus the DSN sessionstart resolved — the
+# acceptance bdd fixture overwrites os.environ["DATABASE_URL"] and never
+# restores it, so sessionfinish must not re-resolve.
 _started_db = False
+_db_url: str | None = None
 
 
 def _is_xdist_worker(config: pytest.Config) -> bool:
@@ -32,19 +35,23 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Start the docker-compose dev DB for the run if it isn't already up.
 
-    Many non-acceptance tests connect to the dev Postgres at :55432, so a bare
+    Many non-acceptance tests connect to this checkout's dev Postgres, so a bare
     `pytest` would fail when docker isn't running. ensure_db_up() is a fast
     no-op when the DB is already reachable (the common dev case) and only starts
     docker compose when it's down. See _db_lifecycle.py.
+
+    The DSN is resolved ONCE here and handed to both ends of the pair, because
+    fixtures reassign os.environ["DATABASE_URL"] mid-session.
 
     Under pytest-xdist (-n N) every worker runs its own session; gating on the
     controller (no `workerinput`) ensures docker is started/stopped exactly once
     so a worker that finishes early can't stop the DB while others still query.
     """
-    global _started_db
+    global _started_db, _db_url
     if _is_xdist_worker(session.config):
         return
-    _started_db = ensure_db_up()
+    _db_url = resolve_database_url()
+    _started_db = ensure_db_up(_db_url)
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
@@ -55,7 +62,7 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     """
     if _is_xdist_worker(session.config):
         return
-    stop_if_started(_started_db)
+    stop_if_started(_started_db, _db_url)
 
 
 @pytest.fixture(autouse=True)

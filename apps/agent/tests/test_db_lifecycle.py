@@ -344,6 +344,42 @@ def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, m
     assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
 
 
+def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
+    """sessionstart and sessionfinish must decrement the SAME refcount.
+
+    The acceptance lane's bdd fixture assigns os.environ["DATABASE_URL"] to its
+    testcontainer and never restores it, so a re-resolve at sessionfinish would
+    key the lock/state file on the testcontainer's host:port — leaking the dev
+    DB's count forever and skipping its teardown. Passing the start-time DSN
+    through pins the pair to one state file.
+    """
+    dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    # A leaked testcontainer DSN in the environment must not steer the teardown.
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
+
+    dbl.stop_if_started(True, dev_dsn)
+
+    assert calls == [("down",)]
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+
+
+def test_ensure_db_up_honours_an_explicit_dsn_over_the_environment(monkeypatch):
+    """The DSN sessionstart resolved wins, so the pair keys one host:port."""
+    dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
+
+    assert dbl.ensure_db_up(dev_dsn) is False
+
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    assert dbl._read_state(state_path)["count"] == 1
+
+
 def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, monkeypatch):
     """A real .env is mostly other keys and prose comments."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
