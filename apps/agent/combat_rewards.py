@@ -58,6 +58,7 @@ class XpGrant:
     xp_granted: int = 0
     milestone_grants: list[dict] = field(default_factory=list)
     specialization_fork: bool = False
+    leveled_up: bool = False
 
 
 @dataclass
@@ -218,6 +219,7 @@ async def distribute_xp(
     queries,
     conn,
     channel: RewardChannel,
+    milestones_mod=None,
 ) -> XpGrant:
     """DISTRIBUTE pass — experience: the encounter total takes the SAME party curve as coin
     (decision 91967897c88c) and splits evenly, so grouping never pays differently for progression
@@ -231,6 +233,10 @@ async def distribute_xp(
 
     A share that floors to 0 grants nothing rather than publishing a "+0 XP" toast: the core has no
     positivity guard of its own, and ``award_xp`` rejects amount <= 0.
+
+    ``milestones_mod`` is an injection seam for callers that supply their own milestone ladder
+    (quest_tools' tests do); None means the core's own default. Quest completion reuses THIS pass
+    rather than copying it, so one curve governs both reward paths (decision 91967897c88c).
     """
     if xp_total <= 0 or not seat_order:
         return XpGrant()
@@ -248,6 +254,7 @@ async def distribute_xp(
             # Symmetric with the currency pass's tolerance: a seat with no players.data row gets
             # nothing rather than aborting the whole combat-end tx over a non-critical reward.
             continue
+        core_kwargs = {} if milestones_mod is None else {"milestones_mod": milestones_mod}
         outcome = await progression_tools._award_xp_core(
             player_id=pid,
             player=player,
@@ -256,12 +263,14 @@ async def distribute_xp(
             conn=conn,
             pending_events=pending_events,
             mutations=mutations,
+            **core_kwargs,
         )
         if pid == primary_id:
             grant = XpGrant(
                 xp_granted=share,
                 milestone_grants=outcome.milestone_grants,
                 specialization_fork=outcome.result.specialization_fork,
+                leveled_up=outcome.result.leveled_up,
             )
     for event_type, payload in pending_events:
         await channel.emit(event_type, payload)

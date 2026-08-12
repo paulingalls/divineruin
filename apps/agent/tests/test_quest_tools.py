@@ -301,3 +301,68 @@ def test_greyvale_completion_authors_accord_reputation():
     final = greyvale["stages"][-1]
     assert final["id"] == "stage_5_return"
     assert "accord_guild_reputation completed_faction_quest" in final["on_complete"]["world_effects"]
+
+
+# ── Quest XP is party-wide (story-002, debt 6033f2bedcea) ─────────────────────
+# story-001 made combat XP party-wide, but quest XP still paid only session.player_id, so a
+# non-primary member earned combat XP and no quest XP and drifted down in level by quest volume.
+# The share must follow the SAME rule combat uses, not a second copy of it.
+
+
+async def _complete_stage_for_party(member_ids, xp_reward):
+    """Complete a one-stage quest granting `xp_reward` for a party of `member_ids`.
+    Returns (mutations, response)."""
+    quest = {
+        "id": "q1",
+        "name": "Party Quest",
+        "stages": [
+            {"id": 0, "objective": "begin", "on_complete": {"xp": xp_reward}},
+            {"id": 1, "objective": "next", "on_complete": {}},
+        ],
+    }
+    mock_db, _ = make_db_mod()
+    content = MagicMock()
+    content.get_quest = AsyncMock(return_value=quest)
+    content.get_item = AsyncMock(return_value=None)
+    queries = MagicMock()
+    queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {**GUILD_PLAYER, "player_id": pid})
+    mutations = MagicMock()
+    mutations.set_player_quest = AsyncMock()
+    mutations.update_player_xp = AsyncMock()
+    mutations.add_inventory_item = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    ctx = make_context(room=make_mock_room(), party_member_ids=member_ids[1:])
+    raw = await _update_quest_impl(ctx, "q1", 1, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    return mutations, json.loads(raw if isinstance(raw, str) else raw[1])
+
+
+@pytest.mark.asyncio
+async def test_quest_xp_pays_every_party_member():
+    mutations, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
+
+    paid = {call.args[0] for call in mutations.update_player_xp.await_args_list}
+    assert paid == {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+async def test_quest_xp_share_uses_the_same_party_curve_as_combat():
+    """Pinned to encounter_loot.party_reward_multiplier itself, not a copied number: grouping
+    must never pay differently for quest progression than for combat progression."""
+    import encounter_loot
+
+    mutations, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
+
+    expected = int(200 * encounter_loot.party_reward_multiplier(2) / 2)
+    for call in mutations.update_player_xp.await_args_list:
+        # update_player_xp(player_id, new_xp, new_level, conn=...) — new_xp is base + share.
+        assert call.args[1] == GUILD_PLAYER["xp"] + expected
+
+
+@pytest.mark.asyncio
+async def test_solo_quest_xp_is_unchanged_by_the_party_split():
+    """N=1 -> multiplier exactly 1.0: a solo player still receives the whole declared reward."""
+    mutations, _ = await _complete_stage_for_party(["player_1"], 200)
+
+    assert mutations.update_player_xp.await_count == 1
+    assert mutations.update_player_xp.await_args.args[1] == GUILD_PLAYER["xp"] + 200
