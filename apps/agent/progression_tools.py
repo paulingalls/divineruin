@@ -279,7 +279,8 @@ async def _award_divine_favor_core(
         return None
 
     current_level = favor.get("level", 0)
-    new_level = min(current_level + amount, favor.get("max", 100))
+    max_level = favor.get("max", 100)
+    new_level = min(current_level + amount, max_level)
     await mutations.update_divine_favor(player_id, new_level, conn=conn)
 
     pending_events.append(
@@ -292,6 +293,12 @@ async def _award_divine_favor_core(
                 "last_whisper_level": favor.get("last_whisper_level", 0),
                 "amount": amount,
                 "reason": reason,
+                # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
+                # to 100, so dropping it (as this payload used to) fabricated the bar's scale for
+                # any patron whose cap is not 100. `player_id` is the RECIPIENT — quest favor is
+                # party-wide, so without it a teammate's grant moves every client's bar.
+                "max": max_level,
+                "player_id": player_id,
             },
         )
     )

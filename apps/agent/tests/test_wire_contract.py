@@ -23,7 +23,7 @@ import hollow_echo_events
 import resonance_events
 import veil_ward_events
 from hollow_echo import HollowEchoResult
-from progression_tools import _award_xp_core
+from progression_tools import _award_divine_favor_core, _award_xp_core
 from spells import Spell
 from veil_ward import WardScope
 
@@ -49,6 +49,7 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["veil_ward_changed"]["type"] == event_types.VEIL_WARD_CHANGED
     assert FIXTURE["events"]["xp_awarded"]["type"] == event_types.XP_AWARDED
     assert FIXTURE["events"]["specialization_choice"]["type"] == event_types.SPECIALIZATION_CHOICE
+    assert FIXTURE["events"]["divine_favor_changed"]["type"] == event_types.DIVINE_FAVOR_CHANGED
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
@@ -167,3 +168,42 @@ def test_spell_row_builder_matches_fixture() -> None:
     with patch("db_session_queries.spells.get_spell", return_value=spell):
         row = db_session_queries._enrich_spell_row(expected["spell_id"], is_prepared=expected["is_prepared"])
     assert row == expected
+
+
+async def _favor_core_pending_events() -> dict[str, dict]:
+    """Drive _award_divine_favor_core over the fixture's own grant and return the buffered
+    {type: payload}. Like the XP core it buffers rather than publishes, so the wire object is
+    {type, **payload} exactly as publish_game_event flat-merges it post-commit."""
+    expected = FIXTURE["events"]["divine_favor_changed"]
+    activities = MagicMock()
+    activities.get_divine_favor = AsyncMock(
+        return_value={
+            "patron": expected["patron_id"],
+            "level": expected["previous_level"],
+            "max": expected["max"],
+            "last_whisper_level": expected["last_whisper_level"],
+        }
+    )
+    mutations = MagicMock()
+    mutations.update_divine_favor = AsyncMock()
+    pending: list[tuple[str, dict]] = []
+    await _award_divine_favor_core(
+        player_id=expected["player_id"],
+        amount=expected["amount"],
+        reason=expected["reason"],
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+    return {event_type: {"type": event_type, **payload} for event_type, payload in pending}
+
+
+@pytest.mark.asyncio
+async def test_divine_favor_changed_serializes_to_fixture() -> None:
+    # story-002: the mobile handler reads `max` for the favor bar's denominator (falling back to
+    # 100) but no Python publisher ever sent it, so the denominator was fabricated on every real
+    # event — the same both-sides-mocked shape as story-001's xp_awarded. player_id is the
+    # RECIPIENT: quest favor is party-wide, so each client filters on it.
+    wire = await _favor_core_pending_events()
+    assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
