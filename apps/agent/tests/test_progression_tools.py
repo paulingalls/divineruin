@@ -17,7 +17,13 @@ from sample_fixtures import (
 import event_types as E
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from milestones import Milestone
-from progression_tools import AwardXpResult, PendingChoice, _award_xp_core, _award_xp_impl
+from progression_tools import (
+    AwardXpResult,
+    PendingChoice,
+    _award_divine_favor_core,
+    _award_xp_core,
+    _award_xp_impl,
+)
 
 
 async def _award_crossing_threshold(player):
@@ -315,3 +321,133 @@ async def test_core_multilevel_jump_crossing_l5_surfaces_exactly_one_choice():
     assert result.pending_choice.choice_id == "warrior_identity"
     assert _event_types(pending_events).count(E.SPECIALIZATION_CHOICE) == 1
     mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
+
+
+# ── _award_divine_favor_core (story-002) ──────────────────────────────────────
+# The favor Resolve: runs inside the CALLER's transaction and buffers its event into a
+# caller-owned list, mirroring _award_xp_core, so a quest stage can grant favor in the same
+# transaction as its XP. _award_divine_favor_impl is now a thin wrapper over this.
+
+_FAVOR = {"patron": "kaelen", "level": 10, "max": 100, "last_whisper_level": 4}
+
+
+def _favor_mods(favor):
+    """(activities, mutations) doubles returning `favor` from get_divine_favor."""
+    activities = MagicMock()
+    activities.get_divine_favor = AsyncMock(return_value=favor)
+    mutations = MagicMock()
+    mutations.update_divine_favor = AsyncMock()
+    return activities, mutations
+
+
+@pytest.mark.asyncio
+async def test_favor_core_writes_in_the_callers_transaction():
+    """The caller's conn is used directly — the core never opens a transaction of its own,
+    which is what lets a quest grant XP and favor atomically."""
+    activities, mutations = _favor_mods(_FAVOR)
+    conn = MagicMock()
+    pending: list[tuple[str, dict]] = []
+
+    grant = await _award_divine_favor_core(
+        player_id="player_1",
+        amount=5,
+        reason="honored Kaelen",
+        conn=conn,
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert grant is not None
+    assert (grant.previous_level, grant.new_level, grant.patron_id) == (10, 15, "kaelen")
+    mutations.update_divine_favor.assert_awaited_once_with("player_1", 15, conn=conn)
+
+
+@pytest.mark.asyncio
+async def test_favor_core_buffers_its_event_rather_than_publishing():
+    """Buffered, not published: the caller releases it post-commit, so a rolled-back
+    transaction never announces favor the DB does not hold."""
+    activities, mutations = _favor_mods(_FAVOR)
+    pending: list[tuple[str, dict]] = []
+
+    await _award_divine_favor_core(
+        player_id="player_1",
+        amount=5,
+        reason="honored Kaelen",
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert [t for t, _ in pending] == [E.DIVINE_FAVOR_CHANGED]
+    payload = pending[0][1]
+    assert payload["new_level"] == 15
+    assert payload["previous_level"] == 10
+    assert payload["patron_id"] == "kaelen"
+    assert payload["amount"] == 5
+    assert payload["reason"] == "honored Kaelen"
+    assert payload["last_whisper_level"] == 4
+
+
+@pytest.mark.asyncio
+async def test_favor_core_clamps_at_the_patrons_max():
+    activities, mutations = _favor_mods({**_FAVOR, "level": 95})
+    conn = MagicMock()
+    pending: list[tuple[str, dict]] = []
+
+    grant = await _award_divine_favor_core(
+        player_id="player_1",
+        amount=10,
+        reason="great deed",
+        conn=conn,
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert grant is not None and grant.new_level == 100
+    mutations.update_divine_favor.assert_awaited_once_with("player_1", 100, conn=conn)
+    assert pending[0][1]["new_level"] == 100
+
+
+@pytest.mark.asyncio
+async def test_favor_core_returns_none_for_a_patronless_player():
+    """None, not an exception: a party member without a patron must be SKIPPED by a quest
+    grant, not abort the whole stage transaction. The tool wrapper turns None into ToolError."""
+    activities, mutations = _favor_mods({"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0})
+    pending: list[tuple[str, dict]] = []
+
+    grant = await _award_divine_favor_core(
+        player_id="player_1",
+        amount=5,
+        reason="test",
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert grant is None
+    assert pending == []
+    mutations.update_divine_favor.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_favor_core_returns_none_when_the_player_has_no_favor_row():
+    activities, mutations = _favor_mods(None)
+    pending: list[tuple[str, dict]] = []
+
+    grant = await _award_divine_favor_core(
+        player_id="player_1",
+        amount=5,
+        reason="test",
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert grant is None
+    assert pending == []
+    mutations.update_divine_favor.assert_not_awaited()
