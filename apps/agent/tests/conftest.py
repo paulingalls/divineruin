@@ -4,7 +4,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from _db_lifecycle import _DEFAULT_DATABASE_URL, ensure_db_up, stop_if_started
+from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -283,11 +283,12 @@ async def _reset_db_pool() -> None:
 @pytest.fixture
 async def dev_db_pool():
     """Point db.get_pool() at the docker-compose dev DB (started by pytest_sessionstart), then
-    restore. Mirrors acceptance's reset_db_pool but for the :55432 dev DB the non-acceptance lane
-    already relies on; resolves the DSN the same way _db_lifecycle does. Shared across all fast-lane
-    real-PG tests (combat persistence/tx-integrity, db_mutations_death round-trip)."""
+    restore. Mirrors acceptance's reset_db_pool but for the dev DB the non-acceptance lane already
+    relies on, resolving the DSN through _db_lifecycle.resolve_database_url — THIS checkout's stack
+    (repo-root .env), not a hardcoded :55432, so a worktree run never writes the primary's database.
+    Shared across all fast-lane real-PG tests (combat persistence/tx-integrity, death round-trip)."""
     prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = prior or _DEFAULT_DATABASE_URL
+    os.environ["DATABASE_URL"] = resolve_database_url()
     await _reset_db_pool()
     try:
         yield await db.get_pool()

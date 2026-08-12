@@ -52,10 +52,54 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _COMPOSE_FILE = _REPO_ROOT / "docker-compose.yml"
 
 # Mirrors scripts/seed_content.py's default so the helper works even when
-# DATABASE_URL isn't exported into the pytest environment.
+# DATABASE_URL isn't exported into the pytest environment. Last resort ONLY:
+# it names the PRIMARY checkout's stack, so a worktree reaching it is a bug
+# (see resolve_database_url).
 _DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
 
 _READY_TIMEOUT_SECONDS = 60
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    """Parse a `KEY=VALUE` .env into a dict; a missing/unreadable file reads empty.
+
+    Deliberately minimal — no interpolation, no `export ` prefixes, no multi-line
+    values, because this repo's .env has none. Surrounding quotes ARE stripped:
+    values here are quote-wrapped, and a DSN carrying a literal `"` fails to parse.
+    """
+    values: dict[str, str] = {}
+    try:
+        text = path.read_text()
+    except OSError:
+        return values
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, _, raw = stripped.partition("=")
+        value = raw.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
+def resolve_database_url() -> str:
+    """The DSN this test run should use, in strict precedence order.
+
+    1. `DATABASE_URL` in the environment — CI exports it, and the acceptance lane's
+       testcontainer fixture assigns it, so the environment must always win.
+    2. Repo-root `.env` — `uv run` passes ambient env through but never LOADS .env
+       (Bun does, which is why only non-bun invocations broke). Without this, a
+       bare `cd apps/agent && uv run pytest` inside a git worktree fell through to
+       the default below and read AND WROTE the PRIMARY checkout's database.
+    3. `_DEFAULT_DATABASE_URL` — a fresh clone with no .env yet.
+    """
+    from_environment = os.environ.get("DATABASE_URL")
+    if from_environment:
+        return from_environment
+    from_env_file = _read_env_file(_REPO_ROOT / ".env").get("DATABASE_URL")
+    return from_env_file or _DEFAULT_DATABASE_URL
 
 
 def parse_host_port(database_url: str) -> tuple[str, int]:
@@ -192,7 +236,7 @@ def ensure_db_up() -> bool:
     physical dev DB container joins the same count, so a run that only joined
     an already-up DB never tears it down under a run still using it.
     """
-    database_url = os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL)
+    database_url = resolve_database_url()
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
@@ -228,7 +272,7 @@ def stop_if_started(started: bool) -> None:
     be False there). A DB a developer started by hand (`harness_started`
     False in the state file) is never torn down, at any count.
     """
-    database_url = os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL)
+    database_url = resolve_database_url()
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
 

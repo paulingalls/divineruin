@@ -292,3 +292,78 @@ def test_ensure_db_up_concurrent_callers_race_unreachable(monkeypatch):
     assert sorted(results) == [False, True]
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     assert dbl._read_state(state_path)["count"] == 2
+
+
+# ── DSN resolution (story-006) ────────────────────────────────────────────────
+# A worktree's .env carries that worktree's offset DATABASE_URL, but `uv run`
+# never LOADS .env (it only passes ambient env through), so a bare
+# `cd apps/agent && uv run pytest` used to fall back to the hardcoded primary
+# :55432 and read/write the WRONG checkout's database. These pin the precedence.
+
+
+def _write_env(tmp_path, body: str):
+    """Write a repo-root .env under tmp_path and point _db_lifecycle at it."""
+    env_path = tmp_path / ".env"
+    env_path.write_text(body)
+    return env_path
+
+
+def test_resolve_database_url_prefers_environment_over_env_file(tmp_path, monkeypatch):
+    """A real env var wins: CI and the acceptance testcontainer both set one."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    _write_env(tmp_path, "DATABASE_URL=postgresql://u:p@localhost:1111/db\n")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:2222/db")
+
+    assert dbl.resolve_database_url() == "postgresql://u:p@localhost:2222/db"
+
+
+def test_resolve_database_url_reads_env_file_when_environment_unset(tmp_path, monkeypatch):
+    """The worktree case: no exported DSN, so .env decides — not the :55432 default."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    _write_env(tmp_path, "DATABASE_URL=postgresql://u:p@localhost:63782/divineruin\n")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
+
+
+def test_resolve_database_url_strips_surrounding_quotes(tmp_path, monkeypatch):
+    """This repo's .env quote-wraps its values; an unstripped quote yields a DSN
+    asyncpg cannot parse (the same trap that 403s the Inworld key)."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    _write_env(tmp_path, 'DATABASE_URL="postgresql://u:p@localhost:63782/divineruin"\n')
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
+
+
+def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, monkeypatch):
+    """No .env at all (a fresh clone) still resolves to the canonical dev DB."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+
+
+def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, monkeypatch):
+    """A real .env is mostly other keys and prose comments."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    _write_env(
+        tmp_path,
+        "# Postgres — see docs\n"
+        "\n"
+        "ANTHROPIC_API_KEY=sk-not-a-dsn\n"
+        "DATABASE_URL=postgresql://u:p@localhost:63782/divineruin\n"
+        "REDIS_URL=redis://localhost:63786\n",
+    )
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
+
+
+def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, monkeypatch):
+    """A .env that never declares DATABASE_URL must not resolve to empty."""
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    _write_env(tmp_path, "DEEPGRAM_API_KEY=abc\n")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
