@@ -10,12 +10,15 @@ from livekit.agents.voice import RunContext
 
 import combat_rewards
 import db
+import db_activity_queries
 import db_content_queries
 import db_mutations
+import db_mutations_divine
 import db_mutations_reputation
 import db_queries
 import event_types as E
 import milestones
+import progression_tools
 from combat_events import EventSink
 from db_errors import db_tool
 from disposition import resolve_disposition
@@ -152,6 +155,8 @@ async def _update_quest_impl(
     queries=db_queries,
     content=db_content_queries,
     milestones_mod=milestones,
+    activities=db_activity_queries,
+    divine_mutations=db_mutations_divine,
 ) -> str:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
@@ -225,6 +230,36 @@ async def _update_quest_impl(
                     rewards_applied.append(
                         {"type": "xp", "amount": outcome.xp_granted, "leveled_up": outcome.leveled_up}
                     )
+
+            favor_reward = on_complete.get("favor", 0)
+            if favor_reward > 0:
+                # Divine favor is PARTY-WIDE at the FULL declared amount each (M28): standing
+                # with your own god is a personal relationship, not a haul to divide the way XP
+                # and coin are. Walk the SAME ascending player_id order as the XP pass so the two
+                # never take the players rows in opposing orders, and lock each row here in its
+                # own right — a stage may declare favor with no xp, in which case the XP pass
+                # never ran and holds no lock for this read-modify-write to ride on.
+                for pid in sorted(session.party.member_ids):
+                    await queries.get_player(pid, conn=conn, for_update=True)
+                    favor_grant = await progression_tools._award_divine_favor_core(
+                        player_id=pid,
+                        amount=favor_reward,
+                        reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
+                        conn=conn,
+                        pending_events=pending_events,
+                        mutations=divine_mutations,
+                        activities=activities,
+                    )
+                    # None = no patron: skip that member rather than abort the stage.
+                    if favor_grant is not None and pid == session.player_id:
+                        rewards_applied.append(
+                            {
+                                "type": "favor",
+                                "amount": favor_reward,
+                                "patron": favor_grant.patron_id,
+                                "new_level": favor_grant.new_level,
+                            }
+                        )
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")

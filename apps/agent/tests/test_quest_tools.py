@@ -366,3 +366,98 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 
     assert mutations.update_player_xp.await_count == 1
     assert mutations.update_player_xp.await_args.args[1] == GUILD_PLAYER["xp"] + 200
+
+
+# ── Divine favor is a quest-completion Resolve (story-002, M28) ───────────────
+# Favor was only ever written by the award_divine_favor LLM tool; story-003 deletes it, so
+# without this path favor becomes ungrantable. Party-wide at the FULL declared amount each —
+# a patron relationship is personal, not a haul to divide (unlike XP and coin).
+
+
+async def _complete_favor_stage(member_ids, favor_amount, patrons, *, fail_after=False, room=None):
+    """Complete a one-stage quest granting `favor_amount` favor. `patrons` maps player_id ->
+    patron id ('none' for unaligned). Returns (mutations, room, response)."""
+    quest = {
+        "id": "fq",
+        "name": "Favor Quest",
+        "stages": [
+            {"id": 0, "objective": "begin", "on_complete": {"favor": favor_amount}},
+            {"id": 1, "objective": "next", "on_complete": {}},
+        ],
+    }
+    room = room or make_mock_room()
+    mock_db, _ = make_db_mod()
+    content = MagicMock()
+    content.get_quest = AsyncMock(return_value=quest)
+    content.get_item = AsyncMock(return_value=None)
+    queries = MagicMock()
+    queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {**GUILD_PLAYER, "player_id": pid})
+    activities = MagicMock()
+    activities.get_divine_favor = AsyncMock(
+        side_effect=lambda pid, **kw: {"patron": patrons[pid], "level": 10, "max": 100, "last_whisper_level": 0}
+    )
+    mutations = MagicMock()
+    mutations.set_player_quest = AsyncMock(side_effect=RuntimeError("tx blew up") if fail_after else AsyncMock())
+    mutations.update_player_xp = AsyncMock()
+    mutations.add_inventory_item = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    mutations.update_divine_favor = AsyncMock()
+    ctx = make_context(room=room, party_member_ids=member_ids[1:])
+    raw = await _update_quest_impl(
+        ctx,
+        "fq",
+        1,
+        db_mod=mock_db,
+        mutations=mutations,
+        queries=queries,
+        content=content,
+        activities=activities,
+        divine_mutations=mutations,
+    )
+    return mutations, room, json.loads(raw if isinstance(raw, str) else raw[1])
+
+
+@pytest.mark.asyncio
+async def test_quest_favor_pays_every_aligned_member_the_full_amount():
+    """Not split by the party multiplier: standing with your own god is not a shared haul."""
+    mutations, _, _ = await _complete_favor_stage(
+        ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "solwyn"}
+    )
+
+    granted = {call.args[0]: call.args[1] for call in mutations.update_divine_favor.await_args_list}
+    assert granted == {"player_1": 15, "player_2": 15}
+
+
+@pytest.mark.asyncio
+async def test_quest_favor_skips_a_patronless_member_without_failing_the_stage():
+    """An unaligned member must be SKIPPED, not abort the stage — the core returns None for them."""
+    mutations, _, response = await _complete_favor_stage(
+        ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "none"}
+    )
+
+    granted = {call.args[0] for call in mutations.update_divine_favor.await_args_list}
+    assert granted == {"player_1"}
+    assert response["new_stage"] == 1  # the quest still advanced
+
+
+@pytest.mark.asyncio
+async def test_quest_favor_surfaces_in_rewards_applied_for_the_dm():
+    """The DM narrates from the tool response, not the bus."""
+    _, _, response = await _complete_favor_stage(["player_1"], 5, {"player_1": "kaelen"})
+
+    favor_rewards = [r for r in response["rewards_applied"] if r["type"] == "favor"]
+    assert favor_rewards == [{"type": "favor", "amount": 5, "patron": "kaelen", "new_level": 15}]
+
+
+@pytest.mark.asyncio
+async def test_a_rolled_back_stage_publishes_no_favor():
+    """The cue is buffered, not published, until the transaction commits — so a failure after
+    the favor write announces nothing the database does not hold."""
+    room = make_mock_room()
+    with pytest.raises(RuntimeError):
+        await _complete_favor_stage(["player_1"], 5, {"player_1": "kaelen"}, fail_after=True, room=room)
+
+    # Nothing reached the wire: publish happens only after the `async with` block returns.
+    published = [json.loads(c[0][0])["type"] for c in room.local_participant.publish_data.call_args_list]
+    assert E.DIVINE_FAVOR_CHANGED not in published

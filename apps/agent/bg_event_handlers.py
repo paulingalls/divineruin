@@ -193,6 +193,15 @@ def handle_events(
                 queue_god_whisper(ev.payload, sd, speech_queue)
 
         elif ev.event_type == E.DIVINE_FAVOR_CHANGED:
+            # PRIMARY only. Quest favor is party-wide (story-002), so one stage publishes an event
+            # per member — ungated, that is N god monologues in the DM's single voice for one beat.
+            # The whisper bookkeeping is primary-keyed too (background_process marks
+            # last_whisper_level on sd.player_id whoever crossed), so a teammate's crossing would
+            # consume the primary's cadence and never advance its own. An unstamped payload is the
+            # primary's (the award_divine_favor tool path predates the stamp).
+            recipient = ev.payload.get("player_id")
+            if recipient is not None and recipient != sd.player_id:
+                continue
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
             if should_trigger_whisper(new_level, last_whisper):
