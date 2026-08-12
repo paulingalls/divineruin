@@ -4,7 +4,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from _db_lifecycle import _DEFAULT_DATABASE_URL, ensure_db_up, stop_if_started
+from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -20,8 +20,11 @@ from training_config_fixture import setup_training_config_fixture
 import db
 
 # Tracks whether THIS process started docker compose, so sessionfinish only
-# stops what sessionstart started.
+# stops what sessionstart started, plus the DSN sessionstart resolved — the
+# acceptance bdd fixture overwrites os.environ["DATABASE_URL"] and never
+# restores it, so sessionfinish must not re-resolve.
 _started_db = False
+_db_url: str | None = None
 
 
 def _is_xdist_worker(config: pytest.Config) -> bool:
@@ -32,19 +35,23 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Start the docker-compose dev DB for the run if it isn't already up.
 
-    Many non-acceptance tests connect to the dev Postgres at :55432, so a bare
+    Many non-acceptance tests connect to this checkout's dev Postgres, so a bare
     `pytest` would fail when docker isn't running. ensure_db_up() is a fast
     no-op when the DB is already reachable (the common dev case) and only starts
     docker compose when it's down. See _db_lifecycle.py.
+
+    The DSN is resolved ONCE here and handed to both ends of the pair, because
+    fixtures reassign os.environ["DATABASE_URL"] mid-session.
 
     Under pytest-xdist (-n N) every worker runs its own session; gating on the
     controller (no `workerinput`) ensures docker is started/stopped exactly once
     so a worker that finishes early can't stop the DB while others still query.
     """
-    global _started_db
+    global _started_db, _db_url
     if _is_xdist_worker(session.config):
         return
-    _started_db = ensure_db_up()
+    _db_url = resolve_database_url()
+    _started_db = ensure_db_up(_db_url)
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
@@ -55,7 +62,7 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     """
     if _is_xdist_worker(session.config):
         return
-    stop_if_started(_started_db)
+    stop_if_started(_started_db, _db_url)
 
 
 @pytest.fixture(autouse=True)
@@ -283,11 +290,12 @@ async def _reset_db_pool() -> None:
 @pytest.fixture
 async def dev_db_pool():
     """Point db.get_pool() at the docker-compose dev DB (started by pytest_sessionstart), then
-    restore. Mirrors acceptance's reset_db_pool but for the :55432 dev DB the non-acceptance lane
-    already relies on; resolves the DSN the same way _db_lifecycle does. Shared across all fast-lane
-    real-PG tests (combat persistence/tx-integrity, db_mutations_death round-trip)."""
+    restore. Mirrors acceptance's reset_db_pool but for the dev DB the non-acceptance lane already
+    relies on, resolving the DSN through _db_lifecycle.resolve_database_url — THIS checkout's stack
+    (repo-root .env), not a hardcoded :55432, so a worktree run never writes the primary's database.
+    Shared across all fast-lane real-PG tests (combat persistence/tx-integrity, death round-trip)."""
     prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = prior or _DEFAULT_DATABASE_URL
+    os.environ["DATABASE_URL"] = resolve_database_url()
     await _reset_db_pool()
     try:
         yield await db.get_pool()
