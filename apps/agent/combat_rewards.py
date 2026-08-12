@@ -248,13 +248,13 @@ async def distribute_xp(
     # release post-commit alongside ITEM_ACQUIRED / CURRENCY_GAINED. No new event plumbing.
     pending_events: list[tuple[str, dict]] = []
     grant = XpGrant()
+    core_kwargs = {} if milestones_mod is None else {"milestones_mod": milestones_mod}
     for pid in seat_order:
         player = await queries.get_player(pid, conn=conn, for_update=True)
         if player is None:
             # Symmetric with the currency pass's tolerance: a seat with no players.data row gets
             # nothing rather than aborting the whole combat-end tx over a non-critical reward.
             continue
-        core_kwargs = {} if milestones_mod is None else {"milestones_mod": milestones_mod}
         outcome = await progression_tools._award_xp_core(
             player_id=pid,
             player=player,

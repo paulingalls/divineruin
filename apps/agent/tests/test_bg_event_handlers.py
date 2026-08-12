@@ -59,9 +59,9 @@ class TestHiddenRevealed:
 class TestDivineFavorWhisperIsPrimaryOnly:
     """Quest favor is party-wide (story-002), so one stage publishes a DIVINE_FAVOR_CHANGED per
     member. The whisper path is NOT party-aware: background_process marks last_whisper_level on
-    sd.player_id whoever crossed, so an ungated handler would voice N god monologues in the DM's
-    single voice for one beat AND let a teammate's crossing consume the primary's cadence while
-    never advancing its own. Gate on the recipient (decision b7c3a66f1b74)."""
+    sd.player_id whoever crossed, so an ungated handler would let a teammate's crossing take the
+    tick's single CRITICAL speech slot and advance the primary's cadence while never advancing its
+    own. Gate on the recipient (decision b7c3a66f1b74)."""
 
     _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "solwyn"}
 

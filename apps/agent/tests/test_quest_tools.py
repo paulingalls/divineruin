@@ -303,6 +303,18 @@ def test_greyvale_completion_authors_accord_reputation():
     assert "accord_guild_reputation completed_faction_quest" in final["on_complete"]["world_effects"]
 
 
+def test_greyvale_completion_authors_divine_favor():
+    # story-002: the ONLY authored favor grant in the game once story-003 deletes the
+    # award_divine_favor tool — unpinned, a content edit could silently make favor ungrantable.
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[3]
+    quests = json.loads((root / "content" / "quests.json").read_text())
+    greyvale = next(q for q in quests if q["id"] == "greyvale_anomaly")
+    final = greyvale["stages"][-1]
+    assert final["on_complete"]["favor"] == 5
+
+
 # ── Quest XP is party-wide (story-002, debt 6033f2bedcea) ─────────────────────
 # story-001 made combat XP party-wide, but quest XP still paid only session.player_id, so a
 # non-primary member earned combat XP and no quest XP and drifted down in level by quest volume.
