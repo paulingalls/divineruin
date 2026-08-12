@@ -404,3 +404,25 @@ class TestAwardDivineFavor:
         assert call_data["type"] == E.DIVINE_FAVOR_CHANGED
         assert call_data["new_level"] == 15
         assert call_data["patron_id"] == "kaelen"
+
+    @pytest.mark.asyncio
+    async def test_published_event_carries_the_bar_scale_and_recipient(self):
+        """The TOOL path must put the same keys on the wire the quest Resolve does. The wire
+        fixture drives the core directly, so without this the wrapper could drift: `max` is the
+        favor bar's denominator (the client fabricates 100 without it) and `player_id` is what
+        each client filters on now that quest favor is party-wide."""
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
+        mock_mutations = MagicMock()
+        mock_mutations.update_divine_favor = AsyncMock()
+        room = _make_mock_room()
+        ctx = _make_context(room=room)
+        await _award_divine_favor_impl(
+            ctx, 5, "test", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
+        )
+        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
+        assert call_data["max"] == SAMPLE_FAVOR["max"]
+        assert call_data["player_id"] == "player_1"

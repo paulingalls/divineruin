@@ -2,6 +2,7 @@ import { test, expect, beforeEach } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import {
+  DIVINE_FAVOR_CHANGED,
   HOLLOW_ECHO_RESULT,
   RESONANCE_CHANGED,
   SPECIALIZATION_CHOICE,
@@ -33,6 +34,7 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.veil_ward_changed.type).toBe(VEIL_WARD_CHANGED);
   expect(EVENTS.xp_awarded.type).toBe(XP_AWARDED);
   expect(EVENTS.specialization_choice.type).toBe(SPECIALIZATION_CHOICE);
+  expect(EVENTS.divine_favor_changed.type).toBe(DIVINE_FAVOR_CHANGED);
 });
 
 test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
@@ -202,4 +204,34 @@ test("a spell row missing spell_tier coerces to '' (the silent blank 82fc guards
     },
   ]);
   expect(row.spell_tier).toBe("");
+});
+
+// --- divine_favor_changed: the favor bar's denominator and its recipient (story-002) ---
+//
+// The handler reads `max` for the bar's denominator, falling back to 100 — but no Python
+// publisher ever sent it, so the scale was fabricated on every real event. Same both-sides-
+// mocked shape as xp_awarded above: each lane's own tests passed a payload the other never
+// produced. Quest favor is party-wide, so the fixture also carries the recipient.
+
+test("divine_favor_changed fixture drives the favor level AND its real max", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.divine_favor_changed.player_id });
+  handleGameEvent({ ...EVENTS.divine_favor_changed });
+  expect(characterStore.getState().divineFavorLevel).toBe(EVENTS.divine_favor_changed.new_level);
+  expect(characterStore.getState().divineFavorMax).toBe(EVENTS.divine_favor_changed.max);
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("divine_favor");
+  expect(overlay.payload.patronId).toBe(EVENTS.divine_favor_changed.patron_id);
+  expect(overlay.payload.amount).toBe(EVENTS.divine_favor_changed.amount);
+});
+
+test("a teammate's divine_favor_changed does NOT move the local favor bar", () => {
+  // Party-wide favor publishes one event per member. Without the recipient gate, a teammate's
+  // grant would overwrite the local player's bar and pop their patron's toast.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "player_local" });
+  const before = characterStore.getState().divineFavorLevel;
+  handleGameEvent({ ...EVENTS.divine_favor_changed, player_id: "player_teammate" });
+  expect(characterStore.getState().divineFavorLevel).toBe(before);
+  expect(hudStore.getState().overlays).toHaveLength(0);
 });

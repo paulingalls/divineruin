@@ -446,6 +446,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.DIVINE_FAVOR_CHANGED:
+      // Quest favor is party-wide (story-002), so one stage publishes an event per member.
+      // Without this gate a teammate's grant overwrites the local player's bar and pops their
+      // patron's toast. A payload with no player_id is treated as local (single-player).
+      if (!isEventForLocalPlayer(event.player_id)) break;
       if (typeof event.new_level === "number") {
         const favorMax = typeof event.max === "number" ? event.max : 100;
         characterStore.getState().updateDivineFavor(event.new_level, favorMax);

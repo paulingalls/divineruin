@@ -131,6 +131,7 @@
         },
         "on_complete": {
           "xp": 200,
+          "favor": 5,
           "world_effects": [
             "emris_disposition +4",
             "event:faction_interest_triggered",

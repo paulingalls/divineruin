@@ -54,3 +54,46 @@ class TestHiddenRevealed:
         ]
         _, sd = _dispatch(events)
         assert sd.recently_revealed_element_ids == ["a", "b"]
+
+
+class TestDivineFavorWhisperIsPrimaryOnly:
+    """Quest favor is party-wide (story-002), so one stage publishes a DIVINE_FAVOR_CHANGED per
+    member. The whisper path is NOT party-aware: background_process marks last_whisper_level on
+    sd.player_id whoever crossed, so an ungated handler would let a teammate's crossing take the
+    tick's single CRITICAL speech slot and advance the primary's cadence while never advancing its
+    own. Gate on the recipient (decision b7c3a66f1b74)."""
+
+    _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "solwyn"}
+
+    def test_primarys_crossing_queues_a_whisper(self):
+        sd = _sd()
+        speech: list = []
+        handle_events(
+            [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"})],
+            sd,
+            speech,
+            False,
+            {},
+            [],
+        )
+        assert len(speech) == 1
+
+    def test_teammates_crossing_queues_nothing(self):
+        sd = _sd()
+        speech: list = []
+        handle_events(
+            [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"})],
+            sd,
+            speech,
+            False,
+            {},
+            [],
+        )
+        assert speech == []
+
+    def test_unstamped_crossing_still_whispers(self):
+        # Back-compat: the award_divine_favor tool path predates the recipient stamp.
+        sd = _sd()
+        speech: list = []
+        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech, False, {}, [])
+        assert len(speech) == 1

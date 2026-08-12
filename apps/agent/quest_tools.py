@@ -8,14 +8,18 @@ import asyncpg
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import combat_rewards
 import db
+import db_activity_queries
 import db_content_queries
 import db_mutations
+import db_mutations_divine
 import db_mutations_reputation
 import db_queries
 import event_types as E
 import milestones
 import progression_tools
+from combat_events import EventSink
 from db_errors import db_tool
 from disposition import resolve_disposition
 from game_events import publish_game_event
@@ -151,6 +155,8 @@ async def _update_quest_impl(
     queries=db_queries,
     content=db_content_queries,
     milestones_mod=milestones,
+    activities=db_activity_queries,
+    divine_mutations=db_mutations_divine,
 ) -> str:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
@@ -198,22 +204,62 @@ async def _update_quest_impl(
 
             xp_reward = on_complete.get("xp", 0)
             if xp_reward > 0:
-                player = await queries.get_player(session.player_id, conn=conn, for_update=True)
-                if player:
-                    # Route quest XP through the single XP/milestone Resolve so stage rewards
-                    # apply L10/15/20 auto-grants + surface the L5 fork — which the old inline
-                    # copy dropped (debt ee947a154b10). XP_AWARDED/LEVEL_UP are byte-identical.
-                    outcome = await progression_tools._award_xp_core(
-                        player_id=session.player_id,
-                        player=player,
-                        amount=xp_reward,
+                # Quest XP is PARTY-WIDE (story-002, debt 6033f2bedcea): paying only
+                # session.player_id left a non-primary member earning combat XP but no quest XP,
+                # drifting down in level by quest volume. Reuse combat's DISTRIBUTE pass outright
+                # rather than copying its loop — one party curve governs both reward paths
+                # (decision 91967897c88c), and a second copy is a second rule waiting to drift.
+                xp_sink = EventSink()
+                outcome = await combat_rewards.distribute_xp(
+                    xp_reward,
+                    sorted(session.party.member_ids),
+                    primary_id=session.player_id,
+                    reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
+                    mutations=mutations,
+                    queries=queries,
+                    conn=conn,
+                    channel=combat_rewards.RewardChannel(sink=xp_sink, room=None),
+                    milestones_mod=milestones_mod,
+                )
+                # The pass buffers into its own sink; forward into this tool's pending_events so
+                # every XP cue releases post-commit with the quest's own events, in order.
+                pending_events.extend((ev.event_type, ev.payload) for ev in xp_sink.captured)
+                if outcome.xp_granted:
+                    # The primary's OWN share, not the undistributed total — the response is what
+                    # the DM narrates to them.
+                    rewards_applied.append(
+                        {"type": "xp", "amount": outcome.xp_granted, "leveled_up": outcome.leveled_up}
+                    )
+
+            favor_reward = on_complete.get("favor", 0)
+            if favor_reward > 0:
+                # Divine favor is PARTY-WIDE at the FULL declared amount each (M28): standing
+                # with your own god is a personal relationship, not a haul to divide the way XP
+                # and coin are. Walk the SAME ascending player_id order as the XP pass so the two
+                # never take the players rows in opposing orders, and lock each row here in its
+                # own right — a stage may declare favor with no xp, in which case the XP pass
+                # never ran and holds no lock for this read-modify-write to ride on.
+                for pid in sorted(session.party.member_ids):
+                    await queries.get_player(pid, conn=conn, for_update=True)
+                    favor_grant = await progression_tools._award_divine_favor_core(
+                        player_id=pid,
+                        amount=favor_reward,
                         reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
                         conn=conn,
                         pending_events=pending_events,
-                        mutations=mutations,
-                        milestones_mod=milestones_mod,
+                        mutations=divine_mutations,
+                        activities=activities,
                     )
-                    rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": outcome.result.leveled_up})
+                    # None = no patron: skip that member rather than abort the stage.
+                    if favor_grant is not None and pid == session.player_id:
+                        rewards_applied.append(
+                            {
+                                "type": "favor",
+                                "amount": favor_reward,
+                                "patron": favor_grant.patron_id,
+                                "new_level": favor_grant.new_level,
+                            }
+                        )
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")
@@ -299,8 +345,10 @@ async def _update_quest_impl(
         "rewards_applied": rewards_applied,
         # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
         # level-up, mirroring award_xp (the DM narrates from the tool response, not the bus).
+        # The PRIMARY's grants only — every other member's level-up reaches their own client on
+        # the wire, stamped with their player_id.
         "milestone_grants": outcome.milestone_grants if outcome else [],
-        "specialization_fork": outcome.result.specialization_fork if outcome else False,
+        "specialization_fork": outcome.specialization_fork if outcome else False,
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 

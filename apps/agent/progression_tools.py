@@ -37,6 +37,17 @@ class PendingChoice:
 
 
 @dataclass(frozen=True)
+class FavorGrant:
+    """Outcome of the divine-favor Resolve — what the caller needs to narrate the grant.
+    ``previous_level`` is kept alongside ``new_level`` because a clamp at the patron's max
+    makes the delta differ from the amount asked for."""
+
+    new_level: int
+    previous_level: int
+    patron_id: str
+
+
+@dataclass(frozen=True)
 class AwardXpResult:
     """Outcome of the shared XP/milestone Resolve. ``result`` and ``milestone_grants`` are read by
     every award path (award_xp, update_quest, the combat-end Resolve) to build its tool response.
@@ -241,6 +252,59 @@ async def award_divine_favor(
     return await _award_divine_favor_impl(context, amount, reason)
 
 
+async def _award_divine_favor_core(
+    player_id: str,
+    amount: int,
+    reason: str,
+    *,
+    conn: asyncpg.Connection,
+    pending_events: list[tuple[str, dict]],
+    mutations=db_mutations_divine,
+    activities=db_activity_queries,
+) -> "FavorGrant | None":
+    """The divine-favor Resolve: raise ``player_id``'s favor by ``amount``, clamped to their
+    patron's max, inside the CALLER's transaction.
+
+    Mirrors ``_award_xp_core``: no transaction of its own and no publish — the
+    DIVINE_FAVOR_CHANGED cue is buffered into the caller-owned ``pending_events`` and released
+    post-commit, so a rolled-back stage never announces favor the database does not hold. That
+    is what lets a quest grant XP and favor atomically (M28).
+
+    Returns ``None`` — rather than raising — when the player has no favor row or no patron, so a
+    party-wide quest grant SKIPS an unaligned member instead of aborting the whole stage
+    transaction. The tool wrapper turns that ``None`` into its ToolError.
+    """
+    favor = await activities.get_divine_favor(player_id, conn=conn)
+    if favor is None or favor.get("patron", "none") == "none":
+        return None
+
+    current_level = favor.get("level", 0)
+    max_level = favor.get("max", 100)
+    new_level = min(current_level + amount, max_level)
+    await mutations.update_divine_favor(player_id, new_level, conn=conn)
+
+    pending_events.append(
+        (
+            E.DIVINE_FAVOR_CHANGED,
+            {
+                "new_level": new_level,
+                "previous_level": current_level,
+                "patron_id": favor["patron"],
+                "last_whisper_level": favor.get("last_whisper_level", 0),
+                "amount": amount,
+                "reason": reason,
+                # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
+                # to 100, so dropping it (as this payload used to) fabricated the bar's scale for
+                # any patron whose cap is not 100. `player_id` is the RECIPIENT — quest favor is
+                # party-wide, so without it a teammate's grant moves every client's bar.
+                "max": max_level,
+                "player_id": player_id,
+            },
+        )
+    )
+    return FavorGrant(new_level=new_level, previous_level=current_level, patron_id=favor["patron"])
+
+
 async def _award_divine_favor_impl(
     context: RunContext[SessionData],
     amount: int,
@@ -257,33 +321,26 @@ async def _award_divine_favor_impl(
     if amount < 1 or amount > 10:
         raise ToolError("Divine favor amount must be 1-10.")
 
+    pending_events: list[tuple[str, dict]] = []
     async with db_mod.transaction() as conn:
-        favor = await activities.get_divine_favor(session.player_id, conn=conn)
-        if favor is None or favor.get("patron", "none") == "none":
+        grant = await _award_divine_favor_core(
+            player_id=session.player_id,
+            amount=amount,
+            reason=reason,
+            conn=conn,
+            pending_events=pending_events,
+            mutations=mutations,
+            activities=activities,
+        )
+        if grant is None:
             raise ToolError("Player has no patron deity.")
 
-        current_level = favor.get("level", 0)
-        max_level = favor.get("max", 100)
-        new_level = min(current_level + amount, max_level)
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
-        await mutations.update_divine_favor(session.player_id, new_level, conn=conn)
-
-    patron_id = favor["patron"]
-    last_whisper_level = favor.get("last_whisper_level", 0)
-
-    await publish_game_event(
-        session.room,
-        E.DIVINE_FAVOR_CHANGED,
-        {
-            "new_level": new_level,
-            "previous_level": current_level,
-            "patron_id": patron_id,
-            "last_whisper_level": last_whisper_level,
-            "amount": amount,
-            "reason": reason,
-        },
-        event_bus=session.event_bus,
-    )
+    patron_id = grant.patron_id
+    current_level = grant.previous_level
+    new_level = grant.new_level
 
     session.record_event(f"Divine favor +{amount}: {reason}")
 

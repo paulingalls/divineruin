@@ -27,6 +27,17 @@
       ],
       "player_id": "player_1"
     },
+    "divine_favor_changed": {
+      "type": "divine_favor_changed",
+      "new_level": 30,
+      "previous_level": 25,
+      "patron_id": "solwyn",
+      "last_whisper_level": 20,
+      "amount": 5,
+      "reason": "Quest 'The Greyvale Anomaly' stage completed",
+      "max": 100,
+      "player_id": "player_1"
+    },
     "veil_ward_changed": {
       "type": "veil_ward_changed",
       "active": true,
