@@ -137,7 +137,7 @@ async def test_quest_stage_response_surfaces_milestone_grants():
 
 @pytest.mark.asyncio
 async def test_quest_stage_response_surfaces_specialization_fork():
-    # The L5 fork cue reaches the DM in the quest response, symmetric to award_xp.
+    # The L5 fork cue reaches the DM in the quest response, symmetric to the combat-exit response.
     _, _, _, response = await _complete_warrior_quest_stage(level=4, xp=750, xp_reward=300)
     assert response["specialization_fork"] is True
 

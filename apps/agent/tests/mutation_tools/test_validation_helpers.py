@@ -1,23 +1,16 @@
 """Tests for mutation-tool helpers and the string/integer bound guards."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import (
-    GUILD_PLAYER as SAMPLE_PLAYER,
-)
-from sample_fixtures import (
     make_context as _make_context,
-)
-from sample_fixtures import (
-    mock_txn as _mock_txn,
 )
 
 from check_tools import _check_dice_impl, _check_save_impl
 from inventory_tools import _transact_impl
-from progression_tools import _award_divine_favor_impl, _award_xp_impl
+from progression_tools import _award_divine_favor_impl
 from session_tools import _update_npc_disposition_impl
 from tool_support import _cap_str, _resolve_ambient_sounds
 
@@ -60,12 +53,6 @@ class TestCapStr:
 
 
 class TestStringCaps:
-    @pytest.mark.asyncio
-    async def test_award_xp_reason_too_long(self):
-        ctx = _make_context()
-        with pytest.raises(ToolError, match="reason"):
-            await _award_xp_impl(ctx, 50, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-
     @pytest.mark.asyncio
     async def test_award_divine_favor_reason_too_long(self):
         ctx = _make_context()
@@ -112,34 +99,6 @@ class TestStringCaps:
 
 
 class TestIntegerBounds:
-    @pytest.mark.asyncio
-    async def test_award_xp_exceeds_max(self):
-        ctx = _make_context()
-        with pytest.raises(ToolError, match="10000"):
-            await _award_xp_impl(ctx, 10001, "too much", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-
-    @pytest.mark.asyncio
-    async def test_award_xp_at_max_is_ok(self):
-        """10000 should be accepted (boundary value)."""
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        mock_mutations = MagicMock()
-        mock_mutations.update_player_xp = AsyncMock()
-        # A 10000-XP jump levels the skirmisher across L10/L15, so award_xp legitimately
-        # applies the crossed auto-grant flags (e.g. extra_attack) via set_player_flag.
-        mock_mutations.set_player_flag = AsyncMock()
-        ctx = _make_context()
-        result = json.loads(
-            await _award_xp_impl(
-                ctx, 10000, "big reward", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
-            )
-        )
-        assert "error" not in result
-        assert result["amount"] == 10000
-
     @pytest.mark.asyncio
     async def test_transact_delta_zero(self):
         ctx = _make_context()

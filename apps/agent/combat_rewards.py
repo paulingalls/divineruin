@@ -232,7 +232,9 @@ async def distribute_xp(
     took them in, so re-locking a row this transaction already holds can never invert.
 
     A share that floors to 0 grants nothing rather than publishing a "+0 XP" toast: the core has no
-    positivity guard of its own, and ``award_xp`` rejects amount <= 0.
+    positivity guard of its own, so the ``share <= 0`` early return below IS the guard. (It used to
+    be backed up by award_xp's own amount check; that tool is gone as of M28 story-003, which makes
+    this the only place a non-positive XP amount is stopped on the combat path.)
 
     ``milestones_mod`` is an injection seam for callers that supply their own milestone ladder
     (quest_tools' tests do); None means the core's own default. Quest completion reuses THIS pass

@@ -349,7 +349,7 @@ async def _update_quest_impl(
         "completed": is_completion,
         "rewards_applied": rewards_applied,
         # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
-        # level-up, mirroring award_xp (the DM narrates from the tool response, not the bus).
+        # level-up (the DM narrates from the tool response, not the bus).
         # The PRIMARY's grants only — every other member's level-up reaches their own client on
         # the wire, stamped with their player_id.
         "milestone_grants": outcome.milestone_grants if outcome else [],

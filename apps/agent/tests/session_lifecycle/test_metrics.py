@@ -157,29 +157,6 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_xp_earned == 80
 
     @pytest.mark.asyncio
-    async def test_award_xp_tracks_metric(self):
-        from progression_tools import _award_xp_impl
-
-        mock_db = MagicMock()
-        mock_conn = MagicMock()
-        mock_db.transaction = lambda: mock_txn(mock_conn)
-        mock_mutations = MagicMock()
-        mock_mutations.update_player_xp = AsyncMock()
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-
-        ctx = _make_context()
-        await _award_xp_impl(
-            ctx, amount=50, reason="defeated goblin", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
-        )
-        assert ctx.userdata.session_xp_earned == 50
-        # Award again
-        await _award_xp_impl(
-            ctx, amount=30, reason="found treasure", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
-        )
-        assert ctx.userdata.session_xp_earned == 80
-
-    @pytest.mark.asyncio
     async def test_transact_gain_tracks_metric(self):
         from inventory_tools import _transact_impl
 
@@ -269,9 +246,22 @@ class TestSessionLifecycleIntegration:
 
     @pytest.mark.asyncio
     async def test_metrics_accumulate_across_tools(self):
-        """Session metrics accumulate across multiple tool calls."""
+        """Session metrics accumulate across multiple tool calls.
+
+        XP now enters the session only through a Resolve, so the XP legs drive update_quest
+        (the quest-completion grant path) rather than the removed award_xp verb.
+        """
         from inventory_tools import _transact_impl
-        from progression_tools import _award_xp_impl
+        from quest_tools import _update_quest_impl
+
+        quest = {
+            "id": "test_errand",
+            "name": "A Test Errand",
+            "stages": [
+                {"objective": "First", "on_complete": {"xp": 50}},
+                {"objective": "Second", "on_complete": {"xp": 25}},
+            ],
+        }
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
@@ -279,16 +269,25 @@ class TestSessionLifecycleIntegration:
         mock_mutations = MagicMock()
         mock_mutations.update_player_xp = AsyncMock()
         mock_mutations.add_inventory_item = AsyncMock()
+        mock_mutations.set_player_quest = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_content.get_quest = AsyncMock(return_value=quest)
 
         ctx = _make_context()
 
-        await _award_xp_impl(
-            ctx, amount=50, reason="combat", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        await _update_quest_impl(
+            ctx,
+            "test_errand",
+            1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
         )
         await _transact_impl(
             ctx,
@@ -300,8 +299,15 @@ class TestSessionLifecycleIntegration:
             queries=mock_queries,
             content=mock_content,
         )
-        await _award_xp_impl(
-            ctx, amount=25, reason="exploration", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 1})
+        await _update_quest_impl(
+            ctx,
+            "test_errand",
+            2,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
         )
 
         assert ctx.userdata.session_xp_earned == 75

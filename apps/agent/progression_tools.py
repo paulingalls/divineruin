@@ -1,4 +1,8 @@
-"""Progression tools — XP awards and divine favor."""
+"""Progression Resolves — the XP/milestone grant and the divine-favor grant.
+
+Neither is an LLM-callable tool: M28 folded both onto deterministic Resolves (combat exit,
+quest completion) so rewards are calculated by the rules engine and only NARRATED by the DM.
+"""
 
 import json
 import logging
@@ -12,7 +16,6 @@ import db
 import db_activity_queries
 import db_mutations
 import db_mutations_divine
-import db_queries
 import event_types as E
 import milestone_tools
 import milestones
@@ -50,85 +53,6 @@ class AwardXpResult:
     milestone_grants: list[dict]
 
 
-@function_tool()
-@db_tool
-async def award_xp(
-    context: RunContext[SessionData],
-    amount: int,
-    reason: str,
-) -> str:
-    """Award XP to the current player. Provide the amount and a brief reason
-    (e.g. 'defeated goblin scouts', 'completed delivery quest'). Narrate
-    level-ups dramatically."""
-    return await _award_xp_impl(context, amount, reason)
-
-
-async def _award_xp_impl(
-    context: RunContext[SessionData],
-    amount: int,
-    reason: str,
-    *,
-    db_mod=db,
-    mutations=db_mutations,
-    queries=db_queries,
-    milestones_mod=milestones,
-) -> str:
-    logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
-    _cap_str(reason, 256, "reason")
-    session: SessionData = context.userdata
-
-    if amount <= 0:
-        raise ToolError("XP amount must be positive.")
-    if amount > 10000:
-        raise ToolError("XP amount must not exceed 10000.")
-
-    pending_events: list[tuple[str, dict]] = []
-
-    async with db_mod.transaction() as conn:
-        player = await queries.get_player(session.player_id, conn=conn, for_update=True)
-        if player is None:
-            raise ToolError(f"Player '{session.player_id}' not found.")
-        outcome = await _award_xp_core(
-            player_id=session.player_id,
-            player=player,
-            amount=amount,
-            reason=reason,
-            conn=conn,
-            pending_events=pending_events,
-            mutations=mutations,
-            milestones_mod=milestones_mod,
-        )
-
-    for event_type, payload in pending_events:
-        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-
-    result = outcome.result
-    level_note = f" (leveled up to {result.new_level}!)" if result.leveled_up else ""
-    session.record_event(f"Awarded {amount} XP: {reason}{level_note}")
-    session.session_xp_earned += amount
-
-    response = {
-        "amount": amount,
-        "reason": reason,
-        "new_xp": result.new_xp,
-        "new_level": result.new_level,
-        "leveled_up": result.leveled_up,
-        "levels_gained": result.levels_gained,
-        "milestone_grants": outcome.milestone_grants,
-        # Cue the DM to present the L5 specialization fork (concern c515f47bf2c5) — symmetric
-        # to milestone_grants for the auto-grant tiers. The select verb resolves the choice.
-        "specialization_fork": result.specialization_fork,
-    }
-    logger.info(
-        "award_xp result: +%d XP → %d total, level %d (leveled_up=%s)",
-        amount,
-        result.new_xp,
-        result.new_level,
-        result.leveled_up,
-    )
-    return json.dumps(response)
-
-
 async def _award_xp_core(
     *,
     player_id: str,
@@ -140,8 +64,9 @@ async def _award_xp_core(
     mutations=db_mutations,
     milestones_mod=milestones,
 ) -> AwardXpResult:
-    """The single XP/milestone Resolve all award paths route through (award_xp, update_quest
-    and the combat-end Resolve). Runs inside the caller's transaction and operates
+    """The single XP/milestone Resolve all award paths route through (update_quest and the
+    combat-end Resolve — there is no LLM-callable award verb). Runs inside the caller's
+    transaction and operates
     on an already-FOR-UPDATE-locked ``player`` row, appending XP_AWARDED / LEVEL_UP /
     SPECIALIZATION_CHOICE to the caller-owned ``pending_events`` for publish-after-commit.
 
@@ -161,6 +86,14 @@ async def _award_xp_core(
 
     result = rules_engine.check_level_up(current_xp, amount, current_level)
     await mutations.update_player_xp(player_id, result.new_xp, result.new_level, conn=conn)
+    logger.info(
+        "xp awarded: %s +%d XP → %d total, level %d (leveled_up=%s)",
+        player_id,
+        amount,
+        result.new_xp,
+        result.new_level,
+        result.leveled_up,
+    )
 
     pending_events.append(
         (

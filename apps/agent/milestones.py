@@ -171,8 +171,8 @@ def get_archetype_milestones(archetype_id: str) -> tuple[Milestone, ...]:
 def get_milestone_by_level(archetype_id: str, level: int) -> Milestone | None:
     """Return the archetype's milestone at a given level, or None if there is none.
 
-    Canonical by-level lookup shared by resolve_milestone (the L5 fork / explicit
-    tier) and award_xp's auto-grant loop, so the level-match predicate lives in one
+    Canonical by-level lookup shared by the select verb (the L5 fork / explicit tier)
+    and _award_xp_core's auto-grant loop, so the level-match predicate lives in one
     place. Each archetype has at most one milestone per level (L5/10/15/20).
     """
     return next(
@@ -187,7 +187,7 @@ def is_selectable_fork(milestone: Milestone) -> bool:
     Single source of the present-this-fork predicate. Patron-driven forks
     (Cleric/Paladin/Oracle) are patron_deferred until the Patron system arrives
     (Phase 8) and cannot be surfaced as a pending choice yet, so they are False
-    here. Shared by award_xp's level-crossing loop (progression_tools).
+    here. Shared by _award_xp_core's level-crossing loop (progression_tools).
     """
     return milestone.kind == "specialization_fork" and not milestone.patron_deferred
 

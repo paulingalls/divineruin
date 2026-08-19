@@ -8,7 +8,6 @@ import pytest
 
 from inventory_tools import _transact_impl
 from movement_tools import _move_player_impl
-from progression_tools import _award_xp_impl
 from quest_tools import _update_quest_impl
 from session_data import SessionData
 
@@ -85,26 +84,6 @@ def _make_failing_db():
     mock_db = MagicMock()
     mock_db.transaction = _failing_transaction
     return mock_db
-
-
-# --- award_xp: no events on txn failure ---
-
-
-class TestAwardXpRollback:
-    @pytest.mark.asyncio
-    async def test_no_events_on_txn_failure(self):
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        with pytest.raises(RuntimeError, match="DB connection lost"):
-            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
-        room.local_participant.publish_data.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_no_session_event_on_txn_failure(self):
-        ctx = _make_context()
-        with pytest.raises(RuntimeError):
-            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
-        assert len(ctx.userdata.recent_events) == 0
 
 
 # --- move_player: session.location_id unchanged on DB failure ---
