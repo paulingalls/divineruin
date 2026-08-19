@@ -10,7 +10,6 @@ from sample_fixtures import (
 
 from check_tools import _check_dice_impl, _check_save_impl
 from inventory_tools import _transact_impl
-from progression_tools import _award_divine_favor_impl
 from session_tools import _update_npc_disposition_impl
 from tool_support import _cap_str, _resolve_ambient_sounds
 
@@ -53,14 +52,6 @@ class TestCapStr:
 
 
 class TestStringCaps:
-    @pytest.mark.asyncio
-    async def test_award_divine_favor_reason_too_long(self):
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _award_divine_favor_impl(
-                ctx, 5, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
-            )
-
     @pytest.mark.asyncio
     async def test_update_npc_disposition_reason_too_long(self):
         ctx = _make_context()

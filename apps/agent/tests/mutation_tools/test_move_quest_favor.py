@@ -1,4 +1,4 @@
-"""Tests for the move_player, update_quest, and award_divine_favor mutation tools."""
+"""Tests for the move_player and update_quest mutation tools."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,7 +24,6 @@ from sample_fixtures import (
 
 import event_types as E
 from movement_tools import _move_player_impl
-from progression_tools import _award_divine_favor_impl
 from quest_tools import _update_quest_impl
 
 SAMPLE_QUEST = {
@@ -291,138 +290,3 @@ class TestUpdateQuest:
         ctx = _make_context()
         with pytest.raises(ToolError, match="Invalid stage"):
             await self._call(ctx, "greyvale_anomaly", 99, mocks)
-
-
-SAMPLE_FAVOR = {
-    "patron": "kaelen",
-    "level": 10,
-    "max": 100,
-    "last_whisper_level": 0,
-}
-
-
-class TestAwardDivineFavor:
-    @pytest.mark.asyncio
-    async def test_awards_favor(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
-        mock_mutations = MagicMock()
-        mock_mutations.update_divine_favor = AsyncMock()
-        ctx = _make_context()
-        result = json.loads(
-            await _award_divine_favor_impl(
-                ctx, 5, "honored Kaelen", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
-            )
-        )
-        assert result["patron"] == "kaelen"
-        assert result["previous_level"] == 10
-        assert result["new_level"] == 15
-        assert result["amount"] == 5
-        mock_mutations.update_divine_favor.assert_called_once_with("player_1", 15, conn=mock_conn)
-
-    @pytest.mark.asyncio
-    async def test_clamps_at_max(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(return_value={**SAMPLE_FAVOR, "level": 95})
-        mock_mutations = MagicMock()
-        mock_mutations.update_divine_favor = AsyncMock()
-        ctx = _make_context()
-        result = json.loads(
-            await _award_divine_favor_impl(
-                ctx, 10, "great deed", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
-            )
-        )
-        assert result["new_level"] == 100
-        mock_mutations.update_divine_favor.assert_called_once_with("player_1", 100, conn=mock_conn)
-
-    @pytest.mark.asyncio
-    async def test_invalid_amount_too_low(self):
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _award_divine_favor_impl(
-                ctx, 0, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
-            )
-
-    @pytest.mark.asyncio
-    async def test_invalid_amount_too_high(self):
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _award_divine_favor_impl(
-                ctx, 11, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
-            )
-
-    @pytest.mark.asyncio
-    async def test_no_patron(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(
-            return_value={"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
-        )
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _award_divine_favor_impl(
-                ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
-            )
-
-    @pytest.mark.asyncio
-    async def test_no_favor_data(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(return_value=None)
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _award_divine_favor_impl(
-                ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
-            )
-
-    @pytest.mark.asyncio
-    async def test_publishes_event(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
-        mock_mutations = MagicMock()
-        mock_mutations.update_divine_favor = AsyncMock()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        await _award_divine_favor_impl(
-            ctx, 5, "test", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
-        )
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == E.DIVINE_FAVOR_CHANGED
-        assert call_data["new_level"] == 15
-        assert call_data["patron_id"] == "kaelen"
-
-    @pytest.mark.asyncio
-    async def test_published_event_carries_the_bar_scale_and_recipient(self):
-        """The TOOL path must put the same keys on the wire the quest Resolve does. The wire
-        fixture drives the core directly, so without this the wrapper could drift: `max` is the
-        favor bar's denominator (the client fabricates 100 without it) and `player_id` is what
-        each client filters on now that quest favor is party-wide."""
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_activities = MagicMock()
-        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
-        mock_mutations = MagicMock()
-        mock_mutations.update_divine_favor = AsyncMock()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        await _award_divine_favor_impl(
-            ctx, 5, "test", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
-        )
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["max"] == SAMPLE_FAVOR["max"]
-        assert call_data["player_id"] == "player_1"

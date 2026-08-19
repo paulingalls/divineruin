@@ -316,7 +316,8 @@ async def test_core_at_max_level_grants_xp_without_leveling():
 # ── _award_divine_favor_core (story-002) ──────────────────────────────────────
 # The favor Resolve: runs inside the CALLER's transaction and buffers its event into a
 # caller-owned list, mirroring _award_xp_core, so a quest stage can grant favor in the same
-# transaction as its XP. _award_divine_favor_impl is now a thin wrapper over this.
+# transaction as its XP. Since M28 story-003 removed the award_divine_favor tool it is the
+# ONLY way favor is granted.
 
 _FAVOR = {"patron": "kaelen", "level": 10, "max": 100, "last_whisper_level": 4}
 
@@ -404,7 +405,7 @@ async def test_favor_core_clamps_at_the_patrons_max():
 @pytest.mark.asyncio
 async def test_favor_core_returns_none_for_a_patronless_player():
     """None, not an exception: a party member without a patron must be SKIPPED by a quest
-    grant, not abort the whole stage transaction. The tool wrapper turns None into ToolError."""
+    grant, not abort the whole stage transaction. Every caller handles the None itself."""
     activities, mutations = _favor_mods({"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0})
     pending: list[tuple[str, dict]] = []
 

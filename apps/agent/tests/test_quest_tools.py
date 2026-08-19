@@ -304,7 +304,7 @@ def test_greyvale_completion_authors_accord_reputation():
 
 
 def test_greyvale_completion_authors_divine_favor():
-    # story-002: the ONLY authored favor grant in the game once story-003 deletes the
+    # story-002: the ONLY authored favor grant in the game now that story-003 has deleted the
     # award_divine_favor tool — unpinned, a content edit could silently make favor ungrantable.
     import pathlib
 
@@ -381,8 +381,8 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 
 
 # ── Divine favor is a quest-completion Resolve (story-002, M28) ───────────────
-# Favor was only ever written by the award_divine_favor LLM tool; story-003 deletes it, so
-# without this path favor becomes ungrantable. Party-wide at the FULL declared amount each —
+# Favor was only ever written by the award_divine_favor LLM tool; story-003 deleted it, so
+# without this path favor would be ungrantable. Party-wide at the FULL declared amount each —
 # a patron relationship is personal, not a haul to divide (unlike XP and coin).
 
 

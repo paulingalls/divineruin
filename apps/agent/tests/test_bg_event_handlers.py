@@ -91,8 +91,10 @@ class TestDivineFavorWhisperIsPrimaryOnly:
         )
         assert speech == []
 
-    def test_unstamped_crossing_still_whispers(self):
-        # Back-compat: the award_divine_favor tool path predates the recipient stamp.
+    def test_unstamped_crossing_is_tolerated_as_the_primarys(self):
+        # No live producer emits an unstamped payload any more — _award_divine_favor_core is the
+        # sole producer and always stamps player_id. This pins the deliberate TOLERANCE: an
+        # unstamped payload whispers to the primary rather than being silently dropped.
         sd = _sd()
         speech: list = []
         handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech, False, {}, [])

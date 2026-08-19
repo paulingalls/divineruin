@@ -4,15 +4,11 @@ Neither is an LLM-callable tool: M28 folded both onto deterministic Resolves (co
 quest completion) so rewards are calculated by the rules engine and only NARRATED by the DM.
 """
 
-import json
 import logging
 from dataclasses import dataclass
 
 import asyncpg
-from livekit.agents.llm import ToolError, function_tool
-from livekit.agents.voice import RunContext
 
-import db
 import db_activity_queries
 import db_mutations
 import db_mutations_divine
@@ -20,11 +16,8 @@ import event_types as E
 import milestone_tools
 import milestones
 import rules_engine
-from db_errors import db_tool
-from game_events import publish_game_event
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
-from session_data import SessionData
-from tool_support import _cap_str, con_mod_for_player
+from tool_support import con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -156,20 +149,6 @@ async def _award_xp_core(
     return AwardXpResult(result=result, milestone_grants=milestone_grants)
 
 
-@function_tool()
-@db_tool
-async def award_divine_favor(
-    context: RunContext[SessionData],
-    amount: int,
-    reason: str,
-) -> str:
-    """Award divine favor to the player from their patron deity.
-    Amount should be 1-10. The patron god notices the player's actions
-    and their favor grows. Narrate this subtly — a warmth, a sense of
-    approval — not as a game mechanic."""
-    return await _award_divine_favor_impl(context, amount, reason)
-
-
 async def _award_divine_favor_core(
     player_id: str,
     amount: int,
@@ -190,7 +169,7 @@ async def _award_divine_favor_core(
 
     Returns ``None`` — rather than raising — when the player has no favor row or no patron, so a
     party-wide quest grant SKIPS an unaligned member instead of aborting the whole stage
-    transaction. The tool wrapper turns that ``None`` into its ToolError.
+    transaction. Every caller must handle that None; none of them treats it as an error.
     """
     favor = await activities.get_divine_favor(player_id, conn=conn)
     if favor is None or favor.get("patron", "none") == "none":
@@ -220,59 +199,11 @@ async def _award_divine_favor_core(
             },
         )
     )
-    return FavorGrant(new_level=new_level, previous_level=current_level, patron_id=favor["patron"])
-
-
-async def _award_divine_favor_impl(
-    context: RunContext[SessionData],
-    amount: int,
-    reason: str,
-    *,
-    db_mod=db,
-    mutations=db_mutations_divine,
-    activities=db_activity_queries,
-) -> str:
-    logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)
-    _cap_str(reason, 256, "reason")
-    session: SessionData = context.userdata
-
-    if amount < 1 or amount > 10:
-        raise ToolError("Divine favor amount must be 1-10.")
-
-    pending_events: list[tuple[str, dict]] = []
-    async with db_mod.transaction() as conn:
-        grant = await _award_divine_favor_core(
-            player_id=session.player_id,
-            amount=amount,
-            reason=reason,
-            conn=conn,
-            pending_events=pending_events,
-            mutations=mutations,
-            activities=activities,
-        )
-        if grant is None:
-            raise ToolError("Player has no patron deity.")
-
-    for event_type, payload in pending_events:
-        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-
-    patron_id = grant.patron_id
-    current_level = grant.previous_level
-    new_level = grant.new_level
-
-    session.record_event(f"Divine favor +{amount}: {reason}")
-
-    response = {
-        "patron": patron_id,
-        "previous_level": current_level,
-        "new_level": new_level,
-        "amount": amount,
-        "reason": reason,
-    }
     logger.info(
-        "award_divine_favor result: +%d → %d (patron=%s)",
+        "divine favor awarded: %s +%d → %d (patron=%s)",
+        player_id,
         amount,
         new_level,
-        patron_id,
+        favor["patron"],
     )
-    return json.dumps(response)
+    return FavorGrant(new_level=new_level, previous_level=current_level, patron_id=favor["patron"])
