@@ -2,7 +2,9 @@
 
 select resolves a pending player choice surfaced by a Resolve. Today the only
 pending choice is the L5 specialization fork that ``_award_xp_core`` surfaces on
-level-up (its ``PendingChoice.choice_id`` is the milestone id). select absorbs the
+level-up (the SPECIALIZATION_CHOICE event's ``milestone_id`` is the id select
+resolves against — it arrives from the tap/voice call, not from hand-off state
+on the Resolve's result). select absorbs the
 with-choice path of ``resolve_milestone``, which is removed in story-004; until
 then both coexist — each enforces immutability via the FOR UPDATE read, so a
 duplicate or concurrent resolution loses cleanly.

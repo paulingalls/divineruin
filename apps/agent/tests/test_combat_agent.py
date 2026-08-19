@@ -67,9 +67,10 @@ class TestCombatAgentConfig:
             assert tool not in COMBAT_AGENT_TOOLS
 
     def test_combat_excludes_milestone_resolution(self):
-        # Combat never awards XP (end_combat hands back; the exploration agent calls
-        # award_xp), so choices never resolve here. The select verb lives in the
-        # exploration agents instead (concern 3c02318dfa99).
+        # Combat DOES award XP (end_combat grants it party-wide via the XP Resolve, M28
+        # story-001), but the L5 fork it can surface is only ever RESOLVED after the handoff:
+        # end_combat returns the exploration agent in the same breath, and select lives there
+        # (concern 3c02318dfa99).
         from choice_tools import select
 
         assert select not in COMBAT_AGENT_TOOLS

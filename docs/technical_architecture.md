@@ -206,7 +206,7 @@ These appear when the server pushes relevant events and disappear after a timeou
 - **Combat tracker** — Appears when combat starts (pushed by combat state tools). Shows turn order, enemy HP bars, active status effects. Stays visible during combat, auto-dismisses on combat end. Updated in real-time by `update_combat_ui` pushes.
 - **Item card** — Pops when the player receives an item (pushed by `add_to_inventory`). Shows item name, rarity border, brief description, key stats. Auto-dismisses after 5 seconds or on tap.
 - **Quest update toast** — Brief notification when a quest advances (pushed by `update_quest`). "Quest Updated: The Greyvale Anomaly — Stage 3." Auto-dismisses after 3 seconds.
-- **XP / Level-up notification** — Pushed by `award_xp`. XP gains are subtle toasts. Level-ups get a larger, more celebratory overlay with haptic feedback.
+- **XP / Level-up notification** — Pushed by the XP Resolve (`_award_xp_core`, reached on combat exit and quest completion). XP gains are subtle toasts. Level-ups get a larger, more celebratory overlay with haptic feedback.
 - **Character creation cards** — During character creation, the server pushes visual option cards (race illustrations, class descriptions, patron sigils) that appear as a horizontally scrollable row. The player speaks their choice; the selected card highlights and the rest dismiss.
 
 **Layer 3 — Pull-Up Screens (player-initiated)**
@@ -472,7 +472,7 @@ class DungeonMasterAgent(Agent):
                 # Game state mutation tools
                 move_player, add_to_inventory, remove_from_inventory,
                 update_quest, update_npc_disposition, apply_status_effect,
-                remove_status_effect, award_xp, rest,
+                remove_status_effect, rest,
                 # Client effect tools
                 play_sound, show_item_card,
             ],
@@ -602,7 +602,7 @@ These tools change the world. They validate inputs, enforce constraints, apply c
 
 **`remove_status_effect(target_id, effect)`** — Validates removal is possible (some effects require specific spells or items to remove, others expire naturally). Auto-pushes: combat UI update.
 
-**`award_xp(player_id, amount, reason)`** — Applies XP, handles level-up if threshold crossed. Returns level-up details so the DM can make it a narrative moment ("you feel a surge of power as your understanding deepens"). Auto-pushes: XP notification to client.
+**XP is not a tool.** `_award_xp_core(player_id, amount, reason, ...)` is a *Resolve*, not a `@function_tool`: it applies XP, handles level-up if a threshold is crossed, and returns level-up details so the DM can make it a narrative moment ("you feel a surge of power as your understanding deepens"). It runs inside the caller's transaction on combat exit and quest completion — the LLM decides nothing about when or how much. Divine favor works the same way via `_award_divine_favor_core`. Auto-pushes: XP notification to client, post-commit.
 
 **`rest(player_id, rest_type)`** — Short or long rest. Applies healing, resets abilities, advances in-game time. Validates safety — can't long rest in combat or hostile territory without consequences (the tool returns a warning and the DM narrates the risk, but the rest still happens with potential interruption events).
 
@@ -1436,7 +1436,7 @@ Email + 6-digit verification code. No passwords, no OAuth.
 4. **DM ventriloquism via tts_node.** Implement the `tts_node` parser that splits LLM output into narrator segments and `[CHARACTER_NAME]: "dialogue"` segments, routing each to Inworld TTS with the appropriate voiceId. Prove that multiple characters sound distinct and transitions feel natural.
 5. **Tool system — world query tools.** Implement `query_npc`, `query_location`, `query_lore`, `query_inventory` as `@function_tool` functions backed by the database. Prove the DM can look up information mid-conversation and weave it into narration naturally.
 6. **Tool system — dice & mechanics.** Implement `request_skill_check`, `request_attack`, `request_saving_throw` with the hybrid model: LLM requests, rules engine validates, rolls, and applies atomically. Prove the DM calls for checks at appropriate moments and narrates outcomes using `narrative_hint`.
-7. **Tool system — game state mutation.** Implement `move_player`, `add_to_inventory`, `update_quest`, `award_xp`, etc. with smart validation and auto-push client UI updates via LiveKit RPC. Prove mutations enforce game rules and client UI stays in sync.
+7. **Tool system — game state mutation.** Implement `move_player`, `add_to_inventory`, `update_quest`, etc. with smart validation and auto-push client UI updates via LiveKit RPC. Prove mutations enforce game rules and client UI stays in sync.
 8. **Background process — prompt management.** Implement the async coroutine with event bus + timer fallback. Prove `update_instructions()` keeps the DM aware of world changes mid-session. Test proactive speech with priority classification (critical/important/routine).
 9. **Hot layer — per-turn context injection.** Implement `on_user_turn_completed` hook with combat state, pending events, and contextual detail injection. Prove ephemeral context improves DM response quality without bloating conversation history.
 10. **Multi-player room.** 2 humans + DM agent in a room. VAD-activated input from both players. DM addresses each by character name. Prove the SFU-based multi-player input model works with simultaneous VAD.
@@ -1507,7 +1507,7 @@ The rules engine is the one system that must be provably correct. If the DM narr
 - `add_to_inventory`: weight limits enforced, stacking works, full inventory rejected with reason
 - `remove_from_inventory`: can't remove nonexistent items, equipped items require unequip first
 - `update_quest`: stage prerequisites enforced, completion triggers rewards, branching paths work
-- `award_xp`: level-up thresholds correct, stat increases applied, level-up details returned
+- the XP Resolve (`_award_xp_core`): level-up thresholds correct, stat increases applied, level-up details returned, auto-grants applied at L10/15/20
 - `apply_status_effect`: immunities respected, duration tracking works, stacking rules enforced
 - `rest`: HP restoration correct, exhaustion reduction correct, status effect clearing follows rules
 

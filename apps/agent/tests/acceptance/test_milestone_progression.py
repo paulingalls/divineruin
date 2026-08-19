@@ -5,8 +5,9 @@ Proves the M4 milestone model composes end-to-end on real infra (auto-marked
 
 - **message_event** (Python agent path): against a real Postgres testcontainer
   seeded from content/archetype_milestones.json, `load_milestones()` loads the
-  catalog and the M4 Resolve runs against the real DB — `award_xp` (and
-  `update_quest`, routed through the same `_award_xp_core`) applies the L10/15/20
+  catalog and the M4 Resolve runs against the real DB — `_award_xp_core` (reached
+  directly here, and via `update_quest`, exactly as its production callers reach it:
+  inside a transaction, on a FOR UPDATE-locked players row) applies the L10/15/20
   auto-grants at the single leveling chokepoint and surfaces the L5 specialization
   fork as a SPECIALIZATION_CHOICE event on level-up WITHOUT persisting; the `select`
   verb persists the chosen specialization immutably and rejects a second/invalid
@@ -67,29 +68,41 @@ async def _seed_warrior(pool, player_id: str, level: int, xp: int) -> None:
 # --- message_event surface (M4 Resolve path) ---
 
 
+async def _award_core(pid: str, amount: int, reason: str):
+    """Drive the XP Resolve the way every production caller does — inside a real transaction,
+    on a FOR UPDATE-locked players row. Returns (AwardXpResult, pending_events).
+
+    M28 story-003 removed the award_xp tool, so this IS the entry point now; the events it
+    buffers are what the caller releases post-commit.
+    """
+    pending_events: list[tuple[str, dict]] = []
+    async with db.transaction() as conn:
+        player = await db_queries.get_player(pid, conn=conn, for_update=True)
+        assert player is not None
+        result = await progression_tools._award_xp_core(
+            player_id=pid,
+            player=player,
+            amount=amount,
+            reason=reason,
+            conn=conn,
+            pending_events=pending_events,
+        )
+    return result, pending_events
+
+
 @pytest.mark.asyncio
-async def test_award_xp_l5_surfaces_fork_without_persisting(reset_db_pool: str) -> None:
+async def test_xp_resolve_l5_surfaces_fork_without_persisting(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_l5_present"
     await _seed_warrior(pool, pid, level=4, xp=750)
     await milestones.load_milestones()
     assert milestones.is_loaded()
 
-    room = make_mock_room()
-    ctx = make_context(player_id=pid, room=room)
-    raw = await progression_tools._award_xp_impl(ctx, 300, "crossed into L5")
-    result = json.loads(raw)
+    result, pending_events = await _award_core(pid, 300, "crossed into L5")
 
-    # The level-up surfaces the L5 fork as a pending choice (cue + HUD event), no persist.
-    assert result["specialization_fork"] is True
-    choice_evt = next(
-        (
-            evt
-            for c in room.local_participant.publish_data.call_args_list
-            if (evt := json.loads(c[0][0]))["type"] == E.SPECIALIZATION_CHOICE
-        ),
-        None,
-    )
+    # The level-up surfaces the L5 fork as a cue + HUD event, and persists no choice.
+    assert result.result.specialization_fork is True
+    choice_evt = next((p for et, p in pending_events if et == E.SPECIALIZATION_CHOICE), None)
     assert choice_evt is not None
     assert choice_evt["milestone_id"] == "warrior_identity"
     assert {o["id"] for o in choice_evt["options"]} == {"warrior_battle_master", "warrior_berserker"}
@@ -139,16 +152,14 @@ async def test_select_invalid_option_rejected_without_mutating(reset_db_pool: st
 
 
 @pytest.mark.asyncio
-async def test_award_xp_l10_auto_grant_sets_extra_attack_flag(reset_db_pool: str) -> None:
+async def test_xp_resolve_l10_auto_grant_sets_extra_attack_flag(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_l10"
     await _seed_warrior(pool, pid, level=9, xp=2900)
     await milestones.load_milestones()
 
-    ctx = make_context(player_id=pid, room=make_mock_room())
-    raw = await progression_tools._award_xp_impl(ctx, 550, "crossed into L10")
-    result = json.loads(raw)
-    assert any(g["name"] == "Extra Attack" for g in result["milestone_grants"])
+    result, _ = await _award_core(pid, 550, "crossed into L10")
+    assert any(g["name"] == "Extra Attack" for g in result.milestone_grants)
 
     player = await db_queries.get_player(pid)
     assert player is not None
@@ -156,16 +167,14 @@ async def test_award_xp_l10_auto_grant_sets_extra_attack_flag(reset_db_pool: str
 
 
 @pytest.mark.asyncio
-async def test_award_xp_l15_narrative_grant_writes_no_flag(reset_db_pool: str) -> None:
+async def test_xp_resolve_l15_narrative_grant_writes_no_flag(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_l15"
     await _seed_warrior(pool, pid, level=14, xp=6000)
     await milestones.load_milestones()
 
-    ctx = make_context(player_id=pid, room=make_mock_room())
-    raw = await progression_tools._award_xp_impl(ctx, 750, "crossed into L15")
-    result = json.loads(raw)
-    assert any(g["name"] == "Indomitable" for g in result["milestone_grants"])
+    result, _ = await _award_core(pid, 750, "crossed into L15")
+    assert any(g["name"] == "Indomitable" for g in result.milestone_grants)
 
     # Narrative-only auto-grant (flag=null) writes no combat flag.
     player = await db_queries.get_player(pid)
@@ -175,8 +184,8 @@ async def test_award_xp_l15_narrative_grant_writes_no_flag(reset_db_pool: str) -
 
 @pytest.mark.asyncio
 async def test_update_quest_crossing_milestone_applies_grant(reset_db_pool: str) -> None:
-    # The M4 dedup proof: a quest reward crossing L10 applies the same auto-grant as
-    # award_xp, because update_quest routes through _award_xp_core. The quest catalog
+    # The M4 dedup proof: a quest reward crossing L10 applies the same auto-grant as a
+    # direct Resolve call, because update_quest routes through _award_xp_core too. The quest catalog
     # is mocked (real quests cap at 200 xp); the player/quest/grant writes are real.
     pool = await db.get_pool()
     pid = "cap_quest_l10"

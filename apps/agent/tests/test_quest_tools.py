@@ -137,7 +137,7 @@ async def test_quest_stage_response_surfaces_milestone_grants():
 
 @pytest.mark.asyncio
 async def test_quest_stage_response_surfaces_specialization_fork():
-    # The L5 fork cue reaches the DM in the quest response, symmetric to award_xp.
+    # The L5 fork cue reaches the DM in the quest response, symmetric to the combat-exit response.
     _, _, _, response = await _complete_warrior_quest_stage(level=4, xp=750, xp_reward=300)
     assert response["specialization_fork"] is True
 
@@ -304,7 +304,7 @@ def test_greyvale_completion_authors_accord_reputation():
 
 
 def test_greyvale_completion_authors_divine_favor():
-    # story-002: the ONLY authored favor grant in the game once story-003 deletes the
+    # story-002: the ONLY authored favor grant in the game now that story-003 has deleted the
     # award_divine_favor tool — unpinned, a content edit could silently make favor ungrantable.
     import pathlib
 
@@ -381,8 +381,8 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 
 
 # ── Divine favor is a quest-completion Resolve (story-002, M28) ───────────────
-# Favor was only ever written by the award_divine_favor LLM tool; story-003 deletes it, so
-# without this path favor becomes ungrantable. Party-wide at the FULL declared amount each —
+# Favor was only ever written by the award_divine_favor LLM tool; story-003 deleted it, so
+# without this path favor would be ungrantable. Party-wide at the FULL declared amount each —
 # a patron relationship is personal, not a haul to divide (unlike XP and coin).
 
 
@@ -460,6 +460,17 @@ async def test_quest_favor_surfaces_in_rewards_applied_for_the_dm():
 
     favor_rewards = [r for r in response["rewards_applied"] if r["type"] == "favor"]
     assert favor_rewards == [{"type": "favor", "amount": 5, "patron": "kaelen", "new_level": 15}]
+
+
+@pytest.mark.asyncio
+async def test_quest_favor_reports_the_real_gain_when_the_patrons_max_clamps_it():
+    """A stage promising more favor than the bar has room for reports what actually landed.
+    The player sits at 10/100; the stage declares 95, so only 90 can be granted — narrating
+    "95" would tell them their standing rose further than it did."""
+    _, _, response = await _complete_favor_stage(["player_1"], 95, {"player_1": "kaelen"})
+
+    favor_rewards = [r for r in response["rewards_applied"] if r["type"] == "favor"]
+    assert favor_rewards == [{"type": "favor", "amount": 90, "patron": "kaelen", "new_level": 100}]
 
 
 @pytest.mark.asyncio

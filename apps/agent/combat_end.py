@@ -175,8 +175,8 @@ async def _end_combat_db(
     rng = rng or random.Random()
     # Loot, coin and XP live in combat_rewards (decision dcc9c1cc1221). All of it runs in THIS
     # transaction and buffers into ``sink``, so a rolled-back phase un-grants every reward and drops
-    # the unflushed events. XP is a Resolve now (M28 story-001), not a "call award_xp with this
-    # total" note to the LLM — transactional with the fight that earned it, so it can't be
+    # the unflushed events. XP is a Resolve now (M28 story-001), not a "call an award tool with
+    # this total" note to the LLM — transactional with the fight that earned it, so it can't be
     # forgotten, doubled, or invented, and every player participant is paid, not just the primary.
     rewards = combat_rewards.VictoryRewards()
     if outcome == "victory":
@@ -425,7 +425,8 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
-    # The session metric is the PRIMARY's own award (matching award_xp), not the party total.
+    # The session metric is the PRIMARY's own award (the same rule quest completion follows),
+    # not the party total.
     session.session_xp_earned += xp_granted
 
     loot = end_data.get("primary_loot", [])
@@ -433,7 +434,7 @@ def _end_combat_finish(
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
-        # The XP is already GRANTED (M28 story-001) — there is no follow-up award_xp call to cue.
+        # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue.
         # The DM narrates the level-up beats from this response, not from the event bus:
         # milestone_grants voices each L10/15/20 auto-grant, and specialization_fork cues the L5
         # choice the generic select verb resolves.

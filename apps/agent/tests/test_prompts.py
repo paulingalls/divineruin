@@ -415,6 +415,28 @@ class TestPromptToolConsistency:
             for removed in ("play_sound", "set_music_state"):
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
 
+    def test_reward_tool_fold_consistency(self):
+        """M28 story-003: award_xp/award_divine_favor were torn out as LLM tools — XP and
+        divine favor are granted by the combat-exit and quest-completion Resolves instead.
+
+        This guard is GREEN ON ARRIVAL and always was: no prompt has ever named either verb.
+        It is regression armour, not a repair — it exists so that a future prompt edit cannot
+        reintroduce an instruction to call a tool that no longer exists (the failure mode
+        concern df5cc73b2473 already bit production once, via the audio verbs).
+        """
+        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+
+        prompts = {
+            "exploration": build_system_prompt("loc"),
+            "combat": COMBAT_SYSTEM_PROMPT,
+            "training": DISPATCH_SYSTEM_PROMPT,
+            "onboarding": ONBOARDING_SYSTEM_PROMPT,
+        }
+        for name, prompt in prompts.items():
+            for removed in ("award_xp", "award_divine_favor"):
+                assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
+
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
         the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""

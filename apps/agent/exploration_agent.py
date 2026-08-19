@@ -31,7 +31,6 @@ from game_events import publish_game_event
 from inventory_tools import transact
 from mode_tools import enter_mode
 from movement_tools import move_player
-from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
@@ -49,9 +48,9 @@ logger = logging.getLogger("divineruin.exploration")
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 18 verbs leave 2 free slots under
+# there is no per-region ceiling pressure: 14 verbs leave 6 free slots under
 # MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
-# (transact, award_divine_favor, update_npc_disposition) are exposed everywhere; the
+# (transact, update_npc_disposition) are exposed everywhere; the
 # warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
 # the Stage gates applicability, not per-agent tool lists.
 #
@@ -63,6 +62,8 @@ logger = logging.getLogger("divineruin.exploration")
 # an "until dismissed" location ward outside a fight (debt 67ae0f87df29). Net-zero swap:
 # the list stays at net-zero here; M27 story-003 separately tore out play_sound/
 # set_music_state (18->16) — audio derives only from deterministic Resolves and the Stage.
+# M28 story-003 tore out award_xp/award_divine_favor the same way (16->14): XP and favor are
+# granted by the combat-exit and quest-completion Resolves, never by LLM judgement.
 EXPLORATION_TOOLS = [
     # World query
     enter_location,
@@ -73,8 +74,6 @@ EXPLORATION_TOOLS = [
     travel,
     transact,
     update_quest,
-    award_xp,
-    award_divine_favor,
     update_npc_disposition,
     adjust_faction_reputation,
     record_story_moment,
@@ -82,7 +81,7 @@ EXPLORATION_TOOLS = [
     # Polymorphic capability activation (M25 Phase-5 story-003): spells, abilities, Veil
     # Anchor deployment, and Veil Ward raise/dismiss all route through one verb.
     activate,
-    # Choice resolution: the L5 specialization fork (surfaced by award_xp on level-up)
+    # Choice resolution: the L5 specialization fork (surfaced by the XP Resolve on level-up)
     # resolves via the generic select verb (concern 3c02318dfa99).
     select,
     # Mode handoffs (combat / dispatch / blacksmith) fold into the single enter_mode

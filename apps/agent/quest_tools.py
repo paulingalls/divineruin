@@ -255,7 +255,11 @@ async def _update_quest_impl(
                         rewards_applied.append(
                             {
                                 "type": "favor",
-                                "amount": favor_reward,
+                                # The REAL gain, not the declared reward: a grant that hits the
+                                # patron's max moves the bar less than the stage promised, and the
+                                # DM narrates from this. Mirrors the xp entry, which reports the
+                                # share actually granted rather than the stage total.
+                                "amount": favor_grant.new_level - favor_grant.previous_level,
                                 "patron": favor_grant.patron_id,
                                 "new_level": favor_grant.new_level,
                             }
@@ -335,6 +339,11 @@ async def _update_quest_impl(
         session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
+    if outcome is not None:
+        # The PRIMARY's own share, not the stage's undistributed total — the same rule combat
+        # exit's metric follows. Counted out here rather than inside the transaction: a stage
+        # that rolls back must not leave its XP behind in the session metric.
+        session.session_xp_earned += outcome.xp_granted
 
     response = {
         "quest_id": quest_id,
@@ -344,7 +353,7 @@ async def _update_quest_impl(
         "completed": is_completion,
         "rewards_applied": rewards_applied,
         # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
-        # level-up, mirroring award_xp (the DM narrates from the tool response, not the bus).
+        # level-up (the DM narrates from the tool response, not the bus).
         # The PRIMARY's grants only — every other member's level-up reaches their own client on
         # the wire, stamped with their player_id.
         "milestone_grants": outcome.milestone_grants if outcome else [],

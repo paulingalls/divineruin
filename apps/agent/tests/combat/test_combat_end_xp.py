@@ -1,7 +1,7 @@
 """Combat-end XP is a party-wide Resolve, not an LLM tool call (M28 story-001).
 
-Until now _end_combat_db only CALCULATED xp_total and the response told the LLM to "call award_xp
-with the xp_total". M28 folds award_xp off the tool surface, so without an in-transaction grant every
+Until M28 _end_combat_db only CALCULATED xp_total and the response told the LLM to "call award_xp
+with the xp_total". story-003 removed award_xp from the tool surface, so without this in-transaction grant every
 combat reward would silently vanish. The grant rides the same seat_order the loot and currency passes
 walk, shares the party curve with coin, and buffers its events into the caller's sink so a rolled-back
 phase un-grants the XP and drops the unflushed event.
@@ -121,8 +121,12 @@ async def _run(session, cs, outcome="victory", *, players_by_id=None, conn=None,
     db_mutations_conditions.read_player_conditions = AsyncMock(return_value=[])  # type: ignore[assignment]
     db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
 
-    def _row(pid: str) -> dict:
-        return (players_by_id or {}).get(pid) or {**GUILD_PLAYER, "player_id": pid, "class": "warrior"}
+    def _row(pid: str) -> dict | None:
+        # An EXPLICIT None means "no players.data row for this seat" — distinct from "not
+        # supplied", which still gets the default level-1 warrior.
+        if players_by_id is not None and pid in players_by_id:
+            return players_by_id[pid]
+        return {**GUILD_PLAYER, "player_id": pid, "class": "warrior"}
 
     mutations = AsyncMock()
     queries = AsyncMock()
@@ -238,6 +242,19 @@ async def test_a_share_that_rounds_to_zero_grants_nothing_rather_than_erroring()
 
     mutations.update_player_xp.assert_not_awaited()
     assert _xp_events(sink) == []
+
+
+async def test_a_seat_with_no_player_row_is_skipped():
+    # combat_rewards skips a seat whose players.data row is missing rather than aborting the whole
+    # end-of-combat transaction over a non-critical reward — symmetric with the currency pass's
+    # tolerance. The OTHER seats must still be paid: one absent row cannot cost the party its XP.
+    session = _session(["p1", "p2"])
+    _end, mutations, _q, sink, _c = await _run(
+        session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]), players_by_id={"p2": None}
+    )
+
+    assert _xp_grants(mutations) == {"p1": 75}
+    assert [(e["player_id"], e["amount"]) for e in _xp_events(sink)] == [("p1", 75)]
 
 
 async def test_empty_seat_order_grants_nothing(monkeypatch):

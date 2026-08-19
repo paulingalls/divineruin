@@ -74,7 +74,7 @@ def test_tool_budget_holds_exact_counts() -> None:
     assert len(COMBAT_AGENT_TOOLS) == 9
     assert len(COMBAT_AGENT_TOOLS) <= MAX_STRICT_TOOLS - 4
 
-    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) == 14
     assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 4
 
 
