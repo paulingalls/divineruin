@@ -463,6 +463,17 @@ async def test_quest_favor_surfaces_in_rewards_applied_for_the_dm():
 
 
 @pytest.mark.asyncio
+async def test_quest_favor_reports_the_real_gain_when_the_patrons_max_clamps_it():
+    """A stage promising more favor than the bar has room for reports what actually landed.
+    The player sits at 10/100; the stage declares 95, so only 90 can be granted — narrating
+    "95" would tell them their standing rose further than it did."""
+    _, _, response = await _complete_favor_stage(["player_1"], 95, {"player_1": "kaelen"})
+
+    favor_rewards = [r for r in response["rewards_applied"] if r["type"] == "favor"]
+    assert favor_rewards == [{"type": "favor", "amount": 90, "patron": "kaelen", "new_level": 100}]
+
+
+@pytest.mark.asyncio
 async def test_a_rolled_back_stage_publishes_no_favor():
     """The cue is buffered, not published, until the transaction commits — so a failure after
     the favor write announces nothing the database does not hold."""

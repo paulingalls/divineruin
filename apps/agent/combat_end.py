@@ -434,8 +434,7 @@ def _end_combat_finish(
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
-        # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue,
-        # and as of story-003 no award tool exists to make one.
+        # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue.
         # The DM narrates the level-up beats from this response, not from the event bus:
         # milestone_grants voices each L10/15/20 auto-grant, and specialization_fork cues the L5
         # choice the generic select verb resolves.

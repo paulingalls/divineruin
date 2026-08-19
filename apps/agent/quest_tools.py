@@ -255,7 +255,11 @@ async def _update_quest_impl(
                         rewards_applied.append(
                             {
                                 "type": "favor",
-                                "amount": favor_reward,
+                                # The REAL gain, not the declared reward: a grant that hits the
+                                # patron's max moves the bar less than the stage promised, and the
+                                # DM narrates from this. Mirrors the xp entry, which reports the
+                                # share actually granted rather than the stage total.
+                                "amount": favor_grant.new_level - favor_grant.previous_level,
                                 "patron": favor_grant.patron_id,
                                 "new_level": favor_grant.new_level,
                             }
