@@ -335,6 +335,11 @@ async def _update_quest_impl(
         session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
+    if outcome is not None:
+        # The PRIMARY's own share, not the stage's undistributed total — the same rule combat
+        # exit's metric follows. Counted out here rather than inside the transaction: a stage
+        # that rolls back must not leave its XP behind in the session metric.
+        session.session_xp_earned += outcome.xp_granted
 
     response = {
         "quest_id": quest_id,

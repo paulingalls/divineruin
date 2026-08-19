@@ -101,6 +101,62 @@ class TestMetricsAccumulation:
     """Mutation tools increment session metrics."""
 
     @pytest.mark.asyncio
+    async def test_quest_xp_tracks_metric(self):
+        """Quest XP feeds session_xp_earned, the metric combat exit already feeds.
+
+        Quest XP is granted through the party-wide DISTRIBUTE pass, so the metric takes the
+        PRIMARY's own share — not the undistributed stage total the quest declares.
+        """
+        from quest_tools import _update_quest_impl
+
+        quest = {
+            "id": "test_errand",
+            "name": "A Test Errand",
+            "stages": [
+                {"objective": "Do the thing", "on_complete": {"xp": 50}},
+                {"objective": "Do the other thing", "on_complete": {"xp": 30}},
+            ],
+        }
+
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: mock_txn(mock_conn)
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+
+        ctx = _make_context()
+        await _update_quest_impl(
+            ctx,
+            "test_errand",
+            1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert ctx.userdata.session_xp_earned == 50
+
+        # Completing the final stage accumulates onto the same metric.
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 1})
+        await _update_quest_impl(
+            ctx,
+            "test_errand",
+            2,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert ctx.userdata.session_xp_earned == 80
+
+    @pytest.mark.asyncio
     async def test_award_xp_tracks_metric(self):
         from progression_tools import _award_xp_impl
 
