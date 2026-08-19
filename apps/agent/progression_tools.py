@@ -27,16 +27,6 @@ logger = logging.getLogger("divineruin.tools")
 
 
 @dataclass(frozen=True)
-class PendingChoice:
-    """A choice surfaced on level-up that the player resolves via the select verb.
-    choice_id == the milestone id select resolves against — but select takes that id
-    from the tap/voice call, not from this object (see AwardXpResult.pending_choice)."""
-
-    choice_id: str
-    options: list[dict]
-
-
-@dataclass(frozen=True)
 class FavorGrant:
     """Outcome of the divine-favor Resolve — what the caller needs to narrate the grant.
     ``previous_level`` is kept alongside ``new_level`` because a clamp at the patron's max
@@ -49,18 +39,15 @@ class FavorGrant:
 
 @dataclass(frozen=True)
 class AwardXpResult:
-    """Outcome of the shared XP/milestone Resolve. ``result`` and ``milestone_grants`` are read by
-    every award path (award_xp, update_quest, the combat-end Resolve) to build its tool response.
+    """Outcome of the shared XP/milestone Resolve. Both fields are read by every award path
+    (update_quest, the combat-end Resolve) to build its tool response.
 
-    ``pending_choice`` currently has NO reader: select derives the fork from the player's own
-    committed level/class under FOR UPDATE rather than from in-memory hand-off state, so the L5
-    fork reaches the player as the SPECIALIZATION_CHOICE event plus the response's
-    ``specialization_fork`` flag. Kept only because the constructing branch is asserted by
-    test_progression_tools."""
+    Carries no L5-fork hand-off state: select re-derives the fork from the player's own
+    committed level/class under FOR UPDATE, so the fork reaches the player as the
+    SPECIALIZATION_CHOICE event plus the response's ``specialization_fork`` flag."""
 
     result: "rules_engine.LevelUpResult"
     milestone_grants: list[dict]
-    pending_choice: PendingChoice | None
 
 
 @function_tool()
@@ -166,8 +153,8 @@ async def _award_xp_core(
 
     Applies L10/15/20 auto-grants deterministically (the single leveling chokepoint —
     not an LLM tool call, concern 3c02318dfa99) and surfaces the L5 specialization fork
-    as a pending choice for the select verb. Persists no choice — the L5 fork stays
-    unresolved until select round-trips it.
+    as a SPECIALIZATION_CHOICE cue for the select verb. Persists no choice — the L5 fork
+    stays unresolved until select round-trips it.
     """
     current_xp = player.get("xp", 0)
     current_level = player.get("level", 1)
@@ -192,7 +179,6 @@ async def _award_xp_core(
     )
 
     milestone_grants: list[dict] = []
-    pending_choice: PendingChoice | None = None
 
     if result.leveled_up:
         rewards = get_level_up_rewards(current_level, result.new_level)
@@ -221,9 +207,9 @@ async def _award_xp_core(
             # Pure predicate on the milestone — call the real module, NOT milestones_mod
             # (that seam only mocks the DB-backed get_milestone_by_level lookup).
             elif milestones.is_selectable_fork(milestone):
-                # Present the L5 fork as a pending choice (presentation moved off
-                # resolve_milestone, concern c515f47bf2c5). Patron-driven forks (Phase 8)
-                # cannot be presented yet — leave pending_choice None. Persist nothing.
+                # Present the L5 fork (presentation moved off resolve_milestone, concern
+                # c515f47bf2c5). Patron-driven forks (Phase 8) cannot be presented yet — they
+                # reach this branch for no archetype, so no event fires. Persist nothing.
                 options = [
                     {"id": o.id, "name": o.name, "description": o.description} for o in milestone.specialization_options
                 ]
@@ -233,9 +219,8 @@ async def _award_xp_core(
                         {"milestone_id": milestone.id, "options": options, "player_id": player_id},
                     )
                 )
-                pending_choice = PendingChoice(choice_id=milestone.id, options=options)
 
-    return AwardXpResult(result=result, milestone_grants=milestone_grants, pending_choice=pending_choice)
+    return AwardXpResult(result=result, milestone_grants=milestone_grants)
 
 
 @function_tool()

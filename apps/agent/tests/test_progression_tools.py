@@ -1,5 +1,6 @@
 """LEVEL_UP payload tests for award_xp — archetype-aware hp_gains + auto-grant side-effects."""
 
+import dataclasses
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -19,7 +20,6 @@ from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from milestones import Milestone
 from progression_tools import (
     AwardXpResult,
-    PendingChoice,
     _award_divine_favor_core,
     _award_xp_core,
     _award_xp_impl,
@@ -229,18 +229,15 @@ def _event_types(pending_events):
     return [et for et, _ in pending_events]
 
 
-@pytest.mark.asyncio
-async def test_core_l5_fork_surfaces_pending_choice():
-    # L4 (750) -> L5 (1050): the core surfaces the pending L5 choice with its options,
-    # keyed by the milestone id the select verb will resolve against.
-    _, _, _, result = await _core_for_levels(from_level=4, from_xp=750, amount=300)
-    assert isinstance(result, AwardXpResult)
-    assert isinstance(result.pending_choice, PendingChoice)
-    assert result.pending_choice.choice_id == "warrior_identity"
-    assert result.pending_choice.options == [
-        {"id": "battle_master", "name": "Battle Master", "description": "Tactical maneuvers."},
-        {"id": "berserker", "name": "Berserker", "description": "Reckless fury."},
-    ]
+def test_core_result_carries_exactly_its_read_fields():
+    """AwardXpResult carries exactly the fields its callers read — no more.
+
+    A dataclass field with no reader is a standing invitation to build hand-off state on it.
+    The L5 fork reaches the player as the SPECIALIZATION_CHOICE event plus the response's
+    ``specialization_fork`` flag, and select re-derives the fork from the player's OWN
+    committed level and class under FOR UPDATE — never from in-memory state handed across.
+    """
+    assert {f.name for f in dataclasses.fields(AwardXpResult)} == {"result", "milestone_grants"}
 
 
 @pytest.mark.asyncio
@@ -283,11 +280,11 @@ async def test_core_l5_fork_still_emits_xp_awarded_and_level_up():
 
 
 @pytest.mark.asyncio
-async def test_core_non_fork_levelup_has_no_pending_choice():
-    # L9 (2900) -> L10 (3450) crosses the auto-grant tier, not a fork — no pending choice,
-    # no SPECIALIZATION_CHOICE event.
+async def test_core_non_fork_levelup_surfaces_no_fork():
+    # L9 (2900) -> L10 (3450) crosses the auto-grant tier, not a fork — no
+    # SPECIALIZATION_CHOICE event and no fork cue on the result.
     pending_events, _, _, result = await _core_for_levels(from_level=9, from_xp=2900, amount=550)
-    assert result.pending_choice is None
+    assert result.result.specialization_fork is False
     assert E.SPECIALIZATION_CHOICE not in _event_types(pending_events)
 
 
@@ -308,7 +305,9 @@ async def test_core_patron_deferred_fork_surfaces_no_choice():
     pending_events, _, _, result = await _core_for_levels(
         from_level=4, from_xp=750, amount=300, archetype="oracle", ladder=_PATRON_FORK_MILESTONES
     )
-    assert result.pending_choice is None
+    # The level-based fork flag IS set (L5 was crossed) — proving the absence below is the
+    # patron deferral doing its job, not a level-up that never happened.
+    assert result.result.specialization_fork is True
     assert E.SPECIALIZATION_CHOICE not in _event_types(pending_events)
 
 
@@ -316,10 +315,10 @@ async def test_core_patron_deferred_fork_surfaces_no_choice():
 async def test_core_multilevel_jump_crossing_l5_surfaces_exactly_one_choice():
     # A jump from L4 spanning L5 and L10 surfaces the L5 fork exactly once AND fires the
     # L10 auto-grant — the "one choice per crossing" invariant holds across multi-level gains.
-    pending_events, mutations, conn, result = await _core_for_levels(from_level=4, from_xp=750, amount=5000)
-    assert result.pending_choice is not None
-    assert result.pending_choice.choice_id == "warrior_identity"
-    assert _event_types(pending_events).count(E.SPECIALIZATION_CHOICE) == 1
+    pending_events, mutations, conn, _ = await _core_for_levels(from_level=4, from_xp=750, amount=5000)
+    forks = [p for et, p in pending_events if et == E.SPECIALIZATION_CHOICE]
+    assert len(forks) == 1
+    assert forks[0]["milestone_id"] == "warrior_identity"
     mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
 
 
