@@ -2,7 +2,7 @@ import { type Page } from "@playwright/test";
 import { test as characterTest, type TestCharacter, TEST_CHARACTER } from "./character.js";
 
 /** Mirrors DataChannelEvent from the mobile app — kept inline to avoid cross-project imports. */
-interface GameEvent {
+export interface GameEvent {
   type: string;
   [key: string]: unknown;
 }
@@ -24,20 +24,15 @@ export const test = characterTest.extend<{
 
     // Wait for window.__DR to be exposed
     await characterPage.waitForFunction(
-      () =>
-        typeof (window as Record<string, unknown>).__DR === "object" &&
-        typeof ((window as Record<string, unknown>).__DR as Record<string, unknown>)
-          ?.handleGameEvent === "function",
+      () => typeof window.__DR?.handleGameEvent === "function",
       null,
       { timeout: 15_000 },
     );
 
     const injectEvent = async (event: GameEvent) => {
       await characterPage.evaluate((e) => {
-        const dr = (window as Record<string, unknown>).__DR as {
-          handleGameEvent: (ev: Record<string, unknown>) => void;
-        };
-        dr.handleGameEvent(e);
+        // Non-null: the fixture's waitForFunction above proves __DR is exposed.
+        window.__DR!.handleGameEvent(e);
       }, event);
     };
 
@@ -139,19 +134,13 @@ export const test = characterTest.extend<{
 
     const openPanel = async (tab: string) => {
       await characterPage.evaluate((t) => {
-        const dr = (window as Record<string, unknown>).__DR as {
-          openPanel: (tab: string) => void;
-        };
-        dr.openPanel(t);
+        window.__DR!.openPanel(t);
       }, tab);
     };
 
     const closePanel = async () => {
       await characterPage.evaluate(() => {
-        const dr = (window as Record<string, unknown>).__DR as {
-          closePanel: () => void;
-        };
-        dr.closePanel();
+        window.__DR!.closePanel();
       });
     };
 
