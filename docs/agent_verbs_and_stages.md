@@ -15,12 +15,15 @@ We are hitting limits that are all the same limit wearing different hats:
 - **Tool ceiling.** `CITY_TOOLS` sits at `MAX_STRICT_TOOLS = 20` (`llm_config.py`). M2.4
   spell tools cannot be added without reclaiming a slot. 21+ is a hard Anthropic 400
   (ADR 0004). *(debt `e665104c753a`)*
-- **Duplicated consequence logic.** `quest_tools.update_quest` hand-rolls a copy of
+- **Duplicated consequence logic.** ~~`quest_tools.update_quest` hand-rolls a copy of
   `progression_tools._award_xp_impl`'s level-up logic and silently drops the L10/15/20
-  auto-grants and the L5 fork cue. *(debt `ee947a154b10`)*
-- **Consequences reachable as decisions.** `_resolve_milestone_impl` still applies
+  auto-grants and the L5 fork cue.~~ **RESOLVED (M4):** both paths route through the
+  extracted `_award_xp_core`. *(debt `ee947a154b10`)*
+- **Consequences reachable as decisions.** ~~`_resolve_milestone_impl` still applies
   L10/15/20 grants despite its docstring saying `award_xp` owns them — two paths to one
-  effect, so they drift. *(debt `2bba66ace8a8`, concerns `2ff6a9a9ab10`/`b96ddddf6542`)*
+  effect, so they drift.~~ **RESOLVED (M4/M28):** `resolve_milestone` was removed, and
+  M28 story-003 removed `award_xp` itself — grants now have exactly one path, the Resolve.
+  *(debt `2bba66ace8a8`, concerns `2ff6a9a9ab10`/`b96ddddf6542`)*
 - **Tool growth tracks content.** Every new "thing" (recipe, spell, item) tends to add a
   new tool (`learn_recipe`, future `learn_spell_from_scroll`, …).
 
@@ -115,7 +118,7 @@ decision there.
 The canonical proof lives in the codebase: `resolve_milestone` conflated two things and
 should be **removed as a tool entirely**:
 
-- **The grant** (L5/10/15/20) → pure consequence → a Resolve inside `award_xp`/`advance_quest`.
+- **The grant** (L5/10/15/20) → pure consequence → a Resolve inside the XP grant / `advance_quest`.
 - **Presenting the L5 fork** → *not* a verb either; the level-up Resolve surfaces a **pending
   choice** in its response and parks it in the Stage (offering a choice is a Resolve output,
   like a narration cue).
@@ -123,7 +126,8 @@ should be **removed as a tool entirely**:
   *any* pending choice (an L5 fork today, a branching quest decision tomorrow).
 
 `award_xp` and `award_divine_favor` likewise become Resolves inside the Acts that trigger
-them (`advance_quest`, combat exit).
+them (`advance_quest`, combat exit). **Delivered in M28:** both tools are deleted;
+`_award_xp_core` and `_award_divine_favor_core` are the only grant paths.
 
 **Resolves must report back richly.** "Just happens" must not mean "happens invisibly" —
 the DM has to narrate it (audio-first). Every Resolve returns narration cues for the
@@ -399,8 +403,8 @@ Folded entirely (no verb):
 - **Audio** — `play_sound` + `set_music_state` dropped. Ambient soundscape derives from the
   location (`ambient_sounds`) via Stage assembly; discrete SFX derive from events as
   Resolves; the DM's voice carries any other punctuation.
-- **`resolve_milestone`** — removed. Milestone grants are Resolves inside
-  `award_xp`/`advance_quest`; the L5 fork is surfaced as a pending choice in the level-up
+- **`resolve_milestone`** — removed. Milestone grants are Resolves inside the XP
+  grant / `advance_quest`; the L5 fork is surfaced as a pending choice in the level-up
   Resolve's response + the Stage; the player's pick is the generic `select` verb. Presenting
   a choice is a Resolve output, not a verb.
 
@@ -423,14 +427,15 @@ Folded entirely (no verb):
 
 The two original Phase-2 enabler milestones become the **bookends**:
 
-1. **Resolve consolidation + `select`** — extract `_award_xp_core`; route `update_quest`
+1. ✅ **Resolve consolidation + `select`** *(delivered, M4)* — extract `_award_xp_core`; route `update_quest`
    through it; **remove `resolve_milestone`** (grants become Resolves; the L5 fork is surfaced
    as a pending choice in the level-up response + Stage); add the generic `select` verb to
    resolve pending choices. *(closes `ee947a154b10`, `2bba66ace8a8`, concerns
    `2ff6a9a9ab10`/`b96ddddf6542`)*
-2. **Verb consolidation** — collapse noun-tools into verbs (`transact`, `learn`,
-   `enter_mode`; fold `discover` into `check`; fold `award_xp`/`award_divine_favor`/`reward`
-   and audio into Resolves/Stage). Drops City below the ceiling.
+2. ✅ **Verb consolidation** *(delivered — M5/M27/M28)* — collapse noun-tools into verbs
+   (`transact`, `learn`, `enter_mode`; fold `discover` into `check`; fold
+   `award_xp`/`award_divine_favor`/`reward` and audio into Resolves/Stage). Drops City
+   below the ceiling: exploration now holds 14 verbs against `MAX_STRICT_TOOLS = 20`.
 3. **Stage schema** — affordance-structured warm/hot layer + banding; promote
    `scene.instructions` register into the Stage. *(finalizes the schema after pressure-test)*
 4. **Exploration-agent collapse** — City/Wilderness/Dungeon → one agent on the Stage.

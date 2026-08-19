@@ -409,7 +409,7 @@ Ordered by dependency and risk. Aligned with the detailed 18-step priority list 
 
 5. **World query tools.** `query_npc`, `query_location`, `query_lore`, `query_inventory` backed by the content DB. Prove the DM can look up information mid-conversation.
 6. **Dice & mechanics tools.** `request_skill_check`, `request_attack`, `request_saving_throw` with hybrid validation. Prove the DM calls for checks appropriately and narrates outcomes.
-7. **Game state mutation tools.** `move_player`, `add_to_inventory`, `update_quest`, `award_xp` with smart validation and auto-push client UI updates. Prove mutations enforce game rules.
+7. **Game state mutation tools.** `move_player`, `add_to_inventory`, `update_quest` with smart validation and auto-push client UI updates. Prove mutations enforce game rules.
 8. **Background process.** Event bus + timer, `update_instructions()` for prompt management, proactive speech with priority classification. Prove the DM stays aware of world changes.
 9. **Per-turn context injection.** `on_user_turn_completed` hook with combat state, pending events, contextual details. Prove ephemeral context improves DM quality.
 

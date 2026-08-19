@@ -58,7 +58,7 @@
 
 **1. The LLM never does math.**
 
-All calculation — dice rolls, modifier application, DC comparison, HP tracking, Resonance accumulation, XP awards, skill tier advancement, damage resolution — happens in the deterministic rules engine. The LLM calls tools (`request_skill_check`, `request_attack`, `award_xp`, etc.) and receives structured results. It never adds numbers, never compares values, never tracks state.
+All calculation — dice rolls, modifier application, DC comparison, HP tracking, Resonance accumulation, XP awards, skill tier advancement, damage resolution — happens in the deterministic rules engine. The LLM calls tools (`request_skill_check`, `request_attack`, etc.) and receives structured results. Rewards go further still: XP and divine favor are not callable tools at all, but Resolves that fire inside the Acts that earn them (combat exit, quest completion), so the LLM cannot grant them by judgement. It never adds numbers, never compares values, never tracks state.
 
 *Wrong:* The LLM receives "roll: 14, modifier: +6, DC: 13" and determines success.
 *Right:* The rules engine receives the request, resolves it completely, and returns `{ result: "success", margin: 1, narrative_hint: "barely_succeeded" }`. The LLM narrates from the hint.

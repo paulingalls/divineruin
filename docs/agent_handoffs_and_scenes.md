@@ -226,8 +226,8 @@ companion conversations, crafting, rest.
 
 - **Model:** Claude Haiku.
 - **Tools:** `enter_location`, `query_location`, `query_npc`, `move_player`,
-  `request_skill_check`, `discover_hidden_element`, `update_quest`, `award_xp`,
-  `award_divine_favor`, `add_to_inventory`, `remove_from_inventory`,
+  `request_skill_check`, `discover_hidden_element`, `update_quest`,
+  `add_to_inventory`, `remove_from_inventory`,
   `update_npc_disposition`, `query_inventory`, `query_lore`, `record_story_moment`,
   `play_sound`, `set_music_state`, `end_session`.
 - **System prompt:** Social/exploration rules, NPC dialogue guidance, companion
