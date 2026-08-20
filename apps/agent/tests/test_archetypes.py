@@ -14,6 +14,7 @@ from archetypes import (
     PoolFormula,
     ResourceConfig,
     get_archetype_chassis,
+    is_known,
     is_loaded,
     parse_archetype_row,
     set_archetypes,
@@ -147,3 +148,17 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is False
     set_archetypes({"warrior": parse_archetype_row("warrior", _WARRIOR_ROW)})
     assert is_loaded() is True
+
+
+def test_is_known_true_for_a_loaded_archetype():
+    # autouse seed_archetypes populates from content/archetypes.json.
+    assert is_known("warrior") is True
+
+
+def test_is_known_false_for_an_unknown_id():
+    assert is_known("not_a_real_archetype") is False
+
+
+def test_is_known_false_when_registry_is_empty():
+    set_archetypes({})
+    assert is_known("warrior") is False

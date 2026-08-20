@@ -14,12 +14,14 @@ only a real transaction can settle.
 from __future__ import annotations
 
 import json
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver
 from sample_fixtures import GUILD_PLAYER
 
+import archetypes
 import combat_turn
 import db_mutations
 import db_mutations_conditions
@@ -282,6 +284,84 @@ async def test_empty_seat_order_grants_nothing(monkeypatch):
     assert end_data["xp_granted"] == 0
     mutations.update_player_xp.assert_not_awaited()
     assert _xp_events(sink) == []
+
+
+# --- story-011: a malformed member row must not trap the party in combat ---
+
+
+async def test_a_classless_member_leveling_up_is_skipped_others_paid_and_end_commits(warrior_ladder):
+    # Pre-fix, player["class"] is indexed unguarded inside the level-up branch of
+    # _award_xp_core (progression_tools.py) -> KeyError: 'class', raised INSIDE the combat-end
+    # transaction, rolling back loot/coin/XP/durability/resurrection and the combat-row delete
+    # for the WHOLE party. The malformed seat must forfeit its own share, not trap everyone else's.
+    # 2-seat party: party_reward_multiplier(2) = 1.5 -> int(200 * 1.5 / 2) = 150 each;
+    # 3300 + 150 == 3450 == XP_FOR_LEVEL[10], an exact boundary landing.
+    session = _session(["p1", "p2"])
+    classless_row = {k: v for k, v in GUILD_PLAYER.items() if k != "class"}
+    classless_row = {**classless_row, "player_id": "p1", "level": 9, "xp": 3300}
+    _end, mutations, _q, sink, _c = await _run(
+        session,
+        _cs([_xp_enemy("g1", 200)], ["p1", "p2"]),
+        players_by_id={"p1": classless_row},
+    )
+
+    assert _xp_grants(mutations) == {"p2": 150}  # p1's forfeited share is not redistributed
+    assert [e["player_id"] for e in _xp_events(sink)] == ["p2"]
+
+
+async def test_a_member_with_unknown_class_leveling_up_is_skipped_others_paid_and_end_commits(warrior_ladder):
+    # Present but not a loaded archetype fails a DIFFERENT way: build_level_up_payload_for_archetype
+    # -> calculate_max_hp -> get_archetype_chassis raises ValueError("Unknown archetype: ...")
+    # inside the same transaction. The predicate is "a chassis we can build a level-up from", not
+    # "the key exists" — a guard that only checks presence leaves this route open.
+    session = _session(["p1", "p2"])
+    bad_class_row = {**GUILD_PLAYER, "player_id": "p1", "class": "not_a_real_archetype", "level": 9, "xp": 3300}
+    _end, mutations, _q, sink, _c = await _run(
+        session,
+        _cs([_xp_enemy("g1", 200)], ["p1", "p2"]),
+        players_by_id={"p1": bad_class_row},
+    )
+
+    assert _xp_grants(mutations) == {"p2": 150}
+    assert [e["player_id"] for e in _xp_events(sink)] == ["p2"]
+
+
+async def test_the_skip_is_logged_with_the_player_id(caplog):
+    # The skip must be observable, not silent — a silent skip converts a hard failure into a
+    # member who quietly stops earning, which is harder to diagnose than the crash was.
+    session = _session(["p1", "p2"])
+    classless_row = {**{k: v for k, v in GUILD_PLAYER.items() if k != "class"}, "player_id": "p1"}
+    with caplog.at_level(logging.WARNING):
+        await _run(session, _cs([_xp_enemy("g1", 50)], ["p1", "p2"]), players_by_id={"p1": classless_row})
+
+    assert any("p1" in record.getMessage() for record in caplog.records)
+
+
+async def test_a_classless_member_not_leveling_up_is_still_skipped_and_earns_nothing():
+    # Accepted consequence, pinned: a classless row that ISN'T crossing a level boundary used to
+    # be paid (no error path was ever hit — xp/level are read with .get() defaults). After the fix
+    # it earns nothing: XP on a row that cannot level is progression that will never resolve,
+    # matching the missing-row precedent of paying nothing rather than something unresolvable.
+    session = _session(["p1", "p2"])
+    classless_row = {**{k: v for k, v in GUILD_PLAYER.items() if k != "class"}, "player_id": "p1"}
+    _end, mutations, _q, _sink, _c = await _run(
+        session, _cs([_xp_enemy("g1", 50)], ["p1", "p2"]), players_by_id={"p1": classless_row}
+    )
+
+    assert _xp_grants(mutations) == {"p2": 37}  # int(50 * 1.5 / 2); p1 skipped despite no level crossing
+
+
+async def test_registry_not_loaded_does_not_silently_void_every_members_xp():
+    # If the archetype registry isn't loaded at all, every class would read as "unknown" — the
+    # membership half of the guard must gate on is_loaded() so a startup bug doesn't turn into
+    # every member's XP silently vanishing, which is strictly worse than the crash this fixes.
+    # A combat-end test, not a predicate test: is_known's own empty-registry unit test proves the
+    # predicate, not the fall-through — deleting the is_loaded gate would leave THAT suite green.
+    archetypes.set_archetypes({})
+    session = _session(["p1", "p2"])
+    _end, mutations, _q, _sink, _c = await _run(session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]))
+
+    assert _xp_grants(mutations) == {"p1": 75, "p2": 75}
 
 
 # --- AC4: a level crossing resolves in the same transaction ---

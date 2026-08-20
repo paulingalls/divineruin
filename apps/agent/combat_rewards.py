@@ -21,10 +21,12 @@ Two invariants the passes share; neither may drift:
     ab4ced4c2110), so each pass skips rather than dividing by zero.
 """
 
+import logging
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import archetypes
 import combat_resolution
 import encounter_loot
 import event_types as E
@@ -35,6 +37,8 @@ if TYPE_CHECKING:
     from livekit import rtc
 
     from event_bus import EventBus
+
+logger = logging.getLogger("divineruin.combat_rewards")
 
 
 @dataclass(frozen=True)
@@ -257,6 +261,21 @@ async def distribute_xp(
             # Symmetric with the currency pass's tolerance: a seat with no players.data row gets
             # nothing rather than aborting the whole combat-end tx over a non-critical reward.
             continue
+        player_class = player.get("class")
+        # Missing/blank class always skips. A present-but-unloaded class only skips when the
+        # registry IS loaded (archetypes.is_loaded()) — with an empty registry every class would
+        # read as "unknown" and this would silently skip the whole party, turning a startup bug
+        # into all XP vanishing (worse than the crash this guard exists to prevent).
+        if not player_class or (archetypes.is_loaded() and not archetypes.is_known(player_class)):
+            logger.warning(
+                "Skipping XP for player_id=%s: malformed class %r is not a known archetype",
+                pid,
+                player_class,
+            )
+            continue
+        # _award_xp_core stays strict (player["class"] unguarded) — this guard is the only thing
+        # standing between a malformed row and a crash inside the combat-end transaction. A future
+        # direct caller of _award_xp_core must apply the same guard upstream of its own call.
         outcome = await progression_tools._award_xp_core(
             player_id=pid,
             player=player,
