@@ -139,6 +139,11 @@ def get_archetype_chassis(archetype_id: str) -> Chassis:
     return _archetypes[archetype_id]
 
 
+def is_known(archetype_id: str) -> bool:
+    """True if ``archetype_id`` is a chassis the loaded registry can actually build from."""
+    return archetype_id in _archetypes
+
+
 def is_loaded() -> bool:
     """True once the chassis has been populated (startup load or test seam).
 
