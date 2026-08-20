@@ -8,6 +8,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import (
     GUILD_PLAYER,
     make_context,
@@ -105,15 +106,18 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 # a patron relationship is personal, not a haul to divide (unlike XP and coin).
 
 
-async def _complete_favor_stage(member_ids, favor_amount, patrons, *, fail_after=False, room=None, store=None):
-    """Complete a one-stage quest granting `favor_amount` favor. `patrons` maps player_id ->
-    patron id ('none' for unaligned). `store` is the live marker store (see `_marker_store`).
+async def _complete_favor_stage(
+    member_ids, favor_amount, patrons, *, xp_amount=0, fail_after=False, room=None, store=None
+):
+    """Complete a one-stage quest granting `favor_amount` favor (and optionally `xp_amount` XP,
+    for the cases that need BOTH reward branches). `patrons` maps player_id -> patron id ('none'
+    for unaligned). `store` is the live marker store (see `_marker_store`).
     Returns (mutations, room, response)."""
     quest = {
         "id": "fq",
         "name": "Favor Quest",
         "stages": [
-            {"id": 0, "objective": "begin", "on_complete": {"favor": favor_amount}},
+            {"id": 0, "objective": "begin", "on_complete": {"favor": favor_amount, "xp": xp_amount}},
             {"id": 1, "objective": "next", "on_complete": {}},
         ],
     }
@@ -228,3 +232,63 @@ async def test_every_party_quest_row_is_locked_in_ascending_player_id_order():
     locked = [call.args[0] for call in queries.get_player_quest.await_args_list]
     assert locked == ["player_2", "player_5", "player_9"]
     assert all(call.kwargs["for_update"] for call in queries.get_player_quest.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_a_completed_stage_marks_every_paid_member():
+    """AC-1. The farming hole itself: before story-009 only the primary's row was written."""
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
+
+    marked = {call.args[0]: call.args[2]["current_stage"] for call in mutations.set_player_quest.await_args_list}
+    assert marked == {"player_1": 1, "player_2": 1}
+
+
+@pytest.mark.asyncio
+async def test_a_member_the_xp_pass_skipped_is_not_marked():
+    """The marker set is DERIVED from who the reward passes actually paid, never re-derived by
+    copying their skip rules. distribute_xp skips a seat with no `players` row, so that member
+    is eligible but unpaid — and an unpaid member must keep no record of a stage they did not
+    earn, or the marker would bar them from being paid for it later."""
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200, unregistered={"player_2"})
+
+    marked = {call.args[0] for call in mutations.set_player_quest.await_args_list}
+    assert marked == {"player_1"}
+
+
+@pytest.mark.asyncio
+async def test_a_patronless_member_is_still_marked_because_xp_paid_them():
+    """AC-3. Favor returns None for an unaligned member, but XP paid them, so the stage IS
+    theirs — the marker set is the UNION of what both passes paid."""
+    mutations, _, _ = await _complete_favor_stage(
+        ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "none"}, xp_amount=200
+    )
+
+    paid_favor = {call.args[0] for call in mutations.update_divine_favor.await_args_list}
+    marked = {call.args[0] for call in mutations.set_player_quest.await_args_list}
+    assert paid_favor == {"player_1"}
+    assert marked == {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+async def test_a_favor_only_stage_marks_the_members_it_paid():
+    """A stage may declare favor and no XP at all. The marker set must still come from the favor
+    loop's own returns — nothing about it may be scoped inside the XP branch."""
+    mutations, _, _ = await _complete_favor_stage(
+        ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "solwyn"}
+    )
+
+    assert mutations.update_player_xp.await_count == 0
+    marked = {call.args[0] for call in mutations.set_player_quest.await_args_list}
+    assert marked == {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+async def test_a_marked_member_cannot_replay_the_stage_as_their_own_primary():
+    """AC-2 as amended. The whole point of the marker: player_2 is paid in player_1's session,
+    then hosts their own and runs the same quest. The backward guard now reads a row that EXISTS
+    and refuses — before story-009 it read an absent row, passed, and paid them again."""
+    store = _marker_store(["player_1", "player_2"])
+    await _complete_stage_for_party(["player_1", "player_2"], 200, store=store)
+
+    with pytest.raises(ToolError, match="Cannot go backward"):
+        await _complete_stage_for_party(["player_1", "player_2"], 200, primary="player_2", store=store)

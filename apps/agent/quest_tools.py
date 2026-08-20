@@ -41,6 +41,20 @@ _EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
 _EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
+def _is_unpaid_for_stage(player_quest: dict | None, new_stage_id: int) -> bool:
+    """Has this member NOT yet been paid for the stage `update_quest(new_stage_id)` completes?
+
+    `update_quest(N)` pays for stage N-1, so a marker of M means stages 0..M-1 are already paid;
+    the member is unpaid exactly when M < N. No row at all -> -1 -> unpaid, which is the whole
+    reason the marker exists (story-009).
+
+    ONE predicate answers two questions, and it must stay one: who the reward passes pay, and
+    whose marker may advance. Split them and the farming hole reopens on the half you forgot.
+    """
+    current_stage = player_quest.get("current_stage", -1) if player_quest else -1
+    return current_stage < new_stage_id
+
+
 async def _apply_world_effects(
     effects: list[str],
     session: SessionData,
@@ -179,6 +193,11 @@ async def _update_quest_impl(
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
     outcome = None
+    # Who the reward passes ACTUALLY paid — the marker set is derived from their own output, never
+    # re-derived by copying their skip rules (distribute_xp skips a seat with no players row, and
+    # that rule is still moving). Declared out here, outside BOTH reward branches: a stage may
+    # declare favor and no XP, in which case the XP sink never exists.
+    paid_ids: set[str] = set()
 
     async with db_mod.transaction() as conn:
         # Lock EVERY party member's player_quests row for this quest in ONE ascending-player_id
@@ -236,6 +255,10 @@ async def _update_quest_impl(
                 # The pass buffers into its own sink; forward into this tool's pending_events so
                 # every XP cue releases post-commit with the quest's own events, in order.
                 pending_events.extend((ev.event_type, ev.payload) for ev in xp_sink.captured)
+                # The pass reports every seat it paid in that same sink — one XP_AWARDED per
+                # player, stamped with their player_id. Read it rather than assuming the seat
+                # list was paid in full.
+                paid_ids |= {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
                 if outcome.xp_granted:
                     # The primary's OWN share, not the undistributed total — the response is what
                     # the DM narrates to them.
@@ -263,6 +286,8 @@ async def _update_quest_impl(
                         activities=activities,
                     )
                     # None = no patron: skip that member rather than abort the stage.
+                    if favor_grant is not None:
+                        paid_ids.add(pid)
                     if favor_grant is not None and pid == session.player_id:
                         rewards_applied.append(
                             {
@@ -307,7 +332,18 @@ async def _update_quest_impl(
         # filter) — nothing wrote this before, so completed quests lingered as active.
         if is_completion:
             quest_data["status"] = "completed"
-        await mutations.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
+        # Mark EVERY member this stage paid, plus the primary — who is marked even on a stage that
+        # pays nothing at all, because their own progression is what advanced. story-002 made the
+        # reward party-wide and left the ledger singular: a non-primary was paid and kept no
+        # record of it, so hosting their own session let them run the quest from stage 0 and be
+        # paid for every stage again, once per host, forever.
+        #
+        # The advance-only guard is load-bearing, not belt-and-braces: set_player_quest is a
+        # whole-blob upsert, so writing this stage onto a member who is FURTHER ALONG in their own
+        # run would drag them backward — trading a farming hole for data loss.
+        for pid in sorted(paid_ids | {session.player_id}):
+            if _is_unpaid_for_stage(party_quests.get(pid), new_stage_id):
+                await mutations.set_player_quest(pid, quest_id, quest_data, conn=conn)
 
         quest_updated_payload: dict = {
             "quest_id": quest_id,
