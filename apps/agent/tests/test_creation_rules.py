@@ -303,6 +303,11 @@ class TestChassisRouting:
         set_archetypes({"warrior": custom})
         assert get_skill_proficiencies("warrior") == ["arcana", "history"]
 
+    def test_unknown_class_yields_no_proficiencies(self):
+        # The chassis is the SSOT for the skill pool, so an id it does not carry has no pool to
+        # draw from — return empty rather than letting the lookup's ValueError escape creation.
+        assert get_skill_proficiencies("not_a_real_archetype") == []
+
 
 # --- Culture inference ---
 

@@ -5,7 +5,7 @@ All functions are deterministic and fully testable without external dependencies
 
 from __future__ import annotations
 
-from archetypes import get_archetype_chassis
+from archetypes import get_archetype_chassis, is_known
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
@@ -212,10 +212,9 @@ def get_skill_proficiencies(class_id: str, skill_choices: list[str] | None = Non
     If skill_choices is provided and valid, use those. Otherwise, default to
     the first N from the chassis skill pool (the SSOT — story-004).
     """
-    try:
-        chassis = get_archetype_chassis(class_id)
-    except ValueError:
+    if not is_known(class_id):
         return []
+    chassis = get_archetype_chassis(class_id)
 
     options = chassis.skill_options
     if skill_choices:
