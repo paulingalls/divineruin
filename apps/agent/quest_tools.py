@@ -2,9 +2,7 @@
 
 import json
 import logging
-import re
 
-import asyncpg
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
@@ -14,31 +12,18 @@ import db_activity_queries
 import db_content_queries
 import db_mutations
 import db_mutations_divine
-import db_mutations_reputation
 import db_queries
 import event_types as E
 import milestones
 import progression_tools
 from combat_events import EventSink
 from db_errors import db_tool
-from disposition import resolve_disposition
 from game_events import publish_game_event
-from reputation import reputation_shift
-from role_archetypes import shift_disposition
+from quest_world_effects import _apply_world_effects
 from session_data import SessionData
-from tool_support import EFFECT_NPC_MAP, _validate_id
+from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
-
-
-_EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
-_EFFECT_CORRUPTION_RE = re.compile(r"^greyvale_corruption\s*([+-]\d+)$")
-_EFFECT_EVENT_RE = re.compile(r"^event:(.+)$")
-_EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
-# "<faction_id>_reputation <named_event>" — the faction-scoped analogue of the per-NPC
-# disposition shorthand, but the magnitude comes from the named event (reputation_shift),
-# not an inline number, so the delta lives in one place (story-002 inc 4b).
-_EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
 def _is_unpaid_for_stage(player_quest: dict | None, new_stage_id: int) -> bool:
@@ -53,91 +38,6 @@ def _is_unpaid_for_stage(player_quest: dict | None, new_stage_id: int) -> bool:
     """
     current_stage = player_quest.get("current_stage", -1) if player_quest else -1
     return current_stage < new_stage_id
-
-
-async def _apply_world_effects(
-    effects: list[str],
-    session: SessionData,
-    pending_events: list[tuple[str, dict]],
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
-    *,
-    mutations=db_mutations,
-    queries=db_queries,
-    content=db_content_queries,
-    reputation_mutations=db_mutations_reputation,
-) -> None:
-    """Parse and apply deterministic world_effects from quest on_complete."""
-    for effect_str in effects:
-        m = _EFFECT_DISPOSITION_RE.match(effect_str)
-        if m:
-            shorthand, delta_str = m.group(1), int(m.group(2))
-            npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await resolve_disposition(
-                npc_id, session.player_id, conn=conn, queries_mod=queries, content_mod=content
-            )
-            new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
-            await mutations.set_npc_disposition(
-                npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn
-            )
-            pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
-            logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
-            continue
-
-        m = _EFFECT_REPUTATION_RE.match(effect_str)
-        if m:
-            faction_id, event_type = m.group(1), m.group(2)
-            faction = await content.get_faction(faction_id)
-            if faction is None:
-                # Mirror the DM tool adjust_faction_reputation's fail-on-unknown-faction guard.
-                # A mistyped faction id in authored on_complete content would otherwise silently
-                # write a phantom-faction player_reputation row the real faction never sees.
-                # Warn and skip (a content-authoring error) rather than crash the stage tx.
-                logger.warning("Unknown faction in reputation world effect: %s", effect_str)
-                continue
-            try:
-                delta = reputation_shift(event_type)
-            except ValueError:
-                # A typo'd event in authored content: warn and skip rather than crash the
-                # whole quest-stage transaction over one bad effect string.
-                logger.warning("Unknown reputation event in world effect: %s", effect_str)
-                continue
-            new_value = await reputation_mutations.adjust_player_faction_reputation(
-                session.player_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
-            )
-            session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
-            logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
-            continue
-
-        m = _EFFECT_CORRUPTION_RE.match(effect_str)
-        if m:
-            delta = int(m.group(1))
-            previous = session.corruption_level
-            session.corruption_level = max(0, min(3, session.corruption_level + delta))
-            pending_events.append(
-                (
-                    E.HOLLOW_CORRUPTION_CHANGED,
-                    {"level": session.corruption_level, "previous": previous, "location_id": session.location_id},
-                )
-            )
-            logger.info("World effect: corruption %d → %d", previous, session.corruption_level)
-            continue
-
-        m = _EFFECT_EVENT_RE.match(effect_str)
-        if m:
-            event_id = m.group(1)
-            pending_events.append((E.WORLD_EVENT, {"event_id": event_id}))
-            logger.info("World effect: event %s", event_id)
-            continue
-
-        m = _EFFECT_MORALE_RE.match(effect_str)
-        if m:
-            group_name, delta_str = m.group(1), int(m.group(2))
-            pending_events.append((E.WORLD_EVENT, {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
-            session.record_event(f"{group_name} morale shifted by {delta_str}")
-            logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
-            continue
-
-        logger.warning("Unknown world effect: %s", effect_str)
 
 
 @function_tool()
@@ -198,6 +98,11 @@ async def _update_quest_impl(
     # that rule is still moving). Declared out here, outside BOTH reward branches: a stage may
     # declare favor and no XP, in which case the XP sink never exists.
     paid_ids: set[str] = set()
+    # The two halves, kept separately so a PARTIAL payout can be spotted below. Declared here for
+    # the same reason as paid_ids: each is otherwise assigned only inside its own reward branch,
+    # and a conjunction that happens to short-circuit is not what should keep a name defined.
+    xp_paid_ids: set[str] = set()
+    favor_paid_ids: set[str] = set()
 
     async with db_mod.transaction() as conn:
         # Lock EVERY party member's player_quests row for this quest in ONE ascending-player_id
@@ -281,7 +186,7 @@ async def _update_quest_impl(
                 # The pass reports every seat it paid in that same sink — one XP_AWARDED per
                 # player, stamped with their player_id. Read it rather than assuming the seat
                 # list was paid in full.
-                xp_paid_ids = {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
+                xp_paid_ids |= {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
                 paid_ids |= xp_paid_ids
                 if outcome.xp_granted:
                     # The primary's OWN share, not the undistributed total — the response is what
@@ -292,7 +197,6 @@ async def _update_quest_impl(
 
             favor_reward = on_complete.get("favor", 0)
             if favor_reward > 0:
-                favor_paid_ids: set[str] = set()
                 # Divine favor is PARTY-WIDE at the FULL declared amount each (M28): standing
                 # with your own god is a personal relationship, not a haul to divide the way XP
                 # and coin are. Walk the SAME ascending seat list the XP pass took so the two
@@ -336,10 +240,12 @@ async def _update_quest_impl(
             # the gap properly needs per-reward markers, i.e. a schema change (debt 27944a8fcd50).
             # Until then a partial payout must not be silent: it only happens on a degraded row
             # (unknown archetype, missing players row) and it costs that member a reward.
-            # Both sets non-empty, not just both rewards declared: a pass that paid NOBODY (an XP
-            # share that floors to 0, a party with no patrons) is a whole-party outcome, not a
-            # per-member anomaly, and warning per member there is pure noise.
-            if xp_reward > 0 and favor_reward > 0 and xp_paid_ids and favor_paid_ids:
+            # Gated on the two rewards being DECLARED, not on both passes having paid someone.
+            # An earlier version required both sets non-empty to keep a whole-party outcome from
+            # warning per member — but in solo play, the dominant shape of this game, one member IS
+            # the whole party, so that gate silenced exactly the case this warning exists for: a
+            # lone player whose XP pass skipped their degraded row, marked fully paid, XP forfeit.
+            if xp_reward > 0 and favor_reward > 0:
                 for pid in sorted(paid_ids - (xp_paid_ids & favor_paid_ids)):
                     logger.warning(
                         "Quest %s stage %d: %s was paid only %s but is marked fully paid — the other "

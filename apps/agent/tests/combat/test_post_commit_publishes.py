@@ -1,10 +1,15 @@
 """Post-commit publish isolation for the phase loop.
 
 Once the phase transaction commits, its HUD pushes are a mirror of an authoritative result:
-a failure in one is logged, never raised (combat_events.POST_COMMIT_PUBLISH_FAILED). These
-pin that each push is isolated from the others. Sharing ONE try made the first failure skip
-every push behind it — and none of them re-fires, so a transient sink error left the ward
-indicator and every member's Resonance track stale for the rest of the fight.
+a failure in one is logged, never raised (combat_events.POST_COMMIT_PUBLISH_FAILED). Sharing
+ONE try made the first failure skip every push behind it — and none of them re-fires, so a
+transient sink error left the ward indicator and every member's Resonance track stale for the
+rest of the fight.
+
+Scope, stated so the file does not read as more than it is: this pins ONE direction — a
+failing sink flush must not skip the resonance pushes. The per-caster cast-flush guard and
+the per-member resonance guard are NOT pinned here; collapsing either loop back under a
+shared try would still pass. Filed as debt f3c008ab87b9.
 """
 
 from unittest.mock import AsyncMock, MagicMock

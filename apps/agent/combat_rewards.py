@@ -13,10 +13,13 @@ Two invariants the passes share; neither may drift:
 
   - ROLL is fully upstream of DISTRIBUTE. Distribution consumes no RNG, so the roll sequence stays
     byte-identical to the pre-M18 per-enemy path and a seeded run reproduces exactly.
-  - Every distribution walks ``seat_order`` — the ascending player_id of the player PARTICIPANTS who
-    fought. It is both the round-robin order and the FOR UPDATE lock order (deadlock-free SSOT
-    5da95d657255). Keying on participants rather than session.party.member_ids keeps a mid-combat
-    room joiner from diluting or stealing the haul. An EMPTY seat_order means no player-life is left
+  - Every distribution walks ``seat_order`` — ascending player_id. It is both the round-robin order
+    and the FOR UPDATE lock order (deadlock-free SSOT 5da95d657255). On the COMBAT path the caller
+    builds it from the player PARTICIPANTS who fought, so a mid-combat room joiner cannot dilute or
+    steal the haul; ``quest_tools`` reuses ``distribute_xp`` with the stage-eligible party members
+    instead (story-009), which is the right set for a reward nobody had to be present in a fight to
+    earn. The invariant this module owns is the ORDER, not which roster the caller derives. An EMPTY
+    seat_order means no player-life is left
     to receive anything (a manual end_combat('victory') declared by a risen echo, concern
     ab4ced4c2110), so each pass skips rather than dividing by zero.
 """

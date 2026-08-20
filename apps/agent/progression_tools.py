@@ -134,8 +134,9 @@ async def _award_xp_core(
             # (that seam only mocks the DB-backed get_milestone_by_level lookup).
             elif milestones.is_selectable_fork(milestone):
                 # Present the L5 fork (presentation moved off resolve_milestone, concern
-                # c515f47bf2c5). Patron-driven forks (Phase 8) cannot be presented yet — they
-                # reach this branch for no archetype, so no event fires. Persist nothing.
+                # c515f47bf2c5). Patron-driven forks (Phase 8) never reach here at all —
+                # is_selectable_fork is False for patron_deferred, so the elif does not fire and
+                # no event is emitted for them. Persist nothing.
                 options = [
                     {"id": o.id, "name": o.name, "description": o.description} for o in milestone.specialization_options
                 ]
