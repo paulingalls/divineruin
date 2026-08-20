@@ -229,6 +229,65 @@ async def test_same_archetype_tie_without_ticket_refuses():
 
 
 @pytest.mark.asyncio
+async def test_the_tie_message_names_members_not_ids():
+    # The DM speaks this line aloud (Golden Rule 1), so it must carry names when the rows
+    # have them. The test above pins the id fallback for rows that do not.
+    m = _make_mocks(
+        {**_player("player_1", class_="warrior", level=5), "name": "Bran"},
+        {**_player("player_2", class_="warrior", level=5), "name": "Sera"},
+    )
+    with pytest.raises(ToolError) as exc:
+        await _select(m, "warrior_identity", "battle_master", ctx=_party_ctx())
+    assert "Bran" in str(exc.value) and "Sera" in str(exc.value)
+    assert "player_1" not in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_no_eligible_member_refuses_without_writing():
+    # The 0-eligible fallback to session.player_id must reach the raise, never the write.
+    # _fork_block_reason is the same predicate the scan just ran, so a primary that was not
+    # eligible is guaranteed blocked here — the safety of the fallback is a tautology, and
+    # this pins it against a future edit that splits the two apart.
+    m = _make_mocks(
+        _player("player_1", class_="warrior", level=5, specialization="berserker"),
+        _player("player_2", class_="warrior", level=5, specialization="battle_master"),
+    )
+    with pytest.raises(ToolError, match="already"):
+        await _select(m, "warrior_identity", "battle_master", ctx=_party_ctx())
+    m.persistence.set_player_specialization.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_tap_landing_mid_transaction_neither_steals_nor_is_stolen():
+    # _on_data_received is a synchronous LiveKit callback, so a second tap can land at any
+    # await inside _select_impl. This call must resolve against the ticket it started with,
+    # and must leave the newcomer's ticket intact for its own resolution.
+    m = _make_mocks(
+        _player("player_1", class_="warrior", level=5),
+        _player("player_2", class_="warrior", level=5),
+    )
+    first = SpecializationTap("player_2", "warrior_identity", "battle_master")
+    later = SpecializationTap("player_1", "warrior_identity", "battle_master")
+    ctx = _party_ctx(tap=first)
+
+    rows = {"player_1": _player("player_1", class_="warrior", level=5), "player_2": _player("player_2", level=5)}
+
+    async def _swap_ticket_mid_await(_ids, **_kw):
+        ctx.userdata.pending_specialization_tap = later
+        return rows
+
+    m.queries.get_players_for_update = AsyncMock(side_effect=_swap_ticket_mid_await)
+
+    await _select(m, "warrior_identity", "battle_master", ctx=ctx)
+
+    # Resolved for the ORIGINAL tapper, not whoever tapped during the transaction.
+    m.persistence.set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=m.conn)
+    # And the newcomer's ticket survives — clearing it would silently degrade their own
+    # resolution to the ambiguous sole-claimant scan.
+    assert ctx.userdata.pending_specialization_tap is later
+
+
+@pytest.mark.asyncio
 async def test_matching_ticket_breaks_the_tie():
     # The same tie, but the tap recorded its verified sender — resolve for them, and
     # leave the primary untouched.

@@ -63,7 +63,7 @@ def _fork_block_reason(player_id: str, player: dict | None, milestone: Milestone
     are properties of the choice rather than of any player, and must reject before the scan
     runs — otherwise a patron-deferred fork would report "nobody has this pending".
 
-    The message strings are the ones select has always raised; eight tests match on them.
+    The message strings are the ones select has always raised, and tests match on them.
     """
     if player is None:
         return f"Unknown player: {player_id}"
@@ -100,8 +100,7 @@ def _resolve_owner(
     session: SessionData,
     rows: dict[str, dict],
     milestone: Milestone,
-    choice_id: str,
-    option: str,
+    ticket: SpecializationTap | None,
 ) -> str:
     """Whose fork this call resolves.
 
@@ -109,22 +108,25 @@ def _resolve_owner(
 
     1. The tap ticket on SessionData — the LiveKit-verified sender of the HUD tap. This is
        the path that genuinely CONSUMES the recipient story-001 stamped onto the
-       SPECIALIZATION_CHOICE event, rather than re-deriving it (concern d14ca8e0e733).
+       SPECIALIZATION_CHOICE event, rather than re-deriving it (concern d14ca8e0e733). It
+       arrives as an argument, snapshotted by the caller before any await; see there for why.
     2. A sole-claimant scan of the party. The voice path has to re-derive here, because no
        pending-choice record is persisted anywhere — ``PendingChoice`` was deleted as dead
        in story-003, and no per-speaker identity reaches the LLM. Exactly one claimant is
        unambiguous; two or more is not, and guessing would irreversibly write one member's
        choice onto another's row, so we refuse instead.
     """
-    if ticket := _matched_ticket(session, choice_id, option):
+    if ticket is not None:
         return ticket.player_id
 
     eligible = [pid for pid in session.party.member_ids if _fork_block_reason(pid, rows.get(pid), milestone) is None]
     if len(eligible) == 1:
         return eligible[0]
     if len(eligible) > 1:
+        # Name the members, not their ids — the DM speaks this line aloud (Golden Rule 1).
+        names = ", ".join(rows[pid].get("name") or pid for pid in eligible)
         raise ToolError(
-            f"More than one party member can still choose '{choice_id}' ({', '.join(eligible)}), "
+            f"More than one party member can still choose '{milestone.id}' ({names}), "
             "and there is no way to tell whose choice this is. Ask them to tap their own "
             "specialization card."
         )
@@ -153,6 +155,14 @@ async def _select_impl(
     session: SessionData = context.userdata
     logger.info("select called: choice_id=%s option=%s caller=%s", choice_id, option, session.player_id)
 
+    # Snapshot the ticket ONCE, before the transaction, and carry that object through.
+    # _on_data_received is a SYNCHRONOUS LiveKit callback, so a second tap can land at any
+    # await below and swap session.pending_specialization_tap. Re-reading the field would
+    # let this call resolve against a later tapper, or clear a ticket it never consumed —
+    # silently degrading the next resolution to the ambiguous scan. HINT_COOLDOWN_S narrows
+    # that window; it does not close it.
+    ticket = _matched_ticket(session, choice_id, option)
+
     async with db_mod.transaction() as conn:
         try:
             milestone = milestones_mod.get_milestone(choice_id)
@@ -173,7 +183,7 @@ async def _select_impl(
         # ORDER BY player_id is this repo's deterministic lock order, which is what keeps
         # this from deadlocking against the OOC/combat batch fetches. Do not loop get_player.
         rows = await queries_mod.get_players_for_update(session.party.member_ids, conn=conn)
-        target_id = _resolve_owner(session, rows, milestone, choice_id, option)
+        target_id = _resolve_owner(session, rows, milestone, ticket)
 
         if reason := _fork_block_reason(target_id, rows.get(target_id), milestone):
             raise ToolError(reason)
@@ -184,9 +194,11 @@ async def _select_impl(
 
         await persistence_mod.set_player_specialization(target_id, option, conn=conn)
 
-    # Clear the one-shot ticket only AFTER the commit. Clearing it on match would let a
-    # transient DB error consume it, silently degrading the retry to the sole-claimant scan.
-    if _matched_ticket(session, choice_id, option) is not None:
+    # Clear the one-shot ticket only AFTER the commit, and only if the field still holds the
+    # very object this call consumed — a later tap that landed mid-transaction must survive.
+    # Clearing on match would also let a transient DB error consume the ticket, silently
+    # degrading the retry to the sole-claimant scan.
+    if ticket is not None and session.pending_specialization_tap is ticket:
         session.pending_specialization_tap = None
 
     result = {
