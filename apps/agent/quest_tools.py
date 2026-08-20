@@ -208,9 +208,15 @@ async def _update_quest_impl(
         # p1 wants p3). The ordering that matters is that concurrent transactions take
         # PLAYER_QUESTS rows consistently — a different table from the players rows the reward
         # passes lock, so this order is self-consistent, not aligned to theirs.
+        #
+        # `party.member_ids` is a live view over `party.members`, which participant_lifecycle
+        # mutates in place on connect, so the roster is SNAPSHOTTED once here and every later pass
+        # reads the snapshot. Re-reading it after the awaits below could hand the reward passes a
+        # member whose row was never locked and who is therefore missing from `party_quests` —
+        # which reads as "unpaid" and pays them again for a stage their row already holds.
+        party_ids = sorted({session.player_id} | set(session.party.member_ids))
         party_quests = {
-            pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True)
-            for pid in sorted({session.player_id} | set(session.party.member_ids))
+            pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True) for pid in party_ids
         }
         player_quest = party_quests[session.player_id]
 
@@ -245,11 +251,10 @@ async def _update_quest_impl(
             # party where one is ahead pays the other a solo-sized share. Consistent (one eligible
             # member IS a party of one) but it makes one player's reward depend on another's
             # history, which must not be silent.
-            eligible_ids = sorted(
-                pid
-                for pid in {session.player_id} | set(session.party.member_ids)
-                if _is_unpaid_for_stage(party_quests.get(pid), new_stage_id)
-            )
+            #
+            # Filtering the already-ascending `party_ids` keeps the seat list ascending, which is
+            # the order both reward passes take `players` rows in.
+            eligible_ids = [pid for pid in party_ids if _is_unpaid_for_stage(party_quests[pid], new_stage_id)]
 
             xp_reward = on_complete.get("xp", 0)
             if xp_reward > 0:
@@ -360,7 +365,7 @@ async def _update_quest_impl(
         # whole-blob upsert, so writing this stage onto a member who is FURTHER ALONG in their own
         # run would drag them backward — trading a farming hole for data loss.
         for pid in sorted(paid_ids | {session.player_id}):
-            if _is_unpaid_for_stage(party_quests.get(pid), new_stage_id):
+            if _is_unpaid_for_stage(party_quests[pid], new_stage_id):
                 await mutations.set_player_quest(pid, quest_id, quest_data, conn=conn)
 
         quest_updated_payload: dict = {

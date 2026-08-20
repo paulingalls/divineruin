@@ -17,6 +17,8 @@ from sample_fixtures import (
 )
 
 import event_types as E
+from caster_state import ConcentrationState, ResonanceTrack
+from party_state import PartyMember
 from quest_tools import _update_quest_impl
 
 # ── Quest XP is party-wide (story-002, debt 6033f2bedcea) ─────────────────────
@@ -33,13 +35,17 @@ def _marker_store(member_ids, progress=None):
     return {pid: {"current_stage": stage} for pid, stage in progress.items() if stage is not None}
 
 
-async def _complete_stage_for_party(member_ids, xp_reward, *, primary=None, store=None, unregistered=()):
+async def _complete_stage_for_party(
+    member_ids, xp_reward, *, primary=None, store=None, unregistered=(), joins_during_lock=None
+):
     """Complete a one-stage quest granting `xp_reward` for a party of `member_ids`, as
     `primary` (default: the first member).
 
     `store` is the live marker store (see `_marker_store`) — reads AND writes go through it, so
     a caller can run two stages in sequence and see the second read what the first recorded.
     `unregistered` names members with no `players` row, which the XP pass skips.
+    `joins_during_lock` names a player appended to `party.members` partway through the lock pass,
+    the way participant_lifecycle appends one on connect.
     Returns (mutations, queries, response)."""
     quest = {
         "id": "q1",
@@ -65,6 +71,17 @@ async def _complete_stage_for_party(member_ids, xp_reward, *, primary=None, stor
     mutations.add_inventory_item = AsyncMock()
     mutations.set_player_flag = AsyncMock()
     ctx = make_context(player_id=primary or member_ids[0], room=make_mock_room(), party_member_ids=member_ids)
+    if joins_during_lock is not None:
+        read_row = queries.get_player_quest.side_effect
+
+        def _join_then_read(pid, qid, **kw):
+            ctx.userdata.party.members.append(
+                PartyMember(player_id=joins_during_lock, resonance=ResonanceTrack(), concentration=ConcentrationState())
+            )
+            queries.get_player_quest.side_effect = read_row
+            return read_row(pid, qid, **kw)
+
+        queries.get_player_quest.side_effect = _join_then_read
     raw = await _update_quest_impl(ctx, "q1", 1, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
     return mutations, queries, json.loads(raw if isinstance(raw, str) else raw[1])
 
@@ -235,6 +252,23 @@ async def test_every_party_quest_row_is_locked_in_ascending_player_id_order():
 
 
 @pytest.mark.asyncio
+async def test_a_member_who_joins_mid_call_is_not_paid_off_an_unlocked_row():
+    """`party.member_ids` is a LIVE view over a list participant_lifecycle appends to on connect,
+    so the roster is snapshotted once at the lock pass and every later pass reads the snapshot.
+    Re-reading it would let a member who arrived after the lock pass into the reward passes with
+    no row locked and no entry in the marker map — which reads as "unpaid" and pays them for a
+    stage their own row already holds."""
+    store = _marker_store(["player_1", "player_2"], {"player_9": 2})
+    mutations, queries, _ = await _complete_stage_for_party(
+        ["player_1", "player_2"], 200, store=store, joins_during_lock="player_9"
+    )
+
+    assert "player_9" not in [call.args[0] for call in queries.get_player_quest.await_args_list]
+    assert {call.args[0] for call in mutations.update_player_xp.await_args_list} == {"player_1", "player_2"}
+    assert store["player_9"] == {"current_stage": 2}
+
+
+@pytest.mark.asyncio
 async def test_a_completed_stage_marks_every_paid_member():
     """AC-1. The farming hole itself: before story-009 only the primary's row was written."""
     mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
@@ -285,8 +319,9 @@ async def test_a_favor_only_stage_marks_the_members_it_paid():
 @pytest.mark.asyncio
 async def test_a_marked_member_cannot_replay_the_stage_as_their_own_primary():
     """AC-2 as amended. The whole point of the marker: player_2 is paid in player_1's session,
-    then hosts their own and runs the same quest. The backward guard now reads a row that EXISTS
-    and refuses — before story-009 it read an absent row, passed, and paid them again."""
+    then hosts their own and runs the same quest. The backward guard now reads a row act 1
+    ADVANCED and refuses — before story-009 act 1 left player_2's row where it was, so this call
+    passed the guard and paid them a second time."""
     store = _marker_store(["player_1", "player_2"])
     await _complete_stage_for_party(["player_1", "player_2"], 200, store=store)
 
@@ -337,3 +372,49 @@ async def test_a_member_further_along_in_their_own_run_is_not_paid_favor():
 
     granted = {call.args[0] for call in mutations.update_divine_favor.await_args_list}
     assert granted == {"player_1"}
+
+
+@pytest.mark.asyncio
+async def test_a_member_behind_the_host_is_credited_with_the_stages_they_skipped():
+    """The SECOND accepted consequence of the current_stage marker (concern 0322739e5e4b).
+
+    The marker is a single `current_stage`, not a per-stage ledger — the customer chose that
+    over a `paid_stages` list. So a member who never started the quest and joins for a LATE
+    stage is paid for that one stage, and their row is written forward to it: stages they never
+    played become unreachable, and on the completion transition the whole quest reads as done in
+    their own log.
+
+    Pinned rather than argued: this is what the chosen design costs, and it should go red if
+    anyone changes the marker's shape without deciding about it again.
+    """
+    quest = {
+        "id": "q3",
+        "name": "Long Quest",
+        "stages": [
+            {"id": 0, "objective": "one", "on_complete": {}},
+            {"id": 1, "objective": "two", "on_complete": {}},
+            {"id": 2, "objective": "three", "on_complete": {"xp": 200}},
+        ],
+    }
+    # player_1 is on the last stage; player_2 has NO row at all — they never started it.
+    store = {"player_1": {"current_stage": 2}}
+    mock_db, _ = make_db_mod()
+    content = MagicMock()
+    content.get_quest = AsyncMock(return_value=quest)
+    content.get_item = AsyncMock(return_value=None)
+    queries = MagicMock()
+    queries.get_player_quest = AsyncMock(side_effect=lambda pid, qid, **kw: store.get(pid))
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {**GUILD_PLAYER, "player_id": pid})
+    mutations = MagicMock()
+    mutations.set_player_quest = AsyncMock(side_effect=lambda pid, qid, data, **kw: store.__setitem__(pid, data))
+    mutations.update_player_xp = AsyncMock()
+    mutations.add_inventory_item = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    ctx = make_context(player_id="player_1", room=make_mock_room(), party_member_ids=["player_1", "player_2"])
+
+    await _update_quest_impl(ctx, "q3", 3, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+
+    # Paid once, for the one stage they were present for.
+    assert [c.args[0] for c in mutations.update_player_xp.await_args_list].count("player_2") == 1
+    # But credited with the whole quest: stages 0 and 1 are now unreachable for them.
+    assert store["player_2"] == {"current_stage": 3, "quest_name": "Long Quest", "status": "completed"}
