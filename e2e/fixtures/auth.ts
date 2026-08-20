@@ -3,8 +3,7 @@ import pg from "pg";
 
 const { Pool } = pg;
 
-export const DEFAULT_DB_URL =
-  "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
+export const DEFAULT_DB_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 
 export interface TestUser {
   email: string;
@@ -60,19 +59,13 @@ export async function cleanupAccount(accountId: string): Promise<void> {
 
 /** Clean up all data for an account by email. */
 export async function cleanupAccountByEmail(email: string): Promise<void> {
-  const rows = await queryDb<{ id: string }>(
-    `SELECT id FROM accounts WHERE email = $1`,
-    [email],
-  );
+  const rows = await queryDb<{ id: string }>(`SELECT id FROM accounts WHERE email = $1`, [email]);
   if (rows.length > 0) {
     await cleanupAccount(rows[0].id);
   }
 }
 
-export const test = base.extend<
-  { authenticatedPage: Page },
-  { testUser: TestUser }
->({
+export const test = base.extend<{ authenticatedPage: Page }, { testUser: TestUser }>({
   testUser: [
     // eslint-disable-next-line no-empty-pattern
     async ({}, use) => {
@@ -86,29 +79,22 @@ export const test = base.extend<
       if (accounts.length === 0) throw new Error("Failed to create account");
       const accountId = accounts[0].id;
 
-      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(
-        6,
-        "0",
-      );
+      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
       const expiresAt = new Date(Date.now() + 10 * 60_000);
-      await queryDb(
-        `INSERT INTO auth_codes (account_id, code, expires_at) VALUES ($1, $2, $3)`,
-        [accountId, code, expiresAt.toISOString()],
-      );
+      await queryDb(`INSERT INTO auth_codes (account_id, code, expires_at) VALUES ($1, $2, $3)`, [
+        accountId,
+        code,
+        expiresAt.toISOString(),
+      ]);
 
       // Verify code via API to get a valid JWT
-      const verifyRes = await fetch(
-        "http://localhost:3001/api/auth/verify-code",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code }),
-        },
-      );
+      const verifyRes = await fetch("http://localhost:3001/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
       if (!verifyRes.ok) {
-        throw new Error(
-          `verify-code failed: ${verifyRes.status} ${await verifyRes.text()}`,
-        );
+        throw new Error(`verify-code failed: ${verifyRes.status} ${await verifyRes.text()}`);
       }
 
       const data = (await verifyRes.json()) as {

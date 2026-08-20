@@ -41,9 +41,7 @@ test.describe("Auth flow", () => {
     await page.getByText("VERIFY", { exact: true }).click();
 
     // Assert redirect to home screen
-    await expect(
-      page.getByText("Your story is about to begin."),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Your story is about to begin.")).toBeVisible({ timeout: 15_000 });
 
     // Cleanup
     await cleanupAccountByEmail(email);

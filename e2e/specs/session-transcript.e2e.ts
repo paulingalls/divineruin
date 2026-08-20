@@ -22,12 +22,8 @@ test.describe("Transcript entries", () => {
       text: "I push open the door.",
     });
 
-    await expect(
-      sessionPage.page.getByText("You"),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(
-      sessionPage.page.getByText("I push open the door."),
-    ).toBeVisible();
+    await expect(sessionPage.page.getByText("You")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("I push open the door.")).toBeVisible();
   });
 
   test("NPC transcript shows character name", async ({ sessionPage }) => {
@@ -39,12 +35,8 @@ test.describe("Transcript entries", () => {
     });
 
     // Component replaces underscores with spaces
-    await expect(
-      sessionPage.page.getByText("Elder Mirael"),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(
-      sessionPage.page.getByText("Welcome, traveler."),
-    ).toBeVisible();
+    await expect(sessionPage.page.getByText("Elder Mirael")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Welcome, traveler.")).toBeVisible();
   });
 
   test("multiple transcript entries accumulate", async ({ sessionPage }) => {
@@ -64,15 +56,11 @@ test.describe("Transcript entries", () => {
       text: "Warm light fills the passage.",
     });
 
-    await expect(
-      sessionPage.page.getByText("The cave is dark and cold."),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(
-      sessionPage.page.getByText("I light a torch."),
-    ).toBeVisible();
-    await expect(
-      sessionPage.page.getByText("Warm light fills the passage."),
-    ).toBeVisible();
+    await expect(sessionPage.page.getByText("The cave is dark and cold.")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(sessionPage.page.getByText("I light a torch.")).toBeVisible();
+    await expect(sessionPage.page.getByText("Warm light fills the passage.")).toBeVisible();
   });
 
   test("tool transcript shows system text", async ({ sessionPage }) => {
@@ -82,8 +70,8 @@ test.describe("Transcript entries", () => {
       text: "Skill check: Athletics DC 14",
     });
 
-    await expect(
-      sessionPage.page.getByText("Skill check: Athletics DC 14"),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Skill check: Athletics DC 14")).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });

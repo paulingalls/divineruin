@@ -207,6 +207,14 @@ main() {
   echo "==> bun install"
   bun install
 
+  # e2e/ is NOT a workspace member (root package.json lists only apps/* and
+  # packages/*) and carries its own lockfile, so the root install above reaches
+  # none of its deps. Without this the pre-push gate's Playwright lane dies in a
+  # fresh worktree with ERR_MODULE_NOT_FOUND on '@playwright/test', and so does
+  # `bun run lint:e2e`.
+  echo "==> bun install (e2e)"
+  ( cd "$REPO_ROOT/e2e" && bun install )
+
   write_env_if_absent
 
   echo "==> uv sync (apps/agent)"
@@ -222,7 +230,7 @@ main() {
   bun run seed
 
   echo
-  echo "Worktree provisioned. Verify with: bun run typecheck && bun run test:all"
+  echo "Worktree provisioned. Verify with: bun run lint && bun run lint:e2e && bun run test:all"
 }
 
 # Only run when EXECUTED, never when sourced (test harnesses may source for the

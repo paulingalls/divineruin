@@ -12,8 +12,7 @@ test.describe("Catch-up feed", () => {
       id: activityId,
       type: "crafting",
       status: "resolved",
-      narrationText:
-        "The smith examines your work and nods slowly. The iron blade holds true.",
+      narrationText: "The smith examines your work and nods slowly. The iron blade holds true.",
       decisionOptions: [
         { id: "keep", label: "Keep the blade" },
         { id: "sell", label: "Sell at market" },
@@ -29,31 +28,20 @@ test.describe("Catch-up feed", () => {
     await characterPage.waitForLoadState("domcontentloaded");
 
     // Activity title should appear
-    await expect(
-      characterPage.getByText("Iron Sword"),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("Iron Sword")).toBeVisible({ timeout: 15_000 });
 
     // Narration summary text should appear
-    await expect(
-      characterPage.getByText(/iron blade holds true/i),
-    ).toBeVisible();
+    await expect(characterPage.getByText(/iron blade holds true/i)).toBeVisible();
 
     // Decision options should be visible
-    await expect(
-      characterPage.getByText("Keep the blade"),
-    ).toBeVisible();
-    await expect(
-      characterPage.getByText("Sell at market"),
-    ).toBeVisible();
+    await expect(characterPage.getByText("Keep the blade")).toBeVisible();
+    await expect(characterPage.getByText("Sell at market")).toBeVisible();
 
     // Cleanup
     await queryDb(`DELETE FROM async_activities WHERE id = $1`, [activityId]);
   });
 
-  test("shows in-progress activity with progress", async ({
-    characterPage,
-    testCharacter,
-  }) => {
+  test("shows in-progress activity with progress", async ({ characterPage, testCharacter }) => {
     const activityId = `activity_e2e_prog_${Date.now()}`;
     const now = new Date();
 
@@ -79,9 +67,9 @@ test.describe("Catch-up feed", () => {
     await characterPage.waitForLoadState("domcontentloaded");
 
     // Training title should appear
-    await expect(
-      characterPage.getByText("Strength Training").first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("Strength Training").first()).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Cleanup
     await queryDb(`DELETE FROM async_activities WHERE id = $1`, [activityId]);

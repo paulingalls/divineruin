@@ -23,10 +23,10 @@ export const TEST_CHARACTER = {
 };
 
 async function seedCharacter(playerId: string): Promise<TestCharacter> {
-  await queryDb(
-    `UPDATE players SET data = $1::jsonb WHERE player_id = $2`,
-    [JSON.stringify(TEST_CHARACTER), playerId],
-  );
+  await queryDb(`UPDATE players SET data = $1::jsonb WHERE player_id = $2`, [
+    JSON.stringify(TEST_CHARACTER),
+    playerId,
+  ]);
   return {
     playerId,
     name: TEST_CHARACTER.name,

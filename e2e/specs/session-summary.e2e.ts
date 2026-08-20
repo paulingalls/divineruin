@@ -12,9 +12,7 @@ test.describe("Session summary", () => {
 
     // Should land on home screen (redirect from session-summary)
     await expect(
-      authenticatedPage
-        .getByText(/ENTER AETHOS|Your story is about to begin/i)
-        .first(),
+      authenticatedPage.getByText(/ENTER AETHOS|Your story is about to begin/i).first(),
     ).toBeVisible({ timeout: 15_000 });
   });
 });
