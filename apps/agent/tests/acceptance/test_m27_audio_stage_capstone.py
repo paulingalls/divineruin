@@ -36,7 +36,8 @@ import db_content_queries
 import event_types as E
 import movement_tools
 import spells
-from creation_tools import push_creation_music
+from creation_agent import CreationAgent
+from session_data import SessionData
 from spell_casting import _cast_spell_impl
 
 # One clean cantrip (focus_cost 0, non-concentration) so the real cast resolves
@@ -112,12 +113,32 @@ async def test_location_move_emits_stage_audio_data(reset_db_pool: str) -> None:
 
 
 async def test_creation_awakening_emits_wonder_resolve() -> None:
-    room = make_mock_room()
+    """Driven from CreationAgent.on_enter, the real awakening entry point, with
+    push_creation_music UNPATCHED — so this asserts the wiring, not just the leaf.
 
-    await push_creation_music("wonder", room, None)
+    Its siblings above drive real entry points (apply_arrival, _cast_spell_impl); calling the
+    leaf directly made this edge shallower than the section header claims, and left
+    creation_agent.py's call site unpinned by anything that reaches a real payload
+    (test_creation_agent.py pins it, but by patching the very function under test).
+    """
+    agent = CreationAgent()
+    mock_session = MagicMock()  # NOT AsyncMock: generate_reply is called un-awaited, and an
+    # un-awaited coroutine raises RuntimeWarning, which pyproject escalates to an error.
+    session_data = SessionData(player_id="cap_m27_awakening", location_id="", room=make_mock_room())
+    mock_session.userdata = session_data
 
-    music_events = [p for p in published_payloads(room) if p["type"] == E.SET_MUSIC_STATE]
-    assert len(music_events) == 1, f"expected exactly one SET_MUSIC_STATE, got {published_payloads(room)}"
+    with (
+        patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
+        # BaseGameAgent.on_enter starts an affect-analyzer task and opens a TranscriptLogger
+        # file handle; neither is under test and both would leak out of the run.
+        patch("base_agent.TranscriptLogger"),
+        patch.object(agent, "_affect_analyzer"),
+    ):
+        await agent.on_enter()
+
+    published = published_payloads(session_data.room)
+    music_events = [p for p in published if p["type"] == E.SET_MUSIC_STATE]
+    assert len(music_events) == 1, f"expected exactly one SET_MUSIC_STATE, got types {[p['type'] for p in published]}"
     assert music_events[0]["music_state"] == "wonder"
 
 
