@@ -10,9 +10,14 @@ fixture, and sync accessors.
 
 Records are self-contained (decision 4c0677dae1be): each embeds its granted
 ability text directly and does NOT FK into archetype_abilities — milestone grants
-are passive combat flags / markers, not the activatables that table holds. The
-resolve_milestone tool (story-004) consumes get_milestone / get_archetype_milestones
-and persists the chosen specialization + grant markers in players.data.
+are passive combat flags / markers, not the activatables that table holds.
+
+Accessor consumers, in production: ``get_milestone_by_level`` by the XP Resolve's auto-grant
+loop (``_award_xp_core``, which hands each auto_grant to milestone_tools and surfaces the L5
+fork), and ``get_milestone`` by the ``select`` verb (choice_tools), which persists the chosen
+specialization. ``get_archetype_milestones`` has no production caller — only tests. The
+resolve_milestone tool that once owned both paths was removed in M4 (story-004 deregistered
+the tool, story-006 deleted the impl).
 """
 
 import json
