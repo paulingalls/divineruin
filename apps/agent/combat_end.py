@@ -45,9 +45,11 @@ _STINGER_SOUND = {
 
 # Post-commit publish policy for BOTH combat-end paths (story-010, decision 788d61b73623): once the
 # end transaction commits, the committed rewards are authoritative and the HUD is only a mirror. A
-# mirror that fails to update must NOT strand a session whose rewards are already banked — end_combat
-# is the only exit from CombatAgent, so a raise here would leave the party unable to leave combat at
-# all. So a publish failure is logged and the teardown/handoff still completes. Deliberate: it trades
+# mirror that fails to update must NOT strand a session whose rewards are already banked — the
+# handoff _end_combat_finish returns is the only exit from CombatAgent (end_combat returns it
+# directly, resolve_phase relays it), so a raise between the commit and that return would leave the
+# party unable to leave combat at all. So a publish failure is logged and the teardown/handoff still
+# completes. Deliberate: it trades
 # a possibly-stale HUD (self-healing on the next push) for a session that can always get out.
 POST_COMMIT_PUBLISH_FAILED = "%s: post-commit publish failed; the committed end stands, the HUD may lag"
 

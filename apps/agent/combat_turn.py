@@ -299,7 +299,6 @@ async def _resolve_phase_impl(
     # whose rewards are already banked. On the ending wrap that is literal: this function's return is
     # the ONLY exit from CombatAgent, so a raise here would leave the party stuck in combat forever.
     try:
-        # Release the buffered loop events to the client.
         await sink.flush()
 
         # The WRAP retired a ROUNDS ward this phase: darken the client's ward indicator. Without this
