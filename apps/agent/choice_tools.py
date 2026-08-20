@@ -90,9 +90,19 @@ def _matched_ticket(session: SessionData, choice_id: str, option: str) -> Specia
     """The recorded tap iff it is the one this call is resolving, else None.
 
     Deliberately strict: BOTH the milestone and the option must match, the sender must still be
-    in the party, and the tap must still be FRESH. A coincidental voice call cannot consume
-    another member's ticket without naming the same choice AND the same option — and once the
-    tap's own turn has passed, it cannot consume it at all.
+    in the party, and the tap must still be FRESH.
+
+    That is a bound, NOT a closed door, and the earlier "only a coincidental voice call could
+    consume it" reading was wrong in the one case that matters. In the exact tie the ticket
+    exists to break — two same-archetype L5 members, both unresolved — the two are choosing from
+    the same short option list, so naming the same option is a coin flip rather than a
+    coincidence. Inside the TTL, B's voice select can therefore consume A's ticket and resolve
+    for A.
+
+    Accepted, because the residual is materially milder than the defect this replaced: the write
+    lands on the player who actually tapped that option, so it is the path they asked for. What
+    they lose is control of the timing, and B gets nothing rather than something wrong. Closing
+    it needs per-speaker identity, which reaches no part of this agent (debt 8f88fa5e250d).
     """
     ticket = session.pending_specialization_tap
     if ticket is None:

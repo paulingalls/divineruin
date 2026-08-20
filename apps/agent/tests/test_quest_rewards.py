@@ -375,14 +375,19 @@ async def test_a_member_further_along_in_their_own_run_is_not_paid_favor():
 
 
 @pytest.mark.asyncio
-async def test_a_member_behind_the_host_is_credited_with_the_stages_they_skipped():
+async def test_a_member_behind_the_host_is_locked_out_of_the_stages_they_skipped():
     """The SECOND accepted consequence of the current_stage marker (concern 0322739e5e4b).
 
     The marker is a single `current_stage`, not a per-stage ledger — the customer chose that
-    over a `paid_stages` list. So a member who never started the quest and joins for a LATE
-    stage is paid for that one stage, and their row is written forward to it: stages they never
-    played become unreachable, and on the completion transition the whole quest reads as done in
-    their own log.
+    over a `paid_stages` list. So a member who never started the quest and joins for a LATE stage
+    is paid for that one stage, and their row is written FORWARD to it.
+
+    This is a LOCKOUT, not credit, and an earlier version of this docstring said "credited",
+    which framed a loss as a gain. XP and favor went party-wide this sprint; items and
+    world_effects did not. So the skipped stages' items, disposition, reputation and corruption
+    effects are now permanently unreachable for that member, and on the completion transition
+    the quest reads as done in their own log while they received one stage's rewards. The
+    asymmetry is filed for sprint-045.
 
     Pinned rather than argued: this is what the chosen design costs, and it should go red if
     anyone changes the marker's shape without deciding about it again.
