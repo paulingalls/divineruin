@@ -19,7 +19,7 @@ from card_tap_handler import (
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
-from session_data import CreationState, SessionData
+from session_data import CreationState, SessionData, SpecializationTap
 
 # ---------------------------------------------------------------------------
 # build_hint_instruction — pure function tests
@@ -74,10 +74,23 @@ class TestBuildHintInstruction:
 # ---------------------------------------------------------------------------
 
 
-def _make_data_packet(payload: dict, topic: str = PLAYER_HINTS_TOPIC) -> MagicMock:
+# ``identity`` defaults to the same id _make_handler/_make_spec_handler give SessionData, so
+# the packet looks like a tap from this session's own player. It must be a REAL string: a bare
+# MagicMock's ``participant.identity`` auto-vivifies to a MagicMock, which passes _validate_id's
+# falsy check (__bool__ is True) and then dies inside _ID_RE.match with a TypeError that
+# ``except ToolError`` does not catch — escaping _on_data_received entirely.
+_SENTINEL = object()
+
+
+def _make_data_packet(payload: dict, topic: str = PLAYER_HINTS_TOPIC, identity: object = _SENTINEL) -> MagicMock:
     pkt = MagicMock()
     pkt.data = json.dumps(payload).encode()
     pkt.topic = topic
+    if identity is None:
+        pkt.participant = None
+    else:
+        pkt.participant = MagicMock()
+        pkt.participant.identity = "test" if identity is _SENTINEL else identity
     return pkt
 
 
@@ -119,6 +132,7 @@ class TestCardTapHandler:
         pkt = MagicMock()
         pkt.data = b"not json"
         pkt.topic = PLAYER_HINTS_TOPIC
+        pkt.participant = None
         handler._on_data_received(pkt)
         session.generate_reply.assert_not_called()
 
@@ -247,6 +261,7 @@ class TestSpecializationTapHandler:
         pkt = MagicMock()
         pkt.data = b"not json"
         pkt.topic = PLAYER_HINTS_TOPIC
+        pkt.participant = None
         handler._on_data_received(pkt)
         session.generate_reply.assert_not_called()
 
@@ -288,6 +303,71 @@ class TestSpecializationTapHandler:
             )
         )
         session.generate_reply.assert_not_called()
+
+
+class TestSpecializationTapTicket:
+    """The tap records its LiveKit-verified sender so select resolves the OWNER's fork.
+
+    ``DataPacket.participant.identity`` IS the player_id (participant_lifecycle compares it
+    directly), so there is no mapping to build — and the identity is carried on SessionData
+    rather than rendered into the DM instruction (decision 5829eecd76eb)."""
+
+    def test_valid_tap_records_the_verified_sender(self):
+        handler, _ = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        assert handler._userdata.pending_specialization_tap == SpecializationTap(
+            "player_2", "warrior_identity", "warrior_battle_master"
+        )
+
+    def test_ticket_is_set_before_the_dm_is_asked_to_resolve(self):
+        # select consumes the ticket during the reply this call triggers, so it must
+        # already be on SessionData by the time generate_reply runs.
+        handler, session = _make_spec_handler()
+        seen: list[object] = []
+        session.generate_reply.side_effect = lambda **kw: seen.append(handler._userdata.pending_specialization_tap)
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        assert seen == [SpecializationTap("player_2", "warrior_identity", "warrior_battle_master")]
+
+    def test_no_identity_still_dispatches_the_tap(self):
+        # A packet without a participant leaves no ticket, and select falls back to the
+        # sole-claimant party scan — exactly right for the solo session this happens in.
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
+        assert handler._userdata.pending_specialization_tap is None
+        session.generate_reply.assert_called_once()
+
+    def test_unusable_sender_costs_the_ticket_not_the_tap(self):
+        # Sender validation gets its OWN try (concern 95a6e9e64010): sharing the guard on
+        # milestone_id/specialization_id would return False and swallow the whole tap.
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="not a valid id!"))
+        assert handler._userdata.pending_specialization_tap is None
+        session.generate_reply.assert_called_once()
+
+    def test_unusable_sender_clears_a_previous_ticket(self):
+        # A tap is the most recent statement of who is choosing. Leaving an earlier
+        # tapper's ticket standing could resolve THIS tap onto their row.
+        handler, _ = _make_spec_handler()
+        handler._userdata.pending_specialization_tap = SpecializationTap(
+            "player_2", "warrior_identity", "warrior_battle_master"
+        )
+        handler._last_hint_time = 0.0
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
+        assert handler._userdata.pending_specialization_tap is None
+
+    def test_dropped_tap_records_nothing(self):
+        handler, _ = _make_spec_handler()
+        handler._on_data_received(_make_data_packet({"type": "specialization_choice_tap"}, identity="player_2"))
+        assert handler._userdata.pending_specialization_tap is None
+
+    def test_no_identity_reaches_the_llm_instruction(self):
+        # The whole point of the ticket: a model that mis-copied an id would pass every
+        # validation check and write one member's choice onto another's write-once row.
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        kwargs = session.generate_reply.call_args[1]
+        assert "player_2" not in kwargs["instructions"]
+        assert "player_2" not in kwargs["user_input"]
 
 
 class TestStartSpecializationTap:
