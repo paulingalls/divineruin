@@ -9,17 +9,16 @@ from livekit.agents.voice import RunContext
 
 import combat_resolution
 import combat_rewards
-import conditions
 import db
 import db_content_queries
 import db_mutations
-import db_mutations_conditions
 import db_mutations_reputation
 import db_mutations_veil_ward
 import db_queries
 import event_types as E
 import pricing_queries
 import resurrection
+from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
 from combat_phase import is_terminally_down
@@ -44,65 +43,13 @@ _STINGER_SOUND = {
     "deescalated": SOUND_COMBAT_FLED,
 }
 
-
-def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> list[dict]:
-    """Union the player's stored cross-encounter conditions with those acquired this fight.
-
-    Combat only ACCRUES (rest clears, a later milestone), so a fight never drops a pre-existing
-    condition. On a type conflict, keep the instance with the higher accrual — more ``stacks``
-    (Exhausted), or higher ``stage`` (Hollowed) — so a fight that deepens an already-persisted
-    Exhausted isn't silently discarded. combat-START load (M4.4 story-005, combat_init) now carries
-    the prior store onto the participant, so a combat-gained instance already folds in the prior
-    accrual; max() stays the safe floor guarding against ever regressing to the lesser of the two."""
-
-    def _severity(c: dict) -> int:
-        return c.get("stacks", c.get("stage", 1))
-
-    merged = {c["type"]: c for c in existing}
-    for c in acquired:
-        prior = merged.get(c["type"])
-        if prior is None or _severity(c) > _severity(prior):
-            merged[c["type"]] = c
-    return list(merged.values())
-
-
-async def _reconcile_member_conditions(player_part, *, conn) -> None:
-    """Reconcile one player participant's cross-encounter conditions + beneficial dice into THEIR
-    own players.data row (keyed on ``player_part.id`` == that member's player_id).
-
-    The persists_across_encounters conditions acquired this fight (Wounded/Exhausted/Hollowed)
-    MERGE into the member's store; phase-scoped ones (Prone/Stunned/…) drop with the combat row.
-    Combat only ACCRUES persistent conditions (rest clears them, a later milestone), so we union
-    with the existing store rather than overwrite — else a fight would clobber a pre-combat Wounded.
-
-    Beneficial OOC dice (Blessed/Inspired) load from the store onto the participant at combat-start
-    (combat_init, M4.4 story-005) and are consumed-on-use, so the participant's FINAL set is
-    authoritative — a die spent in combat must be dropped post-combat, and one granted mid-combat
-    that survives must persist (concern ab37d4fc61c6). Keyed on bonus_die (the only consumed-on-use
-    character buffs); phase-scoped combat conditions carry no bonus_die and correctly stay dropped.
-    Broader OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
-
-    The read runs every combat end (a consumed buff leaves no trace on the participant), but a
-    change-gate skips the write when nothing moved."""
-    acquired = [c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters]
-    surviving_buffs = [
-        c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].bonus_die is not None
-    ]
-    existing = await db_mutations_conditions.read_player_conditions(player_part.id, conn=conn)
-    existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]
-    reconciled = _merge_persistent_conditions(existing_non_buff, acquired) + surviving_buffs
-    if _conditions_changed(existing, reconciled):
-        await db_mutations_conditions.save_player_conditions(player_part.id, reconciled, conn=conn)
-
-
-def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
-    """True when two condition lists differ as multisets (order-independent). Guards the combat-end
-    writeback from a redundant DB write when a reconciliation leaves the stored set unchanged."""
-
-    def _key(conds: list[dict]) -> list[str]:
-        return sorted(json.dumps(c, sort_keys=True) for c in conds)
-
-    return _key(before) != _key(after)
+# Post-commit publish policy for BOTH combat-end paths (story-010, decision 788d61b73623): once the
+# end transaction commits, the committed rewards are authoritative and the HUD is only a mirror. A
+# mirror that fails to update must NOT strand a session whose rewards are already banked — end_combat
+# is the only exit from CombatAgent, so a raise here would leave the party unable to leave combat at
+# all. So a publish failure is logged and the teardown/handoff still completes. Deliberate: it trades
+# a possibly-stale HUD (self-healing on the next push) for a session that can always get out.
+POST_COMMIT_PUBLISH_FAILED = "%s: post-commit publish failed; the committed end stands, the HUD may lag"
 
 
 @function_tool()
@@ -126,8 +73,8 @@ async def _end_combat_impl(
     queries=db_queries,
     db_mod=db,
 ) -> str | tuple:
-    """Standalone end_combat tool entry: validate, run the DB writes in their OWN transaction,
-    flush the buffered events post-commit, then apply the in-memory teardown + agent handoff.
+    """Standalone end_combat tool entry: validate, run the DB writes in their OWN transaction, apply
+    the in-memory teardown + agent handoff the instant it commits, then flush the buffered events.
 
     The resolve_phase path does NOT call this — it shares its phase transaction by invoking
     _end_combat_db (in-tx) and _end_combat_finish (post-commit) directly (story-005, Seam 1)."""
@@ -144,8 +91,19 @@ async def _end_combat_impl(
         end_data = await _end_combat_db(
             session, cs, outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
         )
-    await sink.flush()
-    return _end_combat_finish(session, cs, outcome, end_data)
+    # The COMMIT is what makes the party's XP/loot/coin durable, so the guard against a second end
+    # (session.combat_state, which _require_combat reads) must be released with it — story-010.
+    # Anything fallible left between the commit and the teardown is a window where the rewards are
+    # banked but a retried end_combat would pay the whole party AGAIN. On rollback the exception
+    # propagates out of the `async with` and skips this, so combat_state survives and the end stays
+    # retryable. _end_combat_finish is pure in-memory (no awaits, no DB, no events), so hoisting it
+    # above the flush costs nothing.
+    result = _end_combat_finish(session, cs, outcome, end_data)
+    try:
+        await sink.flush()
+    except Exception:
+        logger.exception(POST_COMMIT_PUBLISH_FAILED, "end_combat")
+    return result
 
 
 async def _end_combat_db(
@@ -234,12 +192,12 @@ async def _end_combat_db(
 
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
-    # players.data row, not just the primary's — see _reconcile_member_conditions. Same tx as the
+    # players.data row, not just the primary's — see reconcile_member_conditions. Same tx as the
     # row delete (atomic). Solo = one player participant, byte-identical to the single-player path.
     for player_part in cs.participants:
         if player_part.type != "player":
             continue
-        await _reconcile_member_conditions(player_part, conn=conn)
+        await reconcile_member_conditions(player_part, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
@@ -247,9 +205,9 @@ async def _end_combat_db(
     # told — but with the RESOLVED state, not "the ward you had is gone" (§3). Only an encounter ward's
     # death can change wardedness here; an unwarded fight's end changes nothing and says nothing.
     #
-    # Read the LOCATION scope explicitly rather than routing through resolve_scope_ward: session
-    # .combat_state is not cleared until _end_combat_finish, which runs AFTER the sink flushes, so the
-    # resolver would still see the ward we just deleted. Once the encounter scope is gone the only
+    # Read the LOCATION scope explicitly rather than routing through resolve_scope_ward: this runs
+    # INSIDE the tx, and session.combat_state is not cleared until _end_combat_finish (post-commit),
+    # so the resolver would still see the ward we just deleted. Once the encounter scope is gone the only
     # scope that can still cover the party is the location — a Sacred site, or a pre-fight row. Same
     # shape as the dismiss path in veil_ward_tools.
     ward_light_synced = False
@@ -258,7 +216,9 @@ async def _end_combat_db(
         location_scope = WardScope.location(session.location_id)
         location_ward = await ward_mutations_mod.read_active_ward(location_scope, conn=conn)
         # The session mirror is synced post-commit in _end_combat_finish (like combat_state), so a
-        # rolled-back phase leaves session.location_ward pristine — this half touches no session state.
+        # rolled-back phase leaves session.location_ward pristine — this half touches no session
+        # state. The EMITTED event may still be lost if the post-commit flush fails; the mirror is
+        # the mirror, the committed delete is the truth (POST_COMMIT_PUBLISH_FAILED).
         resolved_location_ward = location_ward
         ward_light_synced = True
         await sink.emit(

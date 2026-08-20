@@ -16,6 +16,7 @@ from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_end import _end_combat_impl
+from combat_events import EventSink
 
 
 def _make_end_combat_mocks():
@@ -235,3 +236,73 @@ class TestEndCombatVeilWard:
         ctx.userdata.combat_state = _make_combat_state()
         await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
         assert self._ward_events(ctx.userdata.room) == []
+
+
+class TestEndCombatPaysOnce:
+    """M28 story-010: the combat-end rewards are a Resolve now — permanent progression written
+    inside the end transaction. So the guard that stops a SECOND end (session.combat_state) has to
+    be released with the commit that made the payout durable, not after the post-commit publishes.
+
+    Before this story combat_state survived until _end_combat_finish, which ran after sink.flush().
+    A flush failure left the guard armed with the party already paid, and the DM's next
+    end_combat("victory") re-ran _end_combat_db against the same participants — a second full
+    party-wide XP/loot/coin grant. The absent second payout is the criterion here; the "Not in
+    combat" ToolError is only the mechanism that produces it."""
+
+    class _ExplodingSink(EventSink):
+        """An EventSink whose post-commit flush raises — the failure window this story closes."""
+
+        async def flush(self) -> None:
+            raise RuntimeError("flush boom")
+
+    def _ctx_with_a_swung_weapon(self):
+        ctx = make_context(room=make_mock_room())
+        ctx.userdata.combat_state = _make_combat_state()
+        for member in ctx.userdata.party.members:
+            member.weapon_used = True
+            member.weapon_crit_vs_heavy = True
+        return ctx
+
+    @pytest.mark.asyncio
+    async def test_second_end_after_a_failed_flush_grants_nothing(self, monkeypatch):
+        import combat_end
+
+        monkeypatch.setattr(combat_end, "EventSink", self._ExplodingSink)
+        mutations = _make_end_combat_mocks()
+        ctx = self._ctx_with_a_swung_weapon()
+
+        await _end_combat_impl(
+            ctx, outcome="victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod()
+        )
+        paid_once = mutations.update_player_xp.await_count
+        assert paid_once > 0, "the first end must actually pay, else this test proves nothing"
+
+        with pytest.raises(ToolError, match="Not in combat"):
+            await _end_combat_impl(
+                ctx, outcome="victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod()
+            )
+
+        assert mutations.update_player_xp.await_count == paid_once, "the party was paid a second time"
+        assert mutations.delete_combat_state.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_failed_flush_still_completes_teardown_and_hands_off(self, monkeypatch):
+        # Half 2: end_combat is the ONLY exit from CombatAgent. A HUD mirror that fails to update
+        # must not strand a session whose rewards are already banked.
+        import combat_end
+
+        monkeypatch.setattr(combat_end, "EventSink", self._ExplodingSink)
+        ctx = self._ctx_with_a_swung_weapon()
+
+        raw = await _end_combat_impl(
+            ctx,
+            outcome="victory",
+            mutations=_make_end_combat_mocks(),
+            queries=combat_end_queries(),
+            db_mod=_fake_db_mod(),
+        )
+
+        assert isinstance(raw, tuple), "a failed publish must still return the (agent, json) handoff"
+        assert json.loads(raw[1])["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None
+        assert all(not m.weapon_used and not m.weapon_crit_vs_heavy for m in ctx.userdata.party.members)
