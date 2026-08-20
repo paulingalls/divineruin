@@ -185,9 +185,10 @@ class TestEndCombatVeilWard:
     the party, VEIL_WARD_CHANGED carries active: true." Nothing published here before this story, so
     a party fighting on a Sacred site watched its indicator keep whatever state the raise left it.
 
-    The ordering trap: session.combat_state is not cleared until _end_combat_finish, which runs AFTER
-    the sink flushes. A naive resolve_scope_ward here would still see the dying encounter ward. So the
-    producer reads the LOCATION scope explicitly, exactly as the dismiss path does.
+    The ordering trap: this producer runs INSIDE the end transaction, and session.combat_state is
+    not cleared until _end_combat_finish, which is post-commit. A naive resolve_scope_ward here would
+    still see the dying encounter ward. So the producer reads the LOCATION scope explicitly, exactly
+    as the dismiss path does.
     """
 
     _SACRED = {"source": "sacred_site", "expires_at": None, "dismissible": False}
