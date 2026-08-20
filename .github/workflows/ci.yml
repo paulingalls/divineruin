@@ -16,10 +16,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      # Shared scripts, not a third copy of the step list. lint:ts adds the
-      # mobile typecheck this job never ran, and lint:e2e supersedes the old
-      # `cd e2e && bun install && bunx eslint` line by adding tsc to it.
+      # Shared scripts, so this job cannot drift from the git hooks.
       # Python stays in the lint-python job below — this runner has no uv.
+      #
+      # lint:ts brings the mobile typecheck to CI for the first time, but only
+      # PARTLY: apps/mobile/tsconfig.json includes .expo/types/**/*.ts and
+      # expo-env.d.ts, both gitignored and produced only by a running Expo dev
+      # server (init-worktree.sh regenerates them locally). Without them
+      # typed-route errors compile clean, so CI reports a mobile typecheck it
+      # does not fully perform. Concern 5c9d504cd504.
       - run: bun run lint:ts
       - run: bun run lint:e2e
 

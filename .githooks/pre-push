@@ -41,9 +41,7 @@ else
     # BEFORE standing up the Docker/testcontainer lanes below — a typo shouldn't cost minutes.
     echo "  Lint + typecheck (root, mobile, server, web, python)..."
     bun run lint
-    # e2e/ typechecks HERE and in CI, but not in pre-commit: lint:e2e runs its
-    # own `bun install --frozen-lockfile`, too slow to pay per commit. This is
-    # the first gate that typechecks the Playwright suite guarding the app.
+    # e2e/ typechecks HERE and in CI, but not in pre-commit — see that hook for why.
     echo "  Lint + typecheck (e2e)..."
     bun run lint:e2e
 

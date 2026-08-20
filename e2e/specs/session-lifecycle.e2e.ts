@@ -16,22 +16,14 @@ test.describe("Session lifecycle", () => {
     });
 
     // Phase watcher in session-test.tsx auto-navigates to /session-summary
-    const summaryScreen = sessionPage.page.getByTestId(
-      "session-summary-screen",
-    );
+    const summaryScreen = sessionPage.page.getByTestId("session-summary-screen");
     await expect(summaryScreen).toBeVisible({ timeout: 15_000 });
-    await expect(
-      sessionPage.page.getByText("Session Complete"),
-    ).toBeVisible();
-    await expect(
-      sessionPage.page.getByText(/explored the ruins/),
-    ).toBeVisible();
+    await expect(sessionPage.page.getByText("Session Complete")).toBeVisible();
+    await expect(sessionPage.page.getByText(/explored the ruins/)).toBeVisible();
     await expect(sessionPage.page.getByText("RETURN HOME")).toBeVisible();
   });
 
-  test("summary shows XP, items, and quest counts", async ({
-    sessionPage,
-  }) => {
+  test("summary shows XP, items, and quest counts", async ({ sessionPage }) => {
     await sessionPage.injectSessionInit();
 
     await sessionPage.injectEvent({
@@ -45,9 +37,7 @@ test.describe("Session lifecycle", () => {
       story_moments: [],
     });
 
-    const summaryScreen = sessionPage.page.getByTestId(
-      "session-summary-screen",
-    );
+    const summaryScreen = sessionPage.page.getByTestId("session-summary-screen");
     await expect(summaryScreen).toBeVisible({ timeout: 15_000 });
 
     // Stats row shows correct values

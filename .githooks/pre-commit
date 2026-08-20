@@ -20,12 +20,12 @@ fi
 
 echo "Running pre-commit lint checks..."
 
-# One script, not a copy of its steps. This list used to be inlined here, in
-# pre-push, and in CI — three hand-maintained copies that had already drifted
-# apart (`lint` was missing mobile and server; CI was missing mobile).
+# One script, shared with pre-push and CI, so the three gates cannot drift apart.
 #
-# e2e is deliberately NOT in this lane: `lint:e2e` runs its own `bun install`,
-# which is too slow to pay on every commit. pre-push and CI carry it instead.
+# `lint:e2e` is NOT in this lane: it installs e2e's separate dep tree (e2e is not
+# a workspace member), which on a checkout that has never run it means a full
+# network install mid-commit. pre-push and CI carry it. e2e *formatting* is
+# covered here — `lint:ts`'s prettier glob includes e2e/.
 bun run lint
 
 echo "All lint checks passed."

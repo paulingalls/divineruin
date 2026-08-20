@@ -36,9 +36,7 @@ export const test = characterTest.extend<{
       }, event);
     };
 
-    const injectSessionInit = async (
-      overrides?: Record<string, unknown>,
-    ) => {
+    const injectSessionInit = async (overrides?: Record<string, unknown>) => {
       const base: GameEvent = {
         type: "session_init",
         character: {
@@ -114,8 +112,7 @@ export const test = characterTest.extend<{
               {
                 id: "stage_0",
                 name: "Investigate",
-                objective:
-                  "Ask around the tavern about the missing merchant.",
+                objective: "Ask around the tavern about the missing merchant.",
               },
               {
                 id: "stage_1",
