@@ -144,8 +144,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not abilities_is_loaded():
         await load_abilities()
 
-    # Load the archetype milestones once per agent process (M2.3). The DM voices
-    # milestone progression via resolve_milestone, which reads this map.
+    # Load the archetype milestones once per agent process (M2.3). The XP Resolve's
+    # auto-grant loop and the `select` verb both read this map.
     from milestones import is_loaded as milestones_is_loaded
     from milestones import load_milestones
 

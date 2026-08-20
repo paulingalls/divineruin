@@ -102,7 +102,7 @@ export const SPECIALIZATION_CHOICE = "specialization_choice" as const;
 
 // Client → Agent hints
 export const CREATION_CARD_TAP = "creation_card_tap" as const;
-// M2.3: the player tapped an L5 specialization path on the HUD overlay (story-005).
-// Agent-side consumption (hint -> resolve_milestone) is a future wire-up; the DM voice
-// path already resolves via story-004's resolve_milestone tool.
+// M2.3: the player tapped an L5 specialization path on the HUD overlay (M2.3 story-005).
+// Agent-side consumption of this hint is a future wire-up; the DM voice path already
+// resolves via the generic `select` verb (M4 story-004 removed resolve_milestone).
 export const SPECIALIZATION_CHOICE_TAP = "specialization_choice_tap" as const;

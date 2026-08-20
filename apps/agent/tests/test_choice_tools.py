@@ -16,7 +16,7 @@ from sample_fixtures import _WARRIOR_MILESTONES, make_context, make_db_mod
 from choice_tools import _select_impl
 from milestones import Milestone
 
-# Patron-driven fork (Cleric/Paladin) — resolve_milestone/select reject these pending Phase 8.
+# Patron-driven fork (Cleric/Paladin) — `select` rejects these pending Phase 8.
 _CLERIC_FORK = Milestone("cleric_identity", "cleric", "identity", 5, "specialization_fork", True, (), None, "cue")
 
 _BY_ID = {m.id: m for m in _WARRIOR_MILESTONES} | {_CLERIC_FORK.id: _CLERIC_FORK}

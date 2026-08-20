@@ -148,8 +148,8 @@ async def test_l5_fork_surfaced_in_response_for_dm_cue():
 # tool it is the ONLY way XP is granted — including the L5-fork presentation that moved off
 # resolve_milestone onto the level-up path. ---
 
-# Patron-deferred L5 fork (Oracle/Cleric/Paladin) — resolve_milestone rejects these
-# pending Phase 8, so the core must not present a choice it cannot resolve.
+# Patron-deferred L5 fork (Oracle/Cleric/Paladin) — `select` rejects these pending Phase 8,
+# so the core must not present a choice it cannot resolve.
 _PATRON_FORK_MILESTONES = [
     Milestone("oracle_identity", "oracle", "identity", 5, "specialization_fork", True, (), None, "cue"),
 ]
