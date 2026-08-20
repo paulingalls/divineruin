@@ -25,8 +25,8 @@ import spell_casting
 import veil_ward_events
 import ward_resolution
 from combat_ability import AbilityCastOutcome
-from combat_end import POST_COMMIT_PUBLISH_FAILED, _end_combat_db, _end_combat_finish
-from combat_events import EventSink, emit_or_publish, scratch_guard
+from combat_end import _end_combat_db, _end_combat_finish
+from combat_events import EventSink, emit_or_publish, isolated_publish, scratch_guard
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet, _resolve_tick_saves
 from combat_support import _require_combat
 from combat_ui_update import build_combat_ui_update
@@ -104,7 +104,21 @@ async def resolve_phase(
     return await _resolve_phase_impl(context)
 
 
-async def _resolve_phase_impl(
+async def _resolve_phase_impl(context: RunContext[SessionData], **di) -> str | tuple:
+    """Serialise the phase against the other path that can end this fight (end_combat).
+
+    Both take `combat_state` as their only re-entry guard and can only release it after their
+    transaction commits, so overlapping calls would otherwise both pass `_require_combat` and grant
+    the encounter's rewards twice. Holding the session's combat-end lock across the whole call means
+    a waiter re-reads `combat_state` after the holder cleared it and gets "Not in combat" — the
+    truth — instead of a second payout. See SessionData.combat_end_lock.
+    """
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _resolve_phase_locked(context, **di)
+
+
+async def _resolve_phase_locked(
     context: RunContext[SessionData],
     *,
     mutations=db_mutations,
@@ -273,7 +287,9 @@ async def _resolve_phase_impl(
     # released with it: _end_combat_finish runs here rather than after the publishes, else a publish
     # failure would leave the party paid, the combat row deleted, and the guard still armed — and
     # the DM's recovery end_combat("victory") would pay the whole party AGAIN. Everything in this
-    # block is pure in-memory (no awaits, no DB, no events), so it cannot fail partway.
+    # block is in-memory — no awaits, no DB, no events — and _end_combat_finish's one genuinely
+    # fallible step (building the handoff agent) is fallback-guarded inside it, so a failure there
+    # cannot escape and leave the party torn down with no exit from CombatAgent.
     #
     # The ward publish below resolves the LOCATION scope, and _end_combat_finish moves
     # session.location_id to the death anchor on a primary-death end — so capture the location the
@@ -294,13 +310,18 @@ async def _resolve_phase_impl(
             m.resonance.current = pending_by_member[m.player_id]
 
     # Post-commit publishes. A failure here is LOGGED, not raised (story-010, decision 788d61b73623):
-    # see combat_end.POST_COMMIT_PUBLISH_FAILED for the policy — the committed transaction is
+    # see combat_events.POST_COMMIT_PUBLISH_FAILED for the policy — the committed transaction is
     # authoritative, the HUD is a mirror, and a mirror that fails to update must not strand a session
     # whose rewards are already banked. On the ending wrap that is literal: this function's return is
     # the ONLY exit from CombatAgent, so a raise here would leave the party stuck in combat forever.
-    try:
+    #
+    # Each push carries its OWN guard (isolated_publish) rather than sharing one try: they are
+    # independent, none of them re-fires, and a shared guard would let a transient sink error cost
+    # the ward indicator and every member's Resonance track for the rest of the fight.
+    with isolated_publish("resolve_phase sink flush"):
         await sink.flush()
 
+    with isolated_publish("resolve_phase ward push"):
         # The WRAP retired a ROUNDS ward this phase: darken the client's ward indicator. Without this
         # the mechanic and the HUD diverge — casts stop being halved while the player still sees a
         # ward, so they walk into an Overreach believing they are protected. The encounter scope is
@@ -315,26 +336,28 @@ async def _resolve_phase_impl(
             )
             await veil_ward_events.publish_veil_ward_changed(session, expired_ward, expired_scope)
 
-        # Apply each in-combat ability's deferred effects: flush every caster's own deferred client
-        # events (hollow echo, Vaelti warning). Concentration is synced IN-LOOP by
-        # _resolve_ability_packet (not here) so a same-phase, lower-initiative concentration break
-        # sees the just-cast spell (story-007). Runs even on the ending wrap so an ability that fires
-        # on the killing phase still applies its effects.
-        for cr in cast_outcome.results.values():
+    # Apply each in-combat ability's deferred effects: flush every caster's own deferred client
+    # events (hollow echo, Vaelti warning). Concentration is synced IN-LOOP by
+    # _resolve_ability_packet (not here) so a same-phase, lower-initiative concentration break
+    # sees the just-cast spell (story-007). Runs even on the ending wrap so an ability that fires
+    # on the killing phase still applies its effects. Guarded PER CASTER — one caster's failed
+    # flush must not swallow the rest of the party's.
+    for caster_id, cr in cast_outcome.results.items():
+        with isolated_publish(f"resolve_phase deferred cast events ({caster_id})"):
             await cr.flush_events()
 
-        # Push each moved member's Resonance: an ability can generate Resonance on the same phase it
-        # drops the last enemy, and that qualitative HUD state must still reach the client even though
-        # combat ends. Each ability suppressed its own RESONANCE_CHANGED, so this is the single
-        # authoritative push per member per phase — under the member's OWN resonance_track +
-        # caster_id so the client filters it to the right player.
-        for m in session.party.members:
-            if m.player_id in pending_by_member:
+    # Push each moved member's Resonance: an ability can generate Resonance on the same phase it
+    # drops the last enemy, and that qualitative HUD state must still reach the client even though
+    # combat ends. Each ability suppressed its own RESONANCE_CHANGED, so this is the single
+    # authoritative push per member per phase — under the member's OWN resonance_track +
+    # caster_id so the client filters it to the right player. Nothing re-pushes it, so it is
+    # guarded per member rather than sharing a guard with the pushes above.
+    for m in session.party.members:
+        if m.player_id in pending_by_member:
+            with isolated_publish(f"resolve_phase resonance push ({m.player_id})"):
                 await resonance_events_mod.publish_resonance_changed(
                     session, resonance_track=m.resonance, caster_id=m.player_id
                 )
-    except Exception:
-        logger.exception(POST_COMMIT_PUBLISH_FAILED, "resolve_phase")
 
     # Beat 4 end-condition: the engine reported victory (all enemies fallen) or defeat (the player
     # has died). end_combat's DB writes committed inside the phase tx and its in-memory teardown ran

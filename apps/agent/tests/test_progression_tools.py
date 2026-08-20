@@ -400,6 +400,31 @@ async def test_favor_core_clamps_at_the_patrons_max():
     assert grant is not None and grant.new_level == 100
     mutations.update_divine_favor.assert_awaited_once_with("player_1", 100, conn=conn)
     assert pending[0][1]["new_level"] == 100
+    # The HUD toast reads `amount` alone. A clamped grant must publish what the bar ACTUALLY
+    # moved (5), never the 10 that was asked for, or the player watches a "+10" over a bar
+    # that moved half as far — and at the cap, over one that never moved at all.
+    assert pending[0][1]["amount"] == 5
+
+
+@pytest.mark.asyncio
+async def test_favor_core_publishes_zero_amount_at_the_cap():
+    """At max favor the toast must not fire: the mobile handler suppresses the overlay on
+    amount <= 0, and this is the only field that tells it nothing happened."""
+    activities, mutations = _favor_mods({**_FAVOR, "level": 100})
+    pending: list[tuple[str, dict]] = []
+
+    grant = await _award_divine_favor_core(
+        player_id="player_1",
+        amount=5,
+        reason="great deed",
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+
+    assert grant is not None and grant.new_level == 100
+    assert pending[0][1]["amount"] == 0
 
 
 @pytest.mark.asyncio

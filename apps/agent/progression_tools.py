@@ -188,7 +188,12 @@ async def _award_divine_favor_core(
                 "previous_level": current_level,
                 "patron_id": favor["patron"],
                 "last_whisper_level": favor.get("last_whisper_level", 0),
-                "amount": amount,
+                # The REAL gain, never the amount ASKED for: a grant that hits the patron's max
+                # moves the bar less than the reward declared, and the mobile handler pops its
+                # "+N favor" toast off this field alone. Publishing the request made a player at
+                # max favor watch a "+5" celebrate a bar that never moved — while update_quest's
+                # own rewards_applied entry reported the honest 0 to the DM.
+                "amount": new_level - current_level,
                 "reason": reason,
                 # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
                 # to 100, so dropping it (as this payload used to) fabricated the bar's scale for

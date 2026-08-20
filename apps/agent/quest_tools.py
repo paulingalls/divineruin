@@ -281,7 +281,8 @@ async def _update_quest_impl(
                 # The pass reports every seat it paid in that same sink — one XP_AWARDED per
                 # player, stamped with their player_id. Read it rather than assuming the seat
                 # list was paid in full.
-                paid_ids |= {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
+                xp_paid_ids = {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
+                paid_ids |= xp_paid_ids
                 if outcome.xp_granted:
                     # The primary's OWN share, not the undistributed total — the response is what
                     # the DM narrates to them.
@@ -291,6 +292,7 @@ async def _update_quest_impl(
 
             favor_reward = on_complete.get("favor", 0)
             if favor_reward > 0:
+                favor_paid_ids: set[str] = set()
                 # Divine favor is PARTY-WIDE at the FULL declared amount each (M28): standing
                 # with your own god is a personal relationship, not a haul to divide the way XP
                 # and coin are. Walk the SAME ascending seat list the XP pass took so the two
@@ -310,6 +312,7 @@ async def _update_quest_impl(
                     )
                     # None = no patron: skip that member rather than abort the stage.
                     if favor_grant is not None:
+                        favor_paid_ids.add(pid)
                         paid_ids.add(pid)
                     if favor_grant is not None and pid == session.player_id:
                         rewards_applied.append(
@@ -324,6 +327,28 @@ async def _update_quest_impl(
                                 "new_level": favor_grant.new_level,
                             }
                         )
+
+            # The stage marker is ONE flag for a stage that can declare TWO rewards, so a member
+            # paid only one of them is recorded as fully paid and forfeits the other for good. The
+            # union is the deliberately SAFE direction — the alternative (mark only members paid
+            # everything) leaves an unmarked member free to re-collect the reward they DID get,
+            # once per host, forever, which is the farming hole story-009 exists to close. Closing
+            # the gap properly needs per-reward markers, i.e. a schema change (debt 27944a8fcd50).
+            # Until then a partial payout must not be silent: it only happens on a degraded row
+            # (unknown archetype, missing players row) and it costs that member a reward.
+            # Both sets non-empty, not just both rewards declared: a pass that paid NOBODY (an XP
+            # share that floors to 0, a party with no patrons) is a whole-party outcome, not a
+            # per-member anomaly, and warning per member there is pure noise.
+            if xp_reward > 0 and favor_reward > 0 and xp_paid_ids and favor_paid_ids:
+                for pid in sorted(paid_ids - (xp_paid_ids & favor_paid_ids)):
+                    logger.warning(
+                        "Quest %s stage %d: %s was paid only %s but is marked fully paid — the other "
+                        "reward is forfeit for this stage. Check the player's row.",
+                        quest_id,
+                        new_stage_id,
+                        pid,
+                        "XP" if pid in xp_paid_ids else "favor",
+                    )
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")
@@ -402,6 +427,17 @@ async def _update_quest_impl(
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     quest_name = quest.get("name", quest_id)
+    # The DM's warm memory of what it just paid out. Folding the award tools onto Resolves
+    # (story-003) took their `record_event` lines with them, leaving XP and favor grants absent
+    # from `recent_events` — which is what exploration_agent's `[Recent: ...]` layer and
+    # session_summary's transcript fallback are built from, so the DM forgot the grant on the very
+    # next turn (debt fb14dced76f6). The PRIMARY's own share, matching session_xp_earned below:
+    # recent_events speaks for the session's own player.
+    for reward in rewards_applied:
+        if reward["type"] == "xp":
+            session.record_event(f"Awarded {reward['amount']} XP: quest '{quest_name}' stage completed")
+        elif reward["type"] == "favor" and reward["amount"] > 0:
+            session.record_event(f"Divine favor +{reward['amount']} ({reward['patron']}): quest '{quest_name}'")
     if is_completion:
         session.record_event(f"Quest '{quest_name}' completed")
         session.record_companion_memory(f"Quest '{quest_name}' completed")

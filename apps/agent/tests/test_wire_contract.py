@@ -16,6 +16,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
 
+import combat_events
+import combat_rewards
 import db_session_queries
 import event_types
 import hollow_echo
@@ -50,6 +52,7 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["xp_awarded"]["type"] == event_types.XP_AWARDED
     assert FIXTURE["events"]["specialization_choice"]["type"] == event_types.SPECIALIZATION_CHOICE
     assert FIXTURE["events"]["divine_favor_changed"]["type"] == event_types.DIVINE_FAVOR_CHANGED
+    assert FIXTURE["events"]["item_acquired"]["type"] == event_types.ITEM_ACQUIRED
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
@@ -207,3 +210,40 @@ async def test_divine_favor_changed_serializes_to_fixture() -> None:
     # RECIPIENT: quest favor is party-wide, so each client filters on it.
     wire = await _favor_core_pending_events()
     assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
+
+
+@pytest.mark.asyncio
+async def test_item_acquired_serializes_to_fixture() -> None:
+    """The COMBAT-LOOT path is the one this pins.
+
+    The client's item card is built from name/description/rarity; combat loot published only
+    item_id/quantity/source/player_id, so every drop rendered a blank card while the inventory
+    path (which sends the full shape) looked fine — a second writer against a reader nobody
+    re-checked. Both writers now build the payload with tool_support.build_item_acquired_payload,
+    and this asserts the wire object the combat pass actually emits.
+    """
+    expected = FIXTURE["events"]["item_acquired"]
+    content = MagicMock()
+    content.get_item = AsyncMock(
+        return_value={
+            "id": expected["item_id"],
+            "name": expected["name"],
+            "description": expected["description"],
+            "rarity": expected["rarity"],
+        }
+    )
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    sink = combat_events.EventSink()
+    await combat_rewards.distribute_loot(
+        [{"item_id": expected["item_id"], "quantity": expected["quantity"]}],
+        [expected["player_id"]],
+        primary_id=expected["player_id"],
+        mutations=mutations,
+        content=content,
+        conn=MagicMock(),
+        channel=combat_rewards.RewardChannel(sink=sink, room=None),
+    )
+    captured = [ev for ev in sink.captured if ev.event_type == event_types.ITEM_ACQUIRED]
+    assert len(captured) == 1
+    assert {"type": captured[0].event_type, **captured[0].payload} == expected

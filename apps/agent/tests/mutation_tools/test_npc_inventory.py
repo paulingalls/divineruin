@@ -192,12 +192,9 @@ class TestTransactGain:
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
-        from db import _compute_item_image_url
-
         mock_conn = MagicMock()
         mock_db = MagicMock()
         mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_db._compute_item_image_url = _compute_item_image_url
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
         mock_mutations = MagicMock()

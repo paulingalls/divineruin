@@ -20,7 +20,7 @@ import pricing_queries
 import resurrection
 from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
-from combat_events import EventSink, emit_or_publish
+from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_phase import is_terminally_down
 from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
@@ -43,16 +43,6 @@ _STINGER_SOUND = {
     "deescalated": SOUND_COMBAT_FLED,
 }
 
-# Post-commit publish policy for BOTH combat-end paths (story-010, decision 788d61b73623): once the
-# end transaction commits, the committed rewards are authoritative and the HUD is only a mirror. A
-# mirror that fails to update must NOT strand a session whose rewards are already banked — the
-# handoff _end_combat_finish returns is the only exit from CombatAgent (end_combat returns it
-# directly, resolve_phase relays it), so a raise between the commit and that return would leave the
-# party unable to leave combat at all. So a publish failure is logged and the teardown/handoff still
-# completes. Deliberate: it trades
-# a possibly-stale HUD (self-healing on the next push) for a session that can always get out.
-POST_COMMIT_PUBLISH_FAILED = "%s: post-commit publish failed; the committed end stands, the HUD may lag"
-
 
 @function_tool()
 @db_tool
@@ -67,7 +57,21 @@ async def end_combat(
     return await _end_combat_impl(context, outcome)
 
 
-async def _end_combat_impl(
+async def _end_combat_impl(context: RunContext[SessionData], outcome: str, **di) -> str | tuple:
+    """Serialise the end against the other path that can end this fight (resolve_phase's WRAP).
+
+    `combat_state` is the only re-entry guard and cannot be released until the transaction commits
+    (an earlier release would let a retried end pay the party twice), so two overlapping ends would
+    both pass `_require_combat` and both run grant_victory_rewards — the encounter paid out twice,
+    level-ups and milestone grants included. Under the lock the waiter re-reads `combat_state` after
+    the holder cleared it and raises "Not in combat". See SessionData.combat_end_lock.
+    """
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _end_combat_locked(context, outcome, **di)
+
+
+async def _end_combat_locked(
     context: RunContext[SessionData],
     outcome: str,
     *,
@@ -98,13 +102,12 @@ async def _end_combat_impl(
     # Anything fallible left between the commit and the teardown is a window where the rewards are
     # banked but a retried end_combat would pay the whole party AGAIN. On rollback the exception
     # propagates out of the `async with` and skips this, so combat_state survives and the end stays
-    # retryable. _end_combat_finish is pure in-memory (no awaits, no DB, no events), so hoisting it
-    # above the flush costs nothing.
+    # retryable. _end_combat_finish does no awaits, no DB and no events, so hoisting it above the
+    # flush costs nothing; its one fallible step (building the handoff agent) is isolated and
+    # fallback-guarded in _build_handoff_agent so it cannot strand the session either.
     result = _end_combat_finish(session, cs, outcome, end_data)
-    try:
+    with isolated_publish("end_combat"):
         await sink.flush()
-    except Exception:
-        logger.exception(POST_COMMIT_PUBLISH_FAILED, "end_combat")
     return result
 
 
@@ -220,7 +223,7 @@ async def _end_combat_db(
         # The session mirror is synced post-commit in _end_combat_finish (like combat_state), so a
         # rolled-back phase leaves session.location_ward pristine — this half touches no session
         # state. The EMITTED event may still be lost if the post-commit flush fails; the mirror is
-        # the mirror, the committed delete is the truth (POST_COMMIT_PUBLISH_FAILED).
+        # the mirror, the committed delete is the truth (combat_events.POST_COMMIT_PUBLISH_FAILED).
         resolved_location_ward = location_ward
         ward_light_synced = True
         await sink.emit(
@@ -357,7 +360,11 @@ def _end_combat_finish(
 ) -> tuple:
     """The in-memory + handoff half of end_combat, run ONLY after the transaction commits. Resets
     the per-encounter flags, clears combat_state, records the event/memory, and returns the
-    (gameplay_agent, json) handoff. No DB, no events — nothing here is reachable on a rollback."""
+    (gameplay_agent, json) handoff. No DB, no events — nothing here is reachable on a rollback.
+
+    Not await-free by accident: every state mutation below is synchronous, and the one step that
+    can genuinely raise — constructing the handoff agent — is isolated in _build_handoff_agent,
+    which never lets a failure escape past the already-cleared combat_state."""
     xp_total = end_data["xp_total"]
     xp_granted = end_data["xp_granted"]
     defeated_enemies = end_data["defeated_enemies"]
@@ -384,6 +391,11 @@ def _end_combat_finish(
         session.location_id = death_context["anchor"]
 
     session.record_event(f"Combat ended: {outcome}")
+    # Folding award_xp onto the combat-exit Resolve (story-003) took its `record_event` with it,
+    # so the DM's warm `[Recent: ...]` layer and the session-summary transcript fallback lost every
+    # XP grant (debt fb14dced76f6). The PRIMARY's own share, matching session_xp_earned above.
+    if xp_granted > 0:
+        session.record_event(f"Awarded {xp_granted} XP: combat at {cs.location_id}")
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
@@ -420,8 +432,6 @@ def _end_combat_finish(
     # Build gameplay agent with combat summary context for handoff
     from livekit.agents.llm import ChatContext
 
-    from gameplay_agent import create_gameplay_agent
-
     summary_parts = [f"Combat resolved: {outcome}."]
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating
     # the total would promise XP nobody received.
@@ -444,6 +454,32 @@ def _end_combat_finish(
 
     agent_type = session.pre_combat_agent_type or REGION_CITY
     session.pre_combat_agent_type = None
-    return create_gameplay_agent(
-        agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx
-    ), json.dumps(response)
+    return _build_handoff_agent(session, agent_type, summary_ctx), json.dumps(response)
+
+
+def _build_handoff_agent(session: SessionData, agent_type: str, summary_ctx):
+    """Construct the exploration agent the party returns to — the ONE fallible step in an
+    otherwise in-memory teardown, isolated here with a fallback (concern 9e2685165f07).
+
+    It runs AFTER ``combat_state`` has been cleared (which it must, or a retried end pays the
+    party twice), and the agent it returns is the only exit from CombatAgent. So a raise out of
+    here would strand the session in combat forever with its rewards already banked — the exact
+    outcome the post-commit ordering exists to prevent. Agent construction reaches real work
+    (system-prompt assembly over the companion profile, toolset composition, the summary
+    ChatContext), so "it is just a constructor" is not a guarantee.
+
+    The fallback drops every optional input and rebuilds at the default region: losing the combat
+    summary and the companion's voice for one turn is survivable, being unable to leave combat is
+    not. If even that raises, the process is broken and the exception is the honest answer.
+    """
+    from gameplay_agent import create_gameplay_agent
+
+    try:
+        return create_gameplay_agent(agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx)
+    except Exception:
+        logger.exception(
+            "Combat handoff agent (%s) failed to build; falling back to a bare exploration agent so the "
+            "party can leave combat. The combat summary and companion context are lost for this handoff.",
+            agent_type,
+        )
+        return create_gameplay_agent(REGION_CITY, session.location_id)

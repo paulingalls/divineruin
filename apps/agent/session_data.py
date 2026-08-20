@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
@@ -234,12 +236,24 @@ class SpecializationTap:
     in the tie this identity exists to break — two same-archetype L5 members, both unresolved —
     a model that mis-copied the id would pass every validation check and permanently write one
     member's choice onto the other's write-once row. ``select`` honours the ticket only when
-    BOTH the milestone and the option match the call, and clears it after the commit.
+    BOTH the milestone and the option match the call, it is still FRESH, and clears it after the
+    commit.
+
+    ``created_at`` is what keeps the one-shot from latching. The only clear is a ``select`` that
+    both commits AND still matches, so a tap the DM never turned into a tool call — or one whose
+    call raised — would otherwise leave the ticket standing forever, and a DIFFERENT member's later
+    voice ``select`` naming the same milestone and option would be redirected onto the original
+    tapper's write-once row (concern fd1480a0ac96). The ticket only has to survive the single
+    ``generate_reply`` the tap triggers; past that window it is stale evidence, and falling back to
+    select's sole-claimant scan is strictly safer than honouring it.
     """
 
     player_id: str
     milestone_id: str
     specialization_id: str
+    # Monotonic, not wall clock: this measures elapsed time, and a clock step must not resurrect an
+    # expired ticket. compare=False so two tickets describing the same tap stay equal.
+    created_at: float = field(default_factory=time.monotonic, compare=False)
 
 
 @dataclass
@@ -279,6 +293,20 @@ class SessionData:
     # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
     # SpecializationTapHandler from the verified sender, consumed and cleared by select.
     pending_specialization_tap: SpecializationTap | None = None
+    # Serialises the two tools that can END a fight — resolve_phase (whose WRAP may hit the engine's
+    # end-condition) and the standalone end_combat. Both use `combat_state` as their only re-entry
+    # guard and can only release it AFTER their transaction commits (releasing earlier would let a
+    # retried end pay the party twice). That leaves a window in which a second end passes
+    # _require_combat while the first is still inside its transaction, and both run
+    # grant_victory_rewards: the encounter's XP, coin and loot granted twice, level-ups and
+    # milestone auto-grants included (concern a2e2398451ee). Two parallel tool calls in one LLM
+    # turn are the ordinary way in.
+    #
+    # Held for the WHOLE call, transaction included: the waiter then re-reads combat_state after the
+    # holder cleared it and gets an honest "Not in combat" instead of a second payout. Combat is
+    # session-scoped and lives in one process, so this is the guard — not a stand-in for one. A
+    # combat resumed by a SECOND agent process would still need a DB-level end token.
+    combat_end_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):
     # a weapon takes 1 hit per encounter (2 on a crit vs a heavily-armored target), armed on the

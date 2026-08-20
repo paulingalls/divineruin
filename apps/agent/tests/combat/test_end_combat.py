@@ -1,7 +1,7 @@
 """Tests for end_combat: state clearing, agent handoff, XP calc by outcome, events, errors."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _combat_end_fixtures import combat_end_mutations, combat_end_queries
@@ -66,6 +66,90 @@ class TestEndCombat:
         # The returned agent should have a chat_ctx with a combat summary
         items = list(agent_instance.chat_ctx.items)
         assert len(items) > 0
+
+    @pytest.mark.asyncio
+    async def test_two_overlapping_ends_pay_the_party_once(self):
+        """The LLM emitting two end_combat calls in one turn must not pay the encounter twice.
+
+        combat_state is the only re-entry guard and cannot be released before the commit, so
+        without serialisation both calls pass _require_combat while the first is still inside its
+        transaction and both run grant_victory_rewards — XP, coin, loot, level-ups and milestone
+        auto-grants, all doubled. The second call must find the fight already over.
+        """
+        import asyncio
+
+        mock_mutations = _make_end_combat_mocks()
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        db_mod = _fake_db_mod()
+        real_transaction = db_mod.transaction
+
+        def gated_transaction():
+            entered.set()
+
+            class _Gate:
+                async def __aenter__(self):
+                    await release.wait()
+                    return await real_transaction().__aenter__()
+
+                async def __aexit__(self, *exc):
+                    return False
+
+            return _Gate()
+
+        db_mod.transaction = gated_transaction
+
+        first = asyncio.create_task(_end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=db_mod))
+        await entered.wait()
+        second = asyncio.create_task(
+            _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
+        )
+        await asyncio.sleep(0)
+        release.set()
+
+        assert isinstance(await first, tuple)
+        with pytest.raises(ToolError, match="Not in combat"):
+            await second
+        # One payout: the combat row is deleted exactly once, not once per call.
+        assert mock_mutations.delete_combat_state.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_handoff_survives_a_failing_agent_build(self):
+        """A raise while constructing the handoff agent must not strand the party in combat.
+
+        combat_state is cleared BEFORE the agent is built (it has to be — the commit banked the
+        rewards, and a retried end would pay them again), so an escaping exception here would
+        leave the session on CombatAgent with no combat and no exit. The fallback rebuilds
+        without the companion/summary rather than propagating.
+        """
+        from exploration_agent import ExplorationAgent
+
+        mock_mutations = _make_end_combat_mocks()
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        calls: list[tuple] = []
+        import gameplay_agent
+
+        original = gameplay_agent.create_gameplay_agent
+
+        def flaky(region_type, location_id, companion=None, chat_ctx=None):
+            calls.append((region_type, companion, chat_ctx))
+            if chat_ctx is not None:
+                raise RuntimeError("toolset composition blew up")
+            return original(region_type, location_id, companion=companion, chat_ctx=chat_ctx)
+
+        with patch.object(gameplay_agent, "create_gameplay_agent", flaky):
+            raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
+
+        assert isinstance(raw, tuple), "a failed agent build must still produce a handoff"
+        agent_instance, _ = raw
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert ctx.userdata.combat_state is None
+        assert len(calls) == 2, "the fallback build should have been attempted once"
 
     @pytest.mark.asyncio
     async def test_calculates_xp_on_victory(self):

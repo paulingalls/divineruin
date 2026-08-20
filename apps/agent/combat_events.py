@@ -11,8 +11,9 @@ that atomicity and must be made rollback-safe:
     restore()s it if the tx raises.
 """
 
+import logging
 from collections import deque
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,34 @@ if TYPE_CHECKING:
     from livekit import rtc
 
     from event_bus import EventBus
+
+logger = logging.getLogger("divineruin.combat_events")
+
+# Post-commit publish policy for BOTH combat-end paths (story-010, decision 788d61b73623): once the
+# end transaction commits, the committed rewards are authoritative and the HUD is only a mirror. A
+# mirror that fails to update must NOT strand a session whose rewards are already banked — the
+# handoff _end_combat_finish returns is the only exit from CombatAgent (end_combat returns it
+# directly, resolve_phase relays it), so a raise between the commit and that return would leave the
+# party unable to leave combat at all. So a publish failure is logged and the teardown/handoff still
+# completes. Deliberate: it trades a possibly-stale HUD (self-healing on the next push) for a
+# session that can always get out.
+POST_COMMIT_PUBLISH_FAILED = "%s: post-commit publish failed; the committed end stands, the HUD may lag"
+
+
+@contextmanager
+def isolated_publish(label: str):
+    """Contain ONE post-commit publish's failure to that publish.
+
+    A single ``try`` around a sequence of independent publishes is a hidden dependency: the first
+    failure skips every push after it, so a transient error flushing the event sink silently costs
+    the ward indicator, the deferred ability events and every member's Resonance push too — none of
+    which re-fire, and all of which the mechanic keeps using the real values behind. Each push is
+    independent of the others, so each gets its own guard and the rest still land.
+    """
+    try:
+        yield
+    except Exception:
+        logger.exception(POST_COMMIT_PUBLISH_FAILED, label)
 
 
 @dataclass

@@ -10,7 +10,7 @@ from typing import cast
 import asyncpg
 import redis.asyncio as aioredis
 
-from asset_utils import asset_url, slug_asset_url
+from asset_utils import slug_asset_url
 
 logger = logging.getLogger("divineruin.db")
 
@@ -154,21 +154,6 @@ async def _cache_set(key: str, value: str) -> None:
         await r.set(key, value, ex=CACHE_TTL)
     except Exception:
         logger.warning("Redis write failed for key %s", key)
-
-
-# --- Content queries (cached) ---
-
-
-def _compute_item_image_url(item_data: dict) -> str | None:
-    """Compute deterministic image URL for an item with art_template."""
-    art = item_data.get("art_template")
-    if not art or not isinstance(art, dict):
-        return None
-    template_id = art.get("template_id")
-    template_vars = art.get("vars", {})
-    if not template_id:
-        return None
-    return asset_url(template_id, template_vars)
 
 
 # --- State mutations ---

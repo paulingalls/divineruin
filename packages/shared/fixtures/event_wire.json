@@ -44,6 +44,16 @@
       "scope_kind": "location",
       "scope_id": "thornwatch_keep",
       "source": "cleric"
+    },
+    "item_acquired": {
+      "type": "item_acquired",
+      "item_id": "cured_hide",
+      "name": "Cured Hide",
+      "description": "Supple wolf hide, scraped and salted.",
+      "rarity": "uncommon",
+      "quantity": 2,
+      "source": "combat_loot",
+      "player_id": "player_1"
     }
   },
   "hollow_echo_bands": [

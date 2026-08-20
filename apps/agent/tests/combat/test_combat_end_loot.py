@@ -48,15 +48,23 @@ class FakeRng(random.Random):
 
 def _content_stub() -> MagicMock:
     """A db_content_queries stand-in whose get_loot_table returns one bespoke table for the known
-    id. MagicMock (Any-typed) so it satisfies the injected ``content`` parameter."""
+    id, and whose get_item resolves that drop's display row (the ITEM_ACQUIRED payload's
+    name/description/rarity). MagicMock (Any-typed) so it satisfies the injected ``content``
+    parameter."""
 
     async def _get(loot_table_id: str) -> dict | None:
         if loot_table_id == _LOOT_TABLE_ID:
             return {"id": _LOOT_TABLE_ID, "drops": [{"item_id": _ITEM_ID, "chance": 1.0, "quantity": 1}]}
         return None
 
+    async def _get_item(item_id: str) -> dict | None:
+        if item_id == _ITEM_ID:
+            return {"id": _ITEM_ID, "name": "Cured Hide", "description": "Supple.", "rarity": "uncommon"}
+        return None
+
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
+    content.get_item = AsyncMock(side_effect=_get_item)
     return content
 
 
@@ -162,8 +170,13 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
 
         item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
         assert len(item_events) == 1
+        # The item CARD's three fields ride along: the client builds its overlay from
+        # name/description/rarity, so an id-only payload draws a blank card.
         assert item_events[0].payload == {
             "item_id": _ITEM_ID,
+            "name": "Cured Hide",
+            "description": "Supple.",
+            "rarity": "uncommon",
             "quantity": 1,
             "source": "combat_loot",
             "player_id": _PLAYER_ID,

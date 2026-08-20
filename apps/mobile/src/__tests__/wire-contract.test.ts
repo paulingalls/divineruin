@@ -4,6 +4,7 @@ import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import {
   DIVINE_FAVOR_CHANGED,
   HOLLOW_ECHO_RESULT,
+  ITEM_ACQUIRED,
   RESONANCE_CHANGED,
   SPECIALIZATION_CHOICE,
   VEIL_WARD_CHANGED,
@@ -35,6 +36,7 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.xp_awarded.type).toBe(XP_AWARDED);
   expect(EVENTS.specialization_choice.type).toBe(SPECIALIZATION_CHOICE);
   expect(EVENTS.divine_favor_changed.type).toBe(DIVINE_FAVOR_CHANGED);
+  expect(EVENTS.item_acquired.type).toBe(ITEM_ACQUIRED);
 });
 
 test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
@@ -233,5 +235,31 @@ test("a teammate's divine_favor_changed does NOT move the local favor bar", () =
   const before = characterStore.getState().divineFavorLevel;
   handleGameEvent({ ...EVENTS.divine_favor_changed, player_id: "player_teammate" });
   expect(characterStore.getState().divineFavorLevel).toBe(before);
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+// --- item_acquired: the item card's three fields (combat loot vs inventory) ---
+//
+// The overlay renders name/description/rarity and nothing else. The combat-loot pass published
+// only item_id/quantity/source/player_id, so every drop drew a blank card while the inventory
+// path looked fine — two writers, one reader, and each lane's own tests mocked its own half.
+// Both writers now build the payload from one shared builder, and the fixture is what both
+// lanes assert against.
+
+test("item_acquired fixture fills the item card, not a blank overlay", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.item_acquired.player_id });
+  handleGameEvent({ ...EVENTS.item_acquired });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("item_acquired");
+  expect(overlay.payload.name).toBe(EVENTS.item_acquired.name);
+  expect(overlay.payload.description).toBe(EVENTS.item_acquired.description);
+  expect(overlay.payload.rarity).toBe(EVENTS.item_acquired.rarity);
+});
+
+test("a teammate's item_acquired does NOT pop the local item card", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "player_local" });
+  handleGameEvent({ ...EVENTS.item_acquired, player_id: "player_teammate" });
   expect(hudStore.getState().overlays).toHaveLength(0);
 });

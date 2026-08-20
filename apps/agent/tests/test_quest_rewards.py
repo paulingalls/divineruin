@@ -418,3 +418,27 @@ async def test_a_member_behind_the_host_is_credited_with_the_stages_they_skipped
     assert [c.args[0] for c in mutations.update_player_xp.await_args_list].count("player_2") == 1
     # But credited with the whole quest: stages 0 and 1 are now unreachable for them.
     assert store["player_2"] == {"current_stage": 3, "quest_name": "Long Quest", "status": "completed"}
+
+
+@pytest.mark.asyncio
+async def test_a_partially_paid_member_is_marked_but_warned_about(caplog):
+    """ONE marker flag, TWO possible rewards — a member paid only one of them is recorded as
+    fully paid and forfeits the other for this stage, for good.
+
+    The union is the deliberately safe direction: marking only members paid EVERYTHING would
+    leave an unmarked member free to re-collect the reward they did get, once per host, forever
+    — the farming hole story-009 closes. Closing this gap properly needs per-reward markers
+    (a schema change, debt 27944a8fcd50). Until then the forfeit must be LOUD, because it only
+    fires on a degraded row and it silently costs that member a reward.
+    """
+    # player_2 has no patron, so the favor pass skips them; the XP pass pays them. They end up
+    # in exactly one of the two paid sets.
+    with caplog.at_level("WARNING"):
+        mutations, _, _ = await _complete_favor_stage(
+            ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "none"}, xp_amount=100
+        )
+
+    marked = {call.args[0] for call in mutations.set_player_quest.await_args_list}
+    assert marked == {"player_1", "player_2"}, "the partially-paid member is still marked"
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any("player_2" in m and "marked fully paid" in m for m in warnings), warnings

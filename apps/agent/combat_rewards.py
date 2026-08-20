@@ -31,7 +31,9 @@ import combat_resolution
 import encounter_loot
 import event_types as E
 import progression_tools
+from asset_utils import compute_item_image_url
 from combat_events import EventSink, emit_or_publish
+from tool_support import build_item_acquired_payload
 
 if TYPE_CHECKING:
     from livekit import rtc
@@ -139,12 +141,17 @@ async def distribute_loot(
     *,
     primary_id: str,
     mutations,
+    content,
     conn,
     channel: RewardChannel,
 ) -> list[dict]:
     """DISTRIBUTE pass — items: round-robin the shared pool across the seats (customer decision
     f437f4475a40). Each rolled drop lands in exactly ONE participant's inventory, so items stay
     scarce (no per-member duplication). Solo = 1 seat, so every drop goes to the primary.
+
+    ``content`` resolves each drop's name/description/rarity for the ITEM_ACQUIRED payload: the
+    client's item card renders those three fields and nothing else, so an id-only payload draws a
+    blank card. The shape comes from the shared builder the inventory path uses, not a local dict.
 
     Returns the PRIMARY's own drops — what the single-session handoff narrates — not the party haul.
     """
@@ -154,14 +161,17 @@ async def distribute_loot(
         await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
         if recipient == primary_id:
             primary_loot.append(drop)
+        item = await content.get_item(drop["item_id"])
         await channel.emit(
             E.ITEM_ACQUIRED,
-            {
-                "item_id": drop["item_id"],
-                "quantity": drop["quantity"],
-                "source": "combat_loot",
-                "player_id": recipient,
-            },
+            build_item_acquired_payload(
+                item,
+                item_id=drop["item_id"],
+                image_url=compute_item_image_url(item) if item else None,
+                quantity=drop["quantity"],
+                source="combat_loot",
+                player_id=recipient,
+            ),
         )
     return primary_loot
 
@@ -325,7 +335,13 @@ async def grant_victory_rewards(
     spoils = await roll_encounter_spoils(participants, rng, content=content)
     seat_order = seat_order_for(participants)
     primary_loot = await distribute_loot(
-        spoils.loot_pool, seat_order, primary_id=primary_id, mutations=mutations, conn=conn, channel=channel
+        spoils.loot_pool,
+        seat_order,
+        primary_id=primary_id,
+        mutations=mutations,
+        content=content,
+        conn=conn,
+        channel=channel,
     )
     primary_currency_gold = await distribute_currency(
         spoils.currency_silver,

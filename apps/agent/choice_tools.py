@@ -20,6 +20,7 @@ path in progression_tools).
 
 import json
 import logging
+import time
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -34,6 +35,14 @@ from session_data import SessionData, SpecializationTap
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
+
+# How long a HUD tap's owner ticket stays honourable. It only has to outlive the single
+# generate_reply the tap triggers (a DM turn plus one tool round-trip), and it MUST expire: the
+# only clear is a select that commits and still matches, so a tap the DM never called select for —
+# or one whose call raised — would latch the ticket forever and redirect a different member's
+# later voice select onto the original tapper's write-once row (concern fd1480a0ac96). Generous
+# enough to survive a slow turn and a retry; far short of "later in the session".
+SPECIALIZATION_TAP_TTL_S = 120.0
 
 
 @function_tool()
@@ -80,12 +89,20 @@ def _fork_block_reason(player_id: str, player: dict | None, milestone: Milestone
 def _matched_ticket(session: SessionData, choice_id: str, option: str) -> SpecializationTap | None:
     """The recorded tap iff it is the one this call is resolving, else None.
 
-    Deliberately strict: BOTH the milestone and the option must match, and the sender must
-    still be in the party. A coincidental voice call cannot consume another member's ticket
-    without naming the same choice AND the same option.
+    Deliberately strict: BOTH the milestone and the option must match, the sender must still be
+    in the party, and the tap must still be FRESH. A coincidental voice call cannot consume
+    another member's ticket without naming the same choice AND the same option — and once the
+    tap's own turn has passed, it cannot consume it at all.
     """
     ticket = session.pending_specialization_tap
     if ticket is None:
+        return None
+    age = time.monotonic() - ticket.created_at
+    if age > SPECIALIZATION_TAP_TTL_S:
+        # Drop it rather than merely ignoring it: an expired ticket is dead evidence, and leaving
+        # it in place would make every later call re-measure the same staleness.
+        logger.info("Discarding stale specialization tap from %s (%.0fs old)", ticket.player_id, age)
+        session.pending_specialization_tap = None
         return None
     if (
         ticket.milestone_id == choice_id

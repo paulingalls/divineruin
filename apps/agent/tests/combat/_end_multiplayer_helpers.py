@@ -127,8 +127,13 @@ def _content_stub(drops: list[dict]) -> MagicMock:
     async def _get(loot_table_id: str) -> dict | None:
         return {"id": _LOOT_TABLE_ID, "drops": drops} if loot_table_id == _LOOT_TABLE_ID else None
 
+    async def _get_item(item_id: str) -> dict:
+        # distribute_loot resolves each drop's display row for the ITEM_ACQUIRED payload.
+        return {"id": item_id, "name": item_id.replace("_", " ").title(), "description": "", "rarity": "common"}
+
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
+    content.get_item = AsyncMock(side_effect=_get_item)
     return content
 
 

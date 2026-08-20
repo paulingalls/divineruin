@@ -21,10 +21,11 @@ import db_mutations
 import db_mutations_inventory
 import db_queries
 import event_types as E
+from asset_utils import compute_item_image_url
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import SessionData
-from tool_support import _cap_str, _validate_id
+from tool_support import _cap_str, _validate_id, build_item_acquired_payload
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -93,14 +94,17 @@ async def _gain(session, item_id, delta, source, item, *, db_mod, mutations, que
         event_bus=session.event_bus,
     )
 
-    image_url = db_mod._compute_item_image_url(item)
-    acquired_payload: dict = {
-        "name": item_name,
-        "description": item.get("description", ""),
-        "rarity": item.get("rarity", "common"),
-    }
-    if image_url:
-        acquired_payload["image_url"] = image_url
+    # ONE builder for every ITEM_ACQUIRED writer (tool_support): the combat-loot pass emits the
+    # same shape from the same place, so the client's item card can never go blank on one path
+    # while rendering on the other.
+    acquired_payload = build_item_acquired_payload(
+        item,
+        item_id=item_id,
+        image_url=compute_item_image_url(item),
+        quantity=delta,
+        source=source,
+        player_id=session.player_id,
+    )
     await publish_game_event(
         session.room,
         E.ITEM_ACQUIRED,

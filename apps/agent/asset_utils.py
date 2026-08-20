@@ -26,3 +26,20 @@ def slug_asset_url(slug: str) -> str:
     if not _VALID_SLUG_RE.match(slug):
         raise ValueError(f"Invalid asset slug: {slug!r}")
     return f"/api/assets/images/{slug}"
+
+
+def compute_item_image_url(item_data: dict) -> str | None:
+    """Deterministic image URL for an item with an ``art_template``, or None without one.
+
+    Lives here rather than in ``db``: it touches no connection and no cache — it is pure
+    template-id + vars arithmetic — and both the inventory grant path and the combat-loot pass
+    need it to build their shared ITEM_ACQUIRED payload without importing the DB layer.
+    """
+    art = item_data.get("art_template")
+    if not art or not isinstance(art, dict):
+        return None
+    template_id = art.get("template_id")
+    template_vars = art.get("vars", {})
+    if not template_id:
+        return None
+    return asset_url(template_id, template_vars)

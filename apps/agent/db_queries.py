@@ -9,6 +9,7 @@ import logging
 import asyncpg
 
 import db
+from asset_utils import compute_item_image_url
 from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.db")
@@ -208,7 +209,7 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
         item = json.loads(row["item_data"])
         slot = json.loads(row["slot_data"])
         item["slot_info"] = slot
-        image_url = db._compute_item_image_url(item)
+        image_url = compute_item_image_url(item)
         if image_url:
             item["image_url"] = image_url
         results.append(item)

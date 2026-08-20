@@ -8,24 +8,24 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import mock_txn
 
 import event_types as E
-from db import _compute_item_image_url
+from asset_utils import compute_item_image_url
 from session_data import SessionData
 
-# --- _compute_item_image_url ---
+# --- compute_item_image_url ---
 
 
 class TestComputeItemImageUrl:
     def test_returns_none_without_art_template(self):
         item = {"id": "rations_basic", "name": "Trail Rations"}
-        assert _compute_item_image_url(item) is None
+        assert compute_item_image_url(item) is None
 
     def test_returns_none_with_empty_art_template(self):
         item = {"id": "test", "art_template": {}}
-        assert _compute_item_image_url(item) is None
+        assert compute_item_image_url(item) is None
 
     def test_returns_none_with_non_dict_art_template(self):
         item = {"id": "test", "art_template": "not a dict"}
-        assert _compute_item_image_url(item) is None
+        assert compute_item_image_url(item) is None
 
     def test_returns_url_with_valid_art_template(self):
         item = {
@@ -35,7 +35,7 @@ class TestComputeItemImageUrl:
                 "vars": {"weapon_type": "shortsword"},
             },
         }
-        url = _compute_item_image_url(item)
+        url = compute_item_image_url(item)
         assert url is not None
         assert url.startswith("/api/assets/images/img_")
 
@@ -50,7 +50,7 @@ class TestComputeItemImageUrl:
                 },
             },
         }
-        url = _compute_item_image_url(item)
+        url = compute_item_image_url(item)
         assert url is not None
         assert "/api/assets/images/img_" in url
 
@@ -65,7 +65,7 @@ class TestComputeItemImageUrl:
                 },
             },
         }
-        url = _compute_item_image_url(item)
+        url = compute_item_image_url(item)
         assert url is not None
 
     def test_deterministic_same_inputs(self):
@@ -75,8 +75,8 @@ class TestComputeItemImageUrl:
                 "vars": {"weapon_type": "shortsword"},
             },
         }
-        url1 = _compute_item_image_url(item)
-        url2 = _compute_item_image_url(item)
+        url1 = compute_item_image_url(item)
+        url2 = compute_item_image_url(item)
         assert url1 == url2
 
     def test_different_vars_produce_different_urls(self):
@@ -92,7 +92,7 @@ class TestComputeItemImageUrl:
                 "vars": {"weapon_type": "longsword"},
             },
         }
-        assert _compute_item_image_url(item1) != _compute_item_image_url(item2)
+        assert compute_item_image_url(item1) != compute_item_image_url(item2)
 
 
 # --- record_story_moment ---
@@ -251,7 +251,6 @@ class TestTransactGainSendsFullInventory:
         mock_db = MagicMock()
         mock_conn = MagicMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
-        mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
@@ -292,7 +291,6 @@ class TestTransactGainSendsFullInventory:
         mock_db = MagicMock()
         mock_conn = MagicMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
-        mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
@@ -324,7 +322,6 @@ class TestTransactGainSendsFullInventory:
         mock_db = MagicMock()
         mock_conn = MagicMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
-        mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
