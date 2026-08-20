@@ -13,8 +13,11 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import combat_end_queries
 from combat._helpers import _damage_resolver
+from livekit.agents.llm import ToolError
 
+import combat_end
 import combat_events
 import combat_turn
 import db_mutations
@@ -63,9 +66,8 @@ def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> Comba
 
 
 def _no_durability_queries() -> MagicMock:
-    queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability events
-    return queries
+    # no equipped items -> no durability events
+    return combat_end_queries(get_player_inventory=AsyncMock(return_value=[]))
 
 
 def _no_concentration_break() -> MagicMock:
@@ -560,7 +562,7 @@ def _tx_e2e_state(combat_id: str, player_id: str, enemy_id: str, companion_id: s
 def _equipped_weapon_queries(weapon_id: str) -> MagicMock:
     """queries whose get_player_inventory returns one equipped, durable weapon — so end_combat
     accrues a real (in-tx) durability hit on it."""
-    queries = MagicMock()
+    queries = combat_end_queries()
     queries.get_player_inventory = AsyncMock(
         return_value=[
             {
@@ -690,3 +692,151 @@ class TestEndToEndAllAgree:
             await pool.execute("DELETE FROM player_inventory WHERE player_id = $1", player_id)
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+
+class TestPhaseEndPaysOnce:
+    """M28 story-010: the phase path's terminal wrap has the same guard window the end_combat tool
+    had, only wider — four fallible steps sit between the commit and the teardown (sink.flush, the
+    ward round-trip, every caster's flush_events, the per-member resonance publishes), and it
+    RE-ARMS the guard with ``session.combat_state = state`` right after the commit.
+
+    Combat rewards are a Resolve now (story-001), written inside that transaction. So a post-commit
+    publish failure used to leave the party paid, the combat row deleted, and combat_state still
+    set — and the DM's next end_combat("victory") paid the whole party again. Real PG here because
+    the payout has to be observed where it is durable: players.data.xp.
+    """
+
+    async def _seed_player(self, pool, player_id: str) -> None:
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+            "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+            player_id,
+            json.dumps({"player_id": player_id, "hp": {"current": 25, "max": 25}}),
+        )
+
+    async def _xp(self, pool, player_id: str) -> int:
+        row = await pool.fetchrow("SELECT (data->>'xp')::int AS xp FROM players WHERE player_id = $1", player_id)
+        return row["xp"] or 0
+
+    def _session_ctx(self, player_id: str, state: CombatState):
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        session.combat_state = state
+        ctx = MagicMock()
+        ctx.userdata = session
+        return session, ctx
+
+    async def test_publish_failure_after_the_wrap_does_not_let_a_second_end_pay_again(
+        self, dev_db_pool, monkeypatch
+    ) -> None:
+        pool = dev_db_pool
+        player_id = "tx_s010_once_player"
+        enemy_id = "tx_s010_once_enemy"
+        combat_id = "combat_s010_once"
+        await self._seed_player(pool, player_id)
+        state = _tx_victory_state(combat_id, player_id, enemy_id)
+        await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
+        # The post-commit flush is the fallible step every terminal wrap runs.
+        monkeypatch.setattr(combat_events, "publish_game_event", AsyncMock(side_effect=RuntimeError("publish boom")))
+        _session, ctx = self._session_ctx(player_id, state)
+
+        try:
+            await combat_turn._resolve_phase_impl(
+                ctx,
+                queries=_no_durability_queries(),
+                resolver=_damage_resolver(7),
+                concentration_break_mod=_no_concentration_break(),
+            )
+            assert await self._xp(pool, player_id) == 50, "the wrap must actually pay, else this proves nothing"
+
+            # The DM's natural recovery move. It must find no combat to end.
+            with pytest.raises(ToolError, match="Not in combat"):
+                await combat_end._end_combat_impl(ctx, outcome="victory")
+
+            assert await self._xp(pool, player_id) == 50, "the party was paid a second time"
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+
+    async def test_publish_failure_still_completes_teardown_and_hands_off(self, dev_db_pool, monkeypatch) -> None:
+        """Half 2: end_combat is the ONLY exit from CombatAgent, and only _end_combat_finish returns
+        the handoff. A HUD mirror that fails to update must not strand a session whose rewards are
+        already banked."""
+        from exploration_agent import ExplorationAgent
+
+        pool = dev_db_pool
+        player_id = "tx_s010_handoff_player"
+        enemy_id = "tx_s010_handoff_enemy"
+        combat_id = "combat_s010_handoff"
+        await self._seed_player(pool, player_id)
+        state = _tx_victory_state(combat_id, player_id, enemy_id)
+        await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
+        monkeypatch.setattr(combat_events, "publish_game_event", AsyncMock(side_effect=RuntimeError("publish boom")))
+        session, ctx = self._session_ctx(player_id, state)
+        session.party.members[0].weapon_used = True
+
+        try:
+            raw = await combat_turn._resolve_phase_impl(
+                ctx,
+                queries=_no_durability_queries(),
+                resolver=_damage_resolver(7),
+                concentration_break_mod=_no_concentration_break(),
+            )
+            assert isinstance(raw, tuple), "a failed publish must still return the (agent, json) handoff"
+            agent_instance, json_str = raw
+            assert isinstance(agent_instance, ExplorationAgent)
+            assert json.loads(json_str)["outcome"] == "victory"
+            assert session.combat_state is None
+            assert session.party.members[0].weapon_used is False
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+
+    async def test_rolled_back_end_retries_and_pays_exactly_once(self, dev_db_pool, monkeypatch) -> None:
+        """The complement, and the reason the guard cannot simply be released unconditionally: when
+        the TRANSACTION itself rolls back nothing was paid, so combat_state must survive and the
+        retried phase must pay — exactly once, not twice."""
+        pool = dev_db_pool
+        player_id = "tx_s010_retry_player"
+        enemy_id = "tx_s010_retry_enemy"
+        combat_id = "combat_s010_retry"
+        await self._seed_player(pool, player_id)
+        state = _tx_victory_state(combat_id, player_id, enemy_id)
+        await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
+
+        # Fail the first end's row delete (in-tx -> rollback), then let the retry through.
+        real_delete = db_mutations.delete_combat_state
+        attempts = {"n": 0}
+
+        async def flaky_delete(*args, **kwargs):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise RuntimeError("boom")
+            return await real_delete(*args, **kwargs)
+
+        monkeypatch.setattr(db_mutations, "delete_combat_state", flaky_delete)
+        session, ctx = self._session_ctx(player_id, state)
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_no_durability_queries(),
+                    resolver=_damage_resolver(7),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            # Nothing was paid and the guard survives, so the end is still retryable.
+            assert await self._xp(pool, player_id) == 0
+            assert session.combat_state is state
+
+            raw = await combat_turn._resolve_phase_impl(
+                ctx,
+                queries=_no_durability_queries(),
+                resolver=_damage_resolver(7),
+                concentration_break_mod=_no_concentration_break(),
+            )
+            assert isinstance(raw, tuple)
+            assert await self._xp(pool, player_id) == 50
+            assert session.combat_state is None
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)

@@ -17,9 +17,10 @@ from system_prompts import COMBAT_SYSTEM_PROMPT
 # the engine's wrap end-condition. The old per-actor resolve_enemy_turn/request_attack
 # verbs are gone — all damage routes through CombatParticipant HP via the packet path.
 #
-# resolve_milestone is intentionally NOT here: combat never awards XP (end_combat hands
-# back to the exploration agent, which calls award_xp), so milestones never resolve in
-# combat. It lives in the exploration agents instead (concern 3c02318dfa99).
+# The `select` verb is intentionally NOT here. Combat DOES award XP now — end_combat grants it
+# party-wide inside its own transaction (M28 story-001), so an L10/15/20 auto-grant applies mid-
+# teardown — but the L5 fork it can surface is only ever RESOLVED after the handoff: end_combat
+# returns the exploration agent in the same breath, and select lives there (concern 3c02318dfa99).
 COMBAT_AGENT_TOOLS = [
     declare_phase,
     resolve_phase,

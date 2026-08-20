@@ -10,7 +10,7 @@ from typing import cast
 import asyncpg
 import redis.asyncio as aioredis
 
-from asset_utils import asset_url, slug_asset_url
+from asset_utils import slug_asset_url
 
 logger = logging.getLogger("divineruin.db")
 
@@ -44,6 +44,49 @@ _pool_lock = asyncio.Lock()
 _redis: aioredis.Redis | None = None
 _redis_lock = asyncio.Lock()
 
+_CONNECT_ATTEMPTS = 3
+_CONNECT_BACKOFF_SECONDS = 0.25  # linear: 0.25s, then 0.5s
+# Per-ATTEMPT connect timeout. asyncpg's own default is 60s, which retrying would
+# have turned into a 3x180s worst case for a black-holed (dropped, not refused) TCP
+# connect — while the warm-up attempt holds _pool_lock and every get_pool() caller
+# queues behind it. 3 x 20s keeps the total at the pre-retry 60s.
+_CONNECT_TIMEOUT_SECONDS = 20
+
+_TRANSIENT_CONNECT_ERRORS = (
+    OSError,  # includes ConnectionError — the "rejected SSL upgrade" case
+    asyncpg.CannotConnectNowError,  # server still starting up
+    asyncpg.TooManyConnectionsError,  # momentary connection-slot exhaustion
+)
+
+
+async def _connect_with_retry(*args: object, **kwargs: object) -> asyncpg.Connection:
+    """Connect hook for asyncpg's pool with bounded retry on transient setup errors.
+
+    Passed as create_pool(connect=...) so every connection the pool opens routes
+    through the retry: the min_size warm-up AND each later acquire-time
+    connection (asyncpg's Pool._get_new_connection always calls this hook).
+    Retrying around the create_pool() call instead would only cover startup.
+
+    Each attempt is bounded by _CONNECT_TIMEOUT_SECONDS (setdefault, so an explicit
+    caller timeout still wins) — without it, retrying would multiply asyncpg's 60s
+    default into a 180s hang on a black-holed connect.
+    """
+    for attempt in range(_CONNECT_ATTEMPTS):
+        try:
+            kwargs.setdefault("timeout", _CONNECT_TIMEOUT_SECONDS)
+            return await asyncpg.connect(*args, **kwargs)
+        except _TRANSIENT_CONNECT_ERRORS as e:
+            if attempt >= _CONNECT_ATTEMPTS - 1:
+                raise
+            logger.warning(
+                "Transient DB connect error on attempt %d/%d: %s",
+                attempt + 1,
+                _CONNECT_ATTEMPTS,
+                e,
+            )
+            await asyncio.sleep(_CONNECT_BACKOFF_SECONDS * (attempt + 1))
+    raise AssertionError("unreachable")
+
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
@@ -55,6 +98,7 @@ async def get_pool() -> asyncpg.Pool:
                 os.environ["DATABASE_URL"],
                 min_size=2,
                 max_size=5,
+                connect=_connect_with_retry,
             )
         return _pool
 
@@ -110,21 +154,6 @@ async def _cache_set(key: str, value: str) -> None:
         await r.set(key, value, ex=CACHE_TTL)
     except Exception:
         logger.warning("Redis write failed for key %s", key)
-
-
-# --- Content queries (cached) ---
-
-
-def _compute_item_image_url(item_data: dict) -> str | None:
-    """Compute deterministic image URL for an item with art_template."""
-    art = item_data.get("art_template")
-    if not art or not isinstance(art, dict):
-        return None
-    template_id = art.get("template_id")
-    template_vars = art.get("vars", {})
-    if not template_id:
-        return None
-    return asset_url(template_id, template_vars)
 
 
 # --- State mutations ---

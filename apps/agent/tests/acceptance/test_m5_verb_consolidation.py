@@ -98,6 +98,12 @@ REMOVED_ACTIVITY_TOOLS = frozenset(
 # wrappers). Guarded the same way as the other folds.
 REMOVED_AUDIO_TOOLS = frozenset({"play_sound", "set_music_state"})
 
+# M28 story-003: award_xp/award_divine_favor torn out as LLM tools. XP and divine favor are
+# granted by the combat-exit and quest-completion Resolves (_award_xp_core /
+# _award_divine_favor_core), so no agent may hold a verb that grants a reward by LLM judgement —
+# a second grant path is a second rule waiting to drift from the first.
+REMOVED_PROGRESSION_TOOLS = frozenset({"award_xp", "award_divine_favor"})
+
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
 AGENT_TOOL_LISTS = [
@@ -147,6 +153,7 @@ def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
         | REMOVED_CAPABILITY_TOOLS
         | REMOVED_ACTIVITY_TOOLS
         | REMOVED_AUDIO_TOOLS
+        | REMOVED_PROGRESSION_TOOLS
     ) & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 

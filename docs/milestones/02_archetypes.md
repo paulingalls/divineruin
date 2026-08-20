@@ -141,7 +141,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - [x] Client displays specialization choice UI when L5 milestone triggers
 - [x] Unit tests verify milestone grants at each tier for at least 3 different archetypes
 
-> **Status (mostly shipped):** Milestone entries at 5/10/15/20, the L5 specialization fork (exactly 2 options for non-patron archetypes, surfaced as a `SPECIALIZATION_CHOICE` event and persisted immutably by the `select` verb — `resolve_milestone` was superseded by the `award_xp` auto-grant chokepoint + `select`), L10 auto-grant Extra Attack, and the mobile `specialization-overlay.tsx` are delivered and tested (unit tests + `tests/acceptance/test_milestone_progression.py`, mobile `specialization-choice.test.ts`). AC5's "legendary companion unlock" half is not implemented — L20 content grants only a capstone ability — left unchecked.
+> **Status (mostly shipped):** Milestone entries at 5/10/15/20, the L5 specialization fork (exactly 2 options for non-patron archetypes, surfaced as a `SPECIALIZATION_CHOICE` event and persisted immutably by the `select` verb — `resolve_milestone` was superseded by the `award_xp` auto-grant chokepoint + `select`; M28 story-003 then removed the `award_xp` tool itself, leaving that chokepoint as the `_award_xp_core` Resolve), L10 auto-grant Extra Attack, and the mobile `specialization-overlay.tsx` are delivered and tested (unit tests + `tests/acceptance/test_milestone_progression.py`, mobile `specialization-choice.test.ts`). AC5's "legendary companion unlock" half is not implemented — L20 content grants only a capstone ability — left unchecked.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Milestone Progression*

@@ -7,7 +7,6 @@ from combat_turn import declare_phase, resolve_phase
 from exploration_agent import EXPLORATION_TOOLS
 from mode_tools import enter_mode
 from movement_tools import move_player
-from progression_tools import award_xp
 from query_tools import query_info
 from quest_tools import update_quest
 from scene_tools import enter_location
@@ -16,10 +15,15 @@ from session_tools import end_session
 
 class TestToolSetCompleteness:
     """The single exploration agent serves every region, so one tool list carries
-    award_xp and end_session for city/wilderness/dungeon alike."""
+    end_session for city/wilderness/dungeon alike."""
 
-    def test_exploration_has_award_xp(self):
-        assert award_xp in EXPLORATION_TOOLS
+    def test_exploration_has_no_award_verbs(self):
+        """M28: XP and divine favor are granted by deterministic Resolves on combat exit and
+        quest completion, never by LLM judgement — so neither verb is registered anywhere.
+        Name-based, so it keeps meaning after the symbols themselves are deleted."""
+        names = {t.__name__ for t in EXPLORATION_TOOLS}
+        assert "award_xp" not in names
+        assert "award_divine_favor" not in names
 
     def test_exploration_has_end_session(self):
         assert end_session in EXPLORATION_TOOLS

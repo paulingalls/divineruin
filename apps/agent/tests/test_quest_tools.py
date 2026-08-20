@@ -137,7 +137,7 @@ async def test_quest_stage_response_surfaces_milestone_grants():
 
 @pytest.mark.asyncio
 async def test_quest_stage_response_surfaces_specialization_fork():
-    # The L5 fork cue reaches the DM in the quest response, symmetric to award_xp.
+    # The L5 fork cue reaches the DM in the quest response, symmetric to the combat-exit response.
     _, _, _, response = await _complete_warrior_quest_stage(level=4, xp=750, xp_reward=300)
     assert response["specialization_fork"] is True
 
@@ -301,3 +301,15 @@ def test_greyvale_completion_authors_accord_reputation():
     final = greyvale["stages"][-1]
     assert final["id"] == "stage_5_return"
     assert "accord_guild_reputation completed_faction_quest" in final["on_complete"]["world_effects"]
+
+
+def test_greyvale_completion_authors_divine_favor():
+    # story-002: the ONLY authored favor grant in the game now that story-003 has deleted the
+    # award_divine_favor tool — unpinned, a content edit could silently make favor ungrantable.
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[3]
+    quests = json.loads((root / "content" / "quests.json").read_text())
+    greyvale = next(q for q in quests if q["id"] == "greyvale_anomaly")
+    final = greyvale["stages"][-1]
+    assert final["on_complete"]["favor"] == 5

@@ -319,6 +319,35 @@ class TestNavigationPromptIncluded:
 # per-region prose is asserted there (TestWarmLayerRegionRegister), not here.
 
 
+def _registered_tool_descriptions() -> dict[str, str]:
+    """Every registered tool's description, per agent, joined into one blob.
+
+    Tool docstrings are the OTHER half of the surface the LLM reads to decide what to call — the
+    system prompts are not the whole of it. A fold that removes a verb has to clear both, and a
+    prompt-only guard reports a fold as verified while the docstrings still cue the dead tool.
+    """
+    from blacksmith_agent import BLACKSMITH_TOOLS
+    from combat_agent import COMBAT_AGENT_TOOLS
+    from creation_agent import CREATION_TOOLS
+    from dispatch_agent import DISPATCH_TOOLS
+    from exploration_agent import EXPLORATION_TOOLS
+    from onboarding_agent import ONBOARDING_TOOLS
+
+    toolsets = {
+        "exploration tools": EXPLORATION_TOOLS,
+        "combat tools": COMBAT_AGENT_TOOLS,
+        "dispatch tools": DISPATCH_TOOLS,
+        "blacksmith tools": BLACKSMITH_TOOLS,
+        "creation tools": CREATION_TOOLS,
+        "onboarding tools": ONBOARDING_TOOLS,
+    }
+    descriptions = {name: "\n".join(t.info.description or "" for t in tools) for name, tools in toolsets.items()}
+    # Fail loud rather than pass vacuously if a toolset stops exposing descriptions.
+    for name, blob in descriptions.items():
+        assert blob.strip(), f"{name} exposed no tool descriptions — the guard below would be vacuous"
+    return descriptions
+
+
 class TestPromptToolConsistency:
     """A gameplay agent's assembled prompt must name a tool only when the agent
     actually holds it — otherwise the DM is told to call an absent tool
@@ -414,6 +443,34 @@ class TestPromptToolConsistency:
         for name, prompt in prompts.items():
             for removed in ("play_sound", "set_music_state"):
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
+
+    def test_reward_tool_fold_consistency(self):
+        """M28 story-003: award_xp/award_divine_favor were torn out as LLM tools — XP and
+        divine favor are granted by the combat-exit and quest-completion Resolves instead.
+
+        The system prompts never named either verb, so scanning them alone was green on arrival
+        and would have stayed green through the exact regression it claims to guard: the
+        instruction M28 actually deleted lived in a TOOL DOCSTRING (end_combat's "call award_xp
+        separately with the returned total"), and docstrings are the other half of the surface the
+        LLM reads. So every REGISTERED tool's description is scanned too — restore that sentence
+        and the DM emits a call to a tool no agent holds, erroring out the combat-exit turn.
+        """
+        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+
+        prompts = {
+            "exploration": build_system_prompt("loc"),
+            "combat": COMBAT_SYSTEM_PROMPT,
+            "training": DISPATCH_SYSTEM_PROMPT,
+            "onboarding": ONBOARDING_SYSTEM_PROMPT,
+        }
+        for name, prompt in prompts.items():
+            for removed in ("award_xp", "award_divine_favor"):
+                assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
+
+        for agent_name, docstring in _registered_tool_descriptions().items():
+            for removed in ("award_xp", "award_divine_favor"):
+                assert removed not in docstring, f"{agent_name} still names removed tool {removed}"
 
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend

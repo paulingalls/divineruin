@@ -17,31 +17,6 @@ Expo Client (TS) ◄──► Bun/TS REST API ◄──► PostgreSQL + Valkey �
 
 Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Valkey (Redis-protocol) is the shared state layer.
 
-## Monorepo
-
-```
-divine-ruin/
-├── docs/                    # Design docs (read-only reference)
-├── apps/
-│   ├── agent/               # Python — DM agent, background process, rules engine
-│   │   ├── tests/
-│   │   └── pyproject.toml
-│   ├── server/              # Bun/TS — REST API, auth, async, notifications
-│   │   └── src/
-│   ├── mobile/              # Expo (TS) — mobile app
-│   │   └── src/
-│   │       ├── app/         # expo-router screens
-│   │       ├── components/
-│   │       ├── hooks/
-│   │       └── stores/      # zustand
-│   └── audio/               # Audio assets (empty, future use)
-├── packages/
-│   └── shared/              # Shared TS types/schemas
-│       └── src/entities/
-├── content/                 # JSON entity files for DB seeding
-└── docker-compose.yml
-```
-
 ## Language Rules
 
 ### TypeScript / Bun (apps/server/, apps/mobile/, packages/shared/)
@@ -53,8 +28,6 @@ Use Bun exclusively — not Node.js. `bun <file>`, `bun test`, `bun install`, `b
 ### Python (apps/agent/)
 
 Python 3.11+, `pyproject.toml`. **uv** for all package management (not pip/poetry/conda): `uv sync`, `uv add`, `uv run`, `uv lock`. All async with `asyncio`. Type hints on all functions. `asyncpg` for PostgreSQL, `redis.asyncio` for Redis.
-
-LiveKit plugins: `livekit-plugins-anthropic`, `livekit-plugins-deepgram`, `livekit-plugins-inworld`, `livekit-plugins-silero`, `livekit-plugins-turn-detector`
 
 ### Shared Data
 
@@ -103,10 +76,6 @@ Rules engine must be exhaustively tested (pure functions, deterministic).
 
 **Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`, ~6.5s), not a bare `uv run pytest -m "not acceptance"` (serial, ~3x slower).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop (sub-2s); use the script for any full-lane check so you exercise the same command CI and the pre-push gate use.
 
-**Python test lanes (placement by directory):**
-- **Fast lane** — everything under `apps/agent/tests/` *except* `tests/acceptance/`. Run by `test:python` / `test:all` (`pytest -m "not acceptance"`). Holds pure-logic tests **and** simple real-PG tests against the shared dev DB at `:55432` — `tests/conftest.py` auto-starts docker compose if it's down (fail-loud if Docker is absent; tests are never silently skipped). Real-PG tests here isolate via unique keys + cleanup (see the `_db_lifecycle` / `dev_db_pool` pattern). Put a real-PG test here when it's a single-table / single-concern round-trip.
-- **Acceptance lane** — `apps/agent/tests/acceptance/` only (marker auto-applied by directory). Run by `test:acceptance` (pre-push). Per-run **testcontainer** Postgres + LiveKit dev-server. Put a test here when it's a multi-system / LiveKit / end-to-end capstone needing per-run isolation.
-
 ## Settled Decisions
 
 Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey (Redis-protocol; `Bun.redis`/`redis.asyncio` clients + `REDIS_URL` keep their redis names), Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.
@@ -130,4 +99,4 @@ Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey
 
 ## Environment Variables
 
-See `.env.example`. Key vars: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `INWORLD_API_KEY`, `DATABASE_URL`, `REDIS_URL`
+See `.env.example` for the full list.

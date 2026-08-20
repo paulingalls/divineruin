@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
 from sample_fixtures import make_context as _make_context
 
@@ -150,8 +151,7 @@ class TestEndCombatHandoff:
     async def test_end_combat_returns_city_agent(self):
         from combat_end import _end_combat_impl
 
-        mock_mutations = MagicMock()
-        mock_mutations.delete_combat_state = AsyncMock()
+        mock_mutations = combat_end_mutations()
 
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
@@ -192,8 +192,7 @@ class TestEndCombatHandoff:
     async def test_returned_city_agent_has_combat_summary_in_chat_ctx(self):
         from combat_end import _end_combat_impl
 
-        mock_mutations = MagicMock()
-        mock_mutations.delete_combat_state = AsyncMock()
+        mock_mutations = combat_end_mutations()
 
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
@@ -234,8 +233,7 @@ class TestEndCombatHandoff:
     async def test_session_data_cleared_after_combat(self):
         from combat_end import _end_combat_impl
 
-        mock_mutations = MagicMock()
-        mock_mutations.delete_combat_state = AsyncMock()
+        mock_mutations = combat_end_mutations()
 
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -270,8 +268,7 @@ class TestDynamicEndCombat:
         from combat_end import _end_combat_impl
         from exploration_agent import ExplorationAgent
 
-        mock_mutations = MagicMock()
-        mock_mutations.delete_combat_state = AsyncMock()
+        mock_mutations = combat_end_mutations()
 
         ctx = MagicMock()
         session = SessionData(
@@ -315,8 +312,7 @@ class TestDynamicEndCombat:
         from combat_end import _end_combat_impl
         from exploration_agent import ExplorationAgent
 
-        mock_mutations = MagicMock()
-        mock_mutations.delete_combat_state = AsyncMock()
+        mock_mutations = combat_end_mutations()
 
         ctx = MagicMock()
         session = SessionData(

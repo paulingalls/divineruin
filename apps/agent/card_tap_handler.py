@@ -4,7 +4,8 @@ CardTapHandler narrates a tapped creation card during character creation.
 SpecializationTapHandler resolves a tapped L5 specialization during gameplay by
 driving the DM to call the select verb with the chosen id. Both share
 _PlayerHintsListener — the data-channel subscription, topic filter, cooldown, and
-JSON parse — and implement _handle for their own event type.
+JSON parse, and the LiveKit-verified sender — and implement _handle for their own
+event type.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ import event_types as E
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
-from session_data import SessionData
+from session_data import SessionData, SpecializationTap
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.card_tap")
@@ -74,6 +75,11 @@ def build_specialization_instruction(milestone_id: str, specialization_id: str) 
     The DM calls the select verb with the pending choice_id (the milestone id) and the
     chosen option — select is the gatekeeper that validates against the fork options and
     persists immutably — then voices it.
+
+    Deliberately carries NO player identity (decision 5829eecd76eb). WHOSE fork this is
+    travels out-of-band on SessionData.pending_specialization_tap, because in the tie the
+    identity exists to break, a model that mis-copied an id into the argument would pass
+    every one of select's checks and permanently write one member's choice onto another's.
     """
     return (
         f"The player tapped to choose the {specialization_id} specialization. "
@@ -119,18 +125,29 @@ class _PlayerHintsListener:
             logger.warning("Invalid player_hints payload")
             return
 
-        if self._handle(payload):
+        # DataPacket.participant.identity IS the player_id — participant_lifecycle compares
+        # it directly — so the LiveKit-verified sender needs no mapping to be usable. Empty
+        # when the packet carries no participant; subclasses that need it validate it.
+        sender = data.participant.identity if data.participant else ""
+        if self._handle(payload, sender):
             self._last_hint_time = now
 
-    def _handle(self, payload: dict) -> bool:
-        """Dispatch a parsed payload; return True iff a reply was triggered."""
+    def _handle(self, payload: dict, sender: str) -> bool:
+        """Dispatch a parsed payload; return True iff a reply was triggered.
+
+        ``sender`` is the LiveKit-verified identity of the participant that published the
+        packet, or "" if the packet had none.
+        """
         raise NotImplementedError
 
 
 class CardTapHandler(_PlayerHintsListener):
     """Narrates a tapped creation card during character creation."""
 
-    def _handle(self, payload: dict) -> bool:
+    def _handle(self, payload: dict, sender: str) -> bool:
+        # ``sender`` is unused here by construction: character creation is single-player —
+        # the party is the one PC being created, so there is nobody else a tap could belong
+        # to. Only the gameplay L5 fork (below) has an owner worth recording.
         if not self._userdata.in_creation:
             return False
         if payload.get("type") != E.CREATION_CARD_TAP:
@@ -164,9 +181,13 @@ class SpecializationTapHandler(_PlayerHintsListener):
 
     Shares the base HINT_COOLDOWN_S debounce intentionally: the L5 choice is a one-shot
     permanent pick, so the 2s window only suppresses accidental double-taps.
+
+    Rewards are party-wide (M28 story-001), so the tapper is not necessarily the primary.
+    The tap records its verified sender on SessionData for select to consume, which is what
+    keeps a teammate's choice off the primary's write-once row (M28 story-008).
     """
 
-    def _handle(self, payload: dict) -> bool:
+    def _handle(self, payload: dict, sender: str) -> bool:
         if payload.get("type") != E.SPECIALIZATION_CHOICE_TAP:
             return False
         milestone_id = payload.get("milestone_id", "")
@@ -179,6 +200,24 @@ class SpecializationTapHandler(_PlayerHintsListener):
         except ToolError:
             logger.warning("Specialization tap dropped: invalid ids (%r / %r)", milestone_id, specialization_id)
             return False
+
+        # Record the verified sender as a one-shot ticket for select to consume, so a
+        # non-primary member's fork resolves onto THEIR row (M28 story-008). Its OWN try:
+        # a sender we cannot validate must cost only the ticket, never the tap — with no
+        # ticket select falls back to the sole-claimant party scan, which is exactly right
+        # for the solo session an identity-less tap comes from. Sharing the guard above
+        # would return False and swallow the tap entirely.
+        try:
+            _validate_id(sender, "sender")
+            ticket: SpecializationTap | None = SpecializationTap(sender, milestone_id, specialization_id)
+        except ToolError:
+            logger.warning("Specialization tap: unusable sender %r; select will fall back to the party scan", sender)
+            ticket = None
+        # Always replace, never leave an earlier tap's ticket standing: this tap is the most
+        # recent statement of who is choosing, and a stale one could resolve THIS tap onto
+        # the earlier tapper's write-once row. Set before generate_reply — select consumes
+        # it during the reply this triggers.
+        self._userdata.pending_specialization_tap = ticket
 
         logger.info("Specialization tap: %s -> %s", milestone_id, specialization_id)
         self._session.generate_reply(

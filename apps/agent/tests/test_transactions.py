@@ -8,7 +8,6 @@ import pytest
 
 from inventory_tools import _transact_impl
 from movement_tools import _move_player_impl
-from progression_tools import _award_xp_impl
 from quest_tools import _update_quest_impl
 from session_data import SessionData
 
@@ -85,26 +84,6 @@ def _make_failing_db():
     mock_db = MagicMock()
     mock_db.transaction = _failing_transaction
     return mock_db
-
-
-# --- award_xp: no events on txn failure ---
-
-
-class TestAwardXpRollback:
-    @pytest.mark.asyncio
-    async def test_no_events_on_txn_failure(self):
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        with pytest.raises(RuntimeError, match="DB connection lost"):
-            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
-        room.local_participant.publish_data.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_no_session_event_on_txn_failure(self):
-        ctx = _make_context()
-        with pytest.raises(RuntimeError):
-            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
-        assert len(ctx.userdata.recent_events) == 0
 
 
 # --- move_player: session.location_id unchanged on DB failure ---
@@ -197,3 +176,38 @@ class TestUpdateQuestAtomicity:
                 content=mock_content,
             )
         assert len(ctx.userdata.recent_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_no_session_xp_metric_when_the_stage_rolls_back(self):
+        """The XP pass RAN and returned a grant, then the stage failed: session_xp_earned must
+        stay at zero, because the database holds no XP either. Distinct from the cases above,
+        which fail before the transaction opens and so never reach the grant at all."""
+
+        @asynccontextmanager
+        async def _txn():
+            yield MagicMock()
+
+        mock_db = MagicMock()
+        mock_db.transaction = _txn
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=SAMPLE_QUEST)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_mutations.set_player_quest = AsyncMock(side_effect=RuntimeError("DB write failed"))
+
+        ctx = _make_context()
+        with pytest.raises(RuntimeError, match="DB write failed"):
+            await _update_quest_impl(
+                ctx,
+                quest_id="greyvale_anomaly",
+                new_stage_id=1,
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+        assert ctx.userdata.session_xp_earned == 0

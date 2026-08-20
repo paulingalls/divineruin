@@ -215,8 +215,8 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
     <button class="btn" onclick="send({type:'item_acquired',name:'Hollow-Touched Compass',description:'The needle drifts toward sources of corruption.',rarity:'uncommon',stats:{corruption_sense:true},image_url:'/api/assets/images/placeholder'})">Uncommon Item (with art)</button>
     <button class="btn" onclick="send({type:'item_acquired',name:'Veilglass Amulet',description:'A shard of crystallized boundary between worlds.',rarity:'rare',stats:{resist_hollow:'+2',perception:'+1'},image_url:'/api/assets/images/placeholder'})">Rare Item (with art)</button>
     <button class="btn" onclick="send({type:'item_acquired',name:'Sundered Edge of Kaelthos',description:'A fragment of a god-forged blade, thrumming with divine wrath.',rarity:'legendary',stats:{damage:'2d8+3',divine_smite:true},image_url:'/api/assets/images/placeholder'})">Legendary Item (with art)</button>
-    <button class="btn" onclick="send({type:'xp_awarded',new_xp:325,new_level:4,xp_gained:75,level_up:false})">XP +75 (no level-up)</button>
-    <button class="btn" onclick="send({type:'xp_awarded',new_xp:1000,new_level:5,xp_gained:250,level_up:true})">Level Up! (xp +250, level 5)</button>
+    <button class="btn" onclick="send({type:'xp_awarded',new_xp:325,new_level:4,amount:75,leveled_up:false})">XP +75 (no level-up)</button>
+    <button class="btn" onclick="send({type:'xp_awarded',new_xp:1000,new_level:5,amount:250,leveled_up:true})">Level Up! (xp +250, level 5)</button>
   </div>
 </div>
 

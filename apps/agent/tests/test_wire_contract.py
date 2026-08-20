@@ -14,7 +14,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
 
+import combat_events
+import combat_rewards
 import db_session_queries
 import event_types
 import hollow_echo
@@ -22,6 +25,7 @@ import hollow_echo_events
 import resonance_events
 import veil_ward_events
 from hollow_echo import HollowEchoResult
+from progression_tools import _award_divine_favor_core, _award_xp_core
 from spells import Spell
 from veil_ward import WardScope
 
@@ -45,6 +49,10 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["resonance_changed"]["type"] == event_types.RESONANCE_CHANGED
     assert FIXTURE["events"]["hollow_echo_result"]["type"] == event_types.HOLLOW_ECHO_RESULT
     assert FIXTURE["events"]["veil_ward_changed"]["type"] == event_types.VEIL_WARD_CHANGED
+    assert FIXTURE["events"]["xp_awarded"]["type"] == event_types.XP_AWARDED
+    assert FIXTURE["events"]["specialization_choice"]["type"] == event_types.SPECIALIZATION_CHOICE
+    assert FIXTURE["events"]["divine_favor_changed"]["type"] == event_types.DIVINE_FAVOR_CHANGED
+    assert FIXTURE["events"]["item_acquired"]["type"] == event_types.ITEM_ACQUIRED
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
@@ -98,6 +106,55 @@ def test_veil_ward_fixture_carries_no_caster_id() -> None:
     assert "caster_id" in FIXTURE["events"]["resonance_changed"]
 
 
+async def _core_pending_events() -> dict[str, dict]:
+    """Drive _award_xp_core over the fixture's own award (L3 @600xp + 450 -> L5) and return
+    the buffered {type: payload} it appended. The core buffers rather than publishes (it runs
+    in the caller's transaction), so the wire object is {type, **payload} the same way
+    publish_game_event flat-merges it post-commit."""
+    expected = FIXTURE["events"]["xp_awarded"]
+    player = {**GUILD_PLAYER, "class": "warrior", "level": 3, "xp": expected["new_xp"] - expected["amount"]}
+    mutations = MagicMock()
+    mutations.update_player_xp = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    pending: list[tuple[str, dict]] = []
+    await _award_xp_core(
+        player_id=expected["player_id"],
+        player=player,
+        amount=expected["amount"],
+        reason=expected["reason"],
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        milestones_mod=_milestones_mod_for(_WARRIOR_MILESTONES, "warrior"),
+    )
+    return {event_type: {"type": event_type, **payload} for event_type, payload in pending}
+
+
+@pytest.mark.asyncio
+async def test_xp_awarded_serializes_to_fixture() -> None:
+    # story-001: the mobile handler read xp_gained/level_up while every Python emitter published
+    # amount/leveled_up, so a real award toasted "+0 XP". Both lanes assert this fixture now.
+    # player_id is the RECIPIENT — combat-end grants party-wide, so each client filters on it.
+    wire = await _core_pending_events()
+    assert wire[event_types.XP_AWARDED] == FIXTURE["events"]["xp_awarded"]
+
+
+@pytest.mark.asyncio
+async def test_specialization_choice_serializes_to_fixture() -> None:
+    # The same L5 crossing surfaces the fork cue, stamped with the same recipient so a
+    # non-primary's fork does not pop the choice UI on every client.
+    wire = await _core_pending_events()
+    assert wire[event_types.SPECIALIZATION_CHOICE] == FIXTURE["events"]["specialization_choice"]
+
+
+@pytest.mark.asyncio
+async def test_level_up_carries_the_recipient() -> None:
+    # LEVEL_UP rides the same award; without the stamp a teammate's level-up would be
+    # indistinguishable from the local player's.
+    wire = await _core_pending_events()
+    assert wire[event_types.LEVEL_UP]["player_id"] == FIXTURE["events"]["xp_awarded"]["player_id"]
+
+
 def test_spell_row_builder_matches_fixture() -> None:
     # The session-init spell row (db_session_queries._enrich_spell_row) is the drift point for the
     # blank-tier bug (82fc): the TS parser coerces a missing spell_tier to "". Pin its keys.
@@ -114,3 +171,79 @@ def test_spell_row_builder_matches_fixture() -> None:
     with patch("db_session_queries.spells.get_spell", return_value=spell):
         row = db_session_queries._enrich_spell_row(expected["spell_id"], is_prepared=expected["is_prepared"])
     assert row == expected
+
+
+async def _favor_core_pending_events() -> dict[str, dict]:
+    """Drive _award_divine_favor_core over the fixture's own grant and return the buffered
+    {type: payload}. Like the XP core it buffers rather than publishes, so the wire object is
+    {type, **payload} exactly as publish_game_event flat-merges it post-commit."""
+    expected = FIXTURE["events"]["divine_favor_changed"]
+    activities = MagicMock()
+    activities.get_divine_favor = AsyncMock(
+        return_value={
+            "patron": expected["patron_id"],
+            "level": expected["previous_level"],
+            "max": expected["max"],
+            "last_whisper_level": expected["last_whisper_level"],
+        }
+    )
+    mutations = MagicMock()
+    mutations.update_divine_favor = AsyncMock()
+    pending: list[tuple[str, dict]] = []
+    await _award_divine_favor_core(
+        player_id=expected["player_id"],
+        amount=expected["amount"],
+        reason=expected["reason"],
+        conn=MagicMock(),
+        pending_events=pending,
+        mutations=mutations,
+        activities=activities,
+    )
+    return {event_type: {"type": event_type, **payload} for event_type, payload in pending}
+
+
+@pytest.mark.asyncio
+async def test_divine_favor_changed_serializes_to_fixture() -> None:
+    # story-002: the mobile handler reads `max` for the favor bar's denominator (falling back to
+    # 100) but no Python publisher ever sent it, so the denominator was fabricated on every real
+    # event — the same both-sides-mocked shape as story-001's xp_awarded. player_id is the
+    # RECIPIENT: quest favor is party-wide, so each client filters on it.
+    wire = await _favor_core_pending_events()
+    assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
+
+
+@pytest.mark.asyncio
+async def test_item_acquired_serializes_to_fixture() -> None:
+    """The COMBAT-LOOT path is the one this pins.
+
+    The client's item card is built from name/description/rarity; combat loot published only
+    item_id/quantity/source/player_id, so every drop rendered a blank card while the inventory
+    path (which sends the full shape) looked fine — a second writer against a reader nobody
+    re-checked. Both writers now build the payload with tool_support.build_item_acquired_payload,
+    and this asserts the wire object the combat pass actually emits.
+    """
+    expected = FIXTURE["events"]["item_acquired"]
+    content = MagicMock()
+    content.get_item = AsyncMock(
+        return_value={
+            "id": expected["item_id"],
+            "name": expected["name"],
+            "description": expected["description"],
+            "rarity": expected["rarity"],
+        }
+    )
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    sink = combat_events.EventSink()
+    await combat_rewards.distribute_loot(
+        [{"item_id": expected["item_id"], "quantity": expected["quantity"]}],
+        [expected["player_id"]],
+        primary_id=expected["player_id"],
+        mutations=mutations,
+        content=content,
+        conn=MagicMock(),
+        channel=combat_rewards.RewardChannel(sink=sink, room=None),
+    )
+    captured = [ev for ev in sink.captured if ev.event_type == event_types.ITEM_ACQUIRED]
+    assert len(captured) == 1
+    assert {"type": captured[0].event_type, **captured[0].payload} == expected

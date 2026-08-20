@@ -1,7 +1,15 @@
 import { test, expect, beforeEach } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
-import { HOLLOW_ECHO_RESULT, RESONANCE_CHANGED, VEIL_WARD_CHANGED } from "@/audio/event-types";
+import {
+  DIVINE_FAVOR_CHANGED,
+  HOLLOW_ECHO_RESULT,
+  ITEM_ACQUIRED,
+  RESONANCE_CHANGED,
+  SPECIALIZATION_CHOICE,
+  VEIL_WARD_CHANGED,
+  XP_AWARDED,
+} from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
@@ -25,6 +33,10 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.resonance_changed.type).toBe(RESONANCE_CHANGED);
   expect(EVENTS.hollow_echo_result.type).toBe(HOLLOW_ECHO_RESULT);
   expect(EVENTS.veil_ward_changed.type).toBe(VEIL_WARD_CHANGED);
+  expect(EVENTS.xp_awarded.type).toBe(XP_AWARDED);
+  expect(EVENTS.specialization_choice.type).toBe(SPECIALIZATION_CHOICE);
+  expect(EVENTS.divine_favor_changed.type).toBe(DIVINE_FAVOR_CHANGED);
+  expect(EVENTS.item_acquired.type).toBe(ITEM_ACQUIRED);
 });
 
 test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
@@ -98,6 +110,76 @@ test("resonance_changed for another party member is still filtered out", () => {
   expect(hudStore.getState().resonanceState).toBe(before);
 });
 
+// --- xp_awarded / specialization_choice: the Python key names ARE the contract (story-001) ---
+//
+// The handler read `xp_gained`/`level_up` while every Python emitter published `amount`/
+// `leveled_up`, so a real agent award rendered "+0 XP" and never fired the level-up overlay.
+// Both lanes now assert this fixture, so the next rename goes red instead of silent.
+
+test("xp_awarded fixture drives the character store and the level-up overlay", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  handleGameEvent({ ...EVENTS.xp_awarded });
+  const char = characterStore.getState().character!;
+  expect(char.xp).toBe(EVENTS.xp_awarded.new_xp);
+  expect(char.level).toBe(EVENTS.xp_awarded.new_level);
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("level_up");
+  expect(overlay.payload.newLevel).toBe(EVENTS.xp_awarded.new_level);
+  expect(overlay.payload.xpGained).toBe(EVENTS.xp_awarded.amount);
+});
+
+test("xp_awarded without a level-up toasts the fixture's real amount", () => {
+  // The +0 XP bug lived here: the handler defaulted a missing `xp_gained` to 0, so the
+  // toast rendered "+0 XP" for every real award. Pin the toast to `amount`.
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
+  handleGameEvent({ ...EVENTS.xp_awarded, leveled_up: false, specialization_fork: false });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("xp_toast");
+  expect(overlay.payload.xpGained).toBe(EVENTS.xp_awarded.amount);
+});
+
+test("xp_awarded for another party member never touches the local character", () => {
+  // Party-wide XP (story-001): every client sees every member's award. Without the
+  // player_id gate a teammate's XP would overwrite this client's own bar.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.xp_awarded });
+  expect(characterStore.getState().character!.xp).toBe(SAMPLE_CHARACTER.xp);
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("xp_awarded with no player_id still counts as local (back-compat)", () => {
+  // The gate deliberately admits a non-string id: emitters that predate the stamp
+  // (and the debug/e2e fakes) must keep working.
+  const { player_id: _dropped, ...noRecipient } = EVENTS.xp_awarded;
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...noRecipient });
+  expect(characterStore.getState().character!.xp).toBe(EVENTS.xp_awarded.new_xp);
+});
+
+test("specialization_choice fixture sets the L5 fork choice state", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.specialization_choice.player_id });
+  handleGameEvent({ ...EVENTS.specialization_choice });
+  const choice = hudStore.getState().specializationChoice!;
+  expect(choice.milestoneId).toBe(EVENTS.specialization_choice.milestone_id);
+  expect(choice.options.map((o) => o.id)).toEqual(
+    EVENTS.specialization_choice.options.map((o) => o.id),
+  );
+});
+
+test("specialization_choice for another party member does NOT pop the local fork UI", () => {
+  // A non-primary's L5 fork must not hijack every client's overlay — the tap would
+  // resolve someone else's milestone.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.specialization_choice });
+  expect(hudStore.getState().specializationChoice).toBeNull();
+});
+
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {
   const [row] = parseSpellRows([SPELL_ROW]);
   expect(row.spell_id).toBe(SPELL_ROW.spell_id);
@@ -124,4 +206,60 @@ test("a spell row missing spell_tier coerces to '' (the silent blank 82fc guards
     },
   ]);
   expect(row.spell_tier).toBe("");
+});
+
+// --- divine_favor_changed: the favor bar's denominator and its recipient (story-002) ---
+//
+// The handler reads `max` for the bar's denominator, falling back to 100 — but no Python
+// publisher ever sent it, so the scale was fabricated on every real event. Same both-sides-
+// mocked shape as xp_awarded above: each lane's own tests passed a payload the other never
+// produced. Quest favor is party-wide, so the fixture also carries the recipient.
+
+test("divine_favor_changed fixture drives the favor level AND its real max", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.divine_favor_changed.player_id });
+  handleGameEvent({ ...EVENTS.divine_favor_changed });
+  expect(characterStore.getState().divineFavorLevel).toBe(EVENTS.divine_favor_changed.new_level);
+  expect(characterStore.getState().divineFavorMax).toBe(EVENTS.divine_favor_changed.max);
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("divine_favor");
+  expect(overlay.payload.patronId).toBe(EVENTS.divine_favor_changed.patron_id);
+  expect(overlay.payload.amount).toBe(EVENTS.divine_favor_changed.amount);
+});
+
+test("a teammate's divine_favor_changed does NOT move the local favor bar", () => {
+  // Party-wide favor publishes one event per member. Without the recipient gate, a teammate's
+  // grant would overwrite the local player's bar and pop their patron's toast.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "player_local" });
+  const before = characterStore.getState().divineFavorLevel;
+  handleGameEvent({ ...EVENTS.divine_favor_changed, player_id: "player_teammate" });
+  expect(characterStore.getState().divineFavorLevel).toBe(before);
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+// --- item_acquired: the item card's three fields (combat loot vs inventory) ---
+//
+// The overlay renders name/description/rarity and nothing else. The combat-loot pass published
+// only item_id/quantity/source/player_id, so every drop drew a blank card while the inventory
+// path looked fine — two writers, one reader, and each lane's own tests mocked its own half.
+// Both writers now build the payload from one shared builder, and the fixture is what both
+// lanes assert against.
+
+test("item_acquired fixture fills the item card, not a blank overlay", () => {
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.item_acquired.player_id });
+  handleGameEvent({ ...EVENTS.item_acquired });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.type).toBe("item_acquired");
+  expect(overlay.payload.name).toBe(EVENTS.item_acquired.name);
+  expect(overlay.payload.description).toBe(EVENTS.item_acquired.description);
+  expect(overlay.payload.rarity).toBe(EVENTS.item_acquired.rarity);
+});
+
+test("a teammate's item_acquired does NOT pop the local item card", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "player_local" });
+  handleGameEvent({ ...EVENTS.item_acquired, player_id: "player_teammate" });
+  expect(hudStore.getState().overlays).toHaveLength(0);
 });

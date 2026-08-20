@@ -50,12 +50,13 @@ export const DIVINE_FAVOR_CHANGED = "divine_favor_changed" as const;
 export const PLAYER_PORTRAIT_READY = "player_portrait_ready" as const;
 
 // Inventory & quests
-// ITEM_ACQUIRED combat-loot packet (M20 story-001) — mirrors apps/agent/event_types.py. Gains
-// `player_id`, the recipient party member a round-robinned drop was granted to, mirroring
-// CURRENCY_GAINED's player_id. game-event-handler.ts filters the overlay/SFX to the local
-// recipient via isEventForLocalPlayer; a non-combat emitter that omits player_id still fires
-// (back-compat, same convention as RESONANCE_CHANGED's caster_id default; VEIL_WARD_CHANGED
-// carries no caster_id at all — it is scope-owned, see below).
+// ITEM_ACQUIRED — mirrors apps/agent/event_types.py. Carries `player_id`, the recipient a drop
+// was granted to (round-robinned across the party on combat loot), mirroring CURRENCY_GAINED.
+// game-event-handler.ts filters the overlay/SFX to the local recipient via isEventForLocalPlayer;
+// a payload that omits player_id is still treated as local (same convention as RESONANCE_CHANGED's
+// caster_id default; VEIL_WARD_CHANGED carries no caster_id at all — it is scope-owned, see below).
+// The overlay's fields (name/description/rarity) come from one shared Python builder — see
+// tool_support.build_item_acquired_payload and the event_wire.json fixture both lanes pin.
 export const ITEM_ACQUIRED = "item_acquired" as const;
 export const INVENTORY_UPDATED = "inventory_updated" as const;
 export const QUEST_UPDATE = "quest_update" as const;
@@ -102,7 +103,7 @@ export const SPECIALIZATION_CHOICE = "specialization_choice" as const;
 
 // Client → Agent hints
 export const CREATION_CARD_TAP = "creation_card_tap" as const;
-// M2.3: the player tapped an L5 specialization path on the HUD overlay (story-005).
-// Agent-side consumption (hint -> resolve_milestone) is a future wire-up; the DM voice
-// path already resolves via story-004's resolve_milestone tool.
+// M2.3: the player tapped an L5 specialization path on the HUD overlay (M2.3 story-005).
+// Agent-side consumption of this hint is a future wire-up; the DM voice path already
+// resolves via the generic `select` verb (M4 story-004 removed resolve_milestone).
 export const SPECIALIZATION_CHOICE_TAP = "specialization_choice_tap" as const;

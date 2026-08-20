@@ -1,7 +1,8 @@
 """Test-session DB lifecycle: make `pytest` self-heal when docker isn't up.
 
-Many non-acceptance tests open a real connection to the docker-compose Postgres
-at :55432 (the canonical dev DB). When that DB isn't running, a bare `pytest`
+Many non-acceptance tests open a real connection to this checkout's
+docker-compose Postgres (see `resolve_database_url` for how its DSN is found —
+the primary checkout's is :55432). When that DB isn't running, a bare `pytest`
 fails with connection errors. This helper, driven by conftest's
 pytest_sessionstart/sessionfinish hooks (gated to the xdist controller),
 detects reachability and — only if the DB is down — runs `docker compose up -d`
@@ -52,10 +53,54 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _COMPOSE_FILE = _REPO_ROOT / "docker-compose.yml"
 
 # Mirrors scripts/seed_content.py's default so the helper works even when
-# DATABASE_URL isn't exported into the pytest environment.
+# DATABASE_URL isn't exported into the pytest environment. Last resort ONLY:
+# it names the PRIMARY checkout's stack, so a worktree reaching it is a bug
+# (see resolve_database_url).
 _DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
 
 _READY_TIMEOUT_SECONDS = 60
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    """Parse a `KEY=VALUE` .env into a dict; a missing/unreadable file reads empty.
+
+    Deliberately minimal — no interpolation, no `export ` prefixes, no multi-line
+    values, because this repo's .env has none. Surrounding quotes ARE stripped:
+    values here are quote-wrapped, and a DSN carrying a literal `"` fails to parse.
+    """
+    values: dict[str, str] = {}
+    try:
+        text = path.read_text()
+    except OSError:
+        return values
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, _, raw = stripped.partition("=")
+        value = raw.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
+def resolve_database_url() -> str:
+    """The DSN this test run should use, in strict precedence order.
+
+    1. `DATABASE_URL` in the environment — CI exports it, and the acceptance lane's
+       testcontainer fixture assigns it, so the environment must always win.
+    2. Repo-root `.env` — `uv run` passes ambient env through but never LOADS .env
+       (Bun does, which is why only non-bun invocations broke). Without this, a
+       bare `cd apps/agent && uv run pytest` inside a git worktree fell through to
+       the default below and read AND WROTE the PRIMARY checkout's database.
+    3. `_DEFAULT_DATABASE_URL` — a fresh clone with no .env yet.
+    """
+    from_environment = os.environ.get("DATABASE_URL")
+    if from_environment:
+        return from_environment
+    from_env_file = _read_env_file(_REPO_ROOT / ".env").get("DATABASE_URL")
+    return from_env_file or _DEFAULT_DATABASE_URL
 
 
 def parse_host_port(database_url: str) -> tuple[str, int]:
@@ -182,7 +227,7 @@ def _start_compose(host: str, port: int, user: str) -> None:
     raise RuntimeError(f"Postgres at {host}:{port} did not accept queries within {_READY_TIMEOUT_SECONDS}s")
 
 
-def ensure_db_up() -> bool:
+def ensure_db_up(database_url: str | None = None) -> bool:
     """Ensure the dev Postgres accepts queries, starting docker compose if not.
 
     Returns True iff THIS call ran `docker compose up`. The caller still
@@ -191,8 +236,12 @@ def ensure_db_up() -> bool:
     file, keyed on host:port — every concurrent `pytest` run sharing the one
     physical dev DB container joins the same count, so a run that only joined
     an already-up DB never tears it down under a run still using it.
+
+    Pass `database_url` to pin the DSN (and so the state file) for the whole
+    session; omit it to resolve fresh. See stop_if_started for why the caller
+    resolves once and hands the same DSN to both.
     """
-    database_url = os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL)
+    database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
@@ -216,19 +265,24 @@ def ensure_db_up() -> bool:
         return True
 
 
-def stop_if_started(started: bool) -> None:
+def stop_if_started(started: bool, database_url: str | None = None) -> None:
     """Down the compose services once the shared refcount hits zero.
 
-    `started` is this call's own start flag, kept because conftest.py (out of
-    this module's file domain) passes it and its signature must not change.
-    It's used only as a fallback when no state file exists at all — e.g. a
-    caller that bypasses ensure_db_up entirely. Otherwise the real decision is
-    the cross-process refcount: whichever concurrent run finishes LAST does
-    the teardown, even if that run itself didn't start the DB (`started` may
-    be False there). A DB a developer started by hand (`harness_started`
-    False in the state file) is never torn down, at any count.
+    `started` is this call's own start flag. It's used only as a fallback when
+    no state file exists at all — e.g. a caller that bypasses ensure_db_up
+    entirely. Otherwise the real decision is the cross-process refcount:
+    whichever concurrent run finishes LAST does the teardown, even if that run
+    itself didn't start the DB (`started` may be False there). A DB a developer
+    started by hand (`harness_started` False in the state file) is never torn
+    down, at any count.
+
+    `database_url` must be the SAME DSN ensure_db_up was given, so both ends key
+    the same host:port state file. Re-resolving here would read whatever
+    os.environ holds at session END, and the acceptance lane's bdd fixture
+    assigns DATABASE_URL to its testcontainer without restoring it — which would
+    decrement a state file the dev DB's count never went into.
     """
-    database_url = os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL)
+    database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
 

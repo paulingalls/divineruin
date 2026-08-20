@@ -139,12 +139,22 @@ def get_archetype_chassis(archetype_id: str) -> Chassis:
     return _archetypes[archetype_id]
 
 
+def is_known(archetype_id: str) -> bool:
+    """True if ``archetype_id`` is a chassis the loaded registry can actually build from.
+
+    Membership only: with an UNLOADED registry every id reads False. A caller whose
+    "unknown" branch skips work must therefore gate on ``is_loaded()`` too, or a startup
+    failure turns into every id being silently treated as bad (combat_rewards.distribute_xp).
+    """
+    return archetype_id in _archetypes
+
+
 def is_loaded() -> bool:
     """True once the chassis has been populated (startup load or test seam).
 
     Lets an entry point load once per process and skip redundant DB reads —
-    both the async worker AND the LiveKit agent use the chassis (the agent via
-    award_xp/update_quest -> calculate_max_hp), so each must load it at startup.
+    both the async worker AND the LiveKit agent use the chassis (the agent via the
+    XP Resolve / update_quest -> calculate_max_hp), so each must load it at startup.
     """
     return bool(_archetypes)
 

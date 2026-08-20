@@ -5,6 +5,14 @@ Status: **Accepted** (2026-06-02) — design session, free branch
 migration milestones (see `docs/agent_verbs_and_stages.md` §11).
 Evolves: **ADR 0004** (agent-tool-scaling). SMM decision: `verbs-stages-architecture`.
 
+> **Implementation note (M28 story-003).** The reward half of this decision is now fully
+> realized: `award_xp` and `award_divine_favor` were deleted from the tool surface, and XP
+> and divine favor are granted only by `_award_xp_core` / `_award_divine_favor_core` inside
+> the Acts that earn them. Exploration holds 14 verbs against `MAX_STRICT_TOOLS = 20`.
+> **The body of this ADR is left as written** — it is a record of the reasoning at decision
+> time, and its present-tense descriptions of `award_xp` describe the world it was deciding
+> about, not the world today.
+
 ## Decision
 
 **Draw the agent/tool boundary by operation kind, not by feature.** Every operation is

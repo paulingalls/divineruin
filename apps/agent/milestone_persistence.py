@@ -6,9 +6,9 @@ same rationale as ability_persistence.py (decision ability-persistence-module).
 Milestone grant markers (e.g. the L10 extra_attack flag) reuse the existing
 db_mutations.set_player_flag, so they need no function here.
 
-set_player_specialization is write-once at the call site: resolve_milestone
-(milestone_tools.py) reads players.data.specialization under a FOR UPDATE lock and
-rejects a second L5 resolution before calling this, so the choice is immutable.
+set_player_specialization is write-once at the call site: the ``select`` verb
+(_select_impl in choice_tools.py) reads players.data.specialization under a FOR UPDATE lock
+and rejects a second L5 resolution before calling this, so the choice is immutable.
 """
 
 import json

@@ -18,8 +18,8 @@ def _milestone(kind: MilestoneKind, grant: Grant | None) -> Milestone:
 
 
 class TestApplyMilestoneGrant:
-    """Direct unit tests for the shared grant-write primitive, called by award_xp's
-    auto-grant loop (_award_xp_core)."""
+    """Direct unit tests for the shared grant-write primitive, called by
+    _award_xp_core's auto-grant loop."""
 
     @pytest.mark.asyncio
     async def test_flag_grant_writes_flag_and_returns_true(self):

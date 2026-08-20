@@ -42,10 +42,9 @@ test.describe("Accessibility (apps/web, WCAG 2.1 AA)", () => {
     const blocking = results.violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",
     );
-    expect(
-      blocking,
-      blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`).join("\n"),
-    ).toEqual([]);
+    expect(blocking, blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`).join("\n")).toEqual(
+      [],
+    );
   });
 
   test("the page exposes exactly one <main> landmark", async ({ page }) => {

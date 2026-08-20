@@ -7,12 +7,53 @@
       "caster_id": "player_1"
     },
     "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
+    "xp_awarded": {
+      "type": "xp_awarded",
+      "amount": 450,
+      "reason": "defeated goblin scouts",
+      "new_xp": 1050,
+      "new_level": 5,
+      "leveled_up": true,
+      "attribute_points": 2,
+      "specialization_fork": true,
+      "player_id": "player_1"
+    },
+    "specialization_choice": {
+      "type": "specialization_choice",
+      "milestone_id": "warrior_identity",
+      "options": [
+        { "id": "battle_master", "name": "Battle Master", "description": "Tactical maneuvers." },
+        { "id": "berserker", "name": "Berserker", "description": "Reckless fury." }
+      ],
+      "player_id": "player_1"
+    },
+    "divine_favor_changed": {
+      "type": "divine_favor_changed",
+      "new_level": 30,
+      "previous_level": 25,
+      "patron_id": "solwyn",
+      "last_whisper_level": 20,
+      "amount": 5,
+      "reason": "Quest 'The Greyvale Anomaly' stage completed",
+      "max": 100,
+      "player_id": "player_1"
+    },
     "veil_ward_changed": {
       "type": "veil_ward_changed",
       "active": true,
       "scope_kind": "location",
       "scope_id": "thornwatch_keep",
       "source": "cleric"
+    },
+    "item_acquired": {
+      "type": "item_acquired",
+      "item_id": "cured_hide",
+      "name": "Cured Hide",
+      "description": "Supple wolf hide, scraped and salted.",
+      "rarity": "uncommon",
+      "quantity": 2,
+      "source": "combat_loot",
+      "player_id": "player_1"
     }
   },
   "hollow_echo_bands": [

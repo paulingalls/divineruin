@@ -7,10 +7,10 @@ import pytest
 
 from encounter_loot import (
     _BOSS_CURRENCY_BONUS,
-    PARTY_CURRENCY_BONUS,
+    PARTY_REWARD_BONUS,
     calculate_currency_drop,
     derive_role_loot,
-    party_currency_multiplier,
+    party_reward_multiplier,
     tier_for_level,
 )
 
@@ -204,32 +204,33 @@ def test_derive_role_loot_does_not_mutate_input() -> None:
     assert table["drops"][0] == {"item_id": "hide", "chance": 0.5, "quantity": 2}
 
 
-# --- party currency multiplier (M18 story-003): reward grouping without N x farming ---
+# --- party reward multiplier (M18 story-003): reward grouping without N x farming ---
 
 
-def test_party_currency_bonus_constant() -> None:
-    # The per-extra-member currency bonus is a single tunable constant (customer decision:
-    # BONUS=0.5 -> a 2-PC party earns 1.5x the base roll).
-    assert PARTY_CURRENCY_BONUS == 0.5
+def test_party_reward_bonus_constant() -> None:
+    # The per-extra-member reward bonus is a single tunable constant (customer decision:
+    # BONUS=0.5 -> a 2-PC party earns 1.5x the base). Shared by currency AND combat XP
+    # (decision 91967897c88c), so grouping never pays differently for coin than progression.
+    assert PARTY_REWARD_BONUS == 0.5
 
 
 @pytest.mark.parametrize(
     "party_size,multiplier",
     [(1, 1.0), (2, 1.5), (3, 2.0), (4, 2.5)],
 )
-def test_party_currency_multiplier(party_size: int, multiplier: float) -> None:
+def test_party_reward_multiplier(party_size: int, multiplier: float) -> None:
     # multiplier(N) = 1 + BONUS*(N-1). Solo (N=1) is exactly 1.0 so a single-member party's
-    # currency stays byte-identical to the pre-M18 single-roll behavior.
-    assert party_currency_multiplier(party_size) == multiplier
+    # reward stays byte-identical to the pre-M18 single-roll behavior.
+    assert party_reward_multiplier(party_size) == multiplier
 
 
-def test_party_currency_multiplier_solo_is_exactly_one() -> None:
+def test_party_reward_multiplier_solo_is_exactly_one() -> None:
     # Guard the byte-identical-solo invariant explicitly: no float drift at N=1.
-    assert party_currency_multiplier(1) == 1.0
+    assert party_reward_multiplier(1) == 1.0
 
 
-def test_party_currency_multiplier_rejects_empty_party() -> None:
+def test_party_reward_multiplier_rejects_empty_party() -> None:
     # A party must have at least one member; a zero/negative size is a caller error, not a
     # silent 0.5x nerf.
     with pytest.raises(ValueError, match="party_size"):
-        party_currency_multiplier(0)
+        party_reward_multiplier(0)

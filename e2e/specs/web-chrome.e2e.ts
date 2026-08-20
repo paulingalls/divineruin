@@ -23,9 +23,7 @@ test.describe("Marketing chrome (apps/web)", () => {
     expect(body).toMatch(/<footer\b[^>]*\bclass="footer"/);
   });
 
-  test("NavBar gains the scrolled state once scrolled past 40px", async ({
-    page,
-  }) => {
+  test("NavBar gains the scrolled state once scrolled past 40px", async ({ page }) => {
     await page.goto(`${WEB}/`);
     const nav = page.locator("nav.navbar");
     await expect(nav).toBeVisible();

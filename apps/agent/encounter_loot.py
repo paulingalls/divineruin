@@ -38,23 +38,25 @@ _VALID_ROLES = frozenset(r.value for r in EncounterRole)
 # Boss guaranteed currency bonus by encounter tier (silver), L152-159. Added on top of 2x base.
 _BOSS_CURRENCY_BONUS = {1: 5, 2: 15, 3: 40, 4: 100}
 
-# Multi-PC currency party bonus (M18 story-003, customer decision). A party splits the enemy
-# currency haul, but a multiplier on the total rewards grouping so the party's coin exceeds a
-# solo's single roll without letting a full party farm N x coin per fight. 0.5 -> a 2-PC party
-# earns 1.5x the base roll (0.75x each). Solo (N=1) resolves to 1.0x — byte-identical to pre-M18.
-PARTY_CURRENCY_BONUS = 0.5
+# Multi-PC party reward bonus (M18 story-003, customer decision). A party splits the enemy haul,
+# but a multiplier on the total rewards grouping so the party's take exceeds a solo's single roll
+# without letting a full party farm N x per fight. 0.5 -> a 2-PC party earns 1.5x the base
+# (0.75x each). Solo (N=1) resolves to 1.0x — byte-identical to pre-M18.
+PARTY_REWARD_BONUS = 0.5
 
 
-def party_currency_multiplier(party_size: int) -> float:
-    """The currency multiplier for a party of ``party_size`` members: ``1 + BONUS*(N-1)``.
+def party_reward_multiplier(party_size: int) -> float:
+    """The shared party-reward multiplier for ``party_size`` members: ``1 + BONUS*(N-1)``.
 
-    Applied to the TOTAL rolled silver before the even split, so the party's summed coin is a
-    diminishing-return bonus over a solo haul. N=1 is exactly 1.0 (no float drift), keeping a
-    solo party's currency identical to the pre-M18 single-roll path. Fails loud on an empty party
-    — a zero/negative size is a caller error, not a silent nerf."""
+    Applied to the TOTAL before the even split, so the party's summed reward is a diminishing-return
+    bonus over a solo haul. Governs BOTH the enemy silver and the encounter XP (decision
+    91967897c88c) — the two rewards a party splits — so grouping never pays differently for coin
+    than it does for progression. N=1 is exactly 1.0 (no float drift), keeping a solo party
+    identical to the pre-M18 single-roll path. Fails loud on an empty party — a zero/negative size
+    is a caller error, not a silent nerf."""
     if party_size < 1:
         raise ValueError(f"party_size must be >= 1, got {party_size}")
-    return 1.0 + PARTY_CURRENCY_BONUS * (party_size - 1)
+    return 1.0 + PARTY_REWARD_BONUS * (party_size - 1)
 
 
 def tier_for_level(level: int) -> int:

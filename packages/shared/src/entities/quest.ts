@@ -12,6 +12,8 @@ export interface QuestReward {
 
 export interface QuestStageComplete {
   xp: number;
+  /** Divine favor granted to every patron-aligned party member at this full amount (M28). */
+  favor?: number;
   rewards?: QuestReward[];
   world_effects: string[];
   narrative_beat?: string;

@@ -270,23 +270,23 @@ test("quest_update passes stageName through to overlay payload", () => {
 
 // --- handleGameEvent: xp_awarded with overlay ---
 
-test("xp_awarded without level_up pushes xp_toast overlay", () => {
+test("xp_awarded without a level-up pushes xp_toast overlay", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
-  handleGameEvent({ type: "xp_awarded", new_xp: 525, new_level: 3, xp_gained: 75 });
+  handleGameEvent({ type: "xp_awarded", new_xp: 525, new_level: 3, amount: 75 });
   const overlays = hudStore.getState().overlays;
   expect(overlays).toHaveLength(1);
   expect(overlays[0].type).toBe("xp_toast");
   expect(overlays[0].payload.xpGained).toBe(75);
 });
 
-test("xp_awarded with level_up pushes level_up overlay", () => {
+test("xp_awarded with leveled_up pushes level_up overlay", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
   handleGameEvent({
     type: "xp_awarded",
     new_xp: 600,
     new_level: 4,
-    xp_gained: 150,
-    level_up: true,
+    amount: 150,
+    leveled_up: true,
   });
   const overlays = hudStore.getState().overlays;
   expect(overlays).toHaveLength(1);
@@ -294,14 +294,14 @@ test("xp_awarded with level_up pushes level_up overlay", () => {
   expect(overlays[0].payload.newLevel).toBe(4);
 });
 
-test("xp_awarded with level_up passes className from character store", () => {
+test("xp_awarded with leveled_up passes className from character store", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
   handleGameEvent({
     type: "xp_awarded",
     new_xp: 600,
     new_level: 4,
-    xp_gained: 150,
-    level_up: true,
+    amount: 150,
+    leveled_up: true,
   });
   const overlay = hudStore.getState().overlays[0];
   expect(overlay.payload.className).toBe("warrior");

@@ -57,9 +57,7 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     const res = await request.get(`${WEB}/`);
     expect(res.status()).toBe(200);
     const body = await res.text();
-    expect(body).toMatch(
-      /<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-300\.woff2"/,
-    );
+    expect(body).toMatch(/<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-300\.woff2"/);
 
     await page.goto(`${WEB}/`);
     const title = page.locator(".audio-demo__title");

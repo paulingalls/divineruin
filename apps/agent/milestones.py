@@ -10,9 +10,14 @@ fixture, and sync accessors.
 
 Records are self-contained (decision 4c0677dae1be): each embeds its granted
 ability text directly and does NOT FK into archetype_abilities — milestone grants
-are passive combat flags / markers, not the activatables that table holds. The
-resolve_milestone tool (story-004) consumes get_milestone / get_archetype_milestones
-and persists the chosen specialization + grant markers in players.data.
+are passive combat flags / markers, not the activatables that table holds.
+
+Accessor consumers, in production: ``get_milestone_by_level`` by the XP Resolve's auto-grant
+loop (``_award_xp_core``, which hands each auto_grant to milestone_tools and surfaces the L5
+fork), and ``get_milestone`` by the ``select`` verb (choice_tools), which persists the chosen
+specialization. ``get_archetype_milestones`` has no production caller — only tests. The
+resolve_milestone tool that once owned both paths was removed in M4 (story-004 deregistered
+the tool, story-006 deleted the impl).
 """
 
 import json
@@ -171,8 +176,8 @@ def get_archetype_milestones(archetype_id: str) -> tuple[Milestone, ...]:
 def get_milestone_by_level(archetype_id: str, level: int) -> Milestone | None:
     """Return the archetype's milestone at a given level, or None if there is none.
 
-    Canonical by-level lookup shared by resolve_milestone (the L5 fork / explicit
-    tier) and award_xp's auto-grant loop, so the level-match predicate lives in one
+    Canonical by-level lookup shared by the select verb (the L5 fork / explicit tier)
+    and _award_xp_core's auto-grant loop, so the level-match predicate lives in one
     place. Each archetype has at most one milestone per level (L5/10/15/20).
     """
     return next(
@@ -187,7 +192,7 @@ def is_selectable_fork(milestone: Milestone) -> bool:
     Single source of the present-this-fork predicate. Patron-driven forks
     (Cleric/Paladin/Oracle) are patron_deferred until the Patron system arrives
     (Phase 8) and cannot be surfaced as a pending choice yet, so they are False
-    here. Shared by award_xp's level-crossing loop (progression_tools).
+    here. Shared by _award_xp_core's level-crossing loop (progression_tools).
     """
     return milestone.kind == "specialization_fork" and not milestone.patron_deferred
 

@@ -9,6 +9,7 @@ suite. Spec: docs/game_mechanics/game_mechanics_combat.md §The Cost Engine + §
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import _make_combat_state
 
 from death_cost import determine_death_cost
@@ -228,7 +229,7 @@ class TestCombatEndDefeatWiring:
             get_player=AsyncMock(return_value=_player()),
             get_player_inventory=AsyncMock(return_value=[]),
         )
-        mutations = MagicMock(delete_combat_state=AsyncMock())
+        mutations = combat_end_mutations()
 
         await _end_combat_db(
             session, cs, "defeat", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
@@ -258,6 +259,9 @@ class TestCombatEndDefeatWiring:
         session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
         end_data = {
             "xp_total": 0,
+            "xp_granted": 0,
+            "milestone_grants": [],
+            "specialization_fork": False,
             "defeated_enemies": [],
             "weapon_durability": {},
             "death_context": {"anchor": "camp_r1", "death_count": 1, "tier": "gentle"},
@@ -278,8 +282,8 @@ class TestCombatEndDefeatWiring:
 
         cs = _make_combat_state(enemy_fallen=True)
         session = SessionData(player_id="player_1", location_id="accord_guild_hall", room=None)
-        queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))
-        mutations = MagicMock(delete_combat_state=AsyncMock())
+        queries = combat_end_queries()
+        mutations = combat_end_mutations()
 
         await _end_combat_db(
             session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()

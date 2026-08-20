@@ -43,9 +43,41 @@ __all__ = [
     "_target_summary",
     "_validate_id",
     "apply_time_conditions",
+    "build_item_acquired_payload",
     "con_mod_for_player",
     "filter_knowledge",
 ]
+
+
+def build_item_acquired_payload(
+    item: dict | None,
+    *,
+    item_id: str,
+    image_url: str | None = None,
+    **extra,
+) -> dict:
+    """The ITEM_ACQUIRED wire payload — ONE builder for every path that grants an item.
+
+    The client's item card is built from ``name``/``description``/``rarity`` and nothing else, so
+    a payload carrying only ids renders a blank card. Combat loot did exactly that while the
+    inventory path sent the full shape — two writers, one reader, one of them wrong. Both call
+    this now, so the shape cannot drift apart again.
+
+    ``item`` is the resolved content row, or None when the id has no content: the name then falls
+    back to the id rather than rendering an empty title. ``extra`` carries the path-specific
+    fields (``player_id``, ``quantity``, ``source``).
+    """
+    content = item or {}
+    payload = {
+        "item_id": item_id,
+        "name": content.get("name") or item_id,
+        "description": content.get("description", ""),
+        "rarity": content.get("rarity", "common"),
+    }
+    if image_url:
+        payload["image_url"] = image_url
+    payload.update(extra)
+    return payload
 
 
 def con_mod_for_player(player: dict) -> int:
