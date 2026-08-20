@@ -233,6 +233,24 @@ async def _update_quest_impl(
             completing_stage = stages[current_stage]
             on_complete = completing_stage.get("on_complete", {})
 
+            # Only members who have not already been paid for this stage take part in the reward
+            # passes. Guarding the MARKER alone would leave the other half of the farming hole
+            # open (story-009, concern fdb1c79f9ce8): someone who finished this quest solo could
+            # join any host's fresh run and collect for every stage forever, their marker never
+            # moving because it is already ahead. The primary is always eligible by construction
+            # — the guards above proved new_stage_id > current_stage.
+            #
+            # ACCEPTED CONSEQUENCE: party_reward_multiplier divides by the seat count, so
+            # filtering an ahead member out raises every remaining member's share — a 2-player
+            # party where one is ahead pays the other a solo-sized share. Consistent (one eligible
+            # member IS a party of one) but it makes one player's reward depend on another's
+            # history, which must not be silent.
+            eligible_ids = sorted(
+                pid
+                for pid in {session.player_id} | set(session.party.member_ids)
+                if _is_unpaid_for_stage(party_quests.get(pid), new_stage_id)
+            )
+
             xp_reward = on_complete.get("xp", 0)
             if xp_reward > 0:
                 # Quest XP is PARTY-WIDE (story-002, debt 6033f2bedcea): paying only
@@ -243,7 +261,7 @@ async def _update_quest_impl(
                 xp_sink = EventSink()
                 outcome = await combat_rewards.distribute_xp(
                     xp_reward,
-                    sorted(session.party.member_ids),
+                    eligible_ids,
                     primary_id=session.player_id,
                     reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
                     mutations=mutations,
@@ -270,11 +288,11 @@ async def _update_quest_impl(
             if favor_reward > 0:
                 # Divine favor is PARTY-WIDE at the FULL declared amount each (M28): standing
                 # with your own god is a personal relationship, not a haul to divide the way XP
-                # and coin are. Walk the SAME ascending player_id order as the XP pass so the two
+                # and coin are. Walk the SAME ascending seat list the XP pass took so the two
                 # never take the players rows in opposing orders, and lock each row here in its
                 # own right — a stage may declare favor with no xp, in which case the XP pass
                 # never ran and holds no lock for this read-modify-write to ride on.
-                for pid in sorted(session.party.member_ids):
+                for pid in eligible_ids:
                     await queries.get_player(pid, conn=conn, for_update=True)
                     favor_grant = await progression_tools._award_divine_favor_core(
                         player_id=pid,

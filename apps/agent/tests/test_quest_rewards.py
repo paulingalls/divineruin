@@ -292,3 +292,48 @@ async def test_a_marked_member_cannot_replay_the_stage_as_their_own_primary():
 
     with pytest.raises(ToolError, match="Cannot go backward"):
         await _complete_stage_for_party(["player_1", "player_2"], 200, primary="player_2", store=store)
+
+
+@pytest.mark.asyncio
+async def test_a_member_further_along_in_their_own_run_is_not_written_backward():
+    """AC-4, first half. set_player_quest is a whole-blob upsert, so an unguarded party-wide
+    write would drag a member who has already finished the quest back to stage 1."""
+    store = _marker_store(["player_1", "player_2"], {"player_2": 2})
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200, store=store)
+
+    marked = {call.args[0] for call in mutations.set_player_quest.await_args_list}
+    assert marked == {"player_1"}
+    assert store["player_2"] == {"current_stage": 2}
+
+
+@pytest.mark.asyncio
+async def test_a_member_further_along_in_their_own_run_is_not_paid():
+    """AC-4, second half — and the other route into the same farming hole: skipping only the
+    MARKER would leave someone who finished the quest solo free to join any host's fresh run and
+    collect for every stage forever, their marker never moving. One predicate gates both.
+
+    Accepted consequence, pinned deliberately rather than left to be discovered: filtering the
+    ahead member out shrinks the seat list party_reward_multiplier divides by, so the remaining
+    member takes a SOLO-sized share. That is consistent — one eligible member is a party of one —
+    but it makes this player's reward depend on another player's history, so it is not silent."""
+    import encounter_loot
+
+    store = _marker_store(["player_1", "player_2"], {"player_2": 2})
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200, store=store)
+
+    paid = {call.args[0] for call in mutations.update_player_xp.await_args_list}
+    assert paid == {"player_1"}
+    solo_share = int(200 * encounter_loot.party_reward_multiplier(1) / 1)
+    assert mutations.update_player_xp.await_args.args[1] == GUILD_PLAYER["xp"] + solo_share
+
+
+@pytest.mark.asyncio
+async def test_a_member_further_along_in_their_own_run_is_not_paid_favor():
+    """The same predicate gates the favor loop — favor is farmable exactly the same way."""
+    store = _marker_store(["player_1", "player_2"], {"player_2": 2})
+    mutations, _, _ = await _complete_favor_stage(
+        ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "solwyn"}, store=store
+    )
+
+    granted = {call.args[0] for call in mutations.update_divine_favor.await_args_list}
+    assert granted == {"player_1"}
