@@ -222,6 +222,26 @@ class CreationState:
     backstory: str | None = None
 
 
+@dataclass(frozen=True)
+class SpecializationTap:
+    """A LiveKit-verified L5 specialization tap awaiting resolution by the ``select`` verb.
+
+    ``player_id`` comes from ``DataPacket.participant.identity``, which IS the player_id
+    (see participant_lifecycle, which compares it directly) — so the tap knows exactly whose
+    fork was tapped, with no mapping to build and no chance for a model to get it wrong.
+
+    It is carried here rather than rendered into the DM instruction (decision 5829eecd76eb):
+    in the tie this identity exists to break — two same-archetype L5 members, both unresolved —
+    a model that mis-copied the id would pass every validation check and permanently write one
+    member's choice onto the other's write-once row. ``select`` honours the ticket only when
+    BOTH the milestone and the option match the call, and clears it after the commit.
+    """
+
+    player_id: str
+    milestone_id: str
+    specialization_id: str
+
+
 @dataclass
 class SessionData:
     player_id: str
@@ -256,6 +276,9 @@ class SessionData:
     pre_combat_agent_type: str | None = None
     pre_dispatch_agent_type: str | None = None
     pre_blacksmith_agent_type: str | None = None
+    # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
+    # SpecializationTapHandler from the verified sender, consumed and cleared by select.
+    pending_specialization_tap: SpecializationTap | None = None
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):
     # a weapon takes 1 hit per encounter (2 on a crit vs a heavily-armored target), armed on the
