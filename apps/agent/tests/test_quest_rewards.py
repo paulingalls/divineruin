@@ -24,9 +24,22 @@ from quest_tools import _update_quest_impl
 # The share must follow the SAME rule combat uses, not a second copy of it.
 
 
-async def _complete_stage_for_party(member_ids, xp_reward):
-    """Complete a one-stage quest granting `xp_reward` for a party of `member_ids`.
-    Returns (mutations, response)."""
+def _marker_store(member_ids, progress=None):
+    """A stand-in for the `player_quests` table: player_id -> stored blob. `progress` maps a
+    player_id to the `current_stage` their row already carries; None means NO row at all (the
+    absent-row case the replay hole rides on). Members not named default to stage 0."""
+    progress = {**{pid: 0 for pid in member_ids}, **(progress or {})}
+    return {pid: {"current_stage": stage} for pid, stage in progress.items() if stage is not None}
+
+
+async def _complete_stage_for_party(member_ids, xp_reward, *, primary=None, store=None, unregistered=()):
+    """Complete a one-stage quest granting `xp_reward` for a party of `member_ids`, as
+    `primary` (default: the first member).
+
+    `store` is the live marker store (see `_marker_store`) — reads AND writes go through it, so
+    a caller can run two stages in sequence and see the second read what the first recorded.
+    `unregistered` names members with no `players` row, which the XP pass skips.
+    Returns (mutations, queries, response)."""
     quest = {
         "id": "q1",
         "name": "Party Quest",
@@ -35,26 +48,29 @@ async def _complete_stage_for_party(member_ids, xp_reward):
             {"id": 1, "objective": "next", "on_complete": {}},
         ],
     }
+    store = _marker_store(member_ids) if store is None else store
     mock_db, _ = make_db_mod()
     content = MagicMock()
     content.get_quest = AsyncMock(return_value=quest)
     content.get_item = AsyncMock(return_value=None)
     queries = MagicMock()
-    queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
-    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {**GUILD_PLAYER, "player_id": pid})
+    queries.get_player_quest = AsyncMock(side_effect=lambda pid, qid, **kw: store.get(pid))
+    queries.get_player = AsyncMock(
+        side_effect=lambda pid, **kw: None if pid in unregistered else {**GUILD_PLAYER, "player_id": pid}
+    )
     mutations = MagicMock()
-    mutations.set_player_quest = AsyncMock()
+    mutations.set_player_quest = AsyncMock(side_effect=lambda pid, qid, data, **kw: store.__setitem__(pid, data))
     mutations.update_player_xp = AsyncMock()
     mutations.add_inventory_item = AsyncMock()
     mutations.set_player_flag = AsyncMock()
-    ctx = make_context(room=make_mock_room(), party_member_ids=member_ids[1:])
+    ctx = make_context(player_id=primary or member_ids[0], room=make_mock_room(), party_member_ids=member_ids)
     raw = await _update_quest_impl(ctx, "q1", 1, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
-    return mutations, json.loads(raw if isinstance(raw, str) else raw[1])
+    return mutations, queries, json.loads(raw if isinstance(raw, str) else raw[1])
 
 
 @pytest.mark.asyncio
 async def test_quest_xp_pays_every_party_member():
-    mutations, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
 
     paid = {call.args[0] for call in mutations.update_player_xp.await_args_list}
     assert paid == {"player_1", "player_2"}
@@ -66,7 +82,7 @@ async def test_quest_xp_share_uses_the_same_party_curve_as_combat():
     must never pay differently for quest progression than for combat progression."""
     import encounter_loot
 
-    mutations, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
+    mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
 
     expected = int(200 * encounter_loot.party_reward_multiplier(2) / 2)
     for call in mutations.update_player_xp.await_args_list:
@@ -77,7 +93,7 @@ async def test_quest_xp_share_uses_the_same_party_curve_as_combat():
 @pytest.mark.asyncio
 async def test_solo_quest_xp_is_unchanged_by_the_party_split():
     """N=1 -> multiplier exactly 1.0: a solo player still receives the whole declared reward."""
-    mutations, _ = await _complete_stage_for_party(["player_1"], 200)
+    mutations, _, _ = await _complete_stage_for_party(["player_1"], 200)
 
     assert mutations.update_player_xp.await_count == 1
     assert mutations.update_player_xp.await_args.args[1] == GUILD_PLAYER["xp"] + 200
@@ -89,9 +105,10 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 # a patron relationship is personal, not a haul to divide (unlike XP and coin).
 
 
-async def _complete_favor_stage(member_ids, favor_amount, patrons, *, fail_after=False, room=None):
+async def _complete_favor_stage(member_ids, favor_amount, patrons, *, fail_after=False, room=None, store=None):
     """Complete a one-stage quest granting `favor_amount` favor. `patrons` maps player_id ->
-    patron id ('none' for unaligned). Returns (mutations, room, response)."""
+    patron id ('none' for unaligned). `store` is the live marker store (see `_marker_store`).
+    Returns (mutations, room, response)."""
     quest = {
         "id": "fq",
         "name": "Favor Quest",
@@ -101,24 +118,29 @@ async def _complete_favor_stage(member_ids, favor_amount, patrons, *, fail_after
         ],
     }
     room = room or make_mock_room()
+    store = _marker_store(member_ids) if store is None else store
     mock_db, _ = make_db_mod()
     content = MagicMock()
     content.get_quest = AsyncMock(return_value=quest)
     content.get_item = AsyncMock(return_value=None)
     queries = MagicMock()
-    queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+    queries.get_player_quest = AsyncMock(side_effect=lambda pid, qid, **kw: store.get(pid))
     queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {**GUILD_PLAYER, "player_id": pid})
     activities = MagicMock()
     activities.get_divine_favor = AsyncMock(
         side_effect=lambda pid, **kw: {"patron": patrons[pid], "level": 10, "max": 100, "last_whisper_level": 0}
     )
     mutations = MagicMock()
-    mutations.set_player_quest = AsyncMock(side_effect=RuntimeError("tx blew up") if fail_after else AsyncMock())
+    mutations.set_player_quest = AsyncMock(
+        side_effect=RuntimeError("tx blew up")
+        if fail_after
+        else (lambda pid, qid, data, **kw: store.__setitem__(pid, data))
+    )
     mutations.update_player_xp = AsyncMock()
     mutations.add_inventory_item = AsyncMock()
     mutations.set_player_flag = AsyncMock()
     mutations.update_divine_favor = AsyncMock()
-    ctx = make_context(room=room, party_member_ids=member_ids[1:])
+    ctx = make_context(player_id=member_ids[0], room=room, party_member_ids=member_ids)
     raw = await _update_quest_impl(
         ctx,
         "fq",
@@ -187,3 +209,22 @@ async def test_a_rolled_back_stage_publishes_no_favor():
     # Nothing reached the wire: publish happens only after the `async with` block returns.
     published = [json.loads(c[0][0])["type"] for c in room.local_participant.publish_data.call_args_list]
     assert E.DIVINE_FAVOR_CHANGED not in published
+
+
+# ── Every paid member gets an anti-replay marker (story-009) ──────────────────
+# story-002 made the REWARD party-wide but left the LEDGER singular: only the primary's
+# player_quests row was written. A non-primary was paid and kept no record of it, so hosting
+# their own session let them run the same quest from stage 0 — the backward guard read their
+# ABSENT row, passed, and paid them again. Every stage was farmable once per member per host.
+
+
+@pytest.mark.asyncio
+async def test_every_party_quest_row_is_locked_in_ascending_player_id_order():
+    """The marker pass writes every member's row, so every member's row must be locked. Taking
+    them in ascending player_id — NOT primary-first — is what keeps two concurrent sessions with
+    different primaries and overlapping membership from holding-and-waiting in opposing orders."""
+    _, queries, _ = await _complete_stage_for_party(["player_5", "player_9", "player_2"], 200, primary="player_5")
+
+    locked = [call.args[0] for call in queries.get_player_quest.await_args_list]
+    assert locked == ["player_2", "player_5", "player_9"]
+    assert all(call.kwargs["for_update"] for call in queries.get_player_quest.await_args_list)

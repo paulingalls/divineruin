@@ -181,7 +181,19 @@ async def _update_quest_impl(
     outcome = None
 
     async with db_mod.transaction() as conn:
-        player_quest = await queries.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
+        # Lock EVERY party member's player_quests row for this quest in ONE ascending-player_id
+        # pass, and read the primary's row out of the map — never primary-first (story-009,
+        # concern 3a9a93230eed). The marker pass below writes all of these rows, so a
+        # primary-first lock would let two concurrent sessions with different primaries and
+        # overlapping membership hold-and-wait in opposing orders (T1 holds p3 wants p1, T2 holds
+        # p1 wants p3). The ordering that matters is that concurrent transactions take
+        # PLAYER_QUESTS rows consistently — a different table from the players rows the reward
+        # passes lock, so this order is self-consistent, not aligned to theirs.
+        party_quests = {
+            pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True)
+            for pid in sorted({session.player_id} | set(session.party.member_ids))
+        }
+        player_quest = party_quests[session.player_id]
 
         if player_quest is None:
             if new_stage_id != 0:
