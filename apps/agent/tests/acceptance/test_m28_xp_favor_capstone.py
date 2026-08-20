@@ -18,16 +18,18 @@ those reviews could not see (auto-marked ``acceptance`` by tests/acceptance/conf
   5. A member with no patron is skipped, not fatal — the stage completes for the rest.
   6. Nothing reaches the client before the transaction commits.
 
-Test 3 is the one that discriminates: 1/2 assert absence, and 5/6 would pass against a
-tree that grants no favor at all. It was mutation-checked both ways before landing —
-forcing ``party_reward_multiplier`` to 1.0 reds the XP split, stubbing the favor core
-to ``None`` reds the favor assertions.
+Tests 3 and 5 are the discriminating pair; both were mutation-checked before landing.
+Forcing ``party_reward_multiplier`` to 1.0 reds BOTH (each pins a split share, not a
+whole-total grant), and stubbing ``_award_divine_favor_core`` to ``None`` reds BOTH (each
+pins a full undivided favor gain). Test 6 was mutation-checked too: publishing the reward
+cues before the stage write — instead of buffering into pending_events — reds it. Tests 1
+and 2 assert absence and a count; they hold against a reward tree that grants nothing.
 
 The L5 specialization-fork cue is deliberately NOT asserted here: M28's `done` names it,
 but it is already pinned in the fast lane by test_progression_tools.py's
 ``test_core_l5_fork_emits_specialization_choice_event``, and this net pins the L10
-auto-grant boundary instead. No production code changes — every symbol here is owned by
-the merged stories.
+auto-grant boundary instead. No production behaviour changes — every symbol here is owned
+by the merged stories.
 """
 
 from __future__ import annotations
@@ -61,7 +63,13 @@ _FINAL_STAGE = 5
 # A 2-seat party turns the authored 200 into an exact boundary landing:
 #   party_reward_multiplier(2) = 1.5 -> int(200 * 1.5 / 2) = 150 each
 #   3300 + 150 == 3450 == XP_FOR_LEVEL[10]
+# The share is written out rather than derived from party_reward_multiplier ON PURPOSE: deriving
+# it would make this net pass through a change to the grouping curve, which is exactly the
+# regression it exists to catch (tests/test_quest_tools.py derives, for the opposite reason).
+# The authored side of the coupling is pinned by test_the_authored_stage_still_declares_the_seed
+# below, so a content rebalance reds with "content changed", not with mystery arithmetic.
 # The second seat is seeded clear of any boundary so it cannot add an unplanned grant.
+_STAGE_XP = 200
 _QUEST_XP_SHARE = 150
 _L10_XP = 3450
 _PRIMARY_SEED_XP = _L10_XP - _QUEST_XP_SHARE
@@ -98,11 +106,14 @@ async def _seed_hero(pool, player_id: str, *, level: int, xp: int, patron: str |
 
 
 async def _cleanup(pool, *player_ids: str) -> None:
-    """Children before parents, and every table the stage's world_effects touch."""
+    """Drop the parent row and let the FKs take the children.
+
+    Every per-player table these stages write — player_quests, the world_effects' npc_dispositions
+    and player_reputation, and combat loot's player_inventory — carries ON DELETE CASCADE on
+    players.player_id (migration 021). Deleting the children by hand would be both redundant and a
+    list that silently rots as new per-player tables appear.
+    """
     for pid in player_ids:
-        await pool.execute("DELETE FROM player_quests WHERE player_id = $1", pid)
-        await pool.execute("DELETE FROM player_reputation WHERE player_id = $1", pid)
-        await pool.execute("DELETE FROM npc_dispositions WHERE player_id = $1", pid)
         await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
 
 
@@ -132,6 +143,26 @@ def test_exploration_holds_the_two_freed_slots() -> None:
     assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 6
 
 
+# --- 2b. The authored content this net's arithmetic is seeded from ----------------------
+
+
+async def test_the_authored_stage_still_declares_the_seed(reset_db_pool: str) -> None:
+    """The exact-boundary seed below is derived by hand from authored content. Pin the authored
+    side too, so a rebalance of greyvale_anomaly reds HERE with a legible message instead of
+    surfacing as an unexplained off-by-N in the reward assertions."""
+    import db_content_queries
+
+    quest = await db_content_queries.get_quest(_QUEST_ID)
+    assert quest is not None, f"{_QUEST_ID} is no longer authored content"
+    stages = quest["stages"]
+    assert len(stages) == _FINAL_STAGE, f"stage count moved: {len(stages)} != {_FINAL_STAGE}"
+    on_complete = stages[_FINAL_STAGE - 1]["on_complete"]
+    assert (on_complete.get("xp"), on_complete.get("favor")) == (_STAGE_XP, _FAVOR_AWARD), (
+        "greyvale_anomaly's final stage was rebalanced; re-derive _QUEST_XP_SHARE and the seeds"
+    )
+    assert int(_STAGE_XP * 1.5 / 2) == _QUEST_XP_SHARE, "the hand-written share no longer matches the seed"
+
+
 # --- 3. Quest completion pays the party: XP split, favor undivided, boundary grant --------
 
 
@@ -155,8 +186,7 @@ async def test_quest_completion_splits_xp_and_pays_favor_undivided(reset_db_pool
         )
 
         ctx = make_context(player_id=primary, room=make_mock_room(), party_member_ids=[second])
-        raw = await quest_tools._update_quest_impl(ctx, _QUEST_ID, _FINAL_STAGE)
-        result = json.loads(raw if isinstance(raw, str) else raw[1])
+        result = json.loads(await quest_tools._update_quest_impl(ctx, _QUEST_ID, _FINAL_STAGE))
 
         # XP is SHARED — split by the party multiplier, so neither seat takes the whole 200.
         primary_row = await db_queries.get_player(primary)
