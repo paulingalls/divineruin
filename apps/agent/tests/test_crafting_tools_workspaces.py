@@ -115,6 +115,58 @@ class TestRentWorkspace:
         )
         assert result["price_sp"] == pytest.approx(4.0)  # 5 * 0.8
 
+    async def test_trusted_rents_free_no_debit(self):
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.update_player_gold = AsyncMock()
+        mutations.create_workspace_rental = AsyncMock(return_value="rent_free")
+        result = json.loads(
+            await _rent_workspace_impl(
+                make_context(),
+                "forge",
+                "grimjaw",
+                1,
+                db_mod=db_mod,
+                queries_mod=_queries(disposition="trusted"),
+                mutations_mod=mutations,
+                pricing_mod=_pricing(),
+            )
+        )
+        assert result["price_sp"] == 0.0
+        mutations.update_player_gold.assert_not_awaited()
+        # Free must not mean access-free: the row still has to be written with the same
+        # location/type/source the paid path writes, or the crafting gate reads nothing.
+        mutations.create_workspace_rental.assert_awaited_once()
+        assert mutations.create_workspace_rental.await_args.args[:4] == (
+            "player_1",
+            "accord_guild_hall",
+            "forge",
+            "rental",
+        )
+
+    async def test_multi_day_rental_charges_per_day(self):
+        # RENTAL_BASE_PRICE_SP is sp PER CALENDAR DAY (spec §Workspace Access; migration
+        # 022 names the spec column daily_cost) and `days` extends expires_at, so the
+        # charge must scale with it — 5sp forge x 3 days at neutral = 15sp = 1.5gp.
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.update_player_gold = AsyncMock()
+        mutations.create_workspace_rental = AsyncMock(return_value="rent_3d")
+        result = json.loads(
+            await _rent_workspace_impl(
+                make_context(),
+                "forge",
+                "grimjaw",
+                3,
+                db_mod=db_mod,
+                queries_mod=_queries(disposition="neutral"),
+                mutations_mod=mutations,
+                pricing_mod=_pricing(),
+            )
+        )
+        assert result["price_sp"] == pytest.approx(15.0)
+        assert mutations.update_player_gold.call_args.args[1] == pytest.approx(13.5)
+
     async def test_below_neutral_refuses(self):
         db_mod, _ = make_db_mod()
         with pytest.raises(ToolError):
