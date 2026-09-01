@@ -31,6 +31,22 @@ AbilityType = Literal["core", "reaction", "elective"]
 # validation, mirroring archetypes.parse_archetype_row.
 _ABILITY_TYPES = frozenset(get_args(AbilityType))
 
+# Closed vocabulary for a reaction ability's trigger window (story-001). Covers the
+# trigger event named in each of the 25 reaction rows' `effect` prose in
+# content/archetype_abilities.json (verified by hand against every row).
+ReactionWindow = Literal[
+    "on_hit",
+    "on_ally_hit",
+    "on_targeted",
+    "on_ally_targeted",
+    "on_enemy_miss",
+    "on_enemy_move",
+    "on_condition_imposed",
+    "on_spell_cast",
+    "on_enemy_action",
+]
+_REACTION_WINDOWS = frozenset(get_args(ReactionWindow))
+
 
 @dataclass(frozen=True)
 class Cost:
@@ -62,6 +78,10 @@ class Ability:
     # None = single-target only (the same contract as spells.Spell.max_targets, shared via the
     # normalize_target_list targeting SSOT). A positive int caps the party-wide buff.
     max_targets: int | None = None
+    # story-001: the trigger event a REACTION ability fires on (e.g. "on_hit"). Required
+    # iff ability_type == "reaction", forbidden otherwise — parse_ability_row enforces both
+    # directions fail-loud. None for every core/elective row.
+    window: ReactionWindow | None = None
 
 
 # Module-level runtime-loaded abilities, keyed by ability id. Populated by
@@ -111,6 +131,16 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             isinstance(max_targets, bool) or not isinstance(max_targets, int) or max_targets < 1
         ):
             raise ValueError(f"ability {ability_id!r} max_targets {max_targets!r} must be a positive int")
+        # story-001: window is required iff reaction, forbidden otherwise — a stray/typo'd
+        # key on a non-reaction row must fail loud rather than be silently ignored.
+        if ability_type == "reaction":
+            window = data["window"]
+            if window not in _REACTION_WINDOWS:
+                raise ValueError(f"ability {ability_id!r} window {window!r} not in {sorted(_REACTION_WINDOWS)}")
+        else:
+            if "window" in data:
+                raise ValueError(f"ability {ability_id!r} window is only valid for reaction abilities")
+            window = None
         return Ability(
             id=ability_id,
             archetype_id=data["archetype_id"],
@@ -123,6 +153,7 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             spell_id=data.get("spell_id"),
             applies_condition=applies_condition,
             max_targets=max_targets,
+            window=window,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetype_abilities row {ability_id!r}: {e}") from e

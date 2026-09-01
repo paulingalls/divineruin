@@ -1,7 +1,8 @@
 """Typed combat declaration model (M4.2, story-002).
 
-The spec's action economy is "one declaration per phase per participant" across six
-categories (gm_combat §Action Economy, L99-106). ``resolve_declaration`` is a PURE
+The spec's action economy is "one declaration per phase per participant" across the
+six categories in gm_combat §Action Economy (L99-106), plus REACTION (story-001) for
+out-of-turn reaction abilities. ``resolve_declaration`` is a PURE
 classify+validate function: it turns a raw declaration dict (what the DM emits into
 ``declare_phase``) into a typed ``Declaration``, or raises ``ValueError`` on a bad
 shape. The pure-engine boundary raises ``ValueError``; the tool layer
@@ -20,12 +21,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+import abilities
+
 # Defend grants +2 AC until the next phase (gm_combat:105).
 DEFEND_AC_BONUS = 2
 
 
 class DeclarationType(StrEnum):
-    """The six declaration categories. StrEnum so members serialize transparently and
+    """The seven declaration categories. StrEnum so members serialize transparently and
     compare equal to their wire strings."""
 
     ATTACK = "attack"
@@ -34,6 +37,7 @@ class DeclarationType(StrEnum):
     MANEUVER = "maneuver"
     DEFEND = "defend"
     RETREAT = "retreat"
+    REACTION = "reaction"
 
 
 @dataclass(frozen=True)
@@ -61,6 +65,11 @@ class Declaration:
     # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
     # not in this pure classifier. None for every non-de_escalate declaration.
     argument_type: str | None = None
+    # story-001: the trigger window a REACTION declaration is firing against (e.g.
+    # "on_hit"), carried verbatim (shape-only) — no cross-check against the named
+    # ability's own `window` here, that's story-002's consumption-time job. None for
+    # every non-reaction declaration.
+    trigger: str | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -92,6 +101,17 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
+    elif decl_type is DeclarationType.REACTION:
+        if not action:
+            raise ValueError("reaction declaration requires an 'action'")
+        if not raw.get("trigger"):
+            raise ValueError("reaction declaration requires a 'trigger'")
+        ability = abilities.get_ability(action)
+        if ability.ability_type != "reaction":
+            raise ValueError(
+                f"reaction declaration action {action!r} is not a reaction ability "
+                f"(ability_type={ability.ability_type!r})"
+            )
 
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
     return Declaration(
@@ -102,4 +122,5 @@ def resolve_declaration(raw: dict) -> Declaration:
         ac_bonus=ac_bonus,
         rider=raw.get("rider"),
         argument_type=raw.get("argument_type"),
+        trigger=raw.get("trigger"),
     )
