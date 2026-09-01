@@ -167,7 +167,9 @@ async def _rent_workspace_impl(
     # repair_item.py's 0.6x-at-trusted repair pricing, and branching inside it would
     # silently make blacksmith repairs free too (a game-rule change out of this card's scope).
     is_trusted = disposition.lower() == "trusted"
-    price_sp = 0.0 if is_trusted else quote.price_sp
+    # RENTAL_BASE_PRICE_SP is sp per CALENDAR DAY and `days` is what extends expires_at,
+    # so the charge scales with the term — a 30-day forge is not a 1-day forge.
+    price_sp = 0.0 if is_trusted else quote.price_sp * days
     price_gp = price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
