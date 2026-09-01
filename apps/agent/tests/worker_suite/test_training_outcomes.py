@@ -122,7 +122,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -191,7 +193,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -228,7 +232,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,

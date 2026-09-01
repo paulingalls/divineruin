@@ -177,7 +177,7 @@ class TestCheckDispatch:
                 difficulty="moderate",
                 context_description="climbing",
                 queries=queries,
-                mutations=mutations,
+                skill_mutations=mutations,
             )
         )
         assert result["skill"] == "athletics"
