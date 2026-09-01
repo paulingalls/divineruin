@@ -72,7 +72,7 @@ async def get_companion_relationship(
     a denormalized cache for external readers; session_count + affinity are the authoritative
     HYBRID inputs and every agent-side consumer re-derives the rank via
     companion_relationship.effective_tier_rank rather than trusting the cached column. Written by
-    db_mutations.upsert_companion_relationship; a missing row means a never-met companion.
+    db_mutations_companion.upsert_companion_relationship; a missing row means a never-met companion.
     """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(

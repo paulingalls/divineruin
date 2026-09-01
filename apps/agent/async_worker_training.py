@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 import ability_persistence
 import character_spells
 import db
-import db_mutations
+import db_mutations_skill_advancement
 import db_queries
 import db_training
 import mentor_variant_progress
@@ -43,7 +43,7 @@ async def apply_skill_practice_advancement(
     *,
     db_mod=None,
     queries=db_queries,
-    mutations=db_mutations,
+    mutations=db_mutations_skill_advancement,
     training=db_training,
 ) -> dict | None:
     """Increment the skill_advancement counter from a skill_practice training completion.

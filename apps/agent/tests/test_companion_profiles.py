@@ -20,6 +20,7 @@ from companion_profiles import (
     is_loaded,
     load_companion_profiles,
     parse_companion_row,
+    select_companion_for_archetype,
     set_companion_profiles,
 )
 from companion_scaling import (
@@ -287,3 +288,50 @@ class TestLoader:
         monkeypatch.setattr(db, "get_pool", _fake_get_pool)
         await load_companion_profiles()
         assert {c for c in _IDS} <= set(companion_profiles._companion_profiles.keys())
+
+
+# --- archetype -> companion assignment (story-003) -----------------------------
+
+_ARCHETYPES_PATH = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
+_ARCHETYPE_IDS = sorted(e["id"] for e in json.loads(_ARCHETYPES_PATH.read_text()))
+
+# Derived from the content, never restated by hand: {archetype_id: companion_id}.
+_EXPECTED = {a: e["id"] for e in _RAW for a in e["complements"]}
+
+
+def _catalog_with(complements_by_id: dict[str, list[str]]) -> dict[str, Companion]:
+    """Fixture catalog with the given companions' `complements` overridden."""
+    return {
+        e["id"]: parse_companion_row(e["id"], {**e, "complements": complements_by_id.get(e["id"], e["complements"])})
+        for e in _RAW
+    }
+
+
+class TestSelectCompanionForArchetype:
+    def test_complements_partition_the_archetypes(self):
+        # The AC2 content guard: every archetype covered, none covered twice. Reds the day a
+        # 19th archetype ships uncovered, or an id is copied into a second companion.
+        listed = [a for e in _RAW for a in e["complements"]]
+        assert sorted(listed) == _ARCHETYPE_IDS
+        assert len(listed) == len(set(listed))
+
+    @pytest.mark.parametrize("archetype_id", _ARCHETYPE_IDS)
+    def test_every_archetype_selects_its_one_companion(self, archetype_id):
+        assert select_companion_for_archetype(archetype_id) == _EXPECTED[archetype_id]
+
+    def test_zero_match_fails_loud(self):
+        kael = [a for a in _row("companion_kael")["complements"] if a != "mage"]
+        set_companion_profiles(_catalog_with({"companion_kael": kael}))
+        with pytest.raises(ValueError, match="mage"):
+            select_companion_for_archetype("mage")
+
+    def test_multi_match_fails_loud(self):
+        lira = [*_row("companion_lira")["complements"], "mage"]
+        set_companion_profiles(_catalog_with({"companion_lira": lira}))
+        with pytest.raises(ValueError, match="mage") as exc:
+            select_companion_for_archetype("mage")
+        assert "companion_kael" in str(exc.value) and "companion_lira" in str(exc.value)
+
+    def test_unknown_archetype_fails_loud(self):
+        with pytest.raises(ValueError, match="necromancer"):
+            select_companion_for_archetype("necromancer")

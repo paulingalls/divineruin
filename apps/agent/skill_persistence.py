@@ -11,7 +11,7 @@ read/record/write/clear-narrative sequence.
 from __future__ import annotations
 
 import check_resolution
-import db_mutations
+import db_mutations_skill_advancement
 import db_queries
 
 
@@ -22,7 +22,7 @@ async def apply_skill_use_with_persistence(
     *,
     conn=None,
     queries=db_queries,
-    mutations=db_mutations,
+    mutations=db_mutations_skill_advancement,
 ):
     """Read advancement state, record N skill uses, persist new state.
 

@@ -14,6 +14,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _creation_grant_fixtures import stub_creation_companion_grant  # noqa: F401  (autouse)
 
 from archetypes import parse_archetype_row
 from creation_rules import select_starting_spells

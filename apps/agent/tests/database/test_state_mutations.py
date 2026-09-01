@@ -8,6 +8,7 @@ import pytest
 import db_activity_queries
 import db_mutations
 import db_mutations_inventory
+import db_mutations_skill_advancement
 import db_queries
 
 
@@ -290,7 +291,7 @@ class TestSkillAdvancement:
         mock_pool = AsyncMock()
         mock_pool.execute = AsyncMock()
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
-            await db_mutations.update_skill_advancement("p1", "athletics", "trained", 12)
+            await db_mutations_skill_advancement.update_skill_advancement("p1", "athletics", "trained", 12)
         call_args = mock_pool.execute.call_args[0]
         assert "ON CONFLICT" in call_args[0]
         assert call_args[1] == "p1"
@@ -303,7 +304,7 @@ class TestSkillAdvancement:
         mock_pool = AsyncMock()
         mock_pool.execute = AsyncMock()
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
-            await db_mutations.mark_narrative_moment("p1", "athletics")
+            await db_mutations_skill_advancement.mark_narrative_moment("p1", "athletics")
         call_args = mock_pool.execute.call_args[0]
         assert "narrative_moment_ready" in call_args[0]
         assert "TRUE" in call_args[0]
@@ -313,6 +314,6 @@ class TestSkillAdvancement:
         mock_pool = AsyncMock()
         mock_pool.execute = AsyncMock()
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
-            await db_mutations.clear_narrative_moment("p1", "athletics")
+            await db_mutations_skill_advancement.clear_narrative_moment("p1", "athletics")
         call_args = mock_pool.execute.call_args[0]
         assert "FALSE" in call_args[0]

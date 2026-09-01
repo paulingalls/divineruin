@@ -9,7 +9,7 @@ and persist the errand affinity nudge. Combat is never touched here.
 
 import asyncpg
 
-import db_mutations
+import db_mutations_companion
 from companion_profiles import get_companion_profile
 from companion_relationship import (
     effective_tier_rank,
@@ -64,7 +64,7 @@ async def hydrate_companion_state(
     affinity = rel["affinity"] if rel else 0
     memories = list(rel["session_memories"]) if rel else []
     session_count = (rel["session_count"] if rel else 0) + 1
-    await db_mutations.upsert_companion_relationship(
+    await db_mutations_companion.upsert_companion_relationship(
         player_id,
         companion_id,
         relationship_tier=effective_tier_rank(session_count, affinity),
@@ -107,17 +107,19 @@ async def apply_errand_affinity(
 ) -> int:
     """Persist an errand's relationship_change into affinity; return the new affinity.
 
-    The accumulation is a single atomic UPDATE (db_mutations.bump_companion_affinity), so two
+    The accumulation is a single atomic UPDATE (db_mutations_companion.bump_companion_affinity), so two
     concurrent errand resolutions for the same companion — e.g. the lock-free worker path racing
     the tool path — cannot lose an increment. session_count is untouched by errands; the
     denormalized relationship_tier cache is then refreshed from the new affinity (best-effort, the
     agent never reads it). Combat is untouched. A never-met companion (no row) is a no-op → 0.
     """
-    bumped = await db_mutations.bump_companion_affinity(player_id, companion_id, relationship_change, conn=conn)
+    bumped = await db_mutations_companion.bump_companion_affinity(
+        player_id, companion_id, relationship_change, conn=conn
+    )
     if bumped is None:
         return 0
     new_affinity, session_count = bumped
-    await db_mutations.cache_companion_tier(
+    await db_mutations_companion.cache_companion_tier(
         player_id,
         companion_id,
         effective_tier_rank(session_count, new_affinity),

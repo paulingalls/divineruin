@@ -324,6 +324,19 @@ def get_companion_profile(companion_id: str) -> Companion:
     return _companion_profiles[companion_id]
 
 
+def select_companion_for_archetype(archetype_id: str) -> str:
+    """Return the id of the one companion whose `complements` lists this archetype.
+
+    The four `complements` lists partition the 18 archetypes exactly, so a zero-match or a
+    multi-match is a content bug: raise rather than leave a new character companionless or
+    silently pick one of two (constraint 4). Sync, over the already-loaded catalog.
+    """
+    matches = sorted(cid for cid, c in _companion_profiles.items() if archetype_id in c.complements)
+    if len(matches) != 1:
+        raise ValueError(f"archetype {archetype_id!r} matches {len(matches)} companions: {matches}")
+    return matches[0]
+
+
 def is_loaded() -> bool:
     """True once the catalog has been populated (startup load or test seam)."""
     return bool(_companion_profiles)
