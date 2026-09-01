@@ -38,7 +38,7 @@ export type {
   MagicSource,
 } from "./archetype";
 
-export type { Ability, Cost, AbilityType } from "./ability";
+export type { Ability, Cost, AbilityType, ReactionWindow } from "./ability";
 export type { MentorVariant } from "./mentor_variant";
 export type {
   RoleArchetype,

@@ -1,4 +1,4 @@
-import type { Ability, Cost, AbilityType } from "@divineruin/shared";
+import type { Ability, Cost, AbilityType, ReactionWindow } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
 import { getSpell } from "./spells.ts";
@@ -13,6 +13,20 @@ import { getSpell } from "./spells.ts";
 // variable/pool costs (Lay on Hands, Divine Smite) carry their rule in scaling free-text.
 
 const ABILITY_TYPES = new Set<AbilityType>(["core", "reaction", "elective"]);
+
+// Closed vocabulary for a reaction ability's trigger window (story-001), parity with
+// abilities.py's _REACTION_WINDOWS.
+const REACTION_WINDOWS = new Set<ReactionWindow>([
+  "on_hit",
+  "on_ally_hit",
+  "on_targeted",
+  "on_ally_targeted",
+  "on_enemy_miss",
+  "on_enemy_move",
+  "on_condition_imposed",
+  "on_spell_cast",
+  "on_enemy_action",
+]);
 
 // Runtime-loaded abilities, keyed by ability id (populated by loadAbilities at startup).
 let abilities: ReadonlyMap<string, Ability> = new Map();
@@ -83,6 +97,19 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
     throw new Error(`${ctx}.spell_id is not a string`);
   }
   const spellId = data.spell_id;
+
+  // story-001: window is required iff reaction, forbidden otherwise — a stray/typo'd
+  // key on a non-reaction row must fail loud rather than be silently ignored.
+  let window: ReactionWindow | undefined;
+  if (data.ability_type === "reaction") {
+    if (typeof data.window !== "string" || !REACTION_WINDOWS.has(data.window as ReactionWindow)) {
+      throw new Error(`${ctx}.window ${JSON.stringify(data.window)} is invalid`);
+    }
+    window = data.window as ReactionWindow;
+  } else if (data.window !== undefined) {
+    throw new Error(`${ctx}.window is only valid for reaction abilities`);
+  }
+
   return {
     id,
     archetype_id: data.archetype_id,
@@ -93,6 +120,7 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
     effect: data.effect,
     narration_cue: data.narration_cue,
     spell_id: spellId,
+    window,
   };
 }
 

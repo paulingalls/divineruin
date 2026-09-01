@@ -217,4 +217,28 @@ describe("parseAbilityRow — fail-loud validation", () => {
       /abilities\[x\]\.spell_id/,
     );
   });
+
+  test("accepts a valid reaction row with a window", () => {
+    const row = { ...base, ability_type: "reaction", window: "on_hit" };
+    expect(() => parseAbilityRow("x", row)).not.toThrow();
+    expect(parseAbilityRow("x", row).window).toBe("on_hit");
+  });
+
+  test("rejects a reaction row missing window", () => {
+    expect(() => parseAbilityRow("x", { ...base, ability_type: "reaction" })).toThrow(
+      /abilities\[x\]\.window/,
+    );
+  });
+
+  test("rejects a reaction row with an unknown window", () => {
+    expect(() =>
+      parseAbilityRow("x", { ...base, ability_type: "reaction", window: "bogus" }),
+    ).toThrow(/abilities\[x\]\.window/);
+  });
+
+  test("rejects a window key on a non-reaction row", () => {
+    expect(() => parseAbilityRow("x", { ...base, window: "on_hit" })).toThrow(
+      /abilities\[x\]\.window is only valid for reaction abilities/,
+    );
+  });
 });

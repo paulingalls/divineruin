@@ -194,6 +194,50 @@ def test_non_spell_row_has_no_spell_id():
     assert a.spell_id is None
 
 
+# --- reaction window (story-001) ------------------------------------------------
+
+_BRACE_ROW = {
+    "id": "warrior_brace_for_impact",
+    "archetype_id": "warrior",
+    "name": "Brace for Impact",
+    "ability_type": "reaction",
+    "level_requirement": 1,
+    "cost": {"stamina": 0, "focus": 0, "scaling": None},
+    "effect": "Reaction when hit: reduce the damage by 1d6 + CON mod.",
+    "narration_cue": "You brace, and the blow lands lighter than it should.",
+    "window": "on_hit",
+}
+
+
+def test_parse_ability_row_reaction_requires_window():
+    bad = {k: v for k, v in _BRACE_ROW.items() if k != "window"}
+    with pytest.raises(ValueError, match="window"):
+        parse_ability_row(_BRACE_ROW["id"], bad)
+
+
+def test_parse_ability_row_rejects_unknown_window():
+    bad = {**_BRACE_ROW, "window": "bogus"}
+    with pytest.raises(ValueError, match="window"):
+        parse_ability_row(_BRACE_ROW["id"], bad)
+
+
+def test_parse_ability_row_rejects_window_on_non_reaction_row():
+    bad = {**_CLEAVE_ROW, "window": "on_hit"}
+    with pytest.raises(ValueError, match="window"):
+        parse_ability_row(_CLEAVE_ROW["id"], bad)
+
+
+def test_parse_ability_row_reaction_row_full_shape():
+    a = parse_ability_row(_BRACE_ROW["id"], _BRACE_ROW)
+    assert a.window == "on_hit"
+    assert a.ability_type == "reaction"
+
+
+def test_non_reaction_row_has_no_window():
+    a = parse_ability_row(_CLEAVE_ROW["id"], _CLEAVE_ROW)
+    assert a.window is None
+
+
 # --- accessors -----------------------------------------------------------------
 
 
