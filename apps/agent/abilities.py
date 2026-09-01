@@ -31,9 +31,9 @@ AbilityType = Literal["core", "reaction", "elective"]
 # validation, mirroring archetypes.parse_archetype_row.
 _ABILITY_TYPES = frozenset(get_args(AbilityType))
 
-# Closed vocabulary for a reaction ability's trigger window (story-001). Covers the
-# trigger event named in each of the 25 reaction rows' `effect` prose in
-# content/archetype_abilities.json (verified by hand against every row).
+# Closed vocabulary for a reaction ability's trigger window (story-001), derived from the
+# trigger event each reaction row already names in its `effect` prose. Public because the
+# declaration path (declarations.resolve_declaration) validates a declared trigger against it.
 ReactionWindow = Literal[
     "on_hit",
     "on_ally_hit",
@@ -45,7 +45,7 @@ ReactionWindow = Literal[
     "on_spell_cast",
     "on_enemy_action",
 ]
-_REACTION_WINDOWS = frozenset(get_args(ReactionWindow))
+REACTION_WINDOWS = frozenset(get_args(ReactionWindow))
 
 
 @dataclass(frozen=True)
@@ -135,8 +135,8 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         # key on a non-reaction row must fail loud rather than be silently ignored.
         if ability_type == "reaction":
             window = data["window"]
-            if window not in _REACTION_WINDOWS:
-                raise ValueError(f"ability {ability_id!r} window {window!r} not in {sorted(_REACTION_WINDOWS)}")
+            if window not in REACTION_WINDOWS:
+                raise ValueError(f"ability {ability_id!r} window {window!r} not in {sorted(REACTION_WINDOWS)}")
         else:
             if "window" in data:
                 raise ValueError(f"ability {ability_id!r} window is only valid for reaction abilities")

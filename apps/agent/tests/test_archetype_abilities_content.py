@@ -197,17 +197,6 @@ def test_each_row_required_keys_and_enums(rows):
         )
 
 
-def test_reaction_rows_have_a_window_from_the_closed_vocabulary(rows):
-    for row in rows:
-        rid = row.get("id", "<no id>")
-        if row["ability_type"] == "reaction":
-            assert row.get("window") in REACTION_WINDOWS, (
-                f"{rid} is a reaction row but window {row.get('window')!r} not in {sorted(REACTION_WINDOWS)}"
-            )
-        else:
-            assert "window" not in row, f"{rid} is not a reaction row but carries a window key"
-
-
 def test_spell_backed_rows_reference_a_real_catalog_spell(rows):
     # Cross-file integrity: every spell_id must resolve in content/spells.json, or
     # the load-time composition fails loud at startup. Catches a typo'd spell_id.

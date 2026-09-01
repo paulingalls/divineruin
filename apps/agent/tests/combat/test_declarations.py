@@ -105,6 +105,25 @@ class TestReactionDeclarationInvalid:
         with pytest.raises(ValueError, match="Unknown ability"):
             resolve_declaration({"type": "reaction", "action": "no_such_ability", "trigger": "on_hit"})
 
+    def test_reaction_rejects_trigger_outside_the_window_vocabulary(self):
+        # A prose trigger must fail HERE. Left unvalidated it can never match the ability's own
+        # window at consumption (story-002), so the reaction would silently never fire.
+        with pytest.raises(ValueError, match="trigger"):
+            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "when hit"})
+
+    @pytest.mark.parametrize("bad", [{"a": 1}, ["warrior_brace_for_impact"]])
+    def test_reaction_rejects_non_string_action_as_value_error(self, bad):
+        # Not merely "rejects": it must raise ValueError, the ONLY exception combat_turn
+        # translates to ToolError. An unhashable action would otherwise TypeError out of the
+        # ability lookup and crash the tool call instead of re-prompting the DM.
+        with pytest.raises(ValueError, match="must be a string"):
+            resolve_declaration({"type": "reaction", "action": bad, "trigger": "on_hit"})
+
+    @pytest.mark.parametrize("bad", [{"a": 1}, ["on_hit"]])
+    def test_reaction_rejects_non_string_trigger_as_value_error(self, bad):
+        with pytest.raises(ValueError, match="trigger"):
+            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": bad})
+
 
 class TestResolveDeclarationInvalid:
     def test_missing_type_raises(self):
