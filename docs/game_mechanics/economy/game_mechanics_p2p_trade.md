@@ -157,7 +157,7 @@ Every P2P trade is logged with full provenance: who, what, when, where, how much
 
 ### Velocity Limits
 
-A player who completes 100 trades in an hour is probably a bot or RMT operator. Velocity limits flag unusual patterns. Limits should not constrain legitimate play (a guild raid distributing loot is fine; a single account moving thousands of gp/hour is not).
+A player who completes 100 trades in an hour is probably a bot or RMT operator. Velocity limits flag unusual patterns. Limits should not constrain legitimate play (a guild raid distributing loot is fine; a single account moving thousands of gc/hour is not).
 
 ### Value Asymmetry Detection
 

@@ -106,7 +106,7 @@ Honesty note: spec also drifts internally — Spell Components has only 2 items 
 **Acceptance criteria:**
 - [ ] `calculate_price` produces correct results for all 5 disposition levels combined with all 6 faction levels (5×6 = 30 cells per spec faction-pricing.md L32-38)
 - [ ] Multiplicative stacking matches spec (`base × disposition × faction × event × context`, then clamped to [0.5×, 3.0×])
-- [ ] Workspace rental pricing matches the 4-row spec table with disposition discount tiers (Friendly 80%, Trusted 60%)
+- [x] Workspace rental pricing matches the 4-row spec table with disposition discount tiers (Friendly 80%, Trusted 60%) <!-- verified 2026-09-01: apps/agent/workspace.py RENTAL_BASE_PRICE_SP (workshop 2 / forge 5 / laboratory 10) + COMBINED_FORGE_LAB_RENTAL_SP=12 + compute_rental_price(); discounts from the DB-loaded SSOT content/pricing.json disposition_multipliers {friendly 0.8, trusted 0.6} via pricing_queries.get_economy_pricing(); debited live in crafting_tools.rent_workspace. Tests apps/agent/tests/test_workspace.py::TestRentalPricing (4 base rows + neutral/friendly/trusted + below-neutral refusal), apps/server/src/pricing.test.ts -->
 - [ ] NPC services pricing matches the 11-row spec table (Hollow material values moved to M9.4)
 - [ ] `calculate_price` is a pure function with no side effects
 - [ ] Tests cover every disposition × faction combination, all 4 workspaces, all 11 services, all 3 commission tiers, all 4 repair tiers, clamp lower/upper bounds, and zero-base edge case
@@ -227,7 +227,7 @@ Quest reward processing ships at `apps/agent/quest_tools.py:138-167` (handles XP
 
 **Acceptance criteria:**
 - [ ] Faction.reputation_tiers schema extended with `price_modifier: number`; 4 shipped factions backfilled with spec values
-- [ ] `player_reputation` table reads/writes for reputation_value
+- [x] `player_reputation` table reads/writes for reputation_value <!-- verified 2026-09-01: sprint-039 (M23 story-002) landed the writer. Read apps/agent/db_queries.py:39 get_player_faction_reputation(); write apps/agent/db_mutations_reputation.py:19 adjust_player_faction_reputation() (atomic additive upsert); magnitude table apps/agent/reputation.py reputation_shift(); DM verb apps/agent/reputation_tools.py adjust_faction_reputation, also fired from quest_tools + combat_end. Tests apps/agent/tests/test_db_mutations_reputation.py, test_reputation.py, test_reputation_tools.py. Stored key is data['value'], not data['reputation_value'] -->
 - [ ] Combined disposition × faction 5×6 matrix matches spec exactly
 - [ ] Service-refusal gating returns correct availability for each (faction_tier × service_type) cell
 - [ ] All 5 grant actions adjust reputation correctly with caps + cooldowns enforced
@@ -279,7 +279,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 **Acceptance criteria:**
 - [ ] All 7 spec pools ship in `content/inventory_pools.json` with tiered structure + settlement-keyed quantities
 - [ ] `inventory_pool` field populated on every merchant NPC in `content/npcs.json`
-- [ ] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated
+- [x] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated <!-- verified 2026-09-01: shipped by Phase 6 M6.2 as packages/shared/src/entities/location.ts:81-82 settlement_tier?: SettlementSize + personality?: SettlementPersonality, over the exported SETTLEMENT_SIZE_VALUES / SETTLEMENT_PERSONALITY_VALUES arrays; all 13 settlement locations populated (6 dungeon/wilderness deliberately omit both). Test packages/shared/src/entities/location.test.ts:103-133 (13 pass). NAMING/VOCAB DIVERGENCE from this milestone's spec: field is settlement_tier not size; sizes are hamlet|village|town|city|keldaran_hold (capital deferred, keldaran_hold added); personalities are the 8 M6.2 traits (prosperous/struggling/military/scholarly/corrupt/devout/frontier/refuge) not the 6 economy traits (trade_hub/isolated/cursed absent) -- AC4's 5x6 matrix still needs that reconciliation -->
 - [ ] 5×6 size×personality stock multiplier matrix matches spec for both inventory and gold pool
 - [ ] `merchant_state` table reads/writes for current_inventory + current_gold + buyback_history + consigned_items
 - [ ] `daily_restock_at_dawn` resets all merchants per spec algorithm; matches deterministic output for fixed seed

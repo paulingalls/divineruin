@@ -6,25 +6,31 @@ These milestones define the deep game mechanics implementation, building on the 
 
 ## Phase Completion Status
 
-*Reflects delivery as of sprint-037. Per-milestone detail lives in each phase doc + `execution_plan.json`.*
+*Reflects delivery as of **sprint-044**, reconciled against the codebase by the
+2026-09-01 audit pass (every flipped box carries an inline `<!-- verified -->`
+evidence comment naming the file, symbol and RED-capable test). Per-milestone
+detail lives in each phase doc; the remaining work is summarised in
+[REMAINING.md](REMAINING.md).*
 
 | Phase | Doc | Status | Delivered | Notes |
 |---|---|---|---|---|
-| 0 · Doc Updates | [00_doc_updates.md](00_doc_updates.md) | ✅ Delivered | 18/23 ACs | Doc-update backlog; ongoing housekeeping. |
-| 1 · Core Systems | [01_core_systems.md](01_core_systems.md) | ✅ Delivered | 42/43 ACs | Core resolution/rules engine — the foundation all phases build on. |
-| 2 · Archetypes | [02_archetypes.md](02_archetypes.md) | 🟡 Partial | 30/34 ACs | M2.1/M2.4 done; missing M2.2 reaction-window (Phase 4), M2.3 L20 companion unlock, M2.5 supplement-choice. |
+| 0 · Doc Updates | [00_doc_updates.md](00_doc_updates.md) | ✅ Delivered | 19/23 ACs | Doc-update backlog. M0.4 no-deletion discharged against baseline commit `f946ab6`. Residual: INDEX.md line-range drift has WIDENED to 2 docs. |
+| 1 · Core Systems | [01_core_systems.md](01_core_systems.md) | ✅ **Complete** | 43/43 ACs | Core resolution/rules engine. The ADR-0005 Artificer training-slot deferral is DISCHARGED (Portable Lab shipped; debt `95de7fa141df` closed). |
+| 2 · Archetypes | [02_archetypes.md](02_archetypes.md) | 🟡 Partial | 30/34 ACs | Re-verified still open. Combat tracks `reactions_available` but the phase loop never declares reactions (`combat_support.py:145` names the seam); no L20 capstone/legendary-companion unlock; no variant supplement-choice. |
 | 3 · Magic | [03_magic.md](03_magic.md) | ✅ Delivered | 34/34 ACs | m31–m34 capstones (resonance, hollow-echo/wards, spell catalog, concentration/racial). **†Veil Ward** |
-| 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 65/65 ACs | m41–m46 capstones + M11–M20 extensions (targeting, HUD, MP combat, SFX). |
-| 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 44/45 ACs | m52 workspace + m53 quality-pass capstones. **†Veil Ward** |
-| 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ Delivered | 30/34 ACs | m62/m64 capstones; missing Capital tier, unique NPC names, Bard mentors, Lira/Sable attack count. |
-| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | ⬜ Not started | 0/41 ACs | No creatures.json / creatures table / stat-block schema. |
-| 8 · Patrons | [08_patrons.md](08_patrons.md) | ⬜ Not started | 0/34 ACs | gods.json mechanical layers are null stubs; no favor-tier/ability/synergy code. |
-| 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 2/80 ACs | Only M9.4 loot/currency-drop shipped (byproduct of M4.7); integration sink, planned last. |
-| 10 · Terrain | [10_terrain.md](10_terrain.md) | ⬜ Not started | 0/17 ACs | No TerrainType enum; consumers remain terrain-blind. **†Veil Ward** |
-| 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Planned; supersedes the retired M21. **†Veil Ward** |
+| 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 65/65 ACs | m41–m46 capstones + M11–M20 extensions. **Caveat: 65/65 counts six authored sections — M4.7 and M4.8 shipped with ZERO authored ACs, so the count understates the phase.** Doc also names superseded tools and cites the deleted `wilderness_agent.py`. |
+| 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 44/45 ACs | m52 workspace + m53 quality-pass capstones. Residual re-verified open: Trusted rep gives 0.6×, not free — `workspace.py:compute_rental_price` takes no reputation input. **†Veil Ward** |
+| 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ Delivered | 30/34 ACs | m62/m64 capstones. All 4 residuals re-verified open and now quantified: no capital tier (4 tier rows), no name generator, Bard mentors = 0, Lira/Sable have 1 attack (spec ≥2). |
+| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | ⬜ Not started | 1/41 ACs | Confirmed: no `creatures.json`, no creatures migration, no `validate_creature_stat_block`/`build_encounter`. Substrate is larger than the doc admits: `encounter_roles.py`, `encounter_loot.py`, `encounter_budget.py`, and **`encounter_templates.json` = 10 templates / 15 distinct stat blocks** (the doc still calls these "lore/prompts only"). `encounter.ts:1-10` names this refactor as pending. **Hazard: 3 incompatible tier/level tables.** |
+| 8 · Patrons | [08_patrons.md](08_patrons.md) | ⬜ Not started | 0/34 ACs | Confirmed: all 10 gods have the 4 mechanical layers = `null`; narrative layers populated; full client leg already built. **Unblocked** (the doc's "Phase 3 blocks Layer 2" is stale). Doc also says roster is 4/10 — **it is 10/10**. Note: `test_patron_roster_consistency.py:131` ENFORCES the nulls per ADR 0001 and must be deleted when this phase builds. Hard *forward* dep on Phase 2. |
+| 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 5/80 ACs | Was under-counted. Byproducts found: workspace rental pricing (Phase 5), `player_reputation` read/write (M23), Location tier+personality (M6.2 — shipped as `settlement_tier`, a naming divergence M9.6 must reconcile). Integration sink; still blocks on Phase 7. |
+| 10 · Terrain | [10_terrain.md](10_terrain.md) | ⬜ Not started | 0/17 ACs | Confirmed: no TerrainType enum anywhere in `apps/` or `packages/`; consumers remain terrain-blind. Smallest unstarted phase (3 milestones). **†Veil Ward** |
+| 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Confirmed: no world clock (`session_data.py:267 world_time` is the frozen constant `"evening"`), no tick worker, no cascade. **M23 did NOT land loop code** — it was design reconciliation. Layer-1 *consumption* is fully built; only the clock is missing. Tables `region_state`/`npc_state`/`world_events_log`/`god_agent_state`/`world_flags` migrated back in 001. **†Veil Ward** |
 | 12 · Story Content | [12_story_content.md](12_story_content.md) | ⬜ Not started | 0/34 ACs | Planned. |
 
-> **† Veil Ward full realization (M24, `execution_plan.json`).** The shipped Veil Ward is an interim per-player boolean; the customer-ratified full-spec ward is area/encounter-scoped, party-wide, duration-bound, multi-source (decision `veil-ward-scope-decision`). Scope split: **M24 owns** the pieces orphaned in the ✅-Delivered phases — Phase 3's per-source durations for the built Cleric/Druid/Paladin sources, and Phase 5's Artificer Veil Anchor recipe — plus the area/party scope-model core. **Phases 10 & 11 own** their pieces when built (Druid terrain gate; ambient/corruption/seasonal + Sacred-site world wards), building on M24. Tracked so the Delivered status doesn't hide the follow-on work.
+> **† Veil Ward full realization (M24, `execution_plan.json`).** The shipped Veil Ward is an interim per-player boolean; the customer-ratified full-spec ward is area/encounter-scoped, party-wide, duration-bound, multi-source (decision `veil-ward-scope-decision`). Scope split: **M24 owns** the pieces orphaned in the ✅-Delivered phases — Phase 3's per-source durations for the built Cleric/Druid/Paladin sources, and Phase 5's Artificer Veil Anchor recipe — plus the area/party scope-model core. **Phases 10 & 11 own** their pieces when built (Druid terrain gate; ambient/corruption/seasonal + Sacred-site world wards), building on M24. Tracked so the Delivered status doesn't hide the follow-on work. **M24 landed in sprint-040**
+(migration `057_veil_ward_scope.sql`), so the scope-model core and the orphaned Phase 3/5
+pieces are done; what remains under this dagger is only the Phase 10 and Phase 11 half.
 
 ## Dependency Graph
 

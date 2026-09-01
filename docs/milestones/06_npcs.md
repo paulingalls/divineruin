@@ -90,11 +90,11 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 - Agent tool: `get_settlement_npc_population` for DM agent to query or generate on demand
 
 **Acceptance criteria:**
-- [ ] All 5 settlement tiers defined with correct NPC role distributions
+- [x] All 4 surviving settlement tiers (hamlet/village/town/city) defined with correct NPC role distributions; `keldaran_hold` normalizes to city <!-- AMENDED 2026-09-01 (decision D-1). Was "All 5 settlement tiers", which is unsatisfiable against the source spec: game_mechanics_npcs.md:556 lists Capital as "(None currently exist — the Sundering destroyed the great cities)", and its Role Distribution by Settlement Size table at :560 has only 4 columns — the spec defines NO role distribution for Capital. Building one would mean inventing content for a settlement class the lore destroyed. Shipped state is spec-aligned and deliberate: content/settlement_templates.json has the 4 tier rows; SETTLEMENT_SIZE_VALUES (location.ts:34-40) carries keldaran_hold, which is dual-natured and NOT a leftover: it is a first-class distinct size for WORKSPACE availability (game_mechanics_crafting.md:240 gives it the only Laboratory=Sometimes row — renowned forges, weaker alchemy — encoded at workspace.py:130-134 and pinned by test_workspace.py:140::test_keldaran_hold_forges_renowned_lab_limited), but City-scale for NPC ROLE COUNTS (game_mechanics_npcs.md:555 lists Keldaran holds as City examples), so settlement_generation.py:25 _TIER_ALIASES maps it to city on that axis only. Pinned by apps/agent/tests/test_settlement_generation.py:85::test_keldaran_hold_maps_to_city and test_settlement_templates.py:146 (get_settlement_tier stays fail-loud on it elsewhere). Correct-distribution half is carried by the adjacent [x] AC "generate_settlement_npcs produces correct role counts for every tier". -->
 - [x] All 8 personality traits modify NPC disposition baselines and inventory pools
 - [x] `generate_settlement_npcs` produces correct role counts for every tier
 - [x] `instantiate_npc_from_template` applies settlement tier and personality modifiers to archetype defaults
-- [ ] Generated NPCs have unique names, varied personalities within archetype constraints
+- [ ] Generated NPCs have unique names, varied personalities within archetype constraints <!-- re-verified 2026-09-01: still unmet — generate_settlement_npcs (apps/agent/settlement_generation.py:49) returns {role_id: count}; no name generator exists anywhere in apps/agent -->
 - [x] Agent tool `get_settlement_npc_population` returns valid NPC list for any location
 - [x] Settlement personality "Corrupt" increases Fence/Black Market frequency and reduces Guard disposition
 - [x] Tests cover all tier/personality combinations
@@ -161,7 +161,7 @@ See `audit/phase-6-settlements.md` for the full coverage matrix.
 **Acceptance criteria:**
 - [x] Mentor registry covers all Warrior L4 and L8 technique variants (8+ mentors)
 - [x] Rogue mentors cover 5+ technique variants
-- [ ] Guardian, Skirmisher, Bard, and Spy archetypes each have at least 2 representative mentors
+- [ ] Guardian, Skirmisher, Bard, and Spy archetypes each have at least 2 representative mentors <!-- re-verified 2026-09-01: still unmet on Bard — content/mentor_variants.json: 80 variants / 4 culture-mentors / 40 ability ids; prefixes are guardian, rogue, skirmisher, spy, warrior only. Guardian=4, Skirmisher=4, Spy=4 mentors; Bard=0 (bard IS a real archetype: content/archetypes.json + 9 rows in content/archetype_abilities.json) -->
 - [x] `check_mentor_requirements` correctly evaluates disposition threshold, quest completion, gold, and skill tier
 - [x] `check_mentor_requirements` returns specific unmet requirements (not just pass/fail)
 - [x] `enroll_mentor_training` validates requirements before enrollment and returns error if unmet
@@ -223,10 +223,15 @@ See `audit/phase-6-mentors.md` for the full coverage matrix.
 
 **Deliverables:**
 - 4 companion archetypes with full combat profiles:
-  - Kael (ranger/martial): melee/ranged hybrid, tactical positioning
-  - Lira (healer/support): healing, buffs, low direct damage
-  - Tam (rogue/shadow): stealth, burst damage, evasion
-  - Sable (mage/arcane): AoE damage, crowd control, glass cannon
+  - Kael (martial frontline): absorbs damage, holds the line, protective positioning
+  - Lira (arcane investigation): Arcane Bolt, Shield Spell, Elemental Burst, Detect Magic
+  - Tam (primal scout): melee/ranged hybrid (Short Sword + Shortbow), Reckless Charge, Nature's Touch
+  - Sable (perception/sensing): non-verbal shadow-fox — Bite, Alarm, Distraction
+  <!-- CORRECTED 2026-09-01 (decision D-5). The previous four lines had drifted from BOTH the spec and
+       the shipped content: they gave Sable the arcane kit that is Lira's, called Lira a healer (she has
+       no heal — Kael's Second Wind and Tam's Nature's Touch are the heals), and described Kael and Tam
+       as a ranger and a rogue. The canonical table is game_mechanics_npcs.md:676-681, which
+       content/companions.json matches exactly; only this milestone doc was wrong. -->
 - Per companion: 2-4 attacks, 2-3 passives, 2-3 actives, 0-1 reactions
 - HP scaling: companions scale to 75% of player HP at any level
 - 5 relationship tiers: New, Warming, Trusted, Bonded, Legendary
@@ -239,8 +244,8 @@ See `audit/phase-6-mentors.md` for the full coverage matrix.
 
 **Acceptance criteria:**
 - [x] All 4 companions have complete combat profiles with distinct tactical identities
-- [ ] Each companion has correct count of attacks (2-4), passives (2-3), actives (2-3), reactions (0-1)
-- [x] `scale_companion_stats_to_player_level` produces HP at 75% of player HP for levels 1-20
+- [ ] Each companion has correct count of attacks (2-4), passives (2-3), actives (2-3), reactions (0-1) <!-- re-verified 2026-09-01: still unmet — content/companions.json attacks/passives/actives/reactions: Kael 2/2/2/1 OK, Tam 2/2/2/1 OK, Lira 1/2/3/0 (attacks<2), Sable 1/3/2/0 (attacks<2) -->
+- [x] `scale_companion_stats_to_player_level` produces HP at each companion's `hp_factor` of player HP for levels 1-20 — 0.75 for Kael/Lira/Tam, 0.50 for Sable <!-- AMENDED 2026-09-01 (decision D-4). Was "75% of player HP", which is literally false for Sable (content/companions.json scaling_rules.hp_factor=0.50 vs 0.75 for the other three). The 0.50 is deliberate: Sable is a non-verbal shadow-fox scout (Bite/Alarm/Distraction), and a fox with a warrior's HP is incoherent. RECORDED CONSEQUENCE: game_mechanics_npcs.md:636 ties the 75% figure to encounter math — "the encounter scaling in game_mechanics_bestiary.md assumes 1 player + 1 companion = 1.75x a single character". A Sable party is ~1.6x, not 1.75x. Phase 7 M7.4 build_encounter MUST read actual companion hp_factor rather than assuming 0.75 (companion_scaling.py:43); filed as an explicit input to Milestone 34. -->
 - [x] All 5 relationship tiers defined with narrative content gates
 - [x] Relationship tier does NOT affect combat stats or ability availability
 - [x] Hostile encounter templates reference correct companion combat behaviors

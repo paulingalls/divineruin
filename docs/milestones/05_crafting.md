@@ -120,7 +120,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - [x] Field workspace is always available but restricted to basic recipes
 - [x] NPC rental costs match spec: Workshop 2sp, Forge 5sp, Lab 10sp, Combined 12sp per day
 - [x] Disposition modifiers correctly adjust rental prices (shipped spec-aligned: Friendly 0.8x / Trusted 0.6x discount, refusal below Neutral; no hostile surcharge per spec — the milestone's "surcharge" wording is the tracked spec-cleanup conflict)
-- [ ] Trusted reputation grants free workspace access at that settlement — **DEFERRED to Phase 6** (settlement-availability matrix + NPC-vendor validation; concerns `c5c5871115dc`, `bec87679b223`)
+- [ ] Trusted reputation grants free workspace access at that settlement — **DEFERRED to Phase 6** (settlement-availability matrix + NPC-vendor validation; concerns `c5c5871115dc`, `bec87679b223`) <!-- re-verified 2026-09-01: still unmet — content/pricing.json economy.disposition_multipliers gives trusted 0.6x (not free), and apps/agent/workspace.py compute_rental_price takes no reputation input and has no free-access branch -->
 - [x] Artificer Portable Lab functions as Workshop + basic Laboratory
 - [x] Artificer async training-slot exception wired + slot accounting consumes the training slot (deferred from M1.6 per ADR 0005; debt `95de7fa141df`)
 - [x] Three-check pipeline gates crafting roll: all three must pass before rolling (shipped as a five-check pre-flight pipeline — Knowledge/Tier/Workspace/Materials/Tainted-Expert)

@@ -53,7 +53,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] All attack entries include name, attribute, damage_dice, damage_type, range, and optional effects
 - [ ] Tier system correctly maps tiers 1-4 to player level ranges
 - [ ] Narration fields provide audio-first cues (sound/smell before sight)
-- [ ] Loot schema supports both guaranteed and probabilistic drops
+- [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified 2026-09-01: shipped by M4.7 story-002, NOT as a creature-stat-block field. content/loot_tables.json `drops[]` = {item_id, chance, quantity} with chance 1.0 = guaranteed (loot_hollow_warden, loot_cult_leader, loot_hollowed_knight); rolled by apps/agent/encounter_loot.py:derive_role_loot(). RED-if-broken: apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity and ::test_standard_loot_omits_entries_whose_chance_fails. Residual: no `guaranteed[]`/`chance[]` split and no hollow_residue_flag; loot is referenced from the enemy by `loot_table_id`, not embedded. The M7.1 row of the Sprint-003 Audit Status table above (0 confirmed / 9 NOT_SHIPPED) is stale by this one item. -->
 - [ ] `validate_creature_stat_block` rejects invalid entries with specific error messages
 - [ ] DB migration runs cleanly with proper indexes on category, tier, and name
 - [ ] Tests cover validation for all 6 categories including Hollow edge cases

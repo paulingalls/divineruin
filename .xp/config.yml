@@ -1,0 +1,36 @@
+# xp project config — EDIT the tiers for your stack, then re-run your first commit
+release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
+# codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
+# trunk: develop       # UNCOMMENT where releases do NOT land on git's DEFAULT branch;
+#                      # they land and tag here, any develop -> main cut stays yours
+# lifecycle_command: ./scripts/xp-lifecycle "fixed value"  # argv prefix, no shell
+#                    # receives sprint-open/story-close/sprint-close and the id
+sprint_cap: 6        # max stories per sprint
+debt_budget: 0.2     # max share of sprint stories that are scheduled debt
+constraints_chars_cap: 4500  # hard character ceiling; retire or shorten a rule
+# version_files: path/to/manifest.json  # comma-separated JSON manifests
+# teardown_timeout: 60  # seconds before close kills worktree teardown
+# review:
+#   verify_batches: 2   # sprint-close verifier AGENTS per round. Bounds the
+#                       # spend: candidates are batched across this many, never
+#                       # one agent per candidate.
+
+roles:               # harness/model[/effort]; the lead overrides per story in plan.md
+  lead: claude/opus
+  executor: claude/sonnet/medium
+  reviewer: claude/opus
+  plan-reviewer: claude/opus   # scripts/plan_review.py; a teammate runs it itself
+  finder: claude/opus     # the four round-1 stages of `close.py sprint <id> review`;
+  verifier: claude/opus   # each falls back to `reviewer` when its key is absent, so
+  fixer: claude/opus      # an older config keeps working untouched
+  closer: claude/opus
+
+tests:
+  # fast is intentionally EMPTY: .githooks/pre-commit already runs `bun run lint`,
+  # and setup skipped xp's wall half because core.hooksPath=.githooks was live.
+  # A value here would never fire; one definition of "fast", in the hook.
+  fast:
+  # story/full earn their place by running on the tree MERGED with trunk
+  # (close/overlap.py) — the pre-push hook only ever sees the branch as-pushed.
+  story: bun run test:all          # TS + Python unit lanes; the old system's sole test_command
+  full: bun run test:acceptance    # the one lane test:all omits by design (ADR 0003, API cost)

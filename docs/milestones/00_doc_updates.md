@@ -44,7 +44,7 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 
 **Acceptance criteria:**
 - [x] All 10 game mechanics docs have section indexes in INDEX.md <!-- evidence: INDEX.md L300-485 covers all 10 (plus encounter_roles as bonus) -->
-- [ ] Each index entry has accurate line ranges (verified against actual file content) <!-- see audit/phase-0.md#m0.2 — 9/10 docs match within 1 line; game_mechanics_archetypes.md ranges are ~133 lines low (file is 1357 lines, INDEX claims 1224) -->
+- [ ] Each index entry has accurate line ranges (verified against actual file content) <!-- see audit/phase-0.md#m0.2 — 9/10 docs match within 1 line; game_mechanics_archetypes.md ranges are ~133 lines low (file is 1357 lines, INDEX claims 1224) --> <!-- reverified 2026-09-01: still open, and drift has WIDENED to 2 docs. archetypes: INDEX.md:367 header + rows 417-1014/1016-1087/1089-1152/1154-end vs actual headings at 417/1149/1222/1287 (file 1357L). decisions: INDEX.md:466 claims 186 lines and indexes 10 sections ending "183-end"; the file is 351 lines with 18 sections (Encounter Roles :188 through Terrain :326 are unindexed). core.md and economy.md are each off by one line in the header count only; the other 6 match. -->
 - [x] Index entries follow the existing format: `## filename.md (~N lines)` with description and table <!-- evidence: spot-checked at INDEX.md:300,325,343,466 -->
 - [x] `agent_handoffs_and_scenes.md` is indexed <!-- evidence: INDEX.md:278 -->
 
@@ -67,11 +67,11 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Add canonical price reference table to the GDD economy section or as a standalone reference
 
 **Acceptance criteria:**
-- [ ] Zero instances of "gp" remain across all docs — all replaced with "gc" <!-- see audit/phase-0.md#m0.3 — 3 unintended gp refs remain: game_mechanics_magic.md:423,432 (Revivify/Resurrection diamond components, explicitly named M0.3 targets) and economy/game_mechanics_p2p_trade.md:160 -->
+- [x] Zero *notational* instances of "gp" remain across all docs — all replaced with "gc" <!-- CLOSED 2026-09-01 (decision D-3, which dissolved: not a design call). The 3 survivors were stale notation for values canon had ALREADY ratified — game_mechanics_economy.md:127-128 prices "Revivify diamond | 50 gc | 500 sp" and "Resurrection diamond | 500 gc | 5,000 sp", the same numerals, and game_mechanics_decisions.md:185 explicitly ratifies "Revivify diamond at 50 gc = 500 sp is appropriate for a death-prevention component". Fixed: game_mechanics_magic.md:423 (50 gp -> 50 gc), :432 (500 gp -> 500 gc), economy/game_mechanics_p2p_trade.md:160 (thousands of gp/hour -> gc/hour). Two META-references deliberately remain and must NOT be changed: game_mechanics_economy.md:34 (the rule itself, which quotes "gp" to say it does not exist in Aethos) and game_mechanics_decisions.md:185 (the decision record). The AC is therefore scoped to notational use. -->
 - [x] GDD economy section states 1 gc = 10 sp <!-- evidence: game_design_doc.md:1065 -->
 - [x] Economic anchor (1 sp = 1 day unskilled labor) is stated in the GDD <!-- evidence: game_design_doc.md:1053,1065 -->
 - [x] Canonical price reference table exists with at least 14 item categories <!-- evidence: game_mechanics_economy.md §§Canonical Price Tables → Currency Drops from Combat (14 categories) -->
-- [ ] No contradictory currency ratios remain across docs <!-- see audit/phase-0.md#m0.3 — ratio (1 gc = 10 sp) consistent everywhere, but surviving gp refs in magic_doc create a soft notation contradiction -->
+- [x] No contradictory currency ratios remain across docs <!-- CLOSED 2026-09-01: the ratio (1 gc = 10 sp) was already consistent everywhere; the only defect was the soft notation contradiction from the surviving gp refs in game_mechanics_magic.md, fixed above. Values now agree with game_mechanics_economy.md:127-128 exactly. -->
 
 **Key references:**
 - *Economy Reconciliation Doc — Currency Notation Fixes*
@@ -103,7 +103,7 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - [x] Technical architecture Game Engine section references `game_mechanics/` <!-- evidence: technical_architecture.md:1040 -->
 - [x] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md` <!-- evidence: world_data_simulation.md:13; bonus mvp_spec.md:28 -->
 - [x] Cross-references use consistent format across all docs <!-- evidence: all 7 banners use `> **Detailed specification(s):** See …` pattern -->
-- [ ] No existing content is deleted — only cross-reference notes added <!-- see audit/phase-0.md#m0.4 — cannot verify positively without pre-M0.4 baseline; spot-checked sections retain original prose -->
+- [x] No existing content is deleted — only cross-reference notes added <!-- see audit/phase-0.md#m0.4 — cannot verify positively without pre-M0.4 baseline; spot-checked sections retain original prose --> <!-- verified 2026-09-01: baseline found — the M0.4 commit is `f946ab6` "Add cross-references from existing docs to game_mechanics/", 18 insertions / 0 deletions across game_design_doc.md, mvp_spec.md, technical_architecture.md, world_data_simulation.md (`git show --stat f946ab6`; `git show f946ab6 | grep -c '^-[^-]'` = 0) -->
 
 **Key references:**
 - *Game Design Doc — all mechanical sections*
