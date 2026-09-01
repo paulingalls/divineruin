@@ -81,7 +81,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     if current == 3:
         from companion_relationship_queries import hydrate_companion_state
 
-        # First meeting: hydrate (no prior row -> session_count becomes 1) + persist (M6.4 / story-003).
+        # First meeting: hydrate (session_count 0 -> 1) + persist (M6.4 / story-003).
         companion = await hydrate_companion_state(sd.player_id, "companion_kael", "Kael")
         companion.last_speech_time = time.time()
         sd.companion = companion

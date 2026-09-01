@@ -11,6 +11,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _creation_grant_fixtures import stub_creation_companion_grant  # noqa: F401  (autouse)
 from livekit.agents.llm import ToolError
 
 import event_types as E

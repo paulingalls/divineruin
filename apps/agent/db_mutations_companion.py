@@ -1,7 +1,7 @@
 """DB persistence for per-player companion relationship state (M6.4, story-003).
 
 Its own module (db_mutations.py sits at the 500-line cap) keeps the companion writers
-cohesive — same call as db_mutations_reputation / db_mutations_gathering. All three write
+cohesive — same call as db_mutations_reputation / db_mutations_gathering. All four write
 companion_relationships (migration 042 + 043), whose authoritative inputs are session_count
 and affinity; relationship_tier is a denormalized cache of the effective rank that only
 external readers (HUD, debugging) consult. Accepts conn= for transaction participation.

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _combat_end_fixtures import combat_end_mutations
+from _creation_grant_fixtures import stub_creation_companion_grant  # noqa: F401  (autouse)
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
 from sample_fixtures import make_context as _make_context
 
