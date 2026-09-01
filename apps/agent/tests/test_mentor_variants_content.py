@@ -31,7 +31,7 @@ def _variants() -> list[dict]:
     return _load("mentor_variants.json")
 
 
-def test_exactly_80_entries_each_parses():
+def test_exact_entry_count_and_every_row_parses():
     rows = _variants()
     assert len(rows) == _VARIANT_COUNT
     for row in rows:
@@ -39,7 +39,7 @@ def test_exactly_80_entries_each_parses():
 
 
 def test_ids_are_unique():
-    # Seed upserts by id, so a duplicate id silently seeds <80 distinct DB rows
+    # Seed upserts by id, so a duplicate id silently seeds fewer distinct DB rows
     # while the count and 2-per-technique checks still pass. Pin uniqueness here.
     ids = [row["id"] for row in _variants()]
     dupes = {i: n for i, n in Counter(ids).items() if n > 1}
@@ -82,6 +82,46 @@ def test_variant_effect_contains_base_ability_effect():
         assert base["effect"] in variant.effect, (
             f"{variant.id}: base effect not contained in variant effect — stale copy after a base edit?"
         )
+
+
+# Each culture prices a variant by a fixed delta on its base technique's cost — the
+# mechanical half of the cultural identity the effect suffix states in words: Drathian spends
+# more body, Keldaran trades body for control, Thornwarden buys precision, Tidecaller
+# discounts. A base with no stamina left to spend (bard's two 0-stamina electives) takes the
+# stamina half of the delta on focus instead, so the culture still prices in its own direction.
+_CULTURE_COST_DELTA = {
+    "Drathian Clans technique": (1, 0),
+    "Keldaran Holds technique": (-1, 1),
+    "Thornwardens technique": (0, 1),
+    "Tidecallers technique": (-1, 0),
+}
+
+
+def _expected_cost(base: dict, culture: str) -> tuple[int, int]:
+    d_stamina, d_focus = _CULTURE_COST_DELTA[culture]  # KeyError = an unpriced new culture
+    stamina, focus = base["stamina"], base["focus"]
+    if stamina + d_stamina < 0:
+        d_focus += d_stamina
+        d_stamina = 0
+    return stamina + d_stamina, focus + d_focus
+
+
+def test_variant_cost_follows_its_culture_delta():
+    """A variant's cost must move in the direction its own effect text claims (story-006).
+
+    Nothing else binds the two: a row can read "Keldaran discipline trades raw power for
+    flawless control" while charging MORE stamina and LESS focus, and every other guard stays
+    green. Three of the bard rows did exactly that before this test existed."""
+    abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
+    offenders = {}
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        base = abilities[variant.ability_id]["cost"]
+        expected = _expected_cost(base, variant.cultural_attribution)
+        actual = (variant.cost.stamina, variant.cost.focus)
+        if actual != expected:
+            offenders[variant.id] = f"(stamina, focus) {actual}, expected {expected}"
+    assert not offenders, f"variant costs must follow their culture's delta: {offenders}"
 
 
 def test_each_culture_is_taught_by_exactly_one_mentor():

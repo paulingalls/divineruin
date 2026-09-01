@@ -39,7 +39,7 @@ describe("content/mentor_variants.json — parseMentorVariantRow conformance", (
   });
 
   test("ids are unique", async () => {
-    // Seed upserts by id, so a duplicate id silently seeds <80 distinct DB rows
+    // Seed upserts by id, so a duplicate id silently seeds fewer distinct DB rows
     // while the count and 2-per-technique checks still pass. Pin uniqueness here.
     const rows = await loadVariants();
     const ids = rows.map((row) => String(row.id));

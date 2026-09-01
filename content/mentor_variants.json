@@ -1044,8 +1044,8 @@
     "ability_id": "bard_song_of_rest",
     "mentor_id": "mentor_thornwarden_elder",
     "cost": {
-      "stamina": 1,
-      "focus": 3,
+      "stamina": 0,
+      "focus": 4,
       "scaling": null
     },
     "effect": "During a short rest: all allies regain an extra 1d8 HP. The support bard. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
@@ -1096,8 +1096,8 @@
     "ability_id": "bard_silver_tongue",
     "mentor_id": "mentor_keldaran_forgemaster",
     "cost": {
-      "stamina": 1,
-      "focus": 1,
+      "stamina": 0,
+      "focus": 2,
       "scaling": null
     },
     "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard. Keldaran discipline trades raw power for flawless control, never overcommitting.",
@@ -1109,8 +1109,8 @@
     "ability_id": "bard_silver_tongue",
     "mentor_id": "mentor_thornwarden_elder",
     "cost": {
-      "stamina": 1,
-      "focus": 2,
+      "stamina": 0,
+      "focus": 3,
       "scaling": null
     },
     "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
