@@ -179,7 +179,7 @@ async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
 def test_server_boots_with_mentor_variants_loaded_from_real_db(capstone_server: dict[str, str]) -> None:
     # The fixture only yields after the Bun server reaches ready; its startup Promise.all runs
     # loadMentorVariants() (story-001) against the seeded testcontainer, so a served response proves
-    # all 80 variants parsed without failing boot — a malformed/missing row would crash
+    # every variant parsed without failing boot — a malformed/missing row would crash
     # parseMentorVariantRow first (the cross-language parity letter for the M9 catalog).
     response = httpx.get(capstone_server["base_url"], timeout=5.0)
     assert response.status_code < 500

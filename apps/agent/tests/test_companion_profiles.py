@@ -53,6 +53,17 @@ class TestParse:
             c = parse_companion_row(e["id"], e)
             assert len(c.save_proficiencies) == 2
 
+    def test_ability_bucket_cardinality(self):
+        """M6.4 spec floor/ceiling per companion. The TS twin (companion.test.ts) pins the same
+        numbers, but no test the card's Verify runs did — Sable's second attack could be reverted
+        with the whole Python gate still green."""
+        for e in _RAW:
+            c = parse_companion_row(e["id"], e)
+            assert 2 <= len(c.attacks) <= 4, f"{c.id} attacks"
+            assert 2 <= len(c.passives) <= 3, f"{c.id} passives"
+            assert 2 <= len(c.actives) <= 3, f"{c.id} actives"
+            assert len(c.reactions) <= 1, f"{c.id} reactions"
+
     def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True
@@ -205,8 +216,9 @@ class TestActionPool:
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt is type=ranged -> top-level ranged:True. hit "INT+prof" -> governing INT
-        # (the resolver uses INT, NOT the ranged-default DEX). damage strips +INT.
+        # Arcane Bolt and Radiant Mote are both type=ranged -> top-level ranged:True.
+        # hit "INT+prof" -> governing INT (the resolver uses INT, NOT the ranged-default
+        # DEX). damage strips +INT.
         assert pool == [
             {
                 "name": "Arcane Bolt",
@@ -215,7 +227,15 @@ class TestActionPool:
                 "properties": [],
                 "governing_attribute": "intelligence",
                 "ranged": True,
-            }
+            },
+            {
+                "name": "Radiant Mote",
+                "damage": "1d4",
+                "damage_type": "radiant",
+                "properties": [],
+                "governing_attribute": "intelligence",
+                "ranged": True,
+            },
         ]
 
     def test_tam_mixed_melee_and_ranged(self):

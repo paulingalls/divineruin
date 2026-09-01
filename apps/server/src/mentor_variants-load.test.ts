@@ -11,11 +11,12 @@ const VARIANTS_PATH = new URL("content/mentor_variants.json", ROOT);
 const ABILITIES_PATH = new URL("content/archetype_abilities.json", ROOT);
 const NPCS_PATH = new URL("content/npcs.json", ROOT);
 
-// content/mentor_variants.json is a closed set (story-001): the 40 martial elective
-// techniques (warrior/guardian/skirmisher/rogue/spy x 8) x 2 cultural variants. Exact
-// counts catch silent attrition AND accidental additions (move these if the set changes).
-const VARIANT_COUNT = 80;
-const MARTIAL_ARCHETYPES = new Set(["warrior", "guardian", "skirmisher", "rogue", "spy"]);
+// content/mentor_variants.json is a closed set (story-001, extended story-006): the 44
+// martial elective techniques (warrior/guardian/skirmisher/rogue/spy x 8, bard x 4) x 2
+// cultural variants. Exact counts catch silent attrition AND accidental additions (move
+// these if the set changes).
+const VARIANT_COUNT = 88;
+const MARTIAL_ARCHETYPES = new Set(["warrior", "guardian", "skirmisher", "rogue", "spy", "bard"]);
 
 async function loadJson<T>(url: URL): Promise<T> {
   return (await Bun.file(url).json()) as T;
@@ -38,7 +39,7 @@ describe("content/mentor_variants.json — parseMentorVariantRow conformance", (
   });
 
   test("ids are unique", async () => {
-    // Seed upserts by id, so a duplicate id silently seeds <80 distinct DB rows
+    // Seed upserts by id, so a duplicate id silently seeds fewer distinct DB rows
     // while the count and 2-per-technique checks still pass. Pin uniqueness here.
     const rows = await loadVariants();
     const ids = rows.map((row) => String(row.id));
@@ -80,7 +81,7 @@ describe("content/mentor_variants.json — parseMentorVariantRow conformance", (
       const variant = parseMentorVariantRow(String(row.id), row);
       byAbility.set(variant.ability_id, (byAbility.get(variant.ability_id) ?? 0) + 1);
     }
-    expect(byAbility.size).toBe(40);
+    expect(byAbility.size).toBe(44);
     for (const [ability, count] of byAbility) {
       expect(count, `${ability} has ${count} variants, expected 2`).toBe(2);
     }
