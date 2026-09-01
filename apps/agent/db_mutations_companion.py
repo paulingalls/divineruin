@@ -15,6 +15,41 @@ import json
 import asyncpg
 
 import db
+from companion_relationship import tier_rank_for_session_count
+
+
+async def insert_companion_relationship_if_absent(
+    player_id: str,
+    companion_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool:
+    """Create the first relationship row for a player+companion. Returns False if one exists.
+
+    The creation-time grant (story-003). DO NOTHING, never DO UPDATE: re-running it against a
+    player who has already accumulated session_count and affinity must not reset them, so this
+    deliberately does NOT reuse upsert_companion_relationship (which overwrites all three).
+
+    The seeded row is the never-met state read back by
+    companion_relationship_queries.query_companion_relationship: New tier, no sessions, no
+    affinity. Rank comes from the tier SSOT rather than a literal beside migration 042's defaults.
+    """
+    _conn = conn or await db.get_pool()
+    inserted = await _conn.fetchval(
+        """
+        INSERT INTO companion_relationships
+            (player_id, companion_id, relationship_tier, session_count, affinity)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (player_id, companion_id) DO NOTHING
+        RETURNING player_id
+        """,
+        player_id,
+        companion_id,
+        tier_rank_for_session_count(0),
+        0,
+        0,
+    )
+    return inserted is not None
 
 
 async def upsert_companion_relationship(
