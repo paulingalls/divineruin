@@ -128,10 +128,12 @@ describe("companions.json — scaling contract (story-002 reads these)", () => {
 });
 
 describe("companions.json — ability cardinality (spec)", () => {
-  test("each has >=1 attack, >=2 passives, 2-3 actives, 0-1 reactions", () => {
+  test("each has 2-4 attacks, 2-3 passives, 2-3 actives, 0-1 reactions", () => {
     for (const c of companions) {
-      expect(c.attacks.length).toBeGreaterThanOrEqual(1);
+      expect(c.attacks.length).toBeGreaterThanOrEqual(2);
+      expect(c.attacks.length).toBeLessThanOrEqual(4);
       expect(c.passives.length).toBeGreaterThanOrEqual(2);
+      expect(c.passives.length).toBeLessThanOrEqual(3);
       expect(c.actives.length).toBeGreaterThanOrEqual(2);
       expect(c.actives.length).toBeLessThanOrEqual(3);
       expect(c.reactions.length).toBeLessThanOrEqual(1);

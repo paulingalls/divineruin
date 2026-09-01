@@ -234,6 +234,16 @@
         "damage_type": "force",
         "special": "cantrip",
         "scaling": "2d6 at L5, 3d6 at L11, 4d6 at L17"
+      },
+      {
+        "name": "Radiant Mote",
+        "type": "ranged",
+        "reach": "60 ft",
+        "hit": "INT+prof",
+        "damage": "1d4+INT",
+        "damage_type": "radiant",
+        "special": "cantrip",
+        "scaling": "2d4 at L5, 3d4 at L11, 4d4 at L17"
       }
     ],
     "passives": [
@@ -510,6 +520,15 @@
         "damage_type": "piercing",
         "special": "If Sable has advantage: +1d4 psychic (shadow-fox arcane nature)",
         "scaling": "psychic +1d6 at L5, +1d8 at L11, +1d10 at L15"
+      },
+      {
+        "name": "Harrying Nip",
+        "type": "melee",
+        "reach": "5 ft",
+        "hit": "DEX+prof",
+        "damage": "1d4+DEX",
+        "damage_type": "piercing",
+        "special": "A snapping nip meant to unbalance, not wound — never a killing blow. Target has disadvantage on its next attack this phase."
       }
     ],
     "passives": [

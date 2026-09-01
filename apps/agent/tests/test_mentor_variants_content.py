@@ -17,9 +17,10 @@ from npcs import get_npc_sync
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
 
-# Closed set (story-001): 40 martial elective techniques x 2 cultural variants.
-_VARIANT_COUNT = 80
-_MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy"}
+# Closed set (story-001, extended story-006): 44 martial elective techniques x 2
+# cultural variants.
+_VARIANT_COUNT = 88
+_MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy", "bard"}
 
 
 def _load(name: str) -> list[dict]:
@@ -64,7 +65,7 @@ def test_every_mentor_id_is_an_existing_npc():
 
 def test_every_martial_elective_has_exactly_two_variants():
     counts = Counter(parse_mentor_variant_row(r["id"], r).ability_id for r in _variants())
-    assert len(counts) == 40
+    assert len(counts) == 44
     offenders = {ability: n for ability, n in counts.items() if n != 2}
     assert not offenders, f"expected 2 variants per technique, got {offenders}"
 

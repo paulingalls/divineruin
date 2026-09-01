@@ -205,8 +205,9 @@ class TestActionPool:
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt is type=ranged -> top-level ranged:True. hit "INT+prof" -> governing INT
-        # (the resolver uses INT, NOT the ranged-default DEX). damage strips +INT.
+        # Arcane Bolt and Radiant Mote are both type=ranged -> top-level ranged:True.
+        # hit "INT+prof" -> governing INT (the resolver uses INT, NOT the ranged-default
+        # DEX). damage strips +INT.
         assert pool == [
             {
                 "name": "Arcane Bolt",
@@ -215,7 +216,15 @@ class TestActionPool:
                 "properties": [],
                 "governing_attribute": "intelligence",
                 "ranged": True,
-            }
+            },
+            {
+                "name": "Radiant Mote",
+                "damage": "1d4",
+                "damage_type": "radiant",
+                "properties": [],
+                "governing_attribute": "intelligence",
+                "ranged": True,
+            },
         ]
 
     def test_tam_mixed_melee_and_ranged(self):
