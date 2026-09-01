@@ -115,6 +115,27 @@ class TestRentWorkspace:
         )
         assert result["price_sp"] == pytest.approx(4.0)  # 5 * 0.8
 
+    async def test_trusted_rents_free_no_debit(self):
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.update_player_gold = AsyncMock()
+        mutations.create_workspace_rental = AsyncMock(return_value="rent_free")
+        result = json.loads(
+            await _rent_workspace_impl(
+                make_context(),
+                "forge",
+                "grimjaw",
+                1,
+                db_mod=db_mod,
+                queries_mod=_queries(disposition="trusted"),
+                mutations_mod=mutations,
+                pricing_mod=_pricing(),
+            )
+        )
+        assert result["price_sp"] == 0.0
+        mutations.update_player_gold.assert_not_awaited()
+        mutations.create_workspace_rental.assert_awaited_once()
+
     async def test_below_neutral_refuses(self):
         db_mod, _ = make_db_mod()
         with pytest.raises(ToolError):

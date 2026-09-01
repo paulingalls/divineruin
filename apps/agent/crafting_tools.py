@@ -162,7 +162,13 @@ async def _rent_workspace_impl(
         raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     if not quote.available:
         raise ToolError(quote.reason)
-    price_gp = quote.price_sp / pricing["silver_per_gold"]
+    # Trusted disposition grants FREE workspace access (M5.2 AC, story-005). Branch lives
+    # here at the caller, not inside compute_rental_price — that fn is shared with
+    # repair_item.py's 0.6x-at-trusted repair pricing, and branching inside it would
+    # silently make blacksmith repairs free too (a game-rule change out of this card's scope).
+    is_trusted = disposition.lower() == "trusted"
+    price_sp = 0.0 if is_trusted else quote.price_sp
+    price_gp = price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
     async with db_mod.transaction() as conn:
@@ -172,7 +178,8 @@ async def _rent_workspace_impl(
         gold = player.get("gold", 0)
         if gold < price_gp:
             raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
-        await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
+        if not is_trusted:
+            await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
         rental_id = await mutations_mod.create_workspace_rental(
             player_id, location_id, wtype.value, "rental", expires_at, conn=conn
         )
@@ -182,7 +189,7 @@ async def _rent_workspace_impl(
         {
             "rental_id": rental_id,
             "workspace_type": wtype.value,
-            "price_sp": quote.price_sp,
+            "price_sp": price_sp,
             "expires_at": expires_at.isoformat(),
         }
     )
