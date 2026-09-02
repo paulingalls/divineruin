@@ -2,17 +2,10 @@
 
 from dataclasses import replace
 
-from combat._helpers import _make_combat_state
+from combat._helpers import _declarations, _make_combat_state
 
 from combat_phase import PhaseBeat, advance_combat_phase
 from session_data import CombatParticipant, CombatState
-
-
-def _declarations():
-    return {
-        "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
-        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
-    }
 
 
 class TestWrapBeat:

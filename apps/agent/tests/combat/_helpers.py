@@ -8,6 +8,14 @@ from check_resolution_attack import AttackResult
 from session_data import CombatParticipant, CombatState
 
 
+def _declarations():
+    """The all-attack declaration payload matching _make_combat_state()'s two participants."""
+    return {
+        "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+    }
+
+
 def _fake_db_mod():
     """A db-module stand-in for resolve_phase unit tests: ``.transaction()`` is a no-op async
     context manager yielding a mock conn, so the per-phase transaction wrapper (story-010) runs

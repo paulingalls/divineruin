@@ -6,7 +6,8 @@ guidance — these tests pin that the three role cadences (Minion / Elite / Boss
 prompt edits. Mirrors the prompt-content assertion style of tests/test_prompts.py.
 """
 
-from system_prompts import COMBAT_PROMPT, COMBAT_SYSTEM_PROMPT
+from combat_prompts import COMBAT_PROMPT
+from system_prompts import COMBAT_SYSTEM_PROMPT
 
 
 def test_combat_prompt_names_the_three_role_cadences():

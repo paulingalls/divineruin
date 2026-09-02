@@ -10,7 +10,7 @@ module only computes beat transitions, ordered resolution packets, and wrap effe
 import random
 
 import pytest
-from combat._helpers import _make_combat_state
+from combat._helpers import _declarations, _make_combat_state
 
 from combat_phase import (
     PhaseBeat,
@@ -19,13 +19,6 @@ from combat_phase import (
     consume_reaction,
 )
 from declarations import Declaration, DeclarationType
-
-
-def _declarations():
-    return {
-        "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
-        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
-    }
 
 
 class TestDeclarationBeat:

@@ -35,7 +35,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - **M2.4 spell acquisition ↔ Phase 3 Magic** — `character_spells.spell_id` foreign key needs the Arcane/Divine/Primal catalogs from `game_mechanics_magic.md`. See `audit/phase-3-magic.md`.
 - **M2.3 L5 specialization options ↔ Phase 8 Patrons** — Cleric Domain Specialization (archetypes spec L265) and Paladin Oath Specialization (L817) are patron-driven; Oracle's "dual allegiance" (L833) is patron-system territory. See `audit/phase-8-patrons.md`.
 - **M2.5 mentors ↔ Phase 6 NPCs** — "Valid mentor NPC relationship" precondition depends on Phase 6 disposition system. Cultural attribution (Drathian Clans / Keldaran Holds / Thornwardens / Tidecallers — spec L1313) depends on Phase 5/6 region+culture content.
-- **M2.2 reaction abilities ↔ Combat phase** — Combat-window enforcement is Phase 4 territory.
+- **M2.2 reaction abilities ↔ Combat phase** — Combat-window enforcement shipped in M2.2 story-002 (`combat_phase.consume_reaction` + the `ability_tools` activation gate), not in Phase 4.
 - **M2.5 ↔ Async activity system** — `apps/server/src/training_state_machine.ts` is the extension point for the multi-session mentor loop.
 
 ---
@@ -104,11 +104,11 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - [x] `request_ability_activation` deducts the correct Stamina or Focus cost and rejects activation when resources are insufficient
 - [x] Elective abilities at L4 and L8 present exactly 4 choices per archetype
 - [x] Characters can swap elective techniques on long rest without losing the technique
-- [ ] Reaction abilities can only trigger during their defined combat window
+- [x] Reaction abilities can only trigger during their defined combat window
 - [x] `request_ability_activation` returns a narration cue string for the DM agent to voice
-- [ ] Unit tests cover core activation, elective activation, insufficient resources, and reaction timing
+- [x] Unit tests cover core activation, elective activation, insufficient resources, and reaction timing
 
-> **Status (mostly shipped):** Ability catalog, activation/cost-rejection, L4/L8 elective pools, long-rest swap, and narration cues are delivered and tested (unit tests + `tests/acceptance/test_story_005_m22_ability_capstone.py`). Reaction combat-window gating (AC5, and the "reaction timing" leg of AC7) is explicitly deferred to Phase 4 (`ability_tools.py` header) — left unchecked.
+> **Status (shipped):** Ability catalog, activation/cost-rejection, L4/L8 elective pools, long-rest swap, and narration cues are delivered and tested (unit tests + `tests/acceptance/test_story_005_m22_ability_capstone.py`). AC5/AC7's reaction leg landed in story-002: a REACTION is declared at Beat 1 with its catalog window as `trigger`, and `activate` refuses it unless the combat is at the RESOLUTION beat, the declaration is that exact ability, its trigger equals the catalog `window`, and the round's one reaction is unspent (`combat_phase.consume_reaction`). **Scope caveat:** the gate applies to EVERY reaction ability, so the four socially-worded reactions (`spy_plausible_deniability`, `diplomat_objection`, `whisper_implant_doubt`, `marshal_countermand`) are now unusable outside combat — see the story-002 close review.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Core Abilities*
