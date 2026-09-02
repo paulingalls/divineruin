@@ -62,7 +62,8 @@ async def query_info(
       settlement, scaled by its size (tier) and character (personality).
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
     - kind="training_programs": available training programs (no target_id needed).
-    - kind="workspaces": available crafting workspaces (no target_id needed).
+    - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
+      rental price from that NPC; omit target_id for per-disposition daily prices.
     - kind="abilities": the current player's owned ability ids, reaction windows,
       and active learned variant ids (no target_id needed)."""
     return await _query_info_impl(context, kind, target_id)
@@ -82,7 +83,7 @@ async def _query_info_impl(
     if kind == "training_programs":
         return await training_mod._query_training_programs_impl(context)
     if kind == "workspaces":
-        return await crafting_mod._query_available_workspaces_impl(context)
+        return await crafting_mod._query_available_workspaces_impl(context, target_id)
     if kind == "abilities":
         return await _query_abilities_impl(context)
     if target_id is None:
