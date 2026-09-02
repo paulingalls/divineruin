@@ -13,7 +13,9 @@ The catalog is a flat list of self-contained id/JSONB rows discriminated by `kin
   - personality rows (kind="personality", id == trait): role_frequency_modifiers and
     disposition_modifiers (role_archetype id -> int), price_modifier, inventory_modifier,
     description.
-  - name-pool rows (kind="name_pool"): unique names available to generated rosters.
+  - name-pool rows (kind="name_pool"): the given names and surnames available to generated
+    rosters. Both are spoken aloud, so they must not collide with any authored character
+    (guarded cross-file by the conformance test, as with role ids below).
 
 Settlement generation consumes this:
 get_settlement_tier(size) for role counts, get_settlement_personality(trait) for
@@ -57,14 +59,19 @@ def _parse_personality(row_id: str, data: dict) -> None:
     parse_str(data["description"], f"{row_id}.description")
 
 
+def _parse_name_list(raw: object, ctx: str) -> None:
+    values = parse_str_tuple(raw, ctx)
+    if not values:
+        raise ValueError(f"{ctx} is empty")
+    if any(not value.strip() for value in values):
+        raise ValueError(f"{ctx} contains a blank name")
+    if len(values) != len(set(values)):
+        raise ValueError(f"{ctx} contains duplicates")
+
+
 def _parse_name_pool(row_id: str, data: dict) -> None:
-    names = parse_str_tuple(data["names"], f"{row_id}.names")
-    if not names:
-        raise ValueError(f"{row_id}.names is empty")
-    if any(not name.strip() for name in names):
-        raise ValueError(f"{row_id}.names contains a blank name")
-    if len(names) != len(set(names)):
-        raise ValueError(f"{row_id}.names contains duplicates")
+    _parse_name_list(data["names"], f"{row_id}.names")
+    _parse_name_list(data["surnames"], f"{row_id}.surnames")
 
 
 def parse_settlement_template_row(row_id: str, data: dict) -> dict:

@@ -94,7 +94,7 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 - [x] All 8 personality traits modify NPC disposition baselines and inventory pools
 - [x] `generate_settlement_npcs` produces correct role counts for every tier
 - [x] `instantiate_npc_from_template` applies settlement tier and personality modifiers to archetype defaults
-- [x] Generated NPCs have unique names, varied personalities within archetype constraints <!-- MET 2026-09-02 (story-010): generate_settlement_roster preserves role counts while assigning settlement-unique names and distinct 2-3 trait sets from each role's content pool. Name-pool exhaustion adds deterministic suffixes. Pinned by test_settlement_generation.py::TestRoster, test_query.py::TestSettlementPopulation, and test_m62_settlement_capstone.py. -->
+- [x] Generated NPCs have unique names, varied personalities within archetype constraints <!-- MET 2026-09-02 (story-010): generate_settlement_roster preserves role counts while assigning settlement-unique names and distinct 2-3 trait sets from each role's content pool. Name-pool exhaustion widens into given+surname pairs, so every generated name stays speakable; a conformance test blocks any pool name that collides with an authored character. Pinned by test_settlement_generation.py::TestRoster, test_query.py::TestSettlementPopulation, and test_m62_settlement_capstone.py. -->
 - [x] Agent tool `get_settlement_npc_population` returns valid NPC list for any location
 - [x] Settlement personality "Corrupt" increases Fence/Black Market frequency and reduces Guard disposition
 - [x] Tests cover all tier/personality combinations
@@ -108,7 +108,7 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-settlements.md -->
 
-**Status: DELIVERED (capstone `test_m62_settlement_capstone.py` passes; all ACs met).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/settlement_templates.json` (4 tiers hamlet/village/town/city + 8 settlement personalities + generated-name pool), migration `040_settlement_templates.sql`, and `apps/agent/settlement_templates.py` / `settlement_generation.py` (counts, named rosters, and template instantiation). Per-role content pools produce distinct 2-3 trait personalities. Agent tool `query_settlement_population` surfaces counts and roster. Corrupt settlements raise fence/black-market frequency and lower guard disposition. The 4 hostile-encounter templates (bandit_ambush, ashmark_patrol, cult_cell, hollow_corrupted_settlement) ship in `content/encounter_templates.json`.
+**Status: DELIVERED (capstone `test_m62_settlement_capstone.py` passes; all ACs met).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/settlement_templates.json` (4 tiers hamlet/village/town/city + 8 settlement personalities + a generated given-name/surname pool), migration `040_settlement_templates.sql`, and `apps/agent/settlement_templates.py` / `settlement_generation.py` (counts, named rosters, and template instantiation). Per-role content pools produce distinct 2-3 trait personalities. Agent tool `query_settlement_population` surfaces counts and roster. Corrupt settlements raise fence/black-market frequency and lower guard disposition. The 4 hostile-encounter templates (bandit_ambush, ashmark_patrol, cult_cell, hollow_corrupted_settlement) ship in `content/encounter_templates.json`.
 
 The Sprint-005 audit paragraph below is retained for history only.
 

@@ -56,7 +56,9 @@ async def query_info(
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
     - kind="inventory": the current player's carried items (no target_id needed).
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
-      settlement, scaled by its size (tier) and character (personality).
+      settlement, scaled by its size (tier) and character (personality), plus a `roster` of
+      those NPCs with a name and personality traits each — use it to voice an unnamed
+      townsfolk (a guard, an innkeeper) instead of inventing one.
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
     - kind="training_programs": available training programs (no target_id needed).
     - kind="workspaces": available crafting workspaces (no target_id needed)."""

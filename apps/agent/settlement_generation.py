@@ -68,6 +68,22 @@ class RosterEntry(TypedDict):
     personality: list[str]
 
 
+def _name_candidates(rng: random.Random) -> list[str]:
+    """Speakable unique names, bare given names first then given+surname pairs.
+
+    The DM says every one of these aloud, so a settlement that exhausts the given-name pool
+    must widen into surnames rather than numbering people ("Alden 2"). 24 given x 16 surnames
+    covers the largest reachable settlement many times over; the numeric suffix in
+    generate_settlement_roster is the unreachable last resort behind it.
+    """
+    pool = get_settlement_name_pool()
+    given = list(pool["names"])
+    rng.shuffle(given)
+    surnames = list(pool["surnames"])
+    rng.shuffle(surnames)
+    return given + [f"{g} {s}" for s in surnames for g in given]
+
+
 def generate_settlement_roster(population: dict[str, int], *, rng: random.Random | None = None) -> list[RosterEntry]:
     """Return named, individually varied NPCs for a concrete role-count population."""
     rng = rng or random.Random()
@@ -76,12 +92,11 @@ def generate_settlement_roster(population: dict[str, int], *, rng: random.Random
         if type(count) is not int or count < 0:
             raise ValueError(f"{role!r} count must be a non-negative integer, got {count!r}")
         role_traits[role] = get_role_archetype(role).personality_traits
-    names = list(get_settlement_name_pool()["names"])
-    rng.shuffle(names)
+    candidates = _name_candidates(rng)
     used_names: set[str] = set()
     generated_names: list[str] = []
     for index in range(sum(population.values())):
-        base = names[index % len(names)]
+        base = candidates[index % len(candidates)]
         candidate = base
         suffix = 2
         while candidate in used_names:

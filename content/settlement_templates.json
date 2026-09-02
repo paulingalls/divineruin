@@ -125,8 +125,12 @@
     "kind": "name_pool",
     "names": [
       "Alden", "Bera", "Corin", "Dessa", "Edrin", "Fara", "Galen", "Hesta",
-      "Iven", "Jora", "Kael", "Lysa", "Marek", "Nera", "Orin", "Pella",
+      "Iven", "Jora", "Bram", "Lysa", "Osric", "Nera", "Orin", "Pella",
       "Quill", "Ressa", "Soren", "Talia", "Ulric", "Veya", "Wren", "Yara"
+    ],
+    "surnames": [
+      "Ashby", "Brookes", "Carrow", "Dunmore", "Garrow", "Holloway", "Larkin", "Mere",
+      "Nyle", "Ostry", "Pike", "Quarry", "Redd", "Thatch", "Vance", "Wick"
     ]
   }
 ]

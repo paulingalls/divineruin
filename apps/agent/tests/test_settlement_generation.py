@@ -8,6 +8,7 @@ the set_* seams so tests exercise the shipped data, not hand-rolled stubs.
 """
 
 import json
+import math
 import random
 from pathlib import Path
 
@@ -37,6 +38,19 @@ _CONTENT = Path(__file__).resolve().parents[3] / "content"
 _TEMPLATES = json.loads((_CONTENT / "settlement_templates.json").read_text())
 _ARCHETYPES = json.loads((_CONTENT / "role_archetypes.json").read_text())
 _ARCHETYPE_IDS = {e["id"] for e in _ARCHETYPES}
+_TIER_IDS = [e["id"] for e in _TEMPLATES if e["kind"] == "tier"]
+_PERSONALITY_IDS = [e["id"] for e in _TEMPLATES if e["kind"] == "personality"]
+
+
+def _reachable_role_maxima() -> dict[str, int]:
+    """Largest count each role can reach across every tier x personality the content ships."""
+    maxima: dict[str, int] = {}
+    for tier in _TIER_IDS:
+        for personality in _PERSONALITY_IDS:
+            for role, r in _effective_ranges(tier, personality).items():
+                maxima[role] = max(maxima.get(role, 0), r["max"])
+    return maxima
+
 
 # Every SettlementSize (keldaran_hold has no tier row — generate normalizes it to city)
 # crossed with every personality. The E2E sweep asserts no unknown role/disposition escapes.
@@ -110,10 +124,21 @@ class TestRoster:
             assert 2 <= len(npc["personality"]) <= 3
             assert set(npc["personality"]) <= set(traits)
 
-    def test_same_role_trait_sets_are_distinct_at_maximum_guard_count(self):
-        roster = generate_settlement_roster({"guard": 62}, rng=random.Random(5))
+    def test_same_role_trait_sets_are_distinct_at_the_largest_reachable_count(self):
+        # Derived from content, not a literal: a tier/personality bump must move this test,
+        # not silently push a live settlement past its role's trait-set capacity.
+        biggest = max(_reachable_role_maxima().items(), key=lambda kv: kv[1])
+        roster = generate_settlement_roster({biggest[0]: biggest[1]}, rng=random.Random(5))
         trait_sets = [frozenset(npc["personality"]) for npc in roster]
-        assert len(set(trait_sets)) == 62
+        assert len(set(trait_sets)) == biggest[1]
+
+    def test_every_reachable_role_count_fits_its_trait_pool(self):
+        # generate_settlement_roster raises once a role's count exceeds C(n,2)+C(n,3) trait
+        # sets, which would kill query_info(kind="settlement_population") for that settlement.
+        for role, count in _reachable_role_maxima().items():
+            n = len(get_role_archetype(role).personality_traits)
+            capacity = math.comb(n, 2) + math.comb(n, 3)
+            assert count <= capacity, f"{role} can reach {count} but has only {capacity} trait sets"
 
     def test_fixed_seed_is_deterministic(self):
         population = {"guard": 3, "innkeeper": 2}
@@ -121,12 +146,18 @@ class TestRoster:
         second = generate_settlement_roster(population, rng=random.Random(19))
         assert first == second
 
-    def test_exhausted_name_pool_adds_unique_names(self):
-        pool_size = len(get_settlement_name_pool()["names"])
-        roster = generate_settlement_roster({"guard": pool_size + 1}, rng=random.Random(2))
+    def test_exhausted_name_pool_yields_speakable_unique_names(self):
+        pool = get_settlement_name_pool()
+        count = len(pool["names"]) + 4
+        roster = generate_settlement_roster({"guard": count}, rng=random.Random(2))
         names = [npc["name"] for npc in roster]
-        assert len(names) == len(set(names)) == pool_size + 1
-        assert any(name not in get_settlement_name_pool()["names"] for name in names)
+        assert len(names) == len(set(names)) == count
+        overflow = [n for n in names if n not in pool["names"]]
+        assert len(overflow) == 4
+        # Overflow is given+surname, never a numbered person ("Alden 2") the DM must say aloud.
+        for name in overflow:
+            given, _, surname = name.partition(" ")
+            assert given in pool["names"] and surname in pool["surnames"], name
 
     def test_unknown_role_and_impossible_trait_count_fail_loud(self):
         with pytest.raises(ValueError, match="unknown"):

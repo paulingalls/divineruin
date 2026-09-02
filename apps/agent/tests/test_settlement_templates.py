@@ -13,6 +13,7 @@ description).
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,16 @@ _RAW = json.loads(_CONTENT_PATH.read_text())
 
 _ARCHETYPE_PATH = Path(__file__).resolve().parents[3] / "content" / "role_archetypes.json"
 _ARCHETYPE_IDS = {e["id"] for e in json.loads(_ARCHETYPE_PATH.read_text())}
+
+_CONTENT_DIR = _CONTENT_PATH.parent
+# Every word of every authored character name the DM voices. A generated roster name that
+# collides with one of these makes the DM say a stranger's line in a known character's name.
+_AUTHORED_NAME_WORDS = {
+    word.lower()
+    for f in ("voice_registry.json", "npcs.json", "companions.json")
+    for entry in json.loads((_CONTENT_DIR / f).read_text())
+    for word in re.findall(r"[A-Za-z']+", entry["name"])
+}
 
 _TIER_IDS = {"hamlet", "village", "town", "city"}
 _PERSONALITY_IDS = {
@@ -81,17 +92,26 @@ class TestParse:
         parsed = [parse_settlement_template_row(e["id"], e) for e in _RAW]
         assert len(parsed) == 13
 
-    @pytest.mark.parametrize(
-        "names",
-        [[], ["Alden", "Alden"], ["Alden", ""]],
-    )
-    def test_name_pool_rejects_empty_duplicate_or_blank_names(self, names):
-        with pytest.raises(ValueError, match="default_names"):
-            parse_settlement_template_row("default_names", {"id": "default_names", "kind": "name_pool", "names": names})
+    @pytest.mark.parametrize("field", ["names", "surnames"])
+    @pytest.mark.parametrize("values", [[], ["Alden", "Alden"], ["Alden", ""]])
+    def test_name_pool_rejects_empty_duplicate_or_blank_names(self, field, values):
+        with pytest.raises(ValueError, match=f"default_names.{field}"):
+            parse_settlement_template_row("default_names", {**_row("default_names"), field: values})
 
-    def test_name_pool_missing_names_fails_loud(self):
+    @pytest.mark.parametrize("field", ["names", "surnames"])
+    def test_name_pool_missing_field_fails_loud(self, field):
+        bad = {k: v for k, v in _row("default_names").items() if k != field}
         with pytest.raises(ValueError, match="default_names"):
-            parse_settlement_template_row("default_names", {"id": "default_names", "kind": "name_pool"})
+            parse_settlement_template_row("default_names", bad)
+
+    def test_name_pool_never_collides_with_an_authored_character(self):
+        # Kael (the starting companion) and Marek (Bosun Marek Tideborn) both shipped in the
+        # first pool; either would have the DM voice a random guard as a known character.
+        pool = _row("default_names")
+        for generated in (*pool["names"], *pool["surnames"]):
+            assert generated.lower() not in _AUTHORED_NAME_WORDS, (
+                f"generated name {generated!r} collides with an authored character"
+            )
 
     def test_tier_role_count_keys_reference_real_archetypes(self):
         for e in (r for r in _RAW if r["kind"] == "tier"):
