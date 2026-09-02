@@ -153,7 +153,7 @@ class CombatState:
     # Reaction availability for the current phase (actor_id -> bool). The declaration beat
     # refreshes it for PLAYERS ONLY — the reaction economy is player-only by design (only a
     # trained archetype technique is a reaction; enemy action_pool entries carry no catalog
-    # id, so no enemy can declare one). combat_phase.consume_reaction spends an entry at the
+    # id, so no enemy can declare one). combat_phase.validate_reaction_activation guards the spend at the
     # resolution beat and combat_packet reads it to decide whether a REACTION declaration
     # resolved; the wrap loop-back clears it. Absent actor => no budget (never a free spend).
     reactions_available: dict[str, bool] = field(default_factory=dict)

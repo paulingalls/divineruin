@@ -215,8 +215,13 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
     return next_state
 
 
-def consume_reaction(state: CombatState, actor_id: str, ability_id: str) -> CombatState:
-    """Spend the player's declared reaction for this round without mutating ``state``."""
+def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
+    """Raise unless ``actor_id`` may spend a reaction on ``ability_id`` right now.
+
+    Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
+    ``state`` here and the caller assigned the copy back after its await, which erased anything an
+    unlocked in-place writer committed meanwhile (draethar_inner_fire mutates participants directly
+    and holds no combat_end_lock). The caller records the spend as one field write instead."""
     if state.beat != PhaseBeat.RESOLUTION:
         raise ValueError("reactions can only activate during the resolution beat")
 
@@ -238,10 +243,6 @@ def consume_reaction(state: CombatState, actor_id: str, ability_id: str) -> Comb
         )
     if not state.reactions_available.get(actor_id, False):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
-
-    next_state = copy.deepcopy(state)
-    next_state.reactions_available[actor_id] = False
-    return next_state
 
 
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:

@@ -140,7 +140,7 @@ async def _resolve_attack_packet(
     ``action`` is an entry from the attacker's action_pool (weapon-shaped).
 
     ``shield_reaction`` remains unwired because player reactions resolve through
-    ``activate`` and ``consume_reaction``, outside the attack packet. It is therefore
+    ``activate`` and ``validate_reaction_activation``, outside the attack packet. It is therefore
     ``None`` on the live path; direct durability tests exercise the accrual seam."""
     attacker_data = {
         "attributes": attacker.attributes,

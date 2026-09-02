@@ -79,17 +79,27 @@ async def _request_ability_activation_impl(
         return await activate_unlocked()
 
     session: SessionData = context.userdata
+    # OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01). Four shipped
+    # reactions fire outside a fight by their own effect text -- spy_plausible_deniability
+    # ("when accused/confronted"), diplomat_objection ("when an NPC is about to act against your
+    # wishes") -- and gating them on a combat beat DELETED that behaviour. There is no reaction
+    # budget outside combat, so ungated here is the pre-story status quo, not a new hole.
+    if session.combat_state is None:
+        return await activate_unlocked()
+
     async with session.combat_end_lock:
-        state = session.combat_state
-        if state is None:
-            raise ToolError("reactions can only activate during the resolution beat")
         try:
-            spent_state = combat_phase.consume_reaction(state, session.player_id, ability_id)
+            combat_phase.validate_reaction_activation(session.combat_state, session.player_id, ability_id)
         except ValueError as e:
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
-        session.combat_state = spent_state
+        # Record the spend as ONE field write on the CombatState the session holds NOW. Assigning a
+        # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
+        # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
+        # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
+        # prompt allows it mid-fight.
+        session.combat_state.reactions_available[session.player_id] = False
         return result
 
 

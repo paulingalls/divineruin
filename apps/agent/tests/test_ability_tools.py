@@ -165,14 +165,22 @@ class TestActivation:
 
         persistence.update_player_resources.assert_not_called()
 
-    async def test_reaction_without_combat_is_refused_before_resource_write(self):
+    async def test_reaction_outside_combat_activates_ungated(self):
+        """OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01).
+
+        An earlier shape refused every reaction whose session had no combat_state, which DELETED
+        shipped behaviour: spy_plausible_deniability ("Reaction when accused/confronted") and
+        diplomat_objection ("when an NPC is about to act against your wishes") fire outside a fight
+        by their own effect text. There is no reaction budget outside combat, so ungated here is the
+        pre-story status quo. Fault-injection: restoring the combat_state guard reds this.
+        """
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
 
-        with pytest.raises(ToolError, match="resolution beat"):
-            await _call("warrior_opportunity_strike", persistence=persistence)
+        result, _ = await _call("warrior_opportunity_strike", persistence=persistence)
 
-        persistence.update_player_resources.assert_not_called()
+        assert result["narration_cue"]
+        persistence.update_player_resources.assert_awaited()
 
 
 class TestRejection:

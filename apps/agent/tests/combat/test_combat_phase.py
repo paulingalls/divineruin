@@ -16,7 +16,7 @@ from combat_phase import (
     PhaseBeat,
     ResolutionPacket,
     advance_combat_phase,
-    consume_reaction,
+    validate_reaction_activation,
 )
 from declarations import Declaration, DeclarationType
 
@@ -130,12 +130,13 @@ class TestConsumeReaction:
         state.reactions_available = {"player_1": True}
         return state
 
-    def test_spends_declared_reaction_without_mutating_input(self):
+    def test_accepts_a_valid_declared_reaction_without_mutating_state(self):
+        """Validation only: the caller records the spend, so a valid call changes nothing here.
+        The spend used to be a deep-copied state returned from this function; assigning that copy
+        back after the caller's await erased concurrent in-place writes (draethar_inner_fire)."""
         state = self._reaction_state()
 
-        next_state = consume_reaction(state, "player_1", self.ability_id)
-
-        assert next_state.reactions_available == {"player_1": False}
+        assert validate_reaction_activation(state, "player_1", self.ability_id) is None
         assert state.reactions_available == {"player_1": True}
 
     def test_rejects_second_reaction_this_round(self):
@@ -143,14 +144,14 @@ class TestConsumeReaction:
         state.reactions_available["player_1"] = False
 
         with pytest.raises(ValueError, match="already spent"):
-            consume_reaction(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.ability_id)
 
     def test_rejects_activation_outside_resolution_beat(self):
         state = self._reaction_state()
         state.beat = PhaseBeat.NARRATION
 
         with pytest.raises(ValueError, match="resolution beat"):
-            consume_reaction(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.ability_id)
 
     def test_rejects_non_player_actor(self):
         state = self._reaction_state()
@@ -158,27 +159,27 @@ class TestConsumeReaction:
         state.reactions_available = {"goblin_scout_1": True}
 
         with pytest.raises(ValueError, match="only players"):
-            consume_reaction(state, "goblin_scout_1", self.ability_id)
+            validate_reaction_activation(state, "goblin_scout_1", self.ability_id)
 
     def test_rejects_without_pending_declaration(self):
         state = self._reaction_state()
         state.pending_declarations = {}
 
         with pytest.raises(ValueError, match="no pending reaction"):
-            consume_reaction(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.ability_id)
 
     def test_rejects_different_declared_ability(self):
         state = self._reaction_state(trigger="on_hit")
         state.pending_declarations["player_1"]["action"] = "warrior_brace_for_impact"
 
         with pytest.raises(ValueError, match="exact pending reaction"):
-            consume_reaction(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.ability_id)
 
     def test_rejects_declared_trigger_that_mismatches_catalog_window(self):
         state = self._reaction_state(trigger="on_hit")
 
         with pytest.raises(ValueError, match=r"does not match.*on_enemy_move"):
-            consume_reaction(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.ability_id)
 
 
 class TestPurityAndDeterminism:
