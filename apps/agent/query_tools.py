@@ -8,6 +8,8 @@ from typing import Literal
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import abilities
+import ability_persistence
 import crafting_tools
 import db_content_queries
 import db_queries
@@ -47,6 +49,7 @@ async def query_info(
         "recipe",
         "training_programs",
         "workspaces",
+        "abilities",
     ],
     target_id: str | None = None,
 ) -> str:
@@ -59,7 +62,9 @@ async def query_info(
       settlement, scaled by its size (tier) and character (personality).
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
     - kind="training_programs": available training programs (no target_id needed).
-    - kind="workspaces": available crafting workspaces (no target_id needed)."""
+    - kind="workspaces": available crafting workspaces (no target_id needed).
+    - kind="abilities": the current player's owned ability ids, reaction windows,
+      and active learned variant ids (no target_id needed)."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -78,6 +83,8 @@ async def _query_info_impl(
         return await training_mod._query_training_programs_impl(context)
     if kind == "workspaces":
         return await crafting_mod._query_available_workspaces_impl(context)
+    if kind == "abilities":
+        return await _query_abilities_impl(context)
     if target_id is None:
         raise ToolError(f"query_info(kind={kind!r}) requires target_id.")
     if kind == "location":
@@ -91,6 +98,60 @@ async def _query_info_impl(
     if kind == "recipe":
         return await recipe_mod._query_recipe_requirements_impl(context, target_id)
     raise ToolError(f"Unknown query_info kind: {kind!r}.")
+
+
+async def _query_abilities_impl(
+    context: RunContext[SessionData],
+    *,
+    queries=db_queries,
+    persistence=ability_persistence,
+    ability_catalog=abilities,
+) -> str:
+    session: SessionData = context.userdata
+    player = await queries.get_player(session.player_id)
+    player_class = player.get("class") if player else None
+    if not isinstance(player_class, str) or not player_class:
+        raise ToolError("Cannot query abilities: current player has no class.")
+
+    known_rows = await persistence.get_character_abilities(session.player_id)
+    known_ids = {row["ability_id"] for row in known_rows}
+
+    # An archetype with no catalog rows means an unknown class or an unloaded catalog, never a
+    # classed character who owns nothing — returning [] would tell the DM the player has no
+    # reactions, the exact silent wrong answer this kind exists to remove.
+    catalog = ability_catalog.get_archetype_abilities(player_class)
+    if not catalog:
+        raise ToolError(f"Cannot query abilities: no abilities loaded for class {player_class!r}.")
+
+    owned = [
+        ability
+        for ability in catalog
+        if ability_catalog.owns_ability(
+            player_class,
+            ability,
+            owns_elective=ability.id in known_ids,
+        )
+    ]
+    emitted_ids = {ability.id for ability in owned}
+    for ability_id in sorted(known_ids - emitted_ids):
+        try:
+            ability = ability_catalog.get_ability(ability_id)
+        except ValueError as error:
+            raise ToolError(str(error)) from error
+        if ability_catalog.owns_ability(player_class, ability, owns_elective=True):
+            owned.append(ability)
+
+    results = []
+    for ability in owned:
+        row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
+        if ability.ability_type == "reaction":
+            row["window"] = ability.window
+        if ability.ability_type == "elective":
+            active_variant_id = await persistence.get_active_variant(session.player_id, ability.id)
+            if active_variant_id is not None:
+                row["active_variant_id"] = active_variant_id
+        results.append(row)
+    return json.dumps({"abilities": results})
 
 
 async def _query_location_impl(
