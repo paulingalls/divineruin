@@ -64,7 +64,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] Initiative roll uses `d20 + DEX modifier` and correctly orders resolution within a phase
 - [x] Beat 1 collects declarations from player, companions, and enemies before any resolution
 - [x] Beat 2 resolves all actions without emitting narration, produces result packets with dramatic flags
-- [x] Beat 3 narration includes reaction windows where DM pauses for dramatic dice
+- [x] Beat 3 narration pauses for dramatic dice reveals. **Reaction windows moved off Beat 3** (M2.2 story-002): a reaction is declared at Beat 1 and activated at Beat 2, and the prompt now forbids opening an undeclared window during narration. This reverses design decision 46 (`game_mechanics_decisions.md:61`, "reactions are voice interrupts during enemy narration") and `game_mechanics_combat.md:130/182/187` — those still describe the engine holding damage for a mid-narration voice interrupt, which no code does.
 - [x] Beat 4 processes death saves, stamina regen, and condition tick-downs
 - [x] Phase loop repeats until combat_end is triggered (all enemies defeated, retreat, etc.)
 - [x] `advance_combat_phase` is a pure function with no side effects

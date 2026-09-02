@@ -233,6 +233,21 @@ async def _resolve_one_packet(
             cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
         )
 
+    if decl.type is DeclarationType.REACTION:
+        if state.reactions_available.get(packet.actor_id, True):
+            return {
+                "actor_id": packet.actor_id,
+                "resolved": False,
+                "declaration_type": str(decl.type),
+                "reason": "reaction was declared but not activated",
+            }
+        return {
+            "actor_id": packet.actor_id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "ability_id": decl.action,
+        }
+
     if decl.type is not DeclarationType.ATTACK:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
         # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.

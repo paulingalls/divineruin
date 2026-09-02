@@ -11,7 +11,9 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). Combat-window gating for reactions is deferred to Phase 4.
+7b34ebf86b57). An IN-COMBAT reaction is gated against the current declaration before any
+resource write, and the round's in-memory reaction budget is spent only AFTER the activation
+succeeds — a refused activation must not burn the reaction (test_reaction_refused_by_cost_*).
 """
 
 import json
@@ -22,6 +24,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import combat_phase
 import condition_produce
 import conditions
 import db
@@ -37,6 +40,71 @@ logger = logging.getLogger("divineruin.tools")
 
 
 async def _request_ability_activation_impl(
+    context: RunContext[SessionData],
+    ability_id: str,
+    *,
+    target_id: str | None = None,
+    target_ids: list[str] | None = None,
+    db_mod=db,
+    queries_mod=db_queries,
+    persistence_mod=ability_persistence,
+    abilities_mod=abilities,
+    variants_mod=mentor_variants,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
+    condition_produce_mod=condition_produce,
+) -> str:
+    _validate_id(ability_id, "ability_id")
+    try:
+        ability = abilities_mod.get_ability(ability_id)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
+    async def activate_unlocked() -> str:
+        return await _request_ability_activation_unlocked(
+            context,
+            ability_id,
+            target_id=target_id,
+            target_ids=target_ids,
+            db_mod=db_mod,
+            queries_mod=queries_mod,
+            persistence_mod=persistence_mod,
+            abilities_mod=abilities_mod,
+            variants_mod=variants_mod,
+            conditions_mod=conditions_mod,
+            conditions_mutations_mod=conditions_mutations_mod,
+            condition_produce_mod=condition_produce_mod,
+        )
+
+    if ability.ability_type != "reaction":
+        return await activate_unlocked()
+
+    session: SessionData = context.userdata
+    # OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01). Four shipped
+    # reactions fire outside a fight by their own effect text -- spy_plausible_deniability
+    # ("when accused/confronted"), diplomat_objection ("when an NPC is about to act against your
+    # wishes") -- and gating them on a combat beat DELETED that behaviour. There is no reaction
+    # budget outside combat, so ungated here is the pre-story status quo, not a new hole.
+    if session.combat_state is None:
+        return await activate_unlocked()
+
+    async with session.combat_end_lock:
+        try:
+            combat_phase.validate_reaction_activation(session.combat_state, session.player_id, ability_id)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
+
+        result = await activate_unlocked()
+        # Record the spend as ONE field write on the CombatState the session holds NOW. Assigning a
+        # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
+        # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
+        # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
+        # prompt allows it mid-fight.
+        session.combat_state.reactions_available[session.player_id] = False
+        return result
+
+
+async def _request_ability_activation_unlocked(
     context: RunContext[SessionData],
     ability_id: str,
     *,

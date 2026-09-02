@@ -29,7 +29,7 @@ import db_mutations_conditions
 import db_queries
 import spells
 from check_tools import _check_save_impl
-from system_prompts import COMBAT_PROMPT
+from combat_prompts import COMBAT_PROMPT
 
 
 def _types(conds: list[dict]) -> list[str]:
