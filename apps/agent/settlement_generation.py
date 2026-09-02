@@ -74,14 +74,16 @@ def _name_candidates(rng: random.Random) -> list[str]:
     The DM says every one of these aloud, so a settlement that exhausts the given-name pool
     must widen into surnames rather than numbering people ("Alden 2"). 24 given x 16 surnames
     covers the largest reachable settlement many times over; the numeric suffix in
-    generate_settlement_roster is the unreachable last resort behind it.
+    generate_settlement_roster is the last resort behind it. The pairs are shuffled as one
+    list, not emitted surname-major, so a city does not hand a quarter of its townsfolk the
+    same surname in one contiguous block.
     """
     pool = get_settlement_name_pool()
     given = list(pool["names"])
     rng.shuffle(given)
-    surnames = list(pool["surnames"])
-    rng.shuffle(surnames)
-    return given + [f"{g} {s}" for s in surnames for g in given]
+    pairs = [f"{g} {s}" for s in pool["surnames"] for g in given]
+    rng.shuffle(pairs)
+    return given + pairs
 
 
 def generate_settlement_roster(population: dict[str, int], *, rng: random.Random | None = None) -> list[RosterEntry]:

@@ -1,15 +1,15 @@
 """Tests for the settlement_templates content loader (Phase 6 M6.2 / story-002).
 
 The loader mirrors apps/agent/role_archetypes.py + npcs.py: fail-loud parse of the
-content/settlement_templates.json catalog, a module-global pair of dicts (_tiers,
-_personalities) with a set_* test seam, and a build-then-swap async DB loader. The
+content/settlement_templates.json catalog, one module-global dict per kind (_tiers,
+_personalities, _name_pools) with a set_* test seam, and a build-then-swap async DB loader. The
 catalog is the template SSOT story-003 consumes — get_settlement_tier(size) for role
 counts, get_settlement_personality(trait) for modifiers.
 
 Catalog shape: a flat list of self-contained id/JSONB rows discriminated by `kind`:
 4 tier rows (id == SettlementSize, role_counts of {min,max} ranges) + 8 personality
 rows (role_frequency_modifiers, disposition_modifiers, price_modifier, inventory_modifier,
-description).
+description) + 1 name_pool row (given names + surnames for generated rosters).
 """
 
 import json
@@ -17,6 +17,7 @@ import re
 from pathlib import Path
 
 import pytest
+from settlement_templates_config_fixture import load_fixture_config
 
 import settlement_templates
 from settlement_templates import (
@@ -37,9 +38,12 @@ _ARCHETYPE_IDS = {e["id"] for e in json.loads(_ARCHETYPE_PATH.read_text())}
 _CONTENT_DIR = _CONTENT_PATH.parent
 # Every word of every authored character name the DM voices. A generated roster name that
 # collides with one of these makes the DM say a stranger's line in a known character's name.
+# gods.json is in the list because six VOICES keys (GOD_MORTAEN, GOD_NYTHERA, GOD_ORENTHEL,
+# GOD_THYRA, GOD_VALDRIS, GOD_ZHAEL) have no voice_registry row — their names live only there.
+_AUTHORED_NAME_FILES = ("voice_registry.json", "npcs.json", "companions.json", "gods.json")
 _AUTHORED_NAME_WORDS = {
     word.lower()
-    for f in ("voice_registry.json", "npcs.json", "companions.json")
+    for f in _AUTHORED_NAME_FILES
     for entry in json.loads((_CONTENT_DIR / f).read_text())
     for word in re.findall(r"[A-Za-z']+", entry["name"])
 }
@@ -59,17 +63,6 @@ _PERSONALITY_IDS = {
 
 def _row(rid: str) -> dict:
     return next(e for e in _RAW if e["id"] == rid)
-
-
-def _catalog() -> tuple[dict, dict, dict]:
-    tiers: dict[str, dict] = {}
-    personalities: dict[str, dict] = {}
-    name_pools: dict[str, dict] = {}
-    for e in _RAW:
-        row = parse_settlement_template_row(e["id"], e)
-        catalogs = {"tier": tiers, "personality": personalities, "name_pool": name_pools}
-        catalogs[e["kind"]][e["id"]] = row
-    return tiers, personalities, name_pools
 
 
 class TestCardinality:
@@ -173,42 +166,42 @@ class TestParse:
 
 class TestAccessors:
     def test_get_returns_loaded(self):
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
         assert is_loaded()
         assert get_settlement_tier("city")["kind"] == "tier"
         assert get_settlement_personality("corrupt")["kind"] == "personality"
         assert get_settlement_name_pool("default_names")["kind"] == "name_pool"
 
     def test_unknown_tier_fails_loud(self):
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
         with pytest.raises(ValueError, match="keldaran_hold"):
             get_settlement_tier("keldaran_hold")
 
     def test_unknown_personality_fails_loud(self):
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
         with pytest.raises(ValueError, match="bogus"):
             get_settlement_personality("bogus")
 
     def test_unknown_name_pool_fails_loud(self):
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
         with pytest.raises(ValueError, match="bogus"):
             get_settlement_name_pool("bogus")
 
     def test_set_seam_isolates_catalog(self):
-        tiers, personalities, name_pools = _catalog()
+        tiers, personalities, name_pools = load_fixture_config()
         set_settlement_templates({"city": tiers["city"]}, {"corrupt": personalities["corrupt"]}, name_pools)
         assert is_loaded()
         assert get_settlement_tier("city")["id"] == "city"
         with pytest.raises(ValueError):
             get_settlement_tier("village")
         # restore the full catalog for any later test in this module
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
 
     def test_catalog_without_name_pool_is_not_loaded(self):
-        tiers, personalities, _ = _catalog()
+        tiers, personalities, _ = load_fixture_config()
         set_settlement_templates(tiers, personalities, {})
         assert not is_loaded()
-        set_settlement_templates(*_catalog())
+        set_settlement_templates(*load_fixture_config())
 
     def test_module_globals_present(self):
         assert hasattr(settlement_templates, "load_settlement_templates")

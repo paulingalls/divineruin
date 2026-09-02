@@ -185,11 +185,12 @@ async def _query_settlement_population_impl(
     """Generate a settlement's NPC counts and named roster from its tier + personality.
 
     Reads the location's settlement_tier/personality (story-001 fields) and delegates to the
-    pure generate_settlement_npcs rules engine (story-003). Fail-loud (ADR 0002): an unknown
-    or non-settlement location raises ToolError rather than returning an empty roster. `rng`
-    is injectable for deterministic tests; production seeds it from location_id (concern
-    b3c8b30eb849) so repeat queries of the same town return identical counts in- and
-    cross-session, while distinct settlements still get distinct populations.
+    pure generate_settlement_npcs + generate_settlement_roster rules engine. Fail-loud (ADR
+    0002): an unknown or non-settlement location raises ToolError rather than returning an
+    empty population. `rng` is injectable for deterministic tests; production seeds it from
+    location_id (concern b3c8b30eb849) so repeat queries of the same town return identical
+    counts, names and traits in- and cross-session, while distinct settlements still get
+    distinct populations.
     """
     logger.info("query_info[settlement_population] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")

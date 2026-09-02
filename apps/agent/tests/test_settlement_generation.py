@@ -13,6 +13,7 @@ import random
 from pathlib import Path
 
 import pytest
+from settlement_templates_config_fixture import load_fixture_config
 
 from role_archetypes import (
     DISPOSITIONS,
@@ -30,7 +31,6 @@ from settlement_generation import (
 from settlement_templates import (
     get_settlement_name_pool,
     get_settlement_personality,
-    parse_settlement_template_row,
     set_settlement_templates,
 )
 
@@ -70,14 +70,7 @@ _ALL_PERSONALITIES = [
 @pytest.fixture(autouse=True)
 def _seed_catalogs():
     """Seed both content catalogs from the real JSON before each test."""
-    tiers: dict[str, dict] = {}
-    personalities: dict[str, dict] = {}
-    name_pools: dict[str, dict] = {}
-    catalogs = {"tier": tiers, "personality": personalities, "name_pool": name_pools}
-    for e in _TEMPLATES:
-        row = parse_settlement_template_row(e["id"], e)
-        catalogs[e["kind"]][e["id"]] = row
-    set_settlement_templates(tiers, personalities, name_pools)
+    set_settlement_templates(*load_fixture_config())
     set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _ARCHETYPES})
 
 
@@ -158,6 +151,27 @@ class TestRoster:
         for name in overflow:
             given, _, surname = name.partition(" ")
             assert given in pool["names"] and surname in pool["surnames"], name
+
+    def test_names_stay_unique_past_the_given_x_surname_catalog(self):
+        # The numeric-suffix fallback is unreachable from any real settlement (109 max vs 408
+        # candidates), so only a hand-built population proves it still yields unique names
+        # instead of silently repeating them once the catalog wraps.
+        pool = get_settlement_name_pool()
+        catalog = len(pool["names"]) * (1 + len(pool["surnames"]))
+        roles = sorted(_ARCHETYPE_IDS - {"guard"})[:6]
+        population = {role: 84 for role in roles}
+        assert sum(population.values()) > catalog
+        roster = generate_settlement_roster(population, rng=random.Random(7))
+        names = [npc["name"] for npc in roster]
+        assert len(set(names)) == len(names) == sum(population.values())
+
+    def test_surnames_are_spread_across_the_pool_not_blocked_by_surname(self):
+        # A city draws ~85 surnamed NPCs; emitting the pairs surname-major would hand the
+        # first 24 of them the same surname in one block, which the DM then says aloud.
+        pool = get_settlement_name_pool()
+        roster = generate_settlement_roster({"guard": 62, "innkeeper": 5}, rng=random.Random(3))
+        surnames = {npc["name"].partition(" ")[2] for npc in roster if " " in npc["name"]}
+        assert len(surnames) >= len(pool["surnames"]) // 2
 
     def test_unknown_role_and_impossible_trait_count_fail_loud(self):
         with pytest.raises(ValueError, match="unknown"):
