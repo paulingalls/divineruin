@@ -239,6 +239,11 @@ class TestCompanionPrompt:
 
         assert "## Companion — Lira" in prompt
         assert f"[{profile.voice_id}, emotion]" in prompt
+        # Constraint 6: begin_activity(kind="companion_errand") refuses any id but the assigned
+        # one, and the prompt is the only channel that can produce it — the DM sees the name and
+        # the voice tag everywhere else, never `companion_lira`.
+        assert f"Tool id: {profile.id}" in prompt
+        assert "companion_kael" not in prompt
         assert profile.speech_style in prompt
         assert all(trait in prompt for trait in profile.personality)
         assert all(mannerism in prompt for mannerism in profile.mannerisms)
@@ -269,6 +274,7 @@ class TestCompanionPrompt:
 
         assert "## Companion — Sable" in prompt
         assert profile.voice_id in prompt
+        assert f"Tool id: {profile.id}" in prompt
         assert profile.speech_style in prompt
         assert all(trait in prompt for trait in profile.personality)
         assert all(mannerism in prompt for mannerism in profile.mannerisms)

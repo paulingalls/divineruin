@@ -286,3 +286,23 @@ class TestDispatchGatesTheAssignedCompanion:
                 activity_mod=_activity(0),
                 mutations_mod=_mutations(),
             )
+
+    @pytest.mark.asyncio
+    async def test_archetype_matching_no_companion_is_a_tool_error(self):
+        """A class in no companion's `complements` reaches the LLM as a narratable ToolError.
+
+        `select_companion_for_archetype` raises ValueError, and @db_tool only catches
+        DatabaseError/Timeout/Connection — unwrapped, the raw ValueError escapes the tool.
+        """
+        ctx = make_context()
+        with pytest.raises(ToolError, match="matches 0 companions"):
+            await _dispatch_companion_errand_impl(
+                ctx,
+                "companion_kael",
+                "scout",
+                "millhaven",
+                content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries("necromancer"),
+                activity_mod=_activity(0),
+                mutations_mod=_mutations(),
+            )

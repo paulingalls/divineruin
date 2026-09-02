@@ -1,11 +1,21 @@
 """Integration tests for companion errand resolution: companion templates and outcome tiers."""
 
+import json
 import random
+from pathlib import Path
 
-VALID_ERRAND_TYPES = {"scout", "social", "acquire", "relationship"}
-COMPANION_BLOCKED_ERRAND_TYPES: dict[str, frozenset[str]] = {
-    "companion_sable": frozenset({"social", "relationship"}),
-}
+# Read the block rule from the content the dispatch gates actually enforce
+# (errand_tools/_dispatch_companion_errand_impl and the server's validateErrandDispatch both
+# read `blocked_companions`). A hardcoded copy here cannot red when content unblocks a pair:
+# the gate would let it through and activity_templates renders an empty `Errand frame:`.
+_TEMPLATES = json.loads((Path(__file__).resolve().parents[3] / "content" / "errand_templates.json").read_text())
+VALID_ERRAND_TYPES = {t["id"] for t in _TEMPLATES}
+COMPANION_BLOCKED_ERRAND_TYPES: dict[str, frozenset[str]] = {}
+for _t in _TEMPLATES:
+    for _cid in _t["blocked_companions"]:
+        COMPANION_BLOCKED_ERRAND_TYPES[_cid] = COMPANION_BLOCKED_ERRAND_TYPES.get(_cid, frozenset()) | frozenset(
+            {_t["id"]}
+        )
 
 
 class TestCompanionContext:

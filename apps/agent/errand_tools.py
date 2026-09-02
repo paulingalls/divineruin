@@ -85,7 +85,13 @@ async def _dispatch_companion_errand_impl(
     archetype_id = player.get("class") if player else None
     if not archetype_id:
         raise ToolError("Cannot dispatch an errand: the player has no class.")
-    assigned_id = select_companion_for_archetype(archetype_id)
+    try:
+        assigned_id = select_companion_for_archetype(archetype_id)
+    except ValueError as e:
+        # A class in no companion's `complements` (or an unloaded catalog) is a content bug.
+        # Loud either way, but ToolError is the shape the LLM can narrate (ADR 0002) — a raw
+        # ValueError escapes @db_tool, which only catches DatabaseError/Timeout/Connection.
+        raise ToolError(f"Cannot dispatch an errand: {e}") from e
     if companion_id != assigned_id:
         raise ToolError(f"{companion_id} is not this player's companion; the assigned companion is {assigned_id}.")
     logger.info(

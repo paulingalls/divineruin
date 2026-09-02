@@ -278,6 +278,9 @@ Speech rules:
 {profile.name} is the player's traveling companion. {profile.name} is NOT you, but a separate character
 with their own voice and personality.
 
+Tool id: {profile.id} — the only companion id begin_activity(kind="companion_errand") accepts;
+any other id is refused. Never say it aloud.
+
 {voice_instruction}
 
 Speech style: {profile.speech_style}
