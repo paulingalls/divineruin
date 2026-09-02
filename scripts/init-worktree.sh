@@ -54,6 +54,26 @@ release_typegen_port() {
   rmdir "$lock_dir" 2>/dev/null || true
 }
 
+# Hand a dead owner's reservation back. The reap needs a mutex of its own: two
+# bootstraps that read the same dead owner otherwise race through
+# remove-then-recreate and both come away owning the port — the very collision
+# this lock exists to prevent — or yank the pid file out from under each other
+# mid-write and abort. The loser of the reap leaves the port to the winner.
+# Args: <port> <dead-owner-pid>
+reap_typegen_reservation() {
+  local port="$1" dead="$2" lock_dir reap_dir owner
+  lock_dir="$TYPEGEN_LOCK_ROOT/$port"
+  reap_dir="$lock_dir.reap"
+  mkdir "$reap_dir" 2>/dev/null || return 1
+  # Re-read under the mutex: the winner may already have reaped and retaken.
+  owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+  if [ "$owner" = "$dead" ]; then
+    rm -f "$lock_dir/pid"
+    rmdir "$lock_dir" 2>/dev/null || true
+  fi
+  rmdir "$reap_dir" 2>/dev/null || true
+}
+
 # Atomically reserve an unbound port. A failed mkdir belongs to another
 # bootstrap; a dead owner is reaped before one retry.
 # Args: <port>
@@ -61,16 +81,14 @@ reserve_typegen_port() {
   local port="$1" lock_dir owner
   lock_dir="$TYPEGEN_LOCK_ROOT/$port"
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    [ -f "$lock_dir/pid" ] || return 1
-    owner="$(<"$lock_dir/pid")"
+    owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
     case "$owner" in
       ''|*[!0-9]*) return 1 ;;
     esac
     if kill -0 "$owner" 2>/dev/null; then
       return 1
     fi
-    rm -f "$lock_dir/pid"
-    rmdir "$lock_dir" 2>/dev/null || return 1
+    reap_typegen_reservation "$port" "$owner" || return 1
     mkdir "$lock_dir" 2>/dev/null || return 1
   fi
   if ! printf '%s\n' "$$" > "$lock_dir/pid"; then
@@ -125,7 +143,9 @@ reap_typegen() {
 }
 
 # Confirm that every listener on a port belongs to the launched Expo process
-# group. An absent listener is also a failure: Expo may have auto-bumped.
+# group. Expo never auto-bumps under CI=1: a busy port makes it offer the next
+# free one, and a non-interactive prompt aborts the command (exit 1). So an
+# absent listener means the port was never ours.
 # Args: <port> <expected-process-group>
 assert_typegen_port_owner() {
   local port="$1" expected_group="$2" listeners listener group
@@ -152,7 +172,7 @@ cleanup_typegen() {
 # regenerates: we wait for both files to be NEWER than a marker stamped now, so a
 # stale copy on a warm checkout is refreshed rather than silently kept.
 run_typegen() {
-  local port pid log waited marker
+  local port pid log waited marker bound
   port=""; pid=""; log=""; marker=""
   trap 'cleanup_typegen "$pid" "$port"' EXIT
   trap 'cleanup_typegen "$pid" "$port"; exit 130' INT TERM HUP
@@ -169,16 +189,20 @@ run_typegen() {
   set +m
 
   waited=0
+  bound=1
   until lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; do
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "init-worktree: the typegen dev server exited before binding reserved port $port." >&2
       sed 's/^/    /' "$log" >&2
       exit 1
     fi
+    # Expo listens BEFORE it writes the types (it starts the dev server, then
+    # bootstraps TypeScript), so types already fresh here means we merely missed
+    # the bind between polls — the reservation has done its job and the
+    # deliverable exists. Failing on it would kill a bootstrap that worked.
     if ! [ "$marker" -nt "$ROUTER_TYPES" ] && [ -f "$EXPO_ENV_TYPES" ]; then
-      assert_typegen_port_owner "$port" "$pid" || true
-      sed 's/^/    /' "$log" >&2
-      exit 1
+      bound=0
+      break
     fi
     sleep 0.5
     waited=$((waited + 1))
@@ -188,7 +212,7 @@ run_typegen() {
       exit 1
     fi
   done
-  if ! assert_typegen_port_owner "$port" "$pid"; then
+  if [ "$bound" -eq 1 ] && ! assert_typegen_port_owner "$port" "$pid"; then
     sed 's/^/    /' "$log" >&2
     exit 1
   fi
