@@ -103,7 +103,22 @@ class TestQueryInfoNoTargetIdKinds:
             )
 
             assert result == mock_impl_result
-            mock_crafting_mod._query_available_workspaces_impl.assert_called_once_with(mock_context)
+            mock_crafting_mod._query_available_workspaces_impl.assert_called_once_with(mock_context, None)
+
+    @pytest.mark.asyncio
+    async def test_workspaces_forwards_npc_target(self, mock_context):
+        mock_crafting_mod = MagicMock()
+        mock_crafting_mod._query_available_workspaces_impl = AsyncMock(return_value='{"rentable": []}')
+
+        result = await _query_info_impl(
+            mock_context,
+            kind="workspaces",
+            target_id="grimjaw",
+            crafting_mod=mock_crafting_mod,
+        )
+
+        assert result == '{"rentable": []}'
+        mock_crafting_mod._query_available_workspaces_impl.assert_awaited_once_with(mock_context, "grimjaw")
 
     @pytest.mark.asyncio
     async def test_abilities_no_target_id_required(self, mock_context):

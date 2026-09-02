@@ -6,7 +6,7 @@ As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
 ``begin_activity(kind="workspace"|"crafting")`` on DispatchAgent.
 
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
-their current location plus rental base prices. `rent_workspace` (mutating) prices a
+their current location plus daily rental quotes. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the
 economy milestone), and writes a workspace_rentals row. `start_crafting_project` runs
 the five-check pre-flight, then allocates+consumes materials and creates the in_progress
@@ -90,23 +90,60 @@ def _resolve_crafting_slot(
 
 
 async def _query_available_workspaces_impl(
-    context: RunContext[SessionData], *, queries_mod=db_queries, workspace_mod=workspace
+    context: RunContext[SessionData],
+    npc_id: str | None = None,
+    *,
+    queries_mod=db_queries,
+    content_mod=db_content_queries,
+    workspace_mod=workspace,
+    pricing_mod=pricing_queries,
 ) -> str:
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
+    if npc_id is not None:
+        _validate_id(npc_id, "npc_id")
     # Report the Portable-Lab grant too (read/write parity): the voiced "what can I craft
     # here" answer must match what start_crafting_project actually permits (concern 6a1b99cd6ac7).
     has_portable_lab = await _owns_portable_lab(queries_mod, player_id)
     accessible = await queries_mod.get_accessible_workspaces(player_id, location_id, has_portable_lab=has_portable_lab)
-    rentable = [
-        {"workspace_type": wtype.value, "base_price_sp": price}
-        for wtype, price in workspace_mod.RENTAL_BASE_PRICE_SP.items()
-    ]
+    if npc_id is not None:
+        await require_npc_present(location_id, npc_id, queries=queries_mod, suffix=" to quote a workspace rental")
+        disposition = await resolve_disposition(npc_id, player_id, queries_mod=queries_mod, content_mod=content_mod)
+
+    multipliers = (await pricing_mod.get_economy_pricing())["disposition_multipliers"]
+    if npc_id is None:
+        rentable = [
+            {
+                "workspace_type": wtype.value,
+                "prices_sp_per_day_by_disposition": {
+                    tier: workspace_mod.compute_workspace_rental_price(
+                        base_price_sp, tier, multipliers=multipliers
+                    ).price_sp
+                    for tier in workspace_mod.RENTABLE_DISPOSITIONS
+                },
+            }
+            for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items()
+        ]
+        return json.dumps({"accessible": sorted(accessible), "rentable": rentable})
+
+    rentable = []
+    try:
+        for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items():
+            quote = workspace_mod.compute_workspace_rental_price(base_price_sp, disposition, multipliers=multipliers)
+            entry = {"workspace_type": wtype.value, "available": quote.available}
+            if quote.available:
+                entry["price_sp_per_day"] = quote.price_sp
+            else:
+                entry["reason"] = quote.reason
+            rentable.append(entry)
+    except ValueError as exc:
+        raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     return json.dumps(
         {
             "accessible": sorted(accessible),
             "rentable": rentable,
-            "combined_forge_lab_sp": workspace_mod.COMBINED_FORGE_LAB_RENTAL_SP,
+            "quoted_for_npc_id": npc_id,
+            "disposition": disposition.lower(),
         }
     )
 
@@ -153,7 +190,7 @@ async def _rent_workspace_impl(
     # ToolError to keep the tool's ADR-0002 error shape (mirrors _learn_recipe_impl).
     pricing = await pricing_mod.get_economy_pricing()
     try:
-        quote = workspace_mod.compute_rental_price(
+        quote = workspace_mod.compute_workspace_rental_price(
             workspace_mod.RENTAL_BASE_PRICE_SP[wtype],
             disposition,
             multipliers=pricing["disposition_multipliers"],
@@ -162,14 +199,9 @@ async def _rent_workspace_impl(
         raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     if not quote.available:
         raise ToolError(quote.reason)
-    # Trusted disposition grants FREE workspace access (M5.2 AC, story-005). Branch lives
-    # here at the caller, not inside compute_rental_price — that fn is shared with
-    # repair_item.py's 0.6x-at-trusted repair pricing, and branching inside it would
-    # silently make blacksmith repairs free too (a game-rule change out of this card's scope).
-    is_trusted = disposition.lower() == "trusted"
     # RENTAL_BASE_PRICE_SP is sp per CALENDAR DAY and `days` is what extends expires_at,
     # so the charge scales with the term — a 30-day forge is not a 1-day forge.
-    price_sp = 0.0 if is_trusted else quote.price_sp * days
+    price_sp = quote.price_sp * days
     price_gp = price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
@@ -180,7 +212,7 @@ async def _rent_workspace_impl(
         gold = player.get("gold", 0)
         if gold < price_gp:
             raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
-        if not is_trusted:
+        if price_sp:
             await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
         rental_id = await mutations_mod.create_workspace_rental(
             player_id, location_id, wtype.value, "rental", expires_at, conn=conn
