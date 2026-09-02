@@ -12,8 +12,8 @@ from session_data import CompanionState, SessionData
 from system_prompts import build_system_prompt
 
 
-def _fake_hydrated_companion(_player_id: str, companion_id: str, name: str) -> CompanionState:
-    return CompanionState(id=companion_id, name=name, session_count=1)
+def _fake_hydrated_companion(_player_id: str, companion_id: str, name: str, *, player_level: int = 1) -> CompanionState:
+    return CompanionState(id=companion_id, name=name, player_level=player_level, session_count=1)
 
 
 async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionData]:
@@ -61,17 +61,19 @@ class TestReturningPlayerCompanion:
         player = {
             "name": "Aric",
             "class": "warrior",
+            "level": 19,
             "location_id": "accord_guild_hall",
             "flags": {"onboarding_beat": "complete", "companion_met": True},
         }
 
         _session, hydrate, userdata = await _run_dm_session(player)
 
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
+        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=19)
         companion = userdata.companion
         assert companion is not None
         assert companion.id == "companion_lira"
         assert companion.name == "Lira"
+        assert companion.player_level == 19
         assert companion.session_count == 1
         assert companion.last_speech_time > 0
 
@@ -80,13 +82,14 @@ class TestReturningPlayerCompanion:
         player = {
             "name": "Aric",
             "class": "warrior",
+            "level": 1,
             "location_id": "accord_market_square",
             "flags": {"onboarding_beat": 3, "companion_met": True},
         }
 
         session, hydrate, _userdata = await _run_dm_session(player)
 
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
+        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=1)
         assert isinstance(session.start.call_args.kwargs["agent"], OnboardingAgent)
 
     @pytest.mark.asyncio
@@ -95,6 +98,7 @@ class TestReturningPlayerCompanion:
         player = {
             "name": "Aric",
             "class": "necromancer",
+            "level": 1,
             "location_id": "accord_guild_hall",
             "flags": {"onboarding_beat": "complete", "companion_met": True},
         }
@@ -107,6 +111,7 @@ class TestReturningPlayerCompanion:
         player = {
             "name": "Aric",
             "class": "warrior",
+            "level": 1,
             "location_id": "accord_guild_hall",
             "flags": {"onboarding_beat": "complete", "companion_met": True},
         }
@@ -130,7 +135,7 @@ class TestFirstMeetingCompanion:
             onboarding_beat=3,
             creation_state=None,
         )
-        player = {"name": "Aric", "class": "warrior"}
+        player = {"name": "Aric", "class": "warrior", "level": 12}
 
         with (
             patch("onboarding_tools.db_queries.get_player", new_callable=AsyncMock, return_value=player) as get_player,
@@ -144,8 +149,9 @@ class TestFirstMeetingCompanion:
             await advance_onboarding_beat._func(ctx)
 
         get_player.assert_awaited_once_with("player_1")
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
+        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=12)
         assert ctx.userdata.companion.id == "companion_lira"
+        assert ctx.userdata.companion.player_level == 12
 
     @pytest.mark.asyncio
     async def test_gameplay_handoff_summary_names_assigned_companion(self):
@@ -210,7 +216,7 @@ class TestFirstMeetingCompanion:
             patch(
                 "onboarding_tools.db_queries.get_player",
                 new_callable=AsyncMock,
-                return_value={"name": "Aric", "class": "necromancer"},
+                return_value={"name": "Aric", "class": "necromancer", "level": 1},
             ),
             patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as set_flag,
             pytest.raises(ValueError, match="necromancer"),

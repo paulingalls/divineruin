@@ -16,6 +16,7 @@ import event_types as E
 import milestone_tools
 import milestones
 import rules_engine
+from companion_profiles import get_companion_profile, select_companion_for_archetype
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from tool_support import con_mod_for_player
 
@@ -115,6 +116,24 @@ async def _award_xp_core(
         # Iterate every level crossed so a multi-level jump still resolves each intervening
         # milestone: auto-grants apply in-transaction, the L5 fork surfaces as a pending choice.
         for lvl in range(current_level + 1, result.new_level + 1):
+            if lvl == 20:
+                companion = get_companion_profile(select_companion_for_archetype(player["class"]))
+                legendary = next((gain for gain in companion.progression if gain.level == 20), None)
+                if legendary is None:
+                    raise ValueError(f"Companion {companion.id!r} has no L20 progression gain")
+                # A non-verbal companion (Sable) has a REGISTERED voice id, so "voice her gain"
+                # would make the DM emit a dialogue tag and TTS would speak a character whose
+                # whole design is silence. Her gain is narrated in the DM voice instead.
+                cue_verb = "Narrate" if companion.non_verbal else "Voice"
+                milestone_grants.append(
+                    {
+                        "name": f"{companion.name} — Legendary Companion",
+                        "effect": legendary.gains,
+                        "narration_cue": (
+                            f"{cue_verb} {companion.name}'s legendary gain; once per session; you track it."
+                        ),
+                    }
+                )
             milestone = milestones_mod.get_milestone_by_level(player["class"], lvl)
             if milestone is None:
                 continue

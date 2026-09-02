@@ -289,7 +289,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             # Fresh session: hydrate persisted relationship state + increment session_count once
             # (M6.4 / story-003). Reconnects reuse the in-memory CompanionState, so this runs
             # exactly once per session.
-            companion = await hydrate_assigned_companion_state(player_id, player["class"])
+            companion = await hydrate_assigned_companion_state(player_id, player["class"], player["level"])
             companion.last_speech_time = time.time()
             userdata.companion = companion
             logger.info("Companion %s loaded for returning player", companion.name)

@@ -324,6 +324,10 @@ def get_companion_profile(companion_id: str) -> Companion:
     return _companion_profiles[companion_id]
 
 
+def progression_gains_up_to(profile: Companion, player_level: int) -> tuple[ProgressionMilestone, ...]:
+    return tuple(milestone for milestone in profile.progression if milestone.level <= player_level)
+
+
 def select_companion_for_archetype(archetype_id: str) -> str:
     """Return the id of the one companion whose `complements` lists this archetype.
 

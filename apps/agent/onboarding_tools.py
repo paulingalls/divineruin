@@ -87,7 +87,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
         player = await db_queries.get_player(sd.player_id)
         if player is None:
             raise ToolError(f"Player {sd.player_id!r} missing during companion assignment")
-        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"])
+        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"], player["level"])
         companion.last_speech_time = time.time()
         sd.companion = companion
         await db_mutations.set_player_flag(sd.player_id, "companion_met", True)

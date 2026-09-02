@@ -123,7 +123,7 @@ class TestHydrate:
     async def test_first_meet_increments_to_one(self):
         get_p, up_p, upsert = _patch_db(None)
         with get_p, up_p:
-            cs = await crq.hydrate_companion_state("p1", "companion_kael", "Kael")
+            cs = await crq.hydrate_companion_state("p1", "companion_kael", "Kael", player_level=1)
         assert cs.session_count == 1
         assert cs.affinity == 0
         assert cs.name == "Kael"
@@ -133,7 +133,7 @@ class TestHydrate:
     async def test_returning_increments_and_preserves(self):
         get_p, up_p, upsert = _patch_db(_row(session_count=4, affinity=1, session_memories=["m"]))
         with get_p, up_p:
-            cs = await crq.hydrate_companion_state("p1", "companion_kael", "Kael")
+            cs = await crq.hydrate_companion_state("p1", "companion_kael", "Kael", player_level=1)
         assert cs.session_count == 5  # 4 + 1
         assert cs.affinity == 1
         assert cs.session_memories == ["m"]
