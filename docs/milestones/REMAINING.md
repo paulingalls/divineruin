@@ -5,8 +5,9 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 271 / 530 acceptance criteria — 51%.** Phases 1, 3 and 4 are
-complete. Sprints 001–044 delivered 28 milestones across five execution plans;
+**Position: 276 / 530 acceptance criteria — 52%** (kept in step with the per-phase
+counts in `README.md`; last reconciled after sprint-046). Phases 1, 3, 4, 5 and 6
+are complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
 ---
@@ -37,7 +38,7 @@ The one item that moved *backwards*: Phase 0's INDEX.md line-range drift
 
 ---
 
-## 2. Residuals inside "delivered" phases (13 ACs)
+## 2. Residuals inside "delivered" phases (8 ACs)
 
 All re-verified as genuinely open. Small, unrelated, collectively about one sprint.
 
@@ -50,11 +51,6 @@ All re-verified as genuinely open. Small, unrelated, collectively about one spri
 | 2 | Reaction-timing tests | falls with the above |
 | 2 | L20 legendary companion | Capstone half **IS** delivered (18 L20 `auto_grant` rows). Companion half is dead data: `companions.json` L20 `progression`/`unlock_level` parse into `companion_profiles.py` with zero consumers repo-wide |
 | 2 | Variant replaces-or-supplements | Replace-only, auto-fired at `async_worker_training.py:285`; `set_active_variant` is `ON CONFLICT DO UPDATE`. Deliberate and narrated (concern `25b663d3e245`) — needs decision D-2 |
-| 5 | Trusted rep → free workspace | `workspace.py:compute_rental_price` takes no reputation input; Trusted gives 0.6×, not free. **Now unblocked** — M23 landed `player_reputation` |
-| 6 | Capital settlement tier | **Spec conflict, not a gap** — `game_mechanics_npcs.md` says no Capitals survived the Sundering. Amend the AC to 4 tiers rather than author dead content (decision D-1) |
-| 6 | Unique NPC names | `generate_settlement_npcs` returns `{role_id: count}`; no name generator exists in `apps/agent` |
-| 6 | Bard mentors | 0 of 2 required. Guardian/Skirmisher/Spy have 4 each; Bard is a real archetype with 9 ability rows |
-| 6 | Lira + Sable attack counts | both have 1; spec floor is 2 |
 
 **Homeless deferral:** `ability_tools.py:14` and `02_archetypes.md:38` both defer
 reactions to "Phase 4 territory". Phase 4 closed without it. That deferral now

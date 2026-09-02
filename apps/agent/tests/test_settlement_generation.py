@@ -8,25 +8,29 @@ the set_* seams so tests exercise the shipped data, not hand-rolled stubs.
 """
 
 import json
+import math
 import random
 from pathlib import Path
 
 import pytest
+from settlement_templates_config_fixture import load_fixture_config
 
 from role_archetypes import (
     DISPOSITIONS,
     create_npc_from_archetype,
+    get_role_archetype,
     parse_role_archetype_row,
     set_role_archetypes,
 )
 from settlement_generation import (
     _effective_ranges,
     generate_settlement_npcs,
+    generate_settlement_roster,
     instantiate_npc_from_template,
 )
 from settlement_templates import (
+    get_settlement_name_pool,
     get_settlement_personality,
-    parse_settlement_template_row,
     set_settlement_templates,
 )
 
@@ -34,6 +38,19 @@ _CONTENT = Path(__file__).resolve().parents[3] / "content"
 _TEMPLATES = json.loads((_CONTENT / "settlement_templates.json").read_text())
 _ARCHETYPES = json.loads((_CONTENT / "role_archetypes.json").read_text())
 _ARCHETYPE_IDS = {e["id"] for e in _ARCHETYPES}
+_TIER_IDS = [e["id"] for e in _TEMPLATES if e["kind"] == "tier"]
+_PERSONALITY_IDS = [e["id"] for e in _TEMPLATES if e["kind"] == "personality"]
+
+
+def _reachable_role_maxima() -> dict[str, int]:
+    """Largest count each role can reach across every tier x personality the content ships."""
+    maxima: dict[str, int] = {}
+    for tier in _TIER_IDS:
+        for personality in _PERSONALITY_IDS:
+            for role, r in _effective_ranges(tier, personality).items():
+                maxima[role] = max(maxima.get(role, 0), r["max"])
+    return maxima
+
 
 # Every SettlementSize (keldaran_hold has no tier row — generate normalizes it to city)
 # crossed with every personality. The E2E sweep asserts no unknown role/disposition escapes.
@@ -53,12 +70,7 @@ _ALL_PERSONALITIES = [
 @pytest.fixture(autouse=True)
 def _seed_catalogs():
     """Seed both content catalogs from the real JSON before each test."""
-    tiers: dict[str, dict] = {}
-    personalities: dict[str, dict] = {}
-    for e in _TEMPLATES:
-        row = parse_settlement_template_row(e["id"], e)
-        (tiers if e["kind"] == "tier" else personalities)[e["id"]] = row
-    set_settlement_templates(tiers, personalities)
+    set_settlement_templates(*load_fixture_config())
     set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _ARCHETYPES})
 
 
@@ -91,6 +103,86 @@ class TestGenerate:
             generate_settlement_npcs("metropolis", "military", rng=random.Random(0))
         with pytest.raises(ValueError):
             generate_settlement_npcs("city", "bogus", rng=random.Random(0))
+
+
+class TestRoster:
+    def test_every_npc_has_unique_name_and_role_constrained_personality(self):
+        population = {"guard": 4, "innkeeper": 2}
+        roster = generate_settlement_roster(population, rng=random.Random(11))
+        assert len(roster) == sum(population.values())
+        assert len({npc["name"] for npc in roster}) == len(roster)
+        for npc in roster:
+            assert set(npc) == {"role", "name", "personality"}
+            traits = get_role_archetype(npc["role"]).personality_traits
+            assert 2 <= len(npc["personality"]) <= 3
+            assert set(npc["personality"]) <= set(traits)
+
+    def test_same_role_trait_sets_are_distinct_at_the_largest_reachable_count(self):
+        # Derived from content, not a literal: a tier/personality bump must move this test,
+        # not silently push a live settlement past its role's trait-set capacity.
+        biggest = max(_reachable_role_maxima().items(), key=lambda kv: kv[1])
+        roster = generate_settlement_roster({biggest[0]: biggest[1]}, rng=random.Random(5))
+        trait_sets = [frozenset(npc["personality"]) for npc in roster]
+        assert len(set(trait_sets)) == biggest[1]
+
+    def test_every_reachable_role_count_fits_its_trait_pool(self):
+        # generate_settlement_roster raises once a role's count exceeds C(n,2)+C(n,3) trait
+        # sets, which would kill query_info(kind="settlement_population") for that settlement.
+        for role, count in _reachable_role_maxima().items():
+            n = len(get_role_archetype(role).personality_traits)
+            capacity = math.comb(n, 2) + math.comb(n, 3)
+            assert count <= capacity, f"{role} can reach {count} but has only {capacity} trait sets"
+
+    def test_fixed_seed_is_deterministic(self):
+        population = {"guard": 3, "innkeeper": 2}
+        first = generate_settlement_roster(population, rng=random.Random(19))
+        second = generate_settlement_roster(population, rng=random.Random(19))
+        assert first == second
+
+    def test_exhausted_name_pool_yields_speakable_unique_names(self):
+        pool = get_settlement_name_pool()
+        count = len(pool["names"]) + 4
+        roster = generate_settlement_roster({"guard": count}, rng=random.Random(2))
+        names = [npc["name"] for npc in roster]
+        assert len(names) == len(set(names)) == count
+        overflow = [n for n in names if n not in pool["names"]]
+        assert len(overflow) == 4
+        # Overflow is given+surname, never a numbered person ("Alden 2") the DM must say aloud.
+        for name in overflow:
+            given, _, surname = name.partition(" ")
+            assert given in pool["names"] and surname in pool["surnames"], name
+
+    def test_names_stay_unique_past_the_given_x_surname_catalog(self):
+        # The numeric-suffix fallback is unreachable from any real settlement (109 max vs 408
+        # candidates), so only a hand-built population proves it still yields unique names
+        # instead of silently repeating them once the catalog wraps.
+        pool = get_settlement_name_pool()
+        catalog = len(pool["names"]) * (1 + len(pool["surnames"]))
+        roles = sorted(_ARCHETYPE_IDS - {"guard"})[:6]
+        population = {role: 84 for role in roles}
+        assert sum(population.values()) > catalog
+        roster = generate_settlement_roster(population, rng=random.Random(7))
+        names = [npc["name"] for npc in roster]
+        assert len(set(names)) == len(names) == sum(population.values())
+
+    def test_surnames_are_spread_across_the_pool_not_blocked_by_surname(self):
+        # A city draws ~85 surnamed NPCs; emitting the pairs surname-major would hand the
+        # first 24 of them the same surname in one block, which the DM then says aloud.
+        pool = get_settlement_name_pool()
+        roster = generate_settlement_roster({"guard": 62, "innkeeper": 5}, rng=random.Random(3))
+        surnames = {npc["name"].partition(" ")[2] for npc in roster if " " in npc["name"]}
+        assert len(surnames) >= len(pool["surnames"]) // 2
+
+    def test_unknown_role_and_impossible_trait_count_fail_loud(self):
+        with pytest.raises(ValueError, match="unknown"):
+            generate_settlement_roster({"unknown": 1}, rng=random.Random(0))
+        with pytest.raises(ValueError, match="guard"):
+            generate_settlement_roster({"guard": 85}, rng=random.Random(0))
+
+    @pytest.mark.parametrize("count", [-1, 1.5, True])
+    def test_invalid_population_count_fails_loud(self, count):
+        with pytest.raises(ValueError, match="guard"):
+            generate_settlement_roster({"guard": count}, rng=random.Random(0))
 
 
 class TestEffectiveRanges:

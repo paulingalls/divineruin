@@ -17,17 +17,16 @@ import json
 from pathlib import Path
 
 import pytest
+from settlement_templates_config_fixture import load_fixture_config
 
 from role_archetypes import parse_role_archetype_row, set_role_archetypes
 from settlement_generation import instantiate_npc_from_template
 from settlement_templates import (
     get_settlement_personality,
-    parse_settlement_template_row,
     set_settlement_templates,
 )
 
 _CONTENT = Path(__file__).resolve().parents[3] / "content"
-_TEMPLATES = json.loads((_CONTENT / "settlement_templates.json").read_text())
 _ARCHETYPES = json.loads((_CONTENT / "role_archetypes.json").read_text())
 
 
@@ -35,12 +34,7 @@ _ARCHETYPES = json.loads((_CONTENT / "role_archetypes.json").read_text())
 def _seed_catalogs():
     """Seed both content catalogs from the real JSON before each test (mirrors
     test_settlement_generation.py)."""
-    tiers: dict[str, dict] = {}
-    personalities: dict[str, dict] = {}
-    for e in _TEMPLATES:
-        row = parse_settlement_template_row(e["id"], e)
-        (tiers if e["kind"] == "tier" else personalities)[e["id"]] = row
-    set_settlement_templates(tiers, personalities)
+    set_settlement_templates(*load_fixture_config())
     set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _ARCHETYPES})
 
 

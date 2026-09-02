@@ -17,7 +17,7 @@ import recipe_tools
 import training_tools
 from db_errors import db_tool
 from session_data import SessionData
-from settlement_generation import generate_settlement_npcs
+from settlement_generation import generate_settlement_npcs, generate_settlement_roster
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
@@ -59,7 +59,9 @@ async def query_info(
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
     - kind="inventory": the current player's carried items (no target_id needed).
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
-      settlement, scaled by its size (tier) and character (personality).
+      settlement, scaled by its size (tier) and character (personality), plus a `roster` of
+      those NPCs with a name and personality traits each — use it to voice an unnamed
+      townsfolk (a guard, an innkeeper) instead of inventing one.
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
     - kind="training_programs": available training programs (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
@@ -180,14 +182,15 @@ async def _query_settlement_population_impl(
     content=db_content_queries,
     rng=None,
 ) -> str:
-    """Generate a settlement's NPC population (counts per role) from its tier + personality.
+    """Generate a settlement's NPC counts and named roster from its tier + personality.
 
     Reads the location's settlement_tier/personality (story-001 fields) and delegates to the
-    pure generate_settlement_npcs rules engine (story-003). Fail-loud (ADR 0002): an unknown
-    or non-settlement location raises ToolError rather than returning an empty roster. `rng`
-    is injectable for deterministic tests; production seeds it from location_id (concern
-    b3c8b30eb849) so repeat queries of the same town return identical counts in- and
-    cross-session, while distinct settlements still get distinct populations.
+    pure generate_settlement_npcs + generate_settlement_roster rules engine. Fail-loud (ADR
+    0002): an unknown or non-settlement location raises ToolError rather than returning an
+    empty population. `rng` is injectable for deterministic tests; production seeds it from
+    location_id (concern b3c8b30eb849) so repeat queries of the same town return identical
+    counts, names and traits in- and cross-session, while distinct settlements still get
+    distinct populations.
     """
     logger.info("query_info[settlement_population] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")
@@ -201,6 +204,7 @@ async def _query_settlement_population_impl(
     seeded_rng = rng if rng is not None else random.Random(location_id)
     try:
         population = generate_settlement_npcs(tier, personality, rng=seeded_rng)
+        roster = generate_settlement_roster(population, rng=seeded_rng)
     except ValueError as e:
         raise ToolError(f"Cannot generate a settlement population for '{location_id}': {e}") from e
     return json.dumps(
@@ -210,6 +214,7 @@ async def _query_settlement_population_impl(
             "personality": personality,
             "population": population,
             "total": sum(population.values()),
+            "roster": roster,
         }
     )
 

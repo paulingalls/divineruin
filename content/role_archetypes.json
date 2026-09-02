@@ -4,6 +4,7 @@
     "name": "General Goods Merchant",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["practical", "neighborly", "shrewd", "patient", "talkative", "organized", "cautious", "helpful"],
     "knowledge_domains": ["market gossip", "trade routes", "item properties", "supply and demand"],
     "services": [
       {
@@ -28,6 +29,7 @@
     "name": "Weapons & Armor Merchant",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["appraising", "blunt", "disciplined", "proud", "competitive", "meticulous", "skeptical", "steadfast"],
     "knowledge_domains": [
       "weapon properties",
       "armor properties",
@@ -64,6 +66,7 @@
     "name": "Alchemist",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["curious", "precise", "absent-minded", "secretive", "experimental", "fastidious", "intense", "wry"],
     "knowledge_domains": ["potions", "reagents", "herbalism", "poison lore"],
     "services": [
       { "name": "buy", "cost": 0, "cost_unit": "sp", "description": "Buys reagents and herbs." },
@@ -96,6 +99,7 @@
     "name": "Jeweler",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["elegant", "discerning", "perfectionist", "reserved", "charming", "calculating", "artistic", "observant"],
     "knowledge_domains": ["gems", "precious metals", "appraisal", "enchanted trinkets"],
     "services": [
       { "name": "buy", "cost": 0, "cost_unit": "sp", "description": "Buys gems at a fair price." },
@@ -121,6 +125,7 @@
     "name": "Exotic Goods Merchant",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["worldly", "theatrical", "enigmatic", "adventurous", "persuasive", "discreet", "inquisitive", "bold"],
     "knowledge_domains": ["rare materials", "imports", "purified Hollow lore", "cultural items"],
     "services": [
       {
@@ -151,6 +156,7 @@
     "name": "Traveling Merchant",
     "role_type": "civilian",
     "default_disposition": "friendly",
+    "personality_traits": ["gregarious", "restless", "resourceful", "optimistic", "storytelling", "adaptable", "generous", "weathered"],
     "knowledge_domains": ["road rumors", "trade routes", "regional events"],
     "services": [
       {
@@ -181,6 +187,7 @@
     "name": "Black Market Dealer",
     "role_type": "civilian",
     "default_disposition": "unfriendly",
+    "personality_traits": ["guarded", "cunning", "ruthless", "paranoid", "smooth", "opportunistic", "patient", "unsentimental"],
     "knowledge_domains": [
       "restricted goods",
       "smuggling routes",
@@ -212,6 +219,7 @@
     "name": "Blacksmith",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["hardworking", "plainspoken", "proud", "patient", "demanding", "dependable", "taciturn", "protective"],
     "knowledge_domains": [
       "weapon and armor properties",
       "material quality",
@@ -275,6 +283,7 @@
     "name": "Innkeeper",
     "role_type": "civilian",
     "default_disposition": "friendly",
+    "personality_traits": ["welcoming", "gossipy", "perceptive", "even-tempered", "protective", "witty", "busy", "diplomatic"],
     "knowledge_domains": ["local gossip", "visitor logs", "regional events", "NPC locations"],
     "services": [
       {
@@ -311,6 +320,7 @@
     "name": "Healer / Temple Attendant",
     "role_type": "civilian",
     "default_disposition": "friendly",
+    "personality_traits": ["compassionate", "calm", "tireless", "gentle", "solemn", "reassuring", "pragmatic", "devoted"],
     "knowledge_domains": [
       "patron god's domain",
       "religious history",
@@ -397,6 +407,7 @@
     "name": "Scholar / Sage",
     "role_type": "civilian",
     "default_disposition": "neutral",
+    "personality_traits": ["bookish", "analytical", "distracted", "skeptical", "patient", "pedantic", "curious", "reserved"],
     "knowledge_domains": [
       "Aelindran history",
       "Hollow taxonomy",
@@ -457,6 +468,7 @@
     "name": "Guard",
     "role_type": "military",
     "default_disposition": "neutral",
+    "personality_traits": ["alert", "dutiful", "stern", "patient", "suspicious", "direct", "protective", "disciplined"],
     "knowledge_domains": [
       "local laws",
       "recent incidents",
@@ -529,6 +541,7 @@
     "name": "Ashmark Soldier",
     "role_type": "military",
     "default_disposition": "neutral",
+    "personality_traits": ["disciplined", "loyal", "battle-weary", "brave", "formal", "vigilant", "stoic", "commanding"],
     "knowledge_domains": [
       "Hollow creature behavior",
       "Ashmark tactical situation",
@@ -616,6 +629,7 @@
     "name": "Assassin / Rogue",
     "role_type": "military",
     "default_disposition": "unfriendly",
+    "personality_traits": ["silent", "watchful", "calculating", "elusive", "patient", "cold", "precise", "sardonic"],
     "knowledge_domains": [
       "criminal operations",
       "stealth craft",
@@ -669,6 +683,7 @@
     "name": "Mage",
     "role_type": "military",
     "default_disposition": "neutral",
+    "personality_traits": ["intellectual", "eccentric", "ambitious", "aloof", "curious", "methodical", "intense", "secretive"],
     "knowledge_domains": [
       "arcane theory",
       "magical phenomena",
@@ -753,6 +768,7 @@
     "name": "Priest",
     "role_type": "military",
     "default_disposition": "friendly",
+    "personality_traits": ["devout", "patient", "earnest", "merciful", "authoritative", "reflective", "hopeful", "unyielding"],
     "knowledge_domains": [
       "divine doctrine",
       "religious history",
@@ -821,6 +837,7 @@
     "name": "Fence / Black Market Contact",
     "role_type": "specialist",
     "default_disposition": "unfriendly",
+    "personality_traits": ["discreet", "wary", "quick-witted", "pragmatic", "greedy", "connected", "unflappable", "suspicious"],
     "knowledge_domains": [
       "criminal operations",
       "smuggling routes",
@@ -874,6 +891,7 @@
     "name": "Stablemaster / Animal Handler",
     "role_type": "specialist",
     "default_disposition": "neutral",
+    "personality_traits": ["patient", "earthy", "blunt", "kind", "observant", "reliable", "weatherwise", "independent"],
     "knowledge_domains": [
       "local wildlife",
       "terrain conditions",
@@ -903,6 +921,7 @@
     "name": "Shipwright / Boatman",
     "role_type": "specialist",
     "default_disposition": "neutral",
+    "personality_traits": ["methodical", "weathered", "exacting", "inventive", "superstitious", "patient", "forthright", "proud"],
     "knowledge_domains": ["water routes", "tides", "sea creature sightings", "coastal weather"],
     "services": [
       {

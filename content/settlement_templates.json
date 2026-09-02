@@ -119,5 +119,18 @@
     "price_modifier": 1.0,
     "inventory_modifier": 1.0,
     "description": "Diverse population, cautious NPCs, high demand for protection."
+  },
+  {
+    "id": "default_names",
+    "kind": "name_pool",
+    "names": [
+      "Alden", "Bera", "Corin", "Dessa", "Edrin", "Fara", "Galen", "Hesta",
+      "Iven", "Jora", "Bram", "Lysa", "Osric", "Nera", "Orin", "Pella",
+      "Quill", "Ressa", "Soren", "Talia", "Ulric", "Veya", "Wren", "Yara"
+    ],
+    "surnames": [
+      "Ashby", "Brookes", "Carrow", "Dunmore", "Garrow", "Holloway", "Larkin", "Mere",
+      "Nyle", "Ostry", "Pike", "Quarry", "Redd", "Thatch", "Vance", "Wick"
+    ]
   }
 ]

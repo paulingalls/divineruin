@@ -84,6 +84,7 @@ class RoleArchetype:
     name: str
     role_type: str
     default_disposition: str
+    personality_traits: tuple[str, ...]
     knowledge_domains: tuple[str, ...]
     services: tuple[ArchetypeService, ...]
     inventory_pool: str | None
@@ -222,6 +223,17 @@ def _parse_service(raw: object, ctx: str) -> ArchetypeService:
     )
 
 
+def _parse_personality_traits(raw: object, ctx: str) -> tuple[str, ...]:
+    traits = parse_str_tuple(raw, ctx)
+    if len(traits) < 8:
+        raise ValueError(f"{ctx} must contain at least 8 traits")
+    if any(not trait.strip() for trait in traits):
+        raise ValueError(f"{ctx} contains a blank trait")
+    if len(traits) != len(set(traits)):
+        raise ValueError(f"{ctx} contains duplicate traits")
+    return traits
+
+
 def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
     """Parse a raw dict (JSON file or DB JSONB) into a RoleArchetype, fail-loud.
 
@@ -249,6 +261,9 @@ def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
             name=parse_str(data["name"], f"{archetype_id}.name"),
             role_type=role_type,
             default_disposition=disposition,
+            personality_traits=_parse_personality_traits(
+                data["personality_traits"], f"{archetype_id}.personality_traits"
+            ),
             knowledge_domains=parse_str_tuple(data["knowledge_domains"], f"{archetype_id}.knowledge_domains"),
             services=tuple(_parse_service(s, f"{archetype_id}.services[{i}]") for i, s in enumerate(services)),
             inventory_pool=inv,

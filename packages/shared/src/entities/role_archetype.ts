@@ -87,6 +87,7 @@ export interface RoleArchetype {
   name: string;
   role_type: RoleType;
   default_disposition: Disposition;
+  personality_traits: string[];
   knowledge_domains: string[];
   services: ArchetypeService[];
   inventory_pool: string | null;

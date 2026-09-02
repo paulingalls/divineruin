@@ -19,6 +19,7 @@ describe("parseRoleArchetypeRow — valid rows", () => {
     expect(guard.combat_stats).not.toBeNull();
     expect(guard.combat_stats?.hp).toBeTypeOf("number");
     expect(guard.combat_stats?.attributes.strength).toBeTypeOf("number");
+    expect(guard.personality_traits.length).toBeGreaterThanOrEqual(8);
   });
 
   test("a non-combatant parses with combat_stats null and services", () => {
@@ -32,6 +33,22 @@ describe("parseRoleArchetypeRow — valid rows", () => {
 });
 
 describe("parseRoleArchetypeRow — fail-loud (parity with the Python loader)", () => {
+  test("missing personality_traits", () => {
+    const bad = row("guard");
+    delete bad.personality_traits;
+    expect(() => parseRoleArchetypeRow("guard", bad)).toThrow("personality_traits");
+  });
+
+  test.each([
+    { personality_traits: [] },
+    { personality_traits: ["alert", "patient"] },
+    { personality_traits: ["alert", "alert", "patient", "dry", "loyal", "direct", "wary", "calm"] },
+    { personality_traits: ["alert", "patient", "dry", "loyal", "direct", "wary", "calm", ""] },
+  ])("invalid personality trait pool %#", ({ personality_traits }) => {
+    expect(() => parseRoleArchetypeRow("guard", { ...row("guard"), personality_traits })).toThrow(
+      "personality_traits",
+    );
+  });
   test("missing default_disposition", () => {
     const bad = row("guard");
     delete bad.default_disposition;

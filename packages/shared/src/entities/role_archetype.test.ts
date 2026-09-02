@@ -88,6 +88,10 @@ describe("role_archetypes.json — row shape", () => {
       expect(ROLE_TYPE_VALUES).toContain(a.role_type);
       expect(DISPOSITION_VALUES).toContain(a.default_disposition);
       expect(Array.isArray(a.knowledge_domains)).toBe(true);
+      expect(Array.isArray(a.personality_traits)).toBe(true);
+      expect(a.personality_traits.length).toBeGreaterThanOrEqual(8);
+      expect(new Set(a.personality_traits).size).toBe(a.personality_traits.length);
+      for (const trait of a.personality_traits) expect(trait.trim().length).toBeGreaterThan(0);
       expect(Array.isArray(a.services)).toBe(true);
       expect(typeof a.price_modifier).toBe("number");
       // inventory_pool is a pool id or explicitly null.
