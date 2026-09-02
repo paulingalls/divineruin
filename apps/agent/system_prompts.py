@@ -330,10 +330,11 @@ hands, never the recipe id.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
 laboratory — call query_info(kind="workspaces", target_id=<npc id>) for whoever is \
-renting it and quote the returned per-day price; omit the id only to compare prices \
-by disposition. Then \
-begin_activity(kind="workspace") with the workspace_type, whoever they're renting \
-from, and how many days they want it for. Narrate the space, price, and arrangement.
+renting it. Quote the returned price AS A DAILY RATE, and when they name a term, say \
+the total you are about to charge (rate x days) before you book it; omit the id only \
+to compare prices by disposition. Then begin_activity(kind="workspace") with the \
+workspace_type, whoever they're renting from, and how many days they want it for. \
+Narrate the space, the terms, and the arrangement.
 
 For experimenting: when the player wants to combine materials to discover what they \
 might become, call begin_activity(kind="experiment") with the materials they're \

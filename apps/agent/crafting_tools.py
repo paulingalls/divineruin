@@ -112,15 +112,18 @@ async def _query_available_workspaces_impl(
 
     multipliers = (await pricing_mod.get_economy_pricing())["disposition_multipliers"]
     if npc_id is None:
-        rentable = []
-        for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items():
-            prices = {
-                disposition: workspace_mod.compute_workspace_rental_price(
-                    base_price_sp, disposition, multipliers=multipliers
-                ).price_sp
-                for disposition in ("neutral", "friendly", "trusted")
+        rentable = [
+            {
+                "workspace_type": wtype.value,
+                "prices_sp_per_day_by_disposition": {
+                    tier: workspace_mod.compute_workspace_rental_price(
+                        base_price_sp, tier, multipliers=multipliers
+                    ).price_sp
+                    for tier in workspace_mod.RENTABLE_DISPOSITIONS
+                },
             }
-            rentable.append({"workspace_type": wtype.value, "prices_sp_per_day_by_disposition": prices})
+            for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items()
+        ]
         return json.dumps({"accessible": sorted(accessible), "rentable": rentable})
 
     rentable = []

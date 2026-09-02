@@ -80,6 +80,15 @@ def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: d
     return RentalQuote(True, base_price_sp * multipliers.get(key, 1.0), "")
 
 
+# The tiers an untargeted quote prices, derived from the canonical ladder
+# (role_archetypes.DISPOSITIONS via DISPOSITION_TIERS) rather than hand-copied: a tier
+# added above neutral must appear in the quote, or the DM prices a player it never
+# priced before at a rate they never pay (the story-011 defect, in a new shape).
+RENTABLE_DISPOSITIONS: tuple[str, ...] = tuple(
+    tier for tier, rank in DISPOSITION_TIERS.items() if rank >= DISPOSITION_TIERS["neutral"]
+)
+
+
 def compute_workspace_rental_price(
     base_price_sp: int, disposition: str, *, multipliers: dict[str, float]
 ) -> RentalQuote:

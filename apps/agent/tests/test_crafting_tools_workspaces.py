@@ -16,6 +16,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 from crafting_tools import _query_available_workspaces_impl, _rent_workspace_impl
+from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS
 
 
 def _pricing():
@@ -71,6 +72,18 @@ class TestQueryAvailableWorkspaces:
         serialized = json.dumps(result)
         assert "base_price_sp" not in serialized
         assert "combined_forge_lab" not in serialized
+
+    async def test_untargeted_table_covers_every_rentable_ladder_tier(self):
+        # The tier list must come from the canonical ladder (role_archetypes.DISPOSITIONS),
+        # not a hand-copied tuple: a tier added above neutral that the table omits puts the
+        # DM back to quoting a price that player never pays.
+        expected = {tier for tier in DISPOSITIONS if DISPOSITION_INDEX[tier] >= DISPOSITION_INDEX["neutral"]}
+        result = json.loads(
+            await _query_available_workspaces_impl(make_context(), queries_mod=_queries(), pricing_mod=_pricing())
+        )
+        assert result["rentable"]
+        for entry in result["rentable"]:
+            assert set(entry["prices_sp_per_day_by_disposition"]) == expected
 
     async def test_target_returns_trusted_players_free_daily_quote(self):
         result = json.loads(
