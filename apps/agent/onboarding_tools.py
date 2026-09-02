@@ -46,7 +46,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     if current >= 5:
         companion = sd.companion
         if companion is None:
-            raise RuntimeError(f"Player {sd.player_id!r} completed onboarding without a companion")
+            raise ToolError(f"Player {sd.player_id!r} completed onboarding without a companion")
 
         # Beat 5 complete — hand off to open-world exploration (city region).
         sd.onboarding_beat = None
@@ -77,26 +77,25 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             result,
         )
 
-    archetype_id = None
-    if current == 3:
-        player = await db_queries.get_player(sd.player_id)
-        if player is None:
-            raise RuntimeError(f"Player {sd.player_id!r} missing during companion assignment")
-        archetype_id = player["class"]
-
-    next_beat = current + 1
-    sd.onboarding_beat = next_beat
-    await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
-
     if current == 3:
         from companion_relationship_queries import hydrate_assigned_companion_state
 
-        assert archetype_id is not None
-        companion = await hydrate_assigned_companion_state(sd.player_id, archetype_id)
+        # First meeting: bind the companion the persisted archetype assigns, BEFORE persisting
+        # the beat advance. A failed assignment then leaves the player replayable at beat 3
+        # rather than at beat 4 with companion_met unset, which the beat-5 guard above makes
+        # permanently unfinishable.
+        player = await db_queries.get_player(sd.player_id)
+        if player is None:
+            raise ToolError(f"Player {sd.player_id!r} missing during companion assignment")
+        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"])
         companion.last_speech_time = time.time()
         sd.companion = companion
         await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
         logger.info("Companion %s initialized for player %s after beat 3", companion.name, sd.player_id)
+
+    next_beat = current + 1
+    sd.onboarding_beat = next_beat
+    await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
 
     beat_name = BEAT_NAMES.get(next_beat, "unknown")
     logger.info("Player %s advanced to onboarding beat %d (%s)", sd.player_id, next_beat, beat_name)

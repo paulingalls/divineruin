@@ -14,6 +14,7 @@ import pytest
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
+from session_data import CompanionState
 
 
 @contextmanager
@@ -48,6 +49,9 @@ class TestWarmLayerRebuild:
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
+        # A real CompanionState, not a MagicMock: the static layer renders the companion
+        # section from the catalog profile, so a mock id raises "Unknown companion".
+        mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 

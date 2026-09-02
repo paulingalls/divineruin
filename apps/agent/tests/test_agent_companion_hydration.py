@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 from companion_profiles import get_companion_profile
 from exploration_agent import ExplorationAgent
@@ -56,7 +57,7 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
 
 class TestReturningPlayerCompanion:
     @pytest.mark.asyncio
-    async def test_session_start_hydrates_archetype_complement_with_legacy_kael_row(self):
+    async def test_session_start_hydrates_the_archetype_complement_not_kael(self):
         player = {
             "name": "Aric",
             "class": "warrior",
@@ -87,6 +88,19 @@ class TestReturningPlayerCompanion:
 
         hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
         assert isinstance(session.start.call_args.kwargs["agent"], OnboardingAgent)
+
+    @pytest.mark.asyncio
+    async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
+        """AC5: zero/multi-match archetype aborts session start rather than falling back."""
+        player = {
+            "name": "Aric",
+            "class": "necromancer",
+            "location_id": "accord_guild_hall",
+            "flags": {"onboarding_beat": "complete", "companion_met": True},
+        }
+
+        with pytest.raises(ValueError, match="necromancer"):
+            await _run_dm_session(player)
 
     @pytest.mark.asyncio
     async def test_completed_onboarding_dispatches_city_agent(self):
@@ -156,6 +170,57 @@ class TestFirstMeetingCompanion:
         assert "companion Lira" in summary
         assert "companion Kael" not in summary
 
+    @pytest.mark.asyncio
+    async def test_gameplay_handoff_without_a_companion_fails_loud(self):
+        """The beat-5 guard: reached only if beat 3 persisted the advance but not the companion."""
+        from onboarding_tools import advance_onboarding_beat
+
+        ctx = MagicMock()
+        ctx.userdata = SessionData(
+            player_id="player_1",
+            location_id="accord_guild_hall",
+            onboarding_beat=5,
+            companion=None,
+        )
+
+        with (
+            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as set_flag,
+            patch("gameplay_agent.create_gameplay_agent") as create_agent,
+            pytest.raises(ToolError, match="without a companion"),
+        ):
+            await advance_onboarding_beat._func(ctx)
+
+        set_flag.assert_not_awaited()
+        create_agent.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_beat_three_failure_leaves_the_beat_unadvanced(self):
+        """The assignment precedes the beat write, so a failed one stays replayable at beat 3."""
+        from onboarding_tools import advance_onboarding_beat
+
+        ctx = MagicMock()
+        ctx.userdata = SessionData(
+            player_id="player_1",
+            location_id="accord_market_square",
+            onboarding_beat=3,
+            creation_state=None,
+        )
+
+        with (
+            patch(
+                "onboarding_tools.db_queries.get_player",
+                new_callable=AsyncMock,
+                return_value={"name": "Aric", "class": "necromancer"},
+            ),
+            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as set_flag,
+            pytest.raises(ValueError, match="necromancer"),
+        ):
+            await advance_onboarding_beat._func(ctx)
+
+        assert ctx.userdata.onboarding_beat == 3
+        assert ctx.userdata.companion is None
+        set_flag.assert_not_awaited()
+
 
 class TestCompanionPrompt:
     def test_verbal_companion_section_uses_assigned_profile(self):
@@ -172,9 +237,20 @@ class TestCompanionPrompt:
         assert all(trait in prompt for trait in profile.personality)
         assert all(mannerism in prompt for mannerism in profile.mannerisms)
         assert "## Companion — Kael" not in prompt
+        # Cost model: the section rides the CACHED static layer, so it must not vary with the
+        # per-turn mutable half of CompanionState. Reds the moment affinity/session_count/mood
+        # is interpolated into it.
         assert prompt == build_system_prompt(
             "accord_guild_hall",
-            CompanionState(id=profile.id, name=profile.name),
+            CompanionState(
+                id=profile.id,
+                name=profile.name,
+                session_count=9,
+                affinity=40,
+                emotional_state="alert",
+                session_memories=["fought a Hollow rider"],
+                last_speech_time=1234.5,
+            ),
         )
 
     def test_non_verbal_companion_is_profiled_without_dialogue_instruction(self):
@@ -191,4 +267,5 @@ class TestCompanionPrompt:
         assert all(trait in prompt for trait in profile.personality)
         assert all(mannerism in prompt for mannerism in profile.mannerisms)
         assert f"[{profile.voice_id}," not in prompt
-        assert "narrate" in prompt.lower()
+        assert f"{profile.name} is non-verbal" in prompt
+        assert "Never use it as a dialogue tag" in prompt

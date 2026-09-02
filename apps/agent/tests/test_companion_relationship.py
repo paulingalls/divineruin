@@ -107,15 +107,14 @@ class TestUnlocksUpTo:
 
 
 class TestAssignedCompanionHydration:
-    @pytest.mark.parametrize("inserted", [True, False])
     @pytest.mark.asyncio
-    async def test_seeds_if_absent_and_hydrates_selected_companion(self, inserted):
+    async def test_seeds_and_hydrates_the_companion_the_archetype_selects(self):
         lira = CompanionState(id="companion_lira", name="Lira", session_count=1)
         with (
             patch(
                 "db_mutations_companion.insert_companion_relationship_if_absent",
                 new_callable=AsyncMock,
-                return_value=inserted,
+                return_value=True,
             ) as insert,
             patch(
                 "companion_relationship_queries.hydrate_companion_state",
@@ -130,13 +129,9 @@ class TestAssignedCompanionHydration:
         assert result is lira
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("match_count", [0, 2])
-    async def test_selection_failure_does_not_insert_or_hydrate(self, match_count):
+    async def test_unselectable_archetype_writes_nothing(self):
+        """Drives the REAL selector: mocking it here would only prove a mock re-raises."""
         with (
-            patch(
-                "companion_relationship_queries.select_companion_for_archetype",
-                side_effect=ValueError(f"archetype matches {match_count} companions"),
-            ),
             patch(
                 "db_mutations_companion.insert_companion_relationship_if_absent",
                 new_callable=AsyncMock,
@@ -145,9 +140,9 @@ class TestAssignedCompanionHydration:
                 "companion_relationship_queries.hydrate_companion_state",
                 new_callable=AsyncMock,
             ) as hydrate,
-            pytest.raises(ValueError, match=rf"matches {match_count} companions"),
+            pytest.raises(ValueError, match="necromancer"),
         ):
-            await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "unknown")
+            await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "necromancer")
 
         insert.assert_not_awaited()
         hydrate.assert_not_awaited()

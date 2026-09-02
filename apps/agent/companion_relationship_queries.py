@@ -86,6 +86,15 @@ async def hydrate_assigned_companion_state(
     player_id: str,
     archetype_id: str,
 ) -> CompanionState:
+    """Hydrate the companion the player's archetype assigns, for a FRESH session (story-008).
+
+    The selection rule is the archetype complement, NOT "whatever rows exist": every character
+    past onboarding beat 3 before this story has a companion_kael row from the old unconditional
+    hydrate, and a post-story-003 character has two. The legacy Kael row and its accumulated
+    session_count/affinity are deliberately left in place and unread — no production players
+    exist to migrate. select_companion_for_archetype raises on a zero- or multi-match rather
+    than defaulting (constraint 4).
+    """
     companion_id = select_companion_for_archetype(archetype_id)
     profile = get_companion_profile(companion_id)
     await db_mutations_companion.insert_companion_relationship_if_absent(player_id, companion_id)
