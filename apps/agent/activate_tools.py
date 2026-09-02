@@ -59,7 +59,7 @@ async def activate(
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
 
     Pass the id of the thing being activated. For spells, abilities, and learned mentor variants
-    this is their content id (e.g. 'firebolt', 'warrior_devastating_strike', or
+    this is their content id (e.g. 'arcane_bolt', 'warrior_devastating_strike', or
     'warrior_cleaving_blow_keldaran'); for a Veil Anchor it is the carried item's id (e.g.
     'veil_ward_anchor_small'). Three reserved tokens have no content id of their own:
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'

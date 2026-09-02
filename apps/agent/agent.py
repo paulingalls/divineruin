@@ -152,9 +152,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not milestones_is_loaded():
         await load_milestones()
 
-    # Load the mentor variant catalog once per agent process (M9). Activation
-    # applies an unlocked variant's cost/effect/narration override, which reads
-    # this map; the catalog keys variants to base martial elective techniques.
+    # Load the mentor variant catalog once per agent process (M9). activate() resolves a
+    # variant id against this map, so an unloaded catalog makes every variant unroutable.
     from mentor_variants import is_loaded as mentor_variants_is_loaded
     from mentor_variants import load_mentor_variants
 

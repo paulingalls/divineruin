@@ -1,10 +1,11 @@
 """Tests for activate_tools.activate — the polymorphic Phase-5 dispatcher (M25 story-001).
 
 activate(id) is a pure router: it resolves an id to a kind (reserved token, Veil Anchor, spell,
-or ability) and dispatches to the matching pre-existing ``_impl``. No transaction of its own —
-each target ``_impl`` still opens and commits its own. Routing is proven here with injected stub
-impls (AsyncMock), not against real DB/content state; each target ``_impl`` already has its own
-test suite for its own behavior.
+ability, or mentor variant) and dispatches to the matching pre-existing ``_impl``. No transaction
+of its own — each target ``_impl`` still opens and commits its own. Routing is mostly proven with
+injected stub impls (AsyncMock); each target ``_impl`` already has its own test suite for its own
+behavior. The one exception is the variant namespace, whose id resolution is also pinned against
+the real loaded catalog so mocking both sides cannot hide a content/routing drift.
 """
 
 from typing import Any
@@ -15,8 +16,10 @@ from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import abilities
+import mentor_variants
 import spells
-from activate_tools import _activate_impl, activate
+import veil_ward
+from activate_tools import _activate_impl, _resolve_kind, activate
 
 
 def _mocks() -> tuple[dict[str, Any], dict[str, AsyncMock]]:
@@ -60,11 +63,10 @@ async def _call(
     target_ids=None,
     spells_mod=spells,
     abilities_mod=abilities,
-    variants_mod=None,
+    variants_mod=mentor_variants,
     **mods,
 ):
     ctx = make_context()
-    variant_kwargs = {"variants_mod": variants_mod} if variants_mod is not None else {}
     result = await _activate_impl(
         ctx,
         id_,
@@ -72,7 +74,7 @@ async def _call(
         target_ids=target_ids,
         spells_mod=spells_mod,
         abilities_mod=abilities_mod,
-        **variant_kwargs,
+        variants_mod=variants_mod,
         **mods,
     )
     return ctx, result
@@ -139,6 +141,23 @@ class TestVariantRouting:
             target_id="orc_1",
             target_ids=None,
         )
+
+    async def test_real_content_variant_id_routes_against_the_loaded_catalog(self):
+        # The mocked test above proves the dispatch shape but would stay green if the real
+        # catalog never held the id, so pin the content->routing link with nothing injected:
+        # the conftest fixture loads content/mentor_variants.json the way startup loads the DB.
+        variant = mentor_variants.get_mentor_variant("warrior_cleaving_blow_keldaran")
+        kinds = {
+            id_: _resolve_kind(
+                id_,
+                spells_mod=spells,
+                abilities_mod=abilities,
+                variants_mod=mentor_variants,
+                anchors_mod=veil_ward,
+            )
+            for id_ in (variant.id, variant.ability_id)
+        }
+        assert kinds == {variant.id: "variant", variant.ability_id: "ability"}
 
 
 class TestAnchorRouting:

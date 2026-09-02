@@ -5,16 +5,15 @@ VARIANTS: a mentor-taught alternative to a base elective technique with its own
 cost/effect/narration and a cultural-attribution string for the DM voice. This
 module is the Python loader, an exact mirror of spells.py/abilities.py: a
 module-global dict populated by load_mentor_variants() at process startup (or
-set_mentor_variants() in tests), a
-fail-loud parse_mentor_variant_row shared by the DB loader and the JSON test
-fixture, and sync accessors.
+set_mentor_variants() in tests), a fail-loud parse_mentor_variant_row shared by
+the DB loader and the JSON test fixture, and sync accessors.
 
 A variant is FULLY specified (decision m9 override shape): its cost is the same
 Cost{stamina, focus, scaling} object the abilities layer uses (reused from
-abilities, not redefined), so the activation path (story-003) can select a
-variant's values in wholesale. Each variant keys to a base ability_id (a martial
-elective) and a teaching mentor NPC. Downstream: training unlock (story-002),
-explicit variant activation + cultural narration (story-003).
+abilities, not redefined), so the activation path can select a variant's values
+in one step. Each variant keys to a base ability_id (a martial elective) and a
+teaching mentor NPC. Downstream: training unlock (story-002), explicit variant
+activation + cultural narration (story-004).
 """
 
 import json
