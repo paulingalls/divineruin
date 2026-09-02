@@ -5,9 +5,16 @@ resolve_declaration is a PURE classify+validate function: it turns a raw declara
 six categories mirror gm_combat §Action Economy (L99-106); explicit ``type`` is required.
 """
 
-import pytest
+import json
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+from combat._helpers import _make_combat_state
+from sample_fixtures import make_context
+
+from combat_turn import _declare_phase_impl
 from declarations import DEFEND_AC_BONUS, Declaration, DeclarationType, resolve_declaration
+from query_tools import _query_abilities_impl
 
 
 class TestResolveDeclarationValid:
@@ -123,6 +130,33 @@ class TestReactionDeclarationInvalid:
     def test_reaction_rejects_non_string_trigger_as_value_error(self, bad):
         with pytest.raises(ValueError, match="trigger"):
             resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": bad})
+
+
+@pytest.mark.asyncio
+async def test_query_window_is_accepted_by_declare_phase():
+    context = make_context()
+    context.userdata.combat_state = _make_combat_state()
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={"class": "warrior"})
+    persistence = MagicMock()
+    persistence.get_character_abilities = AsyncMock(return_value=[])
+    persistence.get_active_variant = AsyncMock(return_value=None)
+    mutations = MagicMock()
+    mutations.save_combat_state = AsyncMock()
+
+    payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
+    reactions = [row for row in payload["abilities"] if row["ability_type"] == "reaction"]
+    assert reactions
+    reaction = reactions[0]
+    declarations = {
+        "player_1": {"type": "reaction", "action": reaction["id"], "trigger": reaction["window"]},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+    }
+
+    result = json.loads(await _declare_phase_impl(context, declarations, mutations=mutations))
+
+    assert result["beat"] == "resolution"
+    assert "player_1" in result["accepted_actors"]
 
 
 class TestResolveDeclarationInvalid:
