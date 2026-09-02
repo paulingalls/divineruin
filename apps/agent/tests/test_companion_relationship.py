@@ -5,8 +5,11 @@ below floor, capped at 5. These tests own the pure contract; DB persistence/quer
 tests/companion/test_relationship_persistence.py.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
+import companion_relationship_queries
 from companion_relationship import (
     AFFINITY_PER_TIER,
     RELATIONSHIP_TIERS,
@@ -16,6 +19,7 @@ from companion_relationship import (
     tier_rank_for_session_count,
     unlocks_up_to,
 )
+from session_data import CompanionState
 
 
 class TestSessionFloor:
@@ -100,3 +104,50 @@ class TestUnlocksUpTo:
 
     def test_none_unlocks_empty(self):
         assert unlocks_up_to(None, 5) == []
+
+
+class TestAssignedCompanionHydration:
+    @pytest.mark.parametrize("inserted", [True, False])
+    @pytest.mark.asyncio
+    async def test_seeds_if_absent_and_hydrates_selected_companion(self, inserted):
+        lira = CompanionState(id="companion_lira", name="Lira", session_count=1)
+        with (
+            patch(
+                "db_mutations_companion.insert_companion_relationship_if_absent",
+                new_callable=AsyncMock,
+                return_value=inserted,
+            ) as insert,
+            patch(
+                "companion_relationship_queries.hydrate_companion_state",
+                new_callable=AsyncMock,
+                return_value=lira,
+            ) as hydrate,
+        ):
+            result = await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "warrior")
+
+        insert.assert_awaited_once_with("player_1", "companion_lira")
+        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
+        assert result is lira
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("match_count", [0, 2])
+    async def test_selection_failure_does_not_insert_or_hydrate(self, match_count):
+        with (
+            patch(
+                "companion_relationship_queries.select_companion_for_archetype",
+                side_effect=ValueError(f"archetype matches {match_count} companions"),
+            ),
+            patch(
+                "db_mutations_companion.insert_companion_relationship_if_absent",
+                new_callable=AsyncMock,
+            ) as insert,
+            patch(
+                "companion_relationship_queries.hydrate_companion_state",
+                new_callable=AsyncMock,
+            ) as hydrate,
+            pytest.raises(ValueError, match=rf"matches {match_count} companions"),
+        ):
+            await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "unknown")
+
+        insert.assert_not_awaited()
+        hydrate.assert_not_awaited()

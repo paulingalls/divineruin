@@ -57,7 +57,12 @@ class TestAdvanceOnboardingBeat:
 
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_beat_3_initializes_companion(self, mock_set_player_flag):
+    @patch(
+        "onboarding_tools.db_queries.get_player",
+        new_callable=AsyncMock,
+        return_value={"name": "Aric", "class": "warrior"},
+    )
+    async def test_advance_beat_3_initializes_companion(self, mock_get_player, mock_set_player_flag):
         """Advancing past beat 3 (companion meeting) initializes CompanionState."""
         from onboarding_tools import advance_onboarding_beat
 
@@ -71,8 +76,9 @@ class TestAdvanceOnboardingBeat:
         assert result["beat_name"] == "kael_suggestion"
         # Companion should be initialized
         assert ctx.userdata.companion is not None
-        assert ctx.userdata.companion.name == "Kael"
-        assert ctx.userdata.companion.id == "companion_kael"
+        assert ctx.userdata.companion.name == "Lira"
+        assert ctx.userdata.companion.id == "companion_lira"
+        mock_get_player.assert_awaited_once_with("player_1")
         # companion_met flag should be set in DB
         calls = mock_set_player_flag.await_args_list
         flag_names = [c.args[1] for c in calls]

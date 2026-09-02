@@ -10,7 +10,7 @@ and persist the errand affinity nudge. Combat is never touched here.
 import asyncpg
 
 import db_mutations_companion
-from companion_profiles import get_companion_profile
+from companion_profiles import get_companion_profile, select_companion_for_archetype
 from companion_relationship import (
     effective_tier_rank,
     tier_name,
@@ -80,6 +80,16 @@ async def hydrate_companion_state(
         affinity=affinity,
         session_memories=memories,
     )
+
+
+async def hydrate_assigned_companion_state(
+    player_id: str,
+    archetype_id: str,
+) -> CompanionState:
+    companion_id = select_companion_for_archetype(archetype_id)
+    profile = get_companion_profile(companion_id)
+    await db_mutations_companion.insert_companion_relationship_if_absent(player_id, companion_id)
+    return await hydrate_companion_state(player_id, companion_id, profile.name)
 
 
 async def cached_effective_rank(

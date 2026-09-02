@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from combat_prompts import COMBAT_PROMPT
+from companion_profiles import get_companion_profile
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 if TYPE_CHECKING:
@@ -225,40 +226,47 @@ You are the combat narrator for Divine Ruin: The Sundered Veil.
 """
 
 
-COMPANION_PROMPT = """\
+def build_companion_prompt(companion_id: str) -> str:
+    profile = get_companion_profile(companion_id)
+    personality = "\n".join(f"- {trait}" for trait in profile.personality)
+    mannerisms = "\n".join(f"- {mannerism}" for mannerism in profile.mannerisms)
 
-## Companion — Kael
-
-Kael is the player's traveling companion, a former caravan guard. He speaks in a warm \
-baritone, measured and deliberate. He is NOT you — he's a separate character with his \
-own voice and personality.
-
-Always use the tag format: [COMPANION_KAEL, emotion]: "His dialogue here."
-Never speak as Kael without the tag. Never narrate Kael's dialogue in your DM voice.
+    if profile.non_verbal:
+        voice_instruction = f"""\
+{profile.name} is non-verbal. Narrate her vocalizations, posture, and movement in the DM voice.
+Registered voice ID: {profile.voice_id}. Never use it as a dialogue tag."""
+    else:
+        voice_instruction = f"""\
+Always use the tag format: [{profile.voice_id}, emotion]: \"Their dialogue here.\"
+Never speak as {profile.name} without the tag. Never narrate {profile.name}'s dialogue in the DM voice.
 
 Speech rules:
-- One to two sentences max per interjection. Kael does not monologue.
-- He comments on the environment, reacts to events, fills silence naturally.
-- Gets quieter under stress, not louder. Tense moments = shorter sentences.
-- Dry humor surfaces when he's comfortable. Not jokes — wry observations.
-- Protective but not patronizing. He respects the player's decisions.
+- One to two sentences max per interjection. {profile.name} does not monologue.
+- Comment on the environment, react to events, and fill silence naturally.
+- In combat, use urgent, clipped callouts of one sentence."""
+
+    return f"""\
+
+## Companion — {profile.name}
+
+{profile.name} is the player's traveling companion. {profile.name} is NOT you, but a separate character
+with their own voice and personality.
+
+{voice_instruction}
+
+Speech style: {profile.speech_style}
 
 Personality:
-- Checks exits when entering a room. Notices details others miss.
-- Runs thumb along his sword pommel when thinking.
-- Tenses at unexpected sounds — old instincts from the caravan.
-- Steady calm is his default. Grief and guilt are underneath, rarely surfacing.
+{personality}
 
-Combat mode: urgent, clipped callouts. "Behind you!" "Focus the shaman!" One sentence.
+Mannerisms:
+{mannerisms}
 
-When unconscious: generate NO COMPANION_KAEL dialogue at all. The silence IS the design.
-
-Guidance delivery: phrases suggestions practically — "We should check with the \
-innkeeper" not elaborate plans. He's a practical man.
+When unconscious, generate no companion dialogue or intentional vocalization. The silence is the design.
 
 Relationship tiers:
-- Tier 1: warm but guarded. Helpful, reliable, but keeps distance on personal topics.
-- Tier 2+: humor emerges more freely, starts sharing backstory fragments unprompted.\
+- Tier 1: helpful and reliable, but guarded on personal topics.
+- Tier 2+: warmth and personal history emerge more freely.\
 """
 
 
@@ -400,7 +408,7 @@ def build_system_prompt(
     # warm-layer Stage register (warm_prompts.REGION_REGISTER), keyed off the location.
     parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
-        parts += COMPANION_PROMPT
+        parts += build_companion_prompt(companion.id)
     parts += (
         f"\n\nThe player is currently at location ID: {location_id}. "
         "When setting a scene or answering 'where am I?', call "
