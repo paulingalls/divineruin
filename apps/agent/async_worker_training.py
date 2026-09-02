@@ -258,7 +258,7 @@ async def advance_training_cycles() -> int:
                                 variant_id,
                                 midpoint_decision_id=progress["midpoint_decision_id"],
                             )
-                            # The unlocked variant becomes the active override on its base
+                            # The unlocked variant becomes the current activatable form for its base
                             # technique (one per technique; swap requires re-training). The active
                             # table upserts ON CONFLICT, so a later trained variant replaces this
                             # one (story-003 / migration 038). Idempotent like record_unlocked, so a

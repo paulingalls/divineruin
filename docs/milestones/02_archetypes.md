@@ -202,13 +202,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 **Acceptance criteria:**
 - [x] `mentor_variants` table stores variant overrides (cost, effect) linked to a base ability and NPC mentor
 - [x] Training loop tracks session count and unlocks the variant only after required sessions complete (2-3 sessions)
-- [ ] Unlocked variant replaces or supplements the base technique at the player's choice
+- [x] Unlocked variant replaces or supplements the base technique at the player's choice
 - [x] Each variant has a cultural attribution string for DM narration
 - [x] Variant cost and effect overrides apply correctly when the variant ability is activated
 - [x] Training cannot begin without a valid mentor NPC relationship (depends on Phase 6 NPC data)
 - [x] Unit tests cover training progress, variant unlock, and cost/effect override application
 
-> **Status (mostly shipped):** Variant catalog + overrides, the 3-cycle mentor training loop, cultural attribution, cost/effect override on activation, and co-location + mentor-requirement gating are delivered and tested (unit tests + `tests/acceptance/test_mentor_variants.py`, `test_mentor_gating_e2e.py`). AC3 is unchecked: the shipped model is a single active-variant *replace* (`set_active_variant` overwrites the active override); there is no player choice to *supplement* (keep base + variant both active).
+> **Status (shipped):** Variant catalog, the 3-cycle mentor training loop, cultural attribution, variant activation, and co-location + mentor-requirement gating are delivered and tested (unit tests + `tests/acceptance/test_mentor_variants.py`, `test_mentor_gating_e2e.py`). AC3 closed by M9 story-004 (2026-09-01): a variant no longer overrides its base. `activate` routes variant ids as a fourth namespace, so the player chooses per activation — base id for the base cost/effect, variant id for the variant's. `set_active_variant` still allows only ONE activatable variant per technique, so a second trained variant makes the first unlocked-but-unusable; supplement is between base and variant, not among variants.
+>
+> Not shipped: nothing surfaces a learned variant's *id* to the DM — `query_info` has no ability/variant kind and the unlock narration carries only the cultural-attribution prose — so the variant namespace is routable but not yet discoverable at the table.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Martial Mentor System*

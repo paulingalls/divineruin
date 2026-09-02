@@ -9,8 +9,8 @@ and every file under its limit (decision ability-persistence-module).
 - set_elective_equipped / get_character_abilities: the character_abilities table
   (migration 030) — which L4/L8 electives a character currently has equipped.
 - set_active_variant / get_active_variant: the character_active_variants table
-  (migration 038) — which unlocked mentor variant currently overrides a base
-  technique (one per technique; M9 story-003).
+  (migration 038) — which unlocked mentor variant is currently activatable for a
+  base technique (one per technique; M9 story-003).
 """
 
 import json
@@ -80,7 +80,7 @@ async def set_active_variant(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Make a mentor variant the active override on its base technique (migration 038).
+    """Make a mentor variant the current activatable form for its base technique.
 
     The PK (player_id, ability_id) + ON CONFLICT DO UPDATE enforces one active variant per
     technique: training a second variant for the same base ability REPLACES the active one
@@ -106,7 +106,7 @@ async def get_active_variant(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> str | None:
-    """Return the active variant id overriding a base technique, or None when none is active."""
+    """Return the current activatable variant id for a base technique, or None."""
     _conn = conn or await db.get_pool()
     return await _conn.fetchval(
         "SELECT variant_id FROM character_active_variants WHERE player_id = $1 AND ability_id = $2",

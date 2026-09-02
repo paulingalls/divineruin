@@ -107,7 +107,7 @@ async def _learn_variant_impl(
         if any(row["state"] != _TERMINAL_STATE for row in existing):
             raise ToolError("A training cycle is already in progress.")
 
-        # Own-the-base gate (story-006): a variant overrides a base elective the
+        # Own-the-base gate (story-006): a variant supplements a base elective the
         # player must already own — you cannot train a variant of a technique you
         # lack. A variant whose base is core/reaction is unmodeled (fail loud).
         try:
@@ -115,7 +115,7 @@ async def _learn_variant_impl(
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         if base.ability_type != "elective":
-            raise ToolError(f"Variant {variant_id} overrides a non-elective base ({base.ability_type}); unmodeled.")
+            raise ToolError(f"Variant {variant_id} targets a non-elective base ({base.ability_type}); unmodeled.")
         if not await persistence_mod.owns_elective(player_id, variant.ability_id, conn=conn):
             raise ToolError(f"You must own the base technique {base.name} before training a variant of it.")
 

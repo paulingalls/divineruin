@@ -9,9 +9,9 @@ import { asRecord } from "./parse-helpers.ts";
 // row IS the cross-language contract and each loader owns fail-loud validation. This
 // parser stays structurally symmetric with Python parse_mentor_variant_row.
 //
-// A variant is FULLY specified (decision m9 override shape): its cost/effect/narration
-// replace the base ability's wholesale on activation (story-003). cost reuses the shared
-// Cost {stamina, focus, scaling} object from the abilities layer.
+// A variant is FULLY specified (decision m9 override shape): activating the variant id uses
+// its own cost/effect/narration instead of the base ability's (story-004). cost reuses the
+// shared Cost {stamina, focus, scaling} object from the abilities layer.
 
 // Runtime-loaded variants, keyed by variant id (populated by loadMentorVariants at startup).
 let mentorVariants: ReadonlyMap<string, MentorVariant> = new Map();
