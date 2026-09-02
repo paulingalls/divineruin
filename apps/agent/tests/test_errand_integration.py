@@ -46,8 +46,11 @@ class TestOutcomeTiers:
 
     def test_all_four_outcome_tiers_reachable(self) -> None:
         from async_rules import resolve_companion_errand
+        from errand_resolution import companion_errand_data
 
-        companion_data = {"relationship_tier": 2, "attributes": {"wisdom": 14}}
+        # A real derived companion payload, not a hand-rolled dict: the resolver reads
+        # id/name off it and the production caller builds it here.
+        companion_data = {**companion_errand_data({"class": "warrior"}), "relationship_tier": 2}
         params = {"errand_type": "scout", "destination": "Ashmark Edge", "dc": 12}
         tiers_seen: set[str] = set()
 

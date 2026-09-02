@@ -279,8 +279,11 @@ def resolve_companion_errand(
         "dc": dc,
         "errand_type": errand_type,
         "destination": destination,
-        "companion_name": companion_data.get("name", "Kael"),
-        "companion_id": companion_data.get("id", "companion_kael"),
+        # No default: the caller (errand_resolution.companion_errand_data) derives these from
+        # the player's archetype, and a Kael default here is how every player's errand came
+        # back in Kael's voice.
+        "companion_name": companion_data["name"],
+        "companion_id": companion_data["id"],
     }
 
     return ErrandOutcome(

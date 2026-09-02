@@ -70,22 +70,6 @@ class TestResolveSingleActivity:
                 "dc": 12,
             },
         }
-        player_with_companion = {
-            **SAMPLE_PLAYER,
-            "companion": {
-                "id": "companion_kael",
-                "name": "Kael",
-                "relationship_tier": 2,
-                "attributes": {
-                    "strength": 15,
-                    "dexterity": 13,
-                    "constitution": 14,
-                    "intelligence": 10,
-                    "wisdom": 12,
-                    "charisma": 11,
-                },
-            },
-        }
 
         _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
@@ -93,7 +77,7 @@ class TestResolveSingleActivity:
             get_p,
             claim_p,
             revert_p,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "errand_resolution.db_content_queries.get_location",
                 new_callable=AsyncMock,
@@ -133,7 +117,6 @@ class TestResolveSingleActivity:
             "activity_type": "companion_errand",
             "parameters": {"errand_type": "scout", "destination": "greyvale_ruins_entrance", "dc": 12},
         }
-        player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
         _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
@@ -141,7 +124,7 @@ class TestResolveSingleActivity:
             get_p,
             claim_p,
             revert_p,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "errand_resolution.db_content_queries.get_location",
                 new_callable=AsyncMock,
@@ -168,7 +151,9 @@ class TestResolveSingleActivity:
         called = {**dict(zip(("errand_type", "danger_level", "companion_id"), args, strict=False)), **kwargs}
         assert called["errand_type"] == "scout"
         assert called["danger_level"] == "dangerous"
-        assert called["companion_id"] == "companion_kael"
+        # SAMPLE_PLAYER is a warrior, whose assigned companion is Lira — the risk roll is
+        # keyed on the companion the archetype selects, not a players.data literal.
+        assert called["companion_id"] == "companion_lira"
         assert mock_update.call_args_list[0][0][1]["outcome"]["narrative_context"]["risk_outcome"] == "injured"
 
     @pytest.mark.asyncio
@@ -178,7 +163,6 @@ class TestResolveSingleActivity:
             "activity_type": "companion_errand",
             "parameters": {"errand_type": "scout", "destination": "nowhere", "dc": 12},
         }
-        player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
         _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
@@ -186,7 +170,7 @@ class TestResolveSingleActivity:
             get_p,
             claim_p,
             revert_p,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch("errand_resolution.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
             patch("errand_risk.roll_errand_risk", MagicMock(return_value="none")) as mock_roll,
             patch(

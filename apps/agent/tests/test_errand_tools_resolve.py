@@ -71,9 +71,7 @@ class TestResolveCompanionErrand:
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_due_activity())
         queries_mod = MagicMock()
-        queries_mod.get_player = AsyncMock(
-            return_value={"player_id": "player_1", "companion": {"id": "companion_kael", "name": "Kael"}}
-        )
+        queries_mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": "warrior"})
         mutations_mod = MagicMock()
         mutations_mod.update_activity = AsyncMock()
 
@@ -101,9 +99,7 @@ class TestResolveCompanionErrand:
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_due_activity())
         queries_mod = MagicMock()
-        queries_mod.get_player = AsyncMock(
-            return_value={"player_id": "player_1", "companion": {"id": "companion_kael"}}
-        )
+        queries_mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": "warrior"})
         mutations_mod = MagicMock()
         mutations_mod.update_activity = AsyncMock()
 
@@ -132,9 +128,7 @@ class TestResolveCompanionErrand:
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_due_activity())
         queries_mod = MagicMock()
-        queries_mod.get_player = AsyncMock(
-            return_value={"player_id": "player_1", "companion": {"id": "companion_kael"}}
-        )
+        queries_mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": "warrior"})
         mutations_mod = MagicMock()
         mutations_mod.update_activity = AsyncMock()
 

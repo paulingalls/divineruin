@@ -32,7 +32,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import errand_risk
-from errand_resolution import resolve_errand_outcome
+from errand_resolution import companion_errand_data, resolve_errand_outcome
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -189,21 +189,25 @@ async def _resolve_companion_errand_impl(
                     raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
 
                 # Only load the player once we're committed to resolving.
-                player = await queries_mod.get_player(player_id) or {}
-                companion_data = player.get("companion", {})
-                companion_id = companion_data.get("id")
-                if companion_id:
-                    # Feed the bonus the live effective rank (session_count + affinity), not the
-                    # stale players.data int (M6.4 / story-003). Same FOR UPDATE lock.
-                    companion_data["relationship_tier"] = await companion_rel_mod.cached_effective_rank(
-                        player_id, companion_id, conn=conn
-                    )
+                player = await queries_mod.get_player(player_id)
+                if player is None:
+                    raise ToolError(f"Unknown player: {player_id}")
+                try:
+                    companion_data = companion_errand_data(player)
+                except ValueError as e:
+                    # ADR 0002 error shape: an unassignable archetype reaches the DM as a
+                    # ToolError, not a raw ValueError.
+                    raise ToolError(f"Cannot resolve errand {errand_id}: {e}") from e
+                # Feed the bonus the live effective rank (session_count + affinity), not the
+                # stale players.data int (M6.4 / story-003). Same FOR UPDATE lock.
+                companion_data["relationship_tier"] = await companion_rel_mod.cached_effective_rank(
+                    player_id, companion_data["id"], conn=conn
+                )
                 outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
-                if companion_id:
-                    # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
-                    await companion_rel_mod.apply_errand_affinity(
-                        player_id, companion_id, outcome.get("relationship_change", 0), conn=conn
-                    )
+                # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
+                await companion_rel_mod.apply_errand_affinity(
+                    player_id, companion_data["id"], outcome.get("relationship_change", 0), conn=conn
+                )
 
                 # Persist + mark resolved within the lock so the worker skips this
                 # row (get_due_activities filters status='in_progress').
