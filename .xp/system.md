@@ -75,6 +75,10 @@ API cost) and runs at pre-push and sprint close only.
 - Python files target ~300 lines, 500 hard cap; split by single responsibility.
 - Run `ruff format` on changed Python before committing — pre-commit checks
   formatting (not `--fix`) and blocks.
+- A story hands back a COMMIT that passed the commit hook, or a handback that
+  names the failing hook and quotes its output. "Typechecks passed" with no
+  commit is the false green constraint 1 forbids (sprint-046 story-010: pyright
+  had 7 errors the report called green).
 - Latency budget: 1500ms end-of-speech to first audio. Stream everything.
   Cost: cache system prompts; flag anything that raises token usage (`cost_model.md`).
 - Branching: trunk is `main` (protected). Work lands as first-parent merges of
