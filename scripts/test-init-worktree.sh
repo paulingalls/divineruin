@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unit tests for scripts/worktree-common.sh — the pure host-port-offset and
-# compose-project-name derivation that lets parallel git worktrees each run
-# their own docker stack. Mirrors scripts/test-precommit-worktree-skip.sh: no
-# framework, plain asserts, non-zero exit on the first failure.
+# Unit tests for the worktree bootstrap helpers. Mirrors
+# scripts/test-precommit-worktree-skip.sh: no framework, plain asserts,
+# non-zero exit on the first failure.
 #
-# These exercise the PURE helpers (offset math, name sanitizing, override) plus
-# the offset-resolution path, which is context-aware: from the primary it asserts
+# These exercise the PURE helpers (offset math, name sanitizing, override), the
+# offset-resolution path, which is context-aware: from the primary it asserts
 # offset 0, from a linked worktree it asserts a non-zero offset — so the pre-push
-# gate stays green from any checkout. The full end-to-end bootstrap is proved by
-# the probe-worktree differential in the story's verification, not here.
+# gate stays green from any checkout — and the typegen port reservation, which
+# holds a lock across the check-then-bind window. The full end-to-end bootstrap
+# is proved by the probe-worktree differential in the story's verification.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=/dev/null
-source "$SCRIPT_DIR/worktree-common.sh"
+source "$SCRIPT_DIR/init-worktree.sh"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 ok() { echo "  ok: $1"; }
 
-echo "Testing worktree-common.sh..."
+echo "Testing worktree bootstrap helpers..."
 
 # 1. wt_offset_for_name is deterministic.
 a="$(wt_offset_for_name divineruin)"
@@ -93,4 +93,162 @@ orphans="$(printf '%s\n' "$running" | wt_stale_worktree_projects 'story-006_Foo'
 [ "$orphans" = "dr-old-gone" ] || fail "stale-project set wrong (expected only dr-old-gone): got [$orphans]"
 ok "wt_stale_worktree_projects reaps only true orphans (protects live + dr-divineruin + non-dr-)"
 
-echo "All worktree-common.sh tests passed."
+# 10. Two pickers starting from the same point reserve different ports.
+TEST_TYPEGEN_LOCK_ROOT="$(mktemp -d -t test-typegen-locks)"
+TYPEGEN_LOCK_ROOT="$TEST_TYPEGEN_LOCK_ROOT"
+trap 'rm -rf "$TEST_TYPEGEN_LOCK_ROOT"' EXIT
+first="$(RANDOM=31 pick_typegen_port 48910 48911)"
+second="$(RANDOM=31 pick_typegen_port 48910 48911)"
+[ "$first" != "$second" ] || fail "concurrent pickers both chose $first"
+[ "$(cat "$TYPEGEN_LOCK_ROOT/$first/pid")" = "$$" ] || fail "first port reservation has the wrong owner"
+[ "$(cat "$TYPEGEN_LOCK_ROOT/$second/pid")" = "$$" ] || fail "second port reservation has the wrong owner"
+release_typegen_port "$first"
+release_typegen_port "$second"
+ok "concurrent pickers reserve different ports"
+
+# 11. A dead owner's lock is reaped and atomically retaken by this bootstrap.
+mkdir "$TYPEGEN_LOCK_ROOT/48920"
+printf '%s\n' 999999999 > "$TYPEGEN_LOCK_ROOT/48920/pid"
+[ "$(pick_typegen_port 48920 48920)" = "48920" ] || fail "stale lock did not make its port reusable"
+[ "$(cat "$TYPEGEN_LOCK_ROOT/48920/pid")" = "$$" ] || fail "stale lock was not retaken by this bootstrap"
+release_typegen_port 48920
+ok "dead-owner reservation is reaped and retaken"
+
+# 12. A bound port plus a live reservation exhausts the band and preserves the
+# existing loud diagnostic.
+TEST_BOUND_PORT=48930
+lsof() {
+  case "$*" in
+    *":$TEST_BOUND_PORT"*) printf '%s\n' "$$"; return 0 ;;
+    *) return 1 ;;
+  esac
+}
+mkdir "$TYPEGEN_LOCK_ROOT/48931"
+printf '%s\n' 999999999 > "$TYPEGEN_LOCK_ROOT/48931/pid"
+release_typegen_port 48931
+[ -d "$TYPEGEN_LOCK_ROOT/48931" ] || fail "release removed another bootstrap's reservation"
+printf '%s\n' "$$" > "$TYPEGEN_LOCK_ROOT/48931/pid"
+if exhausted="$(pick_typegen_port 48930 48931 2>&1)"; then
+  fail "exhausted typegen band returned port $exhausted"
+fi
+case "$exhausted" in
+  *"init-worktree: no free port in 48930-48931 for the typegen dev server."*) ;;
+  *) fail "exhaustion did not preserve the no-free-port diagnostic: $exhausted" ;;
+esac
+unset -f lsof
+rm -f "$TYPEGEN_LOCK_ROOT/48931/pid"
+rmdir "$TYPEGEN_LOCK_ROOT/48931"
+ok "bound/live-locked exhaustion fails loud"
+
+# 13. Bind confirmation rejects both an absent listener (silent Expo auto-bump)
+# and a listener outside the launched Expo process group.
+lsof() { return 1; }
+if absent="$(assert_typegen_port_owner 48940 999999999 2>&1)"; then
+  fail "bind confirmation accepted an absent listener"
+fi
+case "$absent" in
+  *"no listener on reserved typegen port 48940"*) ;;
+  *) fail "absent-listener diagnostic missing: $absent" ;;
+esac
+unset -f lsof
+
+TEST_BOUND_PORT=48941
+lsof() { printf '%s\n' "$$"; }
+expected_group="$(ps -o pgid= -p "$$" | tr -d ' ')"
+assert_typegen_port_owner "$TEST_BOUND_PORT" "$expected_group" || fail "bind confirmation rejected Expo's process group"
+if foreign="$(assert_typegen_port_owner "$TEST_BOUND_PORT" 999999999 2>&1)"; then
+  fail "bind confirmation accepted a foreign listener"
+fi
+case "$foreign" in
+  *"listener on reserved typegen port $TEST_BOUND_PORT is outside Expo's process group"*) ;;
+  *) fail "foreign-listener diagnostic missing: $foreign" ;;
+esac
+unset -f lsof
+ok "bind confirmation rejects absent and foreign listeners"
+
+# 14. Reservation metadata and lock-root I/O failures are loud and leave no
+# poisoned reservation behind.
+printf() { return 1; }
+if owner_error="$(reserve_typegen_port 48950 2>&1)"; then
+  fail "reservation succeeded without recording its owner"
+fi
+unset -f printf
+case "$owner_error" in
+  *"could not record the owner of typegen port 48950"*) ;;
+  *) fail "owner-write diagnostic missing: $owner_error" ;;
+esac
+[ ! -e "$TYPEGEN_LOCK_ROOT/48950" ] || fail "failed owner write poisoned port 48950"
+
+working_lock_root="$TYPEGEN_LOCK_ROOT"
+blocked_lock_root="$(mktemp -t test-typegen-blocked-root)"
+TYPEGEN_LOCK_ROOT="$blocked_lock_root/locks"
+if root_error="$(pick_typegen_port 48951 48951 2>&1)"; then
+  fail "picker succeeded with an unusable lock root"
+fi
+case "$root_error" in
+  *"could not create the typegen port lock root"*) ;;
+  *) fail "lock-root diagnostic missing: $root_error" ;;
+esac
+TYPEGEN_LOCK_ROOT="$working_lock_root"
+rm -f "$blocked_lock_root"
+ok "reservation I/O failures fail loud without poisoning ports"
+
+# 15. A reap already in progress is not raced: two bootstraps that read the same
+# dead owner must not both come away owning the port.
+mkdir "$TYPEGEN_LOCK_ROOT/48960"
+printf '%s\n' 999999999 > "$TYPEGEN_LOCK_ROOT/48960/pid"
+mkdir "$TYPEGEN_LOCK_ROOT/48960.reap"
+if reserve_typegen_port 48960 2>/dev/null; then
+  fail "reserved a port whose stale lock another bootstrap was already reaping"
+fi
+[ "$(cat "$TYPEGEN_LOCK_ROOT/48960/pid")" = "999999999" ] || fail "a reap in progress was clobbered"
+rmdir "$TYPEGEN_LOCK_ROOT/48960.reap"
+[ "$(pick_typegen_port 48960 48960)" = "48960" ] || fail "port unusable once the reap finished"
+release_typegen_port 48960
+ok "a reap in progress is not raced by a second bootstrap"
+
+# 16. The lsof/ps idioms against a REAL listener. The mocked checks above cannot
+# catch a wrong lsof invocation, and that failure is silent — every port would
+# read as free — so this one binds a port for real.
+real_port=48970
+set -m
+bun -e "Bun.serve({ port: $real_port, fetch: () => new Response('ok') })" >/dev/null 2>&1 &
+listener_pid=$!
+set +m
+kill_listener() { kill -- "-$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true; }
+waited=0
+until lsof -ti ":$real_port" -sTCP:LISTEN >/dev/null 2>&1; do
+  sleep 0.2
+  waited=$((waited + 1))
+  [ "$waited" -lt 50 ] || { kill_listener; fail "the test listener never bound $real_port"; }
+done
+if reserve_typegen_port "$real_port" 2>/dev/null; then
+  release_typegen_port "$real_port"
+  kill_listener
+  fail "reserved a port a real process was listening on"
+fi
+[ ! -e "$TYPEGEN_LOCK_ROOT/$real_port" ] || { kill_listener; fail "a bound port left a reservation behind"; }
+assert_typegen_port_owner "$real_port" "$listener_pid" \
+  || { kill_listener; fail "a real listener was not matched to its own job's process group"; }
+kill_listener
+ok "real listener: lsof sees the bind, ps matches the job's process group"
+
+# 17. A fatal reservation status aborts the scan: it must never surface as a
+# successful pick with an empty port, nor be swallowed into the exhaustion
+# message — the band is not full, the host cannot write.
+printf() { return 1; }
+if propagated="$(pick_typegen_port 48980 48980 2>&1)"; then
+  unset -f printf
+  fail "an unrecordable reservation was reported as a successful pick: [$propagated]"
+fi
+unset -f printf
+case "$propagated" in
+  *"could not record the owner of typegen port 48980"*) ;;
+  *) fail "fatal reservation diagnostic missing: $propagated" ;;
+esac
+case "$propagated" in
+  *"no free port"*) fail "a fatal reservation was mislabelled as an exhausted band: $propagated" ;;
+esac
+ok "a fatal reservation status aborts the scan"
+
+echo "All init-worktree tests passed."

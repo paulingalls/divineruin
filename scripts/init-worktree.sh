@@ -29,6 +29,7 @@ source "$REPO_ROOT/scripts/worktree-common.sh"
 # port): concurrent worktree bootstraps must not all grab the same port.
 TYPEGEN_PORT_MIN=8890
 TYPEGEN_PORT_MAX=8899
+TYPEGEN_LOCK_ROOT="${TMPDIR:-/tmp}/divineruin-typegen-ports"
 
 ROUTER_TYPES="$REPO_ROOT/apps/mobile/.expo/types/router.d.ts"
 EXPO_ENV_TYPES="$REPO_ROOT/apps/mobile/expo-env.d.ts"
@@ -41,19 +42,86 @@ EXPO_ENV_TYPES="$REPO_ROOT/apps/mobile/expo-env.d.ts"
 # TS2322 in the primary. expo-router writes both files at dev-server STARTUP
 # (no bundling; ~seconds); there is no standalone typegen command in SDK 55.
 
-# Echo a free port in [start,end]; fail loud (never a default) when none is —
-# a default could hand typegen a FOREIGN Metro's port. Random start + wrap makes
-# concurrent bootstraps unlikely to pick the same port before either binds.
+# Release a reservation only when this bootstrap still owns it.
+# Args: <port>
+release_typegen_port() {
+  local port="$1" lock_dir owner
+  lock_dir="$TYPEGEN_LOCK_ROOT/$port"
+  [ -f "$lock_dir/pid" ] || return 0
+  owner="$(<"$lock_dir/pid")"
+  [ "$owner" = "$$" ] || return 0
+  rm -f "$lock_dir/pid"
+  rmdir "$lock_dir" 2>/dev/null || true
+}
+
+# Hand a dead owner's reservation back. The reap needs a mutex of its own: two
+# bootstraps that read the same dead owner otherwise race through
+# remove-then-recreate and both come away owning the port — the very collision
+# this lock exists to prevent — or yank the pid file out from under each other
+# mid-write and abort. The loser of the reap leaves the port to the winner.
+# Args: <port> <dead-owner-pid>
+reap_typegen_reservation() {
+  local port="$1" dead="$2" lock_dir reap_dir owner
+  lock_dir="$TYPEGEN_LOCK_ROOT/$port"
+  reap_dir="$lock_dir.reap"
+  mkdir "$reap_dir" 2>/dev/null || return 1
+  # Re-read under the mutex: the winner may already have reaped and retaken.
+  owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+  if [ "$owner" = "$dead" ]; then
+    rm -f "$lock_dir/pid"
+    rmdir "$lock_dir" 2>/dev/null || true
+  fi
+  rmdir "$reap_dir" 2>/dev/null || true
+}
+
+# Atomically reserve an unbound port. A failed mkdir belongs to another
+# bootstrap; a dead owner is reaped before one retry.
+# Args: <port>
+reserve_typegen_port() {
+  local port="$1" lock_dir owner
+  lock_dir="$TYPEGEN_LOCK_ROOT/$port"
+  if ! mkdir "$lock_dir" 2>/dev/null; then
+    owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+    case "$owner" in
+      ''|*[!0-9]*) return 1 ;;
+    esac
+    if kill -0 "$owner" 2>/dev/null; then
+      return 1
+    fi
+    reap_typegen_reservation "$port" "$owner" || return 1
+    mkdir "$lock_dir" 2>/dev/null || return 1
+  fi
+  if ! printf '%s\n' "$$" > "$lock_dir/pid"; then
+    rm -f "$lock_dir/pid"
+    rmdir "$lock_dir" 2>/dev/null || true
+    echo "init-worktree: could not record the owner of typegen port $port." >&2
+    return 2
+  fi
+  if lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    release_typegen_port "$port"
+    return 1
+  fi
+}
+
+# Echo a reserved, unbound port in [start,end]; fail loud (never a default) when
+# none is available. A default could hand typegen a foreign Metro's port.
 # Args: <start> <end>
 pick_typegen_port() {
-  local start="$1" end="$2" span base i p
+  local start="$1" end="$2" span base i p status
+  if ! mkdir -p "$TYPEGEN_LOCK_ROOT"; then
+    echo "init-worktree: could not create the typegen port lock root $TYPEGEN_LOCK_ROOT." >&2
+    return 2
+  fi
   span=$((end - start + 1))
   base=$((RANDOM % span))
   for ((i = 0; i < span; i++)); do
     p=$((start + (base + i) % span))
-    if ! lsof -ti ":$p" -sTCP:LISTEN >/dev/null 2>&1; then
+    if reserve_typegen_port "$p"; then
       echo "$p"
       return 0
+    else
+      status=$?
+      [ "$status" -eq 1 ] || return "$status"
     fi
   done
   echo "init-worktree: no free port in ${start}-${end} for the typegen dev server." >&2
@@ -74,11 +142,40 @@ reap_typegen() {
   wait "$pid" 2>/dev/null || true
 }
 
+# Confirm that every listener on a port belongs to the launched Expo process
+# group. Expo never auto-bumps under CI=1: a busy port makes it offer the next
+# free one, and a non-interactive prompt aborts the command (exit 1). So an
+# absent listener means the port was never ours.
+# Args: <port> <expected-process-group>
+assert_typegen_port_owner() {
+  local port="$1" expected_group="$2" listeners listener group
+  listeners="$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)"
+  if [ -z "$listeners" ]; then
+    echo "init-worktree: no listener on reserved typegen port $port." >&2
+    return 1
+  fi
+  for listener in $listeners; do
+    group="$(ps -o pgid= -p "$listener" 2>/dev/null | tr -d ' ')"
+    if [ "$group" != "$expected_group" ]; then
+      echo "init-worktree: listener on reserved typegen port $port is outside Expo's process group." >&2
+      return 1
+    fi
+  done
+}
+
+cleanup_typegen() {
+  reap_typegen "${1:-}"
+  [ -z "${2:-}" ] || release_typegen_port "$2"
+}
+
 # Start Expo just long enough to emit the two type files, then reap it. ALWAYS
 # regenerates: we wait for both files to be NEWER than a marker stamped now, so a
 # stale copy on a warm checkout is refreshed rather than silently kept.
 run_typegen() {
-  local port pid log waited marker
+  local port pid log waited marker bound
+  port=""; pid=""; log=""; marker=""
+  trap 'cleanup_typegen "$pid" "$port"' EXIT
+  trap 'cleanup_typegen "$pid" "$port"; exit 130' INT TERM HUP
   port="$(pick_typegen_port "$TYPEGEN_PORT_MIN" "$TYPEGEN_PORT_MAX")" || exit 1
   log="$(mktemp -t init-worktree-typegen)"
   marker="$(mktemp -t init-worktree-marker)"
@@ -90,10 +187,36 @@ run_typegen() {
   (cd "$REPO_ROOT/apps/mobile" && CI=1 bunx expo start --port "$port" >"$log" 2>&1) &
   pid=$!
   set +m
-  # Reap on ANY exit path (a signal skips the EXIT trap, and set -m moved the
-  # server out of the foreground group, so a bare ^C never reaches it).
-  trap 'reap_typegen "$pid"' EXIT
-  trap 'reap_typegen "$pid"; exit 130' INT TERM HUP
+
+  waited=0
+  bound=1
+  until lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "init-worktree: the typegen dev server exited before binding reserved port $port." >&2
+      sed 's/^/    /' "$log" >&2
+      exit 1
+    fi
+    # Expo listens BEFORE it writes the types (it starts the dev server, then
+    # bootstraps TypeScript), so types already fresh here means we merely missed
+    # the bind between polls — the reservation has done its job and the
+    # deliverable exists. Failing on it would kill a bootstrap that worked.
+    if ! [ "$marker" -nt "$ROUTER_TYPES" ] && [ -f "$EXPO_ENV_TYPES" ]; then
+      bound=0
+      break
+    fi
+    sleep 0.5
+    waited=$((waited + 1))
+    if [ "$waited" -ge 360 ]; then
+      echo "init-worktree: timed out waiting for Expo to bind reserved port $port." >&2
+      sed 's/^/    /' "$log" >&2
+      exit 1
+    fi
+  done
+  if [ "$bound" -eq 1 ] && ! assert_typegen_port_owner "$port" "$pid"; then
+    sed 's/^/    /' "$log" >&2
+    exit 1
+  fi
+  release_typegen_port "$port"
 
   waited=0
   # Exit once router.d.ts is regenerated (newer-or-equal to the marker) AND
@@ -125,7 +248,7 @@ run_typegen() {
     fi
   done
 
-  reap_typegen "$pid"
+  cleanup_typegen "$pid" "$port"
   trap - EXIT INT TERM HUP
   rm -f "$log" "$marker"
   echo "    wrote apps/mobile/.expo/types/router.d.ts + apps/mobile/expo-env.d.ts"
