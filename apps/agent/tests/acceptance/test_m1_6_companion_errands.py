@@ -44,8 +44,6 @@ pytestmark = pytest.mark.skipif(
 # Production gameplay model (agent.py) — acceptance runs at production parity.
 _AGENT_MODEL = "claude-haiku-4-5-20251001"
 
-_KAEL = {"id": "companion_kael", "name": "Kael", "relationship_tier": 2}
-
 scenarios("features/m1_6_companion_errands.feature")
 
 
@@ -56,7 +54,10 @@ scenarios("features/m1_6_companion_errands.feature")
 def _given_dispatch_scene(harness: SimpleNamespace) -> None:
     async def _setup() -> None:
         pool = await db.get_pool()
-        await seed_player(pool, player_id="player_1", location_id="accord_guild_hall", companion=_KAEL)
+        # Mage, because the errand surfaces derive the companion from the archetype's
+        # complement and refuse a caller-named id that disagrees: a skirmisher's companion
+        # is Lira, so "Send Kael..." would be refused before any row landed.
+        await seed_player(pool, player_id="player_1", class_="mage", location_id="accord_guild_hall")
         await clear_async_activities(pool, "player_1")
 
         session_data = SessionData(
@@ -79,7 +80,9 @@ def _given_dispatch_scene(harness: SimpleNamespace) -> None:
             ),
         )
         session = AgentSession(
-            llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral"),
+            # Parity with agent.py (ADR 0004 addendum): strict schemas are interim-OFF. At the
+            # plugin default this dispatch session 400s before any turn runs — 23 union-typed params.
+            llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral", _strict_tool_schema=False),
             userdata=session_data,
         )
         await session.start(create_dispatch_agent(chat_ctx=ctx))
@@ -120,7 +123,7 @@ def _errand_row_exists(harness: SimpleNamespace) -> None:
 def _given_due_errand(harness: SimpleNamespace) -> None:
     async def _setup() -> None:
         pool = await db.get_pool()
-        await seed_player(pool, player_id="player_1", companion=_KAEL)
+        await seed_player(pool, player_id="player_1", class_="mage")
         await clear_async_activities(pool, "player_1")
         # resolve_at in the past so get_due_activities() picks it up.
         await seed_async_activity(

@@ -54,3 +54,11 @@ def test_combat_prompt_instructs_buff_narration():
 def test_buff_narration_reaches_the_assembled_system_prompt():
     lowered = COMBAT_SYSTEM_PROMPT.lower()
     assert "condition_targets" in lowered or "condition_applied" in lowered
+
+
+def test_combat_prompt_pins_no_single_companion_voice_tag():
+    """One of the four companions is assigned per archetype; COMBAT_PROMPT is a single cached
+    constant, so a hardcoded tag in its companion instructions voices all four as that one.
+    (VOICE_STYLE_PROMPT's even enumeration of the whole voice registry is not a pin.)"""
+    for tag in ("COMPANION_KAEL", "COMPANION_LIRA", "COMPANION_TAM", "COMPANION_SABLE"):
+        assert tag not in COMBAT_PROMPT, f"{tag} pinned in the shared combat prompt"

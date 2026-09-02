@@ -5,7 +5,8 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 271 / 530 acceptance criteria — 51%.** Phases 1, 3 and 4 are
+**Position: 282 / 530 acceptance criteria — 53%** (the sum of the per-phase counts in
+`README.md`; last reconciled after sprint-046). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
@@ -37,28 +38,19 @@ The one item that moved *backwards*: Phase 0's INDEX.md line-range drift
 
 ---
 
-## 2. Residuals inside "delivered" phases (13 ACs)
+## 2. Residuals inside "delivered" phases (2 ACs)
 
-All re-verified as genuinely open. Small, unrelated, collectively about one sprint.
+All Phase 0, and all re-verified as genuinely open. Small and unrelated.
 
 | Phase | Residual | Status |
 |---|---|---|
 | 0 | INDEX.md line ranges (2 docs) | `game_mechanics_archetypes.md` ~133 lines off; `game_mechanics_decisions.md` indexed as 186 lines / 10 sections vs actual **351 lines / 18 sections** — 8 sections are invisible to INDEX-first navigation |
-| 0 | 3 surviving `gp` refs | `game_mechanics_magic.md:423,432`, `economy/game_mechanics_p2p_trade.md:160` — needs decision D-3, then ~15 min |
 | 0 | `game_mechanics/` in "Key docs" | **Not work — a decision.** CLAUDE.md was rewritten to a single INDEX.md pointer (`CLAUDE.md:9`); there is no "Key docs" list left to add to |
-| 2 | Reaction combat-window | 25 reaction rows carry the window in free-text `effect`; no REACTION in `declarations.py:28`; `combat_phase.py:131` sets `reactions_available` and `:152` clears it with **zero consumers**. **Milestone-sized (~2-3 stories)**, not one |
-| 2 | Reaction-timing tests | falls with the above |
-| 2 | L20 legendary companion | Capstone half **IS** delivered (18 L20 `auto_grant` rows). Companion half is dead data: `companions.json` L20 `progression`/`unlock_level` parse into `companion_profiles.py` with zero consumers repo-wide |
-| 2 | Variant replaces-or-supplements | Replace-only, auto-fired at `async_worker_training.py:285`; `set_active_variant` is `ON CONFLICT DO UPDATE`. Deliberate and narrated (concern `25b663d3e245`) — needs decision D-2 |
-| 5 | Trusted rep → free workspace | `workspace.py:compute_rental_price` takes no reputation input; Trusted gives 0.6×, not free. **Now unblocked** — M23 landed `player_reputation` |
-| 6 | Capital settlement tier | **Spec conflict, not a gap** — `game_mechanics_npcs.md` says no Capitals survived the Sundering. Amend the AC to 4 tiers rather than author dead content (decision D-1) |
-| 6 | Unique NPC names | `generate_settlement_npcs` returns `{role_id: count}`; no name generator exists in `apps/agent` |
-| 6 | Bard mentors | 0 of 2 required. Guardian/Skirmisher/Spy have 4 each; Bard is a real archetype with 9 ability rows |
-| 6 | Lira + Sable attack counts | both have 1; spec floor is 2 |
 
-**Homeless deferral:** `ability_tools.py:14` and `02_archetypes.md:38` both defer
-reactions to "Phase 4 territory". Phase 4 closed without it. That deferral now
-belongs to nobody and needs re-parenting.
+**The reaction deferral is discharged.** It was homeless — `ability_tools.py:14` and
+`02_archetypes.md:38` both deferred reactions to "Phase 4 territory" and Phase 4 closed
+without them — until sprint-045 landed the REACTION declaration and its window gate, and
+sprint-046 story-007 surfaced the windows the DM has to say.
 
 ---
 

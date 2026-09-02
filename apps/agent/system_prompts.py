@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from combat_prompts import COMBAT_PROMPT
+from companion_profiles import get_companion_profile, progression_gains_up_to
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 if TYPE_CHECKING:
@@ -99,7 +100,10 @@ IDs for follow-up tools. This is your primary scene-setting tool.
 - query_info: Look up world info in one call. kind="location" (by id) for "where am I?" \
 or re-examining a scene; kind="npc" (by id) for personality, speech style, and \
 relationship-filtered knowledge; kind="lore" (by topic) for history, gods, the Hollow, \
-races, cultures; kind="inventory" (no id) for the player's carried items.
+races, cultures; kind="inventory" (no id) for the player's carried items; \
+kind="workspaces" (NPC id) for that NPC's per-day rental quote; \
+query_info(kind="abilities") (no id) for owned ability ids, reaction windows, and \
+active variant ids.
 
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.
@@ -109,7 +113,9 @@ Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
 - check(mode="dice"): For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
-- activate: Out of combat, when the player casts a known spell by its id. Pass \
+- activate: Out of combat, when the player casts a known spell or uses an ability by its id. \
+When query_info(kind="abilities") gives an ability an active_variant_id, activate THAT id — it is \
+how the form they trained fires instead of the plain technique. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
 cast on a Hollow-killed corpse is refused.
@@ -225,41 +231,106 @@ You are the combat narrator for Divine Ruin: The Sundered Veil.
 """
 
 
-COMPANION_PROMPT = """\
+def _non_verbal_note(name: str) -> str:
+    """The one phrasing of the non-verbal marker.
 
-## Companion — Kael
+    build_companion_cue writes it and is_companion_cue reads it back off a queued
+    instruction, so a reworded copy on either side would silently stop matching.
+    """
+    return f"{name} is non-verbal."
 
-Kael is the player's traveling companion, a former caravan guard. He speaks in a warm \
-baritone, measured and deliberate. He is NOT you — he's a separate character with his \
-own voice and personality.
 
-Always use the tag format: [COMPANION_KAEL, emotion]: "His dialogue here."
-Never speak as Kael without the tag. Never narrate Kael's dialogue in your DM voice.
+def build_companion_prompt(companion_id: str, player_level: int) -> str:
+    profile = get_companion_profile(companion_id)
+    personality = "\n".join(f"- {trait}" for trait in profile.personality)
+    mannerisms = "\n".join(f"- {mannerism}" for mannerism in profile.mannerisms)
+    gains = progression_gains_up_to(profile, player_level)
+    progression_lines = "\n".join(
+        f"- Level {milestone.level}: {milestone.gains}"
+        + (" — DM: once per session; you track it" if milestone.level == 20 else "")
+        for milestone in gains
+    )
+    # Below the first gain (L3 for Tam, L5 for the rest) this section is EMPTY, and a labelled
+    # section with nothing under it reads to the model as "this companion has no progression".
+    # Every character starts at level 1, so that is the common case, not an edge.
+    progression_section = (
+        f"\n\nProgression gains unlocked at player level {player_level}:\n{progression_lines}" if gains else ""
+    )
+
+    if profile.non_verbal:
+        voice_instruction = f"""\
+{_non_verbal_note(profile.name)} Narrate {profile.name}'s vocalizations, posture, and movement in the DM voice.
+Registered voice ID: {profile.voice_id}. Never use it as a dialogue tag."""
+    else:
+        voice_instruction = f"""\
+Always use the tag format: [{profile.voice_id}, emotion]: \"Their dialogue here.\"
+Never speak as {profile.name} without the tag. Never narrate {profile.name}'s dialogue in the DM voice.
 
 Speech rules:
-- One to two sentences max per interjection. Kael does not monologue.
-- He comments on the environment, reacts to events, fills silence naturally.
-- Gets quieter under stress, not louder. Tense moments = shorter sentences.
-- Dry humor surfaces when he's comfortable. Not jokes — wry observations.
-- Protective but not patronizing. He respects the player's decisions.
+- One to two sentences max per interjection. {profile.name} does not monologue.
+- Comment on the environment, react to events, and fill silence naturally.
+- In combat, use urgent, clipped callouts of one sentence."""
+
+    return f"""\
+
+## Companion — {profile.name}
+
+{profile.name} is the player's traveling companion. {profile.name} is NOT you, but a separate character
+with their own voice and personality.
+
+Tool id: {profile.id} — the only companion id begin_activity(kind="companion_errand") accepts;
+any other id is refused. Never say it aloud.
+
+{voice_instruction}
+
+Speech style: {profile.speech_style}
 
 Personality:
-- Checks exits when entering a room. Notices details others miss.
-- Runs thumb along his sword pommel when thinking.
-- Tenses at unexpected sounds — old instincts from the caravan.
-- Steady calm is his default. Grief and guilt are underneath, rarely surfacing.
+{personality}
 
-Combat mode: urgent, clipped callouts. "Behind you!" "Focus the shaman!" One sentence.
+Mannerisms:
+{mannerisms}{progression_section}
 
-When unconscious: generate NO COMPANION_KAEL dialogue at all. The silence IS the design.
-
-Guidance delivery: phrases suggestions practically — "We should check with the \
-innkeeper" not elaborate plans. He's a practical man.
+When unconscious, generate no companion dialogue or intentional vocalization. The silence is the design.
 
 Relationship tiers:
-- Tier 1: warm but guarded. Helpful, reliable, but keeps distance on personal topics.
-- Tier 2+: humor emerges more freely, starts sharing backstory fragments unprompted.\
+- Tier 1: helpful and reliable, but guarded on personal topics.
+- Tier 2+: warmth and personal history emerge more freely.\
 """
+
+
+def build_companion_cue(companion: CompanionState, staging: str, emotion: str) -> str:
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return (
+            f"{profile.name} {staging} {_non_verbal_note(profile.name)} "
+            "Narrate the reaction through vocalization, posture, or movement in the DM voice; "
+            "do not generate dialogue or use a companion dialogue tag."
+        )
+    return f"{profile.name} {staging} One sentence. Use [{profile.voice_id}, {emotion}] tag."
+
+
+def companion_voice_directive(companion: CompanionState) -> str:
+    """How to voice this companion — the registered tag, or the non-verbal narration rule.
+
+    Named producer for the tag id (constraint 6): CombatAgent gets COMBAT_SYSTEM_PROMPT,
+    not the companion section, so the combat-entry context is the only channel that can
+    tell it which of the four tags to use.
+    """
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return (
+            f"{_non_verbal_note(profile.name)} Narrate {profile.name}'s vocalizations, posture "
+            f"and movement in the DM voice; never use a dialogue tag for {profile.name}."
+        )
+    return f'Voice {profile.name} with the [{profile.voice_id}, emotion]: "..." dialogue tag.'
+
+
+def is_companion_cue(instructions: str, companion: CompanionState) -> bool:
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return _non_verbal_note(profile.name) in instructions
+    return f"[{profile.voice_id}," in instructions
 
 
 STORY_MOMENT_PROMPT = """\
@@ -326,10 +397,12 @@ the catch-up, not through a resolve call — narrate the focus and the work of t
 hands, never the recipe id.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
-laboratory — call query_info(kind="workspaces") to see what's on offer, then \
-begin_activity(kind="workspace") with the workspace_type, whoever they're renting \
-from, and how many days they want it for. Narrate the space and the arrangement, not \
-the raw terms.
+laboratory — call query_info(kind="workspaces", target_id=<npc id>) for whoever is \
+renting it. Quote the returned price AS A DAILY RATE, and when they name a term, say \
+the total you are about to charge (rate x days) before you book it; omit the id only \
+to compare prices by disposition. Then begin_activity(kind="workspace") with the \
+workspace_type, whoever they're renting from, and how many days they want it for. \
+Narrate the space, the terms, and the arrangement.
 
 For experimenting: when the player wants to combine materials to discover what they \
 might become, call begin_activity(kind="experiment") with the materials they're \
@@ -400,7 +473,7 @@ def build_system_prompt(
     # warm-layer Stage register (warm_prompts.REGION_REGISTER), keyed off the location.
     parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
-        parts += COMPANION_PROMPT
+        parts += build_companion_prompt(companion.id, companion.player_level)
     parts += (
         f"\n\nThe player is currently at location ID: {location_id}. "
         "When setting a scene or answering 'where am I?', call "

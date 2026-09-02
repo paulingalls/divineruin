@@ -24,7 +24,7 @@ from async_worker_config import POLL_INTERVAL
 from async_worker_training import advance_training_cycles
 from crafting_resolution import resolve_crafting_outcome
 from dialogue_parser import Segment
-from errand_resolution import resolve_errand_outcome
+from errand_resolution import companion_errand_data, resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from push import send_push_notification
@@ -87,13 +87,11 @@ async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None
         return await resolve_crafting_outcome(activity, player_data)
     if activity_type == "companion_errand":
         # ADR 0006: errand_resolution is the sole risk roll site.
-        companion = player_data.get("companion", {})
-        companion_id = companion.get("id")
-        if companion_id:
-            # Feed the bonus the live effective rank (session_count + affinity), M6.4 / story-003.
-            companion["relationship_tier"] = await companion_relationship_queries.cached_effective_rank(
-                activity["player_id"], companion_id
-            )
+        companion = companion_errand_data(player_data)
+        # Feed the bonus the live effective rank (session_count + affinity), M6.4 / story-003.
+        companion["relationship_tier"] = await companion_relationship_queries.cached_effective_rank(
+            activity["player_id"], companion["id"]
+        )
         return await resolve_errand_outcome(companion, parameters)
     logger.error("Unknown activity type: %s", activity_type)
     return None
@@ -161,11 +159,11 @@ async def _resolve_single_activity(activity: dict) -> None:
             # relationship_change. Non-cached branch only, like the crafting counter above, so a
             # cached-narration TTS retry re-enters the cached branch and never double-applies.
             if activity_type == "companion_errand":
-                errand_companion_id = player_data.get("companion", {}).get("id")
-                if errand_companion_id:
-                    await companion_relationship_queries.apply_errand_affinity(
-                        player_id, errand_companion_id, outcome_dict.get("relationship_change", 0)
-                    )
+                await companion_relationship_queries.apply_errand_affinity(
+                    player_id,
+                    companion_errand_data(player_data)["id"],
+                    outcome_dict.get("relationship_change", 0),
+                )
 
         # Step C: pre-render audio.
         audio_filename = f"{activity_id}.mp3"
@@ -311,6 +309,7 @@ async def main() -> None:
     # engine depends on these maps being populated before the polling loop starts.
     from abilities import load_abilities
     from archetypes import load_archetypes
+    from companion_profiles import load_companion_profiles
     from mentor_variants import load_mentor_variants
     from milestones import load_milestones
     from npcs import load_npcs
@@ -330,6 +329,9 @@ async def main() -> None:
     await load_mentor_variants()
     await load_role_archetypes()
     await load_npcs()
+    # The errand path selects the companion from the player's archetype (companion_errand_data),
+    # so the worker needs the companion catalog the agent has always loaded.
+    await load_companion_profiles()
 
     try:
         while True:

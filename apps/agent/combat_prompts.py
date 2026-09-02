@@ -29,6 +29,7 @@ Reaction — {"type": "reaction", "action": <reaction ability id>, \
 "trigger": <catalog window>}; the action must be the EXACT id of the player's reaction \
 ability and trigger must be its catalog window, such as "on_hit". Declare the reaction \
 during Beat 1 so it can activate during this round's resolution. \
+Call query_info(kind="abilities") to learn the player's reaction windows and active variant ids. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \
 cast via activate. Reaction activation is an exception: after its Beat-1 declaration, use \
@@ -101,10 +102,11 @@ action, result, next. Save longer narration for the decisive blow.
 Include each conscious companion in declare_phase with a typed attack declaration \
 ({"type": "attack", "action": <name>, "target_id": <id>}) naming an action from their \
 action_pool and the most tactically sound target. Have the companion make a brief \
-tactical callout using [COMPANION_KAEL, urgent] before or after the action. \
-"Flanking left!" "Watch the spellcaster!" Keep it to one clipped sentence.
+tactical callout in the urgent register, using the companion's own voice exactly as the \
+combat-entry context specifies. "Flanking left!" "Watch the spellcaster!" Keep it to one \
+clipped sentence.
 
-If the companion falls to 0 HP, they are unconscious. Stop generating any COMPANION_KAEL \
-dialogue. The silence where their voice was is the design. Narrate the fall in your DM \
-voice — one visceral sentence.\
+If the companion falls to 0 HP, they are unconscious. Stop generating any companion \
+dialogue or vocalization. The silence where their voice was is the design. Narrate the \
+fall in your DM voice — one visceral sentence.\
 """

@@ -1,6 +1,8 @@
 # ADR 0004 — Scaling agent tools past the strict-tool limit
 
-Status: **Accepted** (2026-05-20) — sprint-009 story-011
+Status: **Accepted** (2026-05-20) — sprint-009 story-011; **amended 2026-09-02** —
+the Decision below is suspended in production while strict schemas are interim-OFF
+(see the sprint-046 addendum at the end).
 Concerns: `4da5c6f4d298`
 
 ## Decision
@@ -105,3 +107,26 @@ selection) and is **deferred** (debt `75caa4bd340b`). The enabling simplificatio
 difficulty-tier and DC are the same concept (DC = Difficulty Class), and
 `resolve_skill_check_dc` already rolls a skill vs a raw DC — unifying on numeric DC
 would make a future `request_check(kind=...)` merge clean.
+
+## Addendum (2026-09-02, sprint-046 close) — interim: strict schemas OFF
+
+The sprint-046 close review drove three agents against the live API and found a
+**second, separate limit**: Anthropic rejects a strict request whose tool schemas
+carry more than **16 union-typed parameters** (`"Schemas contains too many
+parameters with union types"`). Every optional `x | None` parameter counts, so the
+ADR-0007 noun/verb folding that keeps tool *counts* under 20 concentrates optionals
+onto a few verbs — `begin_activity` carries 11 and `check` 9 — and exploration (17)
+and dispatch (23) 400 on every real turn; combat's `declare_phase.declarations`
+(`additionalProperties: {type: object}`) is refused outright. This predates
+sprint-046 (identical at `9d90cec`) and was invisible because the acceptance lane
+skips its real-LLM scenarios without `ANTHROPIC_API_KEY`.
+
+**Interim decision (human, 2026-09-02):** `agent.py` constructs the LLM with
+`_strict_tool_schema=False` — option 1 above, taken knowingly and dated — because
+nothing is shipped to players yet and the alternative blocks the first real
+playtest. Tool bodies already validate ids at the edge. The 20-tool budget test
+stays as the discipline strict will return to. **Sprint-47 story-016** owns the
+scalable fix (typed noun objects per kind, or a discriminated union strict
+accepts, with the union-typed count pinned beside the tool count) and re-enables
+strict; this addendum is superseded when it lands.
+

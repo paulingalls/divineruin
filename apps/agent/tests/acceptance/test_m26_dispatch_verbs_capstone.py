@@ -121,7 +121,9 @@ async def test_begin_activity_companion_errand_creates_an_async_activity_row(res
     pool = await db.get_pool()
     player_id = "cap_m26_begin_errand"
     try:
-        await seed_player(pool, player_id=player_id, companion={"id": "companion_kael", "name": "Kael"})
+        # Dispatch gates on the ASSIGNED companion (the archetype's complement), so the
+        # seeded class must be one Kael complements or begin_activity refuses the id below.
+        await seed_player(pool, player_id=player_id, class_="mage")
 
         raw = await _begin_activity_impl(
             make_context(player_id),
@@ -296,7 +298,7 @@ async def test_resolve_activity_companion_errand_resolves_the_outcome(reset_db_p
     player_id = "cap_m26_resolve_errand"
     activity_id = "cap_m26_resolve_errand_activity"
     try:
-        await seed_player(pool, player_id=player_id, companion={"id": "companion_kael", "name": "Kael"})
+        await seed_player(pool, player_id=player_id, class_="mage")
         await seed_async_activity(
             pool,
             activity_id=activity_id,

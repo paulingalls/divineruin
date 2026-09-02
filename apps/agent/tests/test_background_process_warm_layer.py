@@ -14,6 +14,7 @@ import pytest
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
+from session_data import CompanionState, SessionData
 
 
 @contextmanager
@@ -48,6 +49,9 @@ class TestWarmLayerRebuild:
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
+        # A real CompanionState, not a MagicMock: the static layer renders the companion
+        # section from the catalog profile, so a mock id raises "Unknown companion".
+        mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
@@ -126,6 +130,33 @@ class TestWarmLayerRebuild:
 
                 # Warm layer should be unchanged since build failed
                 assert bp._last_warm_layer == "old content"
+
+    @pytest.mark.asyncio
+    async def test_static_layer_rerenders_when_the_bound_companion_changes(self):
+        """The cached static layer now renders the assigned companion's own name and tag, so
+        the cache key must track companion identity — presence alone would serve Lira's
+        section to a player bound to Tam."""
+        mock_agent = MagicMock()
+        mock_agent.update_instructions = AsyncMock()
+        mock_session = MagicMock()
+        sd = SessionData(player_id="p1", location_id="tavern")
+        sd.companion = CompanionState(id="companion_lira", name="Lira")
+
+        bp = BackgroundProcess(mock_agent, mock_session, sd)
+
+        with _mock_db_for_warm_layer(location={"name": "Tavern"}):
+            with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
+                with patch("background_process.build_full_prompt", side_effect=lambda static, warm: static):
+                    mock_build.return_value = "warm one"
+                    await bp._rebuild_warm_layer()
+                    assert "## Companion — Lira" in bp._cached_static
+
+                    sd.companion = CompanionState(id="companion_tam", name="Tam")
+                    mock_build.return_value = "warm two"
+                    await bp._rebuild_warm_layer()
+
+        assert "## Companion — Tam" in bp._cached_static
+        assert "## Companion — Lira" not in bp._cached_static
 
 
 class TestPendingSpeech:

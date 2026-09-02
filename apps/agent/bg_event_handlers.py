@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING
 import event_types as E
 import vaelti_echo_warning
 from bg_speech import PendingSpeech, SpeechPriority
+from companion_profiles import get_companion_profile
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from sanitize import sanitize_for_prompt
+from system_prompts import build_companion_cue
 from tool_support import _disposition_rank
 
 if TYPE_CHECKING:
@@ -29,21 +31,17 @@ REBUILD_EVENT_TYPES = {
     E.HIDDEN_REVEALED,
 }
 
-CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
+CORRUPTION_COMPANION_CUES: dict[int, tuple[str, str]] = {
     1: (
-        "Kael tenses and looks around slowly. Have him make one quiet observation: "
-        "something about the silence, the wrongness, how the air feels different. "
-        "One sentence. Use [COMPANION_KAEL, uneasy] tag."
+        "tenses and slowly surveys the surroundings, quietly observing the silence, the wrongness, "
+        "or the changed feeling of the air.",
+        "uneasy",
     ),
     2: (
-        "Kael is visibly on edge. Have him react to the corruption — something about sounds "
-        "coming from wrong directions, distances feeling off. Shorter sentence. More tense. "
-        "Use [COMPANION_KAEL, nervous] tag."
+        "reacts tensely to the corruption, noticing sounds from wrong directions or distances that feel off.",
+        "nervous",
     ),
-    3: (
-        "Kael is deeply unsettled. One short, urgent sentence. He doesn't elaborate — "
-        "just names what he's feeling. Use [COMPANION_KAEL, urgent] tag."
-    ),
+    3: ("reacts with brief urgency, naming the danger without elaborating.", "urgent"),
 }
 
 
@@ -95,8 +93,11 @@ def handle_events(
                     speech_queue,
                     SpeechPriority.IMPORTANT,
                     f"The player just arrived at a new location ({new_loc}). "
-                    f"Kael looks around. Have him make one brief observation about "
-                    f"the new surroundings. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
+                    + build_companion_cue(
+                        companion,
+                        "takes in the surroundings and makes a brief observation about the new location.",
+                        companion.emotional_state,
+                    ),
                 )
             else:
                 _queue(
@@ -114,8 +115,7 @@ def handle_events(
                     speech_queue,
                     SpeechPriority.IMPORTANT,
                     f"The quest '{quest_name}' just progressed. New objective: {objective}. "
-                    "Kael reacts to the quest progression. One sentence. "
-                    "Use [COMPANION_KAEL, focused] tag.",
+                    + build_companion_cue(companion, "reacts to the quest progression.", "focused"),
                 )
             else:
                 _queue(
@@ -134,8 +134,11 @@ def handle_events(
                         SpeechPriority.IMPORTANT,
                         "Combat has ended in victory. Catch your breath. "
                         "Describe the aftermath — the quiet after violence. "
-                        "Kael catches his breath and checks if you're okay. "
-                        "One sentence. Use [COMPANION_KAEL, relieved] tag.",
+                        + build_companion_cue(
+                            companion,
+                            "catches their breath and checks whether the player is okay.",
+                            "relieved",
+                        ),
                     )
                 elif sd.has_companion and companion and not companion.is_conscious:
                     companion.is_conscious = True
@@ -143,9 +146,12 @@ def handle_events(
                     _queue(
                         speech_queue,
                         SpeechPriority.IMPORTANT,
-                        "Combat has ended in victory. Kael stirs, groaning. "
-                        "First thing he does is check if you're okay. "
-                        "Use [COMPANION_KAEL, weary] tag.",
+                        "Combat has ended in victory. "
+                        + build_companion_cue(
+                            companion,
+                            "regains consciousness and first checks whether the player is okay.",
+                            "weary",
+                        ),
                     )
                 else:
                     _queue(
@@ -176,16 +182,24 @@ def handle_events(
                 _queue(
                     speech_queue,
                     SpeechPriority.ROUTINE,
-                    f"Kael {reaction} of the player's interaction with {npc_name}. "
-                    f"One sentence. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
+                    build_companion_cue(
+                        companion,
+                        f"{reaction} of the player's interaction with {npc_name}.",
+                        companion.emotional_state,
+                    ),
                 )
 
         elif ev.event_type == E.HOLLOW_CORRUPTION_CHANGED:
             level = ev.payload.get("level", 0)
             if level > 0 and can_act and companion:
-                speech = CORRUPTION_COMPANION_SPEECH.get(level)
-                if speech:
-                    _queue(speech_queue, SpeechPriority.IMPORTANT, speech)
+                cue = CORRUPTION_COMPANION_CUES.get(level)
+                if cue:
+                    staging, emotion = cue
+                    _queue(
+                        speech_queue,
+                        SpeechPriority.IMPORTANT,
+                        build_companion_cue(companion, staging, emotion),
+                    )
 
         elif ev.event_type == E.WORLD_EVENT:
             event_id = ev.payload.get("event_id", "")
@@ -239,8 +253,15 @@ def queue_god_whisper(
         f"{profile.personality_prompt}\n\n"
         "Two sentences from the god. Short. Weighted. Ancient perspective. "
         f"{f'Context: {context}. ' if context else ''}"
-        "Then silence returns like a wave breaking, and the world resumes. "
-        "The companion does NOT react during this moment. After the silence breaks, "
-        "Kael looks shaken but says nothing unless the player speaks first."
+        "Then silence returns like a wave breaking, and the world resumes."
     )
+    if sd.companion is not None:
+        # No companion cue here: the whisper's design is that the companion stays SILENT
+        # through it. build_companion_cue would append "One sentence. Use [tag]" and turn
+        # the beat into a companion line.
+        name = get_companion_profile(sd.companion.id).name
+        instructions += (
+            f" {name} does not react during the divine speech. After the silence breaks, "
+            f"{name} looks shaken but says nothing unless the player speaks first."
+        )
     _queue(speech_queue, SpeechPriority.CRITICAL, instructions, stinger_sound=profile.stinger_sound)

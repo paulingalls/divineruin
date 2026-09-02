@@ -16,6 +16,7 @@ import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
+from session_data import CompanionState
 
 
 class TestBackgroundProcessLifecycle:
@@ -238,8 +239,7 @@ class TestGuidanceSystem:
         mock_sd.last_player_speech_time = past
         mock_sd.last_agent_speech_end = past
         mock_sd.companion_can_act = True
-        mock_sd.companion = MagicMock()
-        mock_sd.companion.emotional_state = "steady"
+        mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE

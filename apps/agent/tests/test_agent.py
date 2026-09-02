@@ -12,7 +12,6 @@ from agent import (
 )
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
 from exploration_agent import ExplorationAgent
-from onboarding_agent import OnboardingAgent
 
 
 class _TestAgent(BaseGameAgent):
@@ -259,6 +258,7 @@ class TestDMSession:
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
+            MockSD.return_value.companion = None
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
@@ -309,6 +309,7 @@ class TestDMSession:
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
+            MockSD.return_value.companion = None
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
@@ -357,7 +358,8 @@ class TestDMSession:
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
-        with patch("agent.SessionData"):
+        with patch("agent.SessionData") as MockSD:
+            MockSD.return_value.companion = None
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
@@ -404,7 +406,8 @@ class TestDMSession:
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
-        with patch("agent.SessionData"):
+        with patch("agent.SessionData") as MockSD:
+            MockSD.return_value.companion = None
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
@@ -443,87 +446,3 @@ class TestDMSession:
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
                 assert "market" in instructions.lower()
-
-    @pytest.mark.asyncio
-    async def test_dm_session_dispatches_onboarding_agent_for_mid_onboarding_player(self):
-        """Player with onboarding_beat flag should get OnboardingAgent, not CityAgent."""
-        mock_ctx = MagicMock()
-        mock_ctx.room = MagicMock()
-        mock_player = {
-            "name": "Aric",
-            "location_id": "accord_market_square",
-            "flags": {"onboarding_beat": 3, "companion_met": True},
-        }
-
-        with patch("agent.SessionData"):
-            with patch("agent.AgentSession") as MockSession:
-                mock_session_instance = MagicMock()
-                mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
-                MockSession.return_value = mock_session_instance
-
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
-                                    with patch(
-                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
-                                    ):
-                                        with patch(
-                                            "agent.db_queries.get_last_session_summary",
-                                            new_callable=AsyncMock,
-                                            return_value=None,
-                                        ):
-                                            from agent import dm_session
-
-                                            await dm_session(mock_ctx)
-
-                mock_session_instance.start.assert_awaited_once()
-                start_call = mock_session_instance.start.call_args
-                assert isinstance(start_call[1]["agent"], OnboardingAgent)
-
-    @pytest.mark.asyncio
-    async def test_dm_session_dispatches_city_agent_for_completed_onboarding(self):
-        """Player with onboarding_beat='complete' should get CityAgent."""
-        mock_ctx = MagicMock()
-        mock_ctx.room = MagicMock()
-        mock_player = {
-            "name": "Aric",
-            "location_id": "accord_guild_hall",
-            "flags": {"onboarding_beat": "complete", "companion_met": True},
-        }
-
-        with patch("agent.SessionData"):
-            with patch("agent.AgentSession") as MockSession:
-                mock_session_instance = MagicMock()
-                mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
-                MockSession.return_value = mock_session_instance
-
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
-                                    with patch(
-                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
-                                    ):
-                                        with patch(
-                                            "agent.db_queries.get_last_session_summary",
-                                            new_callable=AsyncMock,
-                                            return_value=None,
-                                        ):
-                                            with patch(
-                                                "agent.db_content_queries.get_location",
-                                                new_callable=AsyncMock,
-                                                return_value={"region_type": "city"},
-                                            ):
-                                                from agent import dm_session
-
-                                                await dm_session(mock_ctx)
-
-                mock_session_instance.start.assert_awaited_once()
-                start_call = mock_session_instance.start.call_args
-                assert isinstance(start_call[1]["agent"], ExplorationAgent)
-                assert start_call[1]["agent"]._agent_type == "city"

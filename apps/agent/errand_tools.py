@@ -32,7 +32,8 @@ import db_content_queries
 import db_mutations
 import db_queries
 import errand_risk
-from errand_resolution import resolve_errand_outcome
+from companion_profiles import select_companion_for_archetype
+from errand_resolution import companion_errand_data, resolve_errand_outcome
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -65,6 +66,7 @@ async def _dispatch_companion_errand_impl(
     content_mod=db_content_queries,
     activity_mod=db_activity_queries,
     mutations_mod=db_mutations,
+    queries_mod=db_queries,
     risk_mod=errand_risk,
     now_fn=None,
     rng: random.Random | None = None,
@@ -75,10 +77,27 @@ async def _dispatch_companion_errand_impl(
     _validate_id(destination, "destination")
     session: SessionData = context.userdata
     player_id = session.player_id
+    # The errand is resolved for the ASSIGNED companion (errand_resolution.companion_errand_data,
+    # the same archetype rule session start hydrates), so the blocked_companions gate must be
+    # checked against that companion too — otherwise a caller naming Kael walks a Sable player
+    # past a rule that exists only to stop Sable, and the resolver renders an empty errand frame.
+    player = await queries_mod.get_player(player_id)
+    archetype_id = player.get("class") if player else None
+    if not archetype_id:
+        raise ToolError("Cannot dispatch an errand: the player has no class.")
+    try:
+        assigned_id = select_companion_for_archetype(archetype_id)
+    except ValueError as e:
+        # A class in no companion's `complements` (or an unloaded catalog) is a content bug.
+        # Loud either way, but ToolError is the shape the LLM can narrate (ADR 0002) — a raw
+        # ValueError escapes @db_tool, which only catches DatabaseError/Timeout/Connection.
+        raise ToolError(f"Cannot dispatch an errand: {e}") from e
+    if companion_id != assigned_id:
+        raise ToolError(f"{companion_id} is not this player's companion; the assigned companion is {assigned_id}.")
     logger.info(
         "dispatch_companion_errand: player=%s companion=%s errand=%s dest=%s",
         player_id,
-        companion_id,
+        assigned_id,
         errand_type,
         destination,
     )
@@ -88,8 +107,8 @@ async def _dispatch_companion_errand_impl(
         raise ToolError(f"Unknown errand kind: {errand_type}")
     if destination not in template["valid_destinations"]:
         raise ToolError(f"{destination} is not a valid destination for a {errand_type} errand.")
-    if companion_id in template["blocked_companions"]:
-        raise ToolError(f"{companion_id} cannot perform {errand_type} errands.")
+    if assigned_id in template["blocked_companions"]:
+        raise ToolError(f"{assigned_id} cannot perform {errand_type} errands.")
 
     location = await content_mod.get_location(destination)
     try:
@@ -189,21 +208,25 @@ async def _resolve_companion_errand_impl(
                     raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
 
                 # Only load the player once we're committed to resolving.
-                player = await queries_mod.get_player(player_id) or {}
-                companion_data = player.get("companion", {})
-                companion_id = companion_data.get("id")
-                if companion_id:
-                    # Feed the bonus the live effective rank (session_count + affinity), not the
-                    # stale players.data int (M6.4 / story-003). Same FOR UPDATE lock.
-                    companion_data["relationship_tier"] = await companion_rel_mod.cached_effective_rank(
-                        player_id, companion_id, conn=conn
-                    )
+                player = await queries_mod.get_player(player_id)
+                if player is None:
+                    raise ToolError(f"Unknown player: {player_id}")
+                try:
+                    companion_data = companion_errand_data(player)
+                except ValueError as e:
+                    # ADR 0002 error shape: an unassignable archetype reaches the DM as a
+                    # ToolError, not a raw ValueError.
+                    raise ToolError(f"Cannot resolve errand {errand_id}: {e}") from e
+                # Feed the bonus the live effective rank (session_count + affinity), not the
+                # stale players.data int (M6.4 / story-003). Same FOR UPDATE lock.
+                companion_data["relationship_tier"] = await companion_rel_mod.cached_effective_rank(
+                    player_id, companion_data["id"], conn=conn
+                )
                 outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
-                if companion_id:
-                    # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
-                    await companion_rel_mod.apply_errand_affinity(
-                        player_id, companion_id, outcome.get("relationship_change", 0), conn=conn
-                    )
+                # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
+                await companion_rel_mod.apply_errand_affinity(
+                    player_id, companion_data["id"], outcome.get("relationship_change", 0), conn=conn
+                )
 
                 # Persist + mark resolved within the lock so the worker skips this
                 # row (get_due_activities filters status='in_progress').

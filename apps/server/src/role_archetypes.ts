@@ -56,6 +56,16 @@ function parseNumber(raw: unknown, ctx: string): number {
   return raw;
 }
 
+function parsePersonalityTraits(raw: unknown, ctx: string): string[] {
+  const traits = parseStringArray(raw, ctx);
+  if (traits.length < 8) throw new Error(`${ctx} must contain at least 8 traits`);
+  if (traits.some((trait) => trait.trim().length === 0)) {
+    throw new Error(`${ctx} contains a blank trait`);
+  }
+  if (new Set(traits).size !== traits.length) throw new Error(`${ctx} contains duplicate traits`);
+  return traits;
+}
+
 function parseAttributes(raw: unknown, ctx: string): Attributes {
   const obj = asRecord(raw, ctx);
   return {
@@ -174,6 +184,10 @@ export function parseRoleArchetypeRow(id: string, raw: unknown): RoleArchetype {
     name: parseString(data.name, `${ctx}.name`),
     role_type: roleType as RoleArchetype["role_type"],
     default_disposition: disposition as RoleArchetype["default_disposition"],
+    personality_traits: parsePersonalityTraits(
+      data.personality_traits,
+      `${ctx}.personality_traits`,
+    ),
     knowledge_domains: parseStringArray(data.knowledge_domains, `${ctx}.knowledge_domains`),
     services: data.services.map((s, i) => parseArchetypeService(s, `${ctx}.services[${i}]`)),
     inventory_pool: data.inventory_pool,

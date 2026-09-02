@@ -10,6 +10,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$SCRIPT_DIR/../.githooks/pre-commit"
 
+# Git exports repository-local variables to hooks. Clear them before creating the
+# temp repository so its `git add` calls cannot write into the caller's index.
+while IFS= read -r var; do
+  unset "$var"
+done < <(git rev-parse --local-env-vars)
+
 TEMP_REPO=$(mktemp -d)
 trap "rm -rf $TEMP_REPO" EXIT
 

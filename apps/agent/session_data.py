@@ -20,6 +20,9 @@ MAX_COMPANION_MEMORIES = 20
 class CompanionState:
     id: str
     name: str
+    # Session-start snapshot: the static companion prompt is cached without level in its key.
+    # Mid-session gains reach the DM through the Resolve response; this catches up next session.
+    player_level: int = 1
     is_present: bool = True
     is_conscious: bool = True
     emotional_state: str = "steady"

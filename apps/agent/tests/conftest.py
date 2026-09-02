@@ -181,8 +181,10 @@ def stub_companion_hydrate_io():
     """
     from session_data import CompanionState
 
-    async def _fake_hydrate(player_id, companion_id, name, *, conn=None):
-        return CompanionState(id=companion_id, name=name, session_count=1)
+    # player_level is required here exactly as it is on the real hydrate_companion_state: a
+    # default on the stub alone would let production drop the argument and still go green.
+    async def _fake_hydrate(player_id, companion_id, name, *, player_level, conn=None):
+        return CompanionState(id=companion_id, name=name, player_level=player_level, session_count=1)
 
     with patch(
         "companion_relationship_queries.hydrate_companion_state",

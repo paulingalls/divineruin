@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_mutations
+import db_queries
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.onboarding_tools")
@@ -43,6 +44,10 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     current = sd.onboarding_beat
 
     if current >= 5:
+        companion = sd.companion
+        if companion is None:
+            raise ToolError(f"Player {sd.player_id!r} completed onboarding without a companion")
+
         # Beat 5 complete — hand off to open-world exploration (city region).
         sd.onboarding_beat = None
         await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", ONBOARDING_COMPLETE)
@@ -56,13 +61,12 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
         summary_ctx.add_message(
             role="system",
             content=(
-                "Player completed onboarding. They met companion Kael, "
+                f"Player completed onboarding. They met companion {companion.name}, "
                 "explored the Accord of Tides market, and received the "
                 "Greyvale quest hook. Begin open-world gameplay."
             ),
         )
         result = json.dumps({"onboarding_complete": True, "location": sd.location_id})
-        companion = sd.companion
         return (
             create_gameplay_agent(
                 REGION_CITY,
@@ -73,20 +77,25 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             result,
         )
 
-    # Advance to next beat
-    next_beat = current + 1
-    sd.onboarding_beat = next_beat
-    await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
-
     if current == 3:
-        from companion_relationship_queries import hydrate_companion_state
+        from companion_relationship_queries import hydrate_assigned_companion_state
 
-        # First meeting: hydrate (session_count 0 -> 1) + persist (M6.4 / story-003).
-        companion = await hydrate_companion_state(sd.player_id, "companion_kael", "Kael")
+        # First meeting: bind the companion the persisted archetype assigns, BEFORE persisting
+        # the beat advance. A failed assignment then leaves the player replayable at beat 3
+        # rather than at beat 4 with companion_met unset, which the beat-5 guard above makes
+        # permanently unfinishable.
+        player = await db_queries.get_player(sd.player_id)
+        if player is None:
+            raise ToolError(f"Player {sd.player_id!r} missing during companion assignment")
+        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"], player["level"])
         companion.last_speech_time = time.time()
         sd.companion = companion
         await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
-        logger.info("Companion Kael initialized for player %s after beat 3", sd.player_id)
+        logger.info("Companion %s initialized for player %s after beat 3", companion.name, sd.player_id)
+
+    next_beat = current + 1
+    sd.onboarding_beat = next_beat
+    await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
 
     beat_name = BEAT_NAMES.get(next_beat, "unknown")
     logger.info("Player %s advanced to onboarding beat %d (%s)", sd.player_id, next_beat, beat_name)

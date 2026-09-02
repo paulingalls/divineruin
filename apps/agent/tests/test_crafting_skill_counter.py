@@ -59,7 +59,13 @@ async def _run_resolution(activity: dict, outcome: dict):
         get_p,
         claim_p,
         revert_p,
-        patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Aldric"}),
+        # class is load-bearing on the errand branch below: the worker selects the companion
+        # from the archetype, so a classless player row fails loud rather than resolving as Kael.
+        patch(
+            "async_worker.db_queries.get_player",
+            new_callable=AsyncMock,
+            return_value={"name": "Aldric", "class": "warrior"},
+        ),
         patch("async_worker._resolve_one_outcome", new_callable=AsyncMock, return_value=outcome),
         patch(
             "async_worker.generate_activity_narration",
@@ -91,6 +97,9 @@ class TestFailureIncrementsCounter:
         mock_increment = await _run_resolution(_CRAFTING_ACTIVITY, _outcome(tier))
         mock_increment.assert_not_awaited()
 
+    # The errand branch now always persists the affinity nudge (it no longer skips on an
+    # absent players.data companion id), so this case needs the narrow rank/affinity stub.
+    @pytest.mark.usefixtures("stub_companion_errand_affinity_io")
     @pytest.mark.asyncio
     async def test_non_crafting_activity_does_not_increment(self):
         """AC#2: a non-crafting activity never touches the Crafting counter, even on failure."""

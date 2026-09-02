@@ -23,4 +23,12 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
 7. **A cross-language AC names both sides.** Content and contracts are mirrored
    in Python and TypeScript; a guard living on one side certifies nothing about
    the other. Verify names both files, or the directory — never one file whose
-   tests a later split can silently narrow.
+   tests a later split can silently narrow. Prefer the whole fast lane
+   (`bun run test:python` / `bun run test:all`): a six-file Verify filter in
+   sprint-046 stayed green over two red tests the story had broken.
+8. **Replacing a literal means an inventory, not a path.** A card that replaces
+   a hardcoded id — a companion, a tier tuple, a name — lists every site of that
+   literal repo-wide (code, prompts, content, tests) or says which it leaves and
+   why. Sprint-046 story-008 excluded four `companion_kael` sites as "off the
+   session path" without grepping; the reviewer found sixteen more that were on
+   it, and the combat prompt's tag survived to round 2.

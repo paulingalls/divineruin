@@ -6,6 +6,7 @@ errand context stays inline: companions are a separate entity and only companion
 exists in content/npcs.json today.
 """
 
+from companion_profiles import get_companion_profile
 from npcs import get_npc_sync
 
 # Companion errand context
@@ -126,7 +127,7 @@ End with the decision point.
 Decision options:
 {decision_options}
 
-Use DM_NARRATOR for narration and {voice_id} for {companion_name}'s dialogue.
+{voice_instruction}
 Keep it concise and in-character.""",
 }
 
@@ -166,7 +167,12 @@ def get_training_mentor(mentor_id: str) -> dict:
 
 
 def get_companion_context(companion_id: str) -> dict:
-    return COMPANION_CONTEXT.get(companion_id, COMPANION_CONTEXT["companion_kael"])
+    """Narration persona for a companion. Raises on an unknown id: falling back to Kael
+    would voice another player's companion in Kael's registered voice, silently."""
+    try:
+        return COMPANION_CONTEXT[companion_id]
+    except KeyError as e:
+        raise ValueError(f"unknown companion {companion_id!r}") from e
 
 
 def _format_recipe_cue(ctx: dict) -> str:
@@ -279,7 +285,12 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
         return prompt, [mentor["voice_id"]]
 
     else:  # companion_errand
-        companion = get_companion_context(ctx.get("companion_id", "companion_kael"))
+        companion_id = ctx["companion_id"]
+        companion = get_companion_context(companion_id)
+        # A non-verbal companion (Sable) has a REGISTERED voice id, so both the instruction and
+        # the tool's character enum have to withhold it — otherwise the DM voices a companion
+        # whose whole design is silence.
+        non_verbal = get_companion_profile(companion_id).non_verbal
         errand_type = ctx.get("errand_type", "scout")
         errand_frame = companion.get("errand_frames", {}).get(errand_type, "")
         risk = ctx.get("risk_outcome", "none")
@@ -290,7 +301,12 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             companion_name=companion["name"],
             companion_personality=companion["personality"],
             companion_speech_style=companion["speech_style"],
-            voice_id=companion["voice_id"],
+            voice_instruction=(
+                f"Use DM_NARRATOR throughout: {companion['name']} is non-verbal. Narrate the "
+                "vocalizations, posture and movement; never write dialogue."
+                if non_verbal
+                else f"Use DM_NARRATOR for narration and {companion['voice_id']} for {companion['name']}'s dialogue."
+            ),
             errand_frame=errand_frame,
             errand_type=errand_type,
             destination=ctx.get("destination", "unknown"),
@@ -299,4 +315,4 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             risk_line=risk_line,
             decision_options=decision_text,
         )
-        return prompt, [companion["voice_id"]]
+        return prompt, [] if non_verbal else [companion["voice_id"]]

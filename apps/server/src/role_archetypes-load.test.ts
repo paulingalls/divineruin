@@ -62,6 +62,14 @@ describe("content/role_archetypes.json — parseRoleArchetypeRow conformance", (
     for (const id of NON_COMBATANTS) expect(byId.get(id)?.combat_stats).toBeNull();
   });
 
+  test("every role has a varied personality trait pool", async () => {
+    for (const row of await loadArchetypes()) {
+      const traits = parseRoleArchetypeRow(String(row.id), row).personality_traits;
+      expect(traits.length).toBeGreaterThanOrEqual(8);
+      expect(new Set(traits).size).toBe(traits.length);
+    }
+  });
+
   test("merchant subtypes have distinct, non-null inventory pools", async () => {
     const byId = new Map(
       (await loadArchetypes()).map((r) => [String(r.id), parseRoleArchetypeRow(String(r.id), r)]),

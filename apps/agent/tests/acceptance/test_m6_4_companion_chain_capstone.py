@@ -135,7 +135,7 @@ async def test_relationship_tiers_persist_and_gate_narrative(reset_db_pool: str)
     player_id = "capstone_m4_relationship"  # unique per test (rows persist across the module)
 
     # Session 1: first meeting — New, no affinity, no narrative unlocked yet.
-    cs1 = await hydrate_companion_state(player_id, "companion_kael", "Kael", conn=pool)
+    cs1 = await hydrate_companion_state(player_id, "companion_kael", "Kael", player_level=1, conn=pool)
     assert cs1.session_count == 1 and cs1.affinity == 0
     rel = await query_companion_relationship(player_id, "companion_kael", conn=pool)
     assert rel["tier"] == "new" and rel["rank"] == 1 and rel["unlocks"] == []
@@ -147,7 +147,7 @@ async def test_relationship_tiers_persist_and_gate_narrative(reset_db_pool: str)
     assert rel["affinity"] == 3 and rel["rank"] == 2 and rel["tier"] == "warming"
 
     # Reconnect = a new session: hydrate again -> session_count increments, affinity PERSISTS.
-    cs2 = await hydrate_companion_state(player_id, "companion_kael", "Kael", conn=pool)
+    cs2 = await hydrate_companion_state(player_id, "companion_kael", "Kael", player_level=1, conn=pool)
     assert cs2.session_count == 2 and cs2.affinity == 3
     row = await pool.fetchrow(
         "SELECT session_count, affinity FROM companion_relationships WHERE player_id=$1 AND companion_id=$2",
@@ -157,7 +157,9 @@ async def test_relationship_tiers_persist_and_gate_narrative(reset_db_pool: str)
     assert row["session_count"] == 2 and row["affinity"] == 3
 
     # Drive the session floor to Trusted (>=6); affinity nudge -> Bonded (rank 4).
-    while (await hydrate_companion_state(player_id, "companion_kael", "Kael", conn=pool)).session_count < 6:
+    while (
+        await hydrate_companion_state(player_id, "companion_kael", "Kael", player_level=1, conn=pool)
+    ).session_count < 6:
         pass
     rel = await query_companion_relationship(player_id, "companion_kael", conn=pool)
     assert rel["session_count"] >= 6 and rel["rank"] == 4 and rel["tier"] == "bonded"
@@ -188,11 +190,13 @@ async def test_combat_block_is_relationship_independent(reset_db_pool: str) -> N
 
     # Advance the PERSISTED relationship to Bonded so the hydrated CompanionState carries a high
     # session_count + affinity into combat.
-    while (await hydrate_companion_state(player_id, "companion_kael", "Kael", conn=pool)).session_count < 6:
+    while (
+        await hydrate_companion_state(player_id, "companion_kael", "Kael", player_level=1, conn=pool)
+    ).session_count < 6:
         pass
     for _ in range(3):
         await apply_errand_affinity(player_id, "companion_kael", 1, conn=pool)
-    bonded = await hydrate_companion_state(player_id, "companion_kael", "Kael", conn=pool)
+    bonded = await hydrate_companion_state(player_id, "companion_kael", "Kael", player_level=1, conn=pool)
     rel = await query_companion_relationship(player_id, "companion_kael", conn=pool)
     assert rel["rank"] >= 4 and bonded.affinity >= 3, "relationship genuinely bonded in the DB"
 

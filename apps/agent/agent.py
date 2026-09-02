@@ -211,7 +211,13 @@ async def dm_session(ctx: agents.JobContext) -> None:
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
             stt=deepgram.STT(model="nova-3", language="en"),
-            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
+            # INTERIM (2026-09-02, ADR 0004 addendum): strict tool schemas OFF. Anthropic also
+            # rejects a strict request whose schemas carry more than 16 union-typed parameters
+            # ("Schemas contains too many parameters with union types"); every `x | None`
+            # optional counts, so exploration (17) and dispatch (23) 400 on every real turn and
+            # combat's declare_phase.declarations (additionalProperties object) is refused
+            # outright. Sprint-47 story-016 restores strict with a schema design that fits.
+            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
             tts=_make_tts(),
             vad=inference.VAD(model="silero", min_silence_duration=0.5),
             # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
@@ -284,15 +290,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
         await hydrate_session_state(userdata, player)
 
         if player.get("flags", {}).get("companion_met"):
-            from companion_relationship_queries import hydrate_companion_state
+            from companion_relationship_queries import hydrate_assigned_companion_state
 
             # Fresh session: hydrate persisted relationship state + increment session_count once
             # (M6.4 / story-003). Reconnects reuse the in-memory CompanionState, so this runs
             # exactly once per session.
-            companion = await hydrate_companion_state(player_id, "companion_kael", "Kael")
+            companion = await hydrate_assigned_companion_state(player_id, player["class"], player["level"])
             companion.last_speech_time = time.time()
             userdata.companion = companion
-            logger.info("Companion Kael loaded for returning player")
+            logger.info("Companion %s loaded for returning player", companion.name)
 
         # Check for mid-onboarding reconnection
         onboarding_beat = player.get("flags", {}).get("onboarding_beat")
