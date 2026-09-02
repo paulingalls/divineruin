@@ -1,10 +1,33 @@
 name: CI
 
+# CI runs on the PR ONLY -- the gate that is actually checked. Three reasons the
+# post-merge `push: [main]` run was removed rather than kept as a backstop:
+#   1. `pull_request` already builds refs/pull/N/merge, so a main-push run re-tests
+#      a tree byte-identical to what the PR just proved.
+#   2. main carries no branch protection, so no required check depended on it.
+#   3. .githooks/pre-push runs everything below PLUS the acceptance lane, locally,
+#      before anything reaches GitHub. CI is a clean-machine second opinion, not
+#      the first line.
+# Measured before the change: sprint-044 burned 7 runs (6 PR + 1 main push) at
+# ~12 billed minutes each, and 5 of the 6 PR runs were testing superseded commits.
+# TRADE-OFF ACCEPTED: a direct push to main now gets no CI. The pre-push hook covers
+# it from a hooked clone; a push from an unhooked clone would be unverified.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    # Mirrors the docs-only short-circuit in .githooks/pre-push:254 so the two
+    # gates cannot disagree about what counts as a docs-only change.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - 'memory/**'
+
+# Supersede in-flight runs for the same ref: pushing again to an open PR should
+# cancel the run testing the commit you just replaced, not race it to completion.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,6 +35,7 @@ permissions:
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -30,6 +54,7 @@ jobs:
 
   test-bun:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -72,6 +97,7 @@ jobs:
 
   lint-python:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
@@ -82,6 +108,7 @@ jobs:
 
   test-python:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # `pytest tests/` runs the full tree. The acceptance lane self-provisions
     # per-run testcontainers, but the fast-lane real-PG tests connect to the
     # shared dev DB at :55432 (conftest's ensure_db_up()); provide it here as a
@@ -130,6 +157,7 @@ jobs:
 
   test-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [lint-and-typecheck]
     services:
       postgres:
