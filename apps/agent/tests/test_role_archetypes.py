@@ -41,6 +41,26 @@ class TestParse:
         assert len(parsed) == 19
         assert all(isinstance(a, RoleArchetype) for a in parsed)
 
+    def test_every_role_has_eight_unique_personality_traits(self):
+        for row in _RAW:
+            archetype = parse_role_archetype_row(row["id"], row)
+            assert len(archetype.personality_traits) >= 8
+            assert len(set(archetype.personality_traits)) == len(archetype.personality_traits)
+
+    @pytest.mark.parametrize(
+        "traits",
+        [[], ["alert"] * 8, ["alert", "patient", "dry", "loyal", "direct", "wary", "calm", ""]],
+    )
+    def test_personality_traits_reject_short_duplicate_or_blank_pools(self, traits):
+        bad = {**_row("guard"), "personality_traits": traits}
+        with pytest.raises(ValueError, match="guard"):
+            parse_role_archetype_row("guard", bad)
+
+    def test_missing_personality_traits_fails_loud(self):
+        bad = {k: v for k, v in _row("guard").items() if k != "personality_traits"}
+        with pytest.raises(ValueError, match="guard"):
+            parse_role_archetype_row("guard", bad)
+
     def test_combatants_carry_combat_stats(self):
         for rid in _COMBATANTS:
             a = parse_role_archetype_row(rid, _row(rid))

@@ -15,7 +15,7 @@ import recipe_tools
 import training_tools
 from db_errors import db_tool
 from session_data import SessionData
-from settlement_generation import generate_settlement_npcs
+from settlement_generation import generate_settlement_npcs, generate_settlement_roster
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
@@ -118,7 +118,7 @@ async def _query_settlement_population_impl(
     content=db_content_queries,
     rng=None,
 ) -> str:
-    """Generate a settlement's NPC population (counts per role) from its tier + personality.
+    """Generate a settlement's NPC counts and named roster from its tier + personality.
 
     Reads the location's settlement_tier/personality (story-001 fields) and delegates to the
     pure generate_settlement_npcs rules engine (story-003). Fail-loud (ADR 0002): an unknown
@@ -139,6 +139,7 @@ async def _query_settlement_population_impl(
     seeded_rng = rng if rng is not None else random.Random(location_id)
     try:
         population = generate_settlement_npcs(tier, personality, rng=seeded_rng)
+        roster = generate_settlement_roster(population, rng=seeded_rng)
     except ValueError as e:
         raise ToolError(f"Cannot generate a settlement population for '{location_id}': {e}") from e
     return json.dumps(
@@ -148,6 +149,7 @@ async def _query_settlement_population_impl(
             "personality": personality,
             "population": population,
             "total": sum(population.values()),
+            "roster": roster,
         }
     )
 

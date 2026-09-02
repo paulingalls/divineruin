@@ -16,15 +16,18 @@ import pytest
 from role_archetypes import (
     DISPOSITIONS,
     create_npc_from_archetype,
+    get_role_archetype,
     parse_role_archetype_row,
     set_role_archetypes,
 )
 from settlement_generation import (
     _effective_ranges,
     generate_settlement_npcs,
+    generate_settlement_roster,
     instantiate_npc_from_template,
 )
 from settlement_templates import (
+    get_settlement_name_pool,
     get_settlement_personality,
     parse_settlement_template_row,
     set_settlement_templates,
@@ -55,10 +58,12 @@ def _seed_catalogs():
     """Seed both content catalogs from the real JSON before each test."""
     tiers: dict[str, dict] = {}
     personalities: dict[str, dict] = {}
+    name_pools: dict[str, dict] = {}
+    catalogs = {"tier": tiers, "personality": personalities, "name_pool": name_pools}
     for e in _TEMPLATES:
         row = parse_settlement_template_row(e["id"], e)
-        (tiers if e["kind"] == "tier" else personalities)[e["id"]] = row
-    set_settlement_templates(tiers, personalities)
+        catalogs[e["kind"]][e["id"]] = row
+    set_settlement_templates(tiers, personalities, name_pools)
     set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _ARCHETYPES})
 
 
@@ -91,6 +96,48 @@ class TestGenerate:
             generate_settlement_npcs("metropolis", "military", rng=random.Random(0))
         with pytest.raises(ValueError):
             generate_settlement_npcs("city", "bogus", rng=random.Random(0))
+
+
+class TestRoster:
+    def test_every_npc_has_unique_name_and_role_constrained_personality(self):
+        population = {"guard": 4, "innkeeper": 2}
+        roster = generate_settlement_roster(population, rng=random.Random(11))
+        assert len(roster) == sum(population.values())
+        assert len({npc["name"] for npc in roster}) == len(roster)
+        for npc in roster:
+            assert set(npc) == {"role", "name", "personality"}
+            traits = get_role_archetype(npc["role"]).personality_traits
+            assert 2 <= len(npc["personality"]) <= 3
+            assert set(npc["personality"]) <= set(traits)
+
+    def test_same_role_trait_sets_are_distinct_at_maximum_guard_count(self):
+        roster = generate_settlement_roster({"guard": 62}, rng=random.Random(5))
+        trait_sets = [frozenset(npc["personality"]) for npc in roster]
+        assert len(set(trait_sets)) == 62
+
+    def test_fixed_seed_is_deterministic(self):
+        population = {"guard": 3, "innkeeper": 2}
+        first = generate_settlement_roster(population, rng=random.Random(19))
+        second = generate_settlement_roster(population, rng=random.Random(19))
+        assert first == second
+
+    def test_exhausted_name_pool_adds_unique_names(self):
+        pool_size = len(get_settlement_name_pool()["names"])
+        roster = generate_settlement_roster({"guard": pool_size + 1}, rng=random.Random(2))
+        names = [npc["name"] for npc in roster]
+        assert len(names) == len(set(names)) == pool_size + 1
+        assert any(name not in get_settlement_name_pool()["names"] for name in names)
+
+    def test_unknown_role_and_impossible_trait_count_fail_loud(self):
+        with pytest.raises(ValueError, match="unknown"):
+            generate_settlement_roster({"unknown": 1}, rng=random.Random(0))
+        with pytest.raises(ValueError, match="guard"):
+            generate_settlement_roster({"guard": 85}, rng=random.Random(0))
+
+    @pytest.mark.parametrize("count", [-1, 1.5, True])
+    def test_invalid_population_count_fails_loud(self, count):
+        with pytest.raises(ValueError, match="guard"):
+            generate_settlement_roster({"guard": count}, rng=random.Random(0))
 
 
 class TestEffectiveRanges:

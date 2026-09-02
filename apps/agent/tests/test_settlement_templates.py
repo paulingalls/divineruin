@@ -19,6 +19,7 @@ import pytest
 
 import settlement_templates
 from settlement_templates import (
+    get_settlement_name_pool,
     get_settlement_personality,
     get_settlement_tier,
     is_loaded,
@@ -49,22 +50,26 @@ def _row(rid: str) -> dict:
     return next(e for e in _RAW if e["id"] == rid)
 
 
-def _catalog() -> tuple[dict, dict]:
+def _catalog() -> tuple[dict, dict, dict]:
     tiers: dict[str, dict] = {}
     personalities: dict[str, dict] = {}
+    name_pools: dict[str, dict] = {}
     for e in _RAW:
         row = parse_settlement_template_row(e["id"], e)
-        (tiers if e["kind"] == "tier" else personalities)[e["id"]] = row
-    return tiers, personalities
+        catalogs = {"tier": tiers, "personality": personalities, "name_pool": name_pools}
+        catalogs[e["kind"]][e["id"]] = row
+    return tiers, personalities, name_pools
 
 
 class TestCardinality:
-    def test_four_tiers_and_eight_personalities(self):
+    def test_four_tiers_eight_personalities_and_one_name_pool(self):
         tiers = {e["id"] for e in _RAW if e["kind"] == "tier"}
         personalities = {e["id"] for e in _RAW if e["kind"] == "personality"}
+        name_pools = {e["id"] for e in _RAW if e["kind"] == "name_pool"}
         assert tiers == _TIER_IDS
         assert personalities == _PERSONALITY_IDS
-        assert len(_RAW) == 12
+        assert name_pools == {"default_names"}
+        assert len(_RAW) == 13
 
     def test_ids_unique(self):
         ids = [e["id"] for e in _RAW]
@@ -74,7 +79,19 @@ class TestCardinality:
 class TestParse:
     def test_all_rows_parse(self):
         parsed = [parse_settlement_template_row(e["id"], e) for e in _RAW]
-        assert len(parsed) == 12
+        assert len(parsed) == 13
+
+    @pytest.mark.parametrize(
+        "names",
+        [[], ["Alden", "Alden"], ["Alden", ""]],
+    )
+    def test_name_pool_rejects_empty_duplicate_or_blank_names(self, names):
+        with pytest.raises(ValueError, match="default_names"):
+            parse_settlement_template_row("default_names", {"id": "default_names", "kind": "name_pool", "names": names})
+
+    def test_name_pool_missing_names_fails_loud(self):
+        with pytest.raises(ValueError, match="default_names"):
+            parse_settlement_template_row("default_names", {"id": "default_names", "kind": "name_pool"})
 
     def test_tier_role_count_keys_reference_real_archetypes(self):
         for e in (r for r in _RAW if r["kind"] == "tier"):
@@ -140,6 +157,7 @@ class TestAccessors:
         assert is_loaded()
         assert get_settlement_tier("city")["kind"] == "tier"
         assert get_settlement_personality("corrupt")["kind"] == "personality"
+        assert get_settlement_name_pool("default_names")["kind"] == "name_pool"
 
     def test_unknown_tier_fails_loud(self):
         set_settlement_templates(*_catalog())
@@ -151,14 +169,25 @@ class TestAccessors:
         with pytest.raises(ValueError, match="bogus"):
             get_settlement_personality("bogus")
 
+    def test_unknown_name_pool_fails_loud(self):
+        set_settlement_templates(*_catalog())
+        with pytest.raises(ValueError, match="bogus"):
+            get_settlement_name_pool("bogus")
+
     def test_set_seam_isolates_catalog(self):
-        tiers, personalities = _catalog()
-        set_settlement_templates({"city": tiers["city"]}, {"corrupt": personalities["corrupt"]})
+        tiers, personalities, name_pools = _catalog()
+        set_settlement_templates({"city": tiers["city"]}, {"corrupt": personalities["corrupt"]}, name_pools)
         assert is_loaded()
         assert get_settlement_tier("city")["id"] == "city"
         with pytest.raises(ValueError):
             get_settlement_tier("village")
         # restore the full catalog for any later test in this module
+        set_settlement_templates(*_catalog())
+
+    def test_catalog_without_name_pool_is_not_loaded(self):
+        tiers, personalities, _ = _catalog()
+        set_settlement_templates(tiers, personalities, {})
+        assert not is_loaded()
         set_settlement_templates(*_catalog())
 
     def test_module_globals_present(self):

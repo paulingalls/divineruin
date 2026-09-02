@@ -1,10 +1,12 @@
 """Settlement NPC generation — pure rules engine (Phase 6 / M6.2, story-003).
 
-Turns a settlement (tier + personality) into a concrete NPC population. Two pure
-functions, no LLM, no DB:
+Turns a settlement (tier + personality) into a concrete NPC population. Pure functions,
+no LLM, no DB:
   - generate_settlement_npcs(tier, personality, *, rng) -> {role_id: count}: how many of
     each role a settlement has, sampling each role's [min, max] range (after personality
     frequency modifiers) inclusively.
+  - generate_settlement_roster(population, *, rng) -> [{role, name, personality}]: named,
+    individually varied NPCs matching an existing population map.
   - instantiate_npc_from_template(role, tier, personality, overrides) -> stat-block dict:
     create_npc_from_archetype(role, overrides) with tier+personality modifiers layered on
     (disposition shift, price multiplier, inventory richness).
@@ -16,9 +18,11 @@ get_settlement_tier itself keeps its fail-loud contract for unknown sizes.
 """
 
 import random
+from itertools import combinations
+from typing import TypedDict
 
-from role_archetypes import DISPOSITIONS, create_npc_from_archetype, shift_disposition
-from settlement_templates import get_settlement_personality, get_settlement_tier
+from role_archetypes import DISPOSITIONS, create_npc_from_archetype, get_role_archetype, shift_disposition
+from settlement_templates import get_settlement_name_pool, get_settlement_personality, get_settlement_tier
 
 # keldaran_hold is City-scale (spec lists Keldaran holds as City examples). Normalize to
 # city role_counts at the generation layer; get_settlement_tier stays fail-loud elsewhere.
@@ -56,6 +60,48 @@ def generate_settlement_npcs(tier: str, personality: str, *, rng: random.Random 
     rng = rng or random.Random()
     ranges = _effective_ranges(tier, personality)
     return {role_id: rng.randint(r["min"], r["max"]) for role_id, r in ranges.items()}
+
+
+class RosterEntry(TypedDict):
+    role: str
+    name: str
+    personality: list[str]
+
+
+def generate_settlement_roster(population: dict[str, int], *, rng: random.Random | None = None) -> list[RosterEntry]:
+    """Return named, individually varied NPCs for a concrete role-count population."""
+    rng = rng or random.Random()
+    role_traits: dict[str, tuple[str, ...]] = {}
+    for role, count in population.items():
+        if type(count) is not int or count < 0:
+            raise ValueError(f"{role!r} count must be a non-negative integer, got {count!r}")
+        role_traits[role] = get_role_archetype(role).personality_traits
+    names = list(get_settlement_name_pool()["names"])
+    rng.shuffle(names)
+    used_names: set[str] = set()
+    generated_names: list[str] = []
+    for index in range(sum(population.values())):
+        base = names[index % len(names)]
+        candidate = base
+        suffix = 2
+        while candidate in used_names:
+            candidate = f"{base} {suffix}"
+            suffix += 1
+        used_names.add(candidate)
+        generated_names.append(candidate)
+
+    roster: list[RosterEntry] = []
+    name_index = 0
+    for role, count in population.items():
+        traits = role_traits[role]
+        trait_sets = [*combinations(traits, 2), *combinations(traits, 3)]
+        if count > len(trait_sets):
+            raise ValueError(f"{role!r} count {count} exceeds {len(trait_sets)} unique personality sets")
+        rng.shuffle(trait_sets)
+        for personality in trait_sets[:count]:
+            roster.append({"role": role, "name": generated_names[name_index], "personality": list(personality)})
+            name_index += 1
+    return roster
 
 
 def instantiate_npc_from_template(role: str, tier: str, personality: str, overrides: dict | None = None) -> dict:

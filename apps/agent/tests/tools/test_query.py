@@ -2,6 +2,7 @@
 
 import json
 import random
+from collections import Counter
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -252,6 +253,11 @@ class TestSettlementPopulation:
         assert result["population"] == expected
         assert result["total"] == sum(expected.values())
         assert set(result["population"]) <= _ARCHETYPE_IDS
+        assert len(result["roster"]) == result["total"]
+        assert Counter(npc["role"] for npc in result["roster"]) == Counter(expected)
+        assert len({npc["name"] for npc in result["roster"]}) == result["total"]
+        assert all(set(npc) == {"role", "name", "personality"} for npc in result["roster"])
+        assert all(2 <= len(npc["personality"]) <= 3 for npc in result["roster"])
 
     @pytest.mark.asyncio
     async def test_population_is_deterministic_per_location(self):
@@ -263,6 +269,7 @@ class TestSettlementPopulation:
         first = json.loads(await _query_settlement_population_impl(ctx, loc_id, content=self._content(location)))
         second = json.loads(await _query_settlement_population_impl(ctx, loc_id, content=self._content(location)))
         assert first["population"] == second["population"]
+        assert first["roster"] == second["roster"]
         # The seed source is the location_id itself (not a global/time seed).
         assert first["population"] == generate_settlement_npcs("city", "prosperous", rng=random.Random(loc_id))
 
@@ -324,3 +331,4 @@ class TestSettlementPopulation:
         assert set(result["population"]) <= _ARCHETYPE_IDS
         assert all(n >= 0 for n in result["population"].values())
         assert result["total"] == sum(result["population"].values())
+        assert len(result["roster"]) == result["total"]

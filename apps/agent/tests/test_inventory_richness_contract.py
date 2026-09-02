@@ -37,10 +37,12 @@ def _seed_catalogs():
     test_settlement_generation.py)."""
     tiers: dict[str, dict] = {}
     personalities: dict[str, dict] = {}
+    name_pools: dict[str, dict] = {}
+    catalogs = {"tier": tiers, "personality": personalities, "name_pool": name_pools}
     for e in _TEMPLATES:
         row = parse_settlement_template_row(e["id"], e)
-        (tiers if e["kind"] == "tier" else personalities)[e["id"]] = row
-    set_settlement_templates(tiers, personalities)
+        catalogs[e["kind"]][e["id"]] = row
+    set_settlement_templates(tiers, personalities, name_pools)
     set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _ARCHETYPES})
 
 

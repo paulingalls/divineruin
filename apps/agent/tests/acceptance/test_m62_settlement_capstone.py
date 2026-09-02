@@ -22,6 +22,7 @@ Runs under `bun run test:acceptance`; skips cleanly when Docker is down.
 from __future__ import annotations
 
 import json
+import random
 from collections.abc import Iterator
 
 import httpx
@@ -32,10 +33,11 @@ import db
 import role_archetypes
 import settlement_templates
 from role_archetypes import DISPOSITIONS
-from settlement_generation import generate_settlement_npcs, instantiate_npc_from_template
+from settlement_generation import generate_settlement_npcs, generate_settlement_roster, instantiate_npc_from_template
 
 _EXPECTED_TIERS = 4  # hamlet, village, town, city (keldaran_hold has no row; aliased to city)
 _EXPECTED_PERSONALITIES = 8
+_EXPECTED_NAME_POOLS = 1
 
 
 @pytest.fixture(scope="module")
@@ -65,6 +67,7 @@ async def test_settlement_catalog_loads_from_real_db(reset_db_pool: str) -> None
     assert settlement_templates.is_loaded()
     assert len(settlement_templates._tiers) == _EXPECTED_TIERS
     assert len(settlement_templates._personalities) == _EXPECTED_PERSONALITIES
+    assert len(settlement_templates._name_pools) == _EXPECTED_NAME_POOLS
 
 
 @pytest.mark.asyncio
@@ -109,6 +112,14 @@ async def test_generate_and_instantiate_over_real_settlement(reset_db_pool: str)
     npc = instantiate_npc_from_template(role, tier, personality)
     assert npc["role_archetype"] == role
     assert npc["default_disposition"] in DISPOSITIONS
+
+    roster = generate_settlement_roster(population, rng=random.Random(row["id"]))
+    assert len(roster) == sum(population.values())
+    assert len({generated["name"] for generated in roster}) == len(roster)
+    for generated in roster:
+        traits = role_archetypes.get_role_archetype(generated["role"]).personality_traits
+        assert 2 <= len(generated["personality"]) <= 3
+        assert set(generated["personality"]) <= set(traits)
 
 
 # --- http_websocket surface (TS server load path) -----------------------------
