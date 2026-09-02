@@ -114,14 +114,18 @@ async def _query_abilities_impl(
         raise ToolError("Cannot query abilities: current player has no class.")
 
     known_rows = await persistence.get_character_abilities(session.player_id)
-    try:
-        known_ids = {row["ability_id"] for row in known_rows}
-    except (KeyError, TypeError) as error:
-        raise ToolError("Cannot query abilities: corrupt character ability row.") from error
+    known_ids = {row["ability_id"] for row in known_rows}
+
+    # An archetype with no catalog rows means an unknown class or an unloaded catalog, never a
+    # classed character who owns nothing — returning [] would tell the DM the player has no
+    # reactions, the exact silent wrong answer this kind exists to remove.
+    catalog = ability_catalog.get_archetype_abilities(player_class)
+    if not catalog:
+        raise ToolError(f"Cannot query abilities: no abilities loaded for class {player_class!r}.")
 
     owned = [
         ability
-        for ability in ability_catalog.get_archetype_abilities(player_class)
+        for ability in catalog
         if ability_catalog.owns_ability(
             player_class,
             ability,

@@ -9,6 +9,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
@@ -133,30 +134,40 @@ class TestReactionDeclarationInvalid:
 
 
 @pytest.mark.asyncio
-async def test_query_window_is_accepted_by_declare_phase():
+async def test_every_queried_reaction_window_is_accepted_by_declare_phase():
+    """AC2, against the real catalog: EVERY reaction the payload can surface, for every class.
+
+    One class's first reaction is not enough — a payload that emitted a constant "on_hit" would
+    still be accepted for the reaction that happens to carry that window, so the pin has to walk
+    the whole catalog for the payload and the gate to be unable to drift.
+    """
+    catalog = load_fixture_config().values()
     context = make_context()
-    context.userdata.combat_state = _make_combat_state()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"class": "warrior"})
     persistence = MagicMock()
     persistence.get_character_abilities = AsyncMock(return_value=[])
     persistence.get_active_variant = AsyncMock(return_value=None)
     mutations = MagicMock()
     mutations.save_combat_state = AsyncMock()
 
-    payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
-    reactions = [row for row in payload["abilities"] if row["ability_type"] == "reaction"]
-    assert reactions
-    reaction = reactions[0]
-    declarations = {
-        "player_1": {"type": "reaction", "action": reaction["id"], "trigger": reaction["window"]},
-        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
-    }
+    declared_ids = set()
+    for player_class in sorted({ability.archetype_id for ability in catalog}):
+        queries.get_player = AsyncMock(return_value={"class": player_class})
+        payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
+        for reaction in [row for row in payload["abilities"] if row["ability_type"] == "reaction"]:
+            context.userdata.combat_state = _make_combat_state()
+            declarations = {
+                "player_1": {"type": "reaction", "action": reaction["id"], "trigger": reaction["window"]},
+                "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+            }
 
-    result = json.loads(await _declare_phase_impl(context, declarations, mutations=mutations))
+            result = json.loads(await _declare_phase_impl(context, declarations, mutations=mutations))
 
-    assert result["beat"] == "resolution"
-    assert "player_1" in result["accepted_actors"]
+            assert result["beat"] == "resolution", reaction
+            assert "player_1" in result["accepted_actors"], reaction
+            declared_ids.add(reaction["id"])
+
+    assert declared_ids == {ability.id for ability in catalog if ability.ability_type == "reaction"}
 
 
 class TestResolveDeclarationInvalid:

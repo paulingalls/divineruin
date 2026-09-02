@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import abilities
 from query_tools import _query_abilities_impl, _query_info_impl
 from session_data import SessionData
+from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 
 
 @pytest.fixture
@@ -177,6 +178,15 @@ class TestQueryAbilities:
             await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
 
     @pytest.mark.asyncio
+    async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
+        # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
+        # sounds like an answer, which is what this kind exists to remove.
+        queries, persistence = self._dependencies(player={"class": "not_an_archetype"})
+
+        with pytest.raises(ToolError, match="not_an_archetype"):
+            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+
+    @pytest.mark.asyncio
     async def test_unknown_persisted_elective_is_a_tool_error(self, mock_context):
         queries, persistence = self._dependencies(
             player={"class": "warrior"},
@@ -188,12 +198,16 @@ class TestQueryAbilities:
 
 
 def test_prompts_name_ability_id_producer():
-    from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
-
-    for prompt in (build_system_prompt("accord_guild_hall"), COMBAT_SYSTEM_PROMPT):
+    exploration = build_system_prompt("accord_guild_hall")
+    for prompt in (exploration, COMBAT_SYSTEM_PROMPT):
         assert 'query_info(kind="abilities")' in prompt
         assert "window" in prompt
         assert "variant" in prompt
+
+    # Surfacing the variant id is only half of constraint 6: the tool that consumes it has to
+    # say so, or the DM holds an id it has no documented route for.
+    activate_bullet = next(line for line in exploration.split("- ") if line.startswith("activate:"))
+    assert "active_variant_id" in activate_bullet
 
 
 class TestQueryInfoE2E:

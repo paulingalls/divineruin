@@ -111,7 +111,9 @@ Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
 - check(mode="dice"): For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
-- activate: Out of combat, when the player casts a known spell by its id. Pass \
+- activate: Out of combat, when the player casts a known spell or uses an ability by its id. \
+When query_info(kind="abilities") gives an ability an active_variant_id, activate THAT id — it is \
+how the form they trained fires instead of the plain technique. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
 cast on a Hollow-killed corpse is refused.
