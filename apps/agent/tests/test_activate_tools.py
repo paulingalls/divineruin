@@ -53,8 +53,18 @@ class SimpleImpl:
         return self._fn
 
 
-async def _call(id_, *, target_id=None, target_ids=None, spells_mod=spells, abilities_mod=abilities, **mods):
+async def _call(
+    id_,
+    *,
+    target_id=None,
+    target_ids=None,
+    spells_mod=spells,
+    abilities_mod=abilities,
+    variants_mod=None,
+    **mods,
+):
     ctx = make_context()
+    variant_kwargs = {"variants_mod": variants_mod} if variants_mod is not None else {}
     result = await _activate_impl(
         ctx,
         id_,
@@ -62,6 +72,7 @@ async def _call(id_, *, target_id=None, target_ids=None, spells_mod=spells, abil
         target_ids=target_ids,
         spells_mod=spells_mod,
         abilities_mod=abilities_mod,
+        **variant_kwargs,
         **mods,
     )
     return ctx, result
@@ -97,6 +108,36 @@ class TestAbilityRouting:
         assert result == "ability-result"
         fns["request_ability"].assert_awaited_once_with(
             ctx, "warrior_devastating_strike", target_id="orc_1", target_ids=None
+        )
+
+
+class TestVariantRouting:
+    async def test_variant_id_dispatches_base_ability_with_explicit_variant(self):
+        mods, fns = _mocks()
+        spells_mod = MagicMock()
+        spells_mod.get_spell = MagicMock(side_effect=ValueError("unknown spell"))
+        abilities_mod = MagicMock()
+        abilities_mod.get_ability = MagicMock(side_effect=ValueError("unknown ability"))
+        variants_mod = MagicMock()
+        variant = MagicMock(ability_id="warrior_cleaving_blow")
+        variants_mod.get_mentor_variant = MagicMock(return_value=variant)
+
+        ctx, result = await _call(
+            "warrior_cleaving_blow_keldaran",
+            target_id="orc_1",
+            spells_mod=spells_mod,
+            abilities_mod=abilities_mod,
+            variants_mod=variants_mod,
+            **mods,
+        )
+
+        assert result == "ability-result"
+        fns["request_ability"].assert_awaited_once_with(
+            ctx,
+            "warrior_cleaving_blow",
+            variant_id="warrior_cleaving_blow_keldaran",
+            target_id="orc_1",
+            target_ids=None,
         )
 
 

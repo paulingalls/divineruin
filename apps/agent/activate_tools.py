@@ -10,9 +10,9 @@ Draethar's Inner Fire), so they are modeled as reserved id tokens (customer deci
 story) rather than special-cased arguments — ``activate`` stays a pure single-id verb.
 
 Resolution order is reserved-first, fail-loud, BEFORE any dispatch (§4/AC4): reserved tokens,
-then Veil Anchor item ids (``veil_ward.VEIL_ANCHORS``), then spell ids, then ability ids. Spell
-and ability ids are assumed disjoint (verified this story: 87 spells vs 145 abilities, no
-overlap) so trying spell-then-ability is unambiguous.
+then Veil Anchor item ids (``veil_ward.VEIL_ANCHORS``), spell ids, ability ids, and mentor-variant
+ids. The routed namespaces are pinned pairwise disjoint by a content test, so precedence is
+unambiguous.
 
 The dispatcher opens no transaction of its own — each target ``_impl`` still manages its own —
 but it DOES carry ``@db_tool`` like its five siblings. That decorator is error-handling, not
@@ -30,6 +30,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_tools
 import draethar_inner_fire
+import mentor_variants
 import spell_casting
 import spells
 import veil_anchor_tools
@@ -57,9 +58,10 @@ async def activate(
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
 
-    Pass the id of the thing being activated. For spells and abilities this is their content id
-    (e.g. 'firebolt', 'warrior_devastating_strike'); for a Veil Anchor it is the carried item's id
-    (e.g. 'veil_ward_anchor_small'). Three reserved tokens have no content id of their own:
+    Pass the id of the thing being activated. For spells, abilities, and learned mentor variants
+    this is their content id (e.g. 'firebolt', 'warrior_devastating_strike', or
+    'warrior_cleaving_blow_keldaran'); for a Veil Anchor it is the carried item's id (e.g.
+    'veil_ward_anchor_small'). Three reserved tokens have no content id of their own:
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
     triggers a Draethar's racial Inner Fire.
 
@@ -79,7 +81,7 @@ async def activate(
     return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids)
 
 
-def _resolve_kind(id: str, *, spells_mod, abilities_mod, anchors_mod) -> str:
+def _resolve_kind(id: str, *, spells_mod, abilities_mod, variants_mod, anchors_mod) -> str:
     """Pure classification: which _impl family this id belongs to. Fails loud before any
     dispatch when the id matches nothing (AC4)."""
     if id in _RESERVED:
@@ -96,6 +98,11 @@ def _resolve_kind(id: str, *, spells_mod, abilities_mod, anchors_mod) -> str:
         return "ability"
     except ValueError:
         pass
+    try:
+        variants_mod.get_mentor_variant(id)
+        return "variant"
+    except ValueError:
+        pass
     raise ToolError(f"'{id}' is not an activatable capability.")
 
 
@@ -107,6 +114,7 @@ async def _activate_impl(
     target_ids: list[str] | None = None,
     spells_mod=spells,
     abilities_mod=abilities,
+    variants_mod=mentor_variants,
     anchors_mod=veil_ward,
     cast_spell_mod=spell_casting,
     ability_mod=ability_tools,
@@ -116,7 +124,13 @@ async def _activate_impl(
 ) -> str:
     logger.info("activate called: id=%s", id)
 
-    kind = _resolve_kind(id, spells_mod=spells_mod, abilities_mod=abilities_mod, anchors_mod=anchors_mod)
+    kind = _resolve_kind(
+        id,
+        spells_mod=spells_mod,
+        abilities_mod=abilities_mod,
+        variants_mod=variants_mod,
+        anchors_mod=anchors_mod,
+    )
 
     if kind == _VEIL_WARD:
         return await ward_mod._activate_veil_ward_impl(context, active=True, caster_id=target_id)
@@ -128,4 +142,13 @@ async def _activate_impl(
         return await anchor_mod._deploy_veil_anchor_impl(context, id)
     if kind == "spell":
         return await cast_spell_mod._cast_spell_impl(context, id, target_id=target_id, target_ids=target_ids)
+    if kind == "variant":
+        variant = variants_mod.get_mentor_variant(id)
+        return await ability_mod._request_ability_activation_impl(
+            context,
+            variant.ability_id,
+            variant_id=id,
+            target_id=target_id,
+            target_ids=target_ids,
+        )
     return await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)
