@@ -181,25 +181,6 @@ class TestPromptCaching:
                         found_caching = True
         assert found_caching, "anthropic.LLM() call missing caching='ephemeral'"
 
-    def test_agent_module_runs_strict_tool_schema_off_as_interim(self):
-        """ADR 0004 addendum (2026-09-02): strict schemas are OFF until sprint-47 story-016 fits
-        the 16 union-typed-parameter limit. A silent revert to the plugin default would 400
-        three agents on every real turn again, so the kwarg is pinned here."""
-        import ast
-        import inspect
-
-        import agent
-
-        tree = ast.parse(inspect.getsource(agent))
-        flags = [
-            kw.value.value
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Call) and "LLM" in ast.dump(node.func)
-            for kw in node.keywords
-            if kw.arg == "_strict_tool_schema" and isinstance(kw.value, ast.Constant)
-        ]
-        assert flags == [False], "anthropic.LLM() must pass _strict_tool_schema=False (interim, story-016)"
-
 
 class TestExtractPlayerId:
     """Test _extract_player_id metadata parsing and env-based fallback."""

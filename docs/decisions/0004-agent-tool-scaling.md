@@ -1,6 +1,8 @@
 # ADR 0004 — Scaling agent tools past the strict-tool limit
 
-Status: **Accepted** (2026-05-20) — sprint-009 story-011
+Status: **Accepted** (2026-05-20) — sprint-009 story-011; **amended 2026-09-02** —
+the Decision below is suspended in production while strict schemas are interim-OFF
+(see the sprint-046 addendum at the end).
 Concerns: `4da5c6f4d298`
 
 ## Decision
