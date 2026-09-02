@@ -64,7 +64,8 @@ async def begin_activity(
     Pass kind to pick which activity, then only the params that activity needs:
 
     - kind='training': program_id (from query_info(kind="training_programs")).
-    - kind='companion_errand': companion_id, errand_type (scout|social|acquire|relationship),
+    - kind='companion_errand': companion_id (the player's ASSIGNED companion — any other id is
+      refused), errand_type (scout|social|acquire|relationship),
       destination.
     - kind='crafting': recipe_id (a recipe the player already knows).
     - kind='workspace': workspace_type (workshop|forge|laboratory), npc_id (renting from),

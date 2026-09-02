@@ -32,6 +32,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import errand_risk
+from companion_profiles import select_companion_for_archetype
 from errand_resolution import companion_errand_data, resolve_errand_outcome
 from session_data import SessionData
 from tool_support import _validate_id
@@ -65,6 +66,7 @@ async def _dispatch_companion_errand_impl(
     content_mod=db_content_queries,
     activity_mod=db_activity_queries,
     mutations_mod=db_mutations,
+    queries_mod=db_queries,
     risk_mod=errand_risk,
     now_fn=None,
     rng: random.Random | None = None,
@@ -75,10 +77,21 @@ async def _dispatch_companion_errand_impl(
     _validate_id(destination, "destination")
     session: SessionData = context.userdata
     player_id = session.player_id
+    # The errand is resolved for the ASSIGNED companion (errand_resolution.companion_errand_data,
+    # the same archetype rule session start hydrates), so the blocked_companions gate must be
+    # checked against that companion too — otherwise a caller naming Kael walks a Sable player
+    # past a rule that exists only to stop Sable, and the resolver renders an empty errand frame.
+    player = await queries_mod.get_player(player_id)
+    archetype_id = player.get("class") if player else None
+    if not archetype_id:
+        raise ToolError("Cannot dispatch an errand: the player has no class.")
+    assigned_id = select_companion_for_archetype(archetype_id)
+    if companion_id != assigned_id:
+        raise ToolError(f"{companion_id} is not this player's companion; the assigned companion is {assigned_id}.")
     logger.info(
         "dispatch_companion_errand: player=%s companion=%s errand=%s dest=%s",
         player_id,
-        companion_id,
+        assigned_id,
         errand_type,
         destination,
     )
@@ -88,8 +101,8 @@ async def _dispatch_companion_errand_impl(
         raise ToolError(f"Unknown errand kind: {errand_type}")
     if destination not in template["valid_destinations"]:
         raise ToolError(f"{destination} is not a valid destination for a {errand_type} errand.")
-    if companion_id in template["blocked_companions"]:
-        raise ToolError(f"{companion_id} cannot perform {errand_type} errands.")
+    if assigned_id in template["blocked_companions"]:
+        raise ToolError(f"{assigned_id} cannot perform {errand_type} errands.")
 
     location = await content_mod.get_location(destination)
     try:

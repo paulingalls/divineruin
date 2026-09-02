@@ -59,6 +59,13 @@ def _activity(companion_count=0):
     return mod
 
 
+def _queries(player_class="mage"):
+    # The assigned companion is derived from the player's class: mage -> Kael, beastcaller -> Sable.
+    mod = MagicMock()
+    mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": player_class})
+    return mod
+
+
 def _mutations(activity_id="activity_err123"):
     mod = MagicMock()
     mod.create_async_activity = AsyncMock(return_value=activity_id)
@@ -77,6 +84,7 @@ class TestDispatchCompanionErrand:
                 "scout",
                 "millhaven",
                 content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries(),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
                 now_fn=lambda: FIXED_NOW,
@@ -113,6 +121,7 @@ class TestDispatchCompanionErrand:
                 "scout",
                 "millhaven",
                 content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries(),
                 activity_mod=_activity(1),
                 mutations_mod=mutations,
             )
@@ -129,6 +138,7 @@ class TestDispatchCompanionErrand:
                 "nonsense",
                 "millhaven",
                 content_mod=_content(None, {"danger_level": 0}),
+                queries_mod=_queries(),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
             )
@@ -145,6 +155,7 @@ class TestDispatchCompanionErrand:
                 "scout",
                 "narnia",
                 content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries(),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
             )
@@ -154,13 +165,15 @@ class TestDispatchCompanionErrand:
     async def test_blocked_companion_raises(self):
         ctx = make_context()
         mutations = _mutations()
-        with pytest.raises(ToolError, match="companion_sable"):
+        # A beastcaller's assigned companion IS Sable, so the gate fires on the assigned id.
+        with pytest.raises(ToolError, match="companion_sable cannot perform social"):
             await _dispatch_companion_errand_impl(
                 ctx,
                 "companion_sable",
                 "social",
                 "millhaven",
                 content_mod=_content(SOCIAL_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries("beastcaller"),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
             )
@@ -178,6 +191,7 @@ class TestDispatchCompanionErrand:
                 "scout",
                 "millhaven",
                 content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 99}),
+                queries_mod=_queries(),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
             )
@@ -194,6 +208,7 @@ class TestDispatchCompanionErrand:
                 "relationship",
                 "greyvale_ruins_entrance",
                 content_mod=_content(RELATIONSHIP_AT_DANGER_TEMPLATE, {"danger_level": 2}),
+                queries_mod=_queries(),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
             )
@@ -213,3 +228,61 @@ class TestDispatchToolRegistration:
 
         assert begin_activity in DISPATCH_TOOLS
         assert resolve_activity in DISPATCH_TOOLS
+
+
+class TestDispatchGatesTheAssignedCompanion:
+    """The block rule is enforced against the companion the errand will actually resolve for.
+
+    Resolution derives the companion from the player's archetype (errand_resolution
+    .companion_errand_data); a caller-named companion that differs used to walk a Sable player
+    past a Sable-only block with no error and an empty errand frame downstream.
+    """
+
+    @pytest.mark.asyncio
+    async def test_caller_naming_kael_cannot_smuggle_sable_past_a_block(self):
+        ctx = make_context()
+        mutations = _mutations()
+        with pytest.raises(ToolError, match="assigned companion is companion_sable"):
+            await _dispatch_companion_errand_impl(
+                ctx,
+                "companion_kael",
+                "social",
+                "millhaven",
+                content_mod=_content(SOCIAL_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries("beastcaller"),
+                activity_mod=_activity(0),
+                mutations_mod=mutations,
+            )
+        mutations.create_async_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_mismatched_companion_is_refused_even_when_unblocked(self):
+        ctx = make_context()
+        with pytest.raises(ToolError, match="companion_lira is not this player's companion"):
+            await _dispatch_companion_errand_impl(
+                ctx,
+                "companion_lira",
+                "scout",
+                "millhaven",
+                content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=_queries("mage"),
+                activity_mod=_activity(0),
+                mutations_mod=_mutations(),
+            )
+
+    @pytest.mark.asyncio
+    async def test_player_without_class_fails_loud(self):
+        ctx = make_context()
+        queries = MagicMock()
+        queries.get_player = AsyncMock(return_value={"player_id": "player_1"})
+        with pytest.raises(ToolError, match="no class"):
+            await _dispatch_companion_errand_impl(
+                ctx,
+                "companion_kael",
+                "scout",
+                "millhaven",
+                content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
+                queries_mod=queries,
+                activity_mod=_activity(0),
+                mutations_mod=_mutations(),
+            )

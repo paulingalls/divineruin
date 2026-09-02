@@ -28,6 +28,14 @@ const skillExpert = { match: "FROM skill_advancement", result: [{ tier: "expert"
 // query bucketing on `data->>'slot'`, and the material check the only one with an
 // `item_id IN` clause — renaming an `AS` alias can't silently unmatch these.
 const slotsEmpty = { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 0 }] };
+// Errand dispatch derives the assigned companion from the player's class via the
+// companions catalog (data->'complements'); warrior -> Lira, beastcaller -> Sable.
+const companionLira = { match: "FROM companions", result: [{ id: "companion_lira" }] };
+const playerBeastcaller = {
+  match: "FROM players",
+  result: [{ location_id: "millhaven", class: "beastcaller" }],
+};
+const companionSable = { match: "FROM companions", result: [{ id: "companion_sable" }] };
 const slotsCraftingFull = {
   match: "data->>'slot'",
   result: [{ training: 0, crafting: 1, companion: 0 }],
@@ -200,6 +208,8 @@ describe("handleCreateActivity", () => {
     // status filter widening, the slot would falsely show 0 and let a second
     // errand dispatch through, breaking the 1-companion cap.
     setQueryStubs([
+      playerWarrior,
+      companionLira,
       { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 1 }] },
     ]);
 
@@ -438,7 +448,7 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates companion errand", async () => {
-    setQueryStubs([slotsEmpty]);
+    setQueryStubs([playerWarrior, companionLira, slotsEmpty]);
 
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",
@@ -476,18 +486,48 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Invalid destination");
   });
 
-  test("rejects errand when companion_sable does social", async () => {
+  test("rejects a social errand for a Sable-assigned player", async () => {
+    setQueryStubs([playerBeastcaller, companionSable, slotsEmpty]);
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",
-      parameters: {
-        errand_type: "social",
-        destination: "millhaven_inn",
-        companion_id: "companion_sable",
-      },
+      parameters: { errand_type: "social", destination: "millhaven_inn" },
     });
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("companion_sable");
+  });
+
+  test("a caller naming Kael cannot smuggle a Sable player past the social block", async () => {
+    // The old default (companion_id || "companion_kael") checked the block against Kael and
+    // let this through; resolution then ran as Sable with an empty errand frame.
+    setQueryStubs([playerBeastcaller, companionSable, slotsEmpty]);
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: {
+        errand_type: "social",
+        destination: "millhaven_inn",
+        companion_id: "companion_kael",
+      },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("assigned companion is companion_sable");
+  });
+
+  test("rejects an errand for a player with no class", async () => {
+    setQueryStubs([
+      { match: "FROM players", result: [{ location_id: "millhaven", class: null }] },
+      slotsEmpty,
+    ]);
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: { errand_type: "scout", destination: "millhaven" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("no class");
   });
 });
