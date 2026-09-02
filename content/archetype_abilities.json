@@ -47,7 +47,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit: reduce the damage by 1d6 + CON mod.",
-    "narration_cue": "Boots dig in, muscles lock, the blow glances off."
+    "narration_cue": "Boots dig in, muscles lock, the blow glances off.",
+    "window": "on_hit"
   },
   {
     "id": "warrior_opportunity_strike",
@@ -57,7 +58,8 @@
     "level_requirement": 6,
     "cost": { "stamina": 1, "focus": 0, "scaling": null },
     "effect": "Reaction when an enemy moves away: make a free melee attack.",
-    "narration_cue": "The enemy turns to flee and a blade catches them mid-step."
+    "narration_cue": "The enemy turns to flee and a blade catches them mid-step.",
+    "window": "on_enemy_move"
   },
   {
     "id": "warrior_cleaving_blow",
@@ -188,7 +190,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when an ally within 5 ft is hit: take the damage instead (your damage reductions apply).",
-    "narration_cue": "A body thrown into the path of the blow."
+    "narration_cue": "A body thrown into the path of the blow.",
+    "window": "on_ally_hit"
   },
   {
     "id": "guardian_retaliating_shield",
@@ -198,7 +201,8 @@
     "level_requirement": 6,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit by a melee attack: attacker takes 1d6 + STR mod. Requires shield.",
-    "narration_cue": "The shield rebounds, and the attacker grunts in pain."
+    "narration_cue": "The shield rebounds, and the attacker grunts in pain.",
+    "window": "on_hit"
   },
   {
     "id": "guardian_taunt",
@@ -329,7 +333,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when targeted by a melee attack: move 5 ft. If out of range, the attack auto-misses.",
-    "narration_cue": "A half-step aside, and the blade finds only air."
+    "narration_cue": "A half-step aside, and the blade finds only air.",
+    "window": "on_targeted"
   },
   {
     "id": "skirmisher_riposte",
@@ -339,7 +344,8 @@
     "level_requirement": 6,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when an enemy misses a melee attack: make a free melee attack against them.",
-    "narration_cue": "Their swing whiffs; your counter does not."
+    "narration_cue": "Their swing whiffs; your counter does not.",
+    "window": "on_enemy_miss"
   },
   {
     "id": "skirmisher_hamstring",
@@ -450,7 +456,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit by a visible attack: halve the damage.",
-    "narration_cue": "You twist with the blow, robbing it of force."
+    "narration_cue": "You twist with the blow, robbing it of force.",
+    "window": "on_hit"
   },
   {
     "id": "rogue_slippery",
@@ -460,7 +467,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction to a restrain/grapple effect: automatically escape.",
-    "narration_cue": "A shrug and a slither, and the hold is broken."
+    "narration_cue": "A shrug and a slither, and the hold is broken.",
+    "window": "on_condition_imposed"
   },
   {
     "id": "rogue_dirty_trick",
@@ -591,7 +599,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when accused/confronted: Deception. Success: the accuser doubts their evidence.",
-    "narration_cue": "A wounded, baffled look: surely you'd never."
+    "narration_cue": "A wounded, baffled look: surely you'd never.",
+    "window": "on_enemy_action"
   },
   {
     "id": "spy_slippery",
@@ -601,7 +610,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when restrained/grappled: automatically escape.",
-    "narration_cue": "A practiced twist, and the grip closes on nothing."
+    "narration_cue": "A practiced twist, and the grip closes on nothing.",
+    "window": "on_condition_imposed"
   },
   {
     "id": "spy_poison_craft",
@@ -702,7 +712,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Reaction: raise an arcane barrier against an incoming attack. The unarmored caster's lifeline.",
-    "narration_cue": "A shimmering disc of force flares into being just in time."
+    "narration_cue": "A shimmering disc of force flares into being just in time.",
+    "window": "on_targeted"
   },
   {
     "id": "mage_counterspell",
@@ -712,7 +723,8 @@
     "level_requirement": 3,
     "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Reaction: negate an enemy spell as it is cast. The Mage's anti-magic role.",
-    "narration_cue": "A sharp counter-word, and the enemy's magic unravels."
+    "narration_cue": "A sharp counter-word, and the enemy's magic unravels.",
+    "window": "on_spell_cast"
   },
 
   {
@@ -743,7 +755,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: skin hardens to bark, reducing an incoming hit. Druid survivability.",
-    "narration_cue": "Your skin roughens to ridged bark as the blow lands."
+    "narration_cue": "Your skin roughens to ridged bark as the blow lands.",
+    "window": "on_hit"
   },
   {
     "id": "druid_wild_shape",
@@ -784,7 +797,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked. Core divine protection.",
-    "narration_cue": "A faint halo of light wraps an ally as the strike comes."
+    "narration_cue": "A faint halo of light wraps an ally as the strike comes.",
+    "window": "on_ally_targeted"
   },
 
   {
@@ -908,7 +922,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: skin hardens to bark, reducing an incoming hit.",
-    "narration_cue": "Bark sheathes your skin in an instant of rough armor."
+    "narration_cue": "Bark sheathes your skin in an instant of rough armor.",
+    "window": "on_hit"
   },
 
   {
@@ -939,7 +954,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked.",
-    "narration_cue": "A whispered prayer and a faint shimmer guards an ally."
+    "narration_cue": "A whispered prayer and a faint shimmer guards an ally.",
+    "window": "on_ally_targeted"
   },
 
   {
@@ -983,7 +999,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Protective reaction: a discordant note disrupts an enemy. Bards disrupt, not block.",
-    "narration_cue": "A jarring, off-key whisper makes the foe flinch."
+    "narration_cue": "A jarring, off-key whisper makes the foe flinch.",
+    "window": "on_targeted"
   },
   {
     "id": "bard_countercharm",
@@ -993,7 +1010,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction when an ally is targeted by fear/charm: grant advantage on the save.",
-    "narration_cue": "A steadying melody cuts through the fear."
+    "narration_cue": "A steadying melody cuts through the fear.",
+    "window": "on_ally_targeted"
   },
   {
     "id": "bard_song_of_rest",
@@ -1082,7 +1100,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked. Shared divine protection.",
-    "narration_cue": "A radiant ward flares around your charge."
+    "narration_cue": "A radiant ward flares around your charge.",
+    "window": "on_ally_targeted"
   },
   {
     "id": "paladin_shield_bash",
@@ -1183,7 +1202,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Reaction when targeted by psychic damage or mind-reading: halve the damage or block the read.",
-    "narration_cue": "Your thoughts close like a shuttered window."
+    "narration_cue": "Your thoughts close like a shuttered window.",
+    "window": "on_targeted"
   },
   {
     "id": "whisper_implant_doubt",
@@ -1193,7 +1213,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction when an enemy succeeds an attack or ability: WIS save or they hesitate — reroll with disadvantage.",
-    "narration_cue": "A seed of doubt: was that really the right move?"
+    "narration_cue": "A seed of doubt: was that really the right move?",
+    "window": "on_enemy_action"
   },
 
   {
@@ -1245,7 +1266,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when an NPC is about to act against your wishes: Persuasion. Success: NPC hesitates 1 round. No effect on Hollow.",
-    "narration_cue": "A sharp 'Wait —' that gives the room pause."
+    "narration_cue": "A sharp 'Wait —' that gives the room pause.",
+    "window": "on_enemy_action"
   },
   {
     "id": "diplomat_countercharm",
@@ -1255,7 +1277,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Shared with Bard: ally vs fear/charm gains advantage on the save.",
-    "narration_cue": "Steady, reassuring words break the spell's grip."
+    "narration_cue": "Steady, reassuring words break the spell's grip.",
+    "window": "on_ally_targeted"
   },
   {
     "id": "diplomat_mediators_presence",
@@ -1386,7 +1409,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction when an ally is about to be hit: command them to dodge. +2 AC against that attack.",
-    "narration_cue": "'Duck!' and the blow sails over their head."
+    "narration_cue": "'Duck!' and the blow sails over their head.",
+    "window": "on_ally_targeted"
   },
   {
     "id": "marshal_countermand",
@@ -1396,7 +1420,8 @@
     "level_requirement": 5,
     "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Reaction when an enemy uses a command/leadership ability: contested CHA. Success: the enemy's command fails.",
-    "narration_cue": "Your voice cuts across theirs and their order dies."
+    "narration_cue": "Your voice cuts across theirs and their order dies.",
+    "window": "on_enemy_action"
   },
   {
     "id": "marshal_overwatch",

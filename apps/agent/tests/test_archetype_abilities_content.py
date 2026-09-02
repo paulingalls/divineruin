@@ -53,6 +53,20 @@ POOLS_L4_ONLY = {"bard", "paladin"}
 
 ABILITY_TYPES = {"core", "reaction", "elective"}
 
+# Closed vocabulary for a reaction ability's trigger window (story-001), mirroring
+# abilities.ReactionWindow.
+REACTION_WINDOWS = {
+    "on_hit",
+    "on_ally_hit",
+    "on_targeted",
+    "on_ally_targeted",
+    "on_enemy_miss",
+    "on_enemy_move",
+    "on_condition_imposed",
+    "on_spell_cast",
+    "on_enemy_action",
+}
+
 REQUIRED_KEYS = {
     "id",
     "archetype_id",
@@ -70,6 +84,10 @@ REQUIRED_KEYS = {
 # drift. effect/level/narration stay authored per-archetype. So these rows REPLACE
 # `cost` with `spell_id` and keep everything else.
 SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
+
+# A REACTION row (story-001) ADDS `window` to the required set — the closed-vocabulary
+# trigger event. Reaction rows are never spell-backed (spell-backed rows are always core).
+REACTION_KEYS = REQUIRED_KEYS | {"window"}
 
 # Optional producer fields (Python-agent-only — the TS server loader ignores them): a row that
 # grants a beneficial condition carries applies_condition (M4.8 story-005), and a multi-target
@@ -150,6 +168,13 @@ def test_each_row_required_keys_and_enums(rows):
             assert row["ability_type"] == "core", f"{rid} spell-backed rows must be ability_type=core"
             assert isinstance(row["spell_id"], str) and ID_RE.match(row["spell_id"]), (
                 f"{rid} spell_id {row['spell_id']!r} must be a well-formed catalog spell id"
+            )
+        elif row["ability_type"] == "reaction":
+            assert keys == REACTION_KEYS, (
+                f"{rid} reaction key mismatch: missing {REACTION_KEYS - keys}, extra {keys - REACTION_KEYS}"
+            )
+            assert row["window"] in REACTION_WINDOWS, (
+                f"{rid} window {row['window']!r} not in {sorted(REACTION_WINDOWS)}"
             )
         else:
             assert keys == REQUIRED_KEYS, (

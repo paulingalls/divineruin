@@ -1,11 +1,14 @@
 """Typed combat declaration model (M4.2, story-002).
 
-The spec's action economy is "one declaration per phase per participant" across six
-categories (gm_combat §Action Economy, L99-106). ``resolve_declaration`` is a PURE
-classify+validate function: it turns a raw declaration dict (what the DM emits into
-``declare_phase``) into a typed ``Declaration``, or raises ``ValueError`` on a bad
-shape. The pure-engine boundary raises ``ValueError``; the tool layer
-(``combat_turn``) translates it to ``ToolError`` (the established idiom).
+The spec's action economy is "one declaration per phase per participant" across the
+six categories in gm_combat §Action Economy (L99-106), plus REACTION (story-001) for
+out-of-turn reaction abilities. ``resolve_declaration`` turns a raw declaration dict
+(what the DM emits into ``declare_phase``) into a typed ``Declaration``, or raises
+``ValueError`` on a bad shape. It does no IO and mutates nothing, but it is not
+referentially transparent: a REACTION is checked against the loaded ability catalog
+(``abilities``), which must therefore be loaded before a phase declares. The
+pure-engine boundary raises ``ValueError``; the tool layer (``combat_turn``)
+translates it to ``ToolError`` (the established idiom).
 
 Resolution of each category lives downstream in orchestration: Attack resolves via
 ``check_resolution_attack.resolve_attack``; Defend's ``ac_bonus`` is applied as a phase-scoped
@@ -20,12 +23,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+import abilities
+
 # Defend grants +2 AC until the next phase (gm_combat:105).
 DEFEND_AC_BONUS = 2
 
 
 class DeclarationType(StrEnum):
-    """The six declaration categories. StrEnum so members serialize transparently and
+    """The seven declaration categories. StrEnum so members serialize transparently and
     compare equal to their wire strings."""
 
     ATTACK = "attack"
@@ -34,6 +39,7 @@ class DeclarationType(StrEnum):
     MANEUVER = "maneuver"
     DEFEND = "defend"
     RETREAT = "retreat"
+    REACTION = "reaction"
 
 
 @dataclass(frozen=True)
@@ -61,14 +67,21 @@ class Declaration:
     # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
     # not in this pure classifier. None for every non-de_escalate declaration.
     argument_type: str | None = None
+    # story-001: the trigger window a REACTION declaration is firing against (e.g. "on_hit"),
+    # validated against the abilities.REACTION_WINDOWS vocabulary but NOT cross-checked against
+    # the named ability's own `window` — that match is story-002's consumption-time job. None
+    # for every non-reaction declaration.
+    trigger: str | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
     """Classify and validate one raw declaration dict into a typed ``Declaration``.
 
-    Pure. Raises ``ValueError`` when ``type`` is missing/unknown or a category's
-    required fields are absent (Attack needs action+target_id; Ability/Interact need
-    action; Maneuver needs target_id; Defend/Retreat need neither).
+    Raises ``ValueError`` — and only ``ValueError``, the one exception the tool layer
+    translates — when ``type`` is missing/unknown or a category's required fields are
+    absent or malformed (Attack needs action+target_id;
+    Ability/Interact need action; Maneuver needs target_id; Defend/Retreat need neither;
+    Reaction needs a reaction-ability action + a trigger from the window vocabulary).
     """
     raw_type = raw.get("type")
     if not raw_type:
@@ -92,6 +105,28 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
+    elif decl_type is DeclarationType.REACTION:
+        if not action:
+            raise ValueError("reaction declaration requires an 'action'")
+        # get_ability keys a dict, so a non-string action from the LLM would raise an
+        # unhashable-type TypeError straight past the tool layer's ValueError translation.
+        if not isinstance(action, str):
+            raise ValueError(f"reaction declaration 'action' must be a string, got {type(action).__name__}")
+        trigger = raw.get("trigger")
+        if not trigger:
+            raise ValueError("reaction declaration requires a 'trigger'")
+        # The trigger names a window from the SAME closed vocabulary the ability rows use, so a
+        # prose trigger fails here rather than silently never matching at consumption (story-002).
+        # The isinstance guard comes first: an unhashable trigger would raise TypeError from the
+        # frozenset membership test, past the tool layer's ValueError translation.
+        if not isinstance(trigger, str) or trigger not in abilities.REACTION_WINDOWS:
+            raise ValueError(f"reaction declaration trigger {trigger!r} not in {sorted(abilities.REACTION_WINDOWS)}")
+        ability = abilities.get_ability(action)
+        if ability.ability_type != "reaction":
+            raise ValueError(
+                f"reaction declaration action {action!r} is not a reaction ability "
+                f"(ability_type={ability.ability_type!r})"
+            )
 
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
     return Declaration(
@@ -102,4 +137,5 @@ def resolve_declaration(raw: dict) -> Declaration:
         ac_bonus=ac_bonus,
         rider=raw.get("rider"),
         argument_type=raw.get("argument_type"),
+        trigger=raw.get("trigger"),
     )

@@ -1038,5 +1038,109 @@
     "effect": "In a settlement: learn 2 rumors (1 true, 1 partial) and who is asking about you. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
     "narration_cue": "The Drathian whisper network lands like a charging horse: raw, committed, final.",
     "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "bard_song_of_rest_thornwarden",
+    "ability_id": "bard_song_of_rest",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 0,
+      "focus": 4,
+      "scaling": null
+    },
+    "effect": "During a short rest: all allies regain an extra 1d8 HP. The support bard. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Song of Rest, Thornwarden-woven — the lullaby set like a snare of care, catching every ache before it settles.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "bard_song_of_rest_tidecaller",
+    "ability_id": "bard_song_of_rest",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 0,
+      "focus": 2,
+      "scaling": null
+    },
+    "effect": "During a short rest: all allies regain an extra 1d8 HP. The support bard. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Isles teach Song of Rest as tide-hush — a lull that rocks the wounded like water finding calm.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "bard_cutting_retort_drathian",
+    "ability_id": "bard_cutting_retort",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "When an enemy hits an ally: deal 1d6 psychic + target has disadvantage on next attack. The combat bard. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Cutting Retort loosed with a clansman's abandon — the words land like a shoulder-check, full weight behind them.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "bard_cutting_retort_keldaran",
+    "ability_id": "bard_cutting_retort",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "When an enemy hits an ally: deal 1d6 psychic + target has disadvantage on next attack. The combat bard. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran cutting retort: no wasted breath, the barb placed like a chisel finds the weak seam.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "bard_silver_tongue_keldaran",
+    "ability_id": "bard_silver_tongue",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 0,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Silver Tongue, Hold-forged — every word measured, the persuasion struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "bard_silver_tongue_thornwarden",
+    "ability_id": "bard_silver_tongue",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 0,
+      "focus": 3,
+      "scaling": null
+    },
+    "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's silver tongue: patient as rootwood, the right word held back until it lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "bard_mocking_flourish_drathian",
+    "ability_id": "bard_mocking_flourish",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "After an ally hits a target: deal 1d4 psychic and the target can't take reactions. The coordination bard. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Mocking Flourish, Drathian-loud — a taunt thrown with a clansman's full-bodied scorn.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "bard_mocking_flourish_tidecaller",
+    "ability_id": "bard_mocking_flourish",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 1,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "After an ally hits a target: deal 1d4 psychic and the target can't take reactions. The coordination bard. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Tidecaller mocking flourish: barbed laughter riding the current, sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
   }
 ]

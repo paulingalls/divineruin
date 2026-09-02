@@ -191,6 +191,27 @@ def stub_companion_hydrate_io():
         yield
 
 
+@pytest.fixture(autouse=True)
+def stub_creation_companion_grant():
+    """Default-stub finalize_character's creation-time companion grant (story-003).
+
+    finalize_character writes a companion_relationships row inside a broad `except Exception`,
+    so an UNMOCKED test does not fail — it quietly performs real I/O. With DATABASE_URL set (the
+    dev shell, and the `uv run pytest tests/<path>` inner loop this dir's CLAUDE.md endorses)
+    that leaves uncleaned `test_player` / `player_1` rows in the shared dev DB, against the
+    unique-keys-plus-cleanup rule for real-PG writes.
+
+    Global autouse for the same reason as stub_companion_hydrate_io above: the grant carries NO
+    semantics beyond "a row was inserted", so stubbing it everywhere masks nothing. A per-module
+    opt-in cannot hold — the hazard is silent, so a new module that forgets to opt in writes to
+    the dev DB with every test still green. Tests that ASSERT on the grant patch the same
+    attribute and nest over this one; tests that exercise the writer itself bind it by direct
+    import (tests/test_creation_companion_assignment.py) and are untouched.
+    """
+    with patch("db_mutations_companion.insert_companion_relationship_if_absent", new_callable=AsyncMock):
+        yield
+
+
 @pytest.fixture
 def stub_companion_errand_affinity_io():
     """Narrow, opt-in stub for the errand/worker companion-relationship DB calls (story-007).

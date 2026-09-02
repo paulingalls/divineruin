@@ -122,7 +122,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -191,7 +193,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -228,7 +232,9 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.db_mutations_skill_advancement.update_skill_advancement", new_callable=AsyncMock
+            ),
             patch(
                 "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -365,7 +371,7 @@ class TestMentorVariantCompletion:
         assert mock_advance.await_args.kwargs["activity_id"] == "train_var999"
         mock_unlock.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian", midpoint_decision_id="power")
         mock_delete.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian")
-        # The unlocked variant is made the active override on its base technique (data.ability_id).
+        # The unlocked variant becomes the activatable one for its base technique (data.ability_id).
         mock_activate.assert_awaited_once_with("player_1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian")
 
     @pytest.mark.asyncio

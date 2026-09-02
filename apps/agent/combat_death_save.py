@@ -78,6 +78,27 @@ async def _request_death_save_impl(
     mutations=db_mutations,
     db_mod=db,
 ) -> str:
+    """Serialise the death save on the session's combat-end lock, like resolve_phase and the
+    reaction spend.
+
+    This call snapshots the whole CombatState, awaits a transaction, then REBINDS
+    session.combat_state to the snapshot. Unlocked, any field another path committed on the live
+    state during that await is silently erased on adoption — a reaction spent through
+    ability_tools (which does hold this lock) has its resource deduction committed and its
+    reactions_available flag restored to True, so the player pays and keeps the reaction.
+    Not reentrant, and safe: no lock holder reaches this tool (only combat_agent's toolset does)."""
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _request_death_save_locked(context, player_id, mutations=mutations, db_mod=db_mod)
+
+
+async def _request_death_save_locked(
+    context: RunContext[SessionData],
+    player_id: str | None = None,
+    *,
+    mutations=db_mutations,
+    db_mod=db,
+) -> str:
     logger.info("request_death_save called")
     session: SessionData = context.userdata
 

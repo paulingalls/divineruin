@@ -15,3 +15,12 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    something is wrong; no fallback that masks a defect.
 5. **Test at boundaries** — validate at system edges (input, APIs, I/O); trust
    internal logic.
+6. **Name the producer.** A capability the DM invokes by id is not shipped
+   until something surfaces that id — a tool response, a prompt, or an event
+   payload. Twice in sprint-045 we shipped a gate keyed on a token nothing
+   produced: a reaction `window` the DM had to guess among 9, and a variant id
+   reachable only by a name no channel emits.
+7. **A cross-language AC names both sides.** Content and contracts are mirrored
+   in Python and TypeScript; a guard living on one side certifies nothing about
+   the other. Verify names both files, or the directory — never one file whose
+   tests a later split can silently narrow.

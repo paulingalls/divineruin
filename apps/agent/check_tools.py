@@ -22,6 +22,7 @@ import db
 import db_content_queries
 import db_mutations
 import db_mutations_conditions
+import db_mutations_skill_advancement
 import db_queries
 import dice
 import event_types as E
@@ -99,11 +100,12 @@ async def _check_impl(
     *,
     queries=db_queries,
     mutations=db_mutations,
+    skill_mutations=db_mutations_skill_advancement,
     content=db_content_queries,
 ) -> str:
     if mode == "skill":
         return await _check_skill_impl(
-            context, skill, difficulty, context_description, queries=queries, mutations=mutations
+            context, skill, difficulty, context_description, queries=queries, mutations=skill_mutations
         )
     if mode == "social":
         return await _check_social_impl(
@@ -127,7 +129,7 @@ async def _check_skill_impl(
     context_description: str,
     *,
     queries=db_queries,
-    mutations=db_mutations,
+    mutations=db_mutations_skill_advancement,
     db_mod=db,
     conditions_mutations=db_mutations_conditions,
 ) -> str:
@@ -349,7 +351,7 @@ async def _mark_skill_breakthrough_impl(
     context: RunContext[SessionData],
     skill: str,
     *,
-    mutations=db_mutations,
+    mutations=db_mutations_skill_advancement,
 ) -> str:
     session: SessionData = context.userdata
     skill_lower = skill.lower()

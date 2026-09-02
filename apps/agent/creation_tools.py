@@ -17,10 +17,12 @@ from livekit.agents.voice import RunContext
 
 import character_spells
 import db_mutations
+import db_mutations_companion
 import db_session_queries
 import event_types as E
 from archetypes import get_archetype_chassis
 from asset_utils import slug_asset_url
+from companion_profiles import select_companion_for_archetype
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
@@ -298,6 +300,15 @@ async def finalize_character(context: RunContext) -> str | tuple:
             await character_spells.record_learned(sd.player_id, spell_id, "training", is_prepared=True)
     except Exception:
         logger.exception("Failed to grant starting spells for %s", sd.player_id)
+
+    # Bind the starting companion (story-003): the one companion whose `complements` lists this
+    # archetype. Non-fatal for the same reason as the spell grant above — the character is
+    # already persisted, and a grant hiccup must not strand it companionless AND uncreated.
+    try:
+        companion_id = select_companion_for_archetype(cs.class_choice)
+        await db_mutations_companion.insert_companion_relationship_if_absent(sd.player_id, companion_id)
+    except Exception:
+        logger.exception("Failed to assign a starting companion for %s", sd.player_id)
 
     # Update session state
     sd.location_id = character_data["location_id"]

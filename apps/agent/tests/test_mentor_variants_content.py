@@ -17,9 +17,10 @@ from npcs import get_npc_sync
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
 
-# Closed set (story-001): 40 martial elective techniques x 2 cultural variants.
-_VARIANT_COUNT = 80
-_MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy"}
+# Closed set (story-001, extended story-006): 44 martial elective techniques x 2
+# cultural variants.
+_VARIANT_COUNT = 88
+_MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy", "bard"}
 
 
 def _load(name: str) -> list[dict]:
@@ -30,7 +31,7 @@ def _variants() -> list[dict]:
     return _load("mentor_variants.json")
 
 
-def test_exactly_80_entries_each_parses():
+def test_exact_entry_count_and_every_row_parses():
     rows = _variants()
     assert len(rows) == _VARIANT_COUNT
     for row in rows:
@@ -38,7 +39,7 @@ def test_exactly_80_entries_each_parses():
 
 
 def test_ids_are_unique():
-    # Seed upserts by id, so a duplicate id silently seeds <80 distinct DB rows
+    # Seed upserts by id, so a duplicate id silently seeds fewer distinct DB rows
     # while the count and 2-per-technique checks still pass. Pin uniqueness here.
     ids = [row["id"] for row in _variants()]
     dupes = {i: n for i, n in Counter(ids).items() if n > 1}
@@ -64,7 +65,7 @@ def test_every_mentor_id_is_an_existing_npc():
 
 def test_every_martial_elective_has_exactly_two_variants():
     counts = Counter(parse_mentor_variant_row(r["id"], r).ability_id for r in _variants())
-    assert len(counts) == 40
+    assert len(counts) == 44
     offenders = {ability: n for ability, n in counts.items() if n != 2}
     assert not offenders, f"expected 2 variants per technique, got {offenders}"
 
@@ -81,6 +82,68 @@ def test_variant_effect_contains_base_ability_effect():
         assert base["effect"] in variant.effect, (
             f"{variant.id}: base effect not contained in variant effect — stale copy after a base edit?"
         )
+
+
+# Each culture prices a variant by a fixed delta on its base technique's cost — the
+# mechanical half of the cultural identity the effect suffix states in words: Drathian spends
+# more body, Keldaran trades body for control, Thornwarden buys precision, Tidecaller
+# discounts. A base with no stamina left to spend (bard's two 0-stamina electives) takes the
+# stamina half of the delta on focus instead, so the culture still prices in its own direction.
+_CULTURE_COST_DELTA = {
+    "Drathian Clans technique": (1, 0),
+    "Keldaran Holds technique": (-1, 1),
+    "Thornwardens technique": (0, 1),
+    "Tidecallers technique": (-1, 0),
+}
+
+
+def _expected_cost(base: dict, culture: str) -> tuple[int, int]:
+    d_stamina, d_focus = _CULTURE_COST_DELTA[culture]  # KeyError = an unpriced new culture
+    stamina, focus = base["stamina"], base["focus"]
+    if stamina + d_stamina < 0:
+        # No body left to trade: the stamina discount moves onto focus, and the focus SURCHARGE
+        # it was buying goes with it — a trade with nothing to fund is not a trade. Keeping both
+        # halves would cancel to zero and price the variant IDENTICALLY to its base, which is a
+        # variant that is not one; the guard would then demand exactly that. It did, and
+        # bard_silver_tongue_keldaran shipped at the base cost with this file green.
+        d_focus = min(d_focus, 0) + d_stamina
+        d_stamina = 0
+    return stamina + d_stamina, focus + d_focus
+
+
+def test_variant_cost_follows_its_culture_delta():
+    """A variant's cost must move in the direction its own effect text claims (story-006).
+
+    Nothing else binds the two: a row can read "Keldaran discipline trades raw power for
+    flawless control" while charging MORE stamina and LESS focus, and every other guard stays
+    green. Three of the bard rows did exactly that before this test existed."""
+    abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
+    offenders = {}
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        base = abilities[variant.ability_id]["cost"]
+        expected = _expected_cost(base, variant.cultural_attribution)
+        actual = (variant.cost.stamina, variant.cost.focus)
+        if actual != expected:
+            offenders[variant.id] = f"(stamina, focus) {actual}, expected {expected}"
+    assert not offenders, f"variant costs must follow their culture's delta: {offenders}"
+
+
+def test_no_variant_costs_exactly_its_base():
+    """Independent of the delta table: a variant priced identically to its base is not a variant.
+
+    story-004 made base and variant separately activatable, so the player's choice between them
+    is only real when they cost differently. Kept separate from the delta guard on purpose —
+    _expected_cost's zero-stamina clamp can DEGENERATE to the base cost and then demand it, so
+    the delta guard cannot be the thing that catches this."""
+    abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
+    offenders = {}
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        base = abilities[variant.ability_id]["cost"]
+        if (variant.cost.stamina, variant.cost.focus) == (base["stamina"], base["focus"]):
+            offenders[variant.id] = (base["stamina"], base["focus"])
+    assert not offenders, f"variants costing exactly their base offer the player no choice: {offenders}"
 
 
 def test_each_culture_is_taught_by_exactly_one_mentor():

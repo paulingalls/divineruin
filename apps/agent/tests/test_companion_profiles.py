@@ -20,6 +20,7 @@ from companion_profiles import (
     is_loaded,
     load_companion_profiles,
     parse_companion_row,
+    select_companion_for_archetype,
     set_companion_profiles,
 )
 from companion_scaling import (
@@ -51,6 +52,17 @@ class TestParse:
         for e in _RAW:
             c = parse_companion_row(e["id"], e)
             assert len(c.save_proficiencies) == 2
+
+    def test_ability_bucket_cardinality(self):
+        """M6.4 spec floor/ceiling per companion. The TS twin (companion.test.ts) pins the same
+        numbers, but no test the card's Verify runs did — Sable's second attack could be reverted
+        with the whole Python gate still green."""
+        for e in _RAW:
+            c = parse_companion_row(e["id"], e)
+            assert 2 <= len(c.attacks) <= 4, f"{c.id} attacks"
+            assert 2 <= len(c.passives) <= 3, f"{c.id} passives"
+            assert 2 <= len(c.actives) <= 3, f"{c.id} actives"
+            assert len(c.reactions) <= 1, f"{c.id} reactions"
 
     def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
@@ -204,8 +216,9 @@ class TestActionPool:
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt is type=ranged -> top-level ranged:True. hit "INT+prof" -> governing INT
-        # (the resolver uses INT, NOT the ranged-default DEX). damage strips +INT.
+        # Arcane Bolt and Radiant Mote are both type=ranged -> top-level ranged:True.
+        # hit "INT+prof" -> governing INT (the resolver uses INT, NOT the ranged-default
+        # DEX). damage strips +INT.
         assert pool == [
             {
                 "name": "Arcane Bolt",
@@ -214,7 +227,15 @@ class TestActionPool:
                 "properties": [],
                 "governing_attribute": "intelligence",
                 "ranged": True,
-            }
+            },
+            {
+                "name": "Radiant Mote",
+                "damage": "1d4",
+                "damage_type": "radiant",
+                "properties": [],
+                "governing_attribute": "intelligence",
+                "ranged": True,
+            },
         ]
 
     def test_tam_mixed_melee_and_ranged(self):
@@ -287,3 +308,50 @@ class TestLoader:
         monkeypatch.setattr(db, "get_pool", _fake_get_pool)
         await load_companion_profiles()
         assert {c for c in _IDS} <= set(companion_profiles._companion_profiles.keys())
+
+
+# --- archetype -> companion assignment (story-003) -----------------------------
+
+_ARCHETYPES_PATH = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
+_ARCHETYPE_IDS = sorted(e["id"] for e in json.loads(_ARCHETYPES_PATH.read_text()))
+
+# Derived from the content, never restated by hand: {archetype_id: companion_id}.
+_EXPECTED = {a: e["id"] for e in _RAW for a in e["complements"]}
+
+
+def _catalog_with(complements_by_id: dict[str, list[str]]) -> dict[str, Companion]:
+    """Fixture catalog with the given companions' `complements` overridden."""
+    return {
+        e["id"]: parse_companion_row(e["id"], {**e, "complements": complements_by_id.get(e["id"], e["complements"])})
+        for e in _RAW
+    }
+
+
+class TestSelectCompanionForArchetype:
+    def test_complements_partition_the_archetypes(self):
+        # The AC2 content guard: every archetype covered, none covered twice. Reds the day a
+        # 19th archetype ships uncovered, or an id is copied into a second companion.
+        listed = [a for e in _RAW for a in e["complements"]]
+        assert sorted(listed) == _ARCHETYPE_IDS
+        assert len(listed) == len(set(listed))
+
+    @pytest.mark.parametrize("archetype_id", _ARCHETYPE_IDS)
+    def test_every_archetype_selects_its_one_companion(self, archetype_id):
+        assert select_companion_for_archetype(archetype_id) == _EXPECTED[archetype_id]
+
+    def test_zero_match_fails_loud(self):
+        kael = [a for a in _row("companion_kael")["complements"] if a != "mage"]
+        set_companion_profiles(_catalog_with({"companion_kael": kael}))
+        with pytest.raises(ValueError, match="mage"):
+            select_companion_for_archetype("mage")
+
+    def test_multi_match_fails_loud(self):
+        lira = [*_row("companion_lira")["complements"], "mage"]
+        set_companion_profiles(_catalog_with({"companion_lira": lira}))
+        with pytest.raises(ValueError, match="mage") as exc:
+            select_companion_for_archetype("mage")
+        assert "companion_kael" in str(exc.value) and "companion_lira" in str(exc.value)
+
+    def test_unknown_archetype_fails_loud(self):
+        with pytest.raises(ValueError, match="necromancer"):
+            select_companion_for_archetype("necromancer")

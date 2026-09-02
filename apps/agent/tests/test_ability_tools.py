@@ -10,13 +10,15 @@ free activation — its scaling rule is surfaced as variable_cost for the DM.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 from ability_tools import _request_ability_activation_impl
+from combat_phase import PhaseBeat
 
 
 def _player(stamina: int = 10, focus: int = 10, class_: str = "paladin") -> dict:
@@ -37,6 +39,8 @@ async def _call(
     focus: int = 10,
     player: dict | None = None,
     owns_elective: bool = False,
+    context=None,
+    persistence=None,
 ):
     """Invoke the impl with mock db/queries/persistence. Returns (parsed_result, persistence_mock).
 
@@ -46,7 +50,7 @@ async def _call(
     (warrior_*/cleric_*/paladin_*). owns_elective is stubbed (unused on the core path)
     and only consulted for elective abilities.
     """
-    ctx = make_context()
+    ctx = context or make_context()
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     default_player = _player(stamina, focus, class_=ability_id.split("_")[0])
@@ -54,8 +58,9 @@ async def _call(
     # story-008: the caster row now comes from the id-ordered get_players_for_update batch (was a
     # single caster get_player FOR UPDATE). These self-cast cases lock only the caster.
     queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})
-    persistence = MagicMock()
-    persistence.update_player_resources = AsyncMock()
+    if persistence is None:
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
     # These tests exercise the base (no active variant) path; the override path has its
     # own suite in test_ability_variant_override.py.
     persistence.get_active_variant = AsyncMock(return_value=None)
@@ -64,6 +69,22 @@ async def _call(
         ctx, ability_id, db_mod=mock_db, queries_mod=queries, persistence_mod=persistence
     )
     return json.loads(raw), persistence
+
+
+def _reaction_context(*, trigger="on_enemy_move", beat=PhaseBeat.RESOLUTION):
+    ctx = make_context()
+    state = _make_combat_state()
+    state.beat = beat
+    state.pending_declarations = {
+        "player_1": {
+            "type": "reaction",
+            "action": "warrior_opportunity_strike",
+            "trigger": trigger,
+        }
+    }
+    state.reactions_available = {"player_1": True}
+    ctx.userdata.combat_state = state
+    return ctx
 
 
 class TestVariableCost:
@@ -93,12 +114,89 @@ class TestActivation:
         assert kwargs["stamina"] == 7  # 10 - 3
         assert kwargs["focus"] is None  # focus uncosted -> not written (partial-pool safe)
 
-    async def test_reaction_ability_deducts_and_returns_cue(self):
-        # warrior_opportunity_strike: reaction, stamina 1 (combat-window gating deferred to Phase 4).
-        result, persistence = await _call("warrior_opportunity_strike", stamina=5)
+    async def test_reaction_deducts_under_lock_and_adopts_in_memory_spend(self):
+        ctx = _reaction_context()
+        persistence = MagicMock()
+
+        async def assert_locked(*args, **kwargs):
+            assert ctx.userdata.combat_end_lock.locked()
+
+        persistence.update_player_resources = AsyncMock(side_effect=assert_locked)
+        save_combat_state = AsyncMock()
+        with patch("db_mutations.save_combat_state", save_combat_state):
+            result, persistence = await _call(
+                "warrior_opportunity_strike", stamina=5, context=ctx, persistence=persistence
+            )
+
         assert result["deducted"]["stamina"] == 1
         assert result["narration_cue"]
         persistence.update_player_resources.assert_awaited_once()
+        assert ctx.userdata.combat_state.reactions_available["player_1"] is False
+        save_combat_state.assert_not_called()
+
+    async def test_second_reaction_is_refused_before_resource_write(self):
+        ctx = _reaction_context()
+        await _call("warrior_opportunity_strike", context=ctx)
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="already spent"):
+            await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
+
+        persistence.update_player_resources.assert_not_called()
+
+    async def test_mismatched_reaction_window_is_refused_before_resource_write(self):
+        ctx = _reaction_context(trigger="on_hit")
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match=r"does not match.*on_enemy_move"):
+            await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
+
+        persistence.update_player_resources.assert_not_called()
+
+    async def test_reaction_outside_resolution_is_refused_before_resource_write(self):
+        ctx = _reaction_context(beat=PhaseBeat.NARRATION)
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="resolution beat"):
+            await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
+
+        persistence.update_player_resources.assert_not_called()
+
+    async def test_reaction_refused_by_cost_does_not_burn_the_round_s_reaction(self):
+        """The spend is recorded only AFTER the activation succeeds, so a refusal costs nothing.
+
+        Ordering-sensitive and otherwise unpinned: recording the spend before the resource gate
+        (which the module docstring once described) leaves a player who could not afford the
+        reaction with no reaction for the round either -- refused AND charged."""
+        ctx = _reaction_context()
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="Not enough Stamina"):
+            await _call("warrior_opportunity_strike", stamina=0, context=ctx, persistence=persistence)
+
+        assert ctx.userdata.combat_state.reactions_available["player_1"] is True
+        persistence.update_player_resources.assert_not_called()
+
+    async def test_reaction_outside_combat_activates_ungated(self):
+        """OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01).
+
+        An earlier shape refused every reaction whose session had no combat_state, which DELETED
+        shipped behaviour: spy_plausible_deniability ("Reaction when accused/confronted") and
+        diplomat_objection ("when an NPC is about to act against your wishes") fire outside a fight
+        by their own effect text. There is no reaction budget outside combat, so ungated here is the
+        pre-story status quo. Fault-injection: restoring the combat_state guard reds this.
+        """
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        result, _ = await _call("warrior_opportunity_strike", persistence=persistence)
+
+        assert result["narration_cue"]
+        persistence.update_player_resources.assert_awaited()
 
 
 class TestRejection:

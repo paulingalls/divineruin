@@ -7,9 +7,8 @@ real-Postgres E2E letter — deferred from stories 001/002/003 per ADR 0003 — 
 - **message_event** (Python agent path): against one seeded Postgres testcontainer,
   learn(variant) initiates a mentor-training loop (story-002), the loop accrues
   cycles and unlocks only on the final cycle, the unlocked variant becomes the active
-  override on its base technique (story-003), and activation then deducts the
-  VARIANT's cost (not the base) and surfaces the variant narration_cue +
-  cultural_attribution — all against real rows. Training is driven via
+  learned form, and activating its variant id deducts the variant cost and surfaces
+  its narration_cue + cultural_attribution while the base id remains unchanged — all against real rows. Training is driven via
   advance_learning_cycle directly (not the async worker) to avoid the worker's
   TTS/LLM coupling, mirroring the M8 spell capstone.
 - **http_websocket** (TS server path): the Bun server boots bound to the SAME
@@ -19,7 +18,7 @@ real-Postgres E2E letter — deferred from stories 001/002/003 per ADR 0003 — 
 
 Content fixtures (seeded from content/): base warrior_cleaving_blow costs stamina 4;
 its Drathian variant costs stamina 5; its Keldaran variant costs stamina 3 + focus 1 —
-three distinct cost shapes make the override + replace assertions unambiguous.
+three distinct cost shapes make the selection + replacement assertions unambiguous.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ from sample_fixtures import make_context
 
 import abilities
 import ability_persistence
-import ability_tools
+import activate_tools
 import db
 import db_queries
 import mentor_variant_progress
@@ -65,8 +64,8 @@ async def _load_catalogs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_variant_train_unlock_activate_override(reset_db_pool: str) -> None:
-    """The headline E2E: learn(variant) -> accrue 3 cycles -> unlock -> activate overrides base."""
+async def test_variant_train_unlock_activate_by_variant_id(reset_db_pool: str) -> None:
+    """The headline E2E: learn -> accrue three cycles -> unlock -> activate the variant id."""
     pool = await db.get_pool()
     pid = "cap_m9_train"
     await seed_warrior_owning_base(pool, pid, _BASE)
@@ -99,9 +98,7 @@ async def test_variant_train_unlock_activate_override(reset_db_pool: str) -> Non
     assert await mentor_variant_progress.is_unlocked(pid, _DRATHIAN, conn=pool) is True
     assert await ability_persistence.get_active_variant(pid, _BASE, conn=pool) == _DRATHIAN
 
-    # Activation now overrides the base technique: variant cost (stamina 5, not base 4),
-    # variant narration_cue + cultural_attribution + effect.
-    raw = await ability_tools._request_ability_activation_impl(make_context(player_id=pid), _BASE)
+    raw = await activate_tools._activate_impl(make_context(player_id=pid), _DRATHIAN)
     result = json.loads(raw)
     variant = mentor_variants.get_variant(_BASE, _DRATHIAN)
     assert result["deducted"] == {"stamina": 5, "focus": 0}
@@ -115,23 +112,30 @@ async def test_variant_train_unlock_activate_override(reset_db_pool: str) -> Non
 
 
 @pytest.mark.asyncio
-async def test_base_activation_unchanged_without_active_variant(reset_db_pool: str) -> None:
-    """AC2: with no active variant, activation uses the base cost/cue and no override fields."""
+async def test_base_activation_unchanged_with_active_focus_variant(reset_db_pool: str) -> None:
+    """The base stays affordable without Focus after learning a Focus-costing variant."""
     pool = await db.get_pool()
     pid = "cap_m9_base"
     await seed_warrior_owning_base(pool, pid, _BASE)
     await _load_catalogs()
+    await mentor_variant_progress.record_unlocked(pid, _KELDARAN, conn=pool)
+    await ability_persistence.set_active_variant(pid, _BASE, _KELDARAN, conn=pool)
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{focus,current}', '0') WHERE player_id = $1",
+        pid,
+    )
 
-    raw = await ability_tools._request_ability_activation_impl(make_context(player_id=pid), _BASE)
+    raw = await activate_tools._activate_impl(make_context(player_id=pid), _BASE)
     result = json.loads(raw)
     base = abilities.get_ability(_BASE)
-    assert result["deducted"] == {"stamina": 4, "focus": 0}  # base cost, not a variant
+    assert result["deducted"] == {"stamina": 4, "focus": 0}
     assert result["narration_cue"] == base.narration_cue
+    assert result["effect"] == base.effect
     assert "cultural_attribution" not in result
-    assert "effect" not in result
 
     player = await db_queries.get_player(pid)
-    assert player is not None and player["stamina"]["current"] == 6  # 10 - 4 base
+    assert player is not None
+    assert player["stamina"]["current"] == 6 and player["focus"]["current"] == 0
 
 
 @pytest.mark.asyncio
@@ -142,10 +146,9 @@ async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
     await seed_warrior_owning_base(pool, pid, _BASE)
     await _load_catalogs()
 
-    # First variant active: activation deducts the Drathian cost (stamina 5).
     await mentor_variant_progress.record_unlocked(pid, _DRATHIAN, conn=pool)
     await ability_persistence.set_active_variant(pid, _BASE, _DRATHIAN, conn=pool)
-    first = json.loads(await ability_tools._request_ability_activation_impl(make_context(player_id=pid), _BASE))
+    first = json.loads(await activate_tools._activate_impl(make_context(player_id=pid), _DRATHIAN))
     assert first["deducted"] == {"stamina": 5, "focus": 0}
 
     # Unlock + activate a second variant for the SAME technique — it replaces, not duplicates.
@@ -165,7 +168,7 @@ async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
         "WHERE player_id = $1",
         pid,
     )
-    second = json.loads(await ability_tools._request_ability_activation_impl(make_context(player_id=pid), _BASE))
+    second = json.loads(await activate_tools._activate_impl(make_context(player_id=pid), _KELDARAN))
     assert second["deducted"] == {"stamina": 3, "focus": 1}
     assert second["cultural_attribution"] == "Keldaran Holds technique"
     player = await db_queries.get_player(pid)
@@ -179,7 +182,7 @@ async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
 def test_server_boots_with_mentor_variants_loaded_from_real_db(capstone_server: dict[str, str]) -> None:
     # The fixture only yields after the Bun server reaches ready; its startup Promise.all runs
     # loadMentorVariants() (story-001) against the seeded testcontainer, so a served response proves
-    # all 80 variants parsed without failing boot — a malformed/missing row would crash
+    # every variant parsed without failing boot — a malformed/missing row would crash
     # parseMentorVariantRow first (the cross-language parity letter for the M9 catalog).
     response = httpx.get(capstone_server["base_url"], timeout=5.0)
     assert response.status_code < 500

@@ -1,6 +1,8 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
-# codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
+codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
+#                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
+#                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 # trunk: develop       # UNCOMMENT where releases do NOT land on git's DEFAULT branch;
 #                      # they land and tag here, any develop -> main cut stays yours
 # lifecycle_command: ./scripts/xp-lifecycle "fixed value"  # argv prefix, no shell
@@ -17,7 +19,7 @@ constraints_chars_cap: 4500  # hard character ceiling; retire or shorten a rule
 
 roles:               # harness/model[/effort]; the lead overrides per story in plan.md
   lead: claude/opus
-  executor: claude/sonnet/medium
+  executor: codex/gpt-5.6-sol/high
   reviewer: claude/opus
   plan-reviewer: claude/opus   # scripts/plan_review.py; a teammate runs it itself
   finder: claude/opus     # the four round-1 stages of `close.py sprint <id> review`;

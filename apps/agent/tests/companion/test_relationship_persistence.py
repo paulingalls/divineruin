@@ -2,8 +2,8 @@
 (M6.4 / story-003).
 
 Exercises the REAL companion_relationship_queries functions against a patched DB layer
-(db_queries.get_companion_relationship, db_mutations.upsert_companion_relationship for hydration,
-and the atomic db_mutations.bump_companion_affinity / cache_companion_tier for the errand nudge),
+(db_queries.get_companion_relationship, db_mutations_companion.upsert_companion_relationship for hydration,
+and the atomic db_mutations_companion.bump_companion_affinity / cache_companion_tier for the errand nudge),
 so no live DB is needed. The pure tier math is covered in tests/test_companion_relationship.py.
 """
 
@@ -27,7 +27,7 @@ def _patch_db(row):
     """Patch the DB layer: get returns `row`; upsert is an AsyncMock recording its calls."""
     get_p = patch.object(crq, "get_companion_relationship", new_callable=AsyncMock, return_value=row)
     upsert = AsyncMock()
-    up_p = patch.object(crq.db_mutations, "upsert_companion_relationship", upsert)
+    up_p = patch.object(crq.db_mutations_companion, "upsert_companion_relationship", upsert)
     return get_p, up_p, upsert
 
 
@@ -81,8 +81,8 @@ def _patch_affinity(*, bump_returns):
     bump = AsyncMock(return_value=bump_returns)
     cache = AsyncMock()
     return (
-        patch.object(crq.db_mutations, "bump_companion_affinity", bump),
-        patch.object(crq.db_mutations, "cache_companion_tier", cache),
+        patch.object(crq.db_mutations_companion, "bump_companion_affinity", bump),
+        patch.object(crq.db_mutations_companion, "cache_companion_tier", cache),
         bump,
         cache,
     )

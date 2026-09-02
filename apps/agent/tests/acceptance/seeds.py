@@ -114,7 +114,7 @@ async def seed_warrior_owning_base(
     """Seed a warrior with Stamina/Focus pools who already owns ``base_ability_id``.
 
     The own-the-base gate (story-006) requires a character_abilities row for the base
-    elective before a variant of it can be trained or its override activated — so the
+    elective before a variant of it can be trained or activated by its variant id — so the
     warrior must own the base, not just have the pools. Shared by the M9 and M6.3
     mentor-variant capstones, which all train/activate a variant of an owned base.
     """
