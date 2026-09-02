@@ -2,38 +2,9 @@
 
 from unittest.mock import AsyncMock, patch
 
+from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
+
 from warm_prompts import build_full_prompt, build_warm_layer
-
-SAMPLE_LOCATION = {
-    "id": "accord_guild_hall",
-    "name": "Guild Hall",
-    "description": "Heavy oak doors open onto a hall.",
-    "atmosphere": "busy, purposeful",
-    "key_features": ["the main counter"],
-    "hidden_elements": [],
-    "exits": {"south": {"destination": "accord_market_square"}},
-    "tags": ["guild"],
-    "conditions": {},
-}
-
-SAMPLE_NPC_RAW = {
-    "id": "guildmaster_torin",
-    "name": "Guildmaster Torin",
-    "role": "guild hall master",
-    "default_disposition": "neutral",
-    "voice_notes": "deep baritone",
-    "schedule": {"07:00-22:00": "accord_guild_hall"},
-}
-
-SAMPLE_QUEST = {
-    "quest_id": "greyvale_anomaly",
-    "quest_name": "The Greyvale Anomaly",
-    "current_stage": 1,
-    "stages": [
-        {"id": 0, "objective": "Investigate the strange lights."},
-        {"id": 1, "objective": "Find the source of the anomaly."},
-    ],
-}
 
 
 class TestRegionTypeWarmLayer:

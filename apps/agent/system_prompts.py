@@ -244,10 +244,17 @@ def build_companion_prompt(companion_id: str, player_level: int) -> str:
     profile = get_companion_profile(companion_id)
     personality = "\n".join(f"- {trait}" for trait in profile.personality)
     mannerisms = "\n".join(f"- {mannerism}" for mannerism in profile.mannerisms)
-    progression = "\n".join(
+    gains = progression_gains_up_to(profile, player_level)
+    progression_lines = "\n".join(
         f"- Level {milestone.level}: {milestone.gains}"
         + (" — DM: once per session; you track it" if milestone.level == 20 else "")
-        for milestone in progression_gains_up_to(profile, player_level)
+        for milestone in gains
+    )
+    # Below the first gain (L3 for Tam, L5 for the rest) this section is EMPTY, and a labelled
+    # section with nothing under it reads to the model as "this companion has no progression".
+    # Every character starts at level 1, so that is the common case, not an edge.
+    progression_section = (
+        f"\n\nProgression gains unlocked at player level {player_level}:\n{progression_lines}" if gains else ""
     )
 
     if profile.non_verbal:
@@ -279,10 +286,7 @@ Personality:
 {personality}
 
 Mannerisms:
-{mannerisms}
-
-Progression gains unlocked at player level {player_level}:
-{progression}
+{mannerisms}{progression_section}
 
 When unconscious, generate no companion dialogue or intentional vocalization. The silence is the design.
 

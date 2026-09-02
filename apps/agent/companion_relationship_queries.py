@@ -51,7 +51,7 @@ async def hydrate_companion_state(
     companion_id: str,
     name: str,
     *,
-    player_level: int = 1,
+    player_level: int,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> CompanionState:
     """Build a CompanionState for a FRESH session: load persisted state, increment session_count
@@ -60,6 +60,10 @@ async def hydrate_companion_state(
     Reconnects do NOT call this (the in-memory CompanionState is reused), so session_count is
     incremented exactly once per session. The caller sets transient fields (e.g. last_speech_time).
     DRY helper shared by agent.py and onboarding_tools.py.
+
+    ``player_level`` has no default on purpose: it is the ONLY input to the prompt's companion
+    progression filter, and a defaulted 1 would hide every gain from a level-20 player silently
+    (constraint 4) rather than failing at the call site.
     """
     rel = await get_companion_relationship(player_id, companion_id, conn=conn)
     affinity = rel["affinity"] if rel else 0

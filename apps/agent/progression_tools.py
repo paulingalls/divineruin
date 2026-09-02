@@ -121,11 +121,17 @@ async def _award_xp_core(
                 legendary = next((gain for gain in companion.progression if gain.level == 20), None)
                 if legendary is None:
                     raise ValueError(f"Companion {companion.id!r} has no L20 progression gain")
+                # A non-verbal companion (Sable) has a REGISTERED voice id, so "voice her gain"
+                # would make the DM emit a dialogue tag and TTS would speak a character whose
+                # whole design is silence. Her gain is narrated in the DM voice instead.
+                cue_verb = "Narrate" if companion.non_verbal else "Voice"
                 milestone_grants.append(
                     {
                         "name": f"{companion.name} — Legendary Companion",
                         "effect": legendary.gains,
-                        "narration_cue": (f"Voice {companion.name}'s legendary gain; once per session; you track it."),
+                        "narration_cue": (
+                            f"{cue_verb} {companion.name}'s legendary gain; once per session; you track it."
+                        ),
                     }
                 )
             milestone = milestones_mod.get_milestone_by_level(player["class"], lvl)
