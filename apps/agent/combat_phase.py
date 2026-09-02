@@ -18,8 +18,9 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import abilities
 from conditions import tick_conditions
-from declarations import Declaration, resolve_declaration
+from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -128,7 +129,7 @@ def advance_combat_phase(
         for raw in declarations.values():
             resolve_declaration(raw)
         next_state.pending_declarations = dict(declarations)
-        next_state.reactions_available = {p.id: True for p in next_state.participants}
+        next_state.reactions_available = {p.id: True for p in next_state.participants if p.type == "player"}
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
 
@@ -211,6 +212,35 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
     if boss.legendary_actions <= 0:
         raise ValueError(f"Boss {boss_id!r} has no legendary action remaining this round")
     boss.legendary_actions -= 1
+    return next_state
+
+
+def consume_reaction(state: CombatState, actor_id: str, ability_id: str) -> CombatState:
+    """Spend the player's declared reaction for this round without mutating ``state``."""
+    if state.beat != PhaseBeat.RESOLUTION:
+        raise ValueError("reactions can only activate during the resolution beat")
+
+    actor = state.get_participant(actor_id)
+    if actor is None or actor.type != "player":
+        raise ValueError("only players can activate reactions")
+
+    raw_declaration = state.pending_declarations.get(actor_id)
+    if raw_declaration is None:
+        raise ValueError(f"player {actor_id!r} has no pending reaction declaration")
+    declaration = resolve_declaration(raw_declaration)
+    if declaration.type is not DeclarationType.REACTION or declaration.action != ability_id:
+        raise ValueError(f"ability {ability_id!r} is not the player's exact pending reaction")
+
+    ability = abilities.get_ability(ability_id)
+    if declaration.trigger != ability.window:
+        raise ValueError(
+            f"declared reaction trigger {declaration.trigger!r} does not match {ability_id!r} window {ability.window!r}"
+        )
+    if not state.reactions_available.get(actor_id, False):
+        raise ValueError(f"player {actor_id!r} already spent their reaction this round")
+
+    next_state = copy.deepcopy(state)
+    next_state.reactions_available[actor_id] = False
     return next_state
 
 

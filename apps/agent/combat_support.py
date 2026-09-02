@@ -139,12 +139,9 @@ async def _resolve_attack_packet(
     phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
     ``action`` is an entry from the attacker's action_pool (weapon-shaped).
 
-    ``shield_reaction`` is a forward seam for the M4.x reaction-window feature
-    (combat_phase's ``reactions_available``): when a future declaration spends a
-    shield reaction it threads the shield name here to accrue shield durability. The
-    live phase loop (``_resolve_one_packet``) does not yet declare reactions, so it
-    is always ``None`` on the live path today; the accrual branch is exercised by
-    test_combat_durability."""
+    ``shield_reaction`` remains unwired because player reactions resolve through
+    ``activate`` and ``consume_reaction``, outside the attack packet. It is therefore
+    ``None`` on the live path; direct durability tests exercise the accrual seam."""
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,

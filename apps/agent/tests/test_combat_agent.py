@@ -128,11 +128,10 @@ class TestCombatBeatContract:
         assert "silent" in p
         assert p.index("silent") < p.index("now narrate")
 
-    def test_narration_opens_reaction_windows(self):
-        # AC2: the window precedes the enemy's blow landing — not bare "reaction window".
+    def test_narration_does_not_open_an_undeclared_reaction_window(self):
         low = COMBAT_SYSTEM_PROMPT.lower()
-        assert "reaction window" in low
-        assert "before an enemy's blow lands" in low
+        assert "do not open an undeclared reaction window" in low
+        assert "before an enemy's blow lands" not in low
 
     def test_honors_dramatic_pause(self):
         # "pause" alone leaks from VOICE_STYLE ("Use pauses") and the Beat-4 death-save
@@ -153,7 +152,22 @@ class TestCombatBeatContract:
         prompt = COMBAT_SYSTEM_PROMPT
         assert '"type": "ability"' in prompt
         assert "activate" in prompt
+        assert "ordinary spell or ability" in prompt
         assert "never a free cast via activate" in prompt
+
+    def test_reaction_declaration_has_catalog_trigger_shape(self):
+        prompt = COMBAT_SYSTEM_PROMPT
+        assert "Four types resolve in combat today" in prompt
+        assert '"type": "reaction"' in prompt
+        assert '"trigger": <catalog window>' in prompt
+
+    def test_declared_reaction_activates_before_resolution(self):
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        declaration = low.index("declare the reaction")
+        activation = low.index("activate that exact reaction ability id")
+        resolution = low.index("call resolve_phase", activation)
+        assert declaration < activation < resolution
+        assert "reaction activation is an exception" in low
 
     def test_combat_only_capabilities_still_use_activate(self):
         # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that

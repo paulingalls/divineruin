@@ -11,7 +11,8 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). Combat-window gating for reactions is deferred to Phase 4.
+7b34ebf86b57). Reaction activations are gated against the current combat declaration
+and spend the round's in-memory reaction budget before resources are deducted.
 """
 
 import json
@@ -22,6 +23,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import combat_phase
 import condition_produce
 import conditions
 import db
@@ -37,6 +39,61 @@ logger = logging.getLogger("divineruin.tools")
 
 
 async def _request_ability_activation_impl(
+    context: RunContext[SessionData],
+    ability_id: str,
+    *,
+    target_id: str | None = None,
+    target_ids: list[str] | None = None,
+    db_mod=db,
+    queries_mod=db_queries,
+    persistence_mod=ability_persistence,
+    abilities_mod=abilities,
+    variants_mod=mentor_variants,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
+    condition_produce_mod=condition_produce,
+) -> str:
+    _validate_id(ability_id, "ability_id")
+    try:
+        ability = abilities_mod.get_ability(ability_id)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
+    async def activate_unlocked() -> str:
+        return await _request_ability_activation_unlocked(
+            context,
+            ability_id,
+            target_id=target_id,
+            target_ids=target_ids,
+            db_mod=db_mod,
+            queries_mod=queries_mod,
+            persistence_mod=persistence_mod,
+            abilities_mod=abilities_mod,
+            variants_mod=variants_mod,
+            conditions_mod=conditions_mod,
+            conditions_mutations_mod=conditions_mutations_mod,
+            condition_produce_mod=condition_produce_mod,
+        )
+
+    if ability.ability_type != "reaction":
+        return await activate_unlocked()
+
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        state = session.combat_state
+        if state is None:
+            raise ToolError("reactions can only activate during the resolution beat")
+        try:
+            spent_state = combat_phase.consume_reaction(state, session.player_id, ability_id)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
+
+        result = await activate_unlocked()
+        session.combat_state = spent_state
+        return result
+
+
+async def _request_ability_activation_unlocked(
     context: RunContext[SessionData],
     ability_id: str,
     *,
