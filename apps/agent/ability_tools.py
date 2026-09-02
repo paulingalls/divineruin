@@ -11,8 +11,9 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). Reaction activations are gated against the current combat declaration
-and spend the round's in-memory reaction budget before resources are deducted.
+7b34ebf86b57). An IN-COMBAT reaction is gated against the current declaration before any
+resource write, and the round's in-memory reaction budget is spent only AFTER the activation
+succeeds — a refused activation must not burn the reaction (test_reaction_refused_by_cost_*).
 """
 
 import json

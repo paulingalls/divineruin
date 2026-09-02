@@ -72,7 +72,10 @@ async def activate(
     refused on a Hollow-killed corpse; a spell's own multi-target cap is enforced (too many is
     refused); a Veil Ward raise is refused while one is already up (one shared ward per party) or
     for an ineligible/underleveled/unaffordable caster; Inner Fire is once per encounter and
-    combat-only. Cantrips are free and scale their damage with level."""
+    combat-only. IN COMBAT a reaction ability is refused unless it is the exact reaction the player
+    declared this round through declare_phase, the phase is at the resolution beat, and the round's
+    one reaction is unspent — outside combat reactions activate freely. Cantrips are free and scale
+    their damage with level."""
     return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids)
 
 

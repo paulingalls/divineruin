@@ -120,7 +120,7 @@ class TestNarrationBeat:
         assert advance.wrap is None
 
 
-class TestConsumeReaction:
+class TestValidateReactionActivation:
     ability_id = "warrior_opportunity_strike"
 
     def _reaction_state(self, *, trigger="on_enemy_move"):
@@ -180,6 +180,44 @@ class TestConsumeReaction:
 
         with pytest.raises(ValueError, match=r"does not match.*on_enemy_move"):
             validate_reaction_activation(state, "player_1", self.ability_id)
+
+    def test_an_actor_absent_from_the_budget_map_has_no_reaction_to_spend(self):
+        """Absent actor => no budget, never a free spend (the session_data field contract).
+
+        Reachable on a combat persisted before the budget map existed: beat RESOLUTION with a
+        pending reaction but an empty reactions_available. Flipping the lookup default to True
+        hands that state a free, unmetered reaction."""
+        state = self._reaction_state()
+        state.reactions_available = {}
+
+        with pytest.raises(ValueError, match="already spent"):
+            validate_reaction_activation(state, "player_1", self.ability_id)
+
+
+class TestDeclaredReactionWindow:
+    """A reaction's window is catalog-only -- nothing surfaces it to the DM, so its declared
+    trigger is a guess. Beat 1 is the only beat at which a wrong guess is still re-declarable."""
+
+    def _declaration(self, trigger):
+        return {
+            "player_1": {"type": "reaction", "action": "warrior_opportunity_strike", "trigger": trigger},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+        }
+
+    def test_declaration_beat_rejects_a_trigger_the_catalog_window_contradicts(self):
+        state = _make_combat_state()
+        state.beat = PhaseBeat.DECLARATION
+
+        with pytest.raises(ValueError, match=r"does not match.*on_enemy_move"):
+            advance_combat_phase(state, self._declaration("on_hit"))
+
+    def test_declaration_beat_accepts_the_matching_trigger(self):
+        state = _make_combat_state()
+        state.beat = PhaseBeat.DECLARATION
+
+        next_state, _ = advance_combat_phase(state, self._declaration("on_enemy_move"))
+
+        assert next_state.pending_declarations["player_1"]["trigger"] == "on_enemy_move"
 
 
 class TestPurityAndDeterminism:

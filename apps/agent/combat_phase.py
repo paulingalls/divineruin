@@ -127,7 +127,9 @@ def advance_combat_phase(
         # here (the tool layer translates ValueError -> ToolError) rather than at the
         # later resolution beat. Raw dicts are still what's stored/persisted.
         for raw in declarations.values():
-            resolve_declaration(raw)
+            decl = resolve_declaration(raw)
+            if decl.type is DeclarationType.REACTION:
+                check_reaction_window(decl)
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {p.id: True for p in next_state.participants if p.type == "player"}
         next_state.beat = PhaseBeat.RESOLUTION
@@ -215,6 +217,24 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
     return next_state
 
 
+def check_reaction_window(declaration: Declaration) -> None:
+    """Raise unless a REACTION declaration's trigger equals its ability's catalog `window`.
+
+    Checked at DECLARATION as well as at activation, because a reaction's window lives only in
+    the ability catalog and nothing surfaces it to the DM -- so its trigger is a guess. Caught at
+    Beat 1 the guess is loud, names the right window, and the beat is still open to re-declare;
+    caught only at activation it costs the round's reaction with the phase already committed.
+    The activation-time call is not redundant: state can reach RESOLUTION without passing the
+    declaration loop (a combat persisted before this check), and that must still not spend."""
+    if declaration.action is None:
+        raise ValueError("reaction declaration requires an 'action'")
+    window = abilities.get_ability(declaration.action).window
+    if declaration.trigger != window:
+        raise ValueError(
+            f"declared reaction trigger {declaration.trigger!r} does not match {declaration.action!r} window {window!r}"
+        )
+
+
 def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
     """Raise unless ``actor_id`` may spend a reaction on ``ability_id`` right now.
 
@@ -236,11 +256,7 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     if declaration.type is not DeclarationType.REACTION or declaration.action != ability_id:
         raise ValueError(f"ability {ability_id!r} is not the player's exact pending reaction")
 
-    ability = abilities.get_ability(ability_id)
-    if declaration.trigger != ability.window:
-        raise ValueError(
-            f"declared reaction trigger {declaration.trigger!r} does not match {ability_id!r} window {ability.window!r}"
-        )
+    check_reaction_window(declaration)
     if not state.reactions_available.get(actor_id, False):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
 

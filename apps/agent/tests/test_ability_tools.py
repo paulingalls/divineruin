@@ -165,6 +165,22 @@ class TestActivation:
 
         persistence.update_player_resources.assert_not_called()
 
+    async def test_reaction_refused_by_cost_does_not_burn_the_round_s_reaction(self):
+        """The spend is recorded only AFTER the activation succeeds, so a refusal costs nothing.
+
+        Ordering-sensitive and otherwise unpinned: recording the spend before the resource gate
+        (which the module docstring once described) leaves a player who could not afford the
+        reaction with no reaction for the round either -- refused AND charged."""
+        ctx = _reaction_context()
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="Not enough Stamina"):
+            await _call("warrior_opportunity_strike", stamina=0, context=ctx, persistence=persistence)
+
+        assert ctx.userdata.combat_state.reactions_available["player_1"] is True
+        persistence.update_player_resources.assert_not_called()
+
     async def test_reaction_outside_combat_activates_ungated(self):
         """OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01).
 
