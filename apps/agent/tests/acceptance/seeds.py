@@ -45,16 +45,14 @@ async def seed_player(
     player_id: str = "player_1",
     class_: str = "skirmisher",
     location_id: str = "accord_guild_hall",
-    companion: dict | None = None,
 ) -> str:
     """Upsert a player row with a valid archetype and starting location.
 
-    Pass `companion` to attach a companion block (the errand resolve path reads
-    `player_data["companion"]`, and the DM needs the companion id to dispatch).
+    `class_` picks the companion too: every companion surface derives the assigned
+    companion from the archetype's `complements` (companion_profiles.select_companion_for_archetype),
+    so a scenario about Kael must seed a class Kael complements.
     """
     data = {**_DEFAULT_PLAYER, "player_id": player_id, "class": class_, "location_id": location_id}
-    if companion is not None:
-        data["companion"] = companion
     await conn.execute(
         """
         INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)
