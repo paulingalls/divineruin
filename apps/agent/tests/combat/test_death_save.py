@@ -1,5 +1,6 @@
 """Tests for request_death_save: success/stabilize/death, nat-20 revive, nat-1, errors, events."""
 
+import asyncio
 import json
 from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -308,3 +309,54 @@ class TestRequestDeathSave:
         dice = next(c for c in calls if c.get("type") == E.DICE_ROLL)
         assert dice["dramatic"] is True
         assert dice["context"] == "death_save"
+
+
+class TestSerialisedAgainstConcurrentWriters:
+    """The death save snapshots the whole CombatState, awaits its transaction, then REBINDS
+    session.combat_state to that snapshot — so anything another path commits on the live state
+    during the await is erased on adoption unless the two are serialised."""
+
+    @pytest.mark.asyncio
+    async def test_a_reaction_spent_during_the_transaction_is_not_erased(self):
+        """The concrete loss: ability_tools deducts Stamina/Focus, commits, then records the spend
+        as reactions_available[player]=False on the LIVE state (under this same lock). Unlocked,
+        the death save's post-commit rebind restores True over it — charged and still holding the
+        round's reaction. Fault-inject by dropping the lock from _request_death_save_impl."""
+        mock_mutations = _make_death_save_mocks()
+
+        # Yield inside the transaction, the window the competing writer needs.
+        async def _yield(*_args, **_kwargs):
+            await asyncio.sleep(0)
+
+        mock_mutations.save_combat_state = AsyncMock(side_effect=_yield)
+        mock_db, _conn = make_db_mod()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=0, player_fallen=True)
+        cs.reactions_available = {"player_1": True}
+        ctx.userdata.combat_state = cs
+
+        async def spend_reaction():
+            async with ctx.userdata.combat_end_lock:
+                ctx.userdata.combat_state.reactions_available["player_1"] = False
+
+        await asyncio.gather(
+            _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db),
+            spend_reaction(),
+        )
+
+        assert ctx.userdata.combat_state.reactions_available == {"player_1": False}
+
+    @pytest.mark.asyncio
+    async def test_the_lock_is_held_across_the_transaction(self):
+        mock_mutations = _make_death_save_mocks()
+        held: list[bool] = []
+        mock_mutations.save_combat_state = AsyncMock(
+            side_effect=lambda *a, **k: held.append(ctx.userdata.combat_end_lock.locked())
+        )
+        mock_db, _conn = make_db_mod()
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
+
+        await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db)
+
+        assert held == [True]

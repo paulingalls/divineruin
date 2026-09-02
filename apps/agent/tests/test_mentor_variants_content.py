@@ -101,7 +101,12 @@ def _expected_cost(base: dict, culture: str) -> tuple[int, int]:
     d_stamina, d_focus = _CULTURE_COST_DELTA[culture]  # KeyError = an unpriced new culture
     stamina, focus = base["stamina"], base["focus"]
     if stamina + d_stamina < 0:
-        d_focus += d_stamina
+        # No body left to trade: the stamina discount moves onto focus, and the focus SURCHARGE
+        # it was buying goes with it — a trade with nothing to fund is not a trade. Keeping both
+        # halves would cancel to zero and price the variant IDENTICALLY to its base, which is a
+        # variant that is not one; the guard would then demand exactly that. It did, and
+        # bard_silver_tongue_keldaran shipped at the base cost with this file green.
+        d_focus = min(d_focus, 0) + d_stamina
         d_stamina = 0
     return stamina + d_stamina, focus + d_focus
 
@@ -122,6 +127,23 @@ def test_variant_cost_follows_its_culture_delta():
         if actual != expected:
             offenders[variant.id] = f"(stamina, focus) {actual}, expected {expected}"
     assert not offenders, f"variant costs must follow their culture's delta: {offenders}"
+
+
+def test_no_variant_costs_exactly_its_base():
+    """Independent of the delta table: a variant priced identically to its base is not a variant.
+
+    story-004 made base and variant separately activatable, so the player's choice between them
+    is only real when they cost differently. Kept separate from the delta guard on purpose —
+    _expected_cost's zero-stamina clamp can DEGENERATE to the base cost and then demand it, so
+    the delta guard cannot be the thing that catches this."""
+    abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
+    offenders = {}
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        base = abilities[variant.ability_id]["cost"]
+        if (variant.cost.stamina, variant.cost.focus) == (base["stamina"], base["focus"]):
+            offenders[variant.id] = (base["stamina"], base["focus"])
+    assert not offenders, f"variants costing exactly their base offer the player no choice: {offenders}"
 
 
 def test_each_culture_is_taught_by_exactly_one_mentor():

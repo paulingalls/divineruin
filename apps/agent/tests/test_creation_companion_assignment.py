@@ -187,3 +187,29 @@ class TestFinalizeAssignsCompanion:
                 await _finalize(_ctx(_state("mage")))
         insert.assert_awaited_once()
         upsert.assert_not_awaited()
+
+
+@pytest.mark.usefixtures("dev_db_pool")
+class TestUnmockedFinalizeWritesNothing:
+    """The grant is wrapped in a broad `except Exception`, so an UNMOCKED test does not fail —
+    it silently performs real I/O into the shared dev DB. The stub is therefore global autouse
+    in tests/conftest.py, not a per-module opt-in a new module can forget."""
+
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_without_a_grant_patch_leaves_the_dev_db_untouched(self, _create, payload, dev_db_pool):
+        # Deliberately patches NOTHING on the grant path — that is the whole point. Narrowing
+        # stub_creation_companion_grant back to an opt-in fixture reds this with a stray row.
+        payload.return_value = _PAYLOAD
+        player_id = "test_story003_unmocked"
+        await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)
+        try:
+            ctx = MagicMock()
+            ctx.userdata = SessionData(player_id=player_id, location_id="", room=None, creation_state=_state("mage"))
+            await _finalize(ctx)
+            count = await dev_db_pool.fetchval(
+                "SELECT count(*) FROM companion_relationships WHERE player_id = $1", player_id
+            )
+            assert count == 0
+        finally:
+            await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)

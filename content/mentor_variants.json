@@ -1097,7 +1097,7 @@
     "mentor_id": "mentor_keldaran_forgemaster",
     "cost": {
       "stamina": 0,
-      "focus": 2,
+      "focus": 1,
       "scaling": null
     },
     "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard. Keldaran discipline trades raw power for flawless control, never overcommitting.",
