@@ -270,6 +270,24 @@ Relationship tiers:
 """
 
 
+def build_companion_cue(companion: CompanionState, staging: str, emotion: str) -> str:
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return (
+            f"{profile.name} {staging} {profile.name} is non-verbal. "
+            "Narrate the reaction through vocalization, posture, or movement in the DM voice; "
+            "do not generate dialogue or use a companion dialogue tag."
+        )
+    return f"{profile.name} {staging} One sentence. Use [{profile.voice_id}, {emotion}] tag."
+
+
+def is_companion_cue(instructions: str, companion: CompanionState) -> bool:
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return f"{profile.name} is non-verbal" in instructions
+    return f"[{profile.voice_id}," in instructions
+
+
 STORY_MOMENT_PROMPT = """\
 
 ## Story Moments

@@ -16,7 +16,7 @@ import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
-from system_prompts import build_system_prompt
+from system_prompts import build_companion_cue, build_system_prompt, is_companion_cue
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
 if TYPE_CHECKING:
@@ -127,8 +127,11 @@ class BackgroundProcess:
             companion.last_speech_time = time.time()
             self._queue_speech(
                 SpeechPriority.ROUTINE,
-                "Kael makes an idle observation about the surroundings or something on his mind. "
-                f"One sentence. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
+                build_companion_cue(
+                    companion,
+                    "makes an idle observation about the surroundings or something on their mind.",
+                    companion.emotional_state,
+                ),
             )
 
     def _check_scene_beat_hints(self) -> None:
@@ -194,7 +197,11 @@ class BackgroundProcess:
             self._sd.companion.last_speech_time = time.time()
             self._queue_speech(
                 SpeechPriority.IMPORTANT,
-                f"Kael offers guidance: {hint_text} Use [COMPANION_KAEL, {self._sd.companion.emotional_state}] tag.",
+                build_companion_cue(
+                    self._sd.companion,
+                    f"offers this guidance: {hint_text}",
+                    self._sd.companion.emotional_state,
+                ),
             )
 
     def _queue_speech(self, priority: SpeechPriority, instructions: str) -> None:
@@ -231,7 +238,7 @@ class BackgroundProcess:
                         await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
                 except Exception:
                     logger.warning("Failed to mark favor whisper level", exc_info=True)
-            if "COMPANION_KAEL" in top.instructions and self._sd.companion:
+            if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
                 self._sd.companion.last_speech_time = time.time()
         except Exception:
             logger.warning("Failed to deliver proactive speech", exc_info=True)
