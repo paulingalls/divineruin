@@ -117,9 +117,20 @@ class TestCreationOnboardingCityRoundTrip:
 
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
+    @patch(
+        "onboarding_tools.db_queries.get_player",
+        new_callable=AsyncMock,
+        return_value={"name": "Aric", "class": "warrior"},
+    )
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_full_creation_to_city_roundtrip(self, mock_create_player, mock_get_payload, mock_set_player_flag):
+    async def test_full_creation_to_city_roundtrip(
+        self,
+        mock_create_player,
+        mock_get_payload,
+        mock_get_player,
+        mock_set_player_flag,
+    ):
         """Full chain: finalize_character -> OnboardingAgent -> advance through beats -> CityAgent."""
         from creation_tools import finalize_character
         from onboarding_agent import OnboardingAgent
@@ -166,4 +177,6 @@ class TestCreationOnboardingCityRoundTrip:
 
         # Companion should have been initialized at beat 3->4
         assert ctx.userdata.companion is not None
-        assert ctx.userdata.companion.name == "Kael"
+        assert ctx.userdata.companion.name == "Lira"
+        assert ctx.userdata.companion.id == "companion_lira"
+        mock_get_player.assert_awaited_once_with("player_1")

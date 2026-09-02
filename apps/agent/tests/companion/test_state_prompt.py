@@ -101,13 +101,15 @@ class TestKaelEntity:
 
 class TestCompanionPrompt:
     def test_system_prompt_includes_companion_when_present(self):
+        from companion_profiles import get_companion_profile
         from system_prompts import build_system_prompt
 
-        companion = CompanionState(id="companion_kael", name="Kael")
+        profile = get_companion_profile("companion_kael")
+        companion = CompanionState(id=profile.id, name=profile.name)
         prompt = build_system_prompt("accord_guild_hall", companion=companion)
-        assert "Companion" in prompt
+        assert "Companion — Kael" in prompt
         assert "COMPANION_KAEL" in prompt
-        assert "warm baritone" in prompt
+        assert profile.speech_style in prompt
 
     def test_system_prompt_excludes_companion_when_none(self):
         from system_prompts import build_system_prompt

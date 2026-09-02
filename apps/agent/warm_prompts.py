@@ -109,7 +109,7 @@ REGION_REGISTER: dict[str, str] = {
         "full narration for encounters, discoveries, and destination arrivals.\n"
         "\n"
         "The companion is especially active during travel — pointing things out, "
-        "sharing stories, warning about danger. Let Kael fill the silences of the road."
+        "sharing stories, warning about danger. Let the companion fill the silences of the road."
     ),
     REGION_DUNGEON: (
         "You are narrating dungeon exploration. Terse, tense, sensory-heavy narration. "

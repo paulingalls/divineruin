@@ -1,8 +1,4 @@
-"""OnboardingBackgroundProcess — lightweight stall detection for beats 4-5.
-
-Timer-based polling loop that delivers predefined Kael nudges when the player
-stalls during onboarding beats 4-5. No warm layer, no event bus, no combat.
-"""
+"""OnboardingBackgroundProcess — lightweight stall detection for beats 4-5."""
 
 import asyncio
 import logging
@@ -11,53 +7,43 @@ import time
 from livekit.agents import AgentSession
 
 from session_data import SessionData
+from system_prompts import build_companion_cue
 
 logger = logging.getLogger("divineruin.onboarding_background")
 
 NUDGE_DELAY_SECONDS = 30
 POLL_INTERVAL_SECONDS = 5
 
-ONBOARDING_NUDGES: dict[int, list[str]] = {
+ONBOARDING_NUDGES: dict[int, list[tuple[str, str]]] = {
     4: [
         (
-            "Kael shifts his weight and glances down the street. "
-            "Have him casually suggest heading to the guild hall or the tavern — "
-            "he's heard both are worth checking out. One sentence. "
-            "Use [COMPANION_KAEL, thoughtful] tag."
+            "glances down the street and casually suggests heading to the guild hall or tavern, both worth exploring.",
+            "thoughtful",
         ),
         (
-            "Kael looks at the player and offers to lead the way. "
-            "Have him ask if they want to head out together. One sentence. "
-            "Use [COMPANION_KAEL, steady] tag."
+            "offers to lead the way and asks whether the player wants to head out together.",
+            "steady",
         ),
         (
-            "Kael starts walking slowly toward the guild hall district. "
-            "Have him say they should get moving before it gets too late. "
-            "One sentence, slightly urgent. Use [COMPANION_KAEL, focused] tag."
+            "starts toward the guild hall district and urges the player to get moving before it gets late.",
+            "focused",
         ),
     ],
     5: [
         (
-            "Kael nods toward the NPC in the room. "
-            "Have him suggest the player introduce themselves and ask about "
-            "the situation near Greyvale. One sentence. "
-            "Use [COMPANION_KAEL, encouraging] tag."
+            "indicates the nearby person and suggests an introduction and a question about Greyvale.",
+            "encouraging",
         ),
         (
-            "Kael leans in and quietly reminds the player about the trouble "
-            "near Greyvale — they should ask about it here. One sentence. "
-            "Use [COMPANION_KAEL, focused] tag."
+            "quietly reminds the player to ask about the trouble near Greyvale.",
+            "focused",
         ),
     ],
 }
 
 
 class OnboardingBackgroundProcess:
-    """Lightweight background process for onboarding beats 4-5.
-
-    Polls for player silence and delivers predefined Kael nudges
-    to guide new players through their first navigation experience.
-    """
+    """Poll for player silence and guide beats 4-5 with companion nudges."""
 
     def __init__(self, session: AgentSession, session_data: SessionData) -> None:
         self._session = session
@@ -112,7 +98,17 @@ class OnboardingBackgroundProcess:
         if now - baseline < NUDGE_DELAY_SECONDS:
             return
 
-        instruction = nudges[self._hint_index]
+        companion = self._sd.companion
+        if companion is None:
+            logger.error(
+                "Cannot deliver onboarding nudge for player %s at beat %d without a companion",
+                self._sd.player_id,
+                beat,
+            )
+            return
+
+        staging, emotion = nudges[self._hint_index]
+        instruction = build_companion_cue(companion, staging, emotion)
         logger.info(
             "Delivering onboarding nudge %d for beat %d to player %s",
             self._hint_index,
@@ -123,5 +119,4 @@ class OnboardingBackgroundProcess:
         self._hint_index += 1
         self._last_hint_time = now
 
-        if self._sd.companion:
-            self._sd.companion.last_speech_time = now
+        companion.last_speech_time = now

@@ -45,8 +45,7 @@ def _make_bg(
     )
     sd.last_player_speech_time = last_player_speech
     sd.last_agent_speech_end = last_agent_speech_end
-    if companion is not None:
-        sd.companion = companion
+    sd.companion = companion or CompanionState(id="companion_kael", name="Kael")
 
     mock_session = MagicMock()
     mock_session.generate_reply = AsyncMock()
@@ -100,7 +99,7 @@ class TestCheckNudge:
         await bg._check_nudge()
         mock_session.generate_reply.assert_called_once()
         call_kwargs = mock_session.generate_reply.call_args[1]
-        assert call_kwargs["instructions"] == ONBOARDING_NUDGES[4][0]
+        assert ONBOARDING_NUDGES[4][0][0] in call_kwargs["instructions"]
 
     @pytest.mark.asyncio
     async def test_nudge_advances_index(self):
@@ -121,7 +120,7 @@ class TestCheckNudge:
         assert bg._hint_index == 2
         assert mock_session.generate_reply.call_count == 2
         second_call = mock_session.generate_reply.call_args[1]
-        assert second_call["instructions"] == ONBOARDING_NUDGES[4][1]
+        assert ONBOARDING_NUDGES[4][1][0] in second_call["instructions"]
 
     @pytest.mark.asyncio
     async def test_beat_change_resets_index(self):

@@ -414,7 +414,10 @@ async def _start_combat_impl(
     loc_name = getattr(session, "cached_location_name", None) or session.location_id
     parts.append(f"Location: {loc_name}.")
     if session.companion and session.companion.is_present:
+        from system_prompts import companion_voice_directive
+
         parts.append(f"{session.companion.name} fights alongside the player.")
+        parts.append(companion_voice_directive(session.companion))
 
     combat_ctx = ChatContext()
     combat_ctx.add_message(role="system", content=" ".join(parts))
