@@ -143,6 +143,50 @@ class TestCombatHandoffContext:
         )
         assert "Kael" in content
 
+    @pytest.mark.parametrize(
+        "companion_id",
+        ("companion_kael", "companion_lira", "companion_tam", "companion_sable"),
+    )
+    @pytest.mark.asyncio
+    async def test_combat_handoff_context_names_the_assigned_companion_voice(
+        self, companion_id, mock_combat_agent_factory
+    ):
+        """CombatAgent's own instructions carry no companion tag, so the entry context is the
+        only producer of which of the four voices to use (constraint 6)."""
+        from combat_init import _start_combat_impl
+        from companion_profiles import get_companion_profile
+
+        profile = get_companion_profile(companion_id)
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+
+        ctx = _make_context(location_id="greyvale_south_road")
+        ctx.userdata.companion = CompanionState(id=profile.id, name=profile.name)
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="wolf_pack",
+            encounter_description="Wolves attack!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        chat_ctx = mock_combat_agent_factory.call_args.kwargs.get("chat_ctx")
+        system_msgs = [item for item in chat_ctx.items if item.role == "system"]
+        content = " ".join(str(m.content) for m in system_msgs)
+        assert profile.name in content
+        if profile.non_verbal:
+            assert f"[{profile.voice_id}," not in content
+            assert f"{profile.name} is non-verbal" in content
+        else:
+            assert f"[{profile.voice_id}," in content
+        if companion_id != "companion_kael":
+            assert "COMPANION_KAEL" not in content
+
 
 class TestEndCombatHandoff:
     """Test CombatAgent -> CityAgent handoff via end_combat."""

@@ -13,6 +13,7 @@ from companion_profiles import get_companion_profile
 from event_bus import GameEvent
 from onboarding_background import NUDGE_DELAY_SECONDS, ONBOARDING_NUDGES, OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
+from system_prompts import build_companion_cue
 
 COMPANION_IDS = (
     "companion_kael",
@@ -35,13 +36,9 @@ EVENT_CUES = (
     ("hollow-1", E.HOLLOW_CORRUPTION_CHANGED, {"level": 1}, True),
     ("hollow-2", E.HOLLOW_CORRUPTION_CHANGED, {"level": 2}, True),
     ("hollow-3", E.HOLLOW_CORRUPTION_CHANGED, {"level": 3}, True),
-    (
-        "god-whisper",
-        E.WORLD_EVENT,
-        {"event_id": "god_whisper:player_patron", "patron_id": "kaelen"},
-        True,
-    ),
 )
+
+GOD_WHISPER_PAYLOAD = {"event_id": "god_whisper:player_patron", "patron_id": "kaelen"}
 
 
 def _companion(companion_id: str, **changes: object) -> CompanionState:
@@ -162,15 +159,12 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
     _assert_assigned_cue(instructions, companion_id)
 
 
-@pytest.mark.parametrize("companion_id", ("companion_lira", "companion_sable"))
+@pytest.mark.parametrize("companion_id", COMPANION_IDS)
 @pytest.mark.asyncio
-async def test_delivery_gate_recognizes_verbal_and_non_verbal_assigned_cues(companion_id: str) -> None:
+async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -> None:
+    """Reader against the WRITER's own output — a reworded cue must not silently stop matching."""
     companion = _companion(companion_id, last_speech_time=0.0)
-    profile = get_companion_profile(companion_id)
-    if profile.non_verbal:
-        instructions = f"{profile.name} is non-verbal. Narrate the reaction in the DM voice."
-    else:
-        instructions = f"Use [{profile.voice_id}, steady] tag."
+    instructions = build_companion_cue(companion, "reacts to the moment.", "steady")
     background, _ = _background(_session_data(companion))
     background._speech_queue.append(PendingSpeech(SpeechPriority.IMPORTANT, instructions))
 
@@ -179,12 +173,47 @@ async def test_delivery_gate_recognizes_verbal_and_non_verbal_assigned_cues(comp
     assert companion.last_speech_time > 0
 
 
+@pytest.mark.parametrize("companion_id", COMPANION_IDS)
+@pytest.mark.asyncio
+async def test_delivery_gate_ignores_narration_that_is_not_a_companion_cue(companion_id: str) -> None:
+    """Narration-only delivery must not reset the idle clock, or it suppresses the next
+    companion beat for a full COMPANION_IDLE_SECS."""
+    companion = _companion(companion_id, last_speech_time=0.0)
+    background, _ = _background(_session_data(companion))
+    background._speech_queue.append(
+        PendingSpeech(
+            SpeechPriority.IMPORTANT,
+            "The player just arrived at a new location (accord_market_square). Describe the atmosphere briefly.",
+        )
+    )
+
+    await background._deliver_speech()
+
+    assert companion.last_speech_time == 0.0
+
+
+@pytest.mark.parametrize("companion_id", COMPANION_IDS)
+def test_god_whisper_names_the_assigned_companion_and_keeps_it_silent(companion_id: str) -> None:
+    """The whisper is a CRITICAL divine beat: the companion is named but must NOT be cued to
+    speak, so no dialogue tag and no non-verbal vocalization instruction may appear."""
+    profile = get_companion_profile(companion_id)
+    background, _ = _background(_session_data(_companion(companion_id)))
+
+    background._handle_events([GameEvent(E.WORLD_EVENT, GOD_WHISPER_PAYLOAD)])
+
+    instructions = background._speech_queue[0].instructions
+    assert re.search(rf"\b{re.escape(profile.name)}\b", instructions)
+    assert "says nothing unless the player speaks first" in instructions
+    assert f"[{profile.voice_id}," not in instructions
+    assert f"{profile.name} is non-verbal" not in instructions
+    if companion_id != "companion_kael":
+        assert re.search(r"\bKael\b", instructions) is None
+
+
 def test_god_whisper_without_companion_omits_companion_reaction() -> None:
     background, _ = _background(_session_data(None))
 
-    background._handle_events(
-        [GameEvent(E.WORLD_EVENT, {"event_id": "god_whisper:player_patron", "patron_id": "kaelen"})]
-    )
+    background._handle_events([GameEvent(E.WORLD_EVENT, GOD_WHISPER_PAYLOAD)])
 
     instructions = background._speech_queue[0].instructions
     assert "companion" not in instructions.lower()

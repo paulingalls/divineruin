@@ -47,7 +47,7 @@ class BackgroundProcess:
         self._scene_cache: dict[str, dict] = {}
         self._scene_hint_state: dict = {}
         self._rider_triggered: bool = False
-        self._last_static_key: tuple[str, bool] | None = None
+        self._last_static_key: tuple[str, str | None] | None = None
         self._cached_static: str = ""
         self._paused: bool = False
 
@@ -305,7 +305,11 @@ class BackgroundProcess:
             return
 
         self._last_warm_layer = warm
-        static_key = (self._sd.location_id, self._sd.has_companion)
+        # Keyed on companion IDENTITY, not merely presence: the static layer renders the
+        # assigned companion's own name, tag and profile, so a bool would serve a stale
+        # section if the bound companion ever changed within a session.
+        companion = self._sd.companion
+        static_key = (self._sd.location_id, companion.id if self._sd.has_companion and companion else None)
         if static_key != self._last_static_key:
             self._last_static_key = static_key
             self._cached_static = build_system_prompt(self._sd.location_id, companion=self._sd.companion)

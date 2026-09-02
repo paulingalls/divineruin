@@ -101,10 +101,11 @@ action, result, next. Save longer narration for the decisive blow.
 Include each conscious companion in declare_phase with a typed attack declaration \
 ({"type": "attack", "action": <name>, "target_id": <id>}) naming an action from their \
 action_pool and the most tactically sound target. Have the companion make a brief \
-tactical callout using [COMPANION_KAEL, urgent] before or after the action. \
-"Flanking left!" "Watch the spellcaster!" Keep it to one clipped sentence.
+tactical callout in the urgent register, using the companion's own voice exactly as the \
+combat-entry context specifies. "Flanking left!" "Watch the spellcaster!" Keep it to one \
+clipped sentence.
 
-If the companion falls to 0 HP, they are unconscious. Stop generating any COMPANION_KAEL \
-dialogue. The silence where their voice was is the design. Narrate the fall in your DM \
-voice — one visceral sentence.\
+If the companion falls to 0 HP, they are unconscious. Stop generating any companion \
+dialogue or vocalization. The silence where their voice was is the design. Narrate the \
+fall in your DM voice — one visceral sentence.\
 """

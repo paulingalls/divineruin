@@ -226,6 +226,15 @@ You are the combat narrator for Divine Ruin: The Sundered Veil.
 """
 
 
+def _non_verbal_note(name: str) -> str:
+    """The one phrasing of the non-verbal marker.
+
+    build_companion_cue writes it and is_companion_cue reads it back off a queued
+    instruction, so a reworded copy on either side would silently stop matching.
+    """
+    return f"{name} is non-verbal."
+
+
 def build_companion_prompt(companion_id: str) -> str:
     profile = get_companion_profile(companion_id)
     personality = "\n".join(f"- {trait}" for trait in profile.personality)
@@ -233,7 +242,7 @@ def build_companion_prompt(companion_id: str) -> str:
 
     if profile.non_verbal:
         voice_instruction = f"""\
-{profile.name} is non-verbal. Narrate her vocalizations, posture, and movement in the DM voice.
+{_non_verbal_note(profile.name)} Narrate {profile.name}'s vocalizations, posture, and movement in the DM voice.
 Registered voice ID: {profile.voice_id}. Never use it as a dialogue tag."""
     else:
         voice_instruction = f"""\
@@ -274,17 +283,33 @@ def build_companion_cue(companion: CompanionState, staging: str, emotion: str) -
     profile = get_companion_profile(companion.id)
     if profile.non_verbal:
         return (
-            f"{profile.name} {staging} {profile.name} is non-verbal. "
+            f"{profile.name} {staging} {_non_verbal_note(profile.name)} "
             "Narrate the reaction through vocalization, posture, or movement in the DM voice; "
             "do not generate dialogue or use a companion dialogue tag."
         )
     return f"{profile.name} {staging} One sentence. Use [{profile.voice_id}, {emotion}] tag."
 
 
+def companion_voice_directive(companion: CompanionState) -> str:
+    """How to voice this companion — the registered tag, or the non-verbal narration rule.
+
+    Named producer for the tag id (constraint 6): CombatAgent gets COMBAT_SYSTEM_PROMPT,
+    not the companion section, so the combat-entry context is the only channel that can
+    tell it which of the four tags to use.
+    """
+    profile = get_companion_profile(companion.id)
+    if profile.non_verbal:
+        return (
+            f"{_non_verbal_note(profile.name)} Narrate {profile.name}'s vocalizations, posture "
+            f"and movement in the DM voice; never use a dialogue tag for {profile.name}."
+        )
+    return f'Voice {profile.name} with the [{profile.voice_id}, emotion]: "..." dialogue tag.'
+
+
 def is_companion_cue(instructions: str, companion: CompanionState) -> bool:
     profile = get_companion_profile(companion.id)
     if profile.non_verbal:
-        return f"{profile.name} is non-verbal" in instructions
+        return _non_verbal_note(profile.name) in instructions
     return f"[{profile.voice_id}," in instructions
 
 

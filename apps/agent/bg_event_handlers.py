@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import event_types as E
 import vaelti_echo_warning
 from bg_speech import PendingSpeech, SpeechPriority
+from companion_profiles import get_companion_profile
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from sanitize import sanitize_for_prompt
 from system_prompts import build_companion_cue
@@ -255,10 +256,12 @@ def queue_god_whisper(
         "Then silence returns like a wave breaking, and the world resumes."
     )
     if sd.companion is not None:
-        instructions += " Do not add a reaction during the divine speech. After the silence breaks, "
-        instructions += build_companion_cue(
-            sd.companion,
-            "looks shaken and waits for the player to speak first before responding.",
-            "uneasy",
+        # No companion cue here: the whisper's design is that the companion stays SILENT
+        # through it. build_companion_cue would append "One sentence. Use [tag]" and turn
+        # the beat into a companion line.
+        name = get_companion_profile(sd.companion.id).name
+        instructions += (
+            f" {name} does not react during the divine speech. After the silence breaks, "
+            f"{name} looks shaken but says nothing unless the player speaks first."
         )
     _queue(speech_queue, SpeechPriority.CRITICAL, instructions, stinger_sound=profile.stinger_sound)
