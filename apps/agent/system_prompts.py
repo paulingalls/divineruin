@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from combat_prompts import COMBAT_PROMPT
-from companion_profiles import get_companion_profile
+from companion_profiles import get_companion_profile, progression_gains_up_to
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 if TYPE_CHECKING:
@@ -240,10 +240,15 @@ def _non_verbal_note(name: str) -> str:
     return f"{name} is non-verbal."
 
 
-def build_companion_prompt(companion_id: str) -> str:
+def build_companion_prompt(companion_id: str, player_level: int) -> str:
     profile = get_companion_profile(companion_id)
     personality = "\n".join(f"- {trait}" for trait in profile.personality)
     mannerisms = "\n".join(f"- {mannerism}" for mannerism in profile.mannerisms)
+    progression = "\n".join(
+        f"- Level {milestone.level}: {milestone.gains}"
+        + (" — DM: once per session; you track it" if milestone.level == 20 else "")
+        for milestone in progression_gains_up_to(profile, player_level)
+    )
 
     if profile.non_verbal:
         voice_instruction = f"""\
@@ -275,6 +280,9 @@ Personality:
 
 Mannerisms:
 {mannerisms}
+
+Progression gains unlocked at player level {player_level}:
+{progression}
 
 When unconscious, generate no companion dialogue or intentional vocalization. The silence is the design.
 
@@ -458,7 +466,7 @@ def build_system_prompt(
     # warm-layer Stage register (warm_prompts.REGION_REGISTER), keyed off the location.
     parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
-        parts += build_companion_prompt(companion.id)
+        parts += build_companion_prompt(companion.id, companion.player_level)
     parts += (
         f"\n\nThe player is currently at location ID: {location_id}. "
         "When setting a scene or answering 'where am I?', call "

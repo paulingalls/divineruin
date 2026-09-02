@@ -60,7 +60,7 @@ class TestAdvanceOnboardingBeat:
     @patch(
         "onboarding_tools.db_queries.get_player",
         new_callable=AsyncMock,
-        return_value={"name": "Aric", "class": "warrior"},
+        return_value={"name": "Aric", "class": "warrior", "level": 1},
     )
     async def test_advance_beat_3_initializes_companion(self, mock_get_player, mock_set_player_flag):
         """Advancing past beat 3 (companion meeting) initializes CompanionState."""

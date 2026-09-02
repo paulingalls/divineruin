@@ -122,10 +122,10 @@ class TestAssignedCompanionHydration:
                 return_value=lira,
             ) as hydrate,
         ):
-            result = await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "warrior")
+            result = await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "warrior", 12)
 
         insert.assert_awaited_once_with("player_1", "companion_lira")
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira")
+        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=12)
         assert result is lira
 
     @pytest.mark.asyncio
@@ -142,7 +142,7 @@ class TestAssignedCompanionHydration:
             ) as hydrate,
             pytest.raises(ValueError, match="necromancer"),
         ):
-            await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "necromancer")
+            await companion_relationship_queries.hydrate_assigned_companion_state("player_1", "necromancer", 12)
 
         insert.assert_not_awaited()
         hydrate.assert_not_awaited()

@@ -120,7 +120,7 @@ class TestCreationOnboardingCityRoundTrip:
     @patch(
         "onboarding_tools.db_queries.get_player",
         new_callable=AsyncMock,
-        return_value={"name": "Aric", "class": "warrior"},
+        return_value={"name": "Aric", "class": "warrior", "level": 1},
     )
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)

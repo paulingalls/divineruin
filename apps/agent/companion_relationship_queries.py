@@ -51,6 +51,7 @@ async def hydrate_companion_state(
     companion_id: str,
     name: str,
     *,
+    player_level: int = 1,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> CompanionState:
     """Build a CompanionState for a FRESH session: load persisted state, increment session_count
@@ -76,6 +77,7 @@ async def hydrate_companion_state(
     return CompanionState(
         id=companion_id,
         name=name,
+        player_level=player_level,
         session_count=session_count,
         affinity=affinity,
         session_memories=memories,
@@ -85,6 +87,7 @@ async def hydrate_companion_state(
 async def hydrate_assigned_companion_state(
     player_id: str,
     archetype_id: str,
+    player_level: int,
 ) -> CompanionState:
     """Hydrate the companion the player's archetype assigns, for a FRESH session (story-008).
 
@@ -98,7 +101,7 @@ async def hydrate_assigned_companion_state(
     companion_id = select_companion_for_archetype(archetype_id)
     profile = get_companion_profile(companion_id)
     await db_mutations_companion.insert_companion_relationship_if_absent(player_id, companion_id)
-    return await hydrate_companion_state(player_id, companion_id, profile.name)
+    return await hydrate_companion_state(player_id, companion_id, profile.name, player_level=player_level)
 
 
 async def cached_effective_rank(

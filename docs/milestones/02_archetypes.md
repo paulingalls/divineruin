@@ -22,7 +22,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 
 ### Material gaps
 
-**STATUS UPDATE (post Sprint-002): the Sprint-002 "ZERO criteria met" snapshot below is now stale.** M2.1 shipped (sprint-016) and the ability/milestone/spell/mentor systems subsequently shipped under their own execution-plan numbering (M2.2 as "M4 ability", M2.3 as "M4 milestone", M2.4 as "M8 spell acquisition", M2.5 as "M9 martial mentor" / M6.3 mentor gating), each with a real-DB acceptance capstone. 30/34 acceptance criteria are now checked; the 4 that remain unchecked are genuinely deferred (see per-milestone status notes). The Sprint-002 spec-vs-code findings below are retained for history: <!-- see audit/phase-2-archetypes.md -->:
+**STATUS UPDATE (post Sprint-002): the Sprint-002 "ZERO criteria met" snapshot below is now stale.** M2.1 shipped (sprint-016) and the ability/milestone/spell/mentor systems subsequently shipped under their own execution-plan numbering (M2.2 as "M4 ability", M2.3 as "M4 milestone", M2.4 as "M8 spell acquisition", M2.5 as "M9 martial mentor" / M6.3 mentor gating), each with a real-DB acceptance capstone. 34/34 acceptance criteria are now checked. The Sprint-002 spec-vs-code findings below are retained for history: <!-- see audit/phase-2-archetypes.md -->:
 
 - **M2.1**: DB table, `content/archetypes.json`, `get_archetype_chassis()` are aspirational. 18 archetypes live in `apps/agent/{hp_scaling,rules_engine,creation_classes}.py` (Sprint-001 finding, still true). Stale `ClassData.hit_die` field diverges from `ARCHETYPE_HP_CONFIG` — capstone recommends dropping or documenting as cosmetic. <!-- see audit/phase-2-archetypes.md -->
 - **M2.2**: Entire ability system aspirational. Only L4/L8 milestone *markers* exist. Sprint-001 carryover: `validateSlotAvailability` Artificer dead-code exception needs reconciliation (wire or remove). <!-- see audit/phase-2-archetypes.md -->
@@ -136,12 +136,12 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - [x] `resolve_milestone` at L5 presents exactly 2 specialization options and requires a player choice before granting abilities
 - [x] `resolve_milestone` at L10, L15, and L20 auto-grants abilities without requiring player input
 - [x] L10 grants Extra Attack for martial archetypes
-- [ ] L20 grants a capstone ability and legendary companion unlock
+- [x] L20 grants a capstone ability and legendary companion unlock
 - [x] Specialization choice at L5 is persisted and cannot be changed after selection
 - [x] Client displays specialization choice UI when L5 milestone triggers
 - [x] Unit tests verify milestone grants at each tier for at least 3 different archetypes
 
-> **Status (mostly shipped):** Milestone entries at 5/10/15/20, the L5 specialization fork (exactly 2 options for non-patron archetypes, surfaced as a `SPECIALIZATION_CHOICE` event and persisted immutably by the `select` verb — `resolve_milestone` was superseded by the `award_xp` auto-grant chokepoint + `select`; M28 story-003 then removed the `award_xp` tool itself, leaving that chokepoint as the `_award_xp_core` Resolve), L10 auto-grant Extra Attack, and the mobile `specialization-overlay.tsx` are delivered and tested (unit tests + `tests/acceptance/test_milestone_progression.py`, mobile `specialization-choice.test.ts`). AC5's "legendary companion unlock" half is not implemented — L20 content grants only a capstone ability — left unchecked.
+> **Status (shipped):** Milestone entries at 5/10/15/20, the L5 specialization fork (exactly 2 options for non-patron archetypes, surfaced as a `SPECIALIZATION_CHOICE` event and persisted immutably by the `select` verb — `resolve_milestone` was superseded by the `award_xp` auto-grant chokepoint + `select`; M28 story-003 then removed the `award_xp` tool itself, leaving that chokepoint as the `_award_xp_core` Resolve), L10 auto-grant Extra Attack, and the mobile `specialization-overlay.tsx` are delivered and tested (unit tests + `tests/acceptance/test_milestone_progression.py`, mobile `specialization-choice.test.ts`). Companion progression is filtered to the player's session-start level in the DM prompt. Crossing L20 adds the assigned companion's legendary gain to the XP Resolve response so the DM voices it; its once-per-session use is narrative-only and tracked by the DM.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Milestone Progression*
