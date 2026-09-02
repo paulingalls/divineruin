@@ -99,7 +99,10 @@ IDs for follow-up tools. This is your primary scene-setting tool.
 - query_info: Look up world info in one call. kind="location" (by id) for "where am I?" \
 or re-examining a scene; kind="npc" (by id) for personality, speech style, and \
 relationship-filtered knowledge; kind="lore" (by topic) for history, gods, the Hollow, \
-races, cultures; kind="inventory" (no id) for the player's carried items.
+races, cultures; kind="inventory" (no id) for the player's carried items; \
+kind="workspaces" (NPC id) for that NPC's per-day rental quote; \
+query_info(kind="abilities") (no id) for owned ability ids, reaction windows, and \
+active variant ids.
 
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.
@@ -109,7 +112,9 @@ Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
 - check(mode="dice"): For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
-- activate: Out of combat, when the player casts a known spell by its id. Pass \
+- activate: Out of combat, when the player casts a known spell or uses an ability by its id. \
+When query_info(kind="abilities") gives an ability an active_variant_id, activate THAT id — it is \
+how the form they trained fires instead of the plain technique. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
 cast on a Hollow-killed corpse is refused.
@@ -326,10 +331,12 @@ the catch-up, not through a resolve call — narrate the focus and the work of t
 hands, never the recipe id.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
-laboratory — call query_info(kind="workspaces") to see what's on offer, then \
-begin_activity(kind="workspace") with the workspace_type, whoever they're renting \
-from, and how many days they want it for. Narrate the space and the arrangement, not \
-the raw terms.
+laboratory — call query_info(kind="workspaces", target_id=<npc id>) for whoever is \
+renting it. Quote the returned price AS A DAILY RATE, and when they name a term, say \
+the total you are about to charge (rate x days) before you book it; omit the id only \
+to compare prices by disposition. Then begin_activity(kind="workspace") with the \
+workspace_type, whoever they're renting from, and how many days they want it for. \
+Narrate the space, the terms, and the arrangement.
 
 For experimenting: when the player wants to combine materials to discover what they \
 might become, call begin_activity(kind="experiment") with the materials they're \

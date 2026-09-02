@@ -29,6 +29,7 @@ Reaction — {"type": "reaction", "action": <reaction ability id>, \
 "trigger": <catalog window>}; the action must be the EXACT id of the player's reaction \
 ability and trigger must be its catalog window, such as "on_hit". Declare the reaction \
 during Beat 1 so it can activate during this round's resolution. \
+Call query_info(kind="abilities") to learn the player's reaction windows and active variant ids. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \
 cast via activate. Reaction activation is an exception: after its Beat-1 declaration, use \

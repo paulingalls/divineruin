@@ -1,7 +1,7 @@
 """Tests for the workspace query/rent agent tools (story-004/011, M5.2).
 
 query_available_workspaces (read-only) lists what the player can use at their
-location + rental base prices. rent_workspace (mutating) prices by NPC disposition,
+location plus NPC-specific or per-disposition daily prices. rent_workspace prices by NPC disposition,
 debits gold (interim 10sp=1gp), and writes a workspace_rentals row. Failures raise
 ToolError (ADR 0002). The _*_impl seams take injected mods. Split from the crafting
 project tests (test_crafting_tools_projects.py) to stay under the 500-line cap;
@@ -16,6 +16,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 from crafting_tools import _query_available_workspaces_impl, _rent_workspace_impl
+from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS
 
 
 def _pricing():
@@ -45,16 +46,133 @@ def _queries(*, accessible=None, disposition="neutral", player=None, present_npc
 
 
 class TestQueryAvailableWorkspaces:
-    async def test_returns_accessible_and_rental_prices(self):
+    async def test_invalid_target_fails_before_reads(self):
+        queries = _queries()
+        pricing = _pricing()
+        with pytest.raises(ToolError, match="Invalid npc_id"):
+            await _query_available_workspaces_impl(make_context(), "bad npc", queries_mod=queries, pricing_mod=pricing)
+        queries.get_inventory_item.assert_not_awaited()
+        queries.get_accessible_workspaces.assert_not_awaited()
+        pricing.get_economy_pricing.assert_not_awaited()
+
+    async def test_without_target_returns_disposition_prices_and_no_bare_base(self):
         ctx = make_context()
         result = json.loads(
-            await _query_available_workspaces_impl(ctx, queries_mod=_queries(accessible={"field", "forge"}))
+            await _query_available_workspaces_impl(
+                ctx,
+                queries_mod=_queries(accessible={"field", "forge"}),
+                pricing_mod=_pricing(),
+            )
         )
         assert set(result["accessible"]) == {"field", "forge"}
-        # rentable base prices surfaced (workshop 2 / forge 5 / laboratory 10 + combined 12).
-        prices = {r["workspace_type"]: r["base_price_sp"] for r in result["rentable"]}
-        assert prices == {"workshop": 2, "forge": 5, "laboratory": 10}
-        assert result["combined_forge_lab_sp"] == 12
+        prices = {entry["workspace_type"]: entry["prices_sp_per_day_by_disposition"] for entry in result["rentable"]}
+        assert prices["workshop"] == {"neutral": 2.0, "friendly": 1.6, "trusted": 0.0}
+        assert prices["forge"] == {"neutral": 5.0, "friendly": 4.0, "trusted": 0.0}
+        assert prices["laboratory"] == {"neutral": 10.0, "friendly": 8.0, "trusted": 0.0}
+        serialized = json.dumps(result)
+        assert "base_price_sp" not in serialized
+        assert "combined_forge_lab" not in serialized
+
+    async def test_untargeted_table_covers_every_rentable_ladder_tier(self):
+        # The tier list must come from the canonical ladder (role_archetypes.DISPOSITIONS),
+        # not a hand-copied tuple: a tier added above neutral that the table omits puts the
+        # DM back to quoting a price that player never pays.
+        expected = {tier for tier in DISPOSITIONS if DISPOSITION_INDEX[tier] >= DISPOSITION_INDEX["neutral"]}
+        result = json.loads(
+            await _query_available_workspaces_impl(make_context(), queries_mod=_queries(), pricing_mod=_pricing())
+        )
+        assert result["rentable"]
+        for entry in result["rentable"]:
+            assert set(entry["prices_sp_per_day_by_disposition"]) == expected
+
+    async def test_target_returns_trusted_players_free_daily_quote(self):
+        result = json.loads(
+            await _query_available_workspaces_impl(
+                make_context(),
+                "grimjaw",
+                queries_mod=_queries(disposition="trusted"),
+                pricing_mod=_pricing(),
+            )
+        )
+        assert result["quoted_for_npc_id"] == "grimjaw"
+        assert result["disposition"] == "trusted"
+        assert result["rentable"] == [
+            {"workspace_type": workspace_type, "available": True, "price_sp_per_day": 0.0}
+            for workspace_type in ("workshop", "forge", "laboratory")
+        ]
+        assert "combined_forge_lab" not in json.dumps(result)
+
+    async def test_absent_target_refuses_before_reading_disposition(self):
+        queries = _queries(present_npc_ids=())
+        pricing = _pricing()
+        with pytest.raises(ToolError, match="isn't here"):
+            await _query_available_workspaces_impl(make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing)
+        queries.get_npc_disposition.assert_not_awaited()
+        pricing.get_economy_pricing.assert_not_awaited()
+
+    async def test_below_neutral_target_preserves_accessible_and_marks_rentals_unavailable(self):
+        result = json.loads(
+            await _query_available_workspaces_impl(
+                make_context(),
+                "grimjaw",
+                queries_mod=_queries(accessible={"field", "forge"}, disposition="hostile"),
+                pricing_mod=_pricing(),
+            )
+        )
+        assert set(result["accessible"]) == {"field", "forge"}
+        assert all(entry["available"] is False and entry["reason"] for entry in result["rentable"])
+        assert all("price_sp_per_day" not in entry for entry in result["rentable"])
+
+    async def test_off_tier_target_raises_toolerror(self):
+        with pytest.raises(ToolError, match="invalid disposition"):
+            await _query_available_workspaces_impl(
+                make_context(),
+                "grimjaw",
+                queries_mod=_queries(disposition="grumpy"),
+                pricing_mod=_pricing(),
+            )
+
+    @pytest.mark.parametrize(
+        "disposition,expected_daily",
+        [("neutral", 5.0), ("friendly", 4.0), ("trusted", 0.0)],
+    )
+    async def test_npc_daily_quote_times_days_equals_charge_and_debit(self, disposition, expected_daily):
+        days = 3
+        starting_gold = 15.0
+        queries = _queries(disposition=disposition, player={"player_id": "player_1", "gold": starting_gold})
+        pricing = _pricing()
+        quote_result = json.loads(
+            await _query_available_workspaces_impl(make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing)
+        )
+        daily_quote = next(entry for entry in quote_result["rentable"] if entry["workspace_type"] == "forge")[
+            "price_sp_per_day"
+        ]
+
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.update_player_gold = AsyncMock()
+        mutations.create_workspace_rental = AsyncMock(return_value="rent_quote_parity")
+        rental = json.loads(
+            await _rent_workspace_impl(
+                make_context(),
+                "forge",
+                "grimjaw",
+                days,
+                db_mod=db_mod,
+                queries_mod=queries,
+                mutations_mod=mutations,
+                pricing_mod=pricing,
+            )
+        )
+
+        assert daily_quote == pytest.approx(expected_daily)
+        assert rental["price_sp"] == pytest.approx(daily_quote * days)
+        if daily_quote == 0.0:
+            mutations.update_player_gold.assert_not_awaited()
+        else:
+            assert mutations.update_player_gold.await_args.args[1] == pytest.approx(
+                starting_gold - (daily_quote * days / 10)
+            )
 
     async def test_portable_lab_owner_reported_via_grant(self):
         # Read-path parity with start_crafting_project: a Portable-Lab owner's "what can
@@ -62,12 +180,12 @@ class TestQueryAvailableWorkspaces:
         # 6a1b99cd6ac7). The grant itself is get_accessible_workspaces' job; assert the
         # query path passes lab ownership through to it.
         queries = _queries(has_lab=True)
-        await _query_available_workspaces_impl(make_context(), queries_mod=queries)
+        await _query_available_workspaces_impl(make_context(), queries_mod=queries, pricing_mod=_pricing())
         assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is True
 
     async def test_no_lab_passes_false_through(self):
         queries = _queries(has_lab=False)
-        await _query_available_workspaces_impl(make_context(), queries_mod=queries)
+        await _query_available_workspaces_impl(make_context(), queries_mod=queries, pricing_mod=_pricing())
         assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is False
 
 

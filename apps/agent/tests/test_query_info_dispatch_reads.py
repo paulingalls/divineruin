@@ -1,14 +1,16 @@
-"""Tests for query_info dispatch to recipe, training_programs, and workspaces."""
+"""Tests for query_info dispatch reads that do not belong to query_tools domains."""
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
-from query_tools import _query_info_impl
+import abilities
+from query_tools import _query_abilities_impl, _query_info_impl
 from session_data import SessionData
+from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 
 
 @pytest.fixture
@@ -101,7 +103,32 @@ class TestQueryInfoNoTargetIdKinds:
             )
 
             assert result == mock_impl_result
-            mock_crafting_mod._query_available_workspaces_impl.assert_called_once_with(mock_context)
+            mock_crafting_mod._query_available_workspaces_impl.assert_called_once_with(mock_context, None)
+
+    @pytest.mark.asyncio
+    async def test_workspaces_forwards_npc_target(self, mock_context):
+        mock_crafting_mod = MagicMock()
+        mock_crafting_mod._query_available_workspaces_impl = AsyncMock(return_value='{"rentable": []}')
+
+        result = await _query_info_impl(
+            mock_context,
+            kind="workspaces",
+            target_id="grimjaw",
+            crafting_mod=mock_crafting_mod,
+        )
+
+        assert result == '{"rentable": []}'
+        mock_crafting_mod._query_available_workspaces_impl.assert_awaited_once_with(mock_context, "grimjaw")
+
+    @pytest.mark.asyncio
+    async def test_abilities_no_target_id_required(self, mock_context):
+        with patch(
+            "query_tools._query_abilities_impl", new_callable=AsyncMock, return_value='{"abilities":[]}'
+        ) as read:
+            result = await _query_info_impl(mock_context, kind="abilities")
+
+        assert result == '{"abilities":[]}'
+        read.assert_awaited_once_with(mock_context)
 
     @pytest.mark.asyncio
     async def test_unknown_kind_fails_loud(self, mock_context):
@@ -122,6 +149,80 @@ class TestQueryInfoNoTargetIdKinds:
                 kind="recipe",
                 target_id=None,
             )
+
+
+class TestQueryAbilities:
+    def _dependencies(self, *, player=None, known=None, active_variant=None):
+        queries = MagicMock()
+        queries.get_player = AsyncMock(return_value=player)
+        persistence = MagicMock()
+        persistence.get_character_abilities = AsyncMock(return_value=known or [])
+        persistence.get_active_variant = AsyncMock(return_value=active_variant)
+        return queries, persistence
+
+    @pytest.mark.asyncio
+    async def test_surfaces_class_catalog_owned_elective_and_active_variant(self, mock_context):
+        queries, persistence = self._dependencies(
+            player={"class": "warrior"},
+            known=[{"ability_id": "warrior_cleaving_blow", "equipped": True}],
+            active_variant="warrior_cleaving_blow_drathian",
+        )
+
+        payload = json.loads(await _query_abilities_impl(mock_context, queries=queries, persistence=persistence))
+        rows = {row["id"]: row for row in payload["abilities"]}
+        catalog = abilities.get_archetype_abilities("warrior")
+        expected_ids = {
+            ability.id
+            for ability in catalog
+            if ability.ability_type in ("core", "reaction") or ability.id == "warrior_cleaving_blow"
+        }
+
+        assert set(rows) == expected_ids
+        assert all(rows[ability.id]["name"] == ability.name for ability in catalog if ability.id in rows)
+        reactions = [ability for ability in catalog if ability.ability_type == "reaction"]
+        assert reactions
+        assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
+        assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("player", [None, {}, {"class": None}])
+    async def test_missing_player_or_class_fails_loud(self, mock_context, player):
+        queries, persistence = self._dependencies(player=player)
+
+        with pytest.raises(ToolError, match="class"):
+            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+
+    @pytest.mark.asyncio
+    async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
+        # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
+        # sounds like an answer, which is what this kind exists to remove.
+        queries, persistence = self._dependencies(player={"class": "not_an_archetype"})
+
+        with pytest.raises(ToolError, match="not_an_archetype"):
+            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+
+    @pytest.mark.asyncio
+    async def test_unknown_persisted_elective_is_a_tool_error(self, mock_context):
+        queries, persistence = self._dependencies(
+            player={"class": "warrior"},
+            known=[{"ability_id": "missing_catalog_ability", "equipped": True}],
+        )
+
+        with pytest.raises(ToolError, match="missing_catalog_ability"):
+            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+
+
+def test_prompts_name_ability_id_producer():
+    exploration = build_system_prompt("accord_guild_hall")
+    for prompt in (exploration, COMBAT_SYSTEM_PROMPT):
+        assert 'query_info(kind="abilities")' in prompt
+        assert "window" in prompt
+        assert "variant" in prompt
+
+    # Surfacing the variant id is only half of constraint 6: the tool that consumes it has to
+    # say so, or the DM holds an id it has no documented route for.
+    activate_bullet = next(line for line in exploration.split("- ") if line.startswith("activate:"))
+    assert "active_variant_id" in activate_bullet
 
 
 class TestQueryInfoE2E:

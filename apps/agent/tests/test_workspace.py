@@ -61,6 +61,12 @@ class TestRentalPricing:
         assert quote.available is True
         assert quote.price_sp == pytest.approx(7.2)
 
+    def test_trusted_workspace_rental_is_free_without_changing_shared_pricing(self):
+        quote = ws.compute_workspace_rental_price(5, "trusted", multipliers=_MULT)
+        assert quote.available is True
+        assert quote.price_sp == 0.0
+        assert ws.compute_rental_price(5, "trusted", multipliers=_MULT).price_sp == pytest.approx(3.0)
+
     @pytest.mark.parametrize("disposition", ["cautious", "wary"])
     def test_legacy_disposition_rejected(self, disposition):
         # story-004 retired the wary/cautious aliases — they now raise like any
