@@ -16,6 +16,9 @@ MODEL = "claude-haiku-4-5-20251001"
 # harness captured (ADR 0004): "The maximum number of strict tools supported
 # is 20". livekit-plugins-anthropic defaults _strict_tool_schema=True, so every
 # registered @function_tool counts. Pin each agent's tool list against this.
+# Strict is INTERIM-OFF in agent.py (2026-09-02, ADR 0004 addendum) because of a
+# second limit — 16 union-typed parameters per request; the 20-tool cap stays
+# pinned as the discipline strict will return to (sprint-47 story-016).
 MAX_STRICT_TOOLS = 20
 
 AUDIO_DIR = os.environ.get(
