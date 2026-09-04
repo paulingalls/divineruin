@@ -130,3 +130,15 @@ scalable fix (typed noun objects per kind, or a discriminated union strict
 accepts, with the union-typed count pinned beside the tool count) and re-enables
 strict; this addendum is superseded when it lands.
 
+**Superseded in principle by ADR 0008** (Proposed, 2026-09-04): the scalable fix is
+"verbs take sum types" — one discriminated `anyOf` per polymorphic verb instead of a bag
+of optionals — with the union budget pinned beside the tool budget. A live probe that day
+established the limits precisely (an `anyOf` of 17 kind-tagged variants costs one union
+slot; the same information as 17 optionals is a 400). The story that carries the fix is
+**Sprint 47 story-019** — renumbered from story-016 above, but still Sprint 47, and now a
+PREREQUISITE for the M29 reaction restore (Sprint 48) rather than a follow-on, because
+combat 400s on every real turn until strict fits. See `docs/agent_tool_surface.md` for
+the measurements and `docs/decisions/0008-sum-typed-verbs-and-next-in-results.md` for
+the decision. This addendum is retired when that work lands and `agent.py` stops
+passing `_strict_tool_schema=False`.
+

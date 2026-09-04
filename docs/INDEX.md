@@ -96,6 +96,31 @@ core verb vocabulary, locations as dynamically-assembled stages.
 
 ---
 
+## agent_tool_surface.md (622 lines)
+
+Strict tool-schema limits and context timing, measured live against trunk `08fa9b8`
+(2026-09-04). Design source for ADR 0008 (sum-typed verbs, `next` in results) and for
+story-019. Answers "right information / right action at the right time" for the DM agent.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Summary | 17-54 | The six findings: sum types, exact limits, 2-4 unions/agent, state machine not tool list, layer placement, no tool search |
+| What trunk sends today | 55-95 | Per-agent tool + union counts; the bags of optionals |
+| The limits, precisely | 96-136 | 20 strict tools, 16 unions (recursive), ~13-nullable object cliff, additionalProperties/enum-null/oneOf rejections, and what does vs doesn't traverse `$ref` |
+| Diagnosis | 137-158 | Why folding nouns into verbs produced product-types-with-nulls |
+| Verbs take sum types | 161-259 | The schema rules + per-verb rewrites (check, begin_activity, declare_phase, activate, travel, enter_mode) |
+| When a verb set grows | 260-277 | Split criteria: eval-driven, not count-driven |
+| Right information at the right time | 278-321 | Layer-by-volatility placement rule; the ACTIVE COMBAT staleness bug |
+| Right action at the right time | 322-383 | Why per-turn tool scoping thrashes the cache; the NOW block + `next` field |
+| Plugin constraints and escape hatches | 384-404 | raw_schema, non-strict mixing, what LiveKit emits |
+| Sequencing | 405-442 | Order of work for story-019 (Sprint 47, ahead of the M29 restore) |
+| Risks and how to measure them | 443-464 | Tool-selection eval, cache-read assertion |
+| Open questions for the human | 465-479 | query_info shape, enter_mode, resolve_phase-as-advance-verb, creation agent model |
+| Appendix — how this was measured | 480-507 | The schema walk and the live limit probes |
+| Cost recommendations | 508-622 | Cache protection, fewer turns/session, models, TTS, a cost budget test |
+
+---
+
 ## audio_design.md (~800 lines)
 
 Soundscapes, SFX, music, voice design.

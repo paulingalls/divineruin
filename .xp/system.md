@@ -64,6 +64,10 @@ API cost) and runs at pre-push and sprint close only.
   verb→agent registry assertions in the acceptance VERB_PRESENCE tables; those
   are not import-linked and only go red in the slow acceptance lane.
 - New tools need docstrings — the LLM reads them to decide when to call.
+- Third-party sources live under `apps/agent/.venv` and `node_modules`; open them
+  BY PATH. Never search from `/` — scope every search to the repo and exclude the
+  dependency trees. (sprint-046: a reviewer ran a whole-filesystem walk to find a
+  file whose path it had already been given.)
 - Ventriloquism: `[CHARACTER_NAME, emotion_hint]: "dialogue"`; untagged is the
   narrator. `CHARACTER_NAME` must be a registered key in `apps/agent/voices.py`
   (`VOICES`) — an unregistered tag silently falls back to `DM_NARRATOR`. An NPC's
@@ -81,7 +85,14 @@ API cost) and runs at pre-push and sprint close only.
   had 7 errors the report called green).
 - Latency budget: 1500ms end-of-speech to first audio. Stream everything.
   Cost: cache system prompts; flag anything that raises token usage (`cost_model.md`).
-- Branching: trunk is `main` (protected). Work lands as first-parent merges of
+- Branching: trunk is `main`. It is NOT PR-protected — queried 2026-09-04:
+  `branches/main/protection` 404s ("Branch not protected"), and the one active ruleset
+  (`safety`, `~DEFAULT_BRANCH`) carries only `deletion` and `non_fast_forward`. No rule
+  requires a PR or a status check, so a fast-forward push to main would go through.
+  (`branches/main` still reports `protected: true` — that flag means "some ruleset
+  applies", not "PR-gated"; don't read it as a wall.) The branch discipline below is a
+  CONVENTION the xp release model enforces, not one the host enforces; don't cite
+  "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   runs the FULL acceptance gate (Docker/testcontainers) — allow ~10 minutes for
   any push or merge, or it is SIGTERM'd and fails silently. On a gate failure,
