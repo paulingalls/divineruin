@@ -85,7 +85,12 @@ API cost) and runs at pre-push and sprint close only.
   had 7 errors the report called green).
 - Latency budget: 1500ms end-of-speech to first audio. Stream everything.
   Cost: cache system prompts; flag anything that raises token usage (`cost_model.md`).
-- Branching: trunk is `main` (protected). Work lands as first-parent merges of
+- Branching: trunk is `main`. It is NOT PR-protected — verified 2026-09-04: classic
+  protection is `enabled: false`, and the one active ruleset (`safety`, on the default
+  branch) carries only `deletion` and `non_fast_forward`. A direct push to main
+  succeeds. The branch discipline below is therefore a CONVENTION the xp release model
+  enforces, not a wall the host enforces; don't cite "protected" as the reason for it.
+  Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   runs the FULL acceptance gate (Docker/testcontainers) — allow ~10 minutes for
   any push or merge, or it is SIGTERM'd and fails silently. On a gate failure,

@@ -1,13 +1,16 @@
 # DM Tool Surface and Context Timing — Design
 
 Date: 2026-09-04. Measured against trunk `08fa9b8` (a `git archive` snapshot outside
-the repo; nothing in the repo was touched). Written for story-019 ("re-enable strict tool schemas under the 16 union-typed-parameter
-limit"; the ADR-0004 addendum still calls it sprint-47 story-016) and for the
-"right information / right action at the right time" question behind it.
+the repo; nothing in the repo was touched). Written for story-019 ("re-enable strict
+tool schemas under the 16 union-typed-parameter limit"; the body of the ADR-0004
+addendum still calls it story-016, corrected in that addendum's ADR-0008 paragraph)
+and for the "right information / right action at the right time" question behind it.
 
-Combat's numbers move under the M29 reaction restore (016/017/018 reshape
-`declare_phase`/`resolve_phase`). Re-measure against the post-restore head
-before pinning anything (the schema walk is in the appendix).
+Story-019 runs FIRST: it is in Sprint 47 and the M29 reaction restore (016/017/018,
+which reshapes `declare_phase`/`resolve_phase`) is Sprint 48, moved out because combat
+400s on every real turn until strict fits. So 019 does not wait for the restore and
+must not hand-pin the counts below — its budget test walks the emitted schema (section
+5 step 1, appendix), and Sprint 48 re-runs that walk against the reshaped payloads.
 
 ---
 
@@ -26,7 +29,7 @@ before pinning anything (the schema walk is in the appendix).
    nullables ("Schema is too complex"); `additionalProperties` must be `false`;
    `enum` with a null member is rejected; `oneOf` is rejected; non-strict tools count
    toward none of this, and strict and non-strict tools mix freely in one request.
-3. **After reshaping, every agent lands at 2–4 unions** (from 17 / 14 / 23), with
+3. **After reshaping, every agent lands at 2–4 unions** (from 17 / 13 / 23), with
    headroom of one union per future polymorphic verb. The union cap and the tool cap
    then bind at the same place, about 16 verbs per agent, which is also where LiveKit
    and Anthropic say selection accuracy starts to degrade. One budget, one number.
@@ -57,7 +60,7 @@ the exact call the plugin makes (`livekit-plugins-anthropic` 1.6.1 → `to_fnc_c
 | Agent | Tools | Unions | Strict JSON | Worst offenders |
 |---|---|---|---|---|
 | exploration | 14 | **17** | 12.5k chars | `check` 9, `activate` 2, `travel` 2, `enter_mode` 2, `query_info` 1, `transact` 1 |
-| combat | 9 | **14** + hard reject | 9.6k | `declare_phase.declarations` is `additionalProperties: object` (400 regardless of count), `check` 9, `activate` 2, `request_death_save` 1, `query_info` 1 |
+| combat | 9 | **13** + hard reject | 9.6k | `declare_phase.declarations` is `additionalProperties: object` (400 regardless of count), `check` 9, `activate` 2, `request_death_save` 1, `query_info` 1 |
 | dispatch | 9 | **23** | 9.3k | `begin_activity` 11, `check` 9, `resolve_activity` 1, `learn` 1, `query_info` 1 |
 | onboarding | 6 | 10 | 5.8k | `check` 9, `query_info` 1 |
 | blacksmith | 3 | 1 | 2.5k | `query_info` 1 |
@@ -93,9 +96,9 @@ Other things worth knowing about the current request shape:
 ## 2. The limits, precisely
 
 Probed 2026-09-04 with 1-token `messages.create` calls on `claude-haiku-4-5-20251001`
-(`measure/probe_strict.py`, `probe_strict_live.py`, `probe_complexity.py`; raw results
-in `measure/probe_results*.json`). Note that `count_tokens` validates schema *shape*
-only; the grammar limits fire only on `messages.create`.
+(design-session scratch, not kept in the repo — see the appendix). Note that
+`count_tokens` validates schema *shape* only; the grammar limits fire only on
+`messages.create`.
 
 | Probe | Result |
 |---|---|
@@ -160,7 +163,9 @@ These are the rules the budget test should enforce (section 5 has the pins).
 1. **A parameter is optional only when the decision is optional.** No defaults on
    `@function_tool` signatures. `hours: int = 4` and `forced_march: bool = False` are
    two unions for nothing; make them required and let the description say what
-   "normal" is. This alone removes 7 of exploration's 17.
+   "normal" is. This alone removes 6 of exploration's 17 (`travel` 2, `enter_mode` 2,
+   `transact` 1, `query_info` 1); rule 5 takes `activate`'s 2 and rule 2 takes
+   `check`'s 9, which accounts for all 17.
 2. **Polymorphism is one `anyOf` parameter.** Variants are pydantic models with a
    `kind: Literal["..."]` discriminator and *only required fields*. Cost: 1 union per
    verb, independent of variant count. Do not put optionals inside variants (each one
@@ -201,7 +206,7 @@ Training | CompanionErrand | Crafting | WorkspaceRental | Experiment   # each wi
 
 # declare_phase — a mapping of free-form dicts → a list of typed declarations
 declarations: list[AttackDecl | AbilityDecl | DefendDecl | ReactionDecl | ...]   # each carries actor_id
-# (the probe `declare_array_typed` is exactly this shape and is accepted)
+# (probed live in exactly this shape and accepted)
 
 # activate
 id: str; targets: list[str]                                   # 0 unions
@@ -230,7 +235,7 @@ Projected budget after reshaping (exploration assumes `enter_location` folds, 4.
 | Agent | Tools | Unions (from) | Notes |
 |---|---|---|---|
 | exploration | 13 | **2–3** (17) | `check` 1, `enter_mode` 0–1, `query_info` 0–1 |
-| combat | 9 | **3** (14 + reject) | `declare_phase` 1, `check` 1, `activate`/`query_info` 0–1 |
+| combat | 9 | **3** (13 + reject) | `declare_phase` 1, `check` 1, `activate`/`query_info` 0–1 |
 | dispatch | 9 | **3** (23) | `begin_activity` 1, `check` 1, `resolve_activity` 0–1 |
 | onboarding | 6 | 1–2 (10) | |
 
@@ -288,7 +293,8 @@ Concrete fixes on trunk:
   reads) and target catalogs into the Stage. Target ≤ 4 sentences per verb; Anthropic
   asks for 3–4, LiveKit for what/when/when-not. Expect exploration's 12.5k chars of
   tool JSON to drop by roughly a third while getting more precise.
-- **Standardize the result envelope** (ADR-0007 promised `ActResult`; it does not
+- **Standardize the result envelope** (`agent_verbs_and_stages.md` §4, the design
+  doc ADR-0007 realizes, promised `ActResult`; it does not
   exist yet). Every Act returns the same keys so Haiku learns one shape:
 
   ```json
@@ -390,15 +396,16 @@ Ordered so each step is green on its own and the strict flip lands as early as
 possible. Steps 1–3 are story-019's scope; 4–6 are follow-ons worth their own cards.
 
 1. **Pin the real budget.** Extend `test_strict_tool_budget.py` to walk
-   `parse_function_tools("anthropic", strict=True)` output per agent (the
-   the appendix describes the walk) and assert: strict tools ≤ 20, unions
+   `parse_function_tools("anthropic", strict=True)` output per agent (the appendix
+   describes the walk) and assert: strict tools ≤ 20, unions
    ≤ 16 with a warn at 12, no object with > 12 nullables, no `additionalProperties`
    object, no enum containing null, no `oneOf`. Pin the exact union count per agent
    next to the tool count. Add a source lint: no `@function_tool` parameter with a
    default. Keep the acceptance-lane real-LLM turn per agent, failing loud without a
    key (already in the AC).
 2. **Reshape the verbs per 4.1**, behaviour-preserving, one verb per commit:
-   `check`, `begin_activity`, `declare_phase` (coordinate with post-047 shape),
+   `check`, `begin_activity`, `declare_phase` (reshape it NOW — its
+   `additionalProperties` object is the hard 400, and Sprint 48 builds on the result),
    `activate`, `travel`, `enter_mode`, `request_death_save`, the four one-union
    strays. Tool bodies keep their existing validation (the engine remains the wall;
    strict is a second net).
@@ -430,9 +437,11 @@ verbs"), superseding the 0004 addendum and refining 0007 §4 ("standard Act shap
   the LiveKit testing framework (`docs.livekit.io/agents/start/testing`), with a
   simulation pass for combat. Wire the same set into the acceptance lane's real-LLM
   scenarios so it stays measured.
-- **Combat schema drift during sprint-047.** The counts in section 1 are trunk; 016
-  and 017 change `declare_phase`'s payload and may add a verb. Re-measure post-047
-  before pinning (the plan already says so).
+- **Combat schema drift in Sprint 48.** The counts in section 1 are trunk and 019
+  reshapes them; 016 and 017 then change `declare_phase`'s payload again and may add a
+  verb. This is why decision 2's test WALKS the emitted schema instead of pinning
+  hand-counted numbers — Sprint 48 re-runs the same walk and the drift is caught, not
+  re-measured by hand.
 - **Cache regressions are silent.** Add a standing assertion (acceptance lane) that
   the second turn of a scenario reports `cache_read_input_tokens > 0` on the plugin's
   usage chunk, so a future tool-list or system-prompt invalidator is red, not a bill.
@@ -512,10 +521,20 @@ where the money is. Ranked by expected effect; each is independent of the schema
    time-of-day *band* in warm and the exact time nowhere in the prompt (the HUD has it).
 4. **Combat lives only in the hot layer** (4.3). Besides the staleness bug, this stops
    mid-fight rebuilds from touching the system prompt.
-5. **Guardrail:** `TokenTracker` already sees `prompt_cached_tokens`; log the cached
-   ratio per session and assert in the acceptance lane that turn two of a scenario
-   reads from cache. A future invalidator (a UUID in a prompt, a reordered tool list,
-   a per-turn `update_tools`) should go red, not show up on the bill.
+5. **Guardrail — but repair `TokenTracker` first; today it records zeros.**
+   `on_metrics` iterates `getattr(metrics, "llm_metrics", [])`, and the
+   `metrics_collected` payload is `MetricsCollectedEvent(metrics=AgentMetrics)` — no
+   `llm_metrics` attribute, so the loop body never runs; the four field names it then
+   reads (`input_token_count`, `output_token_count`, `cache_read_input_token_count`,
+   `cache_creation_input_token_count`) exist on none of them either, and every read is
+   a `getattr` default. `LLMMetrics` carries `prompt_tokens` / `completion_tokens` /
+   `prompt_cached_tokens` (`livekit/agents/metrics/base.py`), and `metrics_collected`
+   is itself deprecated in favour of `session_usage_updated`. Until that is fixed,
+   every cost assertion below is measuring a constant 0 — a guard that certifies
+   (constraint 1). Then log the cached ratio per session and assert in the acceptance
+   lane that turn two of a scenario reads from cache, so a future invalidator (a UUID
+   in a prompt, a reordered tool list, a per-turn `update_tools`) goes red rather than
+   showing up on the bill.
 
 ### 8.2 Fewer LLM turns per session
 
@@ -550,7 +569,8 @@ where the money is. Ranked by expected effect; each is independent of the schema
    old `function_call_output` items and the oldest exchanges with a short summary
    (the `session_summary` machinery already exists for session end) via
    `update_chat_ctx`. One cache miss per prune, then every turn reads a prefix a third
-   the size. Measure first with `TokenTracker`; the cost model's exchange count will
+   the size. Measure first with `TokenTracker` (repaired — see 8.1); the cost
+   model's exchange count will
    say whether typical sessions ever get there.
 10. **Inject affect only when it changed.** The affect line is ~60–100 uncached
     tokens on every turn as its own message. Emit it when a band changes or every

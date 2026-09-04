@@ -1,8 +1,9 @@
 # ADR 0008 — Verbs take sum types; state machines name their next verbs
 
 Status: **Proposed** (2026-09-04) — design session, read-only against trunk `08fa9b8`.
-Supersedes the 2026-09-02 interim addendum of **ADR 0004**; refines **ADR 0007** §4
-("standard Act shape"). Realized by story-019 and its follow-ons.
+Supersedes the 2026-09-02 interim addendum of **ADR 0004**; refines **ADR 0007**'s
+standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
+(Sprint 47) and its follow-ons.
 Design source: `docs/agent_tool_surface.md`.
 
 ## Decision
@@ -95,8 +96,10 @@ fields go together.
 - Haiku filling nested variants is the behavioural risk. Measure with a
   tool-selection eval (≈20 utterances per agent → expected verb + variant) before
   and after; add `input_examples` via a thin plugin subclass only if the eval says so.
-- Combat's payloads move under the M29 reaction restore (story-016/017/018);
-  re-measure before pinning (the walk is described in `docs/agent_tool_surface.md`).
+- Combat's payloads move again under the M29 reaction restore (story-016/017/018,
+  Sprint 48) — *after* this decision lands in Sprint 47. That is precisely why
+  decision 2 pins by WALKING the emitted schema rather than by hand-counted numbers:
+  Sprint 48 re-runs the same walk and drift is caught, not re-measured.
 - Cache regressions are silent; assert `cache_read_input_tokens > 0` on turn two in
   the acceptance lane.
 - Mode-agent splits are now driven by the eval, not by counts: split when the verb
