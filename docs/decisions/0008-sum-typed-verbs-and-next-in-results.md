@@ -19,6 +19,10 @@ Design source: `docs/agent_tool_surface.md`.
    tools, ≤ 16 union-typed parameters counted recursively (warn at 12), ≤ 12 nullable
    fields in any single object, no `additionalProperties` object, no enum containing
    null, no `oneOf`. The exact per-agent union count is pinned, as the tool count is.
+   **The walk resolves `$ref` into the root `$defs`** (visited-set guarded): decision 1's
+   shape puts every variant behind a bare `$ref`, and a walk that stops there checks
+   nothing inside them — an `additionalProperties` object, an enum with null, or a
+   `oneOf` inside a variant is a live 400 the API still raises (probed 2026-09-04).
 3. **Strict tool schemas are on.** `agent.py` stops passing `_strict_tool_schema=False`;
    the pin tests flip. A verb that genuinely needs a shape strict cannot express uses
    `@function_tool(raw_schema=...)` (emitted non-strict by the plugin, exempt from both
@@ -50,7 +54,12 @@ across strict tools and counts nested objects, array items and nullables inside
 variants; a separate "Schema is too complex" cliff sits at ~13 nullables in one
 object; a discriminated `anyOf` of N required-field variants costs **one**; required
 enums cost zero; `enum` with a null member and `oneOf` are rejected; non-strict tools
-count toward neither cap and mix with strict ones. The compiler's cost is exponential
+count toward neither cap and mix with strict ones. Two of those probes were re-run at
+this ADR's landing and split by shape: nullables inside *inline* variants are counted
+(17 → 400), nullables inside variants reached by `$ref` are **not** (20 → accepted),
+while `additionalProperties`/enum-null/`oneOf` are rejected either way. LiveKit emits
+the `$ref` form, which is why decision 2 resolves refs rather than trusting the API to
+catch a rule-1 violation. The compiler's cost is exponential
 in optionals per object and linear in variants. Sum types are the shape it is priced
 for; they are also the shape that lets the schema, not the description, say which
 fields go together.
@@ -101,7 +110,12 @@ fields go together.
   decision 2 pins by WALKING the emitted schema rather than by hand-counted numbers:
   Sprint 48 re-runs the same walk and drift is caught, not re-measured.
 - Cache regressions are silent; assert `cache_read_input_tokens > 0` on turn two in
-  the acceptance lane.
+  the acceptance lane — but repair `TokenTracker` first, which records a constant 0
+  today (bug filed 2026-09-04; design doc §8.1). Asserting against it certifies nothing.
+- The union cap not traversing `$ref` is undocumented behaviour we are on the safe side
+  of, not one we may spend: if Anthropic ever resolves refs before counting, an agent
+  whose variants carry optionals 400s with no warning. Decision 2's walk is the only
+  thing that would have been red first.
 - Mode-agent splits are now driven by the eval, not by counts: split when the verb
   set differs by ≥ 4 verbs, the player stays ≥ 5 turns, and the interaction model
   changes. Blacksmith fails the first test and is a candidate to fold back into

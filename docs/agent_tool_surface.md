@@ -108,7 +108,9 @@ Probed 2026-09-04 with 1-token `messages.create` calls on `claude-haiku-4-5-2025
 | 17 nullable inside array `items` | 400 (17) — **array items count** |
 | `anyOf` of 17 kind-tagged variants, all fields required | **OK** — a discriminated union is **one** union |
 | `anyOf` of 6 variants + 16 nullable | 400 (17) — the `anyOf` param itself counts as 1 |
-| 2 variants each holding 1 nullable + 14 nullable | 400 (17) — **nullables inside variants count individually** |
+| 2 variants each holding 1 nullable + 14 nullable, variants written **inline** | 400 (17) — **nullables inside inline variants count individually** |
+| 17 nullable inside variants reached by `$ref` into `$defs` | **OK** — the counter does not traverse `$ref`; 20 in one such variant is also accepted, so the per-object cliff does not traverse it either. This is the shape the LiveKit converter emits (4.1), so the API will NOT catch a violation of rule 2 |
+| `additionalProperties: {type: object}` / enum-with-null / `oneOf` **inside** a `$ref`'d variant | 400, same messages as their top-level rows — these three DO traverse `$ref`, so a budget walk that stops at `$ref` misses live 400s |
 | 17 required `enum` strings | OK — enums are not unions |
 | `enum: ["a","b",null]` with `type: ["string","null"]` | 400 "Enum value 'a' does not match declared type" — **`Literal[...] \| None` is unusable** (this is exactly what the LiveKit converter emits for it) |
 | `oneOf` | 400 "not supported" (the converter rewrites pydantic's `oneOf` to `anyOf`, so this only bites raw schemas) |
@@ -168,8 +170,13 @@ These are the rules the budget test should enforce (section 5 has the pins).
    `check`'s 9, which accounts for all 17.
 2. **Polymorphism is one `anyOf` parameter.** Variants are pydantic models with a
    `kind: Literal["..."]` discriminator and *only required fields*. Cost: 1 union per
-   verb, independent of variant count. Do not put optionals inside variants (each one
-   counts); make a second variant instead.
+   verb, independent of variant count. Do not put optionals inside variants; make a
+   second variant instead. Hold that rule as *our* discipline, not as something the API
+   enforces: an optional inside an inline variant is counted, but the converter emits
+   variants behind `$ref` (below) and the counter does not traverse `$ref` — 20
+   nullables inside one `$ref`'d variant were accepted. Nothing outside the budget test
+   will red on a violation, and the day Anthropic resolves refs before counting, every
+   agent 400s at once.
 3. **Never `dict[str, ...]`.** `additionalProperties` must be `false`. A mapping
    becomes `list[Variant]` with the key as a required field (`actor_id`).
 4. **Never `Literal[...] | None`.** The converter emits an enum with a null member,
@@ -226,9 +233,14 @@ required strings (empty when a kind has no target), or a small sum type    # 0�
 
 The LiveKit converter handles all of this: pydantic emits `oneOf` + `discriminator`
 + `$defs` for a discriminated union; `_ensure_strict_json_schema` rewrites `oneOf` →
-`anyOf`, strips `discriminator` and `title`, inlines `$ref`, sets
-`additionalProperties: false`, and marks every property required. A single-value
-`Literal` becomes `const`, which the API accepts (probed).
+`anyOf`, strips `discriminator` and `title`, sets `additionalProperties: false`, and
+marks every property required. A single-value `Literal` becomes `const`, which the API
+accepts (probed). It does **not** inline `$ref` — `_strict.py` only unravels a ref on an
+object carrying more than one key, so a bare variant ref survives and the emitted shape
+is `{"$defs": {...}, "properties": {"<param>": {"anyOf": [{"$ref": "#/$defs/A"}, …]}}}`.
+Anthropic accepts that shape (probed). Every walk over these schemas — the budget test
+above all — must therefore resolve `$ref` into the root `$defs`, or it sees nothing
+inside any variant.
 
 Projected budget after reshaping (exploration assumes `enter_location` folds, 4.3):
 
@@ -474,9 +486,14 @@ they ran against was a `git archive` of `08fa9b8` outside the working tree.
 - **Per-agent schema walk** — build `llm.ToolContext(TOOLS)` for each agent list, call
   `parse_function_tools("anthropic", strict=True)`, and walk each tool's `input_schema`
   recursively, counting a property as union-typed when it carries `anyOf`/`oneOf` or a
-  list-valued `type`. Recurse through `properties`, `items`, and each `anyOf` variant,
-  and flag any non-empty `additionalProperties`. Per tool: parameter count, union count,
-  union paths, description length.
+  list-valued `type`. Recurse through `properties`, `items`, and each `anyOf` variant —
+  **and resolve `{"$ref": "#/$defs/X"}` against the tool's root `$defs`, tracking
+  visited refs so a self-referential variant cannot loop.** Flag any non-empty
+  `additionalProperties`. Per tool: parameter count, union count, union paths,
+  description length. The walk that produced section 1's table did not resolve refs and
+  did not need to — no tool on trunk has a `$defs`. Every tool reshaped under 4.1 will,
+  so a budget test that inherits that omission checks nothing inside the variants, which
+  is where the whole payload moves.
 - **Limit probes** — send synthetic tool schemas through `messages.create(max_tokens=1)`
   on Haiku 4.5. `count_tokens` validates shape only; the grammar limits fire on create.
   The live probes cost ~7k input tokens in total.
