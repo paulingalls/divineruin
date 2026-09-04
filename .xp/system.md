@@ -64,6 +64,10 @@ API cost) and runs at pre-push and sprint close only.
   verb→agent registry assertions in the acceptance VERB_PRESENCE tables; those
   are not import-linked and only go red in the slow acceptance lane.
 - New tools need docstrings — the LLM reads them to decide when to call.
+- Third-party sources live under `apps/agent/.venv` and `node_modules`; open them
+  BY PATH. Never search from `/` — scope every search to the repo and exclude the
+  dependency trees. (sprint-046: a reviewer ran a whole-filesystem walk to find a
+  file whose path it had already been given.)
 - Ventriloquism: `[CHARACTER_NAME, emotion_hint]: "dialogue"`; untagged is the
   narrator. `CHARACTER_NAME` must be a registered key in `apps/agent/voices.py`
   (`VOICES`) — an unregistered tag silently falls back to `DM_NARRATOR`. An NPC's

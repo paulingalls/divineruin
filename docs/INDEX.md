@@ -96,6 +96,31 @@ core verb vocabulary, locations as dynamically-assembled stages.
 
 ---
 
+## agent_tool_surface.md (586 lines)
+
+Strict tool-schema limits and context timing, measured live against trunk `08fa9b8`
+(2026-09-04). Design source for ADR 0008 (sum-typed verbs, `next` in results) and for
+story-019. Answers "right information / right action at the right time" for the DM agent.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Summary | 14-51 | The six findings: sum types, exact limits, 2-4 unions/agent, state machine not tool list, layer placement, no tool search |
+| What trunk sends today | 52-92 | Per-agent tool + union counts; the bags of optionals |
+| The limits, precisely | 93-131 | 20 strict tools, 16 unions (recursive), ~13-nullable object cliff, additionalProperties/enum-null/oneOf rejections |
+| Diagnosis | 132-153 | Why folding nouns into verbs produced product-types-with-nulls |
+| Verbs take sum types | 156-242 | The schema rules + per-verb rewrites (check, begin_activity, declare_phase, activate, travel, enter_mode) |
+| When a verb set grows | 243-260 | Split criteria: eval-driven, not count-driven |
+| Right information at the right time | 261-303 | Layer-by-volatility placement rule; the ACTIVE COMBAT staleness bug |
+| Right action at the right time | 304-365 | Why per-turn tool scoping thrashes the cache; the NOW block + `next` field |
+| Plugin constraints and escape hatches | 366-386 | raw_schema, non-strict mixing, what LiveKit emits |
+| Sequencing | 387-423 | Order of work for story-019 |
+| Risks and how to measure them | 424-443 | Tool-selection eval, cache-read assertion |
+| Open questions for the human | 444-458 | query_info shape, enter_mode, resolve_phase-as-advance-verb, creation agent model |
+| Appendix — how this was measured | 459-481 | The schema walk and the live limit probes |
+| Cost recommendations | 482-586 | Cache protection, fewer turns/session, models, TTS, a cost budget test |
+
+---
+
 ## audio_design.md (~800 lines)
 
 Soundscapes, SFX, music, voice design.

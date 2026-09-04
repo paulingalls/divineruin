@@ -1,6 +1,8 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
+#                    # INERT while every role is claude/* (harness.resolve_codex_sandbox
+#                    # returns early for non-codex); kept for a role pointed back at codex
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 # trunk: develop       # UNCOMMENT where releases do NOT land on git's DEFAULT branch;
@@ -18,14 +20,19 @@ constraints_chars_cap: 4500  # hard character ceiling; retire or shorten a rule
 #                       # one agent per candidate.
 
 roles:               # harness/model[/effort]; the lead overrides per story in plan.md
-  lead: claude/opus
-  executor: codex/gpt-5.6-sol/high
-  reviewer: claude/opus
-  plan-reviewer: claude/opus   # scripts/plan_review.py; a teammate runs it itself
-  finder: claude/opus     # the four round-1 stages of `close.py sprint <id> review`;
-  verifier: claude/opus   # each falls back to `reviewer` when its key is absent, so
-  fixer: claude/opus      # an older config keeps working untouched
-  closer: claude/opus
+                     # effort: low | medium | high | xhigh | max
+  lead: claude/opus/high
+  executor: claude/opus/high
+  reviewer: claude/opus/xhigh      # the wall. sprint-047 open: the shipped slate-reviewer
+                                   # charter found a false construction premise, a vacuous
+                                   # AC and an unusable grep gate that the lead's own pass
+                                   # missed. Review effort buys more than executor effort.
+  plan-reviewer: claude/opus/high  # scripts/plan_review.py; a teammate runs it itself
+  finder: claude/opus/high     # the four round-1 stages of `close.py sprint <id> review`;
+  verifier: claude/opus/xhigh  # each falls back to `reviewer` when its key is absent, so
+  fixer: claude/opus/high      # an older config keeps working untouched.
+  closer: claude/opus/medium   # verifier is adversarial (kills false positives); closer
+                               # is judgment over an already-verified set.
 
 tests:
   # fast is intentionally EMPTY: .githooks/pre-commit already runs `bun run lint`,
