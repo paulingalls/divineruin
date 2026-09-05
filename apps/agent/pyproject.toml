@@ -37,6 +37,7 @@ filterwarnings = [
 ]
 markers = [
     "acceptance: requires Docker (livekit dev-server testcontainer)",
+    "real_llm: reaches the Anthropic API; fails loud without a key when REQUIRE_REAL_LLM=1",
 ]
 
 [tool.ruff]

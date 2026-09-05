@@ -29,6 +29,7 @@ from acceptance._livekit import (
     _ensure_livekit_container,
     _handle_docker_unavailable,
 )
+from acceptance._real_llm import require_real_llm_key
 from docker.errors import DockerException
 
 # Per decision acceptance-pg-container: testcontainers Postgres runs per-run with
@@ -53,6 +54,21 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
         if _ACCEPTANCE_DIR in item.path.parents:
             item.add_marker(pytest.mark.acceptance)
+
+
+@pytest.fixture(autouse=True)
+def _real_llm_key_required(request: pytest.FixtureRequest) -> None:
+    """Fail — never skip — a real-LLM scenario when REQUIRE_REAL_LLM=1 and no usable key.
+
+    Same idiom as REQUIRE_DOCKER=1 above: opt-in hard gate for the tiers that would
+    otherwise absent themselves from the pre-push gate (story-019 AC1).
+    """
+    if request.node.get_closest_marker("real_llm") is None:
+        return
+    try:
+        require_real_llm_key(os.environ)
+    except RuntimeError as exc:
+        pytest.fail(str(exc))
 
 
 def _wait_ready(http_url: str) -> None:

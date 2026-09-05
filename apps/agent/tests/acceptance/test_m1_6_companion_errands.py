@@ -36,10 +36,16 @@ import db_activity_queries
 from dispatch_agent import create_dispatch_agent
 from session_data import CompanionState, SessionData
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="LLM acceptance runs require ANTHROPIC_API_KEY (ADR 0003 pre-sprint-close schedule)",
-)
+pytestmark = [
+    # The skipif is the not-opted-in path (CI: ci.yml runs the whole suite with no key).
+    # REQUIRE_REAL_LLM=1 suppresses it so the real_llm fixture can fail the lane LOUD instead
+    # — a skipif firing first would keep the false green (story-019 AC1).
+    pytest.mark.skipif(
+        not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("REQUIRE_REAL_LLM"),
+        reason="LLM acceptance runs require ANTHROPIC_API_KEY (ADR 0003 pre-sprint-close schedule)",
+    ),
+    pytest.mark.real_llm,
+]
 
 # Production gameplay model (agent.py) — acceptance runs at production parity.
 _AGENT_MODEL = "claude-haiku-4-5-20251001"
