@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# Block .env files from being committed
-if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
-  echo "ERROR: .env file detected in staging area."
+# Block .env files from being committed. The whole family, not just the bare name:
+# sprint-047 staged a .env.bak-<stamp> sidecar that this guard, anchored on `.env$`,
+# waved through. .env.example is the one tracked member.
+# --diff-filter=d so REMOVING a leaked .env is not itself blocked.
+staged_env=$(git diff --cached --name-only --diff-filter=d | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env\.example$' || true)
+if [ -n "$staged_env" ]; then
+  echo "ERROR: .env file detected in staging area: $staged_env"
   exit 1
 fi
 

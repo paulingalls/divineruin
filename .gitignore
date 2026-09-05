@@ -22,8 +22,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .env.test.local
 .env.production.local
 .env.local
-# A timestamped .env backup holds the same live keys as .env and needs the same secrecy.
-.env.bak-*
+# Any .env sidecar holds the same live keys as .env and needs the same secrecy — the
+# .env.bak-<stamp> the env top-up writes is the case that actually escaped (story-014's
+# backup reached the tree; story-015 swept one into a commit). .env.example is the one
+# tracked member of this family. story-015's family rule subsumes story-020's .env.bak-*.
+.env.*
+!.env.example
 
 # caches
 .eslintcache
