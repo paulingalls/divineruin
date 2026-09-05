@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
+import voices
 from voices import (
     EMOTION_RATES,
     EMOTIONS,
@@ -116,3 +118,21 @@ def test_role_voice_keys_mirror_the_archetype_catalog():
     raw = json.loads((_ROOT / "content" / "role_archetypes.json").read_text())
     assert set(ROLE_VOICE_KEYS) == {f"ROLE_{e['id'].upper()}" for e in raw}
     assert set(ROLE_VOICE_KEYS) <= set(VOICES)
+
+
+def test_empty_registered_value_falls_back_to_the_narrator():
+    """The deliberate fallback for the 13 legitimately-empty keys (COMPANION_SABLE among them).
+
+    patch.dict mutates the same dict object get_voice_config reads at call time; patch()
+    would rebind the name and the lookup would not see it. Never read the AMBIENT registry:
+    bun run auto-loads .env locally, while CI sets no INWORLD_VOICE_* at all.
+    """
+    with patch.dict(voices.VOICES, {"DM_NARRATOR": "Clive", "ROLE_GUARD": ""}, clear=True):
+        assert get_voice_config("ROLE_GUARD").voice == "Clive"
+
+
+def test_two_distinct_configured_values_resolve_distinctly():
+    """So the fallback above is not masking a lookup that always returns the narrator."""
+    with patch.dict(voices.VOICES, {"DM_NARRATOR": "Clive", "ROLE_GUARD": "Oliver"}, clear=True):
+        assert get_voice_config("ROLE_GUARD").voice == "Oliver"
+        assert get_voice_config("DM_NARRATOR").voice == "Clive"
