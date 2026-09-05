@@ -363,45 +363,79 @@ class TestReconnectionAllAgentTypes:
 
 
 class TestTokenTracker:
-    """Verify TokenTracker accumulates metrics correctly."""
+    """Verify TokenTracker accumulates metrics correctly.
+
+    REAL livekit types, never MagicMock. Bug 3aea2529 survived because the old tests
+    built a MagicMock and set `llm_metrics` on it — the mock invented whatever attribute
+    production asked for, so the tests passed against a payload shape that does not
+    exist, and every counter sat at 0 in production. Both sides of this contract are the
+    real thing now: a real MetricsCollectedEvent carrying a real LLMMetrics.
+    """
+
+    @staticmethod
+    def _llm_event(prompt: int, completion: int, cached: int):
+        from livekit.agents.metrics import LLMMetrics
+        from livekit.agents.voice.events import MetricsCollectedEvent
+
+        return MetricsCollectedEvent(
+            metrics=LLMMetrics(
+                label="test",
+                request_id="req-1",
+                timestamp=0.0,
+                duration=0.1,
+                ttft=0.05,
+                cancelled=False,
+                completion_tokens=completion,
+                prompt_tokens=prompt,
+                prompt_cached_tokens=cached,
+                total_tokens=prompt + completion,
+                tokens_per_second=10.0,
+            )
+        )
 
     def test_accumulates_metrics(self):
         from token_tracker import TokenTracker
 
         tracker = TokenTracker()
-        metrics = MagicMock()
-        llm_metric = MagicMock()
-        llm_metric.input_token_count = 100
-        llm_metric.output_token_count = 50
-        llm_metric.cache_read_input_token_count = 80
-        llm_metric.cache_creation_input_token_count = 20
-        metrics.llm_metrics = [llm_metric]
-
-        tracker.on_metrics(metrics)
+        tracker.on_metrics(self._llm_event(prompt=100, completion=50, cached=80))
 
         summary = tracker.summary()
         assert summary["turns"] == 1
         assert summary["total_input"] == 100
         assert summary["total_output"] == 50
         assert summary["total_cache_read"] == 80
-        assert summary["total_cache_write"] == 20
 
     def test_accumulates_multiple_turns(self):
         from token_tracker import TokenTracker
 
         tracker = TokenTracker()
-
         for _i in range(3):
-            metrics = MagicMock()
-            llm_metric = MagicMock()
-            llm_metric.input_token_count = 100
-            llm_metric.output_token_count = 50
-            llm_metric.cache_read_input_token_count = 80
-            llm_metric.cache_creation_input_token_count = 0
-            metrics.llm_metrics = [llm_metric]
-            tracker.on_metrics(metrics)
+            tracker.on_metrics(self._llm_event(prompt=100, completion=50, cached=80))
 
         summary = tracker.summary()
         assert summary["turns"] == 3
         assert summary["total_input"] == 300
         assert summary["total_cache_read"] == 240
+
+    def test_ignores_non_llm_metrics(self):
+        """The event fires for STT/TTS/EOU too; only llm_metrics carries token counts."""
+        from livekit.agents.metrics import STTMetrics
+        from livekit.agents.voice.events import MetricsCollectedEvent
+
+        from token_tracker import TokenTracker
+
+        tracker = TokenTracker()
+        tracker.on_metrics(
+            MetricsCollectedEvent(
+                metrics=STTMetrics(
+                    label="stt",
+                    request_id="req-2",
+                    timestamp=0.0,
+                    duration=0.2,
+                    audio_duration=1.0,
+                    streamed=True,
+                )
+            )
+        )
+
+        assert tracker.summary()["turns"] == 0
