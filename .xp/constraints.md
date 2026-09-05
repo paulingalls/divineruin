@@ -8,6 +8,10 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
 2. **Small files: target 300 lines, hard cap 500 — tests included, because
    tests ARE production code**: same review bar, never skipped for test-only
    changes. Large files eat agent context; over-cap means extract, not scroll.
+   CODE ONLY (human decision 2026-09-04): authored data — `content/*.json`,
+   fixtures, generated files — is exempt, and `items.json` at 3505 lines is not
+   a violation. A reviewer citing this item against a data file is wrong; two
+   have now spent a round on it.
 3. **Comments exist only for what neither a test nor a name can carry** — the
    why, an external constraint, a rejected design. Restates the code → delete.
    Narrates history → delete (git holds it). Checkable claim → make it a test.
@@ -32,3 +36,14 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    why. Sprint-046 story-008 excluded four `companion_kael` sites as "off the
    session path" without grepping; the reviewer found sixteen more that were on
    it, and the combat prompt's tag survived to round 2.
+
+9. **A guard that models someone else's contract certifies the model, not the
+   contract.** Where the real thing can be executed — a vendor type, a live
+   endpoint, a schema the provider compiles — the test constructs or calls it.
+   Twice in sprint-047: `test_strict_tool_budget` walked all three schema
+   ceilings green while the live API refused three agents outright ("compiled
+   grammar is too large"), a limit our model did not contain; and
+   `TokenTracker`'s tests built a `MagicMock` and set `llm_metrics` on it, so
+   the mock invented whichever attribute production named and the suite passed
+   for months against a payload shape that does not exist, leaving every token
+   counter at 0 in production. Mock our own seams; never the other side's shape.
