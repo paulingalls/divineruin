@@ -4,7 +4,7 @@
     "name": "Road to Millhaven",
     "type": "quest",
     "region_type": "wilderness",
-    "instructions": "The player is traveling north along the trade road toward Millhaven. Narrate the journey with growing unease — birdsong fading, livestock absent from fields, a faint wrongness in the air. Kael is alert and talkative, filling silence with observations about the landscape. Keep the pace moving; don't let the player linger without purpose.",
+    "instructions": "The player is traveling north along the trade road toward Millhaven. Narrate the journey with growing unease — birdsong fading, livestock absent from fields, a faint wrongness in the air. The companion stays alert, reading the road ahead in their own way. Keep the pace moving; don't let the player linger without purpose.",
     "beats": [
       {
         "id": "beat_road_departure",

@@ -11,15 +11,23 @@ import asyncpg
 import redis.asyncio as aioredis
 
 from asset_utils import slug_asset_url
+from companion_profiles import select_companion_for_archetype
 
 logger = logging.getLogger("divineruin.db")
 
-# Pre-generated portrait URLs — slug-based, matching files in assets/images/
-_PORTRAITS_CACHE: dict = {
-    "companion": {
+# Companion portraits, keyed by companion id. Only Kael has a generated asset set
+# (assets/images/companion_kael_{primary,alert}.png); Lira/Tam/Sable resolve to None until
+# scripts/generate_art.ts produces theirs (debt 9f6a7ada). A missing entry is an explicit null in the
+# payload, never a fall-through to whoever happens to have a face.
+_COMPANION_PORTRAITS: dict[str, dict[str, str]] = {
+    "companion_kael": {
         "primary": slug_asset_url("companion_kael_primary"),
         "alert": slug_asset_url("companion_kael_alert"),
     },
+}
+
+# Pre-generated portrait URLs — slug-based, matching files in assets/images/
+_PORTRAITS_CACHE: dict = {
     "npcs": {
         "Guildmaster Torin": slug_asset_url("npc_torin"),
         "Elder Yanna": slug_asset_url("npc_yanna"),
@@ -169,6 +177,32 @@ def extract_exit_connections(exits: dict) -> list[str]:
     return connections
 
 
-def _build_portraits(player: dict | None, location_id: str) -> dict:
-    """Build the portraits payload for session_init."""
-    return dict(_PORTRAITS_CACHE)
+def resolve_player_companion_id(player: dict | None) -> str | None:
+    """The companion assigned to this player, from their archetype. None when unresolvable.
+
+    An archetype that matches no companion is already fatal at session start (agent.py's
+    dm_session raises), so this does not raise a second time: its callers are payload builders
+    whose own caller logs and continues, and raising here would drop the whole session_init —
+    character sheet, inventory, quests and map — over one field.
+    """
+    archetype = (player or {}).get("class")
+    if not archetype:
+        return None
+    try:
+        return select_companion_for_archetype(archetype)
+    except ValueError:
+        logger.warning("No companion resolves for archetype %r; session_init ships a null companion", archetype)
+        return None
+
+
+def _build_portraits(companion_id: str | None) -> dict:
+    """Build the portraits payload for session_init, keyed on the player's assigned companion.
+
+    Takes the already-resolved id rather than the player row so the payload's `companion` block
+    and its portrait can never name two different companions.
+
+    A companion with no generated asset set yields an explicit None. The client must CLEAR its
+    portrait store on that null rather than fall through — falling through is how the previous
+    companion's face survives into the next player's HUD.
+    """
+    return {**_PORTRAITS_CACHE, "companion": _COMPANION_PORTRAITS.get(companion_id or "")}

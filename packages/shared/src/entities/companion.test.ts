@@ -164,6 +164,15 @@ describe("companions.json — Sable non-verbal", () => {
   });
 });
 
+describe("companions.json — errand injury reduction (AC4, constraint 7's TS half)", () => {
+  test("every companion declares errand_injury_reduction; only Kael reduces", () => {
+    for (const c of companions) expect(typeof c.errand_injury_reduction).toBe("number");
+    expect(byId.get("companion_kael")!.errand_injury_reduction).toBe(5);
+    for (const id of COMPANION_IDS.filter((i) => i !== "companion_kael"))
+      expect(byId.get(id)!.errand_injury_reduction).toBe(0);
+  });
+});
+
 describe("companions.json — Kael fidelity (copied from npcs.json)", () => {
   const kael = () => byId.get("companion_kael")!;
 

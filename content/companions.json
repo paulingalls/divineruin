@@ -146,6 +146,7 @@
         "NPCs comment on the Kael-player partnership; his steadiness becomes a story force"
       ]
     },
+    "errand_injury_reduction": 5,
     "complements": ["mage", "seeker", "bard", "diplomat", "oracle"],
     "voice_id": "COMPANION_KAEL",
     "voice_notes": "warm baritone, measured pace, gets quieter under stress not louder, dry humor surfaces when comfortable"
@@ -292,6 +293,7 @@
       ],
       "legendary": ["her theories begin reshaping how NPCs and factions understand the Veil"]
     },
+    "errand_injury_reduction": 0,
     "complements": ["warrior", "guardian", "skirmisher", "rogue"],
     "voice_id": "COMPANION_LIRA",
     "voice_notes": "alto, quick and precise, warms when a theory excites her, goes flat and careful when frightened"
@@ -438,6 +440,7 @@
       ],
       "legendary": ["their courage becomes steadiness; NPCs on the frontier know their name"]
     },
+    "errand_injury_reduction": 0,
     "complements": ["cleric", "artificer", "druid", "paladin", "marshal"],
     "voice_id": "COMPANION_TAM",
     "voice_notes": "bright tenor, fast and breathless, drops to a near-whisper in vulnerable moments"
@@ -578,6 +581,7 @@
       ],
       "legendary": ["her presence becomes a story force — even hostile creatures hesitate near her"]
     },
+    "errand_injury_reduction": 0,
     "complements": ["spy", "whisper", "beastcaller", "warden"],
     "voice_id": "COMPANION_SABLE",
     "non_verbal": true,

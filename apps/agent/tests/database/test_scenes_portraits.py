@@ -11,19 +11,22 @@ import db_queries
 import db_session_queries
 
 
+async def _session_init(player: dict) -> dict:
+    mock_pool = AsyncMock()
+    mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(player)})
+    mock_pool.fetch = AsyncMock(return_value=[])
+    with patch("db.get_pool", return_value=mock_pool):
+        with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
+            return await db_session_queries.get_session_init_payload("p1")
+
+
 class TestSessionInitPortraits:
-    """Test that get_session_init_payload includes portraits."""
+    """AC5: get_session_init_payload is the producer of the companion's identity (constraint 6)
+    — nothing shipped a companion name to the client before this."""
 
     @pytest.mark.asyncio
     async def test_session_init_includes_portraits(self):
-        """get_session_init_payload should include portraits dict."""
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps({"name": "Test", "location_id": "tavern"})})
-        mock_pool.fetch = AsyncMock(return_value=[])
-
-        with patch("db.get_pool", return_value=mock_pool):
-            with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
-                result = await db_session_queries.get_session_init_payload("p1")
+        result = await _session_init({"name": "Test", "class": "mage", "location_id": "tavern"})
 
         assert "portraits" in result
         assert "companion" in result["portraits"]
@@ -34,13 +37,60 @@ class TestSessionInitPortraits:
         assert "Guildmaster Torin" in result["portraits"]["npcs"]
         assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/npc_")
 
+    @pytest.mark.asyncio
+    async def test_payload_names_the_assigned_companion(self):
+        result = await _session_init({"name": "Test", "class": "warrior", "location_id": "tavern"})
+        assert result["companion"] == {
+            "id": "companion_lira",
+            "name": "Lira",
+            "voice_id": "COMPANION_LIRA",
+        }
+
+    @pytest.mark.asyncio
+    async def test_companion_without_a_generated_asset_set_yields_an_explicit_null(self):
+        """Lira/Tam/Sable have no generated portrait assets. An explicit null, not Kael's face,
+        and not a missing key the client can fall through on."""
+        result = await _session_init({"name": "Test", "class": "warrior", "location_id": "tavern"})
+        assert result["portraits"]["companion"] is None
+        assert result["portraits"]["npcs"]
+
+    @pytest.mark.asyncio
+    async def test_kael_player_still_gets_kaels_portraits(self):
+        result = await _session_init({"name": "Test", "class": "mage", "location_id": "tavern"})
+        assert result["companion"]["id"] == "companion_kael"
+        assert result["portraits"]["companion"]["primary"].endswith("companion_kael_primary")
+
+    @pytest.mark.asyncio
+    async def test_a_player_row_with_no_resolvable_class_still_yields_a_payload(self):
+        """A class that matches no companion is already fatal at session start
+        (test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael), so raising HERE
+        buys nothing and costs the whole payload — this builder's caller wraps it in a logging
+        except, so a raise loses the character sheet, inventory, quests and map too. The
+        companion is null and the resolution failure is logged; the branch ships pinned."""
+        result = await _session_init({"name": "Test", "location_id": "tavern"})
+        assert result["companion"] is None
+        assert result["portraits"]["companion"] is None
+        assert result["portraits"]["npcs"]
+        assert result["character"]["name"] == "Test"
+
     def test_build_portraits_produces_valid_urls(self):
-        """_build_portraits should produce /api/assets/images/ URLs."""
-        result = db._build_portraits(None, "tavern")
+        """_build_portraits keys the companion entry on the assigned companion; a companion
+        with no generated asset set, and an unresolved one, both get an explicit null."""
+        result = db._build_portraits("companion_kael")
         assert result["companion"]["primary"].startswith("/api/assets/images/companion_")
         assert result["companion"]["alert"].startswith("/api/assets/images/companion_")
         for url in result["npcs"].values():
             assert url.startswith("/api/assets/images/npc_")
+
+        assert db._build_portraits("companion_lira")["companion"] is None
+        assert db._build_portraits(None)["companion"] is None
+
+    def test_resolve_player_companion_id_is_the_single_resolution_point(self):
+        assert db.resolve_player_companion_id({"class": "warrior"}) == "companion_lira"
+        assert db.resolve_player_companion_id({"class": "mage"}) == "companion_kael"
+        assert db.resolve_player_companion_id({"class": "necromancer"}) is None
+        assert db.resolve_player_companion_id({"name": "no class"}) is None
+        assert db.resolve_player_companion_id(None) is None
 
 
 class TestGetScene:

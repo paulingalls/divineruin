@@ -155,13 +155,26 @@ export function handleSessionInit(event: DataChannelEvent): void {
     panelStore.getState().addVisitedLocation(location.id, exitConns);
   }
 
+  // --- Companion identity: the name the HUD shows and the voice tag its portrait gate matches ---
+  const companionIdentity = event.companion as Record<string, unknown> | null | undefined;
+  portraitStore
+    .getState()
+    .setCompanionIdentity(
+      typeof companionIdentity?.name === "string" ? companionIdentity.name : null,
+      typeof companionIdentity?.voice_id === "string" ? companionIdentity.voice_id : null,
+    );
+
   // --- Populate portrait store ---
   const portraits = event.portraits as Record<string, unknown> | undefined;
   if (portraits && typeof portraits === "object") {
-    const companion = portraits.companion as Record<string, unknown> | undefined;
-    if (companion && typeof companion.primary === "string" && typeof companion.alert === "string") {
-      portraitStore.getState().setCompanionPortraits(companion.primary, companion.alert);
-    }
+    // An explicit branch, not a typeof guard that falls through: a companion with no generated
+    // asset set arrives as null, and falling through leaves the PREVIOUS companion's face in
+    // the HUD.
+    const companion = portraits.companion as Record<string, unknown> | null | undefined;
+    const primary = typeof companion?.primary === "string" ? companion.primary : null;
+    const alert = typeof companion?.alert === "string" ? companion.alert : null;
+    portraitStore.getState().setCompanionPortraits(primary, alert);
+
     const npcs = portraits.npcs as Record<string, string> | undefined;
     if (npcs && typeof npcs === "object") {
       portraitStore.getState().setNpcPortraitMap(npcs);

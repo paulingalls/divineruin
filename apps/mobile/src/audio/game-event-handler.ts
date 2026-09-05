@@ -40,8 +40,6 @@ export const DICE_STINGER_DELAY_MS = 600;
 export const DICE_ROLL_TTL_MS = 5000;
 /** TTL for the dramatic Hollow Echo band overlay — lingers so the band is glanceable. */
 export const HOLLOW_ECHO_TTL_MS = 5000;
-/** Name of the companion character for portrait visibility. */
-const COMPANION_NAME = "Kael";
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
 let _companionHideTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -312,8 +310,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
         if (npcUrl) {
           ps.setActiveNpc(characterName, npcUrl);
         }
-        // Show companion avatar for companion speech
-        if (characterName === COMPANION_NAME && ps.companionPrimaryUrl) {
+        // Show companion avatar for companion speech. Matched against the VOICE TAG
+        // (session_init's companion.voice_id), because transcript_entry.character always
+        // carries the uppercase tag the dialogue parser emitted — never a display name.
+        if (
+          ps.companionVoiceId &&
+          characterName === ps.companionVoiceId &&
+          ps.companionPrimaryUrl
+        ) {
           ps.setCompanionVisible(true);
           if (_companionHideTimer) clearTimeout(_companionHideTimer);
           _companionHideTimer = setTimeout(() => {

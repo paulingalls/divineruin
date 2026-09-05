@@ -14,7 +14,6 @@ from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS, disposition_rank
 __all__ = [
     "DISPOSITION_ORDER",
     "DISPOSITION_TIERS",
-    "EFFECT_NPC_MAP",
     "LOCATION_CORRUPTION",
     "MAX_STORY_MOMENTS_PER_SESSION",
     "SOUND_ATTACK_CRITICAL",
@@ -92,13 +91,6 @@ LOCATION_CORRUPTION: dict[str, int] = {
     "hollow_incursion_site": 2,
     "greyvale_ruins_entrance": 2,
     "greyvale_ruins_inner": 3,
-}
-
-EFFECT_NPC_MAP: dict[str, str] = {
-    "torin": "guildmaster_torin",
-    "yanna": "elder_yanna",
-    "emris": "scholar_emris",
-    "companion": "companion_kael",
 }
 
 

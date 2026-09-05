@@ -14,6 +14,7 @@ import db_activity_queries
 import db_content_queries
 import db_queries
 import spells
+from companion_profiles import get_companion_profile
 
 logger = logging.getLogger("divineruin.db")
 
@@ -108,8 +109,15 @@ async def get_session_init_payload(player_id: str) -> dict:
     # Enrich quests with scene beat hints for client display
     quests = await _enrich_quests_with_scene_hints(quests)
 
-    # Build portraits dict
-    portraits = db._build_portraits(player, location_id)
+    # The companion's identity: resolved ONCE and passed into the portrait builder so the
+    # payload and the portrait can never name two different companions. Nothing shipped a
+    # companion name to the client before this — constraint 6, this is the producer.
+    companion_id = db.resolve_player_companion_id(player)
+    companion = None
+    if companion_id is not None:
+        profile = get_companion_profile(companion_id)
+        companion = {"id": profile.id, "name": profile.name, "voice_id": profile.voice_id}
+    portraits = db._build_portraits(companion_id)
 
     # Character-sheet spell list: core (archetype-fixed) + learned electives (story-007).
     spell_list = await _build_player_spells(player_id, player)
@@ -123,4 +131,5 @@ async def get_session_init_payload(player_id: str) -> dict:
         "world_state": {"time": "evening"},
         "portraits": portraits,
         "spells": spell_list,
+        "companion": companion,
     }
