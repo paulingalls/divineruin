@@ -66,6 +66,7 @@ class RosterEntry(TypedDict):
     role: str
     name: str
     personality: list[str]
+    voice_id: str
 
 
 def _name_candidates(rng: random.Random) -> list[str]:
@@ -89,11 +90,11 @@ def _name_candidates(rng: random.Random) -> list[str]:
 def generate_settlement_roster(population: dict[str, int], *, rng: random.Random | None = None) -> list[RosterEntry]:
     """Return named, individually varied NPCs for a concrete role-count population."""
     rng = rng or random.Random()
-    role_traits: dict[str, tuple[str, ...]] = {}
+    archetypes = {}
     for role, count in population.items():
         if type(count) is not int or count < 0:
             raise ValueError(f"{role!r} count must be a non-negative integer, got {count!r}")
-        role_traits[role] = get_role_archetype(role).personality_traits
+        archetypes[role] = get_role_archetype(role)
     candidates = _name_candidates(rng)
     used_names: set[str] = set()
     generated_names: list[str] = []
@@ -110,13 +111,20 @@ def generate_settlement_roster(population: dict[str, int], *, rng: random.Random
     roster: list[RosterEntry] = []
     name_index = 0
     for role, count in population.items():
-        traits = role_traits[role]
+        traits = archetypes[role].personality_traits
         trait_sets = [*combinations(traits, 2), *combinations(traits, 3)]
         if count > len(trait_sets):
             raise ValueError(f"{role!r} count {count} exceeds {len(trait_sets)} unique personality sets")
         rng.shuffle(trait_sets)
         for personality in trait_sets[:count]:
-            roster.append({"role": role, "name": generated_names[name_index], "personality": list(personality)})
+            roster.append(
+                {
+                    "role": role,
+                    "name": generated_names[name_index],
+                    "personality": list(personality),
+                    "voice_id": archetypes[role].voice_id,
+                }
+            )
             name_index += 1
     return roster
 
