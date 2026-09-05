@@ -28,6 +28,7 @@ from settlement_templates import (
     parse_settlement_template_row,
     set_settlement_templates,
 )
+from voices import ROLE_VOICE_KEYS
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "settlement_templates.json"
 _RAW = json.loads(_CONTENT_PATH.read_text())
@@ -40,7 +41,30 @@ _CONTENT_DIR = _CONTENT_PATH.parent
 # collides with one of these makes the DM say a stranger's line in a known character's name.
 # gods.json is in the list because six VOICES keys (GOD_MORTAEN, GOD_NYTHERA, GOD_ORENTHEL,
 # GOD_THYRA, GOD_VALDRIS, GOD_ZHAEL) have no voice_registry row — their names live only there.
+# The 19 per-role townsfolk voices (ROLE_GUARD, ROLE_MERCHANT_JEWELER, ...) are deliberately
+# EXEMPT from all four: a role voice has no character name, so giving it a registry row would
+# mean inventing one — enlarging this blocklist and shrinking the very name space generated
+# rosters draw from. test_role_voices_have_no_authored_character_row pins the exemption.
 _AUTHORED_NAME_FILES = ("voice_registry.json", "npcs.json", "companions.json", "gods.json")
+# The three fields these four files key identity on: voice_registry.json has character_id and
+# no id; npcs.json and companions.json have id; gods.json has god_id and no id.
+_IDENTITY_KEYS = ("character_id", "id", "god_id")
+
+
+def _identity(entry: dict, filename: str) -> str:
+    """The row's identity, fail-loud when none of the three keys is present.
+
+    A .get()-with-falsy-skip here would silently narrow the exemption guard below to
+    voice_registry.json alone while it claims to walk all four files — and the injection
+    (a ROLE_GUARD row appended to voice_registry.json) would still fire, so the narrowing
+    would be invisible. A later schema change must red, not shrink the guard.
+    """
+    for key in _IDENTITY_KEYS:
+        if key in entry:
+            return entry[key]
+    raise ValueError(f"{filename} row {entry.get('name')!r} has none of {_IDENTITY_KEYS}")
+
+
 _AUTHORED_NAME_WORDS = {
     word.lower()
     for f in _AUTHORED_NAME_FILES
@@ -105,6 +129,15 @@ class TestParse:
             assert generated.lower() not in _AUTHORED_NAME_WORDS, (
                 f"generated name {generated!r} collides with an authored character"
             )
+
+    def test_role_voices_have_no_authored_character_row(self):
+        # Role ids are lowercase snake, but these files key on the VOICES-key form
+        # (COMPANION_KAEL, GUILDMASTER_TORIN) — which is the shape a role row would take too.
+        role_keys = set(ROLE_VOICE_KEYS)
+        for filename in _AUTHORED_NAME_FILES:
+            for entry in json.loads((_CONTENT_DIR / filename).read_text()):
+                identity = _identity(entry, filename)
+                assert identity not in role_keys, f"{filename} carries a role-voice row {identity!r}"
 
     def test_tier_role_count_keys_reference_real_archetypes(self):
         for e in (r for r in _RAW if r["kind"] == "tier"):

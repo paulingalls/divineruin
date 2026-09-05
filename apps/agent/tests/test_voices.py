@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -136,3 +137,35 @@ def test_two_distinct_configured_values_resolve_distinctly():
     with patch.dict(voices.VOICES, {"DM_NARRATOR": "Clive", "ROLE_GUARD": "Oliver"}, clear=True):
         assert get_voice_config("ROLE_GUARD").voice == "Oliver"
         assert get_voice_config("DM_NARRATOR").voice == "Clive"
+
+
+def _env_example_voice_assignments() -> dict[str, str]:
+    matches = (
+        re.match(r"^INWORLD_VOICE_([A-Z_]+)=(.*)$", line.strip())
+        for line in (_ROOT / ".env.example").read_text().splitlines()
+    )
+    return {m.group(1): m.group(2) for m in matches if m}
+
+
+class TestEnvExample:
+    """.env.example is what scripts/init-worktree.sh generates every fresh worktree's .env from.
+
+    A role voice missing here means a fresh checkout cannot boot the agent at all
+    (agent.validate_env raises), so the assignment is part of the contract, not a convenience.
+    """
+
+    _ASSIGNMENTS = _env_example_voice_assignments()
+
+    def test_every_role_voice_is_assigned_in_env_example(self):
+        for key in ROLE_VOICE_KEYS:
+            assert self._ASSIGNMENTS.get(key), f"INWORLD_VOICE_{key} is unassigned in .env.example"
+
+    def test_every_assigned_inworld_voice_is_distinct(self):
+        """Across ALL 50 assignments, not just the 19 new ones.
+
+        Checking distinctness within the new block alone would let a role be handed Clive
+        (the DM narrator) or Blake (COMPANION_KAEL) — two characters sounding identical.
+        """
+        values = list(self._ASSIGNMENTS.values())
+        assert len(values) == 50
+        assert len(values) == len(set(values))
