@@ -1,10 +1,12 @@
 """Tests for prompt building (warm layer)."""
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
 
-from system_prompts import build_system_prompt
+from system_prompts import DISPATCH_MODE_PROMPT, build_system_prompt
+from training_rules import get_midpoint_decision, resolve_midpoint_decision
 from warm_prompts import build_warm_layer, format_training_section
 
 SAMPLE_AWAITING_TRAINING = {
@@ -290,18 +292,22 @@ class TestNavigationPromptIncluded:
 
 
 class TestTrainingMidpointNarration:
-    def test_prompt_tells_the_dm_to_voice_the_second_half_transition(self):
-        """resolve_activity(kind="training") returns state="running_second_half" and nothing
-        else surfaces it — constraint 6, and an audio-first gap besides.
+    def test_prompt_names_the_state_the_training_resolve_really_returns(self):
+        """The resolve_activity result is the DM's only in-turn signal that the midpoint
+        choice took effect (the warm layer carries the state only from the NEXT turn on), so
+        the dispatch prompt has to name it — otherwise the DM narrates the feel of the work
+        and a player with their eyes closed cannot tell the cycle resumed. The only other
+        lane that notices is the m1_5 judged criterion "Tells the player their training
+        continues into its second half", which costs an API call and runs at pre-push.
 
-        Without this clause the DM narrates the mentor and the feel of the work and never
-        says the training resumed, so a player with their eyes closed cannot tell whether
-        their midpoint choice took effect or when the cycle ends. Measured at sprint-047
-        close: the judged acceptance scenario failed roughly two runs in five on exactly
-        that omission, and passed 3/3 once the clause landed. A prose rule with no pin is
-        one prompt edit from silently regressing, and the only lane that would notice is a
-        real-LLM judge that costs an API call and blocks a sprint close when it fires.
+        The expected state is DERIVED from the producer, not spelled here (constraint 9):
+        `resolve_midpoint_decision().state` is verbatim what `_resolve_training_midpoint_impl`
+        puts in the tool's JSON. A literal grep stays GREEN when that value is renamed —
+        measured — leaving the prompt teaching a token production no longer emits.
         """
-        from system_prompts import DISPATCH_MODE_PROMPT
-
-        assert "running_second_half" in DISPATCH_MODE_PROMPT
+        decision = get_midpoint_decision("technique_base")
+        result = resolve_midpoint_decision("technique_base", decision.options[0].id, datetime(2026, 1, 1, tzinfo=UTC))
+        assert result.state, "the producer returned an empty state — the assertion below would be vacuous"
+        assert result.state in DISPATCH_MODE_PROMPT, (
+            f"dispatch prompt does not name the state resolve_activity(kind='training') returns ({result.state!r})"
+        )

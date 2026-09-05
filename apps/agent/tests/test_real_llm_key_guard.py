@@ -22,10 +22,22 @@ conftest fixture) and `REQUIRE_REAL_LLM` (what keeps the skipif from firing firs
 appear in the scenario's own source. Strict there is safe in the way strict detection is
 not — it can only ever cost a red, never green a scenario that skips.
 
-The walk's bound, stated rather than implied: a helper OUTSIDE apps/agent/tests could hide
-the construction. Nothing production-side can be used that way today — agent.py's
-`_make_agent_session` is nested inside `dm_session` and is not importable — so the edge set
-below is complete against the repo as it stands, and is where to extend it if that changes.
+The walk's bound, stated rather than implied, because an earlier version of this docstring
+overstated it: a helper OUTSIDE apps/agent/tests can hide the construction, and production
+holds TWO Anthropic entry points, not one. `agent.py`'s `_make_agent_session` is nested
+inside `dm_session` and is genuinely unreachable — but `llm_config.client` is a
+module-level `anthropic.AsyncAnthropic()` that any test can import, and it imports cleanly
+with no key (it 401s at request time), which is how `narration.py` talks to the API. So the
+detector below names it alongside the plugin import.
+
+WHAT IS STILL NOT COVERED, and is the reason to read this before adding a scenario: the
+TRANSITIVE route. A module that imports a production helper which in turn drives
+`llm_config.client` — `narration.generate_*`, or the async worker paths that call it —
+reaches the API without naming either entry point, and the walk stops at the tests/
+boundary rather than chasing the first-party graph (`test_a_production_import_is_not_followed`
+pins why: following it would flag every capstone that imports `dispatch_agent` and never
+builds a session). No acceptance module takes that route today. One that does must carry the
+two marks by hand.
 """
 
 import ast
@@ -67,14 +79,33 @@ def _test_side_imports(tree: ast.AST, module: Path, tests_root: Path) -> set[Pat
     return found
 
 
+_PRODUCTION_CLIENT_MODULE = "llm_config"
+_PRODUCTION_CLIENT_SYMBOL = "client"
+
+
 def _touches_anthropic(tree: ast.AST) -> bool:
-    """Does this one module import the Anthropic plugin or name its key?"""
+    """Does this one module import an Anthropic client — plugin or production — or name its key?
+
+    `import llm_config` alone is NOT a hit: five acceptance modules import it for
+    MAX_STRICT_TOOLS and never make a request. Only the client object counts.
+    """
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             if any("anthropic" in alias.name.split(".") for alias in node.names):
                 return True
         elif isinstance(node, ast.ImportFrom):
             if "anthropic" in (node.module or "").split(".") or any(a.name == "anthropic" for a in node.names):
+                return True
+            if node.module == _PRODUCTION_CLIENT_MODULE and any(
+                a.name == _PRODUCTION_CLIENT_SYMBOL for a in node.names
+            ):
+                return True
+        elif isinstance(node, ast.Attribute):
+            if (
+                node.attr == _PRODUCTION_CLIENT_SYMBOL
+                and isinstance(node.value, ast.Name)
+                and node.value.id == _PRODUCTION_CLIENT_MODULE
+            ):
                 return True
         elif isinstance(node, ast.Constant) and node.value == KEY_VAR:
             return True
@@ -150,6 +181,20 @@ def test_every_real_llm_scenario_is_wired_into_the_guard():
         )
 
 
+def test_the_production_client_the_detector_keys_on_still_exists():
+    """The detector matches `llm_config.client` by NAME, so a rename would silently retire
+    the branch above rather than red anything. Constraint 9: check the real object."""
+    import anthropic
+
+    import llm_config
+
+    entry_point = getattr(llm_config, _PRODUCTION_CLIENT_SYMBOL, None)
+    assert isinstance(entry_point, anthropic.AsyncAnthropic), (
+        f"{_PRODUCTION_CLIENT_MODULE}.{_PRODUCTION_CLIENT_SYMBOL} is no longer an Anthropic client — "
+        "_touches_anthropic is matching a name that has moved"
+    )
+
+
 def _write(root: Path, relative: str, source: str) -> Path:
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -214,6 +259,35 @@ class TestReachesTheRealLlmTier:
         _write(tmp_path, "acceptance/_middle.py", "from . import _deep\n")
         module = _write(tmp_path, "acceptance/test_deep.py", "from acceptance import _middle\n")
         assert reaches_the_real_llm_tier(module, tmp_path) is True
+
+    def test_the_production_anthropic_client_is_flagged(self, tmp_path):
+        """`narration.py`'s route: production's own module-level AsyncAnthropic, which any
+        test can import without naming the plugin or the key."""
+        module = _write(
+            tmp_path,
+            "acceptance/test_prod_client.py",
+            "from llm_config import client as _c\n\nasync def test_narrate():\n    await _c.messages.create()\n",
+        )
+        assert reaches_the_real_llm_tier(module, tmp_path) is True
+
+    def test_the_production_anthropic_client_reached_by_attribute_is_flagged(self, tmp_path):
+        module = _write(
+            tmp_path,
+            "acceptance/test_prod_attr.py",
+            "import llm_config\n\nasync def test_narrate():\n    await llm_config.client.messages.create()\n",
+        )
+        assert reaches_the_real_llm_tier(module, tmp_path) is True
+
+    def test_importing_llm_config_for_a_constant_is_not_flagged(self, tmp_path):
+        """Five acceptance capstones import MAX_STRICT_TOOLS and make no request. Flagging the
+        MODULE rather than the client would red all five and teach the next author to route
+        around the guard."""
+        module = _write(
+            tmp_path,
+            "acceptance/test_budget.py",
+            "from llm_config import MAX_STRICT_TOOLS\n\ndef test_cap():\n    assert MAX_STRICT_TOOLS == 20\n",
+        )
+        assert reaches_the_real_llm_tier(module, tmp_path) is False
 
     def test_a_production_import_is_not_followed(self, tmp_path):
         """The stated bound. `import db` leaves tests/, so the walk stops — it does not silently
