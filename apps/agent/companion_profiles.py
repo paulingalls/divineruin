@@ -129,6 +129,8 @@ class Companion:
     voice_id: str
     errand_injury_reduction: int
     gender: str
+    onboarding_meeting: str
+    onboarding_suggestion: str
     age: str | None = None
     appearance: str | None = None
     mannerisms: tuple[str, ...] = ()
@@ -297,6 +299,8 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
                 data["errand_injury_reduction"], f"{companion_id}.errand_injury_reduction"
             ),
             gender=parse_str(data["gender"], f"{companion_id}.gender"),
+            onboarding_meeting=parse_str(data["onboarding_meeting"], f"{companion_id}.onboarding_meeting"),
+            onboarding_suggestion=parse_str(data["onboarding_suggestion"], f"{companion_id}.onboarding_suggestion"),
             age=opt_str(data.get("age"), f"{companion_id}.age"),
             appearance=opt_str(data.get("appearance"), f"{companion_id}.appearance"),
             mannerisms=parse_str_tuple(data.get("mannerisms", []), f"{companion_id}.mannerisms"),

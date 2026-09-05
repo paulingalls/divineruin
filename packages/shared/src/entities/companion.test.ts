@@ -102,6 +102,18 @@ describe("companions.json — row shape", () => {
       expect(["male", "female", "nonbinary"]).toContain(c.gender);
     }
   });
+
+  // The beat-3/4 onboarding vignettes are authored per companion and live on the row (the
+  // Python renderer interpolates them). Same cross-language contract as gender above; the
+  // prose itself is guarded in apps/agent/tests/test_companion_vignette_content.py.
+  test("every companion declares both onboarding vignette fields", () => {
+    for (const c of companions) {
+      expect(typeof c.onboarding_meeting).toBe("string");
+      expect(c.onboarding_meeting.length).toBeGreaterThan(0);
+      expect(typeof c.onboarding_suggestion).toBe("string");
+      expect(c.onboarding_suggestion.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("companions.json — scaling contract (story-002 reads these)", () => {

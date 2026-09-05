@@ -14,6 +14,8 @@
       "dry humor when relaxed"
     ],
     "speech_style": "measured and deliberate, short sentences when tense, warmer when relaxed, occasional dry humor",
+    "onboarding_meeting": "Raised voices near a fish stall — three dockhands leaning on a vendor, close enough to smell the ale on them. Not blows yet. One man is already standing where he can see both ends of the row, thumb resting on a sword pommel, letting it play out. He steps in when a crate goes over, not before.",
+    "onboarding_suggestion": "He waits for the crowd to thin before he offers anything, and keeps it short. Two roads from here: the guild hall, or the Hearthstone — people talk at both. Then, quieter, that he has heard the same word from every crew coming off the northern road this week. Greyvale.",
     "mannerisms": [
       "checks exits when entering a room",
       "tenses at unexpected sounds",
@@ -166,6 +168,8 @@
       "surprised by her own emotions"
     ],
     "speech_style": "quick and clipped when excited, slow and over-explanatory when she finds something obvious, Aelindran cadence",
+    "onboarding_meeting": "A crate has gone over on the wet cobbles — cracked lid, a smell like scorched copper, warded reagents rolling toward the gutter. The vendor and the carter are already arguing about who eats the loss. One woman in the crowd is not listening to either of them; she is crouched at the lid, watching the glyph on it flicker and fade. She needs someone to hold a lantern steady.",
+    "onboarding_suggestion": "She corrects something the player just said, then apologizes for it, badly. Guild hall or the Hearthstone — she wants whichever keeps better records, and she settles the matter by saying so. What she is actually after is Greyvale: three reports out of that valley describe the same thing three different ways, and she intends to know why.",
     "mannerisms": [
       "taps two fingers when thinking",
       "corrects people mid-sentence",
@@ -313,6 +317,8 @@
       "devastatingly quiet when it matters"
     ],
     "speech_style": "rapid and enthusiastic in safe moments, breathless in action, suddenly soft and small when vulnerable",
+    "onboarding_meeting": "A dray horse tears loose from its trace and the whole row goes loud at once — crates down, a dog shrieking, someone bellowing for the guard. Someone in frontier leathers is already up on a stall roof, three strides ahead of everyone and talking the entire way. They drop in front of the horse before the crowd has finished deciding to move. They are going to need a second pair of hands.",
+    "onboarding_suggestion": "Still breathless, still grinning. Both options in one rush — guild hall for the work, the Hearthstone for the gossip, pick fast. Then the part they actually care about: a carter told them something has gone wrong up past Greyvale, and they have been waiting for a reason to go north.",
     "mannerisms": [
       "bounces on the balls of their feet",
       "scans treelines and rooftops",
@@ -460,6 +466,8 @@
       "her silence is loud"
     ],
     "speech_style": "non-verbal — communicates entirely through chirps, growls, posture, and movement; the DM narrates her behavior in a softer, more intimate register",
+    "onboarding_meeting": "The commotion is wrong for a market. The caged songbirds at one stall go quiet in the same breath, and a dog at the next refuses a doorway, hackles up, a low sound in its throat. Something dark lies flat under the fishwife's table, ears back, watching that same doorway — she is why the birds stopped. The fishwife, more relieved than startled, uses the name aloud, and that is how the player gets it: Sable.",
+    "onboarding_suggestion": "No words are coming, and none are needed. She walks four paces up the guild-hall road, stops, and looks back until the player follows — that is the whole offer, and it can be refused. Let Greyvale arrive through her: what her ears do when the road north comes up, the way she plants herself facing that direction. Narrate her. Never voice her.",
     "mannerisms": [
       "ears flatten and hackles rise near corruption",
       "presses against the player when they are hurt",

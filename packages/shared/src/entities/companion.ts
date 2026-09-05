@@ -126,6 +126,12 @@ export interface Companion {
   // Narrative subset reused from the NPC schema.
   personality: string[];
   speech_style: string;
+  // The authored beat-3/4 onboarding scene for THIS companion: the commotion that draws them
+  // and how they enter it, then how they steer the player toward guild hall or tavern. The
+  // Python prompt renderer interpolates both verbatim; the markdown beat headings stay in the
+  // renderer, not here.
+  onboarding_meeting: string;
+  onboarding_suggestion: string;
   mannerisms?: string[];
   backstory_summary?: string;
   knowledge: NpcKnowledge;
