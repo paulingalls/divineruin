@@ -7,6 +7,21 @@ from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
 from system_prompts import build_system_prompt
 from warm_prompts import build_warm_layer, format_training_section
 
+
+def _onboarding_prompt_surface() -> str:
+    """The whole onboarding prompt surface a prompt-tool-drift scan must cover.
+
+    story-013 split the prompt into an invariant body plus a beat-3/4 span rendered per
+    assigned companion, so scanning one constant no longer sees the whole thing: an
+    instruction to call a removed tool could hide in a span the scan never rendered. Union
+    all five renderings (four companions + the unresolved case).
+    """
+    from onboarding_prompt import build_onboarding_instructions
+
+    companions = ("companion_kael", "companion_lira", "companion_tam", "companion_sable", None)
+    return "\n".join(build_onboarding_instructions(3, cid) for cid in companions)
+
+
 SAMPLE_AWAITING_TRAINING = {
     "id": "train_mid01",
     "activity_type": "technique_base",
@@ -326,7 +341,7 @@ class TestPromptToolConsistency:
         from dispatch_agent import DISPATCH_TOOLS
         from exploration_agent import EXPLORATION_TOOLS
         from mode_tools import enter_mode
-        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS
+        from onboarding_agent import ONBOARDING_TOOLS
         from query_tools import query_info
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
 
@@ -334,7 +349,7 @@ class TestPromptToolConsistency:
             "exploration": (build_system_prompt("loc"), EXPLORATION_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
             "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
-            "onboarding": (ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS),
+            "onboarding": (_onboarding_prompt_surface(), ONBOARDING_TOOLS),
         }
         for name, (prompt, tools) in agents.items():
             if "query_info" in prompt:
@@ -396,14 +411,13 @@ class TestPromptToolConsistency:
         now derive only from deterministic Resolves and the Stage. No gameplay prompt may
         still instruct the LLM to call either (prompt-tool drift bit production before,
         concern df5cc73b2473)."""
-        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
 
         prompts = {
             "exploration": build_system_prompt("loc"),
             "combat": COMBAT_SYSTEM_PROMPT,
             "training": DISPATCH_SYSTEM_PROMPT,
-            "onboarding": ONBOARDING_SYSTEM_PROMPT,
+            "onboarding": _onboarding_prompt_surface(),
         }
         for name, prompt in prompts.items():
             for removed in ("play_sound", "set_music_state"):
@@ -420,14 +434,13 @@ class TestPromptToolConsistency:
         LLM reads. So every REGISTERED tool's description is scanned too — restore that sentence
         and the DM emits a call to a tool no agent holds, erroring out the combat-exit turn.
         """
-        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
 
         prompts = {
             "exploration": build_system_prompt("loc"),
             "combat": COMBAT_SYSTEM_PROMPT,
             "training": DISPATCH_SYSTEM_PROMPT,
-            "onboarding": ONBOARDING_SYSTEM_PROMPT,
+            "onboarding": _onboarding_prompt_surface(),
         }
         for name, prompt in prompts.items():
             for removed in ("award_xp", "award_divine_favor"):

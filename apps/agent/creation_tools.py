@@ -304,6 +304,9 @@ async def finalize_character(context: RunContext) -> str | tuple:
     # Bind the starting companion (story-003): the one companion whose `complements` lists this
     # archetype. Non-fatal for the same reason as the spell grant above — the character is
     # already persisted, and a grant hiccup must not strand it companionless AND uncreated.
+    # Pre-bound so the beat-3/4 handoff below can read it: bound only inside the try, a raising
+    # selector would make it an UnboundLocalError at the handoff — the same crash by another route.
+    companion_id: str | None = None
     try:
         companion_id = select_companion_for_archetype(cs.class_choice)
         await db_mutations_companion.insert_companion_relationship_if_absent(sd.player_id, companion_id)
@@ -364,7 +367,9 @@ async def finalize_character(context: RunContext) -> str | tuple:
         ),
     )
     sd.onboarding_beat = 1
-    return OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx), json.dumps(summary)
+    # companion_id is the value bound inside the guarded selection above — NOT a second call to
+    # the selector, which would convert a deliberately swallowed content bug into a crashed handoff.
+    return OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx, companion_id=companion_id), json.dumps(summary)
 
 
 async def _generate_player_portrait(sd: SessionData, cs: object) -> None:

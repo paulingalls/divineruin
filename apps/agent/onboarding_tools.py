@@ -32,8 +32,8 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     Call when the current beat's completion conditions are met.
     Beat 1 (Arrival): After initial narration delivered.
     Beat 2 (Market): After 2-3 player exchanges or player attempts to leave.
-    Beat 3 (Companion Meeting): After Kael has introduced himself and companion state initialized.
-    Beat 4 (Kael's Suggestion): After player indicates a direction or asks Kael to lead.
+    Beat 3 (Companion Meeting): After the companion has been introduced and companion state initialized.
+    Beat 4 (The Companion's Suggestion): After player indicates a direction or asks to be led.
     Beat 5 (First Destination): After Greyvale quest hook delivered.
     """
     sd: SessionData = context.userdata

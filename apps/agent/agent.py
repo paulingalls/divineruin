@@ -303,11 +303,18 @@ async def dm_session(ctx: agents.JobContext) -> None:
         # Check for mid-onboarding reconnection
         onboarding_beat = player.get("flags", {}).get("onboarding_beat")
         if isinstance(onboarding_beat, int):
+            from companion_profiles import select_companion_for_archetype
             from onboarding_agent import OnboardingAgent
 
             userdata.onboarding_beat = onboarding_beat
             session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
-            onboarding_agent = OnboardingAgent(onboarding_beat=onboarding_beat)
+            # Resolve the companion from the archetype, NOT from userdata.companion: that is
+            # written only when the companion_met flag is already set, so a player reconnecting
+            # AT beat 3 has None there — and beat 3 is where the companion is staged.
+            onboarding_agent = OnboardingAgent(
+                onboarding_beat=onboarding_beat,
+                companion_id=select_companion_for_archetype(player["class"]),
+            )
             await session.start(room=ctx.room, agent=onboarding_agent)
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return

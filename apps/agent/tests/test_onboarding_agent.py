@@ -104,7 +104,65 @@ class TestOnboardingAgentClass:
         instructions = agent._instructions
         assert "Arrival" in instructions or "arrival" in instructions
         assert "Market" in instructions or "market" in instructions
-        assert "Companion" in instructions or "Kael" in instructions
+        assert "Companion" in instructions
+
+
+class TestBeat34NamesTheAssignedCompanion:
+    """AC1: beats 3-4 name and tag the player's OWN companion, not the module's Kael literal."""
+
+    @pytest.mark.parametrize(
+        "archetype,name,tag",
+        [
+            ("mage", "Kael", "COMPANION_KAEL"),
+            ("warrior", "Lira", "COMPANION_LIRA"),
+            ("cleric", "Tam", "COMPANION_TAM"),
+            ("spy", "Sable", "COMPANION_SABLE"),
+        ],
+    )
+    def test_beat_3_4_instructions_name_the_assigned_companion(self, archetype, name, tag):
+        from companion_profiles import select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id=select_companion_for_archetype(archetype))
+        instructions = agent._instructions
+        assert name in instructions
+        for other in {"Kael", "Lira", "Tam", "Sable"} - {name}:
+            assert other not in instructions, f"{other} leaked into {name}'s prompt"
+
+    def test_a_verbal_companion_is_tagged_for_ventriloquism(self):
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_lira")
+        assert "[COMPANION_LIRA," in agent._instructions
+
+    def test_a_non_verbal_companion_is_narrated_never_tagged(self):
+        """Sable cannot self-introduce: a tagged line would send her to TTS she has no voice for."""
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_sable")
+        assert "[COMPANION_SABLE," not in agent._instructions
+        assert "narrate" in agent._instructions.lower()
+
+    def test_an_unresolved_companion_renders_the_span_agnostically(self):
+        """creation_tools swallows a failed selection deliberately; the character stays playable."""
+        from onboarding_agent import OnboardingAgent
+
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=None)._instructions
+        for cname in ("Kael", "Lira", "Tam", "Sable"):
+            assert cname not in instructions
+
+    def test_no_module_level_per_companion_prompt_constants(self):
+        """AC1's maintainability clause: the span renders from the profile, not four constants."""
+        import onboarding_agent
+
+        for attr in dir(onboarding_agent):
+            if not attr.isupper():
+                continue
+            text = getattr(onboarding_agent, attr)
+            if not isinstance(text, str):
+                continue
+            named = [c for c in ("Kael", "Lira", "Tam", "Sable") if c in text]
+            assert len(named) <= 1, f"{attr} names {named}"
 
 
 class TestOnboardingAgentIntegration:
