@@ -56,9 +56,9 @@ class RentalQuote:
 def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: dict[str, float]) -> RentalQuote:
     """Apply an NPC's `disposition` to a workspace's `base_price_sp` (sp/day).
 
-    `base_price_sp` comes from RENTAL_BASE_PRICE_SP[workspace_type] or
-    COMBINED_FORGE_LAB_RENTAL_SP — taking the price (not the type) lets the
-    Forge+Laboratory bundle reuse the same disposition logic. `multipliers` is the
+    `base_price_sp` comes from a RentalOffer (RENTAL_OFFERS) — taking the price, not
+    the workspace type, is what lets the Forge+Laboratory bundle reuse this logic
+    while granting two workspaces. `multipliers` is the
     disposition->factor map from the pricing SSOT (Neutral-and-up not listed pays
     full price). Returns an unavailable RentalQuote when the NPC's disposition is
     below Neutral (a forge is not rented to the unfriendly). Raises ValueError on
