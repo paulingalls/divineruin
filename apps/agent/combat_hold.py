@@ -250,7 +250,7 @@ def _roll(state, head: dict, action: dict, resolver):
         attacker,
         action,
         target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0),
+        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + combat_reaction_effect.ac_bonus(state, head),
         enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
         is_first_attack_of_combat=not state.first_attack_resolved,
         resolver=resolver,
@@ -293,4 +293,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
-    return await _resolve_one_packet(session, state, packet, **deps)
+    return await _resolve_one_packet(
+        session, state, packet, reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head), **deps
+    )

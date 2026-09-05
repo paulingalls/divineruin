@@ -32,6 +32,12 @@ logger = logging.getLogger("divineruin.tools")
 # one is a cross-language content change this story does not own. Their honesty against the
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
+AC_BONUS = {
+    "cleric_shield_of_faith": 2,
+    "oracle_shield_of_faith": 2,
+    "paladin_shield_of_faith": 2,
+    "marshal_interceding_order": 2,
+}
 
 
 def bound_spend(state, head: dict, stage: str) -> dict | None:
@@ -51,6 +57,24 @@ def bound_spend(state, head: dict, stage: str) -> dict | None:
         if entry["stage"] == stage and entry["held_seq"] == head["seq"]:
             return {"actor_id": actor_id, **entry}
     return None
+
+
+def ac_bonus(state, head: dict) -> int:
+    """The AC the pre-roll spend adds to whoever this held blow is aimed at.
+
+    Derived from the one spend record on every call rather than cached onto the held entry — this
+    story adds no state of its own. It is asked TWICE per held attack, once by the roll and once by
+    the apply half, because ``_replay_resolver`` raises unless both halves compute the same
+    effective AC: a bonus in the roll alone would report a target_ac the roll was never made
+    against, and the DM would narrate a lie.
+
+    Applied to the blow's TARGET, whoever reacted. That is the person the open window named, and
+    the +2 is a property of the attack being answered, not of the reactor.
+    """
+    spend = bound_spend(state, head, reaction_windows.PRE_ROLL)
+    if spend is None:
+        return 0
+    return AC_BONUS.get(spend["ability_id"], 0)
 
 
 def _held_target(state, head: dict):

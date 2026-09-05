@@ -273,3 +273,35 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     return await _request_ability_activation_impl(
         ctx, ability_id, db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
     )
+
+
+def _ac_sensitive_resolver(attack_total, damage):
+    """A resolve_attack mock that HITS iff ``attack_total`` reaches the effective AC it is handed.
+
+    ``_damage_resolver`` always hits, so it reports the same landed blow at AC 14 and at AC 16 and
+    can certify nothing about an AC modifier. This is the only resolver on which a reaction's +2
+    can be shown to be what turned the blow aside.
+    """
+
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+        hit = attack_total + attack_mod >= target_ac
+        dealt = max(0, int(damage * damage_mult)) if hit else 0
+        remaining = max(0, target_hp - dealt)
+        return AttackResult(
+            hit=hit,
+            roll=attack_total - 3,
+            attack_modifier=3,
+            attack_total=attack_total + attack_mod,
+            target_ac=target_ac,
+            damage=dealt,
+            damage_type="slashing",
+            critical_success=False,
+            critical_failure=False,
+            target_hp_remaining=remaining,
+            target_killed=hit and remaining == 0,
+            narrative_hint="A clean strike." if hit else "The blade skids wide.",
+        )
+
+    r = MagicMock()
+    r.resolve_attack = MagicMock(side_effect=_resolve)
+    return r
