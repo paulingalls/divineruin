@@ -11,9 +11,10 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). An IN-COMBAT reaction is gated against the current declaration before any
-resource write, and the round's in-memory reaction budget is spent only AFTER the activation
-succeeds — a refused activation must not burn the reaction (test_reaction_refused_by_cost_*).
+7b34ebf86b57). An IN-COMBAT reaction is gated against the OPEN Beat-3 window (story-017 — a
+reaction interrupts a held enemy blow, it is not pre-declared) before any resource write, and the
+round's in-memory reaction budget is spent only AFTER the activation succeeds — a refused
+activation must not burn the reaction (test_reaction_refused_by_cost_*).
 """
 
 import json
@@ -24,6 +25,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import combat_hold
 import combat_phase
 import condition_produce
 import conditions
@@ -101,8 +103,8 @@ async def _request_ability_activation_impl(
         # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
         # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
         # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
-        # prompt allows it mid-fight.
-        session.combat_state.reactions_available[session.player_id] = False
+        # prompt allows it mid-fight. AFTER the activation, so a refusal still costs nothing.
+        combat_hold.record_spend(session.combat_state, session.player_id, ability_id)
         return result
 
 

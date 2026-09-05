@@ -5,17 +5,15 @@ resolve_declaration is a PURE classify+validate function: it turns a raw declara
 six categories mirror gm_combat §Action Economy (L99-106); explicit ``type`` is required.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
 from combat_turn import _declare_phase_impl
 from declarations import DEFEND_AC_BONUS, Declaration, DeclarationType, resolve_declaration
-from query_tools import _query_abilities_impl
 
 
 class TestResolveDeclarationValid:
@@ -85,89 +83,60 @@ class TestResolveDeclarationValid:
         d = resolve_declaration({"type": "ability", "action": "de_escalate", "argument_type": "nonsense"})
         assert d.argument_type == "nonsense"
 
-    def test_reaction_requires_action_and_trigger(self):
-        # story-001: a REACTION declaration names a reaction ability plus the trigger window
-        # it's firing against. Relies on the autouse seed_abilities fixture (real content).
-        d = resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "on_hit"})
-        assert d == Declaration(type=DeclarationType.REACTION, action="warrior_brace_for_impact", trigger="on_hit")
 
-    def test_trigger_defaults_none_for_non_reaction_types(self):
-        d = resolve_declaration({"type": "attack", "action": "Longsword", "target_id": "goblin_1"})
-        assert d.trigger is None
+class TestReactionIsNoLongerADeclaration:
+    """story-017 / AC5. A reaction is an INTERRUPT against an open Beat-3 window, so it is not a
+    declaration at all — the category is deleted, not deprecated.
 
-
-class TestReactionDeclarationInvalid:
-    def test_reaction_without_action_raises(self):
-        with pytest.raises(ValueError, match="action"):
-            resolve_declaration({"type": "reaction", "trigger": "on_hit"})
-
-    def test_reaction_without_trigger_raises(self):
-        with pytest.raises(ValueError, match="trigger"):
-            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact"})
-
-    def test_reaction_rejects_non_reaction_ability(self):
-        with pytest.raises(ValueError, match="not a reaction ability"):
-            resolve_declaration({"type": "reaction", "action": "warrior_devastating_strike", "trigger": "on_hit"})
-
-    def test_reaction_rejects_unknown_ability(self):
-        with pytest.raises(ValueError, match="Unknown ability"):
-            resolve_declaration({"type": "reaction", "action": "no_such_ability", "trigger": "on_hit"})
-
-    def test_reaction_rejects_trigger_outside_the_window_vocabulary(self):
-        # A prose trigger must fail HERE. Left unvalidated it can never match the ability's own
-        # window at consumption (story-002), so the reaction would silently never fire.
-        with pytest.raises(ValueError, match="trigger"):
-            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "when hit"})
-
-    @pytest.mark.parametrize("bad", [{"a": 1}, ["warrior_brace_for_impact"]])
-    def test_reaction_rejects_non_string_action_as_value_error(self, bad):
-        # Not merely "rejects": it must raise ValueError, the ONLY exception combat_turn
-        # translates to ToolError. An unhashable action would otherwise TypeError out of the
-        # ability lookup and crash the tool call instead of re-prompting the DM.
-        with pytest.raises(ValueError, match="must be a string"):
-            resolve_declaration({"type": "reaction", "action": bad, "trigger": "on_hit"})
-
-    @pytest.mark.parametrize("bad", [{"a": 1}, ["on_hit"]])
-    def test_reaction_rejects_non_string_trigger_as_value_error(self, bad):
-        with pytest.raises(ValueError, match="trigger"):
-            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": bad})
-
-
-@pytest.mark.asyncio
-async def test_every_queried_reaction_window_is_accepted_by_declare_phase():
-    """AC2, against the real catalog: EVERY reaction the payload can surface, for every class.
-
-    One class's first reaction is not enough — a payload that emitted a constant "on_hit" would
-    still be accepted for the reaction that happens to carry that window, so the pin has to walk
-    the whole catalog for the payload and the gate to be unable to drift.
+    Keeping it would relocate note 0f3945fa(d) onto the player: declare_phase would still accept
+    `kind: "reaction"`, but validate_reaction_activation no longer reads pending_declarations, so
+    a pre-declared reaction becomes a packet that can never activate and still consumes the
+    actor's whole phase action.
     """
-    catalog = load_fixture_config().values()
-    context = make_context()
-    queries = MagicMock()
-    persistence = MagicMock()
-    persistence.get_character_abilities = AsyncMock(return_value=[])
-    persistence.get_active_variant = AsyncMock(return_value=None)
-    mutations = MagicMock()
-    mutations.save_combat_state = AsyncMock()
 
-    declared_ids = set()
-    for player_class in sorted({ability.archetype_id for ability in catalog}):
-        queries.get_player = AsyncMock(return_value={"class": player_class})
-        payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
-        for reaction in [row for row in payload["abilities"] if row["ability_type"] == "reaction"]:
-            context.userdata.combat_state = _make_combat_state()
-            declarations = {
-                "player_1": {"type": "reaction", "action": reaction["id"], "trigger": reaction["window"]},
-                "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
-            }
+    def test_a_reaction_declaration_is_no_longer_a_declaration_type(self):
+        with pytest.raises(ValueError, match="unknown declaration type"):
+            resolve_declaration({"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "on_hit"})
 
-            result = json.loads(await _declare_phase_impl(context, declarations, mutations=mutations))
+    def test_the_reaction_category_is_gone_from_the_vocabulary(self):
+        assert "reaction" not in {t.value for t in DeclarationType}
 
-            assert result["beat"] == "resolution", reaction
-            assert "player_1" in result["accepted_actors"], reaction
-            declared_ids.add(reaction["id"])
+    def test_a_declaration_carries_no_trigger_field(self):
+        d = resolve_declaration({"type": "attack", "action": "Longsword", "target_id": "goblin_1"})
+        assert not hasattr(d, "trigger")
 
-    assert declared_ids == {ability.id for ability in catalog if ability.ability_type == "reaction"}
+    @pytest.mark.asyncio
+    async def test_a_companion_reaction_declaration_burns_no_phase_action(self):
+        """AC5's phase-action clause, on the actor the old design actually harmed.
+
+        resolve_declaration never checked that the declaring actor could OWN the named reaction,
+        so a companion's REACTION was accepted at Beat 1, was unactivatable (only players spend
+        reactions), and cost the companion its entire round. advance_combat_phase validates every
+        declaration BEFORE assigning any, so the whole payload is refused here and the beat stays
+        open to re-declare — the companion loses nothing.
+        """
+        context = make_context()
+        context.userdata.combat_state = _make_combat_state()
+        mutations = MagicMock()
+        mutations.save_combat_state = AsyncMock()
+
+        with pytest.raises(ToolError, match="unknown declaration type"):
+            await _declare_phase_impl(
+                context,
+                {
+                    "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+                    "companion_kael": {
+                        "type": "reaction",
+                        "action": "warrior_brace_for_impact",
+                        "trigger": "on_hit",
+                    },
+                },
+                mutations=mutations,
+            )
+
+        state = context.userdata.combat_state
+        assert state.beat == "declaration"
+        assert state.pending_declarations == {}
 
 
 class TestResolveDeclarationInvalid:

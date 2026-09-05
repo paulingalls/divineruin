@@ -32,8 +32,10 @@ AbilityType = Literal["core", "reaction", "elective"]
 _ABILITY_TYPES = frozenset(get_args(AbilityType))
 
 # Closed vocabulary for a reaction ability's trigger window (story-001), derived from the
-# trigger event each reaction row already names in its `effect` prose. Public because the
-# declaration path (declarations.resolve_declaration) validates a declared trigger against it.
+# trigger event each reaction row already names in its `effect` prose. Public because it is one
+# half of a two-sided contract: reaction_windows mints the triggers a held enemy action offers,
+# and validate_reaction_activation matches a reaction's `window` against them, so a member here
+# with no producer is a reaction nobody can spend (tests/combat/test_reaction_resolution.py).
 ReactionWindow = Literal[
     "on_hit",
     "on_ally_hit",

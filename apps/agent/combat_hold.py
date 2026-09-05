@@ -19,6 +19,7 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 import logging
 
 import combat_enhancers
+import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
@@ -58,12 +59,44 @@ def pause_allowed(state) -> bool:
 
     Reads ``reactions_available`` only. That map records whether the round's one reaction is
     SPENT, not whether the character owns any — the ownership half needs the ability catalog per
-    member at the DECLARATION beat and is recorded as debt, not faked here. A fallen player's
-    stale True must not hold the beat: a downed character cannot react.
+    member at the DECLARATION beat and is recorded as debt (1ffd99cf), not faked here. A fallen
+    player's stale unspent entry must not hold the beat: a downed character cannot react.
+
+    Asks ``reaction_spend.is_spent``, never the entry's truthiness: since story-017 a spent
+    reaction is a truthy RECORD, so a boolean test would report it available and keep pausing on
+    windows the party can no longer consume.
     """
     return any(
-        state.reactions_available.get(p.id, False) for p in state.participants if p.type == "player" and not p.is_fallen
+        not reaction_spend.is_spent(state.reactions_available.get(p.id))
+        for p in state.participants
+        if p.type == "player" and not p.is_fallen
     )
+
+
+def record_spend(state, actor_id: str, ability_id: str) -> None:
+    """Bind this actor's reaction to the held action the machine is paused on (story-017).
+
+    ONE field write on the live CombatState — the caller holds the combat-end lock and must not
+    assign a snapshot back (see combat_phase.validate_reaction_activation). The head of
+    ``held_actions`` IS the paused action by construction of ``pump``, which returns the moment it
+    opens a window and never pops past it — checked here rather than assumed, because a spend
+    bound to the wrong blow is a defect story-018 would silently inherit (constraint 4). The check
+    is an actor-id match, not the window id's ``r<round>-<seq>-<stage>`` format: one declaration
+    per actor per phase means the actor names the held action uniquely, and parsing the id would
+    make its format a contract reaction_spend deliberately refused to give it.
+    """
+    if state.open_window is None or not state.held_actions:
+        raise ValueError(
+            f"cannot record a reaction spend for {actor_id!r}: the machine is not paused on a "
+            f"held action (open_window={state.open_window!r}, {len(state.held_actions)} held)"
+        )
+    head = state.held_actions[0]
+    if state.open_window["actor_id"] != head["actor_id"]:
+        raise ValueError(
+            f"cannot record a reaction spend for {actor_id!r}: the open window answers "
+            f"{state.open_window['actor_id']!r} but the queue head is {head['actor_id']!r}"
+        )
+    state.reactions_available[actor_id] = reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
 
 
 def _held_declaration(head: dict):

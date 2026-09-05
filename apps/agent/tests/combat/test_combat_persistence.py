@@ -22,8 +22,10 @@ import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 
 import combat_hold
+import combat_phase
 import combat_turn
 import db_mutations
+import reaction_spend
 import reaction_windows
 from combat_support import deserialize_roll, roll_attack, serialize_roll
 from session_data import CombatParticipant, CombatState, SessionData
@@ -139,7 +141,10 @@ def _mid_combat_state(combat_id: str) -> CombatState:
     state.current_turn_index = 1
     state.beat = "resolution"
     state.pending_declarations = {"player_1": {"action": "attack", "target": "goblin_scout_1"}}
-    state.reactions_available = {"player_1": True, "goblin_scout_1": False}
+    state.reactions_available = {
+        "player_1": reaction_spend.unspent(),
+        "goblin_scout_1": reaction_spend.spend("warrior_brace_for_impact", _WINDOW, held_seq=0),
+    }
     state.ac_modifiers = {"player_1": 2}  # a Defend stance in flight (M4.2, story-002)
     # is_fallen now comes from the enemy_fallen param; death-save counters aren't part of the
     # builder, so set those directly to exercise the round-trip.
@@ -148,6 +153,80 @@ def _mid_combat_state(combat_id: str) -> CombatState:
     fallen.death_save_successes = 2
     fallen.death_save_failures = 1
     return state
+
+
+_WINDOW = {"id": "r1-0-post_roll", "stage": "post_roll", "triggers": ["on_hit"]}
+
+
+def test_a_legacy_bool_reactions_map_normalizes_on_load():
+    """AC6. Every combat_instances row written before story-017 carries
+    ``reactions_available`` as dict[str, bool], on the exact field story-018 reads to choose
+    which held blow a reaction modifies. ``from_dict`` restored it as a raw passthrough — none of
+    the reconstruction ``participants`` gets — so a live mid-combat row would deserialize bools
+    into the record-shaped field and TypeError on the first ``entry["spent"]``.
+
+    Both shapes are NAMED here, which is what makes the normalization a stated upgrade rather than
+    a silent default: True was AVAILABLE, so it becomes an unspent record; False was SPENT, so it
+    becomes spent-with-no-binding, and story-018 applies no modifier for it. Fault-inject by
+    restoring ``data.get("reactions_available", {})``.
+    """
+    base = _mid_combat_state("combat_legacy_shape").to_dict()
+    base["reactions_available"] = {"player_1": True, "player_2": False}
+
+    loaded = CombatState.from_dict(base)
+
+    assert reaction_spend.is_spent(loaded.reactions_available["player_1"]) is False
+    assert loaded.reactions_available["player_2"] == {
+        "spent": True,
+        "ability_id": None,
+        "window_id": None,
+        "stage": None,
+        "held_seq": None,
+    }
+
+
+def test_a_reaction_spend_record_roundtrips():
+    """AC1's persistence half: the binding story-018 reads survives to_dict -> from_dict.
+
+    A record that lost its ability_id or held_seq in JSONB would leave 018 knowing a reaction was
+    spent but not WHICH one, against WHICH blow — the bare bool, reintroduced through the store."""
+    original = _mid_combat_state("combat_record_roundtrip")
+
+    loaded = CombatState.from_dict(json.loads(json.dumps(original.to_dict())))
+
+    assert loaded.reactions_available == original.reactions_available
+    spent = loaded.reactions_available["goblin_scout_1"]
+    assert spent["ability_id"] == "warrior_brace_for_impact"
+    assert spent["window_id"] == "r1-0-post_roll"
+    assert spent["stage"] == "post_roll"
+    assert spent["held_seq"] == 0
+
+
+def test_a_pre_story_017_reaction_declaration_does_not_brick_the_round():
+    """AC6's sibling field, on the same row. Until story-017 a reaction WAS a declaration, so the
+    row most likely to be in flight on deploy is one whose player pre-declared one — and
+    resolve_declaration no longer knows that type.
+
+    Left as a passthrough, ``advance_combat_phase`` raises "unknown declaration type: 'reaction'"
+    on every resolve_phase, and declare_phase refuses off the declaration beat: the round cannot
+    be resolved or re-declared, only fled. The stale entry is dropped for the same reason the bool
+    map is upgraded rather than rejected — it never resolved to a mechanical outcome, so nothing
+    committed is lost. Fault-inject by restoring ``data.get("pending_declarations", {})``.
+    """
+    base = _mid_combat_state("combat_legacy_reaction_decl").to_dict()
+    base["beat"] = "resolution"
+    base["pending_declarations"] = {
+        "player_1": {"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "on_hit"},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+    }
+
+    loaded = CombatState.from_dict(base)
+
+    assert "player_1" not in loaded.pending_declarations
+    assert loaded.pending_declarations["goblin_scout_1"]["type"] == "attack"
+    # ...and the round it belongs to still advances, which is the harm the drop prevents.
+    _next_state, adv = combat_phase.advance_combat_phase(loaded)
+    assert [p.actor_id for p in adv.packets] == ["goblin_scout_1"]
 
 
 async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None:

@@ -11,6 +11,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod, make_mock_room, published_payloads
 
 import event_types as E
+import reaction_spend
 from combat_death_save import _request_death_save_impl
 
 
@@ -319,7 +320,7 @@ class TestSerialisedAgainstConcurrentWriters:
     @pytest.mark.asyncio
     async def test_a_reaction_spent_during_the_transaction_is_not_erased(self):
         """The concrete loss: ability_tools deducts Stamina/Focus, commits, then records the spend
-        as reactions_available[player]=False on the LIVE state (under this same lock). Unlocked,
+        as a spend RECORD on the LIVE state (under this same lock). Unlocked,
         the death save's post-commit rebind restores True over it — charged and still holding the
         round's reaction. Fault-inject by dropping the lock from _request_death_save_impl."""
         mock_mutations = _make_death_save_mocks()
@@ -332,19 +333,22 @@ class TestSerialisedAgainstConcurrentWriters:
         mock_db, _conn = make_db_mod()
         ctx = make_context()
         cs = _make_combat_state(player_hp=0, player_fallen=True)
-        cs.reactions_available = {"player_1": True}
+        cs.reactions_available = {"player_1": reaction_spend.unspent()}
         ctx.userdata.combat_state = cs
+        record = reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-post_roll", "stage": "post_roll"}, held_seq=0)
 
         async def spend_reaction():
             async with ctx.userdata.combat_end_lock:
-                ctx.userdata.combat_state.reactions_available["player_1"] = False
+                ctx.userdata.combat_state.reactions_available["player_1"] = record
 
         await asyncio.gather(
             _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db),
             spend_reaction(),
         )
 
-        assert ctx.userdata.combat_state.reactions_available == {"player_1": False}
+        # The whole BINDING survives the rebind, not just the spent-ness: erasing it would leave
+        # story-018 unable to say which blow the reaction answered.
+        assert ctx.userdata.combat_state.reactions_available == {"player_1": record}
 
     @pytest.mark.asyncio
     async def test_the_lock_is_held_across_the_transaction(self):
