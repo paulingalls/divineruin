@@ -49,6 +49,20 @@ def test_an_anyof_of_seventeen_variants_costs_one_union():
     assert facts.unions == ["$.payload"]
 
 
+def test_an_anyof_inside_array_items_still_costs_its_union():
+    """The shape a `list[SumType]` parameter emits: the anyOf sits under `items`, not on
+    the property. A walker that only inspects property nodes reports ZERO unions for it —
+    and under-counting is the one direction this walk must not err in."""
+    defs = {f"V{i}": _obj({"kind": {"const": f"k{i}"}}) for i in range(3)}
+    schema = {
+        "type": "object",
+        "$defs": defs,
+        "properties": {"rows": {"type": "array", "items": {"anyOf": [{"$ref": f"#/$defs/V{i}"} for i in range(3)]}}},
+    }
+    facts = walk_tool_schema(schema)
+    assert facts.unions == ["$.rows.items"]
+
+
 def test_nested_additional_properties_is_found():
     """Today's declare_phase emits it one level down, not on the parameter itself."""
     schema = _obj({"declarations": {"type": "object", "additionalProperties": {"type": "object"}}})

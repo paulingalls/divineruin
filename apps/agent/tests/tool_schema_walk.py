@@ -58,6 +58,11 @@ def _walk(node: Any, path: str, facts: SchemaFacts, defs: dict, visited: frozens
             _walk(target, path, facts, defs, visited | {ref})
         return
 
+    # Checked on every node, not only on property nodes: a `list[SumType]` parameter emits
+    # its anyOf under `items`, so a property-only check reports zero unions for it.
+    if _is_union(node):
+        facts.unions.append(path)
+
     if "oneOf" in node:
         facts.one_of.append(path)
     enum = node.get("enum")
@@ -76,11 +81,8 @@ def _walk(node: Any, path: str, facts: SchemaFacts, defs: dict, visited: frozens
         nullable_here = 0
         for prop, sub in properties.items():
             sub_path = f"{path}.{prop}"
-            if isinstance(sub, dict):
-                if _is_union(sub):
-                    facts.unions.append(sub_path)
-                if _is_nullable(sub):
-                    nullable_here += 1
+            if isinstance(sub, dict) and _is_nullable(sub):
+                nullable_here += 1
             _walk(sub, sub_path, facts, defs, visited)
         facts.nullable_by_object[path] = nullable_here
 

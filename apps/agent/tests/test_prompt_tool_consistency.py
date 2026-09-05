@@ -203,7 +203,7 @@ class TestPromptToolConsistency:
 
         # The old call shape, verbatim. `mode=` is still the INTERNAL router's parameter
         # (_check_impl), so these are the LLM-facing spellings only.
-        dead_shapes = ("check(mode", "check with mode", "begin_activity(kind=")
+        dead_shapes = ("check(mode", "check with mode", "begin_activity(kind=", '{"type": "')
         surfaces = {
             "exploration": build_system_prompt("loc"),
             "combat": COMBAT_SYSTEM_PROMPT,
