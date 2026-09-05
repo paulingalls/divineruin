@@ -247,6 +247,19 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 "endpointing": {"min_delay": 0.5},
                 "interruption": {"enabled": True},
             },
+            # Chosen, not inherited. livekit permits max_tool_steps + 1 consecutive tool
+            # steps (agent_activity.py:3073) and, on reaching the cap, does NOT raise: it
+            # logs and regenerates with tool_choice="none", so the agent silently stops
+            # calling tools and narrates anyway — a dropped death save the player hears as
+            # a plausible sentence (constraint 4, fail-quiet from inside a vendor library).
+            # The default 3 allowed four steps; today's longest chain is three
+            # (declare_phase -> resolve_phase -> request_death_save) and M29's restored
+            # Beat-3 loop needs five (declare -> resolve allies -> activate reaction ->
+            # resolve enemies -> death save). 5 permits six: one step of headroom over the
+            # longest chain the design calls for. This is a CEILING, not a target — it
+            # truncates long chains and never lengthens short ones, so it costs nothing on
+            # the two- and three-call turns that dominate the 1500ms budget.
+            max_tool_steps=5,
             userdata=userdata,
         )
 

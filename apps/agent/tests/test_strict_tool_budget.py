@@ -137,6 +137,47 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
     return sites
 
 
+def _agent_session_sites() -> list[tuple[str, ast.Call]]:
+    """Every `AgentSession(...)` construction under apps/agent, as AST."""
+    root = Path(__file__).resolve().parents[1]
+    sites: list[tuple[str, ast.Call]] = []
+    for path in sorted(root.rglob("*.py")):
+        if ".venv" in path.parts:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Call) and "AgentSession" in ast.dump(node.func):
+                sites.append((str(path.relative_to(root)), node))
+    return sites
+
+
+def test_every_agent_session_chooses_its_max_tool_steps():
+    """The tool-chain ceiling is chosen here, never inherited from the plugin default.
+
+    livekit permits `max_tool_steps + 1` consecutive steps and, on reaching the cap, does
+    NOT raise: it logs and regenerates with tool_choice="none" (agent_activity.py:3073).
+    The agent silently stops calling tools and narrates anyway, so a dropped death save
+    reaches the player as a plausible sentence — constraint 4 fail-quiet, from inside a
+    vendor library, which is exactly why the number must be deliberate.
+
+    5 permits six steps. Today's longest chain is three (declare_phase -> resolve_phase ->
+    request_death_save); M29's restored Beat-3 loop needs five (declare -> resolve allies
+    -> activate reaction -> resolve enemies -> death save). Scanning EVERY site, not just
+    agent.py, is what keeps the acceptance harnesses on production's ceiling — a harness
+    left on the default would truncate somewhere else and certify nothing about the real
+    session. Supersedes bug 50fd0838, whose arithmetic missed the +1.
+    """
+    sites = _agent_session_sites()
+    assert sites, "no AgentSession construction found — the walk is broken, not the code"
+    for where, call in sites:
+        steps = next((kw for kw in call.keywords if kw.arg == "max_tool_steps"), None)
+        assert steps is not None, f"{where}: AgentSession inherits the plugin's max_tool_steps default"
+        assert isinstance(steps.value, ast.Constant), f"{where}: max_tool_steps must be a literal"
+        value = steps.value.value
+        assert isinstance(value, int) and value >= 5, (
+            f"{where}: max_tool_steps must be a literal >= 5 to fit the M29 Beat-3 chain"
+        )
+
+
 def test_every_agent_session_runs_strict_tool_schema_off():
     """Strict is STILL interim-OFF after story-019, and this is the pin that says so.
 

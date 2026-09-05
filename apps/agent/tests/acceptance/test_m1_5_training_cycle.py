@@ -58,6 +58,10 @@ async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContex
         # Parity with agent.py: strict schemas are interim-OFF. At the plugin default this
         # dispatch session 400s before any turn runs ("compiled grammar is too large").
         llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral", _strict_tool_schema=False),
+        # Parity with agent.py again: the cap decides where livekit silently truncates a
+        # tool chain, so a harness on the plugin default would exercise a different ceiling
+        # than production and prove nothing about it.
+        max_tool_steps=5,
         userdata=session_data,
     )
     await session.start(create_dispatch_agent(chat_ctx=chat_ctx))
