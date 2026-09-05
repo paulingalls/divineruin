@@ -2,6 +2,8 @@ import re
 from collections.abc import AsyncGenerator, AsyncIterable
 from dataclasses import dataclass
 
+from voices import VOICES
+
 TAG_PATTERN = re.compile(
     r'\[([A-Z_]+),\s*([a-z]+)\]:\s*"',
     re.DOTALL,
@@ -10,7 +12,14 @@ TAG_PATTERN = re.compile(
 DEFAULT_CHARACTER = "DM_NARRATOR"
 DEFAULT_EMOTION = "neutral"
 
-MAX_TAG_LENGTH = 50
+# The emotion group is [a-z]+, so the DM can improvise past the longest catalogued EMOTIONS
+# word; budget for that rather than for the catalogue.
+_MAX_EMOTION_LENGTH = 24
+
+# How far past a "[" we wait for the tag to close. A longer tag is emitted as literal
+# narration and its line is then spoken by DM_NARRATOR, so the bound tracks the registry:
+# a newly registered VOICES key must not be able to outgrow it.
+MAX_TAG_LENGTH = len('[, ]: "') + max(len(k) for k in VOICES) + _MAX_EMOTION_LENGTH
 
 
 @dataclass

@@ -5,8 +5,8 @@ no LLM, no DB:
   - generate_settlement_npcs(tier, personality, *, rng) -> {role_id: count}: how many of
     each role a settlement has, sampling each role's [min, max] range (after personality
     frequency modifiers) inclusively.
-  - generate_settlement_roster(population, *, rng) -> [{role, name, personality}]: named,
-    individually varied NPCs matching an existing population map.
+  - generate_settlement_roster(population, *, rng) -> [{role, name, personality, voice_id}]:
+    named, individually varied NPCs matching an existing population map.
   - instantiate_npc_from_template(role, tier, personality, overrides) -> stat-block dict:
     create_npc_from_archetype(role, overrides) with tier+personality modifiers layered on
     (disposition shift, price multiplier, inventory richness).

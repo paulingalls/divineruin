@@ -57,15 +57,22 @@ class TestEnvironmentValidation:
                         assert "COMPANION_SABLE" in mock_logger.warning.call_args[0][1]
 
     def test_validate_env_raises_naming_the_role_on_an_empty_role_voice(self):
-        """A role voice registered but EMPTY would serve every guard in the narrator's voice."""
+        """A role voice registered but EMPTY would serve every guard in the narrator's voice.
+
+        The warning must NOT also name it: a role voice is a hard failure, and logging it
+        beside COMPANION_SABLE would file it under the tolerated empties this gate exists
+        to separate it from.
+        """
         env = {var: "test_value" for var in REQUIRED_ENV_VARS}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "ROLE_GUARD": ""}):
                 with patch("agent.ROLE_VOICE_KEYS", ("ROLE_GUARD",)):
-                    with pytest.raises(EnvironmentError) as exc_info:
-                        validate_env()
+                    with patch("agent.logger") as mock_logger:
+                        with pytest.raises(EnvironmentError) as exc_info:
+                            validate_env()
 
                     assert "ROLE_GUARD" in str(exc_info.value)
+                    mock_logger.warning.assert_not_called()
 
     def test_validate_env_raises_when_a_role_voice_key_is_absent_entirely(self):
         """The gate must not be satisfiable by a MISSING key, only by a configured one."""
