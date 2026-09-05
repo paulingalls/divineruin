@@ -91,6 +91,9 @@ class TestCreationOnboardingCityRoundTrip:
         agent, _json_str = await finalize_character._func(ctx)
         assert isinstance(agent, OnboardingAgent)
         assert ctx.userdata.onboarding_beat == 1
+        # AC1, the creation-handoff half: a warrior's onboarding names Lira, not Kael.
+        assert "Lira" in agent._instructions
+        assert "Kael" not in agent._instructions
 
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)

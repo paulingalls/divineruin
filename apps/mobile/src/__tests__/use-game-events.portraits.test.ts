@@ -70,6 +70,63 @@ test("transcript_entry with dm speaker clears NPC portrait", () => {
   expect(portraitStore.getState().activeNpc).toBeNull();
 });
 
+// --- Companion portrait keys on the voice tag the parser actually emits ---
+//
+// transcript_entry.character always carries the UPPERCASE voice tag: the value comes from
+// dialogue_parser.TAG_PATTERN (`\[([A-Z_]+),\s*([a-z]+)\]:\s*"`) via base_agent's
+// buffered_character and transcript._publish. Matching it against a display name ("Kael") was
+// false for every player including Kael's — the companion portrait was dead code, not
+// Kael-specific code. So the pin's input must be built in the emitted format or it goes green
+// while production stays broken.
+
+test("companion speech shows the portrait, keyed on the emitted voice tag", () => {
+  portraitStore
+    .getState()
+    .setCompanionPortraits("/api/assets/images/p.png", "/api/assets/images/a.png");
+  portraitStore.getState().setCompanionIdentity("Lira", "COMPANION_LIRA");
+
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "COMPANION_LIRA",
+    text: "The road bends ahead.",
+  });
+
+  expect(portraitStore.getState().companionVisible).toBe(true);
+});
+
+test("a different companion's tag does not show this player's companion", () => {
+  portraitStore
+    .getState()
+    .setCompanionPortraits("/api/assets/images/p.png", "/api/assets/images/a.png");
+  portraitStore.getState().setCompanionIdentity("Lira", "COMPANION_LIRA");
+
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "COMPANION_KAEL",
+    text: "Not your companion.",
+  });
+
+  expect(portraitStore.getState().companionVisible).toBe(false);
+});
+
+test("a display name does not show the companion — that was the dead gate", () => {
+  portraitStore
+    .getState()
+    .setCompanionPortraits("/api/assets/images/p.png", "/api/assets/images/a.png");
+  portraitStore.getState().setCompanionIdentity("Kael", "COMPANION_KAEL");
+
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "Kael",
+    text: "A name the parser never emits.",
+  });
+
+  expect(portraitStore.getState().companionVisible).toBe(false);
+});
+
 // --- Player portrait ready event ---
 
 test("player_portrait_ready updates character store", () => {

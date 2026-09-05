@@ -90,7 +90,12 @@ class TestReturningPlayerCompanion:
         session, hydrate, _userdata = await _run_dm_session(player)
 
         hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=1)
-        assert isinstance(session.start.call_args.kwargs["agent"], OnboardingAgent)
+        agent = session.start.call_args.kwargs["agent"]
+        assert isinstance(agent, OnboardingAgent)
+        # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
+        # reconnect construction is the site the card names as the fault-injection target.
+        assert "Lira" in agent._instructions
+        assert "Kael" not in agent._instructions
 
     @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):

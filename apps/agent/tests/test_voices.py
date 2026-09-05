@@ -1,12 +1,22 @@
+import json
+import re
+from pathlib import Path
+from unittest.mock import patch
+
+import voices
 from voices import (
     EMOTION_RATES,
     EMOTIONS,
     INWORLD_MARKUPS,
+    ROLE_VOICE_KEYS,
     VOICE_RATE_OFFSETS,
+    VOICES,
     VoiceConfig,
     apply_markup,
     get_voice_config,
 )
+
+_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_default_narrator():
@@ -93,3 +103,69 @@ def test_apply_markup_prepends_tag():
 
 def test_apply_markup_empty_passthrough():
     assert apply_markup("Hello world", "") == "Hello world"
+
+
+# --- Per-role townsfolk voices (story-014) ---
+
+
+def test_role_voice_keys_mirror_the_archetype_catalog():
+    """voices.py's literal role-id tuple cannot drift from content/role_archetypes.json.
+
+    VOICES is built from os.getenv at IMPORT time; the archetype catalog is DB-loaded at
+    STARTUP, so there is no import-time path between them and the ids are duplicated. Keys
+    only, never values: the fast lane's env differs between CI (all empty) and a dev
+    checkout (.env auto-loaded through bun run).
+    """
+    raw = json.loads((_ROOT / "content" / "role_archetypes.json").read_text())
+    assert set(ROLE_VOICE_KEYS) == {f"ROLE_{e['id'].upper()}" for e in raw}
+    assert set(ROLE_VOICE_KEYS) <= set(VOICES)
+
+
+def test_empty_registered_value_falls_back_to_the_narrator():
+    """The deliberate fallback for the 13 legitimately-empty keys (COMPANION_SABLE among them).
+
+    patch.dict mutates the same dict object get_voice_config reads at call time; patch()
+    would rebind the name and the lookup would not see it. Never read the AMBIENT registry:
+    bun run auto-loads .env locally, while CI sets no INWORLD_VOICE_* at all.
+    """
+    with patch.dict(voices.VOICES, {"DM_NARRATOR": "Clive", "ROLE_GUARD": ""}, clear=True):
+        assert get_voice_config("ROLE_GUARD").voice == "Clive"
+
+
+def test_two_distinct_configured_values_resolve_distinctly():
+    """So the fallback above is not masking a lookup that always returns the narrator."""
+    with patch.dict(voices.VOICES, {"DM_NARRATOR": "Clive", "ROLE_GUARD": "Oliver"}, clear=True):
+        assert get_voice_config("ROLE_GUARD").voice == "Oliver"
+        assert get_voice_config("DM_NARRATOR").voice == "Clive"
+
+
+def _env_example_voice_assignments() -> dict[str, str]:
+    matches = (
+        re.match(r"^INWORLD_VOICE_([A-Z_]+)=(.*)$", line.strip())
+        for line in (_ROOT / ".env.example").read_text().splitlines()
+    )
+    return {m.group(1): m.group(2) for m in matches if m}
+
+
+class TestEnvExample:
+    """.env.example is what scripts/init-worktree.sh generates every fresh worktree's .env from.
+
+    A role voice missing here means a fresh checkout cannot boot the agent at all
+    (agent.validate_env raises), so the assignment is part of the contract, not a convenience.
+    """
+
+    _ASSIGNMENTS = _env_example_voice_assignments()
+
+    def test_every_role_voice_is_assigned_in_env_example(self):
+        for key in ROLE_VOICE_KEYS:
+            assert self._ASSIGNMENTS.get(key), f"INWORLD_VOICE_{key} is unassigned in .env.example"
+
+    def test_every_assigned_inworld_voice_is_distinct(self):
+        """Across ALL 50 assignments, not just the 19 new ones.
+
+        Checking distinctness within the new block alone would let a role be handed Clive
+        (the DM narrator) or Blake (COMPANION_KAEL) — two characters sounding identical.
+        """
+        values = list(self._ASSIGNMENTS.values())
+        assert len(values) == 50
+        assert len(values) == len(set(values))

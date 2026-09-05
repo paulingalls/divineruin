@@ -55,6 +55,18 @@ describe("parseWorkspaceType", () => {
   test.each([null, undefined, 7, {}])("fails loud on a non-string (%p)", (bad) => {
     expect(() => parseWorkspaceType(bad, "ctx")).toThrow();
   });
+
+  // The Python bundle rental (crafting_tools._rent_workspace_impl) persists Forge +
+  // Laboratory as TWO rows, never one bundle-token row. This vocabulary stays closed:
+  // "forge_laboratory" is a rental OFFER token, never a stored workspace_type.
+  test.each(["combined", "forge_laboratory"])(
+    "the bundle token %p is not a workspace type",
+    (bad) => {
+      expect(() => parseWorkspaceType(bad, "workspace_rentals.workspace_type")).toThrow(
+        /workspace_rentals\.workspace_type/,
+      );
+    },
+  );
 });
 
 describe("accessibleWorkspaceTier", () => {
@@ -118,6 +130,30 @@ describe("accessibleWorkspaceTier", () => {
     setMockResults([]);
     expect(await accessibleWorkspaceTier("player-1", "anywhere")).toEqual(new Set(["field"]));
   });
+
+  test("a bundle rental's two rows grant forge AND laboratory", async () => {
+    setMockResults([{ workspace_type: "forge" }, { workspace_type: "laboratory" }]);
+    expect(await accessibleWorkspaceTier("player-1", "accord_forge")).toEqual(
+      new Set(["field", "forge", "laboratory"]),
+    );
+  });
+
+  // Fault injection for the two-row decision: if the bundle ever persisted as ONE row
+  // under its own token, every later crafting gate for this player hard-fails here.
+  test.each(["combined", "forge_laboratory"])(
+    "a single %p bundle row fails loud rather than widening access",
+    async (bad) => {
+      setMockResults([{ workspace_type: bad }]);
+      let caught: unknown;
+      try {
+        await accessibleWorkspaceTier("player-1", "accord_forge");
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toMatch(/workspace_rentals\.workspace_type/);
+    },
+  );
 
   test("the Portable Lab grant merges with active rentals", async () => {
     setMockResults([{ workspace_type: "forge" }]);

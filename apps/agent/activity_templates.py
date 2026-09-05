@@ -2,8 +2,9 @@
 
 Crafting/training personas derive from the canonical NPC record (npcs.get_npc_sync)
 via _npc_persona — no duplicated literals (story-004 shim consolidation). Companion
-errand context stays inline: companions are a separate entity and only companion_kael
-exists in content/npcs.json today.
+errand context stays inline instead: companions are a separate entity and NONE of the
+four is an npcs.json row (tests/test_content_validation.py asserts that), so
+_npc_persona has nothing to derive from.
 """
 
 from companion_profiles import get_companion_profile

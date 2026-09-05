@@ -86,15 +86,69 @@ test("handleSessionInit seeds portrait store from portraits payload", () => {
     location: null,
     quests: [],
     inventory: [],
+    companion: { id: "companion_kael", name: "Kael", voice_id: "COMPANION_KAEL" },
     portraits: {
-      companion: { primary: "/api/assets/kael.png", alert: "/api/assets/kael_alert.png" },
+      companion: { primary: "/api/assets/companion.png", alert: "/api/assets/companion_alert.png" },
       npcs: { Torin: "/api/assets/torin.png" },
     },
   });
 
-  expect(portraitStore.getState().companionPrimaryUrl).toBe("/api/assets/kael.png");
+  expect(portraitStore.getState().companionPrimaryUrl).toBe("/api/assets/companion.png");
   expect(portraitStore.getState().npcPortraitMap.Torin).toBe("/api/assets/torin.png");
   expect(portraitStore.getState().playerPortraitUrl).toBe("/api/assets/player.png");
+});
+
+test("session_init records the companion identity", () => {
+  handleSessionInit({
+    type: "session_init",
+    character: { player_id: "p1", name: "Test" },
+    location: null,
+    quests: [],
+    inventory: [],
+    companion: { id: "companion_lira", name: "Lira", voice_id: "COMPANION_LIRA" },
+    portraits: { companion: null, npcs: {} },
+  });
+
+  expect(portraitStore.getState().companionName).toBe("Lira");
+  expect(portraitStore.getState().companionVoiceId).toBe("COMPANION_LIRA");
+});
+
+test("a null companion portrait clears the store rather than leaving the previous value", () => {
+  // Falling through the typeof === "string" guard is how the previous companion's face
+  // survives into the next player's HUD.
+  portraitStore
+    .getState()
+    .setCompanionPortraits("/api/assets/stale.png", "/api/assets/stale_alert.png");
+
+  handleSessionInit({
+    type: "session_init",
+    character: { player_id: "p1", name: "Test" },
+    location: null,
+    quests: [],
+    inventory: [],
+    companion: { id: "companion_lira", name: "Lira", voice_id: "COMPANION_LIRA" },
+    portraits: { companion: null, npcs: {} },
+  });
+
+  expect(portraitStore.getState().companionPrimaryUrl).toBeNull();
+  expect(portraitStore.getState().companionAlertUrl).toBeNull();
+});
+
+test("a session_init with no companion clears a previously named one", () => {
+  portraitStore.getState().setCompanionIdentity("Kael", "COMPANION_KAEL");
+
+  handleSessionInit({
+    type: "session_init",
+    character: { player_id: "p1", name: "Test" },
+    location: null,
+    quests: [],
+    inventory: [],
+    companion: null,
+    portraits: { companion: null, npcs: {} },
+  });
+
+  expect(portraitStore.getState().companionName).toBeNull();
+  expect(portraitStore.getState().companionVoiceId).toBeNull();
 });
 
 test("handleSessionInit with null character does not crash and leaves character unset", () => {

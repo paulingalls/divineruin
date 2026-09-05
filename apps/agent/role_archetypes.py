@@ -21,6 +21,7 @@ contract, and a malformed row must reject identically on both sides.
 
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -82,6 +83,7 @@ class ArchetypeService:
 class RoleArchetype:
     id: str
     name: str
+    voice_id: str
     role_type: str
     default_disposition: str
     personality_traits: tuple[str, ...]
@@ -234,6 +236,21 @@ def _parse_personality_traits(raw: object, ctx: str) -> tuple[str, ...]:
     return traits
 
 
+_VOICE_ID_RE = re.compile(r"^ROLE_[A-Z_]+$")
+
+
+def _parse_voice_id(raw: object, ctx: str) -> str:
+    """Validate the VOICES key shape only; test_role_archetypes.py pins the derivation.
+
+    Shape here rather than equality-with-ROLE_<id> so the field is real data both loaders
+    reject identically, not a tautology restating the row id.
+    """
+    voice_id = parse_str(raw, ctx)
+    if not _VOICE_ID_RE.match(voice_id):
+        raise ValueError(f"{ctx} {voice_id!r} is not a ROLE_<ID> voice key")
+    return voice_id
+
+
 def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
     """Parse a raw dict (JSON file or DB JSONB) into a RoleArchetype, fail-loud.
 
@@ -259,6 +276,7 @@ def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
         return RoleArchetype(
             id=archetype_id,
             name=parse_str(data["name"], f"{archetype_id}.name"),
+            voice_id=_parse_voice_id(data["voice_id"], f"{archetype_id}.voice_id"),
             role_type=role_type,
             default_disposition=disposition,
             personality_traits=_parse_personality_traits(
@@ -324,6 +342,7 @@ def create_npc_from_archetype(role: str, overrides: dict | None = None) -> dict:
     archetype = get_role_archetype(role)
     stat_block: dict = {
         "role_archetype": archetype.id,
+        "voice_id": archetype.voice_id,
         "default_disposition": archetype.default_disposition,
         "inventory_pool": archetype.inventory_pool,
         "price_modifier": archetype.price_modifier,

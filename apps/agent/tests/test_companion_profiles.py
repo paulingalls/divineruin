@@ -64,6 +64,37 @@ class TestParse:
             assert 2 <= len(c.actives) <= 3, f"{c.id} actives"
             assert len(c.reactions) <= 1, f"{c.id} reactions"
 
+    def test_every_row_declares_errand_injury_reduction(self):
+        """AC4: the errand injury reduction is a companion content field, not a Kael-keyed table.
+
+        game_mechanics_core.md:904 gives Kael "reduced injury risk"; Lira/Tam/Sable have entirely
+        different scouting mechanics and no injury reduction, so they ship 0.
+        """
+        parsed = {e["id"]: parse_companion_row(e["id"], e) for e in _RAW}
+        assert parsed["companion_kael"].errand_injury_reduction == 5
+        assert {c.errand_injury_reduction for cid, c in parsed.items() if cid != "companion_kael"} == {0}
+
+    def test_missing_errand_injury_reduction_rejects(self):
+        row = {k: v for k, v in _row("companion_lira").items() if k != "errand_injury_reduction"}
+        with pytest.raises(ValueError):
+            parse_companion_row("companion_lira", row)
+
+    def test_every_row_declares_a_known_gender(self):
+        """story-020's pronoun guard reads this field; a row without one has no checkable pronoun.
+
+        Sable shipped without a gender key while every prose source in the repo called her "her",
+        so the guard's `.gender` read was `None` on the one companion whose pronouns are hardest
+        to get right — a silent no-op, not a red.
+        """
+        for e in _RAW:
+            c = parse_companion_row(e["id"], e)
+            assert c.gender in {"male", "female", "nonbinary"}, f"{c.id}.gender {c.gender!r}"
+
+    def test_missing_gender_rejects(self):
+        row = {k: v for k, v in _row("companion_sable").items() if k != "gender"}
+        with pytest.raises(ValueError):
+            parse_companion_row("companion_sable", row)
+
     def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True

@@ -119,13 +119,19 @@ export interface Companion {
   id: string; // e.g. "companion_kael" (matches voice_registry character_id + world effect ids)
   name: string;
   species: string;
-  gender?: string; // omitted for Sable (a shadow-fox)
+  gender: string; // "male" | "female" | "nonbinary" — the pronoun map's input
   age?: string;
   appearance?: string;
 
   // Narrative subset reused from the NPC schema.
   personality: string[];
   speech_style: string;
+  // The authored beat-3/4 onboarding scene for THIS companion: the commotion that draws them
+  // and how they enter it, then how they steer the player toward guild hall or tavern. The
+  // Python prompt renderer interpolates both verbatim; the markdown beat headings stay in the
+  // renderer, not here.
+  onboarding_meeting: string;
+  onboarding_suggestion: string;
   mannerisms?: string[];
   backstory_summary?: string;
   knowledge: NpcKnowledge;
@@ -139,6 +145,12 @@ export interface Companion {
   base_attributes: Attributes;
   save_proficiencies: string[]; // exactly 2 per spec
   scaling_rules: ScalingRules;
+
+  // Errand injury-risk reduction, subtracted from the errand risk table's injury_pct
+  // (game_mechanics_core.md L904 gives Kael "reduced injury risk — veteran survival instincts").
+  // Lira/Tam/Sable have entirely different scouting mechanics and no injury reduction, so they
+  // ship 0. Per-companion content, not a Kael-keyed table in code.
+  errand_injury_reduction: number;
 
   // Typed ability buckets.
   attacks: CompanionAttack[];

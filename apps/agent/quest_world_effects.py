@@ -24,7 +24,7 @@ from disposition import resolve_disposition
 from reputation import reputation_shift
 from role_archetypes import shift_disposition
 from session_data import SessionData
-from tool_support import EFFECT_NPC_MAP
+from world_effect_targets import COMPANION_SHORTHAND, EFFECT_NPC_MAP
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -55,7 +55,16 @@ async def _apply_world_effects(
         m = _EFFECT_DISPOSITION_RE.match(effect_str)
         if m:
             shorthand, delta_str = m.group(1), int(m.group(2))
-            npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
+            if shorthand == COMPANION_SHORTHAND:
+                if session.companion is None:
+                    # Warn-and-skip, matching this function's policy for every other
+                    # unresolvable effect below: this runs inside the quest-stage transaction,
+                    # and refusing to write beats writing against a guessed companion.
+                    logger.warning("Companion world effect with no bound companion: %s", effect_str)
+                    continue
+                npc_id = session.companion.id
+            else:
+                npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
             current = await resolve_disposition(
                 npc_id, session.player_id, conn=conn, queries_mod=queries, content_mod=content
             )

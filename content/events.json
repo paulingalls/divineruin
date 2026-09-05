@@ -162,7 +162,7 @@
   },
   {
     "id": "companion_introduction",
-    "name": "Meeting Kael",
+    "name": "Meeting the Companion",
     "type": "scripted",
     "trigger": "session == 1 AND player_location IN [accord_market_square, accord_guild_hall] AND companion_not_met",
     "description": "The player meets their starting companion. Class-appropriate framing brings them together naturally.",
@@ -178,7 +178,7 @@
     },
     "world_effects": [
       "set_flag:companion_met:true",
-      "companion_join:companion_kael"
+      "companion_join:companion"
     ],
     "once": true
   }

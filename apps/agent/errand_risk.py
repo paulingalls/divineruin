@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import random
 
+from companion_profiles import get_companion_profile
+
 # Spec matrix — game_mechanics_core.md §Companion Risk L887-892. Cells absent here
 # are N/A and blocked via BLOCKED_DANGER_COMBOS. Keyed "{danger}|{errand}".
 ERRAND_RISK_TABLE: dict[str, dict[str, int]] = {
@@ -29,11 +31,6 @@ ERRAND_RISK_TABLE: dict[str, dict[str, int]] = {
     "dangerous|social": {"injury_pct": 0, "emergency_pct": 0},
     "dangerous|acquire": {"injury_pct": 20, "emergency_pct": 0},
     "extreme|scout": {"injury_pct": 40, "emergency_pct": 15},
-}
-
-# Injury risk reduction per companion (e.g. Kael's veteran survival instincts).
-COMPANION_INJURY_REDUCTION: dict[str, int] = {
-    "companion_kael": 5,
 }
 
 # Blocked (danger_level, errand_type) combos — the spec's N/A cells (L887-892).
@@ -77,14 +74,15 @@ def roll_errand_risk(
     """Roll the errand injury outcome: "none" | "injured" | "emergency".
 
     d100 against the spec table, minus the companion's injury reduction. Safe or
-    absent cells always return "none".
+    absent cells always return "none". The reduction is the companion's own content
+    field; an unknown id raises rather than rolling unreduced.
     """
     entry = ERRAND_RISK_TABLE.get(f"{danger_level}|{errand_type}")
     if not entry or (entry["injury_pct"] == 0 and entry["emergency_pct"] == 0):
         return "none"
 
     roll = (rng or random.Random()).randint(1, 100)
-    reduction = COMPANION_INJURY_REDUCTION.get(companion_id, 0)
+    reduction = get_companion_profile(companion_id).errand_injury_reduction
     effective_injury = max(0, entry["injury_pct"] - reduction)
 
     if roll <= entry["emergency_pct"]:

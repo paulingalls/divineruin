@@ -17,7 +17,7 @@ from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
-from voices import VOICES
+from voices import ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -36,12 +36,26 @@ REQUIRED_ENV_VARS = [
 
 
 def validate_env() -> None:
+    """Fail loud on missing env; warn on an unset authored voice, RAISE on an unset role voice.
+
+    An empty-but-registered VOICES value resolves to DM_NARRATOR (voices.get_voice_config),
+    so an unset role voice is not a degraded deploy, it is a silent all-narrator one: every
+    generated townsfolk speaks as the DM. Non-role voices keep the warning — COMPANION_SABLE
+    is deliberately empty (she is non-verbal) and other authored characters may be too.
+    """
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
-    empty_voices = [k for k, v in VOICES.items() if not v]
+    role_keys = set(ROLE_VOICE_KEYS)
+    empty_voices = [k for k, v in VOICES.items() if not v and k not in role_keys]
     if empty_voices:
         logger.warning("Voice IDs not set for: %s", ", ".join(empty_voices))
     if missing:
         raise OSError(f"Missing required environment variables: {', '.join(missing)}")
+    unset_roles = [k for k in ROLE_VOICE_KEYS if not VOICES.get(k)]
+    if unset_roles:
+        raise OSError(
+            "Role voices not configured — generated townsfolk would all speak in the DM's "
+            f"voice. Set INWORLD_VOICE_<KEY> for: {', '.join(unset_roles)}"
+        )
 
 
 START_LOCATION = "accord_guild_hall"
@@ -211,12 +225,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
             stt=deepgram.STT(model="nova-3", language="en"),
-            # INTERIM (2026-09-02, ADR 0004 addendum): strict tool schemas OFF. Anthropic also
-            # rejects a strict request whose schemas carry more than 16 union-typed parameters
-            # ("Schemas contains too many parameters with union types"); every `x | None`
-            # optional counts, so exploration (17) and dispatch (23) 400 on every real turn and
-            # combat's declare_phase.declarations (additionalProperties object) is refused
-            # outright. Sprint-47 story-016 restores strict with a schema design that fits.
+            # INTERIM, still: strict tool schemas OFF. ADR 0008's sum types fixed the two
+            # limits it measured — 16 union-typed parameters and the additionalProperties
+            # object — but story-019 then probed the live API with all six agents and found
+            # TWO MORE aggregate ceilings the design pass never saw: "The compiled grammar is
+            # too large" (exploration, combat, dispatch) and, once one verb is relaxed,
+            # "Schema is too complex." (exploration). Neither is driven by descriptions —
+            # stripping every one of them still 400s. Turning strict on here today puts three
+            # of six agents back to a 400 on every turn. See ADR 0008's "Not yet attainable"
+            # section for the measurements and the options.
             llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
             tts=_make_tts(),
             vad=inference.VAD(model="silero", min_silence_duration=0.5),
@@ -230,6 +247,19 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 "endpointing": {"min_delay": 0.5},
                 "interruption": {"enabled": True},
             },
+            # Chosen, not inherited. livekit permits max_tool_steps + 1 consecutive tool
+            # steps (agent_activity.py:3073) and, on reaching the cap, does NOT raise: it
+            # logs and regenerates with tool_choice="none", so the agent silently stops
+            # calling tools and narrates anyway — a dropped death save the player hears as
+            # a plausible sentence (constraint 4, fail-quiet from inside a vendor library).
+            # The default 3 allowed four steps; today's longest chain is three
+            # (declare_phase -> resolve_phase -> request_death_save) and M29's restored
+            # Beat-3 loop needs five (declare -> resolve allies -> activate reaction ->
+            # resolve enemies -> death save). 5 permits six: one step of headroom over the
+            # longest chain the design calls for. This is a CEILING, not a target — it
+            # truncates long chains and never lengthens short ones, so it costs nothing on
+            # the two- and three-call turns that dominate the 1500ms budget.
+            max_tool_steps=5,
             userdata=userdata,
         )
 
@@ -303,11 +333,18 @@ async def dm_session(ctx: agents.JobContext) -> None:
         # Check for mid-onboarding reconnection
         onboarding_beat = player.get("flags", {}).get("onboarding_beat")
         if isinstance(onboarding_beat, int):
+            from companion_profiles import select_companion_for_archetype
             from onboarding_agent import OnboardingAgent
 
             userdata.onboarding_beat = onboarding_beat
             session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
-            onboarding_agent = OnboardingAgent(onboarding_beat=onboarding_beat)
+            # Resolve the companion from the archetype, NOT from userdata.companion: that is
+            # written only when the companion_met flag is already set, so a player reconnecting
+            # AT beat 3 has None there — and beat 3 is where the companion is staged.
+            onboarding_agent = OnboardingAgent(
+                onboarding_beat=onboarding_beat,
+                companion_id=select_companion_for_archetype(player["class"]),
+            )
             await session.start(room=ctx.room, agent=onboarding_agent)
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return

@@ -104,7 +104,110 @@ class TestOnboardingAgentClass:
         instructions = agent._instructions
         assert "Arrival" in instructions or "arrival" in instructions
         assert "Market" in instructions or "market" in instructions
-        assert "Companion" in instructions or "Kael" in instructions
+        assert "Companion" in instructions
+
+
+class TestBeat34NamesTheAssignedCompanion:
+    """AC1: beats 3-4 name and tag the player's OWN companion, not the module's Kael literal."""
+
+    @pytest.mark.parametrize(
+        "archetype,name,tag",
+        [
+            ("mage", "Kael", "COMPANION_KAEL"),
+            ("warrior", "Lira", "COMPANION_LIRA"),
+            ("cleric", "Tam", "COMPANION_TAM"),
+            ("spy", "Sable", "COMPANION_SABLE"),
+        ],
+    )
+    def test_beat_3_4_instructions_name_the_assigned_companion(self, archetype, name, tag):
+        from companion_profiles import select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id=select_companion_for_archetype(archetype))
+        instructions = agent._instructions
+        assert name in instructions
+        for other in {"Kael", "Lira", "Tam", "Sable"} - {name}:
+            assert other not in instructions, f"{other} leaked into {name}'s prompt"
+
+    @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy"])
+    def test_beats_3_4_render_that_companions_authored_vignette(self, archetype):
+        """AC1: the scene is the companion's own prose, read from the row, not re-typed here.
+
+        A copy of the words in the test would rot the moment the content is edited, and would
+        pass while the prompt shipped last sprint's scene.
+        """
+        from companion_profiles import get_companion_profile, select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        companion_id = select_companion_for_archetype(archetype)
+        c = get_companion_profile(companion_id)
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        assert c.onboarding_meeting in instructions
+        assert c.onboarding_suggestion in instructions
+
+    @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy", None])
+    def test_beat_3_4_scaffolding_survives_the_authored_prose(self, archetype):
+        """AC1: the beat markers the DM sequences on are the module's, not the content row's.
+
+        Beat 3's heading is the one that goes silently: interpolating the authored scene over
+        the old setup constant drops it while beats 1/2/4/5 keep theirs, and nothing else here
+        would notice.
+        """
+        from companion_profiles import select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        companion_id = select_companion_for_archetype(archetype) if archetype else None
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        assert "### Beat 3 — Companion Meeting" in instructions
+        assert "### Beat 4 — The Companion's Suggestion" in instructions
+        assert "(this initializes the companion)" in instructions
+        span = instructions.split("### Beat 3 — Companion Meeting")[1].split("### Beat 5")[0]
+        assert span.count("**Complete when:**") == 2
+        assert span.count("advance_onboarding_beat") == 2
+
+    def test_a_verbal_companion_is_tagged_for_ventriloquism(self):
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_lira")
+        assert "[COMPANION_LIRA," in agent._instructions
+
+    def test_a_non_verbal_companion_is_narrated_never_tagged(self):
+        """Sable cannot self-introduce: a tagged line would send her to TTS she has no voice for."""
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_sable")
+        assert "[COMPANION_SABLE," not in agent._instructions
+        assert "narrate" in agent._instructions.lower()
+
+    def test_an_unresolved_companion_renders_the_span_agnostically(self):
+        """creation_tools swallows a failed selection deliberately; the character stays playable."""
+        from onboarding_agent import OnboardingAgent
+
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=None)._instructions
+        for cname in ("Kael", "Lira", "Tam", "Sable"):
+            assert cname not in instructions
+
+    def test_no_module_level_per_companion_prompt_constants(self):
+        """AC1's maintainability clause: the span renders from the profile, not four constants.
+
+        Zero, not "at most one per constant": four constants that each name a single companion
+        ARE the forbidden shape, so a per-constant budget passes the very defect it guards.
+
+        The AC7 walker now covers onboarding_prompt.py too (story-020 took it off the
+        allowlist), so this scan is no longer the only guard on that module — it is the one
+        that survives a future re-allowlisting, and the only one that reads onboarding_agent.py
+        for the same shape.
+        """
+        import onboarding_agent
+        import onboarding_prompt
+
+        for module in (onboarding_agent, onboarding_prompt):
+            for attr in dir(module):
+                text = getattr(module, attr)
+                if not attr.isupper() or not isinstance(text, str) or attr.startswith("__"):
+                    continue
+                named = [c for c in ("Kael", "Lira", "Tam", "Sable") if c in text]
+                assert not named, f"{module.__name__}.{attr} names {named}"
 
 
 class TestOnboardingAgentIntegration:
