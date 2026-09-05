@@ -407,7 +407,13 @@ flag, no `input_examples`, no `defer_loading`, and `extra_kwargs` cannot inject 
 Ordered so each step is green on its own and the strict flip lands as early as
 possible. Steps 1–3 are story-019's scope; 4–6 are follow-ons worth their own cards.
 
-**Steps 1–3 are DONE (story-019, 2026-09-04)**, at a narrower scope than step 2 lists:
+**Steps 1–2 are DONE (story-019, 2026-09-05); step 3 IS NOT — strict is still OFF.**
+Probing the live API after the reshape found two more ceilings this document never
+measured ("The compiled grammar is too large"; "Schema is too complex."), and three of six
+agents are still refused with every ceiling in §2 satisfied. Descriptions are not in the
+grammar, so step 5's "shrink descriptions" lever does not help. See ADR 0008's
+"Not yet attainable" section for the per-agent numbers and the three options. Steps 1–2
+landed at a narrower scope than step 2 lists:
 `check`, `begin_activity` and `declare_phase` alone take every agent inside the caps
 (exploration 9 unions, combat 6, dispatch 5, onboarding 2, blacksmith 1, creation 0), so
 `activate`, `travel`, `enter_mode`, `request_death_save` and the strays keep their
@@ -417,6 +423,9 @@ fires earlier) and no source lint for defaulted parameters (each default emits e
 union, so the exact pin already reds on a new one — a second guard would have needed an
 allowlist that blessed the very defaults step 2 deletes). `max_tool_steps` on the combat
 session is unset, and moves to Sprint 48 with the rest of combat's chain.
+
+Section 2 below is therefore INCOMPLETE as a statement of "the limits, precisely" — it
+lists the three that are computable from a schema, and there are at least five.
 
 1. **Pin the real budget.** Extend `test_strict_tool_budget.py` to walk
    `parse_function_tools("anthropic", strict=True)` output per agent (the appendix

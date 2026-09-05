@@ -137,26 +137,39 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
     return sites
 
 
-def test_no_agent_session_disables_strict_tool_schema():
-    """ADR 0008 (story-019) superseded the ADR 0004 addendum's interim: the sum-typed verbs fit
-    the 16-union limit, so every session runs the plugin default — strict ON. Production and the
-    real-LLM acceptance harnesses have to agree, and one site left on the interim kwarg is a
-    session whose schemas nothing validates. Scanning every site (not just agent.py) is what
-    makes a forgotten or newly-added session red here instead of at the API.
+def test_every_agent_session_runs_strict_tool_schema_off():
+    """Strict is STILL interim-OFF after story-019, and this is the pin that says so.
+
+    ADR 0008's sum types fixed the two limits the design pass measured (16 union-typed
+    parameters, the additionalProperties object) — the budget walk above proves that much.
+    They were not sufficient: probed live 2026-09-05, exploration, combat and dispatch all
+    400 with "The compiled grammar is too large", and exploration then 400s with "Schema is
+    too complex." Neither ceiling is reachable from a schema this fast lane can inspect, so
+    this source pin is what keeps production off the flip until the surface actually fits.
+
+    Production and the real-LLM acceptance harnesses have to agree: a harness left on the
+    plugin default 400s on every dispatch turn, so the one tier that reaches the API tests
+    nothing. Scanning every site (not just agent.py) is what makes a forgotten or
+    newly-added session red here instead of at the API.
     """
     sites = _agent_session_llm_calls()
     assert "agent.py" in {f for f, _ in sites}, f"matcher found no production session: {sites}"
     assert len(sites) >= 3, f"matcher drifted — only {len(sites)} AgentSession llm= sites found"
     for filename, call in sites:
-        disablers = [kw for kw in call.keywords if kw.arg == "_strict_tool_schema"]
-        assert not disablers, f"{filename}: AgentSession llm must not pass _strict_tool_schema"
+        flags = [
+            kw.value.value
+            for kw in call.keywords
+            if kw.arg == "_strict_tool_schema" and isinstance(kw.value, ast.Constant)
+        ]
+        assert flags == [False], f"{filename}: AgentSession llm must pass _strict_tool_schema=False"
 
 
-def test_plugin_strict_tool_schema_defaults_on():
-    """Strict is now the plugin DEFAULT rather than an explicit kwarg, so a plugin upgrade that
-    flipped that default would silently revert this whole card — and nothing in the fast lane
-    constructs an LLM (an API key is required), so the source pin above would stay green. Pin
-    the signature's default instead.
+def test_plugin_still_accepts_the_interim_strict_kwarg_and_defaults_on():
+    """The interim rides a PRIVATE plugin kwarg whose default is True. A plugin upgrade that
+    renames or drops it raises TypeError at session start; one that flips the default to False
+    would make the interim invisible rather than deliberate. Nothing in the fast lane constructs
+    an LLM (an API key is required), so the source pin above would stay green through either.
+    Pin the signature.
     """
     from livekit.plugins import anthropic
 

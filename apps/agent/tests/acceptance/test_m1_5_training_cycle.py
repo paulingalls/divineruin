@@ -55,7 +55,9 @@ scenarios("features/m1_5_training_cycle.feature")
 async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
     session_data = SessionData(player_id="player_1", location_id="accord_training_hall")
     session = AgentSession(
-        llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral"),
+        # Parity with agent.py: strict schemas are interim-OFF. At the plugin default this
+        # dispatch session 400s before any turn runs ("compiled grammar is too large").
+        llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral", _strict_tool_schema=False),
         userdata=session_data,
     )
     await session.start(create_dispatch_agent(chat_ctx=chat_ctx))

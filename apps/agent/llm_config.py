@@ -28,6 +28,16 @@ MAX_UNION_PARAMS = 16
 # is accepted; 14 is not. Cap at the last measured-good value.
 MAX_NULLABLE_PER_OBJECT = 12
 
+# THESE THREE ARE NOT THE WHOLE STORY, and no constant here can be. Probed live on
+# 2026-09-05 (story-019), with every agent inside all three ceilings above, the API still
+# refuses three of six: "The compiled grammar is too large, which would cause performance
+# issues" (exploration, combat, dispatch). It is a whole-request ceiling over the strict
+# tools' STRUCTURE -- stripping every description from every schema does not move it -- and
+# "Schema is too complex." then appears for exploration once one verb is relaxed. Neither is
+# computable from a schema, so no fast-lane walk can pin them; the real-LLM acceptance tier
+# is the only detector, which is why story-019 AC1 made it fail loud. Strict stays
+# interim-OFF until the surface fits -- see ADR 0008, "Not yet attainable".
+
 AUDIO_DIR = os.environ.get(
     "ASYNC_AUDIO_DIR",
     os.path.join(os.path.dirname(__file__), "..", "server", "audio"),

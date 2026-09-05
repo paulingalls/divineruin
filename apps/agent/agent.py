@@ -225,7 +225,16 @@ async def dm_session(ctx: agents.JobContext) -> None:
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
             stt=deepgram.STT(model="nova-3", language="en"),
-            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
+            # INTERIM, still: strict tool schemas OFF. ADR 0008's sum types fixed the two
+            # limits it measured — 16 union-typed parameters and the additionalProperties
+            # object — but story-019 then probed the live API with all six agents and found
+            # TWO MORE aggregate ceilings the design pass never saw: "The compiled grammar is
+            # too large" (exploration, combat, dispatch) and, once one verb is relaxed,
+            # "Schema is too complex." (exploration). Neither is driven by descriptions —
+            # stripping every one of them still 400s. Turning strict on here today puts three
+            # of six agents back to a 400 on every turn. See ADR 0008's "Not yet attainable"
+            # section for the measurements and the options.
+            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
             tts=_make_tts(),
             vad=inference.VAD(model="silero", min_silence_duration=0.5),
             # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
