@@ -14,7 +14,6 @@ from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects, _update_quest_impl
 from session_data import CompanionState, SessionData
-from tool_support import EFFECT_NPC_MAP
 
 # --- Helpers ---
 
@@ -454,14 +453,3 @@ class TestRiderScene:
         assert bg._rider_triggered is True
         assert len(bg._speech_queue) == 1
         assert "Data-driven rider instructions." in bg._speech_queue[0].instructions
-
-
-# --- EFFECT_NPC_MAP ---
-
-
-class TestEffectNpcMap:
-    def test_shorthand_resolution(self):
-        assert EFFECT_NPC_MAP["torin"] == "guildmaster_torin"
-        assert EFFECT_NPC_MAP["yanna"] == "elder_yanna"
-        assert EFFECT_NPC_MAP["emris"] == "scholar_emris"
-        assert EFFECT_NPC_MAP["companion"] == "companion_kael"

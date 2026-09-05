@@ -9,6 +9,13 @@ from pathlib import Path
 
 import asyncpg
 
+# The world-effect target vocabulary is owned by the agent (apps/agent/world_effect_targets.py)
+# so the seeder's authoring-time check and the runtime resolution can never drift apart. This
+# script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
+sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
+
+from world_effect_targets import is_valid_disposition_target  # noqa: E402
+
 CONTENT_DIR = Path(__file__).parent.parent / "content"
 
 TABLE_MAP = {
@@ -122,14 +129,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     # Companion in companions.json, not an npcs row), so world-effect targets validate against
     # the npcs + companions union.
     companion_rows = await conn.fetch("SELECT id FROM companions")
-    disposition_target_ids = npc_ids | {row["id"] for row in companion_rows}
-
-    effect_npc_map = {
-        "torin": "guildmaster_torin",
-        "yanna": "elder_yanna",
-        "emris": "scholar_emris",
-        "companion": "companion_kael",
-    }
+    companion_ids = {row["id"] for row in companion_rows}
 
     quest_rows = await conn.fetch("SELECT id, data FROM quests")
     for row in quest_rows:
@@ -166,11 +166,10 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                 m = re.match(r"^(\w+)_disposition\s*[+-]\d+$", effect)
                 if m:
                     shorthand = m.group(1)
-                    resolved = effect_npc_map.get(shorthand, shorthand)
-                    if resolved not in disposition_target_ids:
+                    if not is_valid_disposition_target(shorthand, npc_ids, companion_ids):
                         errors.append(
                             f"Quest '{row['id']}' world_effect '{effect}' references "
-                            f"unknown disposition target '{resolved}'"
+                            f"unknown disposition target '{shorthand}'"
                         )
 
     # Loot & currency (M4.7 story-002): every enemy must carry a category and a loot_table_id

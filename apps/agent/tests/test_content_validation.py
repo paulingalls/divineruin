@@ -6,14 +6,9 @@ from pathlib import Path
 
 import pytest
 
-CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
+from world_effect_targets import is_valid_disposition_target
 
-EFFECT_NPC_MAP = {
-    "torin": "guildmaster_torin",
-    "yanna": "elder_yanna",
-    "emris": "scholar_emris",
-    "companion": "companion_kael",
-}
+CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
 
 
 def _load_json(filename: str) -> list[dict]:
@@ -73,7 +68,7 @@ class TestContentCrossReferences:
     def test_npc_shorthand_in_world_effects_resolves(self):
         # The 'companion' shorthand resolves into the companions id space (Kael now lives in
         # companions.json, not npcs.json), so validate against the npcs + companions union.
-        valid_ids = _load_ids("npcs.json") | _load_ids("companions.json")
+        npc_ids, companion_ids = _load_ids("npcs.json"), _load_ids("companions.json")
         quests = _load_json("quests.json")
 
         for quest in quests:
@@ -83,10 +78,17 @@ class TestContentCrossReferences:
                     m = re.match(r"^(\w+)_disposition\s*[+-]\d+$", effect)
                     if m:
                         shorthand = m.group(1)
-                        resolved = EFFECT_NPC_MAP.get(shorthand, shorthand)
-                        assert resolved in valid_ids, (
-                            f"Quest '{quest['id']}' world_effect '{effect}' references unknown target '{resolved}'"
+                        assert is_valid_disposition_target(shorthand, npc_ids, companion_ids), (
+                            f"Quest '{quest['id']}' world_effect '{effect}' references unknown target '{shorthand}'"
                         )
+
+    def test_the_shared_validator_rejects_an_unknown_disposition_target(self):
+        """Constraint 1: the walk above is all-positive — no content row has a bad target, so it
+        cannot red against a validator that returns True unconditionally. This is the guard."""
+        npc_ids, companion_ids = _load_ids("npcs.json"), _load_ids("companions.json")
+        assert not is_valid_disposition_target("guildmaster_toren", npc_ids, companion_ids)
+        assert is_valid_disposition_target("companion", npc_ids, companion_ids)
+        assert not is_valid_disposition_target("companion", npc_ids, set())
 
     def test_companion_kael_migrated_out_of_npcs(self):
         # story-004: Kael is a dedicated Companion (companions.json), no longer an npcs.json entry.
