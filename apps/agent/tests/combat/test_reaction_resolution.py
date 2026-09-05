@@ -20,6 +20,7 @@ from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
+import reaction_spend
 import reaction_windows
 from combat_phase import PhaseBeat, validate_reaction_activation
 from query_tools import _query_abilities_impl
@@ -50,7 +51,7 @@ def _paused_state(triggers):
         target_id="player_1",
         triggers=triggers,
     )
-    state.reactions_available = {"player_1": True}
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
     return state
 
 

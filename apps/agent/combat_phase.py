@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import abilities
+import reaction_spend
 from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
@@ -129,7 +130,9 @@ def advance_combat_phase(
         for raw in declarations.values():
             resolve_declaration(raw)
         next_state.pending_declarations = dict(declarations)
-        next_state.reactions_available = {p.id: True for p in next_state.participants if p.type == "player"}
+        next_state.reactions_available = {
+            p.id: reaction_spend.unspent() for p in next_state.participants if p.type == "player"
+        }
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
 
@@ -247,7 +250,7 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
             f"{window['id']!r} offers {window['triggers']}"
         )
 
-    if not state.reactions_available.get(actor_id, False):
+    if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
 
 

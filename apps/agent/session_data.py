@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 
 from livekit import rtc
 
+import reaction_spend
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
@@ -153,13 +154,13 @@ class CombatState:
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
-    # Reaction availability for the current phase (actor_id -> bool). The declaration beat
+    # The round's one reaction per player (actor_id -> reaction_spend record). The declaration beat
     # refreshes it for PLAYERS ONLY — the reaction economy is player-only by design (only a
     # trained archetype technique is a reaction; enemy action_pool entries carry no catalog
     # id, so no enemy can declare one). combat_phase.validate_reaction_activation guards the spend
     # at an OPEN Beat-3 window (story-017) and combat_hold.pause_allowed reads it to decide whether
     # to pause at all; the wrap loop-back clears it. Absent actor => no budget (never a free spend).
-    reactions_available: dict[str, bool] = field(default_factory=dict)
+    reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
@@ -224,7 +225,9 @@ class CombatState:
             faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
             pending_declarations=data.get("pending_declarations", {}),
-            reactions_available=data.get("reactions_available", {}),
+            # Normalized, not passed through: rows written before story-017 carry dict[str, bool]
+            # on the field story-018 reads for the reaction binding (see reaction_spend.normalize).
+            reactions_available=reaction_spend.normalize(data.get("reactions_available", {})),
             ac_modifiers=data.get("ac_modifiers", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),

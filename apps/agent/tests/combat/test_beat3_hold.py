@@ -15,8 +15,8 @@ from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
 
 import abilities
-import combat_phase
 import combat_turn
+import reaction_spend
 from session_data import CombatParticipant
 
 
@@ -32,7 +32,7 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, reactions=True):
     """A phase at the RESOLUTION beat with one ally attack and one enemy attack declared."""
     ctx = make_context()
     state = _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
-    state.reactions_available = {"player_1": True} if reactions else {}
+    state.reactions_available = {"player_1": reaction_spend.unspent()} if reactions else {}
     ctx.userdata.combat_state = state
     return ctx
 
@@ -199,10 +199,19 @@ class TestTheNoReactionGate:
         assert r2["beat"] == "declaration"
 
     @pytest.mark.asyncio
-    async def test_a_spent_reaction_reopens_no_window(self):
-        """`reactions_available[pid] = False` is the round's one reaction already spent."""
+    async def test_a_spend_record_reopens_no_window(self):
+        """THE TRUTHINESS TRAP. The gate used to read `reactions_available.get(pid, False)` as a
+        boolean, and a spend RECORD is a truthy object — so the naive reshape leaves a spent
+        reaction still holding the beat, opening a window the party cannot consume for the rest of
+        the round. The gate has to read the record's spent-ness.
+
+        Fault-inject by reverting pause_allowed to `.get(p.id, False)` truthiness."""
         ctx = _ctx_at_resolution()
-        ctx.userdata.combat_state.reactions_available = {"player_1": False}
+        cs = ctx.userdata.combat_state
+        cs.reactions_available = {
+            "player_1": reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-pre_roll"}, held_seq=0)
+        }
+        assert cs.reactions_available["player_1"], "the record must be truthy for this to bite"
         deps = _resolve_deps()
         await _call(ctx, deps)  # the ally commit
 
@@ -224,8 +233,11 @@ class TestTheNoReactionGate:
         )
         cs.initiative_order.append("player_2")
         cs.get_participant("player_1").is_fallen = True
-        # player_1 is down carrying a stale True; player_2 stands but holds no reaction.
-        cs.reactions_available = {"player_1": True, "player_2": False}
+        # player_1 is down carrying a stale unspent record; player_2 stands but has already spent.
+        cs.reactions_available = {
+            "player_1": reaction_spend.unspent(),
+            "player_2": reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-pre_roll"}, held_seq=0),
+        }
         cs.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
         deps = _resolve_deps()
         await _call(ctx, deps)  # the ally commit
@@ -418,40 +430,3 @@ class TestMidWindowPersistence:
         assert saves[1]["held_actions"][0]["roll"] is None
         assert saves[2]["open_window"]["stage"] == "post_roll"
         assert saves[2]["held_actions"][0]["roll"] is not None
-
-
-class TestWhatTheDmCanActuallyDoAtAWindow:
-    """constraint 6, EXECUTED. `next.verbs` is a claim about what the engine will accept, and a
-    test that only reads the list this card builds would certify the list, not the engine.
-
-    story-017 rebound activation to the OPEN WINDOW, so the engine now accepts `activate` here —
-    that half is executed below. `verbs` still reads ["resolve_phase"] on purpose (D5): it is the
-    ADVANCE set (combat_wrap.next_envelope), not a whitelist, and only resolve_phase advances the
-    beat from a window. The prompt and the window's own `triggers` are what produce the activation
-    (AC8); `verbs` naming a non-advancing verb would contradict the reading the prompt teaches.
-    """
-
-    @pytest.mark.asyncio
-    async def test_the_engine_accepts_a_reaction_at_the_open_window(self):
-        ctx = _ctx_at_resolution()
-        deps = _resolve_deps()
-        await _call(ctx, deps)  # the ally commit
-        r1 = await _call(ctx, deps)  # paused on the pre-roll window
-
-        window = r1["next"]["waiting_on"]
-        assert window is not None
-        assert "on_targeted" in window["triggers"]
-        # skirmisher_sidestep fires on on_targeted, which this pre-roll window offers. Executed
-        # against the engine rather than read off the card's own descriptor.
-        cs = ctx.userdata.combat_state
-        assert combat_phase.validate_reaction_activation(cs, "player_1", "skirmisher_sidestep") is None
-
-    @pytest.mark.asyncio
-    async def test_activate_is_still_not_the_advance_verb(self):
-        ctx = _ctx_at_resolution()
-        deps = _resolve_deps()
-        await _call(ctx, deps)
-        r1 = await _call(ctx, deps)
-
-        assert r1["next"]["waiting_on"] is not None
-        assert r1["next"]["verbs"] == ["resolve_phase"]

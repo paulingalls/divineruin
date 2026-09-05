@@ -12,6 +12,7 @@ import random
 import pytest
 from combat._helpers import _declarations, _make_combat_state
 
+import reaction_spend
 import reaction_windows
 from combat_phase import (
     PhaseBeat,
@@ -42,7 +43,7 @@ class TestDeclarationBeat:
 
         next_state, _ = advance_combat_phase(state, _declarations())
 
-        assert next_state.reactions_available == {"player_1": True}
+        assert next_state.reactions_available == {"player_1": reaction_spend.unspent()}
 
     def test_declaration_beat_requires_declarations(self):
         state = _make_combat_state()
@@ -148,7 +149,7 @@ class TestValidateReactionActivation:
             target_id="player_1",
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
-        state.reactions_available = {"player_1": True}
+        state.reactions_available = {"player_1": reaction_spend.unspent()}
         return state
 
     def test_accepts_a_reaction_whose_catalog_window_is_open_with_no_declaration(self):
@@ -161,7 +162,7 @@ class TestValidateReactionActivation:
         assert state.pending_declarations == {}
 
         assert validate_reaction_activation(state, "player_1", self.accepts) is None
-        assert state.reactions_available == {"player_1": True}
+        assert state.reactions_available == {"player_1": reaction_spend.unspent()}
 
     def test_rejects_a_reaction_whose_window_is_not_open(self):
         """AC3: the refusal names BOTH windows, so the DM can see why this reaction does not fit.
@@ -191,7 +192,9 @@ class TestValidateReactionActivation:
 
     def test_rejects_second_reaction_this_round(self):
         state = self._window_state()
-        state.reactions_available["player_1"] = False
+        window = state.open_window
+        assert window is not None
+        state.reactions_available["player_1"] = reaction_spend.spend(self.accepts, window, held_seq=0)
 
         with pytest.raises(ValueError, match="already spent"):
             validate_reaction_activation(state, "player_1", self.accepts)
@@ -200,7 +203,7 @@ class TestValidateReactionActivation:
         """The reaction economy is player-only (note 964465e5): no enemy or companion spends one,
         even standing at a window whose triggers their ability would match."""
         state = self._window_state()
-        state.reactions_available = {"goblin_scout_1": True}
+        state.reactions_available = {"goblin_scout_1": reaction_spend.unspent()}
 
         with pytest.raises(ValueError, match="only players"):
             validate_reaction_activation(state, "goblin_scout_1", self.accepts)

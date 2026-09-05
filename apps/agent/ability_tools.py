@@ -24,6 +24,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import combat_hold
 import combat_phase
 import condition_produce
 import conditions
@@ -101,8 +102,8 @@ async def _request_ability_activation_impl(
         # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
         # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
         # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
-        # prompt allows it mid-fight.
-        session.combat_state.reactions_available[session.player_id] = False
+        # prompt allows it mid-fight. AFTER the activation, so a refusal still costs nothing.
+        combat_hold.record_spend(session.combat_state, session.player_id, ability_id)
         return result
 
 
