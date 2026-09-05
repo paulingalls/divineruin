@@ -210,7 +210,10 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
     if closed is not None and state.held_actions:
-        combat_reaction_effect.close(state, state.held_actions[0], closed)
+        reacted = state.held_actions[0]
+        packet = combat_reaction_effect.close(state, reacted, closed, attack_action=_attack_action(state, reacted))
+        if packet is not None:
+            summaries.append(packet)
 
     while state.held_actions:
         head = state.held_actions[0]

@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 
+import abilities
 import reaction_spend
 import reaction_windows
 from combat_support import deserialize_roll, serialize_roll
@@ -116,26 +117,68 @@ def halve(head: dict, target) -> None:
     head["roll"] = serialize_roll(replace(result, **fields), held_ac)
 
 
-def close(state, head: dict, window: dict) -> None:
-    """Apply whatever the reaction spent against ``head`` at ``window``'s stage actually does.
+def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | None) -> str | None:
+    """Do what this reaction does to the held blow, and name it — or None if it did nothing.
+
+    The label is what the close ACTUALLY did, never a lookup on the ability id: a shield of faith
+    spent at the pre-roll window of an ``applies_condition`` action (Hollow Shriek resolves through
+    the save-gated path, with no attack roll) modified no AC, and reporting one would tell the DM
+    a blow was turned aside that was never rolled.
+    """
+    ability_id = spend["ability_id"]
+    target = _held_target(state, head)
+
+    if window["stage"] == reaction_windows.PRE_ROLL:
+        if ability_id in AC_BONUS and attack_action is not None:
+            return "target_ac_bonus"
+        return None
+
+    # on_hit means the reactor was the one HIT. A reactor guarding someone else is
+    # guardian_intercept's shape (on_ally_hit), a different and unwired mechanic — halving an
+    # ally's damage off an on_hit spend would invent one.
+    if (
+        ability_id in HALVES_DAMAGE
+        and head["roll"] is not None
+        and target is not None
+        and spend["actor_id"] == target.id
+    ):
+        halve(head, target)
+        logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
+        return "damage_halved"
+    return None
+
+
+def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dict | None:
+    """Apply what the reaction spent at ``window`` does to ``head``, and report it to the DM.
 
     Called by ``combat_hold.pump`` as it discards the window the DM has come back from — the one
-    point where the spend is known and the blow has not yet been applied.
+    moment where the spend is known and the blow has not yet been applied.
+
+    The packet is SYNTHESIZED here rather than read from a declaration: story-017 retired
+    ``DeclarationType.REACTION``, so a reaction produces no declaration packet at all. ``resolved``
+    is kept for shape parity with every other packet and carries no claim — ``mechanical_effect``
+    is the load-bearing field, which is note 0f3945fa(f) answered ("resolved: true meant only that
+    the resource was spent").
+
+    ``attack_action`` is the pump's own verdict on whether this held action swings an attack roll,
+    passed in rather than re-derived: the predicate belongs to combat_hold, which imports this
+    module.
     """
     spend = bound_spend(state, head, window["stage"])
     if spend is None:
-        return
+        return None
 
-    if window["stage"] == reaction_windows.POST_ROLL and spend["ability_id"] in HALVES_DAMAGE:
-        target = _held_target(state, head)
-        # on_hit means the reactor was the one HIT. A reactor guarding someone else is
-        # guardian_intercept's shape (on_ally_hit), which is a different, unwired mechanic —
-        # halving an ally's damage off an on_hit spend would invent one.
-        if target is not None and spend["actor_id"] == target.id and head["roll"] is not None:
-            halve(head, target)
-            logger.info(
-                "reaction %s halved %s's blow against %s",
-                spend["ability_id"],
-                head["actor_id"],
-                target.id,
-            )
+    effect = _apply(state, head, window, spend, attack_action)
+    ability = abilities.get_ability(spend["ability_id"])
+    return {
+        "actor_id": spend["actor_id"],
+        "resolved": True,
+        "declaration_type": "reaction",
+        "ability_id": ability.id,
+        "ability_name": ability.name,
+        "narration_cue": ability.narration_cue,
+        "window_id": spend["window_id"],
+        "stage": window["stage"],
+        "against_actor_id": head["actor_id"],
+        "mechanical_effect": effect,
+    }

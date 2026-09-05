@@ -1,19 +1,14 @@
-"""Every reaction the DM can be told about, against every window the engine can open.
+"""What a spent reaction actually DOES to the held blow it answered (M29, story-018).
 
-story-017 made a reaction an INTERRUPT: the permission is the open Beat-3 window, not a Beat-1
-declaration. So the contract to hold is between two producers that must share one vocabulary —
-``query_tools._query_abilities_impl``, which surfaces each reaction's ``window`` to the DM, and
-``reaction_windows``, which mints the ``triggers`` a held enemy action offers. A reaction whose
-advertised window no producible window ever carries is a capability the DM can name and never
-spend (constraint 6), so this walks the WHOLE catalog rather than one class's first reaction.
+``game_mechanics_combat.md:187`` names three outcomes — Uncanny Dodge halves damage, Shield of
+Faith causes a miss, Counterspell negates. Two ship here. COUNTERSPELL DOES NOT: its window is
+``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
+08bc5548). ``test_reaction_catalog_reach.py`` — this file's other half, which holds the catalog /
+window vocabulary census — pins it REFUSED at every window rather than certifying a vacuous guard.
 
-Two windows have no producer at all and are asserted REFUSED rather than papered over:
-``on_enemy_move`` (no movement model — debt d3ff4ff4) and ``on_spell_cast`` (no enemy casting —
-debt 08bc5548). Their reactions are unreachable by design until those land.
+Every test drives the real ``resolve_phase`` / ``activate`` implementations end to end, so a
+reaction changes an outcome the same way the DM's own calls would produce it.
 """
-
-import json
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
@@ -22,125 +17,15 @@ from combat._helpers import (
     _activate,
     _call,
     _ctx_at_resolution,
-    _make_combat_state,
     _resolve_deps,
     _resolve_round,
 )
-from sample_fixtures import make_context, make_mock_room, published_payloads
+from sample_fixtures import make_mock_room, published_payloads
 
 import combat_reaction_effect
 import event_types as E
-import reaction_spend
 import reaction_windows
-from combat_phase import PhaseBeat, validate_reaction_activation
-from query_tools import _query_abilities_impl
 from session_data import CombatParticipant, CombatState
-
-# The windows the real producer can emit, one entry per held-action shape it distinguishes.
-# Built by calling reaction_windows, never transcribed: a trigger set copied into this file would
-# certify the copy (constraint 9).
-_PRODUCIBLE = {
-    "pre_roll": reaction_windows.pre_roll_triggers({}),
-    "post_roll_hit": reaction_windows.post_roll_triggers({}, hit=True),
-    "post_roll_miss": reaction_windows.post_roll_triggers({}, hit=False),
-    "post_roll_grapple": reaction_windows.post_roll_triggers(
-        {"properties": [reaction_windows.GRAPPLE_PROPERTY]}, hit=True
-    ),
-}
-
-NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
-
-
-def _paused_state(triggers):
-    state = _make_combat_state()
-    state.beat = PhaseBeat.NARRATION
-    state.open_window = reaction_windows.open_window_for(
-        round_number=1,
-        seq=0,
-        stage="pre_roll",
-        actor_id="goblin_scout_1",
-        target_id="player_1",
-        triggers=triggers,
-    )
-    state.reactions_available = {"player_1": reaction_spend.unspent()}
-    return state
-
-
-async def _queried_reactions():
-    """Every reaction row the DM can be shown, for every archetype — the producer's own output."""
-    context = make_context()
-    queries = MagicMock()
-    persistence = MagicMock()
-    persistence.get_character_abilities = AsyncMock(return_value=[])
-    persistence.get_active_variant = AsyncMock(return_value=None)
-
-    catalog = load_fixture_config().values()
-    rows = {}
-    for player_class in sorted({ability.archetype_id for ability in catalog}):
-        queries.get_player = AsyncMock(return_value={"class": player_class})
-        payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
-        for row in payload["abilities"]:
-            if row["ability_type"] == "reaction":
-                rows[row["id"]] = row["window"]
-    assert rows.keys() == {a.id for a in catalog if a.ability_type == "reaction"}
-    return rows
-
-
-@pytest.mark.asyncio
-async def test_every_queried_reaction_window_is_answered_by_a_real_open_window():
-    """The accept half, catalog-wide: each advertised window is one the engine actually opens.
-
-    A gate that read a constant "on_hit" would still accept the reactions carrying that window,
-    so the sweep has to name which producible window answered each id — and refuse to accept a
-    reaction at a window that does not carry its trigger."""
-    reachable = {}
-    for ability_id, window in (await _queried_reactions()).items():
-        if window in NO_PRODUCER:
-            continue
-        answered = [name for name, triggers in _PRODUCIBLE.items() if window in triggers]
-        assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
-        for name in answered:
-            state = _paused_state(_PRODUCIBLE[name])
-            assert validate_reaction_activation(state, "player_1", ability_id) is None, (ability_id, name)
-        reachable[ability_id] = window
-
-    assert reachable, "the sweep walked no reactions — the query producer went silent"
-
-
-@pytest.mark.asyncio
-async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
-    """Stated honestly rather than skipped: warrior_opportunity_strike (on_enemy_move) and
-    mage_counterspell (on_spell_cast) cannot be spent, at any stage, on any held action."""
-    unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
-    assert unreachable.keys() == {"warrior_opportunity_strike", "mage_counterspell"}
-
-    for ability_id, window in unreachable.items():
-        for triggers in _PRODUCIBLE.values():
-            state = _paused_state(triggers)
-            with pytest.raises(ValueError, match=window):
-                validate_reaction_activation(state, "player_1", ability_id)
-
-
-@pytest.mark.asyncio
-async def test_the_two_window_vocabularies_are_one():
-    """reaction_windows emits nothing the ability catalog cannot consume, and the catalog
-    advertises nothing outside abilities.REACTION_WINDOWS. Either drift ships a window the other
-    side cannot read — the exact shape of the guess-among-nine defect constraint 6 names."""
-    import abilities
-
-    produced = {trigger for triggers in _PRODUCIBLE.values() for trigger in triggers}
-    consumed = set((await _queried_reactions()).values())
-
-    assert produced <= abilities.REACTION_WINDOWS
-    assert produced == consumed - NO_PRODUCER
-
-
-# --- the wired outcomes (story-018) ----------------------------------------------------------
-#
-# story-017 left a spend that named its ability and its blow and changed nothing. These are the
-# two outcomes game_mechanics_combat.md:187 names and the tree did not have. The third
-# (Counterspell) is NOT here: on_spell_cast has no producer (debt 08bc5548), and the sweep above
-# pins it refused rather than shipping a vacuous guard for it.
 
 UNCANNY_DODGE = "rogue_uncanny_dodge"
 
@@ -367,3 +252,101 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
 
     guarding = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_ally_targeted"}
     assert guarding - COUNTERCHARMS == set(combat_reaction_effect.AC_BONUS)
+
+
+INERT_REACTION = "skirmisher_sidestep"  # on_targeted — deliberately outside the wired set
+
+
+def _reaction_packet(packets: list[dict]) -> dict:
+    """The packet the closing window synthesized for the reaction itself.
+
+    Synthesized, not read from a declaration: story-017 deleted DeclarationType.REACTION and the
+    reaction branch in combat_packet, so a reaction produces no declaration packet at all.
+    """
+    found = [p for p in packets if p.get("declaration_type") == "reaction"]
+    assert len(found) == 1, f"expected exactly one reaction packet, got {found}"
+    return found[0]
+
+
+@pytest.mark.asyncio
+async def test_an_unwired_reaction_returns_a_packet_that_claims_no_effect():
+    """AC3. Never a silent no-op — the packet exists and the DM can voice it — and never a claim
+    of an effect it did not have: mechanical_effect is null and the blow lands untouched.
+
+    This is note 0f3945fa(f) answered. ``resolved: true`` used to mean only that the resource was
+    spent; the load-bearing field is now what the close actually DID.
+    """
+    ctx = _ctx_at_resolution()
+    deps = _resolve_deps(damage=6)
+    packets: list[dict] = []
+
+    await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
+    await _activate(ctx, INERT_REACTION, player_class="skirmisher")
+    await _drain(ctx, deps, packets)
+
+    packet = _reaction_packet(packets)
+    assert packet["ability_id"] == INERT_REACTION
+    assert packet["mechanical_effect"] is None
+    assert packet["narration_cue"]
+    assert packet["against_actor_id"] == "goblin_scout_1"
+    assert _enemy_blow(packets)["damage"] == 6
+    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 19
+
+
+@pytest.mark.asyncio
+async def test_a_wired_reaction_names_the_effect_it_had():
+    """The discriminating half: mechanical_effect is not constantly null, so the assertion above
+    is a claim about this reaction rather than about the field always being absent."""
+    ctx = _ctx_at_resolution()
+    deps = _resolve_deps(damage=6)
+    packets: list[dict] = []
+
+    await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
+    await _activate(ctx, UNCANNY_DODGE, player_class="rogue")
+    await _drain(ctx, deps, packets)
+
+    assert _reaction_packet(packets)["mechanical_effect"] == "damage_halved"
+
+    ctx = _ctx_at_resolution(state=_guarded_ally_state())
+    deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
+    packets = []
+    await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
+    await _activate(ctx, SHIELD_OF_FAITH, player_class="cleric")
+    await _drain(ctx, deps, packets)
+
+    assert _reaction_packet(packets)["mechanical_effect"] == "target_ac_bonus"
+
+
+@pytest.mark.asyncio
+async def test_a_wired_ability_against_an_action_with_no_roll_claims_nothing():
+    """The other half of "never a claim of an effect it did not have".
+
+    Hollow Shriek carries applies_condition, so it resolves through the save-gated condition path
+    and has no attack roll to modify — the pre-roll window is the only one it opens, and it is
+    exactly how the countercharms reach a reaction. A shield-of-faith spent there changed no AC,
+    so the packet must say so. A mechanical_effect keyed on the ability id ALONE would pass here
+    while telling the DM a blow was turned aside that was never rolled.
+    """
+    state = _guarded_ally_state()
+    shrieker = next(p for p in state.participants if p.id == "goblin_scout_1")
+    shrieker.action_pool = [
+        {
+            "name": "Hollow Shriek",
+            "damage": "0",
+            "damage_type": "psychic",
+            "properties": ["control"],
+            "applies_condition": "frightened",
+            "save": "wisdom",
+            "dc": 12,
+        }
+    ]
+    state.pending_declarations["goblin_scout_1"]["action"] = "Hollow Shriek"
+    ctx = _ctx_at_resolution(state=state)
+    deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
+    packets: list[dict] = []
+
+    await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
+    await _activate(ctx, SHIELD_OF_FAITH, player_class="cleric")
+    await _drain(ctx, deps, packets)
+
+    assert _reaction_packet(packets)["mechanical_effect"] is None
