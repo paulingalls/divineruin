@@ -4,13 +4,21 @@ from typing import TYPE_CHECKING
 
 from combat_prompts import COMBAT_PROMPT
 from companion_profiles import get_companion_profile, progression_gains_up_to
-from voices import DEFAULT_VOICE, EMOTIONS, VOICES
+from voices import DEFAULT_VOICE, EMOTIONS, ROLE_VOICE_KEYS, VOICES
 
 if TYPE_CHECKING:
     from session_data import CompanionState
 
-_AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE)
+_ROLE_KEYS = frozenset(ROLE_VOICE_KEYS)
+# Role voices are excluded by ROLE_VOICE_KEYS membership, not by a "ROLE_" prefix test: the
+# tuple is the producer of that namespace and a prefix guess would be a second, silent one.
+_AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE and k not in _ROLE_KEYS)
 _AVAILABLE_EMOTIONS = ", ".join(EMOTIONS)
+_TOWNSFOLK_VOICE_LINE = (
+    "Unnamed townsfolk — guards, innkeepers, merchants — are not listed above. Call "
+    'query_info(kind="settlement_population", target_id=<the current location id>) and '
+    "speak each one with the voice_id in its roster entry."
+)
 
 VOICE_STYLE_PROMPT = f"""\
 Your words are spoken aloud, not read. You are a voice performer narrating a live \
@@ -50,7 +58,8 @@ trails off into asides. Make each voice distinct.
 Narration in your voice has no tags.
 
 Available characters: {_AVAILABLE_CHARACTERS}
-Emotions: {_AVAILABLE_EMOTIONS}\
+Emotions: {_AVAILABLE_EMOTIONS}
+{_TOWNSFOLK_VOICE_LINE}\
 """
 
 SYSTEM_PROMPT = f"""\
@@ -86,9 +95,6 @@ before they speak. Skip it entirely if the dialogue carries the tone.
 Example of a single beat:
 Torin sets down his tankard. The guild hall goes quiet.
 [GUILDMASTER_TORIN, stern]: "You've been asking questions that draw attention. The kind that gets people killed."
-
-Available characters: {_AVAILABLE_CHARACTERS}
-Emotions: {_AVAILABLE_EMOTIONS}
 
 You have tools to look up world information. USE THEM. Do not improvise facts \
 that can be looked up.

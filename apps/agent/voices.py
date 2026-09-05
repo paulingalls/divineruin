@@ -43,44 +43,51 @@ _ROLE_ARCHETYPE_IDS: tuple[str, ...] = (
 # because an empty registered value silently resolves to DM_NARRATOR (get_voice_config below).
 ROLE_VOICE_KEYS: tuple[str, ...] = tuple(f"ROLE_{r.upper()}" for r in _ROLE_ARCHETYPE_IDS)
 
-VOICES: dict[str, str] = {
-    "DM_NARRATOR": os.getenv("INWORLD_VOICE_DM", ""),
-    "GUILDMASTER_TORIN": os.getenv("INWORLD_VOICE_TORIN", ""),
-    "COMPANION_KAEL": os.getenv("INWORLD_VOICE_KAEL", ""),
-    "COMPANION_LIRA": os.getenv("INWORLD_VOICE_LIRA", ""),
-    "COMPANION_TAM": os.getenv("INWORLD_VOICE_TAM", ""),
+# Every VOICES key and the env var it is read from. The env var name is NOT the key
+# (COMPANION_KAEL<->INWORLD_VOICE_KAEL, DM_NARRATOR<->INWORLD_VOICE_DM), so this mapping is
+# the ONE producer of both — test_voices.py set-differences its values against .env.example,
+# which an ast walk for INWORLD_VOICE_* literals cannot do: the 19 role names are built by
+# the f-string below and are written nowhere.
+VOICE_ENV_VARS: dict[str, str] = {
+    "DM_NARRATOR": "INWORLD_VOICE_DM",
+    "GUILDMASTER_TORIN": "INWORLD_VOICE_TORIN",
+    "COMPANION_KAEL": "INWORLD_VOICE_KAEL",
+    "COMPANION_LIRA": "INWORLD_VOICE_LIRA",
+    "COMPANION_TAM": "INWORLD_VOICE_TAM",
     # Sable is non-verbal (DM narrates her sound_palette); registered with an empty default so
     # the "every companion voice_id is a VOICES key" invariant holds uniformly. Falls back to
     # DM_NARRATOR if ever voiced, which non-verbal narration avoids.
-    "COMPANION_SABLE": os.getenv("INWORLD_VOICE_SABLE", ""),
-    "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
-    "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
-    "GRIMJAW_BLACKSMITH": os.getenv("INWORLD_VOICE_GRIMJAW", ""),
-    "WOUNDED_RIDER": os.getenv("INWORLD_VOICE_RIDER", ""),
-    "INNKEEPER_MAREN": os.getenv("INWORLD_VOICE_MAREN", ""),
-    "FACTION_VALDRIS": os.getenv("INWORLD_VOICE_VALDRIS", ""),
-    "TAVERN_BRYN": os.getenv("INWORLD_VOICE_BRYN", ""),
-    "TEMPLE_SELENE": os.getenv("INWORLD_VOICE_SELENE", ""),
-    "ALDRIC_HOLLOWED": os.getenv("INWORLD_VOICE_ALDRIC", ""),
-    "SYRATH_NYX": os.getenv("INWORLD_VOICE_NYX", ""),
-    "VEYTHAR_THERON": os.getenv("INWORLD_VOICE_THERON", ""),
-    "AELORA_DARA": os.getenv("INWORLD_VOICE_DARA", ""),
-    "DRATHIAN_HESSA": os.getenv("INWORLD_VOICE_DRATHIAN", ""),
-    "KELDARAN_DORAN": os.getenv("INWORLD_VOICE_KELDARAN", ""),
-    "THORNWARDEN_SENNA": os.getenv("INWORLD_VOICE_THORNWARDEN", ""),
-    "TIDECALLER_MAREK": os.getenv("INWORLD_VOICE_TIDECALLER", ""),
-    "GOD_KAELEN": os.getenv("INWORLD_VOICE_GOD_KAELEN", ""),
-    "GOD_SYRATH": os.getenv("INWORLD_VOICE_GOD_SYRATH", ""),
-    "GOD_VEYTHAR": os.getenv("INWORLD_VOICE_GOD_VEYTHAR", ""),
-    "GOD_MORTAEN": os.getenv("INWORLD_VOICE_GOD_MORTAEN", ""),
-    "GOD_THYRA": os.getenv("INWORLD_VOICE_GOD_THYRA", ""),
-    "GOD_AELORA": os.getenv("INWORLD_VOICE_GOD_AELORA", ""),
-    "GOD_VALDRIS": os.getenv("INWORLD_VOICE_GOD_VALDRIS", ""),
-    "GOD_NYTHERA": os.getenv("INWORLD_VOICE_GOD_NYTHERA", ""),
-    "GOD_ORENTHEL": os.getenv("INWORLD_VOICE_GOD_ORENTHEL", ""),
-    "GOD_ZHAEL": os.getenv("INWORLD_VOICE_GOD_ZHAEL", ""),
-    **{k: os.getenv(f"INWORLD_VOICE_{k}", "") for k in ROLE_VOICE_KEYS},
+    "COMPANION_SABLE": "INWORLD_VOICE_SABLE",
+    "ELDER_YANNA": "INWORLD_VOICE_YANNA",
+    "SCHOLAR_EMRIS": "INWORLD_VOICE_EMRIS",
+    "GRIMJAW_BLACKSMITH": "INWORLD_VOICE_GRIMJAW",
+    "WOUNDED_RIDER": "INWORLD_VOICE_RIDER",
+    "INNKEEPER_MAREN": "INWORLD_VOICE_MAREN",
+    "FACTION_VALDRIS": "INWORLD_VOICE_VALDRIS",
+    "TAVERN_BRYN": "INWORLD_VOICE_BRYN",
+    "TEMPLE_SELENE": "INWORLD_VOICE_SELENE",
+    "ALDRIC_HOLLOWED": "INWORLD_VOICE_ALDRIC",
+    "SYRATH_NYX": "INWORLD_VOICE_NYX",
+    "VEYTHAR_THERON": "INWORLD_VOICE_THERON",
+    "AELORA_DARA": "INWORLD_VOICE_DARA",
+    "DRATHIAN_HESSA": "INWORLD_VOICE_DRATHIAN",
+    "KELDARAN_DORAN": "INWORLD_VOICE_KELDARAN",
+    "THORNWARDEN_SENNA": "INWORLD_VOICE_THORNWARDEN",
+    "TIDECALLER_MAREK": "INWORLD_VOICE_TIDECALLER",
+    "GOD_KAELEN": "INWORLD_VOICE_GOD_KAELEN",
+    "GOD_SYRATH": "INWORLD_VOICE_GOD_SYRATH",
+    "GOD_VEYTHAR": "INWORLD_VOICE_GOD_VEYTHAR",
+    "GOD_MORTAEN": "INWORLD_VOICE_GOD_MORTAEN",
+    "GOD_THYRA": "INWORLD_VOICE_GOD_THYRA",
+    "GOD_AELORA": "INWORLD_VOICE_GOD_AELORA",
+    "GOD_VALDRIS": "INWORLD_VOICE_GOD_VALDRIS",
+    "GOD_NYTHERA": "INWORLD_VOICE_GOD_NYTHERA",
+    "GOD_ORENTHEL": "INWORLD_VOICE_GOD_ORENTHEL",
+    "GOD_ZHAEL": "INWORLD_VOICE_GOD_ZHAEL",
+    **{k: f"INWORLD_VOICE_{k}" for k in ROLE_VOICE_KEYS},
 }
+
+VOICES: dict[str, str] = {key: os.getenv(var, "") for key, var in VOICE_ENV_VARS.items()}
 
 DEFAULT_VOICE = "DM_NARRATOR"
 

@@ -42,6 +42,11 @@ def validate_env() -> None:
     so an unset role voice is not a degraded deploy, it is a silent all-narrator one: every
     generated townsfolk speaks as the DM. Non-role voices keep the warning — COMPANION_SABLE
     is deliberately empty (she is non-verbal) and other authored characters may be too.
+
+    Two populated keys resolving to the SAME voice id raises last: the checks above are
+    "cannot boot at all", this one is "boots wrong". Nothing on the committed files can catch
+    it — .env.example is correct and has its own guard, while the live .env nothing reads is
+    where the EMRIS/LIRA collision actually sat.
     """
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
     role_keys = set(ROLE_VOICE_KEYS)
@@ -56,6 +61,15 @@ def validate_env() -> None:
             "Role voices not configured — generated townsfolk would all speak in the DM's "
             f"voice. Set INWORLD_VOICE_<KEY> for: {', '.join(unset_roles)}"
         )
+
+    by_voice: dict[str, list[str]] = {}
+    for key, voice in VOICES.items():
+        if voice:
+            by_voice.setdefault(voice, []).append(key)
+    collisions = {v: ks for v, ks in sorted(by_voice.items()) if len(ks) > 1}
+    if collisions:
+        detail = "; ".join(f"{v} shared by {', '.join(ks)}" for v, ks in collisions.items())
+        raise OSError(f"Two characters would sound identical — one Inworld voice per VOICES key: {detail}")
 
 
 START_LOCATION = "accord_guild_hall"

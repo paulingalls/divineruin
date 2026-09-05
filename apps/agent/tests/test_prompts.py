@@ -5,8 +5,10 @@ from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
 
-from system_prompts import DISPATCH_MODE_PROMPT, build_system_prompt
+from creation_prompts import CREATION_SYSTEM_PROMPT
+from system_prompts import DISPATCH_MODE_PROMPT, SYSTEM_PROMPT, build_system_prompt
 from training_rules import get_midpoint_decision, resolve_midpoint_decision
+from voices import ROLE_VOICE_KEYS
 from warm_prompts import build_warm_layer, format_training_section
 
 SAMPLE_AWAITING_TRAINING = {
@@ -311,3 +313,71 @@ class TestTrainingMidpointNarration:
         assert result.state in DISPATCH_MODE_PROMPT, (
             f"dispatch prompt does not name the state resolve_activity(kind='training') returns ({result.state!r})"
         )
+
+
+# The 31 authored VOICES keys, in insertion order, written out as a LITERAL. Recomputing this
+# from VOICES would derive it from the same source as the prompt, so the two would agree with
+# each other whatever changed. Fault-inject by adding a key to voices.py's VOICES IN SOURCE —
+# patch.dict cannot red it, _AVAILABLE_CHARACTERS and SYSTEM_PROMPT are import-time constants.
+_EXPECTED_AVAILABLE = [
+    "GUILDMASTER_TORIN",
+    "COMPANION_KAEL",
+    "COMPANION_LIRA",
+    "COMPANION_TAM",
+    "COMPANION_SABLE",
+    "ELDER_YANNA",
+    "SCHOLAR_EMRIS",
+    "GRIMJAW_BLACKSMITH",
+    "WOUNDED_RIDER",
+    "INNKEEPER_MAREN",
+    "FACTION_VALDRIS",
+    "TAVERN_BRYN",
+    "TEMPLE_SELENE",
+    "ALDRIC_HOLLOWED",
+    "SYRATH_NYX",
+    "VEYTHAR_THERON",
+    "AELORA_DARA",
+    "DRATHIAN_HESSA",
+    "KELDARAN_DORAN",
+    "THORNWARDEN_SENNA",
+    "TIDECALLER_MAREK",
+    "GOD_KAELEN",
+    "GOD_SYRATH",
+    "GOD_VEYTHAR",
+    "GOD_MORTAEN",
+    "GOD_THYRA",
+    "GOD_AELORA",
+    "GOD_VALDRIS",
+    "GOD_NYTHERA",
+    "GOD_ORENTHEL",
+    "GOD_ZHAEL",
+]
+
+
+class TestRoleVoicesAreNotEnumerated:
+    """The 19 ROLE_* keys have a producer: query_info(kind="settlement_population") returns a
+    roster whose every entry carries the exact voice_id, and query_tools already tells the DM
+    to speak entries with that tag. Listing the keys invites tagging [ROLE_GUARD] directly,
+    skipping the lookup that supplies the townsfolk's name and personality.
+    """
+
+    def test_no_role_key_appears_in_either_prompt(self):
+        for name, prompt in (
+            ("SYSTEM_PROMPT", SYSTEM_PROMPT),
+            ("CREATION_SYSTEM_PROMPT", CREATION_SYSTEM_PROMPT),
+        ):
+            for key in ROLE_VOICE_KEYS:
+                assert key not in prompt, f"{key} enumerated in {name}"
+            assert "ROLE_" not in prompt, f"a role key leaked into {name}"
+
+    def test_each_prompt_names_the_producer_once(self):
+        for prompt in (SYSTEM_PROMPT, CREATION_SYSTEM_PROMPT):
+            assert prompt.count('kind="settlement_population"') == 1
+
+    def test_available_characters_line_is_exactly_the_authored_roster(self):
+        line = next(ln for ln in SYSTEM_PROMPT.splitlines() if ln.startswith("Available characters: "))
+        assert line.removeprefix("Available characters: ").split(", ") == _EXPECTED_AVAILABLE
+
+    def test_available_characters_appears_exactly_once(self):
+        assert SYSTEM_PROMPT.count("Available characters:") == 1
+        assert SYSTEM_PROMPT.count("Emotions:") == 1
