@@ -2,7 +2,8 @@
 
 query_available_workspaces (read-only) lists what the player can use at their
 location plus NPC-specific or per-disposition daily prices. rent_workspace prices by NPC disposition,
-debits gold (interim 10sp=1gp), and writes a workspace_rentals row. Failures raise
+debits gold (interim 10sp=1gp), and writes a workspace_rentals row per granted workspace
+(the two-row Forge + Laboratory bundle lives in test_crafting_tools_bundle.py). Failures raise
 ToolError (ADR 0002). The _*_impl seams take injected mods. Split from the crafting
 project tests (test_crafting_tools_projects.py) to stay under the 500-line cap;
 _pricing rides here since only rent_workspace prices.

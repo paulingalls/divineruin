@@ -27,7 +27,10 @@ test("a missing companion name degrades to a neutral noun, never to Kael", () =>
 });
 
 test("time remaining reads as a spoken countdown, and completes at zero", () => {
-  const inHours = new Date(Date.now() + 2 * 3_600_000 + 15 * 60_000).toISOString();
+  // +30s of slack on each deadline: formatTimeRemaining reads Date.now() itself, so an
+  // exact 2h15m deadline floors to "2h 14m" the moment the clock ticks between the two
+  // reads — a ~7%-per-run flake in the merge gate, not a formatter bug.
+  const inHours = new Date(Date.now() + 2 * 3_600_000 + 15 * 60_000 + 30_000).toISOString();
   expect(formatTimeRemaining(inHours)).toBe("2h 15m remaining");
   expect(formatTimeRemaining(new Date(Date.now() + 90_000).toISOString())).toBe("1m remaining");
   expect(formatTimeRemaining(new Date(Date.now() - 1000).toISOString())).toBe("completing...");

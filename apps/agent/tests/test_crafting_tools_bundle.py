@@ -9,8 +9,8 @@ workspace_type against a closed four-member vocabulary, so a single
 gate for that player at that location. Two rows also satisfy "both accessible for
 N days" literally.
 
-Split from test_crafting_tools_workspaces.py (380 lines) to stay under the cap; the
-_pricing/_queries seams are imported from there rather than forked.
+Split from test_crafting_tools_workspaces.py to stay under the cap; the
+_content/_pricing/_queries seams are imported from there rather than forked.
 """
 
 import json
@@ -122,10 +122,20 @@ class TestBundleLocationGate:
         mutations.create_workspace_rental.assert_not_awaited()
         mutations.update_player_gold.assert_not_awaited()
 
-    @pytest.mark.parametrize("location", [None, {}, {"settlement_tier": "metropolis"}])
-    async def test_non_settlement_and_unknown_tier_refuse_loud(self, location):
+    @pytest.mark.parametrize(
+        "location,reason",
+        [
+            (None, "is not a settlement"),
+            ({}, "is not a settlement"),
+            ({"settlement_tier": "metropolis"}, "unknown settlement tier 'metropolis'"),
+        ],
+    )
+    async def test_non_settlement_and_unknown_tier_refuse_for_their_own_reason(self, location, reason):
+        # Message-blind here would be vacuous: with no settlement_tier, SettlementSize(None)
+        # ALSO raises ValueError, so deleting the not-a-settlement branch still refuses —
+        # just by telling a player standing in open wilderness their tier is corrupt.
         mutations = _mutations()
-        with pytest.raises(ToolError):
+        with pytest.raises(ToolError, match=reason):
             await _rent(content=_content(location=location), mutations=mutations)
         mutations.create_workspace_rental.assert_not_awaited()
 

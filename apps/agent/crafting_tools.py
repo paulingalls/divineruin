@@ -8,7 +8,8 @@ As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
 their current location plus daily rental quotes. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the
-economy milestone), and writes a workspace_rentals row. `start_crafting_project` runs
+economy milestone), and writes one workspace_rentals row per workspace the offer grants
+(two for the Forge + Laboratory bundle). `start_crafting_project` runs
 the five-check pre-flight, then allocates+consumes materials and creates the in_progress
 crafting activity (the outcome is rolled later at resolution, not here).
 
