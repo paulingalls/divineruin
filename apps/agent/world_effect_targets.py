@@ -1,9 +1,8 @@
 """The world-effect disposition target vocabulary, shared by the runtime and the validators.
 
-One symbol, not three: story-013 found this map copied into tool_support.py, scripts/
-seed_content.py and tests/test_content_validation.py, each carrying its own
-`"companion": "companion_kael"` entry, so replacing the literal meant a lockstep edit of
-three definitions of the same thing.
+One symbol, not three: the runtime, the seeder and the content guard each held their own
+copy of this map, so a change to the vocabulary meant a lockstep edit of three definitions
+of the same fact.
 
 Deliberately a leaf: no livekit import, so scripts/seed_content.py can import it directly.
 """

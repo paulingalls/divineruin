@@ -125,9 +125,8 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
 
     npc_ids = {row["id"] for row in npc_rows}
 
-    # The 'companion' shorthand resolves into the companions id space (Kael is a dedicated
-    # Companion in companions.json, not an npcs row), so world-effect targets validate against
-    # the npcs + companions union.
+    # Companions are their own entity (companions.json), not npcs rows, so world-effect
+    # disposition targets validate against the npcs + companions id spaces.
     companion_rows = await conn.fetch("SELECT id FROM companions")
     companion_ids = {row["id"] for row in companion_rows}
 
