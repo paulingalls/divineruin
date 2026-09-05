@@ -13,9 +13,8 @@ deduction + Resonance generation + WRAP decay all exercise real mutations end-to
 import json
 from unittest.mock import AsyncMock, MagicMock
 
-from combat._helpers import _damage_resolver
+from combat._helpers import _damage_resolver, _resolve_round
 
-import combat_turn
 import db_mutations
 import db_queries
 import spell_casting
@@ -94,10 +93,10 @@ class TestInCombatAbilityResolution:
 
         try:
             # Deterministic enemy attack (3 dmg); the ability runs through the REAL cast_resolver.
-            raw = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
+            raw = await _resolve_round(ctx, resolver=_damage_resolver(3))
 
-            assert isinstance(raw, str)  # combat continues -> JSON (not the end-of-combat handoff)
-            packets = json.loads(raw)["packets"]
+            assert not isinstance(raw, tuple)  # combat continues -> JSON (not the end-of-combat handoff)
+            packets = raw["packets"]
             # Initiative order: the player's ability (15) resolves before the enemy's attack (12).
             assert packets[0]["actor_id"] == player_id
             assert packets[0]["declaration_type"] == "ability"

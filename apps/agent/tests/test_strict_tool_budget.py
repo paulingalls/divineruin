@@ -159,9 +159,16 @@ def test_every_agent_session_chooses_its_max_tool_steps():
     reaches the player as a plausible sentence — constraint 4 fail-quiet, from inside a
     vendor library, which is exactly why the number must be deliberate.
 
-    5 permits six steps. Today's longest chain is three (declare_phase -> resolve_phase ->
-    request_death_save); M29's restored Beat-3 loop needs five (declare -> resolve allies
-    -> activate reaction -> resolve enemies -> death save). Scanning EVERY site, not just
+    5 permits six steps, and the arithmetic is RE-DERIVED here rather than left to read as
+    still-true: the restored Beat-3 loop (M29, story-016) shipped TWO reaction windows per enemy
+    attack, which adds resolve_phase calls to a round. Per TURN it still fits, because each pause
+    ENDS the turn — the DM narrates up to the blow and stops. The longest single turn with a pause
+    is `activate -> resolve_phase -> request_death_save` = 3. The longest turn with NO pause at all
+    (nobody holds a reaction, so the held pass runs straight through) is `declare_phase ->
+    resolve_phase (allies) -> resolve_phase (held enemies) -> request_death_save` = 4. Both fit
+    under six with headroom. The previous estimate of five priced a SINGLE-window model and went
+    stale the moment the second window landed; truncation is silent, so the number is stated as a
+    measurement, not an intuition. Scanning EVERY site, not just
     agent.py, is what keeps the acceptance harnesses on production's ceiling — a harness
     left on the default would truncate somewhere else and certify nothing about the real
     session. Supersedes bug 50fd0838, whose arithmetic missed the +1.

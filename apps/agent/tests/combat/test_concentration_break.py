@@ -7,15 +7,13 @@ hit hard enough to incapacitate — proving the break resolves against that cast
 end-to-end, and the primary's own (different) concentration survives untouched.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod
+from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from sample_fixtures import make_context
 
 import concentration_break
-from combat_turn import _resolve_phase_impl
 from session_data import CombatParticipant, CombatState
 
 
@@ -107,7 +105,7 @@ class TestConcentrationBreakE2E:
         resonance_events_mod = MagicMock()
         resonance_events_mod.publish_resonance_changed = AsyncMock()
 
-        raw = await _resolve_phase_impl(
+        raw = await _resolve_round(
             ctx,
             mutations=mutations_mod,
             queries=queries_mod,
@@ -118,8 +116,8 @@ class TestConcentrationBreakE2E:
             db_mod=_fake_db_mod(),
         )
 
-        assert isinstance(raw, str)  # combat continues -> JSON, not the end-of-combat tuple
-        packets = {p["actor_id"]: p for p in json.loads(raw)["packets"]}
+        assert not isinstance(raw, tuple)  # combat continues -> JSON, not the end-of-combat tuple
+        packets = {p["actor_id"]: p for p in raw["packets"]}
 
         # Only player_2's spell broke and was surfaced; player_1's is untouched.
         assert packets["goblin_1"]["concentration_broken"] == "arcane_fly"

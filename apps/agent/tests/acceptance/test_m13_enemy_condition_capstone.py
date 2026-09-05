@@ -23,10 +23,9 @@ player takes no damage, keeping combat open (a JSON string result, not the end_c
 
 from __future__ import annotations
 
-import json
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -63,10 +62,10 @@ async def test_m13_hostile_condition_lands_through_real_combat_phase(reset_db_po
         state = ctx.userdata.combat_state
 
         with patch("check_resolution.dice_roll", return_value=_d20(1)):  # nat-1 -> save FAILS
-            result = await combat_turn._resolve_phase_impl(ctx)
+            result = await _resolve_round(ctx)
 
-        assert isinstance(result, str), "combat continues (minions omitted -> no player damage)"
-        payload = json.loads(result)
+        assert not isinstance(result, tuple), "combat continues (minions omitted -> no player damage)"
+        payload = result
         enemy_packet = next(p for p in payload["packets"] if p["actor_id"] == _ENEMY_ID)
         assert enemy_packet["condition_inflicted"] == "frightened"
 
@@ -102,10 +101,10 @@ async def test_m13_temporary_hollowed_target_no_ops_the_immunity_gate(reset_db_p
         await combat_turn._declare_phase_impl(ctx, decls)
 
         with patch("check_resolution.dice_roll", return_value=_d20(1)):  # nat-1 -> save FAILS
-            result = await combat_turn._resolve_phase_impl(ctx)
+            result = await _resolve_round(ctx)
 
-        assert isinstance(result, str), "combat continues (minions omitted -> no player damage)"
-        payload = json.loads(result)
+        assert not isinstance(result, tuple), "combat continues (minions omitted -> no player damage)"
+        payload = result
         enemy_packet = next(p for p in payload["packets"] if p["actor_id"] == _ENEMY_ID)
         assert enemy_packet["condition_immune"] == "frightened"
         assert "condition_inflicted" not in enemy_packet

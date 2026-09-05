@@ -10,6 +10,7 @@ from combat._helpers import (
     _fake_db_mod,
     _make_combat_state,
     _resolution_state,
+    _resolve_round,
 )
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room, published_payloads
@@ -234,7 +235,6 @@ class TestPhaseLoopExit:
 
     @pytest.mark.asyncio
     async def test_victory_wrap_hands_back_to_exploration_agent(self):
-        from combat_turn import _resolve_phase_impl
         from exploration_agent import ExplorationAgent
 
         # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
@@ -246,9 +246,14 @@ class TestPhaseLoopExit:
         ctx = make_context()
         ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=3)
 
-        raw = await _resolve_phase_impl(
+        mutations = _make_end_combat_mocks()
+        # The ally commit persists BEFORE the wrap deletes the row (M29, story-016): the phase is
+        # two commits, and only the second one ends the fight.
+        mutations.save_combat_state = AsyncMock()
+
+        raw = await _resolve_round(
             ctx,
-            mutations=_make_end_combat_mocks(),
+            mutations=mutations,
             queries=queries,
             resolver=resolver,
             concentration_break_mod=break_mod,

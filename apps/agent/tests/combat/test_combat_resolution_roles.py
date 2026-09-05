@@ -16,7 +16,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod
+from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -26,7 +26,7 @@ from combat_phase import (
     consume_legendary_action,
 )
 from combat_resolution import calculate_combat_xp
-from combat_turn import _consume_legendary_action_impl, _resolve_phase_impl
+from combat_turn import _consume_legendary_action_impl
 from encounter_roles import EncounterRole, derive_role_stats
 from session_data import CombatParticipant, CombatState
 
@@ -274,9 +274,7 @@ class TestResolvePhaseSurfacesLegendary:
         ctx = make_context()
         ctx.userdata.combat_state = _boss_resolution_state(boss_hp=40)
 
-        raw = await _resolve_phase_impl(ctx, **_resolve_deps(damage=3))
-        assert isinstance(raw, str), "the Boss survives 3 damage, so combat continues (not a handoff)"
-        result = json.loads(raw)
+        result = await _resolve_round(ctx, **_resolve_deps(damage=3))
 
         surfaced = result["legendary_available"]
         assert [s["actor_id"] for s in surfaced] == ["warlord_1"]

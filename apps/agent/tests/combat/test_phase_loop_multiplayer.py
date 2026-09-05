@@ -10,15 +10,13 @@ The casts themselves are mocked (cast_resolver._resolve_cast); the wiring/identi
 under test, not the spell internals (covered by tests/test_spell_casting.py).
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod
+from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
-from combat_turn import _resolve_phase_impl
 from session_data import CombatParticipant, CombatState
 from spell_casting import _UNCHANGED, CastResult
 
@@ -148,10 +146,10 @@ class TestMultiplayerPrevalidation:
         res = _resonance_deps()
         cast_resolver, seen_casters = _cast_resolver_recording()
 
-        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+        raw = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        assert isinstance(raw, str)  # combat continues -> JSON, not the end-of-combat tuple
-        packets = {p["actor_id"]: p for p in json.loads(raw)["packets"]}
+        assert not isinstance(raw, tuple)  # combat continues -> JSON, not the end-of-combat tuple
+        packets = {p["actor_id"]: p for p in raw["packets"]}
 
         # Each player's OWN row was locked for_update, once per id.
         locked = [c.args[0] for c in deps["queries"].get_player.await_args_list if c.kwargs.get("for_update")]
@@ -179,7 +177,7 @@ class TestMultiplayerPrevalidation:
         cast_resolver._gate_spell = MagicMock(side_effect=_gate)
 
         with pytest.raises(ToolError, match="Focus"):
-            await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+            await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
         # No packet resolved, no writes, player_1 untouched (the loop never ran).
         cast_resolver._resolve_cast.assert_not_called()
@@ -202,8 +200,8 @@ class TestMultiplayerWrapDecay:
         deps = _resolve_deps()
         res = _resonance_deps()
 
-        raw = await _resolve_phase_impl(ctx, cast_resolver=MagicMock(), **deps, **res)
-        assert isinstance(raw, str)
+        raw = await _resolve_round(ctx, cast_resolver=MagicMock(), **deps, **res)
+        assert not isinstance(raw, tuple)
 
         # Each member decayed one step against its OWN pool: 5->4, 3->2.
         assert ctx.userdata.resonance.current == 4
@@ -226,7 +224,7 @@ class TestMultiplayerWrapDecay:
         deps = _resolve_deps()
         res = _resonance_deps()
 
-        await _resolve_phase_impl(ctx, cast_resolver=MagicMock(), **deps, **res)
+        await _resolve_round(ctx, cast_resolver=MagicMock(), **deps, **res)
 
         assert ctx.userdata.resonance.current == 4
         assert _member(ctx, "player_2").resonance.current == 0
@@ -248,7 +246,7 @@ class TestSoloRegression:
         deps = _resolve_deps()
         res = _resonance_deps()
 
-        await _resolve_phase_impl(ctx, cast_resolver=MagicMock(), **deps, **res)
+        await _resolve_round(ctx, cast_resolver=MagicMock(), **deps, **res)
 
         assert ctx.userdata.resonance.current == 4
         res["resonance_mutations"].update_player_resonance.assert_awaited_once()
@@ -303,15 +301,15 @@ class TestMultiplayerGenerationDecayE2E:
 
         # Round 1: p1 3+5=8 -> wrap 7; p2 1+5=6 -> wrap 5.
         await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
-        r1 = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
-        assert isinstance(r1, str)
+        r1 = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
+        assert not isinstance(r1, tuple)
         assert ctx.userdata.resonance.current == 7
         assert player_2.resonance.current == 5
 
         # Round 2: p1 7+5=12 -> wrap 11; p2 5+5=10 -> wrap 9. Each pool advanced on its OWN prior
         # value — no cross-leak between the two members.
         await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
-        r2 = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
-        assert isinstance(r2, str)
+        r2 = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
+        assert not isinstance(r2, tuple)
         assert ctx.userdata.resonance.current == 11
         assert player_2.resonance.current == 9

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player_with_pools
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_mock_room, published_payloads
@@ -99,9 +100,9 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
 
     # Phase 1, unwarded: both cast at the unhalved baseline.
     await combat_turn._declare_phase_impl(ctx, _cast_decls())
-    result1 = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
-    assert isinstance(result1, str)  # combat continues
-    packets1 = {p["actor_id"]: p for p in json.loads(result1)["packets"]}
+    result1 = await _resolve_round(ctx, resolver=_damage_resolver(3))
+    assert not isinstance(result1, tuple)  # combat continues
+    packets1 = {p["actor_id"]: p for p in result1["packets"]}
     assert packets1[a]["cast"]["ward_active"] is False
     assert packets1[a]["cast"]["resonance_generated"] == base
     assert packets1[b]["cast"]["ward_active"] is False
@@ -112,9 +113,9 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
 
     # Phase 2, warded: BOTH the raiser and the non-raiser halve.
     await combat_turn._declare_phase_impl(ctx, _cast_decls())
-    result2 = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
-    assert isinstance(result2, str)
-    packets2 = {p["actor_id"]: p for p in json.loads(result2)["packets"]}
+    result2 = await _resolve_round(ctx, resolver=_damage_resolver(3))
+    assert not isinstance(result2, tuple)
+    packets2 = {p["actor_id"]: p for p in result2["packets"]}
     assert packets2[a]["cast"]["ward_active"] is True
     assert packets2[a]["cast"]["resonance_generated"] == base // 2
     assert packets2[b]["cast"]["ward_active"] is True
@@ -162,7 +163,7 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
         enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
     }
     await combat_turn._declare_phase_impl(ctx, decls)
-    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(22))
+    result = await _resolve_round(ctx, resolver=_damage_resolver(22))
     assert isinstance(result, tuple)  # the winning wrap fires end_combat and hands back
     assert ctx.userdata.combat_state is None
 
@@ -246,8 +247,8 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
         }
         await combat_turn._declare_phase_impl(ctx, decls)
         # Fixed low damage -- the 22 HP wisp must outlast all 3 wraps so the clock is observed fully.
-        result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(1))
-        assert isinstance(result, str)  # combat continues through all 3 wraps
+        result = await _resolve_round(ctx, resolver=_damage_resolver(1))
+        assert not isinstance(result, tuple)  # combat continues through all 3 wraps
         ward = ctx.userdata.combat_state.veil_ward
         if expected_remaining is None:
             assert ward is None  # dies on the 3rd wrap, not the 2nd
@@ -298,9 +299,9 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
             enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
         }
         await combat_turn._declare_phase_impl(ctx, decls)
-        result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(1))
-        assert isinstance(result, str)
-        packets = {p["actor_id"]: p for p in json.loads(result)["packets"]}
+        result = await _resolve_round(ctx, resolver=_damage_resolver(1))
+        assert not isinstance(result, tuple)
+        packets = {p["actor_id"]: p for p in result["packets"]}
         assert packets[player_id]["cast"]["ward_active"] is True
         assert packets[player_id]["cast"]["resonance_generated"] == base // 2
         # The WRAP beat never touches the world-clock scope: no encounter ward appears.
@@ -320,7 +321,7 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
         enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
     }
     await combat_turn._declare_phase_impl(ctx, decls)
-    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(22))
+    result = await _resolve_round(ctx, resolver=_damage_resolver(22))
     assert isinstance(result, tuple)
     assert ctx.userdata.combat_state is None
 

@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_mock_room
@@ -107,8 +108,8 @@ async def test_two_pc_phase_loop_decays_each_resonance_independently(reset_db_po
         enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": pc1},
     }
     await combat_turn._declare_phase_impl(ctx, decls)
-    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
-    assert isinstance(result, str)  # combat continues (no wipe/victory this phase)
+    result = await _resolve_round(ctx, resolver=_damage_resolver(3))
+    assert not isinstance(result, tuple)  # combat continues (no wipe/victory this phase)
 
     post = {m.player_id: m.resonance.current for m in ctx.userdata.party.members}
     assert post[pc1] < bases[pc1] and post[pc2] < bases[pc2]  # each decayed from its own base

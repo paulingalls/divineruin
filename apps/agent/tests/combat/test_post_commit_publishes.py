@@ -15,11 +15,10 @@ shared try would still pass. Filed as debt f3c008ab87b9.
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod
+from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from sample_fixtures import make_context
 
 import combat_events
-from combat_turn import _resolve_phase_impl
 from session_data import CombatParticipant, CombatState
 
 
@@ -101,7 +100,7 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
     original_publish = combat_events.publish_game_event
     combat_events.publish_game_event = AsyncMock(side_effect=RuntimeError("publish boom"))
     try:
-        raw = await _resolve_phase_impl(
+        raw = await _resolve_round(
             ctx,
             mutations=mutations,
             queries=queries,
@@ -114,7 +113,7 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
     finally:
         combat_events.publish_game_event = original_publish
 
-    assert isinstance(raw, str), "the phase must still return its packets"
+    assert not isinstance(raw, tuple), "the phase must still return its packets"
     pushed = {call.kwargs["caster_id"] for call in resonance_events_mod.publish_resonance_changed.await_args_list}
     assert pushed == {"player_1", "player_2"}, (
         "a failed sink flush must not skip the per-member Resonance pushes behind it — nothing re-pushes them"

@@ -18,9 +18,8 @@ import json
 from unittest.mock import MagicMock
 
 from _combat_end_fixtures import combat_end_queries
-from combat._helpers import _damage_resolver, _resolution_state
+from combat._helpers import _damage_resolver, _resolution_state, _resolve_round
 
-import combat_turn
 import db_mutations
 import event_types as E
 from session_data import SessionData
@@ -69,7 +68,7 @@ async def test_resolve_phase_emits_combat_ui_update_at_wrap_with_post_tick_condi
     )
 
     try:
-        await combat_turn._resolve_phase_impl(
+        await _resolve_round(
             ctx,
             resolver=_damage_resolver(1),  # token damage; doesn't drop the enemy
             save_resolver=_saves_always_resolver(),
@@ -110,7 +109,7 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     queries = combat_end_queries()
 
     try:
-        await combat_turn._resolve_phase_impl(
+        await _resolve_round(
             ctx,
             resolver=_damage_resolver(5),
             queries=queries,

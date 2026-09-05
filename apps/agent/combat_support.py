@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 from livekit.agents.llm import ToolError
 
@@ -132,6 +132,10 @@ async def _resolve_attack_packet(
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
+    The composition of ``roll_attack`` and ``apply_attack_result`` — the unpaused path, which
+    resolves exactly as it did before the two halves were separable (M29, story-016). Callers
+    that must PAUSE between the roll and the damage (the Beat-3 hold) drive the halves directly.
+
     Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
     DICE_ROLL, sounds, and any durability hits in strike order, and returns a
     response dict for the caller (a per-packet narration summary). It does NOT
@@ -142,6 +146,49 @@ async def _resolve_attack_packet(
     ``shield_reaction`` remains unwired because player reactions resolve through
     ``activate`` and ``validate_reaction_activation``, outside the attack packet. It is therefore
     ``None`` on the live path; direct durability tests exercise the accrual seam."""
+    attack_result, effective_ac = roll_attack(
+        attacker,
+        action,
+        target,
+        target_ac_bonus=target_ac_bonus,
+        enemies_remaining=enemies_remaining,
+        is_first_attack_of_combat=is_first_attack_of_combat,
+        resolver=resolver,
+    )
+    return await apply_attack_result(
+        session,
+        attacker,
+        action,
+        target,
+        attack_result,
+        effective_ac,
+        shield_reaction=shield_reaction,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        combat_state=combat_state,
+        conn=conn,
+        sink=sink,
+    )
+
+
+def roll_attack(
+    attacker,
+    action: dict,
+    target,
+    *,
+    target_ac_bonus: int = 0,
+    enemies_remaining: int | None = None,
+    is_first_attack_of_combat: bool = False,
+    resolver=check_resolution_attack,
+) -> tuple:
+    """Roll ONE attack and return ``(AttackResult, effective_ac)`` — WITHOUT touching HP.
+
+    Pure and synchronous by design: no mutation, no await, no event. That is what lets the
+    Beat-3 hold pause between the roll and the impact (M29, story-016) — the post-roll reaction
+    window is PRE-DAMAGE, so the outcome must be known while the target is still untouched.
+    ``apply_attack_result`` is the other half; ``_resolve_attack_packet`` composes both.
+    """
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,
@@ -183,6 +230,51 @@ async def _resolve_attack_packet(
         if verdict.dramatic:
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
+    return attack_result, effective_ac
+
+
+def serialize_roll(attack_result, effective_ac: int) -> dict:
+    """A rolled-but-unapplied attack as JSONB, for the held action it rides inside.
+
+    ``consumed_conditions`` is the one field JSON loses: it is a tuple, and a list coming back
+    would make the M4.8 single-use +1d4 die look unconsumed. It is emitted as a LIST here so the
+    serialized shape is already JSONB-native and a persisted state round-trips byte-identical
+    (asdict alone leaves a tuple, which json turns into a list only on the way out — so the state
+    written and the state reloaded would differ). ``deserialize_roll`` re-tuples it on the way back.
+    """
+    fields = asdict(attack_result)
+    fields["consumed_conditions"] = list(fields["consumed_conditions"])
+    return {"attack_result": fields, "effective_ac": effective_ac}
+
+
+def deserialize_roll(data: dict) -> tuple:
+    """The read-side inverse of ``serialize_roll`` — ``(AttackResult, effective_ac)``."""
+    fields = dict(data["attack_result"])
+    fields["consumed_conditions"] = tuple(fields.get("consumed_conditions") or ())
+    return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
+
+
+async def apply_attack_result(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
+    attack_result,
+    effective_ac: int,
+    *,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    concentration_break_mod=concentration_break,
+    combat_state=None,
+    conn=None,
+    sink=None,
+) -> dict:
+    """Apply an already-rolled attack: HP, fall/death, events, durability, and the summary.
+
+    Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
+    story-016), so the engine can pause on a post-roll, pre-damage reaction window.
+    """
     # Capture pre-hit Fallen state: the instant-death verdict (below) is scoped to the
     # live -> 0 transition (spec game_mechanics_combat.md L350 + on_hp_zero pseudocode L554:
     # "a single source of damage REDUCES HP to 0"). A hit on a target already at 0 is the

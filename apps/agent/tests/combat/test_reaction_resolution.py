@@ -1,14 +1,13 @@
 """Reaction declaration, activation, and resolution packet contract."""
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 from _combat_end_fixtures import combat_end_mutations
-from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state
+from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _resolve_round
 from sample_fixtures import make_context, make_db_mod
 
 from ability_tools import _request_ability_activation_impl
-from combat_turn import _declare_phase_impl, _resolve_phase_impl
+from combat_turn import _declare_phase_impl
 
 
 def _declarations():
@@ -80,9 +79,7 @@ async def test_activated_reaction_resolves_in_phase_packet():
     await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
     await _activate_reaction(ctx)
 
-    raw = await _resolve_phase_impl(ctx, **_resolve_deps(mutations))
-    assert isinstance(raw, str)
-    result = json.loads(raw)
+    result = await _resolve_round(ctx, **_resolve_deps(mutations))
 
     reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
     assert reaction == {
@@ -99,9 +96,7 @@ async def test_unactivated_reaction_remains_unresolved_in_phase_packet():
     mutations = _mutations()
     await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
 
-    raw = await _resolve_phase_impl(ctx, **_resolve_deps(mutations))
-    assert isinstance(raw, str)
-    result = json.loads(raw)
+    result = await _resolve_round(ctx, **_resolve_deps(mutations))
 
     reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
     assert reaction["resolved"] is False
@@ -118,9 +113,7 @@ async def test_actor_absent_from_the_budget_map_never_resolves_for_free():
     await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
     ctx.userdata.combat_state.reactions_available.clear()
 
-    raw = await _resolve_phase_impl(ctx, **_resolve_deps(mutations))
-    assert isinstance(raw, str)
-    result = json.loads(raw)
+    result = await _resolve_round(ctx, **_resolve_deps(mutations))
 
     reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
     assert reaction["resolved"] is False

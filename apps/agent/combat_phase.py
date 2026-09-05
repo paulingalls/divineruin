@@ -292,6 +292,27 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     ]
 
 
+def partition_packets(
+    state: CombatState, packets: list[ResolutionPacket]
+) -> tuple[list[ResolutionPacket], list[ResolutionPacket]]:
+    """Split an initiative-ordered packet list into ``(allies, enemies)``.
+
+    Beat 2 resolves the ally band; Beat 3 HOLDS the hostile band behind reaction windows
+    (gm_combat:154-187, decision 46). Relative initiative order is preserved within each band, so
+    a Boss still acts before its Minions — what ends is CROSS-band pre-emption, where a
+    higher-initiative enemy dropped the player before their declared swing landed.
+
+    A packet whose actor is unknown goes to the ALLY band: it resolves in commit 1 to the same
+    "actor unavailable" summary as on trunk, rather than being held for a window nobody can open.
+    """
+    allies: list[ResolutionPacket] = []
+    enemies: list[ResolutionPacket] = []
+    for packet in packets:
+        actor = state.get_participant(packet.actor_id)
+        (enemies if actor is not None and not actor.is_ally else allies).append(packet)
+    return allies, enemies
+
+
 def is_terminally_down(p: CombatParticipant) -> bool:
     """A player-life is terminally down when it can no longer act or be saved: instant-death
     (``is_dead``, overkill) OR three failed death saves (``death_save_failures >= _DEATH_SAVE_LIMIT``,

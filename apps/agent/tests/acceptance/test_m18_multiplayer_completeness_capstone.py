@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_mock_room
@@ -120,9 +121,9 @@ async def test_all_players_down_gate_holds_one_down_one_up(reset_db_pool):
             enemy.id: _attack(enemy.action_pool[0]["name"], pc1),  # enemy drops pc1 only
         },
     )
-    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
+    result = await _resolve_round(ctx, resolver=_damage_resolver(3))
 
-    assert isinstance(result, str)  # combat CONTINUES — defeat did not fire on a partial down
+    assert not isinstance(result, tuple)  # combat CONTINUES — defeat did not fire on a partial down
     assert ctx.userdata.combat_state is not None
     parts = {p.id: p for p in ctx.userdata.combat_state.participants}
     assert parts[pc1].is_fallen or parts[pc1].is_dead  # pc1 dropped
@@ -152,8 +153,8 @@ async def test_real_phase_loop_wipe_resurrects_each_member(reset_db_pool):
         ctx,
         {pc1: _DEFEND, pc2: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc1)},
     )
-    r1 = await combat_turn._resolve_phase_impl(ctx, resolver=_lethal_resolver())
-    assert isinstance(r1, str)  # combat continues
+    r1 = await _resolve_round(ctx, resolver=_lethal_resolver())
+    assert not isinstance(r1, tuple)  # combat continues
     assert ctx.userdata.combat_state is not None
 
     # Phase 2: the enemy instant-kills pc2 -> ALL players terminally down -> DEFEAT via the real wrap
@@ -162,7 +163,7 @@ async def test_real_phase_loop_wipe_resurrects_each_member(reset_db_pool):
         ctx,
         {pc2: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc2)},
     )
-    r2 = await combat_turn._resolve_phase_impl(ctx, resolver=_lethal_resolver())
+    r2 = await _resolve_round(ctx, resolver=_lethal_resolver())
 
     assert isinstance(r2, tuple)  # combat ENDED (defeat) through the real phase loop
     assert ctx.userdata.combat_state is None
@@ -206,7 +207,7 @@ async def test_non_primary_concentration_breaks_through_real_flow(reset_db_pool)
             enemy.id: _attack(enemy.action_pool[0]["name"], pc2),
         },
     )
-    await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
+    await _resolve_round(ctx, resolver=_damage_resolver(3))
 
     # Only pc2's concentration broke (it took the breaking hit); pc1's survives — in memory AND DB.
     assert ctx.userdata.member_state(pc2).concentration.spell_id is None

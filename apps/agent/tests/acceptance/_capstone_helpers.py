@@ -14,6 +14,7 @@ import json
 from types import SimpleNamespace
 
 from acceptance.seeds import seed_player
+from combat import _helpers as _combat_helpers
 
 import db_mutations
 import event_types as E
@@ -103,3 +104,10 @@ def _dice_events(room) -> list[dict]:
 
 def _player_attack_events(room) -> list[dict]:
     return [e for e in _dice_events(room) if e.get("roll_type") == "attack" and e.get("attacker") == "Kael"]
+
+
+# The Beat-3 round driver is the SAME loop the fast lane uses (combat/_helpers), imported rather
+# than copied: two copies of a stepping loop over a machine that is still growing stages is exactly
+# the drift the sprint-046 helper extraction removed. `tests` is on pythonpath for both lanes
+# (pyproject), and several capstones already import from combat._helpers.
+_resolve_round = _combat_helpers._resolve_round
