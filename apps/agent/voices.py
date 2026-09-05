@@ -12,6 +12,37 @@ class VoiceConfig:
     inworld_markup: str = ""
 
 
+# The 19 content/role_archetypes.json ids. Duplicated here as a literal because VOICES is
+# built from os.getenv at IMPORT time while the archetype catalog is DB-loaded at STARTUP —
+# there is no import-time path between them. test_voices.py pins this tuple against the
+# catalog so the two cannot drift.
+_ROLE_ARCHETYPE_IDS: tuple[str, ...] = (
+    "merchant_general_goods",
+    "merchant_weapons_armor",
+    "merchant_alchemist",
+    "merchant_jeweler",
+    "merchant_exotic",
+    "merchant_traveling",
+    "merchant_black_market",
+    "blacksmith",
+    "innkeeper",
+    "healer_temple",
+    "scholar_sage",
+    "guard",
+    "soldier_ashmark",
+    "assassin_rogue",
+    "mage",
+    "priest",
+    "fence",
+    "stablemaster",
+    "shipwright",
+)
+
+# Generated townsfolk speak in their ROLE's voice, not a per-NPC one: every guard in a
+# settlement shares ROLE_GUARD. agent.validate_env FAILS STARTUP when one of these is unset,
+# because an empty registered value silently resolves to DM_NARRATOR (get_voice_config below).
+ROLE_VOICE_KEYS: tuple[str, ...] = tuple(f"ROLE_{r.upper()}" for r in _ROLE_ARCHETYPE_IDS)
+
 VOICES: dict[str, str] = {
     "DM_NARRATOR": os.getenv("INWORLD_VOICE_DM", ""),
     "GUILDMASTER_TORIN": os.getenv("INWORLD_VOICE_TORIN", ""),
@@ -48,6 +79,7 @@ VOICES: dict[str, str] = {
     "GOD_NYTHERA": os.getenv("INWORLD_VOICE_GOD_NYTHERA", ""),
     "GOD_ORENTHEL": os.getenv("INWORLD_VOICE_GOD_ORENTHEL", ""),
     "GOD_ZHAEL": os.getenv("INWORLD_VOICE_GOD_ZHAEL", ""),
+    **{k: os.getenv(f"INWORLD_VOICE_{k}", "") for k in ROLE_VOICE_KEYS},
 }
 
 DEFAULT_VOICE = "DM_NARRATOR"

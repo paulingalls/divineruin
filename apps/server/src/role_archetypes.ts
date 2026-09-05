@@ -56,6 +56,16 @@ function parseNumber(raw: unknown, ctx: string): number {
   return raw;
 }
 
+// Shape only (the Python _parse_voice_id twin); the derivation from the row id is pinned by
+// the catalog-conformance test, not the loader — so the field stays real data, not a tautology.
+const VOICE_ID_RE = /^ROLE_[A-Z_]+$/;
+
+function parseVoiceId(raw: unknown, ctx: string): string {
+  const voiceId = parseString(raw, ctx);
+  if (!VOICE_ID_RE.test(voiceId)) throw new Error(`${ctx} ${voiceId} is not a ROLE_<ID> voice key`);
+  return voiceId;
+}
+
 function parsePersonalityTraits(raw: unknown, ctx: string): string[] {
   const traits = parseStringArray(raw, ctx);
   if (traits.length < 8) throw new Error(`${ctx} must contain at least 8 traits`);
@@ -182,6 +192,7 @@ export function parseRoleArchetypeRow(id: string, raw: unknown): RoleArchetype {
   return {
     id,
     name: parseString(data.name, `${ctx}.name`),
+    voice_id: parseVoiceId(data.voice_id, `${ctx}.voice_id`),
     role_type: roleType as RoleArchetype["role_type"],
     default_disposition: disposition as RoleArchetype["default_disposition"],
     personality_traits: parsePersonalityTraits(

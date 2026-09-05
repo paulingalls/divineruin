@@ -1,12 +1,19 @@
+import json
+from pathlib import Path
+
 from voices import (
     EMOTION_RATES,
     EMOTIONS,
     INWORLD_MARKUPS,
+    ROLE_VOICE_KEYS,
     VOICE_RATE_OFFSETS,
+    VOICES,
     VoiceConfig,
     apply_markup,
     get_voice_config,
 )
+
+_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_default_narrator():
@@ -93,3 +100,19 @@ def test_apply_markup_prepends_tag():
 
 def test_apply_markup_empty_passthrough():
     assert apply_markup("Hello world", "") == "Hello world"
+
+
+# --- Per-role townsfolk voices (story-014) ---
+
+
+def test_role_voice_keys_mirror_the_archetype_catalog():
+    """voices.py's literal role-id tuple cannot drift from content/role_archetypes.json.
+
+    VOICES is built from os.getenv at IMPORT time; the archetype catalog is DB-loaded at
+    STARTUP, so there is no import-time path between them and the ids are duplicated. Keys
+    only, never values: the fast lane's env differs between CI (all empty) and a dev
+    checkout (.env auto-loaded through bun run).
+    """
+    raw = json.loads((_ROOT / "content" / "role_archetypes.json").read_text())
+    assert set(ROLE_VOICE_KEYS) == {f"ROLE_{e['id'].upper()}" for e in raw}
+    assert set(ROLE_VOICE_KEYS) <= set(VOICES)

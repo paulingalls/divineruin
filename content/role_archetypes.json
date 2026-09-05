@@ -2,6 +2,7 @@
   {
     "id": "merchant_general_goods",
     "name": "General Goods Merchant",
+    "voice_id": "ROLE_MERCHANT_GENERAL_GOODS",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["practical", "neighborly", "shrewd", "patient", "talkative", "organized", "cautious", "helpful"],
@@ -27,6 +28,7 @@
   {
     "id": "merchant_weapons_armor",
     "name": "Weapons & Armor Merchant",
+    "voice_id": "ROLE_MERCHANT_WEAPONS_ARMOR",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["appraising", "blunt", "disciplined", "proud", "competitive", "meticulous", "skeptical", "steadfast"],
@@ -64,6 +66,7 @@
   {
     "id": "merchant_alchemist",
     "name": "Alchemist",
+    "voice_id": "ROLE_MERCHANT_ALCHEMIST",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["curious", "precise", "absent-minded", "secretive", "experimental", "fastidious", "intense", "wry"],
@@ -97,6 +100,7 @@
   {
     "id": "merchant_jeweler",
     "name": "Jeweler",
+    "voice_id": "ROLE_MERCHANT_JEWELER",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["elegant", "discerning", "perfectionist", "reserved", "charming", "calculating", "artistic", "observant"],
@@ -123,6 +127,7 @@
   {
     "id": "merchant_exotic",
     "name": "Exotic Goods Merchant",
+    "voice_id": "ROLE_MERCHANT_EXOTIC",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["worldly", "theatrical", "enigmatic", "adventurous", "persuasive", "discreet", "inquisitive", "bold"],
@@ -154,6 +159,7 @@
   {
     "id": "merchant_traveling",
     "name": "Traveling Merchant",
+    "voice_id": "ROLE_MERCHANT_TRAVELING",
     "role_type": "civilian",
     "default_disposition": "friendly",
     "personality_traits": ["gregarious", "restless", "resourceful", "optimistic", "storytelling", "adaptable", "generous", "weathered"],
@@ -185,6 +191,7 @@
   {
     "id": "merchant_black_market",
     "name": "Black Market Dealer",
+    "voice_id": "ROLE_MERCHANT_BLACK_MARKET",
     "role_type": "civilian",
     "default_disposition": "unfriendly",
     "personality_traits": ["guarded", "cunning", "ruthless", "paranoid", "smooth", "opportunistic", "patient", "unsentimental"],
@@ -217,6 +224,7 @@
   {
     "id": "blacksmith",
     "name": "Blacksmith",
+    "voice_id": "ROLE_BLACKSMITH",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["hardworking", "plainspoken", "proud", "patient", "demanding", "dependable", "taciturn", "protective"],
@@ -281,6 +289,7 @@
   {
     "id": "innkeeper",
     "name": "Innkeeper",
+    "voice_id": "ROLE_INNKEEPER",
     "role_type": "civilian",
     "default_disposition": "friendly",
     "personality_traits": ["welcoming", "gossipy", "perceptive", "even-tempered", "protective", "witty", "busy", "diplomatic"],
@@ -318,6 +327,7 @@
   {
     "id": "healer_temple",
     "name": "Healer / Temple Attendant",
+    "voice_id": "ROLE_HEALER_TEMPLE",
     "role_type": "civilian",
     "default_disposition": "friendly",
     "personality_traits": ["compassionate", "calm", "tireless", "gentle", "solemn", "reassuring", "pragmatic", "devoted"],
@@ -405,6 +415,7 @@
   {
     "id": "scholar_sage",
     "name": "Scholar / Sage",
+    "voice_id": "ROLE_SCHOLAR_SAGE",
     "role_type": "civilian",
     "default_disposition": "neutral",
     "personality_traits": ["bookish", "analytical", "distracted", "skeptical", "patient", "pedantic", "curious", "reserved"],
@@ -466,6 +477,7 @@
   {
     "id": "guard",
     "name": "Guard",
+    "voice_id": "ROLE_GUARD",
     "role_type": "military",
     "default_disposition": "neutral",
     "personality_traits": ["alert", "dutiful", "stern", "patient", "suspicious", "direct", "protective", "disciplined"],
@@ -539,6 +551,7 @@
   {
     "id": "soldier_ashmark",
     "name": "Ashmark Soldier",
+    "voice_id": "ROLE_SOLDIER_ASHMARK",
     "role_type": "military",
     "default_disposition": "neutral",
     "personality_traits": ["disciplined", "loyal", "battle-weary", "brave", "formal", "vigilant", "stoic", "commanding"],
@@ -627,6 +640,7 @@
   {
     "id": "assassin_rogue",
     "name": "Assassin / Rogue",
+    "voice_id": "ROLE_ASSASSIN_ROGUE",
     "role_type": "military",
     "default_disposition": "unfriendly",
     "personality_traits": ["silent", "watchful", "calculating", "elusive", "patient", "cold", "precise", "sardonic"],
@@ -681,6 +695,7 @@
   {
     "id": "mage",
     "name": "Mage",
+    "voice_id": "ROLE_MAGE",
     "role_type": "military",
     "default_disposition": "neutral",
     "personality_traits": ["intellectual", "eccentric", "ambitious", "aloof", "curious", "methodical", "intense", "secretive"],
@@ -766,6 +781,7 @@
   {
     "id": "priest",
     "name": "Priest",
+    "voice_id": "ROLE_PRIEST",
     "role_type": "military",
     "default_disposition": "friendly",
     "personality_traits": ["devout", "patient", "earnest", "merciful", "authoritative", "reflective", "hopeful", "unyielding"],
@@ -835,6 +851,7 @@
   {
     "id": "fence",
     "name": "Fence / Black Market Contact",
+    "voice_id": "ROLE_FENCE",
     "role_type": "specialist",
     "default_disposition": "unfriendly",
     "personality_traits": ["discreet", "wary", "quick-witted", "pragmatic", "greedy", "connected", "unflappable", "suspicious"],
@@ -889,6 +906,7 @@
   {
     "id": "stablemaster",
     "name": "Stablemaster / Animal Handler",
+    "voice_id": "ROLE_STABLEMASTER",
     "role_type": "specialist",
     "default_disposition": "neutral",
     "personality_traits": ["patient", "earthy", "blunt", "kind", "observant", "reliable", "weatherwise", "independent"],
@@ -919,6 +937,7 @@
   {
     "id": "shipwright",
     "name": "Shipwright / Boatman",
+    "voice_id": "ROLE_SHIPWRIGHT",
     "role_type": "specialist",
     "default_disposition": "neutral",
     "personality_traits": ["methodical", "weathered", "exacting", "inventive", "superstitious", "patient", "forthright", "proud"],

@@ -101,6 +101,17 @@ describe("role_archetypes.json — row shape", () => {
     }
   });
 
+  // story-014: the VOICES key the DM tags a generated townsfolk's dialogue with. Derived
+  // from the row id, so a typo the loaders' shape check accepts still reds here.
+  test("every row carries its derived ROLE_<ID> voice_id, all distinct", () => {
+    for (const a of catalog) {
+      expect(typeof a.voice_id).toBe("string");
+      expect(a.voice_id).toMatch(/^ROLE_[A-Z_]+$/);
+      expect(a.voice_id).toBe(`ROLE_${a.id.toUpperCase()}`);
+    }
+    expect(new Set(catalog.map((a) => a.voice_id)).size).toBe(catalog.length);
+  });
+
   test("services carry a numeric-or-range cost with a sp/gp unit", () => {
     for (const a of catalog) {
       for (const s of a.services) {
