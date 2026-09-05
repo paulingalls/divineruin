@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
+import { useStore } from "zustand";
 
+import { errandBusyLabel, errandDestinationPrompt } from "@/components/activity-launcher-strings";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
+import { portraitStore } from "@/stores/portrait-store";
 import { API_BASE, authHeaders } from "@/utils/api";
 import type { MaterialRequirement, TemplateItem, TemplateGroup } from "@divineruin/shared";
 
@@ -36,6 +39,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   const [error, setError] = useState<{ itemId: string; message: string } | null>(null);
   const [errandPicker, setErrandPicker] = useState<ErrandPickerState | null>(null);
   const [pickerSelection, setPickerSelection] = useState<string | null>(null);
+  const companionName = useStore(portraitStore, (s) => s.companionName);
   const mountedRef = useRef(true);
 
   const fetchTemplates = useCallback(async () => {
@@ -147,7 +151,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                   <View style={styles.groupBusyBanner}>
                     <ThemedText style={styles.groupBusyText}>
                       {group.type === "companion_errand"
-                        ? `Kael is on a ${activeItem.name}`
+                        ? errandBusyLabel(companionName, activeItem.name)
                         : `Currently training: ${activeItem.name}`}
                     </ThemedText>
                     <View style={styles.activeStatus}>
@@ -251,7 +255,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
             <ThemedText variant="h2" style={styles.modalTitle}>
               {errandPicker?.item.name ?? "Choose Destination"}
             </ThemedText>
-            <ThemedText style={styles.modalSubtitle}>Where should Kael go?</ThemedText>
+            <ThemedText style={styles.modalSubtitle}>
+              {errandDestinationPrompt(companionName)}
+            </ThemedText>
 
             <View style={styles.destList}>
               {errandPicker?.destinations.map((dest) => (
