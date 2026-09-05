@@ -165,3 +165,54 @@ def settlement_workspace_availability(size: SettlementSize, workspace_type: Work
     if workspace_type is WorkspaceType.FIELD:
         return Availability.ALWAYS
     return _SETTLEMENT_AVAILABILITY[size][workspace_type]
+
+
+# The rentable offers, defined after the availability matrix because the bundle's
+# location rule reads it. COMBINED_FORGE_LAB_TOKEN is the string the DM asks for
+# (begin_activity(kind="workspace", workspace_type=...)); _validate_id rejects a "+".
+COMBINED_FORGE_LAB_TOKEN = "forge_laboratory"
+
+
+@dataclass(frozen=True)
+class RentalOffer:
+    """A rentable offer: the token the DM asks for, its sp/day, and what it grants.
+
+    The bundle grants two workspaces and therefore persists as two workspace_rentals
+    rows — its token is never a stored workspace_type, because the TS twin
+    (apps/server/src/workspace.ts parseWorkspaceType) rejects anything outside the
+    four-member enum and would hard-fail every later crafting gate for that player.
+    """
+
+    token: str
+    base_price_sp: int
+    grants: tuple[WorkspaceType, ...]
+
+
+RENTAL_OFFERS: tuple[RentalOffer, ...] = (
+    *(RentalOffer(w.value, price, (w,)) for w, price in RENTAL_BASE_PRICE_SP.items()),
+    RentalOffer(
+        COMBINED_FORGE_LAB_TOKEN,
+        COMBINED_FORGE_LAB_RENTAL_SP,
+        (WorkspaceType.FORGE, WorkspaceType.LABORATORY),
+    ),
+)
+
+_OFFERS_BY_TOKEN: dict[str, RentalOffer] = {offer.token: offer for offer in RENTAL_OFFERS}
+
+
+def resolve_rental_offer(token: str) -> RentalOffer:
+    """The RentalOffer for a requested token, or ValueError (Field is free, never rented)."""
+    offer = _OFFERS_BY_TOKEN.get(token)
+    if offer is None:
+        raise ValueError(f"unknown workspace rental {token!r}")
+    return offer
+
+
+def bundle_missing_workspaces(size: SettlementSize) -> tuple[WorkspaceType, ...]:
+    """Which Forge+Laboratory bundle members a `size` settlement cannot host, in offer order.
+
+    Spec: the bundle is offered by a "City with both (or Keldaran hold)". Derived from the
+    availability matrix rather than a second copy of that sentence — requiring both members
+    at SOMETIMES-or-better admits exactly city and keldaran_hold."""
+    bundle = _OFFERS_BY_TOKEN[COMBINED_FORGE_LAB_TOKEN]
+    return tuple(w for w in bundle.grants if settlement_workspace_availability(size, w) < Availability.SOMETIMES)
