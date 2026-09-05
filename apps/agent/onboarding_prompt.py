@@ -2,13 +2,15 @@
 
 Beats 3 and 4 are the two beats that stage the player's companion, so they are the two that
 cannot be a module constant: the assigned companion is a pure function of the player's
-archetype, and thirteen of the eighteen archetypes are not Kael's.
+archetype, and most archetypes do not draw the same companion.
 
-The span rendered here is SCAFFOLDING, not prose. It states the facts of the scene and hands
-the DM the companion's own content fields (appearance, speech style, voice tag) to voice them
-with. The four authored vignettes — a hesitating ex-caravan-guard for Kael, a scholar for
-Lira, a rogue for Tam, and a wordless introduction for Sable, who cannot self-introduce at
-all — belong to story-020 (human decision 2026-09-04).
+NOTHING IN THIS MODULE NAMES A COMPANION, and that is enforced, not merely observed:
+test_no_companion_literal walks this file's text and test_onboarding_agent walks its
+module-level strings. What stays here is SCAFFOLDING — the beat headings the DM sequences on,
+the completion conditions, the advance_onboarding_beat calls, and the non-verbal branch. The
+authored scene is the row's own `onboarding_meeting` / `onboarding_suggestion`, interpolated.
+A markdown heading is structure, not prose, so it stays here rather than migrating into a
+content field.
 
 The prompt string forks by companion, and that fork is accepted unmeasured: no cache number
 was taken at plan review, and no AC rests on one. What is known from the code: the agent
@@ -75,9 +77,11 @@ first lines short.
 - The player has just been created — don't reference past adventures.
 """
 
-# The commotion that brings player and companion together — invariant across all four.
-_BEAT_3_SETUP = """\
-### Beat 3 — Companion Meeting
+_BEAT_3_HEADING = "### Beat 3 — Companion Meeting"
+
+# The fallback commotion, used only when no companion is resolved and there is no row to read.
+_BEAT_3_SETUP = f"""\
+{_BEAT_3_HEADING}
 A commotion erupts near a market stall. A vendor is being hassled by rough \
 dockworkers — intimidation, not violence, but escalating. Let the player decide \
 what to do."""
@@ -130,15 +134,16 @@ learns the name another way."""
         voice = f"""{c.name} introduces themselves afterward, briefly, using the \
 tag [{c.voice_id}, <emotion>]: "line". Speech style: {c.speech_style}"""
 
-    return f"""{_BEAT_3_SETUP} {c.name} is nearby, hesitating — {appearance}. \
-Do NOT name {c.name} yet. If the player approaches or speaks up, {c.name} joins \
-them and together they defuse the situation.
+    return f"""{_BEAT_3_HEADING}
+{c.onboarding_meeting}
+The one in that scene is {c.name} — {appearance}. Do NOT hand the player \
+the name yet; the scene reveals it.
 {voice}
 **Complete when:** {c.name} has been introduced to the player. Call \
 advance_onboarding_beat (this initializes the companion).
 
 ### Beat 4 — The Companion's Suggestion
-{c.name} {_BEAT_4_HOOK}
+{c.onboarding_suggestion}
 **Complete when:** Player indicates a direction or asks {c.name} to lead. Call \
 advance_onboarding_beat."""
 
