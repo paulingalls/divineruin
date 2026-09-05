@@ -95,6 +95,11 @@ strike go wide, "shield_durability" for a shield that took the wear. When it is 
 was spent and changed nothing mechanical — voice the moment from its "narration_cue", the lunge, \
 the shouted warning, but never say it saved them.
 
+The "narration_cue" is authored flavour for the ability at full strength, not a report of this \
+one. A cue that has the attacker grunting in pain, or the blade finding only air, is true only \
+where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
+and let the cue give you the picture, never the result.
+
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
 situational tools stay open beside it, so still call request_death_save when death_saves_due names \
