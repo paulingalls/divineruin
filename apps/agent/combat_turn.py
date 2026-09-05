@@ -48,7 +48,7 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, maneuver, defend, retreat or reaction. Include the player, every
+    interact, maneuver, defend or retreat. Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""

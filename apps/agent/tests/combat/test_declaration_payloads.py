@@ -8,10 +8,13 @@ than only compared to a literal: a variant that satisfies the schema but not the
 would otherwise pass here and ValueError on the DM's first call.
 """
 
+import json
 import typing
 
 import pytest
+from livekit.agents.llm import ToolContext
 
+import combat_turn
 from declaration_payloads import (
     DECL_VARIANTS,
     AbilityDecl,
@@ -19,7 +22,6 @@ from declaration_payloads import (
     DefendDecl,
     InteractDecl,
     ManeuverDecl,
-    ReactionDecl,
     RetreatDecl,
     to_engine_declarations,
 )
@@ -99,13 +101,6 @@ def test_interact_maneuver_defend_and_retreat_map_to_their_engine_shapes():
     }
 
 
-def test_reaction_maps_to_the_engine_reaction_shape():
-    engine = to_engine_declarations(
-        [ReactionDecl(kind="reaction", actor_id="player_1", action="shield_reaction", trigger="on_hit")]
-    )
-    assert engine["player_1"] == {"type": "reaction", "action": "shield_reaction", "trigger": "on_hit"}
-
-
 def test_a_repeated_actor_fails_loud():
     """The old dict shape made a second declaration for one actor unrepresentable. A list
     does not — and a last-wins collapse would silently drop a combatant's whole round."""
@@ -137,16 +132,43 @@ _ENGINE_CASES = [
 
 @pytest.mark.parametrize("payload", _ENGINE_CASES)
 def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
-    """Six of seven: REACTION is excluded because resolve_declaration checks its action
-    against the loaded ability catalog, which is IO-shaped setup this pure test has not
-    got — tests/combat/test_reaction_resolution.py owns that path."""
     raw = to_engine_declarations([payload])["a"]
     assert resolve_declaration(raw).type.value == raw["type"]
 
 
-def test_every_variant_but_reaction_has_an_engine_case():
-    assert len(_ENGINE_CASES) == len(DECL_VARIANTS) - 1
-    assert ReactionDecl not in {type(p) for p in _ENGINE_CASES}
+def test_every_variant_has_an_engine_case():
+    """All six, with no exception carved out. REACTION was the seventh and was excluded here
+    because its classifier reads the ability catalog; story-017 deleted it, so a variant that
+    slips past the engine classifier can no longer hide behind that carve-out."""
+    assert len(_ENGINE_CASES) == len(DECL_VARIANTS)
+
+
+def test_declare_phase_offers_no_reaction_kind():
+    """AC2, against the EMITTED schema rather than the class list — the DM obeys what the plugin
+    compiles, not what this module declares. A reaction is an interrupt now (story-017): a
+    `kind: "reaction"` the DM could still send would be a packet that never activates and burns
+    the actor's whole phase action."""
+    parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)
+    schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
+
+    kinds = {const for const in _kind_consts(schema)}
+    assert kinds == {t.value for t in DeclarationType}
+    assert "reaction" not in kinds
+    assert "trigger" not in json.dumps(schema)
+
+
+def _kind_consts(node) -> set[str]:
+    """Every literal the emitted schema will accept for a declaration's `kind` discriminator."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "kind" and isinstance(value, dict):
+                found |= set(value.get("enum") or ([value["const"]] if "const" in value else []))
+            found |= _kind_consts(value)
+    elif isinstance(node, list):
+        for item in node:
+            found |= _kind_consts(item)
+    return found
 
 
 @pytest.mark.parametrize("variant", DECL_VARIANTS)

@@ -212,7 +212,8 @@ async def check(context, roll: SkillCheck | SocialCheck | DiscoverCheck | SaveCh
 Training | CompanionErrand | Crafting | WorkspaceRental | Experiment   # each with only its required fields
 
 # declare_phase — a mapping of free-form dicts → a list of typed declarations
-declarations: list[AttackDecl | AbilityDecl | DefendDecl | ReactionDecl | ...]   # each carries actor_id
+declarations: list[AttackDecl | AbilityDecl | DefendDecl | ManeuverDecl | ...]   # each carries actor_id
+# (ReactionDecl was a seventh variant until story-017 made a reaction an interrupt, not a declaration)
 # (probed live in exactly this shape and accepted)
 
 # activate

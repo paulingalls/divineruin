@@ -218,32 +218,6 @@ class TestValidateReactionActivation:
             validate_reaction_activation(state, "player_1", self.accepts)
 
 
-class TestDeclaredReactionWindow:
-    """A reaction's window is catalog-only -- nothing surfaces it to the DM, so its declared
-    trigger is a guess. Beat 1 is the only beat at which a wrong guess is still re-declarable."""
-
-    def _declaration(self, trigger):
-        return {
-            "player_1": {"type": "reaction", "action": "warrior_opportunity_strike", "trigger": trigger},
-            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
-        }
-
-    def test_declaration_beat_rejects_a_trigger_the_catalog_window_contradicts(self):
-        state = _make_combat_state()
-        state.beat = PhaseBeat.DECLARATION
-
-        with pytest.raises(ValueError, match=r"does not match.*on_enemy_move"):
-            advance_combat_phase(state, self._declaration("on_hit"))
-
-    def test_declaration_beat_accepts_the_matching_trigger(self):
-        state = _make_combat_state()
-        state.beat = PhaseBeat.DECLARATION
-
-        next_state, _ = advance_combat_phase(state, self._declaration("on_enemy_move"))
-
-        assert next_state.pending_declarations["player_1"]["trigger"] == "on_enemy_move"
-
-
 class TestPurityAndDeterminism:
     def test_does_not_mutate_input_state(self):
         state = _make_combat_state()

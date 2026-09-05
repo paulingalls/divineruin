@@ -84,16 +84,7 @@ class RetreatDecl(BaseModel):
     actor_id: str = Field(description="The participant declaring this action.")
 
 
-class ReactionDecl(BaseModel):
-    """Arm a reaction ability so it can fire during this round's resolution."""
-
-    kind: Literal["reaction"]
-    actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description="The EXACT id of the actor's reaction ability.")
-    trigger: str = Field(description='The ability\'s catalog window, e.g. "on_hit".')
-
-
-DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, DefendDecl, RetreatDecl, ReactionDecl]
+DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, DefendDecl, RetreatDecl]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
 DECL_VARIANTS: tuple[type[BaseModel], ...] = (
@@ -103,7 +94,6 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     ManeuverDecl,
     DefendDecl,
     RetreatDecl,
-    ReactionDecl,
 )
 
 
@@ -130,9 +120,7 @@ def _raw(decl: DeclVariant) -> dict:
         return {"type": "maneuver", "target_id": decl.target_id}
     if isinstance(decl, DefendDecl):
         return {"type": "defend"}
-    if isinstance(decl, RetreatDecl):
-        return {"type": "retreat"}
-    return {"type": "reaction", "action": decl.action, "trigger": decl.trigger}
+    return {"type": "retreat"}
 
 
 def to_engine_declarations(declarations: list[DeclVariant]) -> dict[str, dict]:

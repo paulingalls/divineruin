@@ -199,20 +199,44 @@ class TestCombatBeatContract:
         assert "ordinary spell or ability" in prompt
         assert "never a free cast via activate" in prompt
 
-    def test_reaction_declaration_has_catalog_trigger_shape(self):
+    def test_declare_phase_offers_no_reaction_kind_to_the_dm(self):
+        """AC2's prompt half. The schema stopped accepting `kind: "reaction"` (story-017), so a
+        prompt that still taught it would have the DM spend a tool call on a rejected payload
+        every round — and, worse, believe the reaction was armed."""
         prompt = COMBAT_SYSTEM_PROMPT
-        assert "Four kinds resolve in combat today" in prompt
-        assert "reaction — action is the EXACT id of the player's reaction ability" in prompt
-        assert 'trigger is its catalog window, such as "on_hit"' in prompt
+        low = prompt.lower()
+        assert "Three kinds resolve in combat today" in prompt
+        assert "four kinds resolve in combat today" not in low
+        assert "reaction — action is the EXACT id" not in prompt
+        assert "trigger is its catalog window" not in low
+        assert "declare the reaction during beat 1" not in low
 
-    def test_a_declared_reaction_waits_for_its_window_in_beat_3(self):
-        """The declaration still happens at Beat 1, but the WINDOW it waits for is now a held enemy
-        blow at Beat 3 — not a Beat-2 activation before resolve_phase. story-017 rebinds the
-        activation call itself; this pins that the prompt no longer sends the DM to the old spot."""
+    def test_the_dm_activates_a_reaction_at_an_open_window(self):
+        """AC8: the interrupt teaching, at the ONE place the DM meets it — the Beat-3 pause.
+
+        The window is the permission now, and `next.waiting_on.triggers` is the only thing that
+        says which reaction fits. A prompt that named `activate` without naming `triggers` would
+        send the DM back to guessing among nine windows (constraint 6), which is the defect
+        sprint-045 shipped twice."""
         low = COMBAT_SYSTEM_PROMPT.lower()
-        declaration = low.index("declare the reaction during beat 1")
-        assert "matching window opens against a held enemy blow in beat 3" in low[declaration : declaration + 260]
-        assert "activate that exact reaction ability id" not in low
+        pause = low.index("the pause is the mechanic")
+        teaching = low[pause : pause + 900]
+        assert "activate" in teaching
+        assert "next.waiting_on.triggers" in teaching
+        assert "one reaction per round" in teaching
+        assert "no pre-declaration" in teaching
+
+    def test_the_prompt_advertises_no_variant_ids_in_combat(self):
+        """note 9724fb7c(a): a variant id in declare_phase's ability path raises "Unknown spell",
+        so advising the DM to learn "active variant ids" in combat produces a tool error and a
+        lost round. Uncovered until story-017 — nothing asserted on that line."""
+        assert "variant id" not in COMBAT_SYSTEM_PROMPT.lower()
+
+    def test_no_reaction_packet_narration_advice_survives(self):
+        """The Beat-3 narration line described combat_packet's REACTION branch, which is deleted:
+        no packet reports a `declaration_type` of "reaction" any more, so the advice describes a
+        packet the DM will never see."""
+        assert "narrate a reaction packet as successful" not in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_combat_only_capabilities_still_use_activate(self):
         # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
