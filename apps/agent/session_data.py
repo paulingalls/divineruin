@@ -183,6 +183,17 @@ class CombatState:
     # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
     # rounds_remaining at the WRAP beat, beside tick_conditions.
     veil_ward: dict | None = None
+    # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
+    # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
+    # finds the enemy's turn still pending rather than silently deleted. Each entry:
+    #   {"seq": int, "actor_id": str, "declaration": <raw decl dict>, "initiative": int,
+    #    "roll": <serialize_roll shape> | None}
+    # JSONB-native (plain dicts, like veil_ward) so it round-trips with no nested rebuild.
+    held_actions: list[dict] = field(default_factory=list)
+    # The reaction window the machine is PAUSED on, or None. Surfaced to the DM verbatim in
+    # resolve_phase's `next.waiting_on` — the DM never guesses a window id (constraint 6).
+    # See reaction_windows.open_window_for for the shape.
+    open_window: dict | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -218,6 +229,10 @@ class CombatState:
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
             # Plain dict (or None) — no rebuild. Absent on rows written before story-004.
             veil_ward=data.get("veil_ward"),
+            # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
+            # with no held actions and no open window: a legacy combat is simply not mid-pause.
+            held_actions=data.get("held_actions", []),
+            open_window=data.get("open_window"),
         )
 
 

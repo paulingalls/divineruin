@@ -237,9 +237,14 @@ def serialize_roll(attack_result, effective_ac: int) -> dict:
     """A rolled-but-unapplied attack as JSONB, for the held action it rides inside.
 
     ``consumed_conditions`` is the one field JSON loses: it is a tuple, and a list coming back
-    would make the M4.8 single-use +1d4 die look unconsumed. ``deserialize_roll`` re-tuples it.
+    would make the M4.8 single-use +1d4 die look unconsumed. It is emitted as a LIST here so the
+    serialized shape is already JSONB-native and a persisted state round-trips byte-identical
+    (asdict alone leaves a tuple, which json turns into a list only on the way out — so the state
+    written and the state reloaded would differ). ``deserialize_roll`` re-tuples it on the way back.
     """
-    return {"attack_result": asdict(attack_result), "effective_ac": effective_ac}
+    fields = asdict(attack_result)
+    fields["consumed_conditions"] = list(fields["consumed_conditions"])
+    return {"attack_result": fields, "effective_ac": effective_ac}
 
 
 def deserialize_roll(data: dict) -> tuple:
