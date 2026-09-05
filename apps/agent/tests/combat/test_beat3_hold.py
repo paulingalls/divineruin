@@ -209,7 +209,9 @@ class TestTheNoReactionGate:
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.reactions_available = {
-            "player_1": reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-pre_roll"}, held_seq=0)
+            "player_1": reaction_spend.spend(
+                "rogue_uncanny_dodge", {"id": "r1-0-pre_roll", "stage": "pre_roll"}, held_seq=0
+            )
         }
         assert cs.reactions_available["player_1"], "the record must be truthy for this to bite"
         deps = _resolve_deps()
@@ -236,7 +238,9 @@ class TestTheNoReactionGate:
         # player_1 is down carrying a stale unspent record; player_2 stands but has already spent.
         cs.reactions_available = {
             "player_1": reaction_spend.unspent(),
-            "player_2": reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-pre_roll"}, held_seq=0),
+            "player_2": reaction_spend.spend(
+                "rogue_uncanny_dodge", {"id": "r1-0-pre_roll", "stage": "pre_roll"}, held_seq=0
+            ),
         }
         cs.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
         deps = _resolve_deps()

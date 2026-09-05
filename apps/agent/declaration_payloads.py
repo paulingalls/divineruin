@@ -120,7 +120,12 @@ def _raw(decl: DeclVariant) -> dict:
         return {"type": "maneuver", "target_id": decl.target_id}
     if isinstance(decl, DefendDecl):
         return {"type": "defend"}
-    return {"type": "retreat"}
+    if isinstance(decl, RetreatDecl):
+        return {"type": "retreat"}
+    # Not a fallthrough: an unmapped variant that inherited the last branch would reach the engine
+    # as some OTHER actor's action, and the round-trip test would pass because both sides read the
+    # same wrong type. A new variant fails here instead.
+    raise ValueError(f"no engine mapping for declaration variant {type(decl).__name__}")
 
 
 def to_engine_declarations(declarations: list[DeclVariant]) -> dict[str, dict]:

@@ -32,12 +32,16 @@ def spend(ability_id: str, window: dict, *, held_seq: int) -> dict:
 
     ``held_seq`` + ``stage`` are what story-018 matches a held action on — the window id alone
     would force it to parse the id, and the ability id alone would not say which blow.
+
+    Every key is read with ``[]``, never ``.get``: a window missing ``stage`` would record
+    ``stage: None``, which is indistinguishable from the "spent, no binding" an upgraded legacy
+    bool carries — so 018 would silently apply no modifier to a reaction that WAS bound.
     """
     return {
         "spent": True,
         "ability_id": ability_id,
         "window_id": window["id"],
-        "stage": window.get("stage"),
+        "stage": window["stage"],
         "held_seq": held_seq,
     }
 
@@ -83,3 +87,29 @@ def normalize(raw: dict) -> dict:
             ", ".join(sorted(legacy)),
         )
     return upgraded
+
+
+def drop_pre_declared_reactions(raw: dict) -> dict:
+    """The OTHER half of the story-017 row upgrade: forget a Beat-1 REACTION declaration.
+
+    Until this story a reaction WAS a declaration, so a ``combat_instances`` row persisted
+    mid-phase carries ``{"type": "reaction", ...}`` in ``pending_declarations`` — on the same row
+    ``normalize`` upgrades. ``declarations.resolve_declaration`` no longer knows that type, so
+    ``advance_combat_phase`` raises "unknown declaration type" on every resolve_phase and the
+    round becomes unresolvable: declare_phase refuses off the declaration beat, so only
+    end_combat escapes.
+
+    Dropped rather than raised, for the reason ``normalize`` upgrades rather than raises: a
+    pre-declaration never resolved to a mechanical outcome (its packet was a no-op either way),
+    so forgetting it loses nothing committed, while failing loud kills a live fight on deploy.
+    """
+    kept = {actor_id: decl for actor_id, decl in raw.items() if decl.get("type") != "reaction"}
+    dropped = sorted(raw.keys() - kept.keys())
+    if dropped:
+        logger.info(
+            "dropped %d pre-story-017 REACTION declaration(s) (%s); a reaction is an interrupt "
+            "against an open Beat-3 window now, so it is no longer a declaration",
+            len(dropped),
+            ", ".join(dropped),
+        )
+    return kept

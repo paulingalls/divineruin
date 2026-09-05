@@ -49,8 +49,9 @@ All Phase 0, and all re-verified as genuinely open. Small and unrelated.
 
 **The reaction deferral is discharged.** It was homeless — `ability_tools.py:14` and
 `02_archetypes.md:38` both deferred reactions to "Phase 4 territory" and Phase 4 closed
-without them — until sprint-045 landed the REACTION declaration and its window gate, and
-sprint-046 story-007 surfaced the windows the DM has to say.
+without them — until sprint-045 landed the reaction gate, sprint-046 story-007 surfaced the
+windows the DM has to say, and sprint-048 stories 016/017 made a reaction an INTERRUPT against an
+open Beat-3 window (the REACTION declaration sprint-045 shipped is deleted).
 
 ---
 

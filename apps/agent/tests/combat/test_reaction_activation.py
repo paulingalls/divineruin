@@ -16,6 +16,7 @@ import pytest
 from combat._helpers import _resolution_state, _resolve_deps
 from sample_fixtures import make_context, make_db_mod
 
+import combat_hold
 import combat_phase
 import combat_turn
 import reaction_spend
@@ -142,3 +143,36 @@ class TestTheInterruptLoop:
 
         assert r1["next"]["waiting_on"] is not None
         assert r1["next"]["verbs"] == ["resolve_phase"]
+
+
+class TestTheSpendBindsToThePausedBlow:
+    """`record_spend` is the one write story-018 reads, and it had no direct test: the loop above
+    only ever reaches it in the one state where it is already correct."""
+
+    @pytest.mark.asyncio
+    async def test_a_spend_off_a_pause_is_refused(self):
+        """The engine's own invariant, not the DM's: with no window and no queue there is no blow
+        to bind to, and a record written anyway would name a held action that never existed."""
+        ctx = _ctx_at_resolution()
+        deps = _resolve_deps()
+        await _call(ctx, deps)
+        cs = ctx.userdata.combat_state
+        cs.open_window = None
+
+        with pytest.raises(ValueError, match="not paused on a held action"):
+            combat_hold.record_spend(cs, "player_1", PRE_ROLL_REACTION)
+
+    @pytest.mark.asyncio
+    async def test_a_window_that_answers_another_blow_is_refused(self):
+        """The binding is to the QUEUE HEAD, and that is checked rather than assumed — a window
+        naming a different actor means the pump popped past the blow this spend answers, and
+        story-018 would halve the damage of the wrong one."""
+        ctx = _ctx_at_resolution()
+        deps = _resolve_deps()
+        await _call(ctx, deps)
+        await _call(ctx, deps)
+        cs = ctx.userdata.combat_state
+        cs.open_window = {**cs.open_window, "actor_id": "goblin_scout_2"}
+
+        with pytest.raises(ValueError, match="queue head"):
+            combat_hold.record_spend(cs, "player_1", PRE_ROLL_REACTION)

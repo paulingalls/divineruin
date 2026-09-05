@@ -151,7 +151,7 @@ def test_declare_phase_offers_no_reaction_kind():
     parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
-    kinds = {const for const in _kind_consts(schema)}
+    kinds = _kind_consts(schema)
     assert kinds == {t.value for t in DeclarationType}
     assert "reaction" not in kinds
     assert "trigger" not in json.dumps(schema)

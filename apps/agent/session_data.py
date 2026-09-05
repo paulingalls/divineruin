@@ -224,7 +224,9 @@ class CombatState:
             location_id=data.get("location_id", ""),
             faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
-            pending_declarations=data.get("pending_declarations", {}),
+            # A row written before story-017 can carry a REACTION pre-declaration, whose type
+            # resolve_declaration no longer knows (see reaction_spend.drop_pre_declared_reactions).
+            pending_declarations=reaction_spend.drop_pre_declared_reactions(data.get("pending_declarations", {})),
             # Normalized, not passed through: rows written before story-017 carry dict[str, bool]
             # on the field story-018 reads for the reaction binding (see reaction_spend.normalize).
             reactions_available=reaction_spend.normalize(data.get("reactions_available", {})),

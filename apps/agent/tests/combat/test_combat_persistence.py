@@ -22,6 +22,7 @@ import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 
 import combat_hold
+import combat_phase
 import combat_turn
 import db_mutations
 import reaction_spend
@@ -199,6 +200,33 @@ def test_a_reaction_spend_record_roundtrips():
     assert spent["window_id"] == "r1-0-post_roll"
     assert spent["stage"] == "post_roll"
     assert spent["held_seq"] == 0
+
+
+def test_a_pre_story_017_reaction_declaration_does_not_brick_the_round():
+    """AC6's sibling field, on the same row. Until story-017 a reaction WAS a declaration, so the
+    row most likely to be in flight on deploy is one whose player pre-declared one — and
+    resolve_declaration no longer knows that type.
+
+    Left as a passthrough, ``advance_combat_phase`` raises "unknown declaration type: 'reaction'"
+    on every resolve_phase, and declare_phase refuses off the declaration beat: the round cannot
+    be resolved or re-declared, only fled. The stale entry is dropped for the same reason the bool
+    map is upgraded rather than rejected — it never resolved to a mechanical outcome, so nothing
+    committed is lost. Fault-inject by restoring ``data.get("pending_declarations", {})``.
+    """
+    base = _mid_combat_state("combat_legacy_reaction_decl").to_dict()
+    base["beat"] = "resolution"
+    base["pending_declarations"] = {
+        "player_1": {"type": "reaction", "action": "warrior_brace_for_impact", "trigger": "on_hit"},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+    }
+
+    loaded = CombatState.from_dict(base)
+
+    assert "player_1" not in loaded.pending_declarations
+    assert loaded.pending_declarations["goblin_scout_1"]["type"] == "attack"
+    # ...and the round it belongs to still advances, which is the harm the drop prevents.
+    _next_state, adv = combat_phase.advance_combat_phase(loaded)
+    assert [p.actor_id for p in adv.packets] == ["goblin_scout_1"]
 
 
 async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None:

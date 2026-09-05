@@ -79,17 +79,24 @@ def record_spend(state, actor_id: str, ability_id: str) -> None:
     ONE field write on the live CombatState — the caller holds the combat-end lock and must not
     assign a snapshot back (see combat_phase.validate_reaction_activation). The head of
     ``held_actions`` IS the paused action by construction of ``pump``, which returns the moment it
-    opens a window and never pops past it; asserted rather than assumed, because a spend bound to
-    the wrong blow is a defect story-018 would silently inherit (constraint 4).
+    opens a window and never pops past it — checked here rather than assumed, because a spend
+    bound to the wrong blow is a defect story-018 would silently inherit (constraint 4). The check
+    is an actor-id match, not the window id's ``r<round>-<seq>-<stage>`` format: one declaration
+    per actor per phase means the actor names the held action uniquely, and parsing the id would
+    make its format a contract reaction_spend deliberately refused to give it.
     """
     if state.open_window is None or not state.held_actions:
         raise ValueError(
             f"cannot record a reaction spend for {actor_id!r}: the machine is not paused on a "
             f"held action (open_window={state.open_window!r}, {len(state.held_actions)} held)"
         )
-    state.reactions_available[actor_id] = reaction_spend.spend(
-        ability_id, state.open_window, held_seq=state.held_actions[0]["seq"]
-    )
+    head = state.held_actions[0]
+    if state.open_window["actor_id"] != head["actor_id"]:
+        raise ValueError(
+            f"cannot record a reaction spend for {actor_id!r}: the open window answers "
+            f"{state.open_window['actor_id']!r} but the queue head is {head['actor_id']!r}"
+        )
+    state.reactions_available[actor_id] = reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
 
 
 def _held_declaration(head: dict):
