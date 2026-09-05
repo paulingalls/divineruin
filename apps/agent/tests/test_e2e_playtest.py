@@ -338,11 +338,9 @@ class TestReconnectionAllAgentTypes:
 
         room = MagicMock()
         session = MagicMock()
-        sd = SessionData(player_id="p1", location_id="")
-        agent = MagicMock()
-        agent._background = None
+        sd = SessionData(player_id="p1", location_id="")  # no background process yet
 
-        _setup_reconnection(room, session, sd, agent)
+        _setup_reconnection(room, session, sd, MagicMock())
         on_calls = [call.args[0] for call in room.on.call_args_list]
         assert "participant_disconnected" in on_calls
         assert "participant_connected" in on_calls
@@ -353,10 +351,9 @@ class TestReconnectionAllAgentTypes:
         room = MagicMock()
         session = MagicMock()
         sd = SessionData(player_id="p1", location_id="accord_guild_hall")
-        agent = MagicMock()
-        agent._background = MagicMock()
+        sd.background = MagicMock()
 
-        _setup_reconnection(room, session, sd, agent)
+        _setup_reconnection(room, session, sd, MagicMock())
         on_calls = [call.args[0] for call in room.on.call_args_list]
         assert "participant_disconnected" in on_calls
         assert "participant_connected" in on_calls

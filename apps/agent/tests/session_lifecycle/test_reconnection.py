@@ -15,10 +15,8 @@ class TestReconnectionSetup:
         room = MagicMock()
         session = MagicMock()
         userdata = SessionData(player_id="p1", location_id="loc1")
-        agent = MagicMock()
-        agent._background = None
 
-        _setup_reconnection(room, session, userdata, agent)
+        _setup_reconnection(room, session, userdata, MagicMock())
 
         # Should register both participant_disconnected and participant_connected
         on_calls = [call.args[0] for call in room.on.call_args_list]
@@ -26,17 +24,47 @@ class TestReconnectionSetup:
         assert "participant_connected" in on_calls
 
     def test_setup_reconnection_works_without_background(self):
-        """Creation/onboarding agents have no background process."""
+        """Creation/onboarding sessions have no background process yet."""
         from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
         session = MagicMock()
         userdata = SessionData(player_id="p1", location_id="loc1")
-        agent = MagicMock()
-        agent._background = None
+        assert userdata.background is None
 
         # Should not raise
-        _setup_reconnection(room, session, userdata, agent)
+        _setup_reconnection(room, session, userdata, MagicMock())
+
+    async def test_drop_pauses_and_reconnect_resumes_the_sessions_process(self):
+        """The process hangs off the SESSION, so the handlers must reach it there — reading it
+        off the agent they were wired with would silently stop pausing after the first handoff."""
+        from participant_lifecycle import _setup_reconnection
+
+        handlers = {}
+
+        def _register(event):
+            def _decorate(fn):
+                handlers[event] = fn
+                return fn
+
+            return _decorate
+
+        room = MagicMock()
+        room.on = _register
+        userdata = SessionData(player_id="p1", location_id="loc1")
+        background = MagicMock()
+        userdata.background = background
+        participant = MagicMock()
+        participant.identity = "p1"
+
+        _setup_reconnection(room, MagicMock(), userdata, MagicMock())
+
+        handlers["participant_disconnected"](participant)
+        background.pause.assert_called_once()
+
+        # The reconnect cancels the grace timeout the drop armed, so no task outlives the test.
+        handlers["participant_connected"](participant)
+        background.resume.assert_called_once()
 
 
 class TestBackgroundProcessPauseResume:
@@ -45,11 +73,7 @@ class TestBackgroundProcessPauseResume:
     def test_pause_sets_flag(self):
         from background_process import BackgroundProcess
 
-        bp = BackgroundProcess(
-            agent=MagicMock(),
-            session=MagicMock(),
-            session_data=MagicMock(),
-        )
+        bp = BackgroundProcess(session=MagicMock(), session_data=MagicMock())
         assert bp._paused is False
         bp.pause()
         assert bp._paused is True
@@ -57,11 +81,7 @@ class TestBackgroundProcessPauseResume:
     def test_resume_clears_flag(self):
         from background_process import BackgroundProcess
 
-        bp = BackgroundProcess(
-            agent=MagicMock(),
-            session=MagicMock(),
-            session_data=MagicMock(),
-        )
+        bp = BackgroundProcess(session=MagicMock(), session_data=MagicMock())
         bp.pause()
         bp.resume()
         assert bp._paused is False

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from exploration_agent import ExplorationAgent
 from session_data import SessionData
 
@@ -76,3 +77,36 @@ class TestGameplaySpecializationTapWiring:
             await agent.on_exit()
 
         mock_sth.stop.assert_called_once()
+
+
+class TestSessionEndOnExit:
+    """AC6: this story moves the BackgroundProcess ownership out of on_exit and NOTHING else.
+
+    on_exit still generates a summary, publishes E.SESSION_END and writes the summary row on
+    every handoff — including the handoff INTO combat, which is why every fight currently ends
+    and restarts the session as far as the lifecycle is concerned (debt 2009d9ef owns that;
+    splitting it is client-facing and belongs in its own card).
+    """
+
+    @pytest.mark.asyncio
+    async def test_on_exit_ends_the_session_and_leaves_the_process_running(self):
+        agent, mock_session, sd = _agent_with_session()
+        summary = {"summary": "They crossed the bridge.", "key_events": ["bridge"]}
+        background = MagicMock()
+        background.stop = AsyncMock()
+        sd.background = background
+
+        with (
+            patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
+            patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value=summary),
+            patch("exploration_agent.publish_game_event", new_callable=AsyncMock) as mock_publish,
+            patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
+        ):
+            await agent.on_exit()
+
+        mock_publish.assert_awaited_once_with(sd.room, E.SESSION_END, summary, sd.event_bus)
+        mock_save.assert_awaited_once_with(sd.player_id, sd.session_id, summary)
+        # The process outlives the agent that built it — a handoff into combat is an agent
+        # exit, not a session end.
+        background.stop.assert_not_awaited()
+        assert sd.background is background

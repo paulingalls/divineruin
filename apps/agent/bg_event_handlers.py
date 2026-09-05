@@ -31,6 +31,19 @@ REBUILD_EVENT_TYPES = {
     E.HIDDEN_REVEALED,
 }
 
+# Deliberately NOT in REBUILD_EVENT_TYPES. A full rebuild fans out to four DB queries plus a
+# scenes batch; the ACTIVE COMBAT block reads combat_state and nothing else, and this event fires
+# once per combat round. Buying an in-memory re-render with that round trip is not cost-conscious.
+COMBAT_REFRESH_EVENT_TYPES = {
+    E.COMBAT_UI_UPDATE,
+}
+
+
+def needs_combat_refresh(events: list) -> bool:
+    """True when a drain carries an event that only moves the ACTIVE COMBAT block."""
+    return any(e.event_type in COMBAT_REFRESH_EVENT_TYPES for e in events)
+
+
 CORRUPTION_COMPANION_CUES: dict[int, tuple[str, str]] = {
     1: (
         "tenses and slowly surveys the surroundings, quietly observing the silence, the wrongness, "

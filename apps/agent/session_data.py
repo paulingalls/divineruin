@@ -5,6 +5,7 @@ import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
+from typing import TYPE_CHECKING
 
 from livekit import rtc
 
@@ -12,6 +13,9 @@ import reaction_spend
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
+
+if TYPE_CHECKING:
+    from background_process import BackgroundProcess
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -363,6 +367,11 @@ class SessionData:
     ending_requested: bool = False
     player_disconnected: bool = False
     disconnect_time: float = 0.0
+
+    # The warm-layer loop, owned by the SESSION rather than by the agent that built it: it is
+    # constructed once (ExplorationAgent.on_enter, if absent) and survives every mode handoff,
+    # so the DM keeps a warm layer while a CombatAgent holds the floor. Not serialized.
+    background: BackgroundProcess | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)

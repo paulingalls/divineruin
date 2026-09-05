@@ -2,9 +2,9 @@
 
 from unittest.mock import AsyncMock, patch
 
-from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
+from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
 
-from warm_prompts import build_full_prompt, build_warm_layer
+from warm_prompts import build_full_prompt, build_warm_layer, compose_warm_layer, format_combat_section
 
 
 class TestRegionTypeWarmLayer:
@@ -123,3 +123,31 @@ class TestBuildFullPrompt:
     def test_empty_warm_layer(self):
         result = build_full_prompt("STATIC", "")
         assert result == "STATIC"
+
+
+class TestCombatSection:
+    """format_combat_section is the ACTIVE COMBAT block, rendered from combat_state alone."""
+
+    def test_renders_round_and_each_participant_status(self):
+        section = format_combat_section(sample_combat_state(round_number=2, hp_current=8))
+        assert section is not None
+        assert "Round 2" in section
+        assert "- Kael (player) — healthy" in section
+        assert "- Grosh (enemy) — bloodied" in section
+
+    def test_fallen_participant_marked(self):
+        section = format_combat_section(sample_combat_state(hp_current=0, is_fallen=True))
+        assert section is not None
+        assert "- Grosh (enemy) — fallen [FALLEN]" in section
+
+    def test_none_when_not_in_combat(self):
+        assert format_combat_section(None) is None
+
+
+class TestComposeWarmLayer:
+    def test_appends_section_last(self):
+        composed = compose_warm_layer("BASE", "ACTIVE COMBAT\nRound 2")
+        assert composed == "BASE\n\nACTIVE COMBAT\nRound 2"
+
+    def test_omits_none_section(self):
+        assert compose_warm_layer("BASE", None) == "BASE"
