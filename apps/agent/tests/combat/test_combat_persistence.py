@@ -21,6 +21,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 
+import combat_hold
 import combat_turn
 import db_mutations
 import reaction_windows
@@ -179,9 +180,11 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
 
 def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
     """A combat paused MID-WINDOW: the ally band has committed, one enemy action is HELD with its
-    roll already made, and the machine sits on the post-roll (pre-damage) window. The held roll is
-    built by the REAL serializer, not a hand-written dict — a fixture that invents the shape would
-    pass while production wrote a different one."""
+    roll already made, and the machine sits on the post-roll (pre-damage) window. The held roll and
+    the window descriptor are built by the REAL serializer and the REAL producer, not hand-written
+    dicts — a fixture that invents the shape would pass while production wrote a different one.
+    ``opened`` carries both stages for the same reason: at a post-roll pause production has offered
+    both, and a fixture missing the key would round-trip a shape combat_hold.pump would KeyError on."""
     state = _make_combat_state(player_hp=25)
     state.combat_id = combat_id
     state.beat = "narration"
@@ -196,6 +199,7 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
             "initiative": enemy.initiative,
             "declaration": {"type": "attack", "action": "Scimitar", "target_id": player.id},
             "roll": serialize_roll(attack_result, effective_ac),
+            "opened": [combat_hold.PRE_ROLL, combat_hold.POST_ROLL],
         }
     ]
     state.open_window = reaction_windows.open_window_for(

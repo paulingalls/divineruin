@@ -17,6 +17,7 @@ from sample_fixtures import make_context
 import abilities
 import combat_phase
 import combat_turn
+from session_data import CombatParticipant
 
 
 def _resonance_deps(**kwargs):
@@ -211,15 +212,29 @@ class TestTheNoReactionGate:
 
     @pytest.mark.asyncio
     async def test_a_fallen_players_stale_availability_does_not_hold_the_beat(self):
-        """A downed player cannot react, so their leftover True must not pause a whole round."""
+        """A downed player cannot react, so their leftover True must not pause a whole round.
+
+        The blow lands on a SECOND, standing player: felling the one the enemy swings at makes the
+        held action wasted, which suppresses the window for a different reason entirely and leaves
+        `pause_allowed`'s is_fallen clause certified by nothing (constraint 1)."""
         ctx = _ctx_at_resolution()
-        ctx.userdata.combat_state.get_participant("player_1").is_fallen = True
+        cs = ctx.userdata.combat_state
+        cs.participants.append(
+            CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
+        )
+        cs.initiative_order.append("player_2")
+        cs.get_participant("player_1").is_fallen = True
+        # player_1 is down carrying a stale True; player_2 stands but holds no reaction.
+        cs.reactions_available = {"player_1": True, "player_2": False}
+        cs.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
         deps = _resolve_deps()
         await _call(ctx, deps)  # the ally commit
 
         r1 = await _call(ctx, deps)
 
         assert r1["next"]["waiting_on"] is None
+        # The blow still landed — the beat ran on, it did not stall on a no-op.
+        assert _p(ctx, "player_2").hp_current == 17
 
 
 class TestTrunkIdentityAndOneWrap:
@@ -259,6 +274,38 @@ class TestTrunkIdentityAndOneWrap:
 
         assert result["round"] == 2
         assert member.resonance.current == 4  # decayed once across THREE resolve_phase calls
+
+
+class TestUntargetedHeldActions:
+    """An enemy declaration that names NO target opens no window.
+
+    declare_phase accepts defend/interact/maneuver/retreat for any actor, enemies included, and
+    the DM is told to cover "every enemy that acts this round". Every trigger the pre-roll window
+    emits claims someone was targeted, so pausing on a braced enemy would ship a descriptor that
+    contradicts itself — triggers announcing a blow beside a null target_id — and story-018 would
+    spend the round's one reaction on it (constraint 6)."""
+
+    @pytest.mark.asyncio
+    async def test_a_held_enemy_defend_never_pauses_and_still_resolves(self):
+        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20)
+        cs = ctx.userdata.combat_state
+        cs.pending_declarations["goblin_scout_1"] = {"type": "defend"}
+        deps = _resonance_deps(damage=3)
+
+        await _call(ctx, deps)  # the ally commit
+        assert [h["actor_id"] for h in ctx.userdata.combat_state.held_actions] == ["goblin_scout_1"]
+
+        # The very NEXT call must drain and wrap. Asserting on the end of the round instead would
+        # be vacuous — the round always ends with no window open, however many it paused on.
+        result = await _call(ctx, deps)
+
+        assert result["next"]["waiting_on"] is None
+        assert result["beat"] == "declaration"
+        # It still POPPED through the ordinary resolver — no window, but no dropped turn either.
+        goblin_packet = next(p for p in result["packets"] if p["actor_id"] == "goblin_scout_1")
+        assert goblin_packet["declaration_type"] == "defend"
+        assert _p(ctx).hp_current == 25  # a braced enemy struck nobody
+        assert ctx.userdata.combat_state.held_actions == []
 
 
 class TestBandOrdering:

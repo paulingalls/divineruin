@@ -276,7 +276,6 @@ async def _resolve_phase_locked(
                 conn=conn,
                 sink=sink,
                 cast_outcome=cast_outcome,
-                pending_by_member=pending_by_member,
                 mutations=mutations,
                 queries=queries,
                 save_resolver=save_resolver,

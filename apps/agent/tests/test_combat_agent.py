@@ -148,6 +148,21 @@ class TestCombatBeatContract:
         # Reading `next` is taught before Beat 3 needs it.
         assert low.index('every resolve_phase result carries a "next" block') < low.index("next.waiting_on")
 
+    def test_next_verbs_is_taught_as_the_advance_verb_not_a_whitelist(self):
+        """`next.verbs` carries the ADVANCE verb only (combat_wrap.next_envelope), so a prompt that
+        called it the complete set of legal calls would contradict Beat 4 in the same breath: the
+        very payload whose next.verbs reads ["declare_phase"] also carries death_saves_due and
+        legendary_available, and neither request_death_save nor consume_legendary_action has a beat
+        gate. An obedient DM would leave a downed player unrolled."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "not a whitelist" in low
+        assert "which verb advances the beat" in low
+        assert "still call request_death_save when death_saves_due names someone" in low
+        assert "only the verbs in next.verbs are legal" not in low, "the whitelist reading is back"
+        # Beat 4 still asks for both verbs `next.verbs` omits — that is what makes the above true.
+        assert "call request_death_save" in low
+        assert "call consume_legendary_action" in low
+
     def test_beat2_says_the_enemy_blows_are_held(self):
         """AC1's contract, as the DM sees it: Beat 2 resolves the player's side only. A prompt that
         still promised "resolves every declaration" would have the DM narrate blows that have not

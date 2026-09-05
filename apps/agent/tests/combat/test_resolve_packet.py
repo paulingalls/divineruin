@@ -400,8 +400,13 @@ class TestDramaticEmission:
 
 class TestRollThenApply:
     """The hold's seam (M29, story-016): the post-roll reaction window is PRE-DAMAGE, so the
-    roll must survive a tool-call boundary with no HP written and no event published. This is
-    also the seam story-018 needs — Uncanny Dodge halves damage between roll and apply.
+    roll must survive a tool-call boundary with no HP written and no event published.
+
+    This is also the seam story-018 needs, with one trap named here rather than rediscovered:
+    ``apply_attack_result`` writes ``target.hp_current = attack_result.target_hp_remaining`` and
+    never reads ``damage``. So halving ``damage`` between the halves changes NOTHING — an Uncanny
+    Dodge must re-derive ``target_hp_remaining`` (and ``overkill``) from the pre-hit HP too, or the
+    reaction reports half damage while the full blow still lands.
     """
 
     def test_roll_writes_no_hp_and_publishes_nothing(self):

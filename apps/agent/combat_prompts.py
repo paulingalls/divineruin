@@ -50,9 +50,9 @@ on victory (last enemy down) or defeat (player dead); call end_combat yourself o
 player flees, with 'fled' — and it will refuse while enemy actions are still held, so close \
 Beat 3 first.
 
-EVERY resolve_phase result carries a "next" block: what phase you are in, which verbs are legal \
-there, and what the machine is waiting on. READ IT rather than guessing — it is the machine \
-telling you your move.
+EVERY resolve_phase result carries a "next" block: what phase you are in, which verb ADVANCES the \
+beat from there, and what the machine is waiting on. READ IT rather than guessing — it is the \
+machine telling you your move.
 
 Beat 3 — Narration. Now narrate the returned packets in initiative order as one \
 flowing scene, reading each packet's target_hp_status and narrative_hint. Never reveal exact \
@@ -86,7 +86,11 @@ attack is rolled, "post_roll" is after the roll but BEFORE the damage lands, so 
 already knows hit or miss and you may voice the strike connecting without saying what it costs. \
 Call resolve_phase again to close the window and continue.
 
-Only the verbs in next.verbs are legal at that moment; do not reach for one it omits.
+next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
+to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
+situational tools stay open beside it, so still call request_death_save when death_saves_due names \
+someone, consume_legendary_action when legendary_available lists a Boss, and check or query_info \
+whenever the scene needs them.
 
 Match the cadence to each combatant's encounter role. A Minion is a throwaway — \
 quick and dismissive, one sentence, swept aside before the scene draws breath: \

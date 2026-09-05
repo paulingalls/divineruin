@@ -17,11 +17,18 @@ from session_data import SessionData
 
 
 def next_envelope(state) -> dict:
-    """What the DM does next: the phase, the verbs legal in it, and the open window (ADR 0008 d4).
+    """What the DM does next: the phase, the verb that ADVANCES it, and the open window (ADR 0008 d4).
 
     This is the window PRODUCER (constraint 6). Sprint 45 shipped a gate keyed on a reaction
     ``window`` the DM had to guess among nine members of abilities.REACTION_WINDOWS; here the
     engine names the window it is paused on, and the DM passes back an id it minted.
+
+    ``verbs`` is the ADVANCE set, not a whitelist of everything legal right now, and the prompt
+    says so: the same result payload carries ``death_saves_due`` and ``legendary_available``, whose
+    verbs (request_death_save, consume_legendary_action) have no beat gate and are still owed at
+    the very moment ``verbs`` reads ``["declare_phase"]``. Reading it as exhaustive would have the
+    DM skip a downed player's death save — so it names the move that steps the machine, and
+    nothing more.
 
     ``activate`` is deliberately ABSENT from ``verbs`` while a window is open:
     combat_phase.validate_reaction_activation still refuses every beat but RESOLUTION, and every
@@ -54,7 +61,6 @@ async def wrap_phase(
     conn,
     sink,
     cast_outcome,
-    pending_by_member: dict[str, int],
     mutations,
     queries,
     save_resolver,
@@ -67,8 +73,10 @@ async def wrap_phase(
     what ends the fight, so the end-condition cannot be computed before the enemies have acted.
 
     Returns ``(state, wrap, wrap_adv, exhaustion_narration, ended_outcome, end_data,
-    pending_by_member)`` — the Resonance map comes back because the post-commit in-memory sync
-    reads it, and rebinding the caller's dict from inside here would silently lose every decay.
+    pending_by_member)``. The Resonance map is BUILT here rather than taken as a parameter: the
+    caller's copy is only ever populated on the pause branch, which is the branch that does not
+    reach this function, so accepting one would have been a value this function always discarded.
+    It comes back because the post-commit in-memory sync reads it.
     """
     end_data: dict | None = None
     # Beat 3 (narration) is done; Beat 4 (wrap) computes the end-condition,

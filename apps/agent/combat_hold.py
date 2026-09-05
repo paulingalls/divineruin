@@ -87,14 +87,34 @@ def _is_wasted(state, head: dict) -> bool:
     return target is None or target.is_fallen
 
 
+def _opens_windows(state, head: dict) -> bool:
+    """Does this held action open reaction windows at all?
+
+    Only a held action that NAMES A TARGET does. Every trigger the pre-roll window emits is a
+    claim that someone was targeted (``on_targeted`` / ``on_ally_targeted``), so opening it for an
+    enemy DEFEND — or any other untargeted declaration declare_phase accepts for an enemy — would
+    ship a descriptor that contradicts itself: triggers saying a blow is coming beside a null
+    ``target_id``, and a player burning the round's one reaction on a foe that merely braced
+    (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
+
+    Nothing reachable today is lost by this: an untargeted enemy action could only ever reach the
+    ``on_enemy_action`` catch-all, whose four consumers the census already classifies as one
+    post-roll row (whisper_implant_doubt, "when an enemy SUCCEEDS an attack") plus three
+    inapplicable social rows. When an enemy command/leadership action does land — the debt those
+    three are filed under — it needs a targetless window shape, not this predicate loosened.
+    """
+    if _is_wasted(state, head):
+        return False
+    return _held_declaration(head).target_id is not None
+
+
 def _attack_action(state, head: dict) -> dict | None:
     """The action_pool entry this held action swings, or None when it is not a plain attack.
 
     An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
     save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
-    exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. Same for
-    DEFEND and any other non-attack declaration: no roll to hold, and the post-roll vocabulary is
-    attack-shaped.
+    exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
+    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not.
     """
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
@@ -161,9 +181,10 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
 
     while state.held_actions:
         head = state.held_actions[0]
-        action = None if _is_wasted(state, head) else _attack_action(state, head)
+        opens = _opens_windows(state, head)
+        action = _attack_action(state, head) if opens else None
 
-        if not _is_wasted(state, head):
+        if opens:
             if PRE_ROLL not in head["opened"]:
                 head["opened"].append(PRE_ROLL)
                 if pause_allowed(state):

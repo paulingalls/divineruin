@@ -187,7 +187,9 @@ class CombatState:
     # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
     # finds the enemy's turn still pending rather than silently deleted. Each entry:
     #   {"seq": int, "actor_id": str, "declaration": <raw decl dict>, "initiative": int,
-    #    "roll": <serialize_roll shape> | None}
+    #    "roll": <serialize_roll shape> | None, "opened": [<stage>, ...]}
+    # ``opened`` is the position marker the pump reads (combat_hold): a non-attack action has no
+    # roll, so the roll alone cannot say which windows this action has already offered.
     # JSONB-native (plain dicts, like veil_ward) so it round-trips with no nested rebuild.
     held_actions: list[dict] = field(default_factory=list)
     # The reaction window the machine is PAUSED on, or None. Surfaced to the DM verbatim in
