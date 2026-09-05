@@ -63,6 +63,34 @@ class TestBackgroundProcessLifecycle:
             assert bp._task.cancelled()
 
     @pytest.mark.asyncio
+    async def test_livekit_really_dispatches_the_close_handler(self):
+        """The registration above is checked against a MagicMock, which answers to any event
+        name with any handler signature. A real AgentSession does not: ``on`` takes a literal
+        LiveKit publishes, and emit inspects the handler's arity and RE-RAISES a TypeError
+        straight out of ``_aclose_impl``. So register on the real session and hand it the
+        payload the real close path sends, rather than modelling both halves ourselves.
+        """
+        from livekit.agents import AgentSession
+        from livekit.agents.voice.events import CloseEvent, CloseReason
+
+        # max_tool_steps is production's literal only to keep test_strict_tool_budget's
+        # every-site walk complete: this session is an event emitter here and never generates.
+        session = AgentSession(max_tool_steps=5)
+        mock_sd = MagicMock()
+        mock_sd.event_bus = MagicMock()
+        mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
+
+        bp = BackgroundProcess(session, mock_sd)
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
+            bp.start()
+            session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
+
+            assert bp._stop is True
+            assert bp._task is not None
+            await asyncio.gather(bp._task, return_exceptions=True)
+            assert bp._task.cancelled()
+
+    @pytest.mark.asyncio
     async def test_stop_cancels_background_task(self):
         """stop() should cancel the background task gracefully."""
         mock_session = MagicMock()

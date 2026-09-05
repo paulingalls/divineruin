@@ -9,13 +9,16 @@ guards is the loop still being alive after the handoff into combat — a stopped
 still be driven by hand.
 """
 
+import ast
 import asyncio
+import pathlib
 import re
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, sample_combat_state
 
+import background_process
 import event_types as E
 from background_process import BackgroundProcess
 from combat_agent import CombatAgent
@@ -275,3 +278,47 @@ class TestProcessSurvivesTheHandoff:
                 assert "The player is currently at location ID" not in warm
             finally:
                 await bg.stop()
+
+
+class TestStartedOnceForTheSession:
+    """The other half of session ownership: one loop, and only on the gameplay path."""
+
+    async def test_a_handback_does_not_start_a_second_loop(self):
+        """`end_combat` hands back a NEW ExplorationAgent over the same SessionData, and no
+        agent stops the loop any more — so `on_enter` is the only place that can refuse the
+        second one. Two loops split this queue-backed bus between them and rebuild twice on
+        every fallback."""
+        sd = SessionData(player_id="p1", location_id="accord_guild_hall", room=MagicMock())
+        session = MagicMock()
+        session.userdata = sd
+
+        with _mock_startup_db():
+            await _enter_exploration(session, sd)
+            first = sd.background
+            assert first is not None
+            await _settle(lambda: first._warm_base is not None, "built its initial warm layer")
+
+            try:
+                await _enter_exploration(session, sd)
+                assert sd.background is first
+                assert _is_running(first)
+            finally:
+                await first.stop()
+
+    def test_the_gameplay_path_is_the_only_construction_site(self):
+        """AC: a prologue or onboarding session constructs NO background process.
+
+        Structural because that is where the fault injection the card names lives — building
+        one on `agent.py`'s prologue branch. Driving `PrologueAgent.on_enter` would stay green
+        through exactly that change, and the prologue/onboarding warm layer has no combat, no
+        quests and no companion to render.
+        """
+        agent_dir = pathlib.Path(background_process.__file__).parent  # cwd-independent
+        sources = sorted(p for p in agent_dir.glob("*.py") if p.name != "background_process.py")
+        built_in = {
+            path.name
+            for path in sources
+            for node in ast.walk(ast.parse(path.read_text()))
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "BackgroundProcess"
+        }
+        assert built_in == {"exploration_agent.py"}

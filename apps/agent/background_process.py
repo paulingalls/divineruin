@@ -83,7 +83,11 @@ class BackgroundProcess:
         self._paused = False
 
     async def stop(self) -> None:
-        """Awaitable twin of ``_on_session_close`` — for callers that can wait for the loop."""
+        """Awaitable twin of ``_on_session_close``, for callers that can wait for the loop.
+
+        No production caller: the session's ``close`` handler is the whole shutdown path now.
+        Tests use this to join the loop before the event loop goes away.
+        """
         self._on_session_close(None)
         if self._task is not None:
             try:

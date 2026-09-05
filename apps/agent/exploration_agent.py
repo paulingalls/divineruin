@@ -133,8 +133,11 @@ class ExplorationAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
 
         # Session-scoped, and started at most once: a handback from combat/dispatch enters a
-        # NEW ExplorationAgent instance over the same SessionData, and a second loop would
-        # double every warm-layer injection and every proactive line.
+        # NEW ExplorationAgent instance over the same SessionData, and nothing stops the first
+        # loop any more. The bus is a QUEUE, so two loops do not duplicate the stream — they
+        # SPLIT it, each seeing half the events and keeping its own quest/scene/warm caches, and
+        # both rebuilding on the 30s fallback. That is a doubled DB fan-out over two divergent
+        # warm layers racing each other into the same agent.
         if sd.background is None:
             sd.background = BackgroundProcess(session=self.session, session_data=sd)
             sd.background.start()
