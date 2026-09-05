@@ -9,10 +9,14 @@ is untested by the mapper suites.
 Only `begin_activity` has live evidence for it — `tests/acceptance/features/` holds two features
 and both drive DispatchAgent. Nothing drives ExplorationAgent or CombatAgent with a real LLM, and
 the schema walk in test_strict_tool_budget pins the emitted SCHEMA, not the round trip. So `check`
-and `declare_phase` would otherwise ship their whole LLM path unexercised: an annotation change
-that keeps `to_impl_args` / `to_engine_declarations` green (dropping the `Annotated[...,
-discriminator]`, or wrapping the union one level deeper) would break every combat and exploration
-turn with nothing red.
+and `declare_phase` would otherwise ship their whole LLM path unexercised: reshape the parameter —
+wrap the union a level deeper, take a bare dict again, rename a field the mapper reads — and every
+combat and exploration turn breaks with the mapper suites still green.
+
+NOT the `Annotated[..., Field(discriminator="kind")]` wrapper specifically: dropping it was
+measured (2026-09-05) to leave both this file and production behaviour unchanged, because every
+variant tags `kind` with a `const` and pydantic's smart union resolves on it. The discriminator
+buys a sharper validation error, not correctness, so nothing here reds on its removal.
 """
 
 import inspect

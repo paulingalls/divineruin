@@ -118,9 +118,13 @@ class TestCombatBeatContract:
             assert beat in p, f"missing beat name: {beat}"
 
     def test_declaration_hesitation_falls_back_to_defend(self):
-        p = COMBAT_SYSTEM_PROMPT
-        assert "defend" in p.lower()
-        assert "freeze" in p.lower() or "hesitat" in p.lower()
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "freeze" in low or "hesitat" in low
+        # A bare `"defend" in low` is vacuous now that defend is one of the declaration kinds
+        # the prompt lists: pin the FALLBACK, i.e. that the hesitation instruction is what
+        # names it.
+        start = low.index("freeze") if "freeze" in low else low.index("hesitat")
+        assert "defend" in low[start : start + 200], "hesitation instruction does not fall back to defend"
 
     def test_resolution_is_silent_before_narration(self):
         # Beat 2 resolves silently; the Beat-3 narration instruction comes after.

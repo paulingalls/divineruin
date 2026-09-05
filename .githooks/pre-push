@@ -101,6 +101,8 @@ else
     # failure through the pipe.
     # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
     # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
+    # This hook does NOT source .env, and `bun run` does not hand .env to the command it
+    # spawns — the key reaches pytest only through test:acceptance's `uv run --env-file`.
     ( set -o pipefail; REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
       bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!

@@ -221,6 +221,34 @@ class TestPromptToolConsistency:
             for dead in dead_shapes:
                 assert dead not in text, f"{name} still teaches the pre-ADR-0008 shape {dead!r}"
 
+    def test_combat_prompt_teaches_every_empty_string_sentinel_field(self):
+        """The mirror of the guard above: a surface must also TEACH a shape the schema requires.
+
+        ADR 0008 rule 2 made every declare_phase variant field required, so `rider` and
+        `argument_type` spell "none" as "" — a convention only the prompt can carry, because the
+        schema cannot say "send this empty". Omit the field instead and pydantic raises before
+        the tool body runs: a burned combat turn, in the one agent no real-LLM scenario drives.
+        The sentinel fields are DERIVED from the variants, so Sprint 48's reshape of this same
+        prompt (M29 Beat-3) reds here rather than silently dropping the instruction.
+        """
+        from declaration_payloads import DECL_VARIANTS
+        from system_prompts import COMBAT_SYSTEM_PROMPT
+
+        sentinels = sorted(
+            {
+                name
+                for variant in DECL_VARIANTS
+                for name, field in variant.model_fields.items()
+                if "empty string" in (field.description or "").lower()
+            }
+        )
+        assert sentinels, "no ''-means-none variant field found — the guard would be vacuous"
+        for name in sentinels:
+            assert name in COMBAT_SYSTEM_PROMPT, f"combat prompt never names the ''-sentinel field {name!r}"
+        assert "empty string" in COMBAT_SYSTEM_PROMPT.lower(), (
+            "combat prompt names the sentinel fields but never teaches the '' convention"
+        )
+
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
         the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""

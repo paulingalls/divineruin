@@ -4,8 +4,9 @@ Status: **Accepted in mechanism, NOT in outcome** (2026-09-05) — sprint-047 st
 Decisions 1-2 are realized in the repo and hold; decision 3's goal — strict back ON — is
 **not attainable today** and strict stays interim-OFF (see "Not yet attainable" below).
 Decision 4 (`next` in results / the `NOW` block) is owed to Sprint 48.
-Supersedes the 2026-09-02 interim addendum of **ADR 0004**; refines **ADR 0007**'s
-standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
+Was written to supersede the 2026-09-02 interim addendum of **ADR 0004**, and does NOT
+yet: that addendum stands, reaffirmed 2026-09-05 (see "Not yet attainable" below).
+Refines **ADR 0007**'s standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
 (Sprint 47) and its follow-ons.
 Design source: `docs/agent_tool_surface.md`.
 

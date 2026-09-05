@@ -4,6 +4,15 @@ A tier that absents itself is a false green: the pre-push gate reported
 `5 skipped` for an unknown span while the only scenarios that reach the Anthropic
 API ran nowhere. Set REQUIRE_REAL_LLM=1 (the pre-push gate and `bun run
 test:acceptance` both do) and a missing or placeholder key fails the lane loud.
+
+The CAUSE of those skips, measured 2026-09-05: `bun run <script>` does NOT put `.env`
+into the environment of the command it spawns (bun 1.3.14 — it loads `.env` for
+JavaScript it executes, not for a package script's shell child), so pytest never saw
+the key that `.env` has carried all along. That is why `test:acceptance` passes
+`uv run --env-file ../../.env`. The flag reads as redundant and is not: drop it and
+this gate reds on every run. Precedence checked too — `--env-file` does not override
+an already-exported variable, so a real key in the shell still wins over a worktree
+`.env` carrying the placeholder.
 """
 
 from __future__ import annotations
