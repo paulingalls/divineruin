@@ -152,3 +152,46 @@ class TestSettlementAvailability:
     def test_settlement_size_rejects_unknown_string(self):
         with pytest.raises(ValueError):
             ws.SettlementSize("metropolis")
+
+
+class TestRentalOffers:
+    def test_offers_cover_the_three_singles_and_the_bundle(self):
+        assert {o.token for o in ws.RENTAL_OFFERS} == {"workshop", "forge", "laboratory", "forge_laboratory"}
+
+    def test_bundle_offer_prices_the_spec_constant_and_grants_both(self):
+        offer = ws.resolve_rental_offer("forge_laboratory")
+        assert offer.base_price_sp == ws.COMBINED_FORGE_LAB_RENTAL_SP == 12
+        assert offer.grants == (ws.WorkspaceType.FORGE, ws.WorkspaceType.LABORATORY)
+
+    def test_single_offers_grant_only_themselves_at_the_base_price(self):
+        for wtype, price in ws.RENTAL_BASE_PRICE_SP.items():
+            offer = ws.resolve_rental_offer(wtype.value)
+            assert (offer.grants, offer.base_price_sp) == ((wtype,), price)
+
+    def test_field_and_unknown_tokens_are_not_offers(self):
+        for token in ("field", "smithy", "combined"):
+            with pytest.raises(ValueError):
+                ws.resolve_rental_offer(token)
+
+    def test_no_offer_grants_a_workspace_outside_the_four_member_enum(self):
+        # A granted value is written straight into workspace_rentals.workspace_type, which
+        # apps/server/src/workspace.ts parseWorkspaceType re-parses against a closed
+        # four-member vocabulary — an out-of-enum grant would hard-fail every later TS gate.
+        for offer in ws.RENTAL_OFFERS:
+            for granted in offer.grants:
+                assert granted in ws.WorkspaceType
+
+
+class TestBundleLocationRule:
+    def test_only_city_and_keldaran_hold_can_host_the_bundle(self):
+        hosts = {s for s in ws.SettlementSize if not ws.bundle_missing_workspaces(s)}
+        assert hosts == {ws.SettlementSize.CITY, ws.SettlementSize.KELDARAN_HOLD}
+
+    def test_town_is_missing_only_the_laboratory(self):
+        assert ws.bundle_missing_workspaces(ws.SettlementSize.TOWN) == (ws.WorkspaceType.LABORATORY,)
+
+    def test_hamlet_is_missing_both(self):
+        assert ws.bundle_missing_workspaces(ws.SettlementSize.HAMLET) == (
+            ws.WorkspaceType.FORGE,
+            ws.WorkspaceType.LABORATORY,
+        )

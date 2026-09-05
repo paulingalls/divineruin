@@ -8,15 +8,19 @@ As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
 their current location plus daily rental quotes. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the
-economy milestone), and writes a workspace_rentals row. `start_crafting_project` runs
+economy milestone), and writes one workspace_rentals row per workspace the offer grants
+(two for the Forge + Laboratory bundle). `start_crafting_project` runs
 the five-check pre-flight, then allocates+consumes materials and creates the in_progress
 crafting activity (the outcome is rolled later at resolution, not here).
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=` /
 `now_fn=` keyword seams for TEST-ONLY injection; production callers use the
-`@function_tool` wrappers. Settlement-by-size availability is NOT reported here —
-locations carry region_type/tags, not a SettlementSize; that lands with Phase 6
-settlement templates (concern c5c5871115dc).
+`@function_tool` wrappers. Settlement-by-size availability gates ONLY the
+`forge_laboratory` bundle, whose spec cell names the settlement ("city with both, or
+Keldaran hold"): `_bundle_refusal` maps the location's `settlement_tier` onto a
+SettlementSize, and BOTH the quote and the rental apply it, so the DM never voices a
+bundle price the rental would refuse. The single rentals stay settlement-blind —
+gating those too is concern c5c5871115dc (Phase 6 settlement templates).
 """
 
 import json
@@ -111,26 +115,30 @@ async def _query_available_workspaces_impl(
         disposition = await resolve_disposition(npc_id, player_id, queries_mod=queries_mod, content_mod=content_mod)
 
     multipliers = (await pricing_mod.get_economy_pricing())["disposition_multipliers"]
+    offers = await _offers_hosted_here(location_id, content_mod=content_mod, workspace_mod=workspace_mod)
     if npc_id is None:
         rentable = [
             {
-                "workspace_type": wtype.value,
+                "workspace_type": offer.token,
+                "grants": [granted.value for granted in offer.grants],
                 "prices_sp_per_day_by_disposition": {
                     tier: workspace_mod.compute_workspace_rental_price(
-                        base_price_sp, tier, multipliers=multipliers
+                        offer.base_price_sp, tier, multipliers=multipliers
                     ).price_sp
                     for tier in workspace_mod.RENTABLE_DISPOSITIONS
                 },
             }
-            for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items()
+            for offer in offers
         ]
         return json.dumps({"accessible": sorted(accessible), "rentable": rentable})
 
     rentable = []
     try:
-        for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items():
-            quote = workspace_mod.compute_workspace_rental_price(base_price_sp, disposition, multipliers=multipliers)
-            entry = {"workspace_type": wtype.value, "available": quote.available}
+        for offer in offers:
+            quote = workspace_mod.compute_workspace_rental_price(
+                offer.base_price_sp, disposition, multipliers=multipliers
+            )
+            entry = {"workspace_type": offer.token, "available": quote.available}
             if quote.available:
                 entry["price_sp_per_day"] = quote.price_sp
             else:
@@ -165,17 +173,25 @@ async def _rent_workspace_impl(
     context.disallow_interruptions()
     _validate_id(workspace_type, "workspace_type")
     _validate_id(npc_id, "npc_id")
+    if workspace_type == WorkspaceType.FIELD.value:
+        raise ToolError(f"{workspace_type} is not rentable (Field is free and always available).")
     try:
-        wtype = WorkspaceType(workspace_type)
+        offer = workspace_mod.resolve_rental_offer(workspace_type)
     except ValueError as exc:
         raise ToolError(f"Unknown workspace type: {workspace_type}") from exc
-    if wtype not in workspace_mod.RENTAL_BASE_PRICE_SP:
-        raise ToolError(f"{wtype.value} is not rentable (Field is free and always available).")
     if days < 1:
         raise ToolError("Rental length must be at least 1 day.")
 
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
+
+    # A multi-workspace offer is only sold where the settlement can host every member
+    # (spec: Forge + Laboratory is a city-or-Keldaran-hold bundle). Refuse before any
+    # read that could charge.
+    if len(offer.grants) > 1:
+        refusal = await _bundle_refusal(location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod)
+        if refusal:
+            raise ToolError(refusal)
 
     # Co-location gate (concern bec87679b223): you can only rent from an NPC who is
     # actually here — disposition alone is not enough.
@@ -191,7 +207,7 @@ async def _rent_workspace_impl(
     pricing = await pricing_mod.get_economy_pricing()
     try:
         quote = workspace_mod.compute_workspace_rental_price(
-            workspace_mod.RENTAL_BASE_PRICE_SP[wtype],
+            offer.base_price_sp,
             disposition,
             multipliers=pricing["disposition_multipliers"],
         )
@@ -199,7 +215,7 @@ async def _rent_workspace_impl(
         raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     if not quote.available:
         raise ToolError(quote.reason)
-    # RENTAL_BASE_PRICE_SP is sp per CALENDAR DAY and `days` is what extends expires_at,
+    # An offer's base price is sp per CALENDAR DAY and `days` is what extends expires_at,
     # so the charge scales with the term — a 30-day forge is not a 1-day forge.
     price_sp = quote.price_sp * days
     price_gp = price_sp / pricing["silver_per_gold"]
@@ -214,19 +230,63 @@ async def _rent_workspace_impl(
             raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
         if price_sp:
             await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
-        rental_id = await mutations_mod.create_workspace_rental(
-            player_id, location_id, wtype.value, "rental", expires_at, conn=conn
-        )
+        # One row per granted workspace, inside the debit's transaction: the stored
+        # workspace_type must stay inside the four-member vocabulary the TS gate
+        # re-parses (apps/server/src/workspace.ts parseWorkspaceType), so the bundle
+        # token itself is never persisted.
+        rental_ids = [
+            await mutations_mod.create_workspace_rental(
+                player_id, location_id, granted.value, "rental", expires_at, conn=conn
+            )
+            for granted in offer.grants
+        ]
 
-    logger.info("rent_workspace: player=%s npc=%s type=%s days=%s", player_id, npc_id, wtype.value, days)
-    return json.dumps(
-        {
-            "rental_id": rental_id,
-            "workspace_type": wtype.value,
-            "price_sp": price_sp,
-            "expires_at": expires_at.isoformat(),
-        }
-    )
+    logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
+    result = {
+        "workspace_type": offer.token,
+        "price_sp": price_sp,
+        "expires_at": expires_at.isoformat(),
+    }
+    if len(offer.grants) > 1:
+        result["workspace_types"] = [granted.value for granted in offer.grants]
+        result["rental_ids"] = rental_ids
+    else:
+        result["rental_id"] = rental_ids[0]
+    return json.dumps(result)
+
+
+async def _bundle_refusal(location_id: str, offer: workspace.RentalOffer, *, content_mod, workspace_mod) -> str | None:
+    """Why `location_id` cannot host a multi-workspace `offer`, or None if it can.
+
+    One rule, two callers — the rental raises it and the quote drops the offer — because
+    a price the DM can voice but no call can charge is the exact debt this path pays.
+    Scoped to multi-grant offers: single rentals stay settlement-blind (whole-quote
+    availability gating is concern c5c5871115dc, Phase 6)."""
+    location = await content_mod.get_location(location_id)
+    tier = (location or {}).get("settlement_tier")
+    if not tier:
+        return f"{location_id} is not a settlement — the {offer.token} bundle needs a city or Keldaran hold."
+    try:
+        size = workspace_mod.SettlementSize(tier)
+    except ValueError:
+        return f"{location_id} has an unknown settlement tier {tier!r}."
+    missing = workspace_mod.bundle_missing_workspaces(size)
+    if missing:
+        names = " and ".join(w.value for w in missing)
+        return f"{location_id} has no {names} to rent — the {offer.token} bundle needs both."
+    return None
+
+
+async def _offers_hosted_here(location_id: str, *, content_mod, workspace_mod) -> list[workspace.RentalOffer]:
+    """The rental offers `location_id` can actually host, in RENTAL_OFFERS order."""
+    hosted = []
+    for offer in workspace_mod.RENTAL_OFFERS:
+        if len(offer.grants) > 1 and await _bundle_refusal(
+            location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod
+        ):
+            continue
+        hosted.append(offer)
+    return hosted
 
 
 async def _start_crafting_project_impl(

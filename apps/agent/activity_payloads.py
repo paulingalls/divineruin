@@ -56,7 +56,10 @@ class WorkspaceRental(BaseModel):
     """Rent a crafting workspace from an NPC."""
 
     kind: Literal["workspace"]
-    workspace_type: str = Field(description="One of workshop, forge, laboratory.")
+    workspace_type: str = Field(
+        description="One of workshop, forge, laboratory, or forge_laboratory for the "
+        "discounted Forge + Laboratory bundle, which only a city or Keldaran hold can rent."
+    )
     npc_id: str = Field(description="The NPC being rented from.")
     days: int = Field(description="Rental length in days, at least 1.")
 
