@@ -124,7 +124,7 @@ REGION_REGISTER: dict[str, str] = {
         "- The Hollow's corruption is strongest here. Describe its effects on the senses: "
         "sounds from wrong distances, metallic tastes, moments where reality overlaps.\n"
         "\n"
-        'When a trap springs or a hazard threatens the player, call check with mode="save", '
+        'When a trap springs or a hazard threatens the player, call check with kind="save", '
         "the save type, DC, and what happens on failure. Narrate the danger, never "
         "the numbers.\n"
         "\n"

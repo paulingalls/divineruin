@@ -1,10 +1,12 @@
-"""The `check` verb (skill/discover/save/dice modes) + skill-breakthrough tool.
+"""The `check` verb (skill/social/discover/save/dice/gather kinds) + skill-breakthrough tool.
 
-`check(mode, ...)` is the consolidated uncertain-action verb (M5, ADR 0007, Verbs &
+`check(roll)` is the consolidated uncertain-action verb (M5, ADR 0007, Verbs &
 Stages §7/§10): it folds request_skill_check, discover_hidden_element,
-request_saving_throw, and roll_dice into one mode-discriminated tool, dispatching to
-per-mode sub-impls. Resolution math lives in check_resolution.py / dice.py (reused
-unchanged). `mark_skill_breakthrough` stays as its own tool.
+request_saving_throw, and roll_dice into one kind-discriminated tool, dispatching to
+per-mode sub-impls. The kinds are a sum type (`check_payloads.CheckPayload`, ADR 0008)
+rather than ten optional parameters, so the verb costs one union slot instead of nine.
+Resolution math lives in check_resolution.py / dice.py (reused unchanged).
+`mark_skill_breakthrough` stays as its own tool.
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=`
 keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrapper.
@@ -16,6 +18,7 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import check_payloads
 import check_resolution
 import check_resolution_save
 import db
@@ -29,6 +32,7 @@ import event_types as E
 import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
+from check_payloads import CheckPayload
 from condition_consume import consume_beneficial_conditions
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
@@ -48,41 +52,19 @@ VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social", "gather")
 @db_tool
 async def check(
     context: RunContext[SessionData],
-    mode: str,
-    skill: str = "",
-    target: str = "",
-    difficulty: str = "",
-    save_type: str = "",
-    dc: int = 0,
-    effect_on_fail: str = "",
-    notation: str = "",
-    context_description: str = "",
-    npc_id: str = "",
+    roll: CheckPayload,
 ) -> str:
-    """Resolve an uncertain action with a dice roll. Pick a mode:
+    """Resolve an uncertain action with a dice roll.
 
-    - mode="skill": the player attempts something risky (climb, recall lore). Give
-      skill, difficulty (trivial/easy/moderate/hard/very_hard/extreme/legendary),
-      and context_description.
-    - mode="social": the player tries to sway a specific NPC (persuade, deceive,
-      intimidate). Give npc_id, skill (persuasion/deception/intimidation), and
-      difficulty. The NPC's disposition shifts the DC and may change from the result.
-    - mode="discover": the player searches or examines a visible thing. Give the
-      skill (the approach, e.g. perception) and target (the visible feature being
-      examined, e.g. notice_board). What is hidden — if anything — is revealed by
-      the roll; never name the secret yourself.
-    - mode="save": an effect forces the player to resist. Give save_type (an
-      attribute), dc, and effect_on_fail.
-    - mode="dice": a narrative-only random moment (weather, crowd size). Give notation.
-    - mode="gather": the player forages for materials at their current location. Optionally
-      give target as a material category (herbs/plant/wood, metals/stone/gems, arcane_components)
-      to route the skill (Nature/Survival/Arcana); omit it for general foraging. A rich find may
-      uncover and harvest a fixed resource node here.
+    Pass one roll object, picked by its kind: "skill" (the player attempts something
+    risky), "social" (sway a specific NPC), "discover" (search or examine a visible
+    thing), "save" (an effect forces the player to resist), "dice" (a narrative-only
+    random moment), or "gather" (forage at the current location). Each kind's fields
+    describe themselves.
 
     Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
-    return await _check_impl(
-        context, mode, skill, target, difficulty, save_type, dc, effect_on_fail, notation, context_description, npc_id
-    )
+    mode, kwargs = check_payloads.to_impl_args(roll)
+    return await _check_impl(context, mode, **kwargs)
 
 
 async def _check_impl(

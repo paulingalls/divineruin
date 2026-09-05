@@ -90,7 +90,7 @@ legendary action this round: give it an extra, decisive beat outside its initiat
 per round). Then the next declaration beat begins.
 
 When an effect outside the attack flow forces the player to resist — a spell, a \
-blast, a toppling pillar — call check with mode="save", the save type, DC, and the \
+blast, a toppling pillar — call check with kind="save", the save type, DC, and the \
 consequence on failure.
 
 Sound effects are published automatically. Don't narrate what \

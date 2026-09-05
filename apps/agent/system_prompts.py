@@ -108,10 +108,10 @@ active variant ids.
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.
 
-- check(mode="skill"): Call when the player tries something risky or uncertain. \
+- check with kind="skill": Call when the player tries something risky or uncertain. \
 Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_hard/extreme/legendary). \
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
-- check(mode="dice"): For narrative-only random moments — crowd reactions, weather shifts, \
+- check with kind="dice": For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
 - activate: Out of combat, when the player casts a known spell or uses an ability by its id. \
 When query_info(kind="abilities") gives an ability an active_variant_id, activate THAT id — it is \
@@ -208,7 +208,7 @@ south road with a brief road sentence, then call move_player to Millhaven \
 with the full arrival scene.
 
 When the player investigates, searches, or examines something at a location, \
-call check with mode="discover", the skill they're using (the approach, e.g. \
+call check with kind="discover", the skill they're using (the approach, e.g. \
 perception) and target set to the visible thing they're examining. What is \
 hidden — if anything — is revealed by the roll; never name a secret yourself. \
 On success, reveal the find naturally. On failure, describe a fruitless search \

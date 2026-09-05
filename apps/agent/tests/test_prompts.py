@@ -282,7 +282,7 @@ class TestBuildWarmLayerExits:
 class TestNavigationPromptIncluded:
     def test_system_prompt_includes_navigation(self):
         prompt = build_system_prompt("accord_guild_hall")
-        assert 'mode="discover"' in prompt
+        assert 'kind="discover"' in prompt
         assert "Navigation" in prompt
 
     def test_navigation_prompt_nudges_scene_transition_narration(self):
@@ -449,6 +449,38 @@ class TestPromptToolConsistency:
         for agent_name, docstring in _registered_tool_descriptions().items():
             for removed in ("award_xp", "award_divine_favor"):
                 assert removed not in docstring, f"{agent_name} still names removed tool {removed}"
+
+    def test_no_surface_teaches_a_reshaped_verb_a_dead_parameter_shape(self):
+        """story-019 (ADR 0008): `check` and `begin_activity` became sum types, so the
+        parameter names they used to take no longer exist in the schema.
+
+        The existing guards in this class match on TOOL NAMES, and both verbs still exist —
+        so they stay green while a prompt tells the DM to pass a parameter the schema rejects.
+        Nothing else would catch it: the OnboardingAgent's hidden-perception beat is driven by
+        no real-LLM scenario, so its instruction would just silently stop firing in production.
+        Docstrings are scanned too, because that is exactly where the M28 drift lived
+        (concern df5cc73b2473).
+        """
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+        from warm_prompts import REGION_REGISTER
+
+        # The old call shape, verbatim. `mode=` is still the INTERNAL router's parameter
+        # (_check_impl), so these are the LLM-facing spellings only.
+        dead_shapes = ("check(mode", "check with mode", 'begin_activity(kind="crafting", recipe')
+        surfaces = {
+            "exploration": build_system_prompt("loc"),
+            "combat": COMBAT_SYSTEM_PROMPT,
+            "training": DISPATCH_SYSTEM_PROMPT,
+            "onboarding": _onboarding_prompt_surface(),
+            **{f"region_register:{region}": text for region, text in REGION_REGISTER.items()},
+            **_registered_tool_descriptions(),
+        }
+        # The warm-layer register is a fifth LLM-facing surface the other guards in this class
+        # do not scan, and it carried one of the stale `check with mode="save"` instructions.
+        assert any(k.startswith("region_register:") for k in surfaces), "REGION_REGISTER scan went vacuous"
+        for name, text in surfaces.items():
+            for dead in dead_shapes:
+                assert dead not in text, f"{name} still teaches the pre-ADR-0008 shape {dead!r}"
 
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend

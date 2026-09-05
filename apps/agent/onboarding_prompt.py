@@ -51,7 +51,7 @@ detail. End with an invitation to look around.
 ### Beat 2 — The Market
 The player explores the market square. Ambient life — vendors, sounds, smells. \
 Respond naturally to what they do. Run a hidden perception check on the guild \
-noticeboard (DC 10, use check with mode="skill", skill "perception") — if they \
+noticeboard (DC 10, use check with kind="skill", skill "perception") — if they \
 notice it, describe a posting about trouble near Greyvale. Don't force it.
 **Complete when:** 2-3 player exchanges have happened, or the player tries to \
 leave the market. Call advance_onboarding_beat.
