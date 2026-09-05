@@ -449,6 +449,7 @@
     "id": "companion_sable",
     "name": "Sable",
     "species": "shadow-fox",
+    "gender": "female",
     "age": "unknown",
     "appearance": "a sleek dark fox edged in shifting shadow, eyes that catch impossible light, moves without sound",
     "personality": [

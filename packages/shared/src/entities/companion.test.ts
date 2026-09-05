@@ -93,6 +93,15 @@ describe("companions.json — row shape", () => {
       for (const k of ATTRIBUTE_KEYS) expect(typeof c.base_attributes[k]).toBe("number");
     }
   });
+
+  // Constraint 7: the JSON row is a cross-language contract. The Python loader pins the same
+  // field (test_companion_profiles.TestParse.test_every_row_declares_a_known_gender); a guard on
+  // one side certifies nothing about the other.
+  test("every companion declares a gender the pronoun map knows", () => {
+    for (const c of companions) {
+      expect(["male", "female", "nonbinary"]).toContain(c.gender);
+    }
+  });
 });
 
 describe("companions.json — scaling contract (story-002 reads these)", () => {

@@ -119,7 +119,7 @@ export interface Companion {
   id: string; // e.g. "companion_kael" (matches voice_registry character_id + world effect ids)
   name: string;
   species: string;
-  gender?: string; // omitted for Sable (a shadow-fox)
+  gender: string; // "male" | "female" | "nonbinary" — the pronoun map's input
   age?: string;
   appearance?: string;
 
