@@ -1,16 +1,19 @@
 """The warm layer's ACTIVE COMBAT block tracks the fight it describes.
 
 Every test here drives the event handler DIRECTLY (`_process_events`), never a loop tick
-and never the 30s bus fallback: on trunk the fallback already heals the warm layer once
-the fight goes quiet, so a test that let the timer fire would certify the timer and not
-the fix.
+and never the 30s bus fallback: `_run`'s timed-out branch rebuilds unconditionally, so a
+test that let the timer fire would go green against the timer and not against the fix.
+
+These are RENDERER tests. Neither this block nor the hot layer reaches a live DM mid-fight
+today — see `BackgroundProcess._refresh_combat_section` for the lifecycle reason — so
+nothing here certifies that the two agree in front of a player.
 """
 
 import re
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from prompt_fixtures import SAMPLE_LOCATION
+from prompt_fixtures import SAMPLE_LOCATION, sample_combat_state
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -38,19 +41,6 @@ def _mock_db():
         yield (quests, location, npcs, training)
 
 
-def _combat(round_number: int = 1, **grosh_overrides: object) -> CombatState:
-    kael = CombatParticipant(id="p_kael", name="Kael", type="player", initiative=18, hp_current=20, hp_max=20, ac=14)
-    grosh = CombatParticipant(id="grosh", name="Grosh", type="enemy", initiative=9, hp_current=20, hp_max=20, ac=12)
-    for key, value in grosh_overrides.items():
-        setattr(grosh, key, value)
-    return CombatState(
-        combat_id="c1",
-        participants=[kael, grosh],
-        initiative_order=["p_kael", "grosh"],
-        round_number=round_number,
-    )
-
-
 def _participant(combat_state: CombatState, pid: str) -> CombatParticipant:
     p = combat_state.get_participant(pid)
     assert p is not None
@@ -76,7 +66,7 @@ def _last_warm(agent: MagicMock) -> str:
 class TestCombatUiUpdateRefresh:
     async def test_round_and_hp_advance_in_the_warm_layer(self):
         """AC1: a COMBAT_UI_UPDATE driven through the handler re-renders the block."""
-        cs = _combat(round_number=1)
+        cs = sample_combat_state(round_number=1)
         bg, agent = _make_bg(cs)
         with _mock_db():
             await bg._rebuild_warm_layer()
@@ -95,7 +85,7 @@ class TestCombatUiUpdateRefresh:
         """A base that was never built is not a base: composing onto it would ship the
         combat block as the agent's ENTIRE warm layer, silently dropping location,
         quests, NPCs, companion and corruption."""
-        bg, agent = _make_bg(_combat(round_number=2))
+        bg, agent = _make_bg(sample_combat_state(round_number=2))
         await bg._process_events(_ui_update(), timed_out=False)
         assert agent.update_instructions.await_count == 0
 
@@ -107,7 +97,7 @@ class TestCombatUiUpdateRefresh:
         would pass while the prompt stayed stale. The round-2 assertion pairs with the counts
         so "refreshed nothing at all" cannot pass either.
         """
-        cs = _combat(round_number=1)
+        cs = sample_combat_state(round_number=1)
         bg, agent = _make_bg(cs)
         with _mock_db():
             await bg._rebuild_warm_layer()
@@ -143,7 +133,7 @@ def _warm_line_for(warm: str, name: str) -> str:
 class TestWarmAndHotAgree:
     async def test_same_round_and_fallen_state_after_a_refresh(self):
         """AC3: the two renderers of the same fight, compared after a handler-driven refresh."""
-        cs = _combat(round_number=1)
+        cs = sample_combat_state(round_number=1)
         bg, agent = _make_bg(cs)
         with _mock_db():
             await bg._rebuild_warm_layer()
@@ -160,6 +150,9 @@ class TestWarmAndHotAgree:
 
         assert _round_in(hot, r"\[COMBAT Round (\d+)") == _round_in(warm, r"Round (\d+)")
         for p in cs.participants:
+            # TWO sources, not one: hot derives `fallen` from HP, warm's [FALLEN] from the
+            # is_fallen flag. Every fall site sets both, so they agree — except
+            # draethar_inner_fire.py:90, which drives HP to 0 and never sets is_fallen.
             hot_fallen = f"{p.name}(fallen)" in hot
             assert hot_fallen == ("[FALLEN]" in _warm_line_for(warm, p.name))
         assert kael.name + "(fallen)" in hot  # the comparison is not vacuously false==false
@@ -169,7 +162,7 @@ class TestCombatEnded:
     async def test_block_is_gone_after_combat_ends(self):
         """AC4: unchanged trunk behaviour, pinned — COMBAT_ENDED is a full-rebuild trigger
         and compose drops a None section."""
-        cs = _combat(round_number=1)
+        cs = sample_combat_state(round_number=1)
         bg, agent = _make_bg(cs)
         with _mock_db():
             await bg._rebuild_warm_layer()

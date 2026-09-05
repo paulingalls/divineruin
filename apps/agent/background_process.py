@@ -319,7 +319,16 @@ class BackgroundProcess:
         await self._apply_warm(compose_warm_layer(base, format_combat_section(self._sd.combat_state)))
 
     async def _refresh_combat_section(self) -> None:
-        """Re-render only the ACTIVE COMBAT block from in-memory state — no DB round trip."""
+        """Re-render only the ACTIVE COMBAT block from in-memory state — no DB round trip.
+
+        NOT REACHED IN PRODUCTION YET, and neither is the block it re-renders:
+        ``sd.combat_state`` is set only between start_combat's handoff to CombatAgent
+        (combat_init) and end_combat's handback (combat_end), and this process belongs to
+        ExplorationAgent — whose ``on_exit`` stops it, which is exactly what LiveKit runs on
+        that handoff. CombatAgent builds no BackgroundProcess and its instructions carry no
+        warm layer. Putting this block in front of the DM mid-fight needs a warm-layer owner
+        that survives the handoff; that is a lifecycle decision, not this seam's.
+        """
         if self._warm_base is None:
             return
         await self._apply_warm(compose_warm_layer(self._warm_base, format_combat_section(self._sd.combat_state)))

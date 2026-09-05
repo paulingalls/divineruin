@@ -7,6 +7,8 @@ Distinct from sample_fixtures.SAMPLE_LOCATION, whose exits carry a `requires` ga
 prompt tests do not want.
 """
 
+from session_data import CombatParticipant, CombatState
+
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
     "name": "Guild Hall",
@@ -42,3 +44,23 @@ SAMPLE_QUEST = {
         {"id": 1, "objective": "Find the source of the anomaly."},
     ],
 }
+
+
+def sample_combat_state(round_number: int = 1, **enemy_overrides: object) -> CombatState:
+    """A two-participant fight — Kael (player) vs Grosh (enemy), both at full HP.
+
+    ``enemy_overrides`` set attributes on Grosh, so a caller states only what it is testing
+    (``hp_current=8``, ``is_fallen=True``). Lives here for the same reason the rows above do:
+    the ACTIVE COMBAT block is rendered by warm_prompts and refreshed by background_process,
+    and their two test modules were each carrying a copy of this builder.
+    """
+    kael = CombatParticipant(id="p_kael", name="Kael", type="player", initiative=18, hp_current=20, hp_max=20, ac=14)
+    grosh = CombatParticipant(id="grosh", name="Grosh", type="enemy", initiative=9, hp_current=20, hp_max=20, ac=12)
+    for key, value in enemy_overrides.items():
+        setattr(grosh, key, value)
+    return CombatState(
+        combat_id="c1",
+        participants=[kael, grosh],
+        initiative_order=["p_kael", "grosh"],
+        round_number=round_number,
+    )
