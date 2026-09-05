@@ -19,23 +19,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
-from test_crafting_tools_workspaces import _pricing, _queries
+from test_crafting_tools_workspaces import _content, _pricing, _queries
 
 import workspace as ws
 from crafting_tools import _query_available_workspaces_impl, _rent_workspace_impl
 
 BUNDLE = ws.COMBINED_FORGE_LAB_TOKEN
-
-
-def _content(settlement_tier="city", *, location=...):
-    """A content_mod seam: the location the bundle gate reads, plus the get_npc the
-    disposition fallback would use (unused here — _queries records a disposition)."""
-    mod = MagicMock()
-    if location is ...:
-        location = {"id": "accord_guild_hall", "settlement_tier": settlement_tier}
-    mod.get_location = AsyncMock(return_value=location)
-    mod.get_npc = AsyncMock(return_value=None)
-    return mod
 
 
 def _mutations(rental_ids=("rent_forge", "rent_lab")):
@@ -166,10 +155,14 @@ class TestUnrentableTokens:
 class TestQuoteMatchesCharge:
     """The debt in one class: a price the DM can quote but no call can charge."""
 
-    async def _quote(self, npc_id=None, **kwargs):
+    async def _quote(self, npc_id=None, *, tier="city", **kwargs):
         return json.loads(
             await _query_available_workspaces_impl(
-                make_context(), npc_id, queries_mod=_queries(**kwargs), content_mod=_content(), pricing_mod=_pricing()
+                make_context(),
+                npc_id,
+                queries_mod=_queries(**kwargs),
+                content_mod=_content(tier),
+                pricing_mod=_pricing(),
             )
         )
 
@@ -199,3 +192,13 @@ class TestQuoteMatchesCharge:
         for entry in quote["rentable"]:
             result, _, _, _ = await _rent(entry["workspace_type"], mutations=_mutations(("a", "b")))
             assert result["price_sp"] == pytest.approx(entry["price_sp_per_day"])
+
+    @pytest.mark.parametrize("npc_id", [None, "grimjaw"])
+    async def test_a_settlement_that_cannot_host_the_bundle_is_never_quoted_it(self, npc_id):
+        # Same claim where the rental REFUSES: a village quote that still carried the
+        # 12sp bundle would put the DM back to voicing a price no call can charge —
+        # the debt in a new shape. Both quote shapes, because the DM calls both.
+        quote = await self._quote(npc_id, tier="village")
+        assert {e["workspace_type"] for e in quote["rentable"]} == {"workshop", "forge", "laboratory"}
+        with pytest.raises(ToolError, match="has no forge and laboratory to rent"):
+            await _rent(content=_content("village"))

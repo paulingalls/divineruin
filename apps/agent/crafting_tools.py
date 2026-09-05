@@ -16,9 +16,10 @@ Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod
 `now_fn=` keyword seams for TEST-ONLY injection; production callers use the
 `@function_tool` wrappers. Settlement-by-size availability gates ONLY the
 `forge_laboratory` bundle, whose spec cell names the settlement ("city with both, or
-Keldaran hold"): `_require_bundle_location` maps the location's `settlement_tier` onto
-a SettlementSize. The quote and the single rentals stay settlement-blind — gating those
-too is concern c5c5871115dc (Phase 6 settlement templates).
+Keldaran hold"): `_bundle_refusal` maps the location's `settlement_tier` onto a
+SettlementSize, and BOTH the quote and the rental apply it, so the DM never voices a
+bundle price the rental would refuse. The single rentals stay settlement-blind —
+gating those too is concern c5c5871115dc (Phase 6 settlement templates).
 """
 
 import json
@@ -113,6 +114,7 @@ async def _query_available_workspaces_impl(
         disposition = await resolve_disposition(npc_id, player_id, queries_mod=queries_mod, content_mod=content_mod)
 
     multipliers = (await pricing_mod.get_economy_pricing())["disposition_multipliers"]
+    offers = await _offers_hosted_here(location_id, content_mod=content_mod, workspace_mod=workspace_mod)
     if npc_id is None:
         rentable = [
             {
@@ -125,13 +127,13 @@ async def _query_available_workspaces_impl(
                     for tier in workspace_mod.RENTABLE_DISPOSITIONS
                 },
             }
-            for offer in workspace_mod.RENTAL_OFFERS
+            for offer in offers
         ]
         return json.dumps({"accessible": sorted(accessible), "rentable": rentable})
 
     rentable = []
     try:
-        for offer in workspace_mod.RENTAL_OFFERS:
+        for offer in offers:
             quote = workspace_mod.compute_workspace_rental_price(
                 offer.base_price_sp, disposition, multipliers=multipliers
             )
@@ -186,7 +188,9 @@ async def _rent_workspace_impl(
     # (spec: Forge + Laboratory is a city-or-Keldaran-hold bundle). Refuse before any
     # read that could charge.
     if len(offer.grants) > 1:
-        await _require_bundle_location(location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod)
+        refusal = await _bundle_refusal(location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod)
+        if refusal:
+            raise ToolError(refusal)
 
     # Co-location gate (concern bec87679b223): you can only rent from an NPC who is
     # actually here — disposition alone is not enough.
@@ -250,23 +254,38 @@ async def _rent_workspace_impl(
     return json.dumps(result)
 
 
-async def _require_bundle_location(location_id, offer, *, content_mod, workspace_mod) -> None:
-    """Refuse a multi-workspace bundle where the settlement cannot host every member.
+async def _bundle_refusal(location_id: str, offer: workspace.RentalOffer, *, content_mod, workspace_mod) -> str | None:
+    """Why `location_id` cannot host a multi-workspace `offer`, or None if it can.
 
-    Scoped to multi-grant offers: single rentals and the quote stay settlement-blind
-    (whole-quote availability gating is concern c5c5871115dc, Phase 6)."""
+    One rule, two callers — the rental raises it and the quote drops the offer — because
+    a price the DM can voice but no call can charge is the exact debt this path pays.
+    Scoped to multi-grant offers: single rentals stay settlement-blind (whole-quote
+    availability gating is concern c5c5871115dc, Phase 6)."""
     location = await content_mod.get_location(location_id)
     tier = (location or {}).get("settlement_tier")
     if not tier:
-        raise ToolError(f"{location_id} is not a settlement — no workspace to rent here.")
+        return f"{location_id} is not a settlement — the {offer.token} bundle needs a city or Keldaran hold."
     try:
         size = workspace_mod.SettlementSize(tier)
-    except ValueError as exc:
-        raise ToolError(f"{location_id} has an unknown settlement tier {tier!r}.") from exc
+    except ValueError:
+        return f"{location_id} has an unknown settlement tier {tier!r}."
     missing = workspace_mod.bundle_missing_workspaces(size)
     if missing:
         names = " and ".join(w.value for w in missing)
-        raise ToolError(f"{location_id} has no {names} to rent — the {offer.token} bundle needs both.")
+        return f"{location_id} has no {names} to rent — the {offer.token} bundle needs both."
+    return None
+
+
+async def _offers_hosted_here(location_id: str, *, content_mod, workspace_mod) -> list[workspace.RentalOffer]:
+    """The rental offers `location_id` can actually host, in RENTAL_OFFERS order."""
+    hosted = []
+    for offer in workspace_mod.RENTAL_OFFERS:
+        if len(offer.grants) > 1 and await _bundle_refusal(
+            location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod
+        ):
+            continue
+        hosted.append(offer)
+    return hosted
 
 
 async def _start_crafting_project_impl(

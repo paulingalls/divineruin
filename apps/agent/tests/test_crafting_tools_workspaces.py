@@ -33,6 +33,17 @@ def _pricing():
     return mod
 
 
+def _content(settlement_tier="city", *, location=...):
+    """A content_mod seam: the location the bundle offer-gate reads, plus the get_npc the
+    disposition fallback would use (unused here — _queries records a disposition)."""
+    mod = MagicMock()
+    if location is ...:
+        location = {"id": "accord_guild_hall", "settlement_tier": settlement_tier}
+    mod.get_location = AsyncMock(return_value=location)
+    mod.get_npc = AsyncMock(return_value=None)
+    return mod
+
+
 def _queries(*, accessible=None, disposition="neutral", player=None, present_npc_ids=("grimjaw",), has_lab=False):
     mod = MagicMock()
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field"})
@@ -50,7 +61,9 @@ class TestQueryAvailableWorkspaces:
         queries = _queries()
         pricing = _pricing()
         with pytest.raises(ToolError, match="Invalid npc_id"):
-            await _query_available_workspaces_impl(make_context(), "bad npc", queries_mod=queries, pricing_mod=pricing)
+            await _query_available_workspaces_impl(
+                make_context(), "bad npc", queries_mod=queries, pricing_mod=pricing, content_mod=_content()
+            )
         queries.get_inventory_item.assert_not_awaited()
         queries.get_accessible_workspaces.assert_not_awaited()
         pricing.get_economy_pricing.assert_not_awaited()
@@ -62,6 +75,7 @@ class TestQueryAvailableWorkspaces:
                 ctx,
                 queries_mod=_queries(accessible={"field", "forge"}),
                 pricing_mod=_pricing(),
+                content_mod=_content(),
             )
         )
         assert set(result["accessible"]) == {"field", "forge"}
@@ -80,7 +94,9 @@ class TestQueryAvailableWorkspaces:
         # DM back to quoting a price that player never pays.
         expected = {tier for tier in DISPOSITIONS if DISPOSITION_INDEX[tier] >= DISPOSITION_INDEX["neutral"]}
         result = json.loads(
-            await _query_available_workspaces_impl(make_context(), queries_mod=_queries(), pricing_mod=_pricing())
+            await _query_available_workspaces_impl(
+                make_context(), queries_mod=_queries(), pricing_mod=_pricing(), content_mod=_content()
+            )
         )
         assert result["rentable"]
         for entry in result["rentable"]:
@@ -93,6 +109,7 @@ class TestQueryAvailableWorkspaces:
                 "grimjaw",
                 queries_mod=_queries(disposition="trusted"),
                 pricing_mod=_pricing(),
+                content_mod=_content(),
             )
         )
         assert result["quoted_for_npc_id"] == "grimjaw"
@@ -106,7 +123,9 @@ class TestQueryAvailableWorkspaces:
         queries = _queries(present_npc_ids=())
         pricing = _pricing()
         with pytest.raises(ToolError, match="isn't here"):
-            await _query_available_workspaces_impl(make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing)
+            await _query_available_workspaces_impl(
+                make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing, content_mod=_content()
+            )
         queries.get_npc_disposition.assert_not_awaited()
         pricing.get_economy_pricing.assert_not_awaited()
 
@@ -117,6 +136,7 @@ class TestQueryAvailableWorkspaces:
                 "grimjaw",
                 queries_mod=_queries(accessible={"field", "forge"}, disposition="hostile"),
                 pricing_mod=_pricing(),
+                content_mod=_content(),
             )
         )
         assert set(result["accessible"]) == {"field", "forge"}
@@ -130,6 +150,7 @@ class TestQueryAvailableWorkspaces:
                 "grimjaw",
                 queries_mod=_queries(disposition="grumpy"),
                 pricing_mod=_pricing(),
+                content_mod=_content(),
             )
 
     @pytest.mark.parametrize(
@@ -142,7 +163,9 @@ class TestQueryAvailableWorkspaces:
         queries = _queries(disposition=disposition, player={"player_id": "player_1", "gold": starting_gold})
         pricing = _pricing()
         quote_result = json.loads(
-            await _query_available_workspaces_impl(make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing)
+            await _query_available_workspaces_impl(
+                make_context(), "grimjaw", queries_mod=queries, pricing_mod=pricing, content_mod=_content()
+            )
         )
         daily_quote = next(entry for entry in quote_result["rentable"] if entry["workspace_type"] == "forge")[
             "price_sp_per_day"
@@ -180,12 +203,16 @@ class TestQueryAvailableWorkspaces:
         # 6a1b99cd6ac7). The grant itself is get_accessible_workspaces' job; assert the
         # query path passes lab ownership through to it.
         queries = _queries(has_lab=True)
-        await _query_available_workspaces_impl(make_context(), queries_mod=queries, pricing_mod=_pricing())
+        await _query_available_workspaces_impl(
+            make_context(), queries_mod=queries, pricing_mod=_pricing(), content_mod=_content()
+        )
         assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is True
 
     async def test_no_lab_passes_false_through(self):
         queries = _queries(has_lab=False)
-        await _query_available_workspaces_impl(make_context(), queries_mod=queries, pricing_mod=_pricing())
+        await _query_available_workspaces_impl(
+            make_context(), queries_mod=queries, pricing_mod=_pricing(), content_mod=_content()
+        )
         assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is False
 
 

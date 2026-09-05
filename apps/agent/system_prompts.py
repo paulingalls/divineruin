@@ -397,8 +397,9 @@ the catch-up, not through a resolve call — narrate the focus and the work of t
 hands, never the recipe id.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
-laboratory — call query_info(kind="workspaces", target_id=<npc id>) for whoever is \
-renting it. Quote the returned price AS A DAILY RATE, and when they name a term, say \
+laboratory, or the cheaper forge-and-laboratory bundle a city offers — call \
+query_info(kind="workspaces", target_id=<npc id>) for whoever is \
+renting it. Offer only what that call returns. Quote the returned price AS A DAILY RATE, and when they name a term, say \
 the total you are about to charge (rate x days) before you book it; omit the id only \
 to compare prices by disposition. Then begin_activity(kind="workspace") with the \
 workspace_type, whoever they're renting from, and how many days they want it for. \
