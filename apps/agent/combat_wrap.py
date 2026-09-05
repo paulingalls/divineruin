@@ -130,8 +130,10 @@ async def wrap_phase(
             event_bus=session.event_bus,
         )
     else:
-        # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
-        # transaction so a mid-end failure rolls the phase back atomically (concern 7198554c2d4c).
+        # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join the
+        # WRAP COMMIT, so a mid-end failure rolls that commit back atomically. Under the two-commit
+        # split (M29, story-016) the ally results from commit 1 stand — they are durable and the
+        # enemy actions are persisted as pending, a legal resting state rather than a torn one.
         # Its COMBAT_ENDED + stinger buffer into the shared sink; the in-memory teardown + handoff
         # run post-commit via _end_combat_finish below.
         end_data = await _end_combat_db(

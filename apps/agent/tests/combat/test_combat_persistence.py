@@ -304,10 +304,14 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
 
 
 async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(dev_db_pool, monkeypatch) -> None:
-    """A mid-phase DB failure must NOT leave players.data diverged from the combat_instances SSOT
-    (debt 084c7d0bc457). The enemy packet writes update_player_hp inside the phase transaction; when
-    the trailing save_combat_state raises, the whole phase rolls back and the player's persisted HP
-    is unchanged. Without the transaction the per-packet HP write commits independently and diverges."""
+    """A DB failure must NOT leave players.data diverged from the combat_instances SSOT.
+
+    The enemy packet's update_player_hp now lands in the WRAP commit (M29, story-016): the ally
+    band commits first, the held enemy actions and the wrap commit second. When that second
+    commit's save_combat_state raises, the enemy's blow rolls back with it and the player's
+    persisted HP is unchanged — while commit 1's ally results stand, which is the guarantee
+    replacing the old whole-phase atomicity. Without the transaction the per-packet HP write would
+    commit independently and diverge."""
     pool = dev_db_pool
     player_id = "cap_s010_rollback_player"
     combat_id = "combat_s010_rollback"

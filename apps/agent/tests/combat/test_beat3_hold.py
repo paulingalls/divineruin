@@ -15,6 +15,7 @@ from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
 
 import abilities
+import combat_phase
 import combat_turn
 
 
@@ -370,3 +371,33 @@ class TestMidWindowPersistence:
         assert saves[1]["held_actions"][0]["roll"] is None
         assert saves[2]["open_window"]["stage"] == "post_roll"
         assert saves[2]["held_actions"][0]["roll"] is not None
+
+
+class TestWhatTheDmCanActuallyDoAtAWindow:
+    """constraint 6, EXECUTED. `next.verbs` is a claim about what the engine will accept, and a
+    test that only reads the list this card builds would certify the list, not the engine.
+
+    story-017 owns rebinding activation. Until it lands, combat_phase.validate_reaction_activation
+    refuses every beat but RESOLUTION — and every window this card opens is at NARRATION — so
+    advertising `activate` here would be the exact defect constraint 6 was written for: a gate
+    keyed on a token nothing honours. These two assertions must move together in 017.
+    """
+
+    @pytest.mark.asyncio
+    async def test_activate_is_not_advertised_and_is_in_fact_refused(self):
+        ctx = _ctx_at_resolution()
+        deps = _resolve_deps()
+        cs = ctx.userdata.combat_state
+        cs.pending_declarations["player_1"] = {
+            "type": "reaction",
+            "action": "rogue_uncanny_dodge",
+            "trigger": "on_hit",
+        }
+        await _call(ctx, deps)  # the ally commit
+        r1 = await _call(ctx, deps)  # paused on the pre-roll window
+
+        assert r1["next"]["waiting_on"] is not None
+        assert "activate" not in r1["next"]["verbs"]
+        # ...and the engine agrees, executed rather than asserted from this card's own list.
+        with pytest.raises(ValueError, match="resolution beat"):
+            combat_phase.validate_reaction_activation(ctx.userdata.combat_state, "player_1", "rogue_uncanny_dodge")

@@ -132,10 +132,35 @@ class TestCombatBeatContract:
         assert "silent" in p
         assert p.index("silent") < p.index("now narrate")
 
-    def test_narration_does_not_open_an_undeclared_reaction_window(self):
+    def test_beat3_teaches_the_dm_to_read_next_rather_than_guess_a_window(self):
+        """constraint 6, the prompt half. `next` is only a producer if the DM is told to read it:
+        an id the engine mints but the prompt never mentions is still a guess. Sprint 45 shipped a
+        gate keyed on a reaction window the DM had to pick among nine, and the prompt's advice then
+        was the opposite of the design — "do not open an undeclared reaction window during Beat 3".
+        M29 story-016 restored the interrupt model; these are the phrases that carry it."""
         low = COMBAT_SYSTEM_PROMPT.lower()
-        assert "do not open an undeclared reaction window" in low
-        assert "before an enemy's blow lands" not in low
+        assert "do not open an undeclared reaction window" not in low, "the reversed model is back"
+        assert "next.waiting_on" in low
+        assert "window_id" in low and "never invent one" in low
+        # The pause is the mechanic, and both stages are named so the DM knows what it may voice.
+        assert "the pause is the mechanic" in low
+        assert "pre_roll" in low and "post_roll" in low
+        # Reading `next` is taught before Beat 3 needs it.
+        assert low.index('every resolve_phase result carries a "next" block') < low.index("next.waiting_on")
+
+    def test_beat2_says_the_enemy_blows_are_held(self):
+        """AC1's contract, as the DM sees it: Beat 2 resolves the player's side only. A prompt that
+        still promised "resolves every declaration" would have the DM narrate blows that have not
+        landed."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "holds every enemy action back for beat 3" in low
+        assert "the enemy blows are held" in low
+
+    def test_the_prompt_warns_that_end_combat_is_refused_mid_beat(self):
+        """D7's DM-visible cost: end_combat("fled") raises while enemy actions are held pending, so
+        the prompt says so rather than letting the DM discover it as a tool error."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "refuse while enemy actions are still held" in low
 
     def test_honors_dramatic_pause(self):
         # "pause" alone leaks from VOICE_STYLE ("Use pauses") and the Beat-4 death-save
@@ -165,13 +190,14 @@ class TestCombatBeatContract:
         assert "reaction — action is the EXACT id of the player's reaction ability" in prompt
         assert 'trigger is its catalog window, such as "on_hit"' in prompt
 
-    def test_declared_reaction_activates_before_resolution(self):
+    def test_a_declared_reaction_waits_for_its_window_in_beat_3(self):
+        """The declaration still happens at Beat 1, but the WINDOW it waits for is now a held enemy
+        blow at Beat 3 — not a Beat-2 activation before resolve_phase. story-017 rebinds the
+        activation call itself; this pins that the prompt no longer sends the DM to the old spot."""
         low = COMBAT_SYSTEM_PROMPT.lower()
-        declaration = low.index("declare the reaction")
-        activation = low.index("activate that exact reaction ability id")
-        resolution = low.index("call resolve_phase", activation)
-        assert declaration < activation < resolution
-        assert "reaction activation is an exception" in low
+        declaration = low.index("declare the reaction during beat 1")
+        assert "matching window opens against a held enemy blow in beat 3" in low[declaration : declaration + 260]
+        assert "activate that exact reaction ability id" not in low
 
     def test_combat_only_capabilities_still_use_activate(self):
         # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
