@@ -341,7 +341,9 @@ async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db
     result = json.loads(raw)
     assert "field" in result["accessible"]
     rentable_types = {r["workspace_type"] for r in result["rentable"]}
-    assert rentable_types == {"workshop", "forge", "laboratory"}
+    # forge_laboratory is story-015's bundle, quoted here because the seeded test location
+    # is a settlement that hosts both. It is a rental OPTION, not a WorkspaceType member.
+    assert rentable_types == {"workshop", "forge", "laboratory", "forge_laboratory"}
 
 
 async def test_query_info_recipe_returns_seeded_requirements(reset_db_pool: str) -> None:
