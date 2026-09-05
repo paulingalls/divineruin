@@ -9,17 +9,20 @@ import typing
 
 import pytest
 
+import gathering
 from check_payloads import (
     CHECK_VARIANTS,
     DiceRoll,
     DiscoverCheck,
     Gather,
+    GatherCategory,
     SaveCheck,
     SkillCheck,
     SocialCheck,
     to_impl_args,
 )
 from check_tools import VALID_CHECK_MODES
+from social_tools import SOCIAL_SKILLS
 
 
 def test_skill_variant_maps_to_the_skill_impl_args():
@@ -69,6 +72,21 @@ def test_gather_any_is_general_foraging():
     back the union slot the sum type just bought (ADR 0008 rule 2)."""
     mode, kwargs = to_impl_args(Gather(kind="gather", category="any"))
     assert (mode, kwargs) == ("gather", {"target": ""})
+
+
+def test_gather_categories_match_the_gathering_engine_vocabulary():
+    """The two other vocabularies this module re-declares are tied to their engine below and
+    in test_declaration_payloads; this one was not. `gathering.gathering_skill` fail-louds on
+    a category it cannot route, so a category added to the engine and not here is a foraging
+    kind the DM can never ask for, and one removed from the engine is a ToolError the DM only
+    meets mid-session."""
+    assert set(typing.get_args(GatherCategory)) - {"any"} == set(gathering.GATHERING_SKILLS)
+
+
+def test_social_skills_match_the_social_router_vocabulary():
+    """Same tie for the social approach: `_check_social_impl` refuses anything outside
+    SOCIAL_SKILLS, and the Literal here is a second copy of that list."""
+    assert set(typing.get_args(SocialCheck.model_fields["skill"].annotation)) == set(SOCIAL_SKILLS)
 
 
 def test_variant_kinds_match_valid_check_modes():

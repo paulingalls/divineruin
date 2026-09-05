@@ -17,11 +17,13 @@ one declaration per acting combatant — each names its actor_id and its kind. F
 kinds resolve in combat today: \
 attack — action is the EXACT name of one of the actor's equipped weapons (for example \
 "Longsword"), because that is what resolve_phase matches against, and target_id is who \
-they strike. \
+they strike. Send rider as an empty string unless the actor has Cunning Action, which \
+spends it on "dash", "disengage" or "hide". \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. This is how a caster acts IN COMBAT: resolve_phase \
+self-cast. Send argument_type as an empty string for every ability but de_escalate \
+(below). This is how a caster acts IN COMBAT: resolve_phase \
 deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \

@@ -35,9 +35,9 @@ def test_attack_maps_to_the_engine_attack_shape():
 
 def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     """`rider` is required in the schema (ADR 0008 rule 2 — an optional costs back the
-    union slot the sum type bought), so "" is how the DM says "no rider". Passing it
-    through verbatim would make every attacker a Cunning Action attacker with a rider
-    the enhancer does not recognise."""
+    union slot the sum type bought), so "" is how the DM says "no rider". The mapper
+    drops it so the engine dict keeps the shape `resolve_declaration` has always
+    received: a `rider` key present means the actor chose one."""
     with_rider = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", rider="hide")]
     )
