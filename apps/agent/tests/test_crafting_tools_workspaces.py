@@ -69,9 +69,10 @@ class TestQueryAvailableWorkspaces:
         assert prices["workshop"] == {"neutral": 2.0, "friendly": 1.6, "trusted": 0.0}
         assert prices["forge"] == {"neutral": 5.0, "friendly": 4.0, "trusted": 0.0}
         assert prices["laboratory"] == {"neutral": 10.0, "friendly": 8.0, "trusted": 0.0}
-        serialized = json.dumps(result)
-        assert "base_price_sp" not in serialized
-        assert "combined_forge_lab" not in serialized
+        # approx, not ==: 12 * 0.8 is 9.600000000000001. No pricing path rounds (the
+        # shared multiplier has a TS twin in repair.ts), so the float rides through.
+        assert prices["forge_laboratory"] == pytest.approx({"neutral": 12.0, "friendly": 9.6, "trusted": 0.0})
+        assert "base_price_sp" not in json.dumps(result)
 
     async def test_untargeted_table_covers_every_rentable_ladder_tier(self):
         # The tier list must come from the canonical ladder (role_archetypes.DISPOSITIONS),
@@ -98,9 +99,8 @@ class TestQueryAvailableWorkspaces:
         assert result["disposition"] == "trusted"
         assert result["rentable"] == [
             {"workspace_type": workspace_type, "available": True, "price_sp_per_day": 0.0}
-            for workspace_type in ("workshop", "forge", "laboratory")
+            for workspace_type in ("workshop", "forge", "laboratory", "forge_laboratory")
         ]
-        assert "combined_forge_lab" not in json.dumps(result)
 
     async def test_absent_target_refuses_before_reading_disposition(self):
         queries = _queries(present_npc_ids=())

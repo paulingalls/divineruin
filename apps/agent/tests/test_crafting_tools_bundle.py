@@ -22,7 +22,7 @@ from sample_fixtures import make_context, make_db_mod
 from test_crafting_tools_workspaces import _pricing, _queries
 
 import workspace as ws
-from crafting_tools import _rent_workspace_impl
+from crafting_tools import _query_available_workspaces_impl, _rent_workspace_impl
 
 BUNDLE = ws.COMBINED_FORGE_LAB_TOKEN
 
@@ -161,3 +161,41 @@ class TestUnrentableTokens:
     async def test_field_keeps_its_own_refusal(self):
         with pytest.raises(ToolError, match="Field is free"):
             await _rent("field")
+
+
+class TestQuoteMatchesCharge:
+    """The debt in one class: a price the DM can quote but no call can charge."""
+
+    async def _quote(self, npc_id=None, **kwargs):
+        return json.loads(
+            await _query_available_workspaces_impl(
+                make_context(), npc_id, queries_mod=_queries(**kwargs), content_mod=_content(), pricing_mod=_pricing()
+            )
+        )
+
+    async def test_untargeted_quote_prices_the_bundle_by_disposition(self):
+        quote = await self._quote()
+        prices = {entry["workspace_type"]: entry["prices_sp_per_day_by_disposition"] for entry in quote["rentable"]}
+        assert prices["forge_laboratory"] == pytest.approx({"neutral": 12.0, "friendly": 9.6, "trusted": 0.0})
+
+    async def test_every_quoted_offer_names_what_it_grants(self):
+        quote = await self._quote()
+        grants = {entry["workspace_type"]: entry["grants"] for entry in quote["rentable"]}
+        assert grants["forge_laboratory"] == ["forge", "laboratory"]
+        assert grants["forge"] == ["forge"]
+
+    async def test_quoted_bundle_price_times_days_equals_the_charge(self):
+        quote = await self._quote("grimjaw", disposition="friendly")
+        daily = next(e for e in quote["rentable"] if e["workspace_type"] == BUNDLE)["price_sp_per_day"]
+        rental, _, _, _ = await _rent(days=3, disposition="friendly")
+        assert daily == pytest.approx(9.6)
+        assert rental["price_sp"] == pytest.approx(daily * 3)
+
+    async def test_every_quoted_token_is_rentable(self):
+        # The falsifier for the whole story: whatever query_info(kind="workspaces")
+        # quotes, begin_activity(kind="workspace") must be able to charge.
+        quote = await self._quote("grimjaw")
+        assert {e["workspace_type"] for e in quote["rentable"]} == {o.token for o in ws.RENTAL_OFFERS}
+        for entry in quote["rentable"]:
+            result, _, _, _ = await _rent(entry["workspace_type"], mutations=_mutations(("a", "b")))
+            assert result["price_sp"] == pytest.approx(entry["price_sp_per_day"])

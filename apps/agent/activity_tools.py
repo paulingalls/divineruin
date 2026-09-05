@@ -68,8 +68,9 @@ async def begin_activity(
       refused), errand_type (scout|social|acquire|relationship),
       destination.
     - kind='crafting': recipe_id (a recipe the player already knows).
-    - kind='workspace': workspace_type (workshop|forge|laboratory), npc_id (renting from),
-      days (rental length, >= 1).
+    - kind='workspace': workspace_type (workshop|forge|laboratory, or forge_laboratory for the
+      discounted Forge + Laboratory bundle, which a city or Keldaran hold only can rent),
+      npc_id (renting from), days (rental length, >= 1).
     - kind='experiment': material_ids and quantities (positionally aligned, same length,
       material_ids must not repeat), intended_output (the item id hoped for).
 

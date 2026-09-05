@@ -14,9 +14,11 @@ crafting activity (the outcome is rolled later at resolution, not here).
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=` /
 `now_fn=` keyword seams for TEST-ONLY injection; production callers use the
-`@function_tool` wrappers. Settlement-by-size availability is NOT reported here —
-locations carry region_type/tags, not a SettlementSize; that lands with Phase 6
-settlement templates (concern c5c5871115dc).
+`@function_tool` wrappers. Settlement-by-size availability gates ONLY the
+`forge_laboratory` bundle, whose spec cell names the settlement ("city with both, or
+Keldaran hold"): `_require_bundle_location` maps the location's `settlement_tier` onto
+a SettlementSize. The quote and the single rentals stay settlement-blind — gating those
+too is concern c5c5871115dc (Phase 6 settlement templates).
 """
 
 import json
@@ -114,23 +116,26 @@ async def _query_available_workspaces_impl(
     if npc_id is None:
         rentable = [
             {
-                "workspace_type": wtype.value,
+                "workspace_type": offer.token,
+                "grants": [granted.value for granted in offer.grants],
                 "prices_sp_per_day_by_disposition": {
                     tier: workspace_mod.compute_workspace_rental_price(
-                        base_price_sp, tier, multipliers=multipliers
+                        offer.base_price_sp, tier, multipliers=multipliers
                     ).price_sp
                     for tier in workspace_mod.RENTABLE_DISPOSITIONS
                 },
             }
-            for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items()
+            for offer in workspace_mod.RENTAL_OFFERS
         ]
         return json.dumps({"accessible": sorted(accessible), "rentable": rentable})
 
     rentable = []
     try:
-        for wtype, base_price_sp in workspace_mod.RENTAL_BASE_PRICE_SP.items():
-            quote = workspace_mod.compute_workspace_rental_price(base_price_sp, disposition, multipliers=multipliers)
-            entry = {"workspace_type": wtype.value, "available": quote.available}
+        for offer in workspace_mod.RENTAL_OFFERS:
+            quote = workspace_mod.compute_workspace_rental_price(
+                offer.base_price_sp, disposition, multipliers=multipliers
+            )
+            entry = {"workspace_type": offer.token, "available": quote.available}
             if quote.available:
                 entry["price_sp_per_day"] = quote.price_sp
             else:
