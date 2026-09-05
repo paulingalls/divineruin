@@ -23,6 +23,7 @@ from role_archetypes import (
     set_role_archetypes,
     shift_disposition,
 )
+from voices import VOICES
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "role_archetypes.json"
 _RAW = json.loads(_CONTENT_PATH.read_text())
@@ -223,3 +224,38 @@ class TestShiftDispositionNeutralMode:
     def test_case_insensitive(self):
         # live DB values are lowercased before ranking, mirroring _disposition_rank.
         assert shift_disposition("Neutral", 1, off_ladder="neutral") == "friendly"
+
+
+class TestVoiceIds:
+    """The per-role VOICES key each row carries (story-014).
+
+    Shape is the loader's job (^ROLE_[A-Z_]+$, fail-loud, mirrored in
+    apps/server/src/role_archetypes.ts); DERIVATION from the row id and membership in the
+    Python VOICES registry are pinned here, so a typo like ROLE_GAURD that the shape check
+    accepts still reds.
+    """
+
+    def test_every_row_carries_its_derived_role_voice_key(self):
+        parsed = [parse_role_archetype_row(e["id"], e) for e in _RAW]
+        for archetype in parsed:
+            assert archetype.voice_id == f"ROLE_{archetype.id.upper()}"
+            assert archetype.voice_id in VOICES, f"{archetype.voice_id} is not a registered VOICES key"
+        assert len({a.voice_id for a in parsed}) == 19
+
+    def test_missing_voice_id_fails_loud(self):
+        bad = {k: v for k, v in _row("guard").items() if k != "voice_id"}
+        with pytest.raises(ValueError, match="guard"):
+            parse_role_archetype_row("guard", bad)
+
+    @pytest.mark.parametrize("value", ["role_guard", "GUARD", "", 123, None])
+    def test_malformed_voice_id_fails_loud(self, value):
+        bad = {**_row("guard"), "voice_id": value}
+        with pytest.raises(ValueError, match="voice_id"):
+            parse_role_archetype_row("guard", bad)
+
+    def test_stat_block_carries_the_role_voice_and_an_override_beats_it(self):
+        # The instantiated NPC needs the tag too, not just the roster entry — this stat block
+        # is what becomes a persisted NPC. A named NPC keeps its authored voice.
+        assert create_npc_from_archetype("guard")["voice_id"] == "ROLE_GUARD"
+        override = create_npc_from_archetype("blacksmith", {"voice_id": "GRIMJAW_BLACKSMITH"})
+        assert override["voice_id"] == "GRIMJAW_BLACKSMITH"

@@ -33,6 +33,7 @@ from settlement_templates import (
     get_settlement_personality,
     set_settlement_templates,
 )
+from voices import VOICES
 
 _CONTENT = Path(__file__).resolve().parents[3] / "content"
 _TEMPLATES = json.loads((_CONTENT / "settlement_templates.json").read_text())
@@ -112,10 +113,19 @@ class TestRoster:
         assert len(roster) == sum(population.values())
         assert len({npc["name"] for npc in roster}) == len(roster)
         for npc in roster:
-            assert set(npc) == {"role", "name", "personality"}
+            assert set(npc) == {"role", "name", "personality", "voice_id"}
             traits = get_role_archetype(npc["role"]).personality_traits
             assert 2 <= len(npc["personality"]) <= 3
             assert set(npc["personality"]) <= set(traits)
+
+    def test_roster_entries_carry_their_role_voice_tag(self):
+        # AC1's subject: the tag the DM reads off the settlement_population payload. A key
+        # that is not registered in VOICES resolves silently to the narrator.
+        roster = generate_settlement_roster({"guard": 3, "innkeeper": 2}, rng=random.Random(7))
+        for entry in roster:
+            assert entry["voice_id"] == get_role_archetype(entry["role"]).voice_id
+            assert entry["voice_id"] in VOICES
+        assert len({e["voice_id"] for e in roster}) == 2
 
     def test_same_role_trait_sets_are_distinct_at_the_largest_reachable_count(self):
         # Derived from content, not a literal: a tier/personality bump must move this test,

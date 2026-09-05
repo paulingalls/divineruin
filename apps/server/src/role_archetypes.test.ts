@@ -91,6 +91,21 @@ describe("parseRoleArchetypeRow — fail-loud (parity with the Python loader)", 
     expect(() => parseRoleArchetypeRow("innkeeper", bad)).toThrow("cost.max is not a number");
   });
 
+  test("missing voice_id", () => {
+    const bad = row("guard");
+    delete bad.voice_id;
+    expect(() => parseRoleArchetypeRow("guard", bad)).toThrow("voice_id");
+  });
+
+  test.each([
+    { voice_id: "role_guard" },
+    { voice_id: "GUARD" },
+    { voice_id: "" },
+    { voice_id: 42 },
+  ])("malformed voice_id %#", ({ voice_id }) => {
+    expect(() => parseRoleArchetypeRow("guard", { ...row("guard"), voice_id })).toThrow("voice_id");
+  });
+
   test("non-object row", () => {
     expect(() => parseRoleArchetypeRow("x", "nope")).toThrow("role_archetypes[x] is not an object");
   });

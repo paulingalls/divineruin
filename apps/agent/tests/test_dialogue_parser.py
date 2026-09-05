@@ -1,6 +1,7 @@
 import pytest
 
-from dialogue_parser import DEFAULT_CHARACTER, Segment, parse_dialogue_stream
+from dialogue_parser import _MAX_EMOTION_LENGTH, DEFAULT_CHARACTER, Segment, parse_dialogue_stream
+from voices import VOICES
 
 
 async def _collect(text: str) -> list[Segment]:
@@ -155,3 +156,19 @@ async def test_long_narration_no_tags():
     combined = _all_text(segments)
     assert combined == text
     assert all(s.character == DEFAULT_CHARACTER for s in segments)
+
+
+@pytest.mark.asyncio
+async def test_longest_registered_tag_survives_one_character_at_a_time():
+    """A tag the buffer gives up on is narrated by the DM, not the character it named.
+
+    One character per chunk is the worst case: the buffer stops at every length, so it hits
+    MAX_TAG_LENGTH exactly. The role voices put 27-character keys in the registry, and the
+    parser must still recognise the longest one paired with an improvised emotion word.
+    """
+    character = max(VOICES, key=len)
+    emotion = "a" * _MAX_EMOTION_LENGTH
+    text = f'[{character}, {emotion}]: "Fine wares, traveler."'
+    segments = await _collect_chunked(list(text))
+    assert [s.character for s in segments] == [character] * len(segments)
+    assert _all_text(segments) == "Fine wares, traveler."

@@ -17,7 +17,7 @@ from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
-from voices import VOICES
+from voices import ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -36,12 +36,26 @@ REQUIRED_ENV_VARS = [
 
 
 def validate_env() -> None:
+    """Fail loud on missing env; warn on an unset authored voice, RAISE on an unset role voice.
+
+    An empty-but-registered VOICES value resolves to DM_NARRATOR (voices.get_voice_config),
+    so an unset role voice is not a degraded deploy, it is a silent all-narrator one: every
+    generated townsfolk speaks as the DM. Non-role voices keep the warning — COMPANION_SABLE
+    is deliberately empty (she is non-verbal) and other authored characters may be too.
+    """
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
-    empty_voices = [k for k, v in VOICES.items() if not v]
+    role_keys = set(ROLE_VOICE_KEYS)
+    empty_voices = [k for k, v in VOICES.items() if not v and k not in role_keys]
     if empty_voices:
         logger.warning("Voice IDs not set for: %s", ", ".join(empty_voices))
     if missing:
         raise OSError(f"Missing required environment variables: {', '.join(missing)}")
+    unset_roles = [k for k in ROLE_VOICE_KEYS if not VOICES.get(k)]
+    if unset_roles:
+        raise OSError(
+            "Role voices not configured — generated townsfolk would all speak in the DM's "
+            f"voice. Set INWORLD_VOICE_<KEY> for: {', '.join(unset_roles)}"
+        )
 
 
 START_LOCATION = "accord_guild_hall"
