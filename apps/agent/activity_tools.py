@@ -8,10 +8,12 @@ resolve-tools -- resolve_training_midpoint, resolve_companion_errand -- fold int
 required parameters, then dispatch to the matching pre-existing ``_impl``, none of which they
 modify.
 
-``begin_activity`` exposes every folded tool's params as a named-kwarg SUPERSET rather than an
-opaque params dict, so the LLM tool schema stays self-documenting and each param keeps its own
-type. Required-param validation is per-kind and fails loud (``ToolError``) BEFORE any dispatch --
-an under-specified kind never reaches an ``_impl``.
+``begin_activity`` takes a SUM TYPE -- one discriminated ``anyOf`` of kind-tagged variants
+(``activity_payloads``, ADR 0008) -- rather than the optional-kwarg superset it once exposed:
+eleven union-typed parameters was two thirds of a request's budget of sixteen. The schema is
+still self-documenting and each field still keeps its own type. Required-param validation is
+per-kind and fails loud (``ToolError``) BEFORE any dispatch: the schema binds only the LLM
+path, so the engine stays the wall for every other caller.
 
 ``resolve_activity`` takes an explicit ``kind`` rather than inferring one from ``id``: training_id
 and errand_id are both opaque async-activity ids with no disjoint-namespace guarantee, so
@@ -31,10 +33,12 @@ from typing import Literal
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import activity_payloads
 import crafting_tools
 import errand_tools
 import experimentation_tools
 import training_tools
+from activity_payloads import ActivityPayload
 from db_errors import db_tool
 from session_data import SessionData
 
@@ -45,54 +49,20 @@ logger = logging.getLogger("divineruin.tools")
 @db_tool
 async def begin_activity(
     context: RunContext[SessionData],
-    kind: Literal["training", "companion_errand", "crafting", "workspace", "experiment"],
-    program_id: str | None = None,
-    companion_id: str | None = None,
-    errand_type: str | None = None,
-    destination: str | None = None,
-    recipe_id: str | None = None,
-    workspace_type: str | None = None,
-    npc_id: str | None = None,
-    days: int | None = None,
-    material_ids: list[str] | None = None,
-    quantities: list[int] | None = None,
-    intended_output: str | None = None,
+    activity: ActivityPayload,
 ) -> str:
     """Begin a downtime activity: training, a companion errand, crafting, renting a workspace,
     or experimenting with materials.
 
-    Pass kind to pick which activity, then only the params that activity needs:
+    Pass one activity object, picked by its kind: "training", "companion_errand", "crafting",
+    "workspace", or "experiment". Each kind's fields describe themselves and are all required.
 
-    - kind='training': program_id (from query_info(kind="training_programs")).
-    - kind='companion_errand': companion_id (the player's ASSIGNED companion — any other id is
-      refused), errand_type (scout|social|acquire|relationship),
-      destination.
-    - kind='crafting': recipe_id (a recipe the player already knows).
-    - kind='workspace': workspace_type (workshop|forge|laboratory), npc_id (renting from),
-      days (rental length, >= 1).
-    - kind='experiment': material_ids and quantities (positionally aligned, same length,
-      material_ids must not repeat), intended_output (the item id hoped for).
-
-    Returns an error if a required param for the chosen kind is missing, or if the activity's
-    own preconditions refuse (e.g. a training cycle already in progress, an invalid errand
-    destination, a full crafting slot, an NPC below Neutral disposition, or a duplicate/short
-    material list).
+    Returns an error if the activity's own preconditions refuse — a training cycle already in
+    progress, an invalid errand destination, a full crafting slot, an NPC below Neutral
+    disposition, or a duplicate material id.
     """
-    return await _begin_activity_impl(
-        context,
-        kind,
-        program_id=program_id,
-        companion_id=companion_id,
-        errand_type=errand_type,
-        destination=destination,
-        recipe_id=recipe_id,
-        workspace_type=workspace_type,
-        npc_id=npc_id,
-        days=days,
-        material_ids=material_ids,
-        quantities=quantities,
-        intended_output=intended_output,
-    )
+    kind, kwargs = activity_payloads.to_impl_kwargs(activity)
+    return await _begin_activity_impl(context, kind, **kwargs)
 
 
 async def _begin_activity_impl(
@@ -140,10 +110,6 @@ async def _begin_activity_impl(
     if kind == "experiment":
         if not (material_ids and quantities and intended_output):
             raise ToolError("kind='experiment' requires material_ids, quantities, and intended_output.")
-        # Preserved verbatim from experimentation_tools.experiment_with_materials (story-001):
-        # the list-zip shaping the wrapper did before dispatching to its _impl.
-        if len(material_ids) != len(quantities):
-            raise ToolError("material_ids and quantities must have the same length.")
         if len(set(material_ids)) != len(material_ids):
             raise ToolError("material_ids must not contain duplicates.")
         materials = dict(zip(material_ids, quantities, strict=True))
