@@ -57,9 +57,9 @@ async def _apply_world_effects(
             shorthand, delta_str = m.group(1), int(m.group(2))
             if shorthand == COMPANION_SHORTHAND:
                 if session.companion is None:
-                    # Warn-and-skip, matching this function's policy for every other unresolvable
-                    # effect (:75, :82): this runs inside the quest-stage transaction, and writing
-                    # a disposition row against a guessed companion is the defect story-013 fixed.
+                    # Warn-and-skip, matching this function's policy for every other
+                    # unresolvable effect below: this runs inside the quest-stage transaction,
+                    # and refusing to write beats writing against a guessed companion.
                     logger.warning("Companion world effect with no bound companion: %s", effect_str)
                     continue
                 npc_id = session.companion.id

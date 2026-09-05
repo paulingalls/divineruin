@@ -1,6 +1,9 @@
 import { createStore } from "zustand/vanilla";
 
 interface PortraitState {
+  // Written by session_init and the transcript gate; read by NO component today —
+  // npc-portrait-overlay renders activeNpc only, so the companion portrait reaches the store
+  // and stops there. The HUD consumer is unbuilt, not merely unstyled.
   companionPrimaryUrl: string | null;
   companionAlertUrl: string | null;
   companionVisible: boolean;

@@ -10,10 +10,11 @@ with. The four authored vignettes — a hesitating ex-caravan-guard for Kael, a 
 Lira, a rogue for Tam, and a wordless introduction for Sable, who cannot self-introduce at
 all — belong to story-020 (human decision 2026-09-04).
 
-The prompt string forks by companion, so the cached system block forks 5 ways (by beat) into
-20. Measured at plan review: a session has one companion and walks beats 1->5, so a single
-session still writes the same 5 cache entries it wrote before; the fork only costs
-cross-session reuse, which the 5-minute ephemeral TTL had already reduced to ~zero.
+The prompt string forks by companion, and that fork is accepted unmeasured: no cache number
+was taken at plan review, and no AC rests on one. What is known from the code: the agent
+builds its instructions once, at construction, and nothing calls update_instructions on it,
+so a session sends one system prefix before and after. The fork costs cross-session reuse
+only — sessions used to share one prefix and now share one per companion.
 """
 
 from companion_profiles import get_companion_profile

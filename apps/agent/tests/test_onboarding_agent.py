@@ -152,17 +152,23 @@ class TestBeat34NamesTheAssignedCompanion:
             assert cname not in instructions
 
     def test_no_module_level_per_companion_prompt_constants(self):
-        """AC1's maintainability clause: the span renders from the profile, not four constants."""
-        import onboarding_agent
+        """AC1's maintainability clause: the span renders from the profile, not four constants.
 
-        for attr in dir(onboarding_agent):
-            if not attr.isupper():
-                continue
-            text = getattr(onboarding_agent, attr)
-            if not isinstance(text, str):
-                continue
-            named = [c for c in ("Kael", "Lira", "Tam", "Sable") if c in text]
-            assert len(named) <= 1, f"{attr} names {named}"
+        Zero, not "at most one per constant": four constants that each name a single companion
+        ARE the forbidden shape, so a per-constant budget passes the very defect it guards.
+        And the modules scanned must include the one that now holds the prompt — the AC7 walker
+        allowlists onboarding_prompt.py, so it is blind here.
+        """
+        import onboarding_agent
+        import onboarding_prompt
+
+        for module in (onboarding_agent, onboarding_prompt):
+            for attr in dir(module):
+                text = getattr(module, attr)
+                if not attr.isupper() or not isinstance(text, str) or attr.startswith("__"):
+                    continue
+                named = [c for c in ("Kael", "Lira", "Tam", "Sable") if c in text]
+                assert not named, f"{module.__name__}.{attr} names {named}"
 
 
 class TestOnboardingAgentIntegration:

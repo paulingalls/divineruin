@@ -90,10 +90,14 @@ class TestContentCrossReferences:
         assert is_valid_disposition_target("companion", npc_ids, companion_ids)
         assert not is_valid_disposition_target("companion", npc_ids, set())
 
-    def test_companion_kael_migrated_out_of_npcs(self):
-        # story-004: Kael is a dedicated Companion (companions.json), no longer an npcs.json entry.
-        assert "companion_kael" not in _load_ids("npcs.json")
-        assert "companion_kael" in _load_ids("companions.json")
+    def test_companions_are_not_npcs_json_rows(self):
+        # story-004: companions are a dedicated entity (companions.json), never npcs.json rows.
+        # All four, not just Kael: activity_templates' errand personas stay inlined precisely
+        # because _npc_persona has no row to derive any of them from.
+        npc_ids, companion_ids = _load_ids("npcs.json"), _load_ids("companions.json")
+        assert companion_ids
+        assert not (companion_ids & npc_ids)
+        assert "companion_kael" in companion_ids
 
     def test_location_exits_reference_valid_destinations(self):
         locations = _load_json("locations.json")

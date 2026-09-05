@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
-import { errandBusyLabel, errandDestinationPrompt } from "@/components/activity-launcher-strings";
+import {
+  errandBusyLabel,
+  errandDestinationPrompt,
+  formatTimeRemaining,
+} from "@/components/activity-launcher-strings";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { portraitStore } from "@/stores/portrait-store";
@@ -16,15 +20,6 @@ interface ActivityLauncherProps {
 function hasSufficientMaterials(materials: MaterialRequirement[] | null): boolean {
   if (!materials || materials.length === 0) return true;
   return materials.every((m) => m.owned >= m.required);
-}
-
-function formatTimeRemaining(resolveAt: string): string {
-  const remaining = new Date(resolveAt).getTime() - Date.now();
-  if (remaining <= 0) return "completing...";
-  const hours = Math.floor(remaining / 3_600_000);
-  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
-  if (hours > 0) return `${hours}h ${minutes}m remaining`;
-  return `${minutes}m remaining`;
 }
 
 interface ErrandPickerState {

@@ -19,14 +19,12 @@ activity_templates.py, both legitimately companion-complete and allowlisted as s
 INWORLD_VOICE_KAEL contains KAEL but not COMPANION_KAEL, so .env.example stays clean.
 
 TEST FILES ARE EXCLUDED BY PATH, and the exclusion is load-bearing. The same pattern matches
-91 test files — test_companion_profiles.py (26 hits), companion/test_state_prompt.py (21),
-acceptance/test_m6_4_companion_chain_capstone.py (21) and 88 more — nearly all legitimately
-exercising Kael's row, because Kael is a real companion and always will be. Tests ARE
-production code (constraint 2) and the four test-side literals that mattered are pinned
-individually by their own suites; a repo walk cannot tell those from the legitimate ones, so
-it does not try. Decide by PATH, not filename: apps/mobile/src/__tests__/
-use-game-events.helpers.ts carries a player fixture named Kael and no test marker in its
-filename.
+most of the companion suites, nearly all of them legitimately exercising Kael's row, because
+Kael is a real companion and always will be. Tests ARE production code (constraint 2) and the
+four test-side literals that mattered are pinned individually by their own suites; a repo walk
+cannot tell those from the legitimate ones, so it does not try. Decide by PATH, not filename:
+apps/mobile/src/__tests__/use-game-events.helpers.ts carries a player fixture named Kael and
+no test marker in its filename.
 """
 
 import re
