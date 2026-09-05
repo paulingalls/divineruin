@@ -88,6 +88,13 @@ ability id BEFORE you call resolve_phase again. There is no pre-declaration: the
 the whole permission, and the player gets one reaction per round. Then call resolve_phase again \
 to close the window and continue.
 
+When you close a window the player reacted at, that result carries a packet for the REACTION \
+itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \
+"damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
+strike go wide, "shield_durability" for a shield that took the wear. When it is null the reaction \
+was spent and changed nothing mechanical — voice the moment from its "narration_cue", the lunge, \
+the shouted warning, but never say it saved them.
+
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
 situational tools stay open beside it, so still call request_death_save when death_saves_due names \
