@@ -43,7 +43,7 @@ _ROLE_ARCHETYPE_IDS: tuple[str, ...] = (
 # because an empty registered value silently resolves to DM_NARRATOR (get_voice_config below).
 ROLE_VOICE_KEYS: tuple[str, ...] = tuple(f"ROLE_{r.upper()}" for r in _ROLE_ARCHETYPE_IDS)
 
-# The 51 VOICES keys and the env var each is read from. The env var name is NOT the key
+# Every VOICES key and the env var it is read from. The env var name is NOT the key
 # (COMPANION_KAEL<->INWORLD_VOICE_KAEL, DM_NARRATOR<->INWORLD_VOICE_DM), so this mapping is
 # the ONE producer of both — test_voices.py set-differences its values against .env.example,
 # which an ast walk for INWORLD_VOICE_* literals cannot do: the 19 role names are built by

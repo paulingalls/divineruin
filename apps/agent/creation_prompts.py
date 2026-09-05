@@ -6,7 +6,17 @@ creation-specific guidance for guiding a new player through character creation.
 
 from __future__ import annotations
 
-from system_prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS, _TOWNSFOLK_VOICE_LINE
+from system_prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS
+
+# Creation NAMES the producer but must not COMMAND the call: CreationAgent is built with
+# creation_agent.CREATION_TOOLS (push_creation_cards, set_creation_choice, finalize_character),
+# so gameplay's "Call query_info(...)" would order a tool this agent cannot serve, in a phase
+# that has no location id to pass it. Same rule that keeps play_sound and set_music_state out.
+_CREATION_TOWNSFOLK_VOICE_LINE = (
+    "Unnamed townsfolk are not listed above. In play their voice tag comes from "
+    'query_info(kind="settlement_population"), which character creation has no settlement '
+    "for and no access to — voice only the characters listed above."
+)
 
 CREATION_SYSTEM_PROMPT = f"""\
 You are the Dungeon Master for Divine Ruin: The Sundered Veil. You are guiding \
@@ -33,7 +43,7 @@ When characters speak, use this exact format:
 
 Available characters: {_AVAILABLE_CHARACTERS}
 Emotions: {_AVAILABLE_EMOTIONS}
-{_TOWNSFOLK_VOICE_LINE}
+{_CREATION_TOWNSFOLK_VOICE_LINE}
 
 ## Character Creation Flow
 
