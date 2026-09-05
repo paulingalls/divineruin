@@ -1,8 +1,12 @@
 # ADR 0008 — Verbs take sum types; state machines name their next verbs
 
-Status: **Proposed** (2026-09-04) — design session, read-only against trunk `08fa9b8`.
-Supersedes the 2026-09-02 interim addendum of **ADR 0004**; refines **ADR 0007**'s
-standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
+Status: **Accepted in mechanism, NOT in outcome** (2026-09-05) — sprint-047 story-019.
+Decisions 1-2 are realized in the repo and hold; decision 3's goal — strict back ON — is
+**not attainable today** and strict stays interim-OFF (see "Not yet attainable" below).
+Decision 4 (`next` in results / the `NOW` block) is owed to Sprint 48.
+Was written to supersede the 2026-09-02 interim addendum of **ADR 0004**, and does NOT
+yet: that addendum stands, reaffirmed 2026-09-05 (see "Not yet attainable" below).
+Refines **ADR 0007**'s standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
 (Sprint 47) and its follow-ons.
 Design source: `docs/agent_tool_surface.md`.
 
@@ -16,7 +20,7 @@ Design source: `docs/agent_tool_surface.md`.
    carrying the key.
 2. **The union budget is pinned beside the tool budget.** Per agent, the emitted strict
    schemas (`parse_function_tools("anthropic", strict=True)`) must satisfy: ≤ 20 strict
-   tools, ≤ 16 union-typed parameters counted recursively (warn at 12), ≤ 12 nullable
+   tools, ≤ 16 union-typed parameters counted recursively, ≤ 12 nullable
    fields in any single object, no `additionalProperties` object, no enum containing
    null, no `oneOf`. The exact per-agent union count is pinned, as the tool count is.
    **The walk resolves `$ref` into the root `$defs`** (visited-set guarded): decision 1's
@@ -120,6 +124,76 @@ fields go together.
   set differs by ≥ 4 verbs, the player stays ≥ 5 turns, and the interaction model
   changes. Blacksmith fails the first test and is a candidate to fold back into
   exploration (see the design doc's cost section).
+
+## Not yet attainable — strict stays OFF (measured 2026-09-05, story-019)
+
+**This decision's mechanism works and its goal is still out of reach.** With every agent
+inside all three ceilings decision 2 pins, the live API was asked to accept each agent's
+strict tool list (`messages.create` with the parsed schemas, Haiku 4.5). Result:
+
+| agent | tools | strict fully on |
+|---|---|---|
+| exploration | 14 | 400 "The compiled grammar is too large" |
+| combat | 9 | 400 "The compiled grammar is too large" |
+| dispatch | 9 | 400 "The compiled grammar is too large" |
+| onboarding | 6 | OK |
+| blacksmith | 3 | OK |
+| creation | 3 | OK |
+
+Two limits beyond the three we knew, neither computable from a schema:
+
+1. **"The compiled grammar is too large, which would cause performance issues. Simplify
+   your tool schemas or reduce the number of strict tools."** A whole-request ceiling over
+   the strict tools' STRUCTURE. **Descriptions are not in it** — stripping every
+   description from every schema (12751 → 5477 bytes for dispatch) still 400s, so the
+   "shrink descriptions" lever in §5 step 5 buys nothing here.
+2. **"Schema is too complex."** Appears for exploration once one verb is relaxed — a
+   second, lower cliff behind the first.
+
+The sum types are not the cause; they are what made the request legal enough to reach these
+errors at all. But they are not cheap either: relaxing ONE sum-typed verb to non-strict
+(the per-tool `strict` key the API accepts and the plugin does not expose) is enough for
+combat and dispatch — either `check` or the agent's own big verb. Exploration needs three
+relaxed: `check`, `activate`, `travel`.
+
+**The three options, for the human:**
+
+- **(a) Leave strict off.** Costs nothing, keeps today's behaviour, and the tool bodies
+  remain the wall as they are now. The budget walk keeps the surface from getting worse.
+- **(b) Per-tool strict via a plugin subclass.** The API honours a per-tool `strict` key;
+  `parse_function_tools` sets it globally. A thin subclass could mark the one or three
+  offending verbs non-strict and run everything else strict. This is exactly the escape
+  hatch §4.5 option 3 and this ADR's "Deferred" list gated on an eval — and it means the
+  verbs with the richest payloads are the ones NOT validated, which is close to the
+  opposite of what this card wanted.
+- **(c) Shrink the surface.** Fewer tools per agent, or fewer/flatter variants. Exploration
+  is the worst case at 14 tools; it is also the agent ADR 0004 already split once.
+
+Nothing here is a fast-lane check: neither error is derivable from a schema, so
+`test_strict_tool_budget.py` cannot pin them. The real-LLM acceptance tier is the only
+detector we have — which is precisely why story-019 AC1 made that tier fail loud instead
+of skipping. It is what caught this.
+
+## Realized (story-019, 2026-09-05)
+
+Decisions 1-2, at the narrow scope the plan measured: sum-typing `check`, `begin_activity`
+and `declare_phase` alone lands every agent inside the caps, so `query_info` and
+`enter_mode` (the design doc's open questions 7.1/7.2) keep their present shapes and are
+not reshaped here. Per-agent union spend, walked from the emitted schemas and pinned
+exactly in `apps/agent/tests/test_strict_tool_budget.py`: exploration 17 → **9**, combat
+13 + a hard reject → **6**, dispatch 23 → **5**, onboarding 10 → **2**, blacksmith **1**,
+creation **0**.
+
+Two deviations, both deliberate:
+
+- **No "warn at 12" union mechanism** (decision 2). The exact per-agent pin fires strictly
+  earlier than a warning would, and a warning in a test lane is either a failure or noise.
+  The clause is struck from decision 2 above rather than left as an unmet requirement.
+- **Eight tools still carry defaulted parameters** (eleven parameters), against decision 1's
+  "no defaults" rule: `activate` (2), `travel` (2), `enter_mode` (2), `query_info` (1),
+  `transact` (1), `learn` (1), `resolve_activity` (1), `request_death_save` (1). Each is one
+  union slot and every agent is well inside 16 with them, so they are a follow-on, not a
+  blocker. Recorded as a debt at story-019 close.
 
 ## Deferred
 

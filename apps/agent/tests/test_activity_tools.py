@@ -21,6 +21,16 @@ from sample_fixtures import make_context
 import db
 import db_training
 import training_tools
+from activity_payloads import (
+    ACTIVITY_VARIANTS,
+    CompanionErrand,
+    Crafting,
+    Experiment,
+    MaterialQuantity,
+    Training,
+    WorkspaceRental,
+    to_impl_kwargs,
+)
 from activity_tools import _begin_activity_impl, _resolve_activity_impl, begin_activity, resolve_activity
 
 
@@ -148,10 +158,6 @@ class TestBeginExperiment:
         with pytest.raises(ToolError, match="experiment"):
             await _begin("experiment", material_ids=["iron_ore"], quantities=[2])
 
-    async def test_mismatched_lengths_fail_loud_before_dispatch(self):
-        with pytest.raises(ToolError, match="same length"):
-            await _begin("experiment", material_ids=["iron_ore", "coal"], quantities=[1], intended_output="iron_ingot")
-
     async def test_duplicate_material_ids_fail_loud_before_dispatch(self):
         with pytest.raises(ToolError, match="duplicates"):
             await _begin(
@@ -169,6 +175,47 @@ class TestBeginUnknownKind:
             await _begin_activity_impl(make_context(), "not_a_real_kind", **mods)
         for fn in fns.values():
             fn.assert_not_awaited()
+
+
+_VARIANT_CASES = [
+    (Training(kind="training", program_id="combat_basics"), "training"),
+    (
+        CompanionErrand(
+            kind="companion_errand",
+            companion_id="companion_kael",
+            errand_type="scout",
+            destination="accord_market_square",
+        ),
+        "errand_begin",
+    ),
+    (Crafting(kind="crafting", recipe_id="iron_dagger_recipe"), "crafting"),
+    (WorkspaceRental(kind="workspace", workspace_type="forge", npc_id="guildmaster_torin", days=3), "workspace"),
+    (
+        Experiment(
+            kind="experiment",
+            materials=[MaterialQuantity(material_id="iron_ore", quantity=2)],
+            intended_output="iron_ingot",
+        ),
+        "experiment",
+    ),
+]
+
+
+class TestSumTypeVariantsSatisfyTheRouter:
+    """The schema and the router are two halves of one contract (ADR 0008 §5 step 2 keeps
+    the per-kind `requires X` checks as the wall for non-LLM callers). A variant that omits
+    a field its kind requires would pass every mapping test above and then raise ToolError
+    on the DM's first call — so each variant is driven through the real router here."""
+
+    @pytest.mark.parametrize("payload,dispatched", _VARIANT_CASES)
+    async def test_a_fully_specified_variant_reaches_its_impl(self, payload, dispatched):
+        kind, kwargs = to_impl_kwargs(payload)
+        _, _, fns = await _begin(kind, **kwargs)
+        fns[dispatched].assert_awaited_once()
+
+    def test_every_variant_has_a_case(self):
+        assert len(_VARIANT_CASES) == len(ACTIVITY_VARIANTS)
+        assert {type(p) for p, _ in _VARIANT_CASES} == set(ACTIVITY_VARIANTS)
 
 
 class TestResolveTraining:

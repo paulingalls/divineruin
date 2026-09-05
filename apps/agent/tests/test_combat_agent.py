@@ -118,9 +118,13 @@ class TestCombatBeatContract:
             assert beat in p, f"missing beat name: {beat}"
 
     def test_declaration_hesitation_falls_back_to_defend(self):
-        p = COMBAT_SYSTEM_PROMPT
-        assert "Defend" in p
-        assert "freeze" in p.lower() or "hesitat" in p.lower()
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "freeze" in low or "hesitat" in low
+        # A bare `"defend" in low` is vacuous now that defend is one of the declaration kinds
+        # the prompt lists: pin the FALLBACK, i.e. that the hesitation instruction is what
+        # names it.
+        start = low.index("freeze") if "freeze" in low else low.index("hesitat")
+        assert "defend" in low[start : start + 200], "hesitation instruction does not fall back to defend"
 
     def test_resolution_is_silent_before_narration(self):
         # Beat 2 resolves silently; the Beat-3 narration instruction comes after.
@@ -150,16 +154,16 @@ class TestCombatBeatContract:
         # activate). The prompt must teach the new shape so the DM routes casting through the phase
         # loop (Focus/Resonance accounted) instead of a free activate cast.
         prompt = COMBAT_SYSTEM_PROMPT
-        assert '"type": "ability"' in prompt
+        assert "ability — action is the EXACT id of a spell" in prompt
         assert "activate" in prompt
         assert "ordinary spell or ability" in prompt
         assert "never a free cast via activate" in prompt
 
     def test_reaction_declaration_has_catalog_trigger_shape(self):
         prompt = COMBAT_SYSTEM_PROMPT
-        assert "Four types resolve in combat today" in prompt
-        assert '"type": "reaction"' in prompt
-        assert '"trigger": <catalog window>' in prompt
+        assert "Four kinds resolve in combat today" in prompt
+        assert "reaction — action is the EXACT id of the player's reaction ability" in prompt
+        assert 'trigger is its catalog window, such as "on_hit"' in prompt
 
     def test_declared_reaction_activates_before_resolution(self):
         low = COMBAT_SYSTEM_PROMPT.lower()

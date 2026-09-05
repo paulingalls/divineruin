@@ -32,10 +32,16 @@ from session_data import SessionData
 from training_rules import get_midpoint_decision
 from warm_prompts import format_training_section
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_API_KEY"),
-    reason="LLM acceptance runs require ANTHROPIC_API_KEY (ADR 0003 pre-sprint-close schedule)",
-)
+pytestmark = [
+    # The skipif is the not-opted-in path (CI: ci.yml runs the whole suite with no key).
+    # REQUIRE_REAL_LLM=1 suppresses it so the real_llm fixture can fail the lane LOUD instead
+    # — a skipif firing first would keep the false green (story-019 AC1).
+    pytest.mark.skipif(
+        not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("REQUIRE_REAL_LLM"),
+        reason="LLM acceptance runs require ANTHROPIC_API_KEY (ADR 0003 pre-sprint-close schedule)",
+    ),
+    pytest.mark.real_llm,
+]
 
 # Production gameplay model (agent.py) — acceptance runs at production parity.
 _AGENT_MODEL = "claude-haiku-4-5-20251001"
@@ -49,8 +55,8 @@ scenarios("features/m1_5_training_cycle.feature")
 async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
     session_data = SessionData(player_id="player_1", location_id="accord_training_hall")
     session = AgentSession(
-        # Parity with agent.py (ADR 0004 addendum): strict schemas are interim-OFF. At the
-        # plugin default this dispatch session 400s before any turn runs — 23 union-typed params.
+        # Parity with agent.py: strict schemas are interim-OFF. At the plugin default this
+        # dispatch session 400s before any turn runs ("compiled grammar is too large").
         llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral", _strict_tool_schema=False),
         userdata=session_data,
     )

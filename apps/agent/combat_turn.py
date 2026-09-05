@@ -18,6 +18,7 @@ import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
+import declaration_payloads
 import event_types as E
 import fatigue_narration
 import resonance_events
@@ -31,6 +32,7 @@ from combat_packet import _prevalidate_ability_focus, _resolve_one_packet, _reso
 from combat_support import _require_combat
 from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
+from declaration_payloads import DeclPayload
 from declarations import DeclarationType
 from session_data import SessionData
 
@@ -41,17 +43,20 @@ logger = logging.getLogger("divineruin.tools")
 @db_tool
 async def declare_phase(
     context: RunContext[SessionData],
-    declarations: dict[str, dict],
+    declarations: list[DeclPayload],
 ) -> str:
     """Open a combat phase by recording every combatant's declared action for this
-    round, then call resolve_phase to resolve them. Pass a mapping of participant ID
-    to that combatant's declaration, e.g.
-    {"player_1": {"action": "Longsword", "target_id": "goblin_1"},
-     "goblin_1": {"action": "Scimitar", "target_id": "player_1"}}.
-    Include the player, every conscious companion, and every enemy that acts this
-    phase. Call this once per round at the declaration beat; resolve_phase resolves
-    and narrates the whole phase in initiative order."""
-    return await _declare_phase_impl(context, declarations)
+    round, then call resolve_phase to resolve them. Pass one declaration per acting
+    combatant, each naming its actor_id and picked by its kind: attack, ability,
+    interact, maneuver, defend, retreat or reaction. Include the player, every
+    conscious companion, and every enemy that acts this phase — one declaration each.
+    Call this once per round at the declaration beat; resolve_phase resolves and
+    narrates the whole phase in initiative order."""
+    try:
+        engine_declarations = declaration_payloads.to_engine_declarations(declarations)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+    return await _declare_phase_impl(context, engine_declarations)
 
 
 async def _declare_phase_impl(

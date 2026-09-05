@@ -99,7 +99,11 @@ else
     # durable log; `set -o pipefail` so the subshell's exit is pytest's real code,
     # not tee's (~always 0) — otherwise `wait $acc_pid` below would never see a
     # failure through the pipe.
-    ( set -o pipefail; REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
+    # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
+    # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
+    # This hook does NOT source .env, and `bun run` does not hand .env to the command it
+    # spawns — the key reaches pytest only through test:acceptance's `uv run --env-file`.
+    ( set -o pipefail; REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
       bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
     bg_pids+=("$acc_pid")
