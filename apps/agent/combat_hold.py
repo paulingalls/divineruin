@@ -19,6 +19,7 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 import logging
 
 import combat_enhancers
+import combat_reaction_effect
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
@@ -203,9 +204,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     with the queue empty, the caller runs Beat 4 in that same commit (AC6 — the wrap fires once,
     in the last commit, because an enemy blow can be what ends the fight).
     """
-    # The DM came back, so whatever window we were paused on has closed.
-    state.open_window = None
+    # The DM came back, so whatever window we were paused on has closed. Capture it on the way
+    # out: a reaction spent at that window changes the held blow, and this is the one moment where
+    # the spend exists and the blow has not been applied yet (story-018).
+    closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
+    if closed is not None and state.held_actions:
+        combat_reaction_effect.close(state, state.held_actions[0], closed)
 
     while state.held_actions:
         head = state.held_actions[0]

@@ -17,9 +17,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
-from combat._helpers import _make_combat_state
-from sample_fixtures import make_context
+from combat._helpers import _activate, _call, _ctx_at_resolution, _make_combat_state, _resolve_deps
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
+import event_types as E
 import reaction_spend
 import reaction_windows
 from combat_phase import PhaseBeat, validate_reaction_activation
@@ -122,3 +123,76 @@ async def test_the_two_window_vocabularies_are_one():
 
     assert produced <= abilities.REACTION_WINDOWS
     assert produced == consumed - NO_PRODUCER
+
+
+# --- the wired outcomes (story-018) ----------------------------------------------------------
+#
+# story-017 left a spend that named its ability and its blow and changed nothing. These are the
+# two outcomes game_mechanics_combat.md:187 names and the tree did not have. The third
+# (Counterspell) is NOT here: on_spell_cast has no producer (debt 08bc5548), and the sweep above
+# pins it refused rather than shipping a vacuous guard for it.
+
+UNCANNY_DODGE = "rogue_uncanny_dodge"
+
+
+def _enemy_blow(packets: list[dict]) -> dict:
+    """The held goblin attack's resolution summary — the one the reaction was spent against."""
+    blows = [p for p in packets if p["actor_id"] == "goblin_scout_1" and "damage" in p]
+    assert len(blows) == 1, f"expected exactly one resolved enemy blow, got {blows}"
+    return blows[0]
+
+
+async def _to_post_roll_pause(ctx, deps) -> dict:
+    """Drive the round to the POST-ROLL, pre-damage pause on the held goblin blow.
+
+    Three calls: the ally band (which holds the enemy action), the pre-roll window, then the roll
+    plus the post-roll window. Nothing is spent at the pre-roll pause, so the post-roll one opens.
+    """
+    await _call(ctx, deps)
+    await _call(ctx, deps)
+    paused = await _call(ctx, deps)
+    assert paused["next"]["waiting_on"]["stage"] == reaction_windows.POST_ROLL
+    return paused
+
+
+@pytest.mark.asyncio
+async def test_uncanny_dodge_halves_the_damage_of_the_blow_it_answers():
+    """AC1. The SAME seeded blow, run twice: the only difference is the spend.
+
+    Asserted from BOTH ends on purpose. ``apply_attack_result`` writes HP from the roll's
+    ABSOLUTE ``target_hp_remaining`` (combat_support.py:286) and never derives it from ``damage``,
+    so halving the reported damage alone leaves hp_current at the unhalved value — and recomputing
+    HP without rewriting the roll leaves the DICE_ROLL, the event line and the packet all
+    narrating the full number at a player who took half.
+    """
+    room = make_mock_room()
+    ctx = _ctx_at_resolution(room=room)
+    deps = _resolve_deps(damage=6)
+    await _to_post_roll_pause(ctx, deps)
+    await _activate(ctx, UNCANNY_DODGE, player_class="rogue")
+    final = await _call(ctx, deps)
+
+    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 22
+    assert _enemy_blow(final["packets"])["damage"] == 3
+    dice = [p for p in published_payloads(room) if p.get("type") == E.DICE_ROLL and p.get("attacker") == "Goblin Scout"]
+    assert [d["damage"] for d in dice] == [3]
+    assert "Goblin Scout attacks Kael: hit, 3 damage" in ctx.userdata.recent_events
+
+
+@pytest.mark.asyncio
+async def test_the_same_blow_unanswered_deals_its_whole_damage():
+    """The baseline half of AC1's "half what the SAME seeded roll deals without the reaction".
+
+    Without it the test above pins a number, not a difference: a resolver that happened to deal 3
+    would pass it while the reaction did nothing.
+    """
+    room = make_mock_room()
+    ctx = _ctx_at_resolution(room=room)
+    deps = _resolve_deps(damage=6)
+    await _to_post_roll_pause(ctx, deps)
+    final = await _call(ctx, deps)
+
+    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 19
+    assert _enemy_blow(final["packets"])["damage"] == 6
+    dice = [p for p in published_payloads(room) if p.get("type") == E.DICE_ROLL and p.get("attacker") == "Goblin Scout"]
+    assert [d["damage"] for d in dice] == [6]
