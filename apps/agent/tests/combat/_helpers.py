@@ -5,9 +5,11 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from _combat_end_fixtures import combat_end_mutations
-from sample_fixtures import make_db_mod
+from sample_fixtures import make_context, make_db_mod
 
 import combat_turn
+import reaction_spend
+from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
 from session_data import CombatParticipant, CombatState
 
@@ -221,3 +223,85 @@ async def _resolve_round(ctx, *, max_calls: int = 64, **deps) -> Any:
         f"held={[h['actor_id'] for h in state.held_actions] if state else None}, "
         f"open_window={state.open_window if state else None})"
     )
+
+
+def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None):
+    """A context parked at the RESOLUTION beat with the round's reaction unspent.
+
+    The interrupt loop's entry point: resolve_phase from here holds the enemy blow and pauses on
+    its windows, which is the only state in which ``_activate`` below is legal.
+    """
+    ctx = make_context(room=room) if room is not None else make_context()
+    state = state if state is not None else _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
+    state.reactions_available = {p.id: reaction_spend.unspent() for p in state.participants if p.type == "player"}
+    ctx.userdata.combat_state = state
+    return ctx
+
+
+async def _call(ctx, deps) -> dict:
+    """One resolve_phase step, decoded. Fails loud if the fight ended when it should not have."""
+    result = await combat_turn._resolve_phase_impl(ctx, **deps)
+    assert not isinstance(result, tuple), "combat ended unexpectedly"
+    return json.loads(result)
+
+
+async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 10, focus: int = 10):
+    """Drive the REAL activate impl, so the gate, the resource write and the spend all run.
+
+    The reactor is always ``session.player_id`` — activation is single-player (note 0f3945fa(c)) —
+    so a test of a reaction that guards an ALLY must make player_1 the REACTOR and retarget the
+    enemy at someone else.
+    """
+    db_mod, _conn = make_db_mod()
+    queries = MagicMock()
+    queries.get_players_for_update = AsyncMock(
+        return_value={
+            "player_1": {
+                "player_id": "player_1",
+                "name": "Kael",
+                "class": player_class,
+                "level": 5,
+                "stamina": {"current": stamina, "max": 10},
+                "focus": {"current": focus, "max": 10},
+            }
+        }
+    )
+    persistence = MagicMock()
+    persistence.update_player_resources = AsyncMock()
+    persistence.get_active_variant = AsyncMock(return_value=None)
+    persistence.owns_elective = AsyncMock(return_value=False)
+    return await _request_ability_activation_impl(
+        ctx, ability_id, db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
+    )
+
+
+def _ac_sensitive_resolver(attack_total, damage):
+    """A resolve_attack mock that HITS iff ``attack_total`` reaches the effective AC it is handed.
+
+    ``_damage_resolver`` always hits, so it reports the same landed blow at AC 14 and at AC 16 and
+    can certify nothing about an AC modifier. This is the only resolver on which a reaction's +2
+    can be shown to be what turned the blow aside.
+    """
+
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+        hit = attack_total + attack_mod >= target_ac
+        dealt = max(0, int(damage * damage_mult)) if hit else 0
+        remaining = max(0, target_hp - dealt)
+        return AttackResult(
+            hit=hit,
+            roll=attack_total - 3,
+            attack_modifier=3,
+            attack_total=attack_total + attack_mod,
+            target_ac=target_ac,
+            damage=dealt,
+            damage_type="slashing",
+            critical_success=False,
+            critical_failure=False,
+            target_hp_remaining=remaining,
+            target_killed=hit and remaining == 0,
+            narrative_hint="A clean strike." if hit else "The blade skids wide.",
+        )
+
+    r = MagicMock()
+    r.resolve_attack = MagicMock(side_effect=_resolve)
+    return r

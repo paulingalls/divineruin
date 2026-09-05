@@ -34,7 +34,15 @@ GRAPPLE_PROPERTY = "grapple"
 # nothing to bite on in a weapon-only action_pool — recorded inapplicable, not rescued.
 CATCH_ALL = "on_enemy_action"
 
-_STAGES = ("pre_roll", "post_roll")
+# The stages a held action passes through, in order. Recorded on the held entry (``opened``) so a
+# window is offered exactly once per stage — a non-attack action has no roll to mark its progress,
+# so the roll alone cannot serve as the position marker. They live here, with the window
+# vocabulary, because combat_hold and combat_reaction_effect both need them and combat_hold
+# imports combat_reaction_effect (so the constants cannot live in combat_hold without a cycle).
+PRE_ROLL = "pre_roll"
+POST_ROLL = "post_roll"
+
+_STAGES = (PRE_ROLL, POST_ROLL)
 
 
 def pre_roll_triggers(action: dict) -> tuple[str, ...]:

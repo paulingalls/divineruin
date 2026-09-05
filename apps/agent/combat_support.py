@@ -143,9 +143,9 @@ async def _resolve_attack_packet(
     phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
     ``action`` is an entry from the attacker's action_pool (weapon-shaped).
 
-    ``shield_reaction`` remains unwired because player reactions resolve through
-    ``activate`` and ``validate_reaction_activation``, outside the attack packet. It is therefore
-    ``None`` on the live path; direct durability tests exercise the accrual seam."""
+    ``shield_reaction`` names the shield-bearing reaction the target spent against THIS blow, and
+    is what accrues a durability hit on their shield. Its live producer is the Beat-3 window close
+    (combat_reaction_effect.shield_reaction, story-018); ``None`` on every unpaused path."""
     attack_result, effective_ac = roll_attack(
         attacker,
         action,

@@ -7,6 +7,7 @@ split, debt faa6dd19ab64)."""
 import copy
 import json
 import logging
+from typing import Any
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -171,7 +172,10 @@ async def _resolve_phase_locked(
     sink = EventSink()
     # The per-packet resolver bundle, shared by the Beat-2 ally loop and the Beat-3 held pass so
     # a held enemy action resolves down the SAME path an unpaused one does (AC6).
-    packet_deps = {
+    # Annotated Any because the bundle is heterogeneous by design — it is merged with conn/sink/
+    # cast_outcome below, and story-018 added an int kwarg the inferred dict[str, ModuleType]
+    # could not spread onto.
+    packet_deps: dict[str, Any] = {
         "mutations": mutations,
         "queries": queries,
         "resolver": resolver,

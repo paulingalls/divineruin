@@ -238,6 +238,32 @@ class TestCombatBeatContract:
         packet the DM will never see."""
         assert "narrate a reaction packet as successful" not in COMBAT_SYSTEM_PROMPT.lower()
 
+    def test_the_dm_is_told_what_a_reaction_packet_reports(self):
+        """story-018's producer half (constraint 6). A reaction packet exists again — synthesized
+        at window close, not from a declaration — and its `mechanical_effect` is the field that
+        says what the reaction DID. The DM has to be reintroduced to it deliberately: a packet
+        nothing in the prompt names is a capability the DM cannot narrate.
+
+        The null reading is taught too, because null is the honest report for a reaction that was
+        spent and changed nothing mechanical — and a DM who reads the packet's `resolved: true` as
+        the claim would tell the player they were saved when they were not.
+
+        And the cue is demoted in the same breath. `narration_cue` is authored for the ability at
+        full strength, so the packet ships prose that OVERCLAIMS what the engine did: Retaliating
+        Shield's is "the attacker grunts in pain" for wear on a shield and no damage dealt,
+        Sidestep's is "the blade finds only air" for a blow that landed in full. The packet's own
+        honesty (constraint 6) is undone if the DM narrates the cue as the outcome."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "mechanical_effect" in low
+        effect = low.index("mechanical_effect")
+        teaching = low[effect : effect + 800]
+        assert "damage_halved" in teaching
+        assert "target_ac_bonus" in teaching
+        assert "shield_durability" in teaching
+        assert "null" in teaching
+        assert "narration_cue" in teaching
+        assert "not a report" in teaching
+
     def test_combat_only_capabilities_still_use_activate(self):
         # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
         # enter through activate (the reserved tokens), so the blanket "never activate in combat"

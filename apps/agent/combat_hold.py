@@ -19,20 +19,16 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 import logging
 
 import combat_enhancers
+import combat_reaction_effect
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
 from combat_support import deserialize_roll, roll_attack, serialize_roll
 from declarations import DeclarationType, resolve_declaration
+from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
-
-# The stages a held action passes through, in order. Recorded on the held entry (``opened``) so a
-# window is offered exactly once per stage — a non-attack action has no roll to mark its progress,
-# so the roll alone cannot serve as the position marker.
-PRE_ROLL = "pre_roll"
-POST_ROLL = "post_roll"
 
 
 def hold_enemy_packets(state, packets: list) -> list[dict]:
@@ -208,9 +204,19 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     with the queue empty, the caller runs Beat 4 in that same commit (AC6 — the wrap fires once,
     in the last commit, because an enemy blow can be what ends the fight).
     """
-    # The DM came back, so whatever window we were paused on has closed.
-    state.open_window = None
+    # The DM came back, so whatever window we were paused on has closed. Capture it on the way
+    # out: a reaction spent at that window changes the held blow, and this is the one moment where
+    # the spend exists and the blow has not been applied yet (story-018).
+    closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
+    reacted, reaction_packet = None, None
+    if closed is not None and state.held_actions:
+        reacted = state.held_actions[0]
+        reaction_packet = combat_reaction_effect.close(
+            state, reacted, closed, attack_action=_attack_action(state, reacted)
+        )
+        if reaction_packet is not None:
+            summaries.append(reaction_packet)
 
     while state.held_actions:
         head = state.held_actions[0]
@@ -235,7 +241,10 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                     _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
                     return summaries
 
-        summaries.append(await _resolve_held(session, state, head, packet_deps=packet_deps))
+        summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+        if head is reacted:
+            combat_reaction_effect.record_shield_wear(reaction_packet, summary)
+        summaries.append(summary)
         state.held_actions.pop(0)
 
     return summaries
@@ -250,7 +259,7 @@ def _roll(state, head: dict, action: dict, resolver):
         attacker,
         action,
         target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0),
+        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + combat_reaction_effect.ac_bonus(state, head),
         enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
         is_first_attack_of_combat=not state.first_attack_resolved,
         resolver=resolver,
@@ -293,4 +302,11 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
-    return await _resolve_one_packet(session, state, packet, **deps)
+    return await _resolve_one_packet(
+        session,
+        state,
+        packet,
+        reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        **deps,
+    )

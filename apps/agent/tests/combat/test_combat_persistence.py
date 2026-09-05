@@ -21,7 +21,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 
-import combat_hold
 import combat_phase
 import combat_turn
 import db_mutations
@@ -278,7 +277,7 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
             "initiative": enemy.initiative,
             "declaration": {"type": "attack", "action": "Scimitar", "target_id": player.id},
             "roll": serialize_roll(attack_result, effective_ac),
-            "opened": [combat_hold.PRE_ROLL, combat_hold.POST_ROLL],
+            "opened": [reaction_windows.PRE_ROLL, reaction_windows.POST_ROLL],
         }
     ]
     state.open_window = reaction_windows.open_window_for(

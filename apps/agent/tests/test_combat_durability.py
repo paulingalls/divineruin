@@ -230,6 +230,12 @@ def _forced_attack(*, hit, critical=False):
     return res
 
 
+# The one shield-bearing reaction in the catalog, and since story-018 the one thing that reaches
+# this parameter on a live path. Named rather than an invented literal ("Shield Wall" was a
+# capability nothing produced — constraint 6).
+RETALIATING_SHIELD = "guardian_retaliating_shield"
+
+
 async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
     # Durability accrual now lives in the shared _resolve_attack_packet resolver (the
     # phase loop's per-packet path, story-003); the enemy attacks the player participant.
@@ -296,7 +302,7 @@ async def test_no_armor_equipped_skips_armor_accrual():
 async def test_shield_reaction_accrues_shield_hit():
     ctx = _combat_ctx()
     inv = [_inv_item("shield_iron", "shield", current_hits=10)]
-    accrue = await _run_enemy_turn(ctx, inv, shield_reaction="Shield Wall")
+    accrue = await _run_enemy_turn(ctx, inv, shield_reaction=RETALIATING_SHIELD)
     # one accrual for the shield (no armor equipped)
     accrue.assert_awaited_once()
     assert accrue.await_args is not None
@@ -306,7 +312,7 @@ async def test_shield_reaction_accrues_shield_hit():
 async def test_shield_reaction_without_shield_equipped_skips():
     ctx = _combat_ctx()
     inv = [_inv_item("plate_armor", "armor", current_hits=10)]
-    accrue = await _run_enemy_turn(ctx, inv, shield_reaction="Shield Wall")
+    accrue = await _run_enemy_turn(ctx, inv, shield_reaction=RETALIATING_SHIELD)
     # armor accrues (1), shield does not — only one call, for the armor
     accrue.assert_awaited_once()
     assert accrue.await_args is not None

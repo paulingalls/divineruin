@@ -9,62 +9,16 @@ reading a descriptor: ``next.verbs`` is a CLAIM about what the engine accepts, a
 only read the list combat_wrap builds would certify the list, not the engine (constraint 6).
 """
 
-import json
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
-from combat._helpers import _resolution_state, _resolve_deps
-from sample_fixtures import make_context, make_db_mod
+from combat._helpers import _activate, _call, _ctx_at_resolution, _resolve_deps
 
 import combat_hold
 import combat_phase
-import combat_turn
-import reaction_spend
-from ability_tools import _request_ability_activation_impl
 
 # rogue_uncanny_dodge fires on on_hit — the POST-ROLL window, the pre-damage pause story-018
 # needs. skirmisher_sidestep fires on on_targeted, which only the PRE-ROLL window offers.
 POST_ROLL_REACTION = "rogue_uncanny_dodge"
 PRE_ROLL_REACTION = "skirmisher_sidestep"
-
-
-def _ctx_at_resolution(*, player_hp=25, enemy_hp=7):
-    ctx = make_context()
-    state = _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
-    state.reactions_available = {"player_1": reaction_spend.unspent()}
-    ctx.userdata.combat_state = state
-    return ctx
-
-
-async def _call(ctx, deps) -> dict:
-    result = await combat_turn._resolve_phase_impl(ctx, **deps)
-    assert not isinstance(result, tuple), "combat ended unexpectedly"
-    return json.loads(result)
-
-
-async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 10, focus: int = 10):
-    """Drive the REAL activate impl, so the gate, the resource write and the spend all run."""
-    db_mod, _conn = make_db_mod()
-    queries = MagicMock()
-    queries.get_players_for_update = AsyncMock(
-        return_value={
-            "player_1": {
-                "player_id": "player_1",
-                "name": "Kael",
-                "class": player_class,
-                "level": 5,
-                "stamina": {"current": stamina, "max": 10},
-                "focus": {"current": focus, "max": 10},
-            }
-        }
-    )
-    persistence = MagicMock()
-    persistence.update_player_resources = AsyncMock()
-    persistence.get_active_variant = AsyncMock(return_value=None)
-    persistence.owns_elective = AsyncMock(return_value=False)
-    return await _request_ability_activation_impl(
-        ctx, ability_id, db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
-    )
 
 
 class TestTheInterruptLoop:
