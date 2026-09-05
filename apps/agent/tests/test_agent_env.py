@@ -71,3 +71,41 @@ class TestEnvironmentValidation:
                         validate_env()
 
                     assert "ROLE_GUARD" in str(exc_info.value)
+
+    def test_validate_env_raises_naming_both_keys_when_two_voices_collide(self):
+        """The EMRIS=Olivia / LIRA=Olivia pair found on the lead's dev checkout at authoring.
+
+        Two characters sharing an Inworld voice id are indistinguishable to the ear, and
+        nothing on the committed files can detect it: .env.example was correct while the live
+        .env, which nothing reads, was not.
+        """
+        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "agent.VOICES",
+                {
+                    "DM_NARRATOR": "Clive",
+                    "SCHOLAR_EMRIS": "Olivia",
+                    "COMPANION_LIRA": "Olivia",
+                },
+            ):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    with pytest.raises(EnvironmentError) as exc_info:
+                        validate_env()
+
+        msg = str(exc_info.value)
+        assert "SCHOLAR_EMRIS" in msg
+        assert "COMPANION_LIRA" in msg
+        assert "Olivia" in msg
+
+    def test_empty_voices_do_not_count_as_a_collision(self):
+        """COMPANION_SABLE and every other unset authored voice are both "" — on a dev
+        checkout VOICES comes back 0-of-51 populated, so a distinctness check that did not
+        skip empties would raise on all 50 of them sharing "".
+        """
+        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        with patch.dict(os.environ, env, clear=True):
+            with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": "", "TAVERN_BRYN": ""}):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    with patch("agent.logger"):
+                        validate_env()  # must not raise
