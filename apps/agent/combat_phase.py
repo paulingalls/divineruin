@@ -238,25 +238,35 @@ def check_reaction_window(declaration: Declaration) -> None:
 def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
     """Raise unless ``actor_id`` may spend a reaction on ``ability_id`` right now.
 
+    The permission is an OPEN WINDOW (story-017, decision 46), not a pre-declaration: the player
+    shouts "I block!" in conversational time, against a held enemy blow the DM has just narrated.
+    Beat 1 could not know whether that blow would hit, miss, or land at all, so the declared
+    trigger was an unmakeable judgement; the window the Beat-3 pump is paused on knows.
+
+    The open-window check is deliberately not a beat comparison. A beat gate has to track the
+    pause it guards and cannot fail loud when it drifts: the RESOLUTION gate this replaced was
+    left behind by story-016's move of the pause to NARRATION, and silently refused every held
+    window it existed to protect.
+
     Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
     ``state`` here and the caller assigned the copy back after its await, which erased anything an
     unlocked in-place writer committed meanwhile (draethar_inner_fire mutates participants directly
     and holds no combat_end_lock). The caller records the spend as one field write instead."""
-    if state.beat != PhaseBeat.RESOLUTION:
-        raise ValueError("reactions can only activate during the resolution beat")
+    window = state.open_window
+    if window is None:
+        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
 
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
 
-    raw_declaration = state.pending_declarations.get(actor_id)
-    if raw_declaration is None:
-        raise ValueError(f"player {actor_id!r} has no pending reaction declaration")
-    declaration = resolve_declaration(raw_declaration)
-    if declaration.type is not DeclarationType.REACTION or declaration.action != ability_id:
-        raise ValueError(f"ability {ability_id!r} is not the player's exact pending reaction")
+    catalog_window = abilities.get_ability(ability_id).window
+    if catalog_window not in window["triggers"]:
+        raise ValueError(
+            f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
+            f"{window['id']!r} offers {window['triggers']}"
+        )
 
-    check_reaction_window(declaration)
     if not state.reactions_available.get(actor_id, False):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
 

@@ -424,27 +424,34 @@ class TestWhatTheDmCanActuallyDoAtAWindow:
     """constraint 6, EXECUTED. `next.verbs` is a claim about what the engine will accept, and a
     test that only reads the list this card builds would certify the list, not the engine.
 
-    story-017 owns rebinding activation. Until it lands, combat_phase.validate_reaction_activation
-    refuses every beat but RESOLUTION — and every window this card opens is at NARRATION — so
-    advertising `activate` here would be the exact defect constraint 6 was written for: a gate
-    keyed on a token nothing honours. These two assertions must move together in 017.
+    story-017 rebound activation to the OPEN WINDOW, so the engine now accepts `activate` here —
+    that half is executed below. `verbs` still reads ["resolve_phase"] on purpose (D5): it is the
+    ADVANCE set (combat_wrap.next_envelope), not a whitelist, and only resolve_phase advances the
+    beat from a window. The prompt and the window's own `triggers` are what produce the activation
+    (AC8); `verbs` naming a non-advancing verb would contradict the reading the prompt teaches.
     """
 
     @pytest.mark.asyncio
-    async def test_activate_is_not_advertised_and_is_in_fact_refused(self):
+    async def test_the_engine_accepts_a_reaction_at_the_open_window(self):
         ctx = _ctx_at_resolution()
         deps = _resolve_deps()
-        cs = ctx.userdata.combat_state
-        cs.pending_declarations["player_1"] = {
-            "type": "reaction",
-            "action": "rogue_uncanny_dodge",
-            "trigger": "on_hit",
-        }
         await _call(ctx, deps)  # the ally commit
         r1 = await _call(ctx, deps)  # paused on the pre-roll window
 
+        window = r1["next"]["waiting_on"]
+        assert window is not None
+        assert "on_targeted" in window["triggers"]
+        # skirmisher_sidestep fires on on_targeted, which this pre-roll window offers. Executed
+        # against the engine rather than read off the card's own descriptor.
+        cs = ctx.userdata.combat_state
+        assert combat_phase.validate_reaction_activation(cs, "player_1", "skirmisher_sidestep") is None
+
+    @pytest.mark.asyncio
+    async def test_activate_is_still_not_the_advance_verb(self):
+        ctx = _ctx_at_resolution()
+        deps = _resolve_deps()
+        await _call(ctx, deps)
+        r1 = await _call(ctx, deps)
+
         assert r1["next"]["waiting_on"] is not None
-        assert "activate" not in r1["next"]["verbs"]
-        # ...and the engine agrees, executed rather than asserted from this card's own list.
-        with pytest.raises(ValueError, match="resolution beat"):
-            combat_phase.validate_reaction_activation(ctx.userdata.combat_state, "player_1", "rogue_uncanny_dodge")
+        assert r1["next"]["verbs"] == ["resolve_phase"]

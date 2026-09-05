@@ -12,6 +12,7 @@ import random
 import pytest
 from combat._helpers import _declarations, _make_combat_state
 
+import reaction_windows
 from combat_phase import (
     PhaseBeat,
     ResolutionPacket,
@@ -121,77 +122,100 @@ class TestNarrationBeat:
 
 
 class TestValidateReactionActivation:
-    ability_id = "warrior_opportunity_strike"
+    """story-017: a reaction is an INTERRUPT against an open window, not a pre-declaration.
 
-    def _reaction_state(self, *, trigger="on_enemy_move"):
+    The gate reads ``state.open_window`` — the window story-016's Beat-3 pump is paused on — and
+    nothing else. It no longer reads ``pending_declarations``, and it no longer compares beats:
+    the pause sits at NARRATION, so the old RESOLUTION-beat gate refused every held window.
+    """
+
+    accepts = "warrior_brace_for_impact"  # catalog window on_hit
+    refuses = "warrior_opportunity_strike"  # catalog window on_enemy_move — never in a held window
+
+    def _window_state(self, *, hit=True):
+        """A phase PAUSED on a real post-roll window, built by the real producer.
+
+        reaction_windows.open_window_for is what the pump calls (constraint 9) — a hand-rolled
+        dict here would certify this test's idea of a window, not the one the DM is handed.
+        """
         state = _make_combat_state()
-        state.beat = PhaseBeat.RESOLUTION
-        state.pending_declarations = {"player_1": {"type": "reaction", "action": self.ability_id, "trigger": trigger}}
+        state.beat = PhaseBeat.NARRATION
+        state.open_window = reaction_windows.open_window_for(
+            round_number=1,
+            seq=0,
+            stage="post_roll",
+            actor_id="goblin_scout_1",
+            target_id="player_1",
+            triggers=reaction_windows.post_roll_triggers({}, hit=hit),
+        )
         state.reactions_available = {"player_1": True}
         return state
 
-    def test_accepts_a_valid_declared_reaction_without_mutating_state(self):
-        """Validation only: the caller records the spend, so a valid call changes nothing here.
-        The spend used to be a deep-copied state returned from this function; assigning that copy
-        back after the caller's await erased concurrent in-place writes (draethar_inner_fire)."""
-        state = self._reaction_state()
+    def test_accepts_a_reaction_whose_catalog_window_is_open_with_no_declaration(self):
+        """AC1's accept half. Nothing was declared at Beat 1 — the open window IS the permission.
 
-        assert validate_reaction_activation(state, "player_1", self.ability_id) is None
+        Validation only: the caller records the spend, so a valid call changes nothing here. The
+        spend used to be a deep-copied state returned from this function; assigning that copy back
+        after the caller's await erased concurrent in-place writes (draethar_inner_fire)."""
+        state = self._window_state()
+        assert state.pending_declarations == {}
+
+        assert validate_reaction_activation(state, "player_1", self.accepts) is None
         assert state.reactions_available == {"player_1": True}
 
+    def test_rejects_a_reaction_whose_window_is_not_open(self):
+        """AC3: the refusal names BOTH windows, so the DM can see why this reaction does not fit.
+
+        A message naming only one side leaves the DM re-trying the same ability — the window it
+        fires on and the windows actually offered are both needed to pick a different one."""
+        state = self._window_state()
+
+        with pytest.raises(ValueError) as excinfo:
+            validate_reaction_activation(state, "player_1", self.refuses)
+
+        message = str(excinfo.value)
+        assert "on_enemy_move" in message
+        assert "on_hit" in message
+
+    def test_rejects_when_no_window_is_open(self):
+        """AC4, and it is one check, not two: the declaration beat and a drained queue both reach
+        here as ``open_window is None``. A beat comparison would have to track the pause it guards
+        — story-016 moved that pause to NARRATION and the RESOLUTION gate silently refused every
+        held window."""
+        state = self._window_state()
+        state.open_window = None
+        state.beat = PhaseBeat.DECLARATION
+
+        with pytest.raises(ValueError, match="no reaction window is open"):
+            validate_reaction_activation(state, "player_1", self.accepts)
+
     def test_rejects_second_reaction_this_round(self):
-        state = self._reaction_state()
+        state = self._window_state()
         state.reactions_available["player_1"] = False
 
         with pytest.raises(ValueError, match="already spent"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
-
-    def test_rejects_activation_outside_resolution_beat(self):
-        state = self._reaction_state()
-        state.beat = PhaseBeat.NARRATION
-
-        with pytest.raises(ValueError, match="resolution beat"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.accepts)
 
     def test_rejects_non_player_actor(self):
-        state = self._reaction_state()
-        state.pending_declarations["goblin_scout_1"] = state.pending_declarations.pop("player_1")
+        """The reaction economy is player-only (note 964465e5): no enemy or companion spends one,
+        even standing at a window whose triggers their ability would match."""
+        state = self._window_state()
         state.reactions_available = {"goblin_scout_1": True}
 
         with pytest.raises(ValueError, match="only players"):
-            validate_reaction_activation(state, "goblin_scout_1", self.ability_id)
-
-    def test_rejects_without_pending_declaration(self):
-        state = self._reaction_state()
-        state.pending_declarations = {}
-
-        with pytest.raises(ValueError, match="no pending reaction"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
-
-    def test_rejects_different_declared_ability(self):
-        state = self._reaction_state(trigger="on_hit")
-        state.pending_declarations["player_1"]["action"] = "warrior_brace_for_impact"
-
-        with pytest.raises(ValueError, match="exact pending reaction"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
-
-    def test_rejects_declared_trigger_that_mismatches_catalog_window(self):
-        state = self._reaction_state(trigger="on_hit")
-
-        with pytest.raises(ValueError, match=r"does not match.*on_enemy_move"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "goblin_scout_1", self.accepts)
 
     def test_an_actor_absent_from_the_budget_map_has_no_reaction_to_spend(self):
         """Absent actor => no budget, never a free spend (the session_data field contract).
 
-        Reachable on a combat persisted before the budget map existed: beat RESOLUTION with a
-        pending reaction but an empty reactions_available. Flipping the lookup default to True
-        hands that state a free, unmetered reaction."""
-        state = self._reaction_state()
+        Reachable on a combat persisted before the budget map existed: paused at a window with an
+        empty reactions_available. Flipping the lookup default to True hands that state a free,
+        unmetered reaction."""
+        state = self._window_state()
         state.reactions_available = {}
 
         with pytest.raises(ValueError, match="already spent"):
-            validate_reaction_activation(state, "player_1", self.ability_id)
+            validate_reaction_activation(state, "player_1", self.accepts)
 
 
 class TestDeclaredReactionWindow:

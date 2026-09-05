@@ -30,11 +30,12 @@ def next_envelope(state) -> dict:
     DM skip a downed player's death save — so it names the move that steps the machine, and
     nothing more.
 
-    ``activate`` is deliberately ABSENT from ``verbs`` while a window is open:
-    combat_phase.validate_reaction_activation still refuses every beat but RESOLUTION, and every
-    window this card opens is at NARRATION. Advertising a verb the engine would refuse is the same
-    "gate keyed on a token nothing honours" the constraint was written for. story-017 rebinds
-    activation; until then the only legal move at a window is to close it (debt).
+    ``activate`` IS legal at an open window since story-017 — validate_reaction_activation gates
+    on this very ``open_window`` — and it is still deliberately ABSENT from ``verbs``, because
+    ``verbs`` names the ADVANCE move and only resolve_phase advances a paused beat. The producer
+    for activation is the prompt plus ``waiting_on.triggers``, which name the windows the DM's
+    reaction must match (constraint 6); listing a non-advancing verb here would contradict the
+    "not a whitelist" reading in the same payload.
     """
     if state.open_window is not None:
         window = state.open_window

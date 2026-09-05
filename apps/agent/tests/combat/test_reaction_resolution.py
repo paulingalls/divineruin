@@ -1,120 +1,123 @@
-"""Reaction declaration, activation, and resolution packet contract."""
+"""Every reaction the DM can be told about, against every window the engine can open.
 
+story-017 made a reaction an INTERRUPT: the permission is the open Beat-3 window, not a Beat-1
+declaration. So the contract to hold is between two producers that must share one vocabulary —
+``query_tools._query_abilities_impl``, which surfaces each reaction's ``window`` to the DM, and
+``reaction_windows``, which mints the ``triggers`` a held enemy action offers. A reaction whose
+advertised window no producible window ever carries is a capability the DM can name and never
+spend (constraint 6), so this walks the WHOLE catalog rather than one class's first reaction.
+
+Two windows have no producer at all and are asserted REFUSED rather than papered over:
+``on_enemy_move`` (no movement model — debt d3ff4ff4) and ``on_spell_cast`` (no enemy casting —
+debt 08bc5548). Their reactions are unreachable by design until those land.
+"""
+
+import json
 from unittest.mock import AsyncMock, MagicMock
 
-from _combat_end_fixtures import combat_end_mutations
-from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _resolve_round
-from sample_fixtures import make_context, make_db_mod
+import pytest
+from archetype_abilities_config_fixture import load_fixture_config
+from combat._helpers import _make_combat_state
+from sample_fixtures import make_context
 
-from ability_tools import _request_ability_activation_impl
-from combat_turn import _declare_phase_impl
+import reaction_windows
+from combat_phase import PhaseBeat, validate_reaction_activation
+from query_tools import _query_abilities_impl
 
+# The windows the real producer can emit, one entry per held-action shape it distinguishes.
+# Built by calling reaction_windows, never transcribed: a trigger set copied into this file would
+# certify the copy (constraint 9).
+_PRODUCIBLE = {
+    "pre_roll": reaction_windows.pre_roll_triggers({}),
+    "post_roll_hit": reaction_windows.post_roll_triggers({}, hit=True),
+    "post_roll_miss": reaction_windows.post_roll_triggers({}, hit=False),
+    "post_roll_grapple": reaction_windows.post_roll_triggers(
+        {"properties": [reaction_windows.GRAPPLE_PROPERTY]}, hit=True
+    ),
+}
 
-def _declarations():
-    return {
-        "player_1": {
-            "type": "reaction",
-            "action": "warrior_opportunity_strike",
-            "trigger": "on_enemy_move",
-        },
-        "goblin_scout_1": {
-            "type": "attack",
-            "action": "Scimitar",
-            "target_id": "player_1",
-        },
-    }
-
-
-def _mutations():
-    mutations = combat_end_mutations()
-    mutations.save_combat_state = AsyncMock()
-    mutations.update_player_hp = AsyncMock()
-    return mutations
+NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
 
 
-def _resolve_deps(mutations):
-    queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])
-    break_mod = MagicMock()
-    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
-    return {
-        "mutations": mutations,
-        "queries": queries,
-        "resolver": _damage_resolver(3),
-        "concentration_break_mod": break_mod,
-        "db_mod": _fake_db_mod(),
-    }
-
-
-async def _activate_reaction(ctx):
-    db_mod, _conn = make_db_mod()
-    queries = MagicMock()
-    queries.get_players_for_update = AsyncMock(
-        return_value={
-            "player_1": {
-                "player_id": "player_1",
-                "class": "warrior",
-                "stamina": {"current": 5, "max": 10},
-                "focus": {"current": 5, "max": 10},
-            }
-        }
+def _paused_state(triggers):
+    state = _make_combat_state()
+    state.beat = PhaseBeat.NARRATION
+    state.open_window = reaction_windows.open_window_for(
+        round_number=1,
+        seq=0,
+        stage="pre_roll",
+        actor_id="goblin_scout_1",
+        target_id="player_1",
+        triggers=triggers,
     )
+    state.reactions_available = {"player_1": True}
+    return state
+
+
+async def _queried_reactions():
+    """Every reaction row the DM can be shown, for every archetype — the producer's own output."""
+    context = make_context()
+    queries = MagicMock()
     persistence = MagicMock()
-    persistence.update_player_resources = AsyncMock()
+    persistence.get_character_abilities = AsyncMock(return_value=[])
     persistence.get_active_variant = AsyncMock(return_value=None)
-    persistence.owns_elective = AsyncMock(return_value=False)
-    await _request_ability_activation_impl(
-        ctx,
-        "warrior_opportunity_strike",
-        db_mod=db_mod,
-        queries_mod=queries,
-        persistence_mod=persistence,
-    )
+
+    catalog = load_fixture_config().values()
+    rows = {}
+    for player_class in sorted({ability.archetype_id for ability in catalog}):
+        queries.get_player = AsyncMock(return_value={"class": player_class})
+        payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
+        for row in payload["abilities"]:
+            if row["ability_type"] == "reaction":
+                rows[row["id"]] = row["window"]
+    assert rows.keys() == {a.id for a in catalog if a.ability_type == "reaction"}
+    return rows
 
 
-async def test_activated_reaction_resolves_in_phase_packet():
-    ctx = make_context()
-    ctx.userdata.combat_state = _make_combat_state()
-    mutations = _mutations()
-    await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
-    await _activate_reaction(ctx)
+@pytest.mark.asyncio
+async def test_every_queried_reaction_window_is_answered_by_a_real_open_window():
+    """The accept half, catalog-wide: each advertised window is one the engine actually opens.
 
-    result = await _resolve_round(ctx, **_resolve_deps(mutations))
+    A gate that read a constant "on_hit" would still accept the reactions carrying that window,
+    so the sweep has to name which producible window answered each id — and refuse to accept a
+    reaction at a window that does not carry its trigger."""
+    reachable = {}
+    for ability_id, window in (await _queried_reactions()).items():
+        if window in NO_PRODUCER:
+            continue
+        answered = [name for name, triggers in _PRODUCIBLE.items() if window in triggers]
+        assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
+        for name in answered:
+            state = _paused_state(_PRODUCIBLE[name])
+            assert validate_reaction_activation(state, "player_1", ability_id) is None, (ability_id, name)
+        reachable[ability_id] = window
 
-    reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
-    assert reaction == {
-        "actor_id": "player_1",
-        "resolved": True,
-        "declaration_type": "reaction",
-        "ability_id": "warrior_opportunity_strike",
-    }
-
-
-async def test_unactivated_reaction_remains_unresolved_in_phase_packet():
-    ctx = make_context()
-    ctx.userdata.combat_state = _make_combat_state()
-    mutations = _mutations()
-    await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
-
-    result = await _resolve_round(ctx, **_resolve_deps(mutations))
-
-    reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
-    assert reaction["resolved"] is False
-    assert reaction["reason"] == "reaction was declared but not activated"
+    assert reachable, "the sweep walked no reactions — the query producer went silent"
 
 
-async def test_actor_absent_from_the_budget_map_never_resolves_for_free():
-    """Absent actor => unspent => unresolved. The packet reader's lookup default is the ONLY
-    thing standing between a declaration made by someone with no budget entry -- a companion,
-    or a combat persisted before the map existed -- and a free, uncosted reaction."""
-    ctx = make_context()
-    ctx.userdata.combat_state = _make_combat_state()
-    mutations = _mutations()
-    await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
-    ctx.userdata.combat_state.reactions_available.clear()
+@pytest.mark.asyncio
+async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
+    """Stated honestly rather than skipped: warrior_opportunity_strike (on_enemy_move) and
+    mage_counterspell (on_spell_cast) cannot be spent, at any stage, on any held action."""
+    unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
+    assert unreachable.keys() == {"warrior_opportunity_strike", "mage_counterspell"}
 
-    result = await _resolve_round(ctx, **_resolve_deps(mutations))
+    for ability_id, window in unreachable.items():
+        for triggers in _PRODUCIBLE.values():
+            state = _paused_state(triggers)
+            with pytest.raises(ValueError, match=window):
+                validate_reaction_activation(state, "player_1", ability_id)
 
-    reaction = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
-    assert reaction["resolved"] is False
-    assert reaction["reason"] == "reaction was declared but not activated"
+
+@pytest.mark.asyncio
+async def test_the_two_window_vocabularies_are_one():
+    """reaction_windows emits nothing the ability catalog cannot consume, and the catalog
+    advertises nothing outside abilities.REACTION_WINDOWS. Either drift ships a window the other
+    side cannot read — the exact shape of the guess-among-nine defect constraint 6 names."""
+    import abilities
+
+    produced = {trigger for triggers in _PRODUCIBLE.values() for trigger in triggers}
+    consumed = set((await _queried_reactions()).values())
+
+    assert produced <= abilities.REACTION_WINDOWS
+    assert produced == consumed - NO_PRODUCER
