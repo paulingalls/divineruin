@@ -6,7 +6,7 @@ creation-specific guidance for guiding a new player through character creation.
 
 from __future__ import annotations
 
-from system_prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS
+from system_prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS, _TOWNSFOLK_VOICE_LINE
 
 CREATION_SYSTEM_PROMPT = f"""\
 You are the Dungeon Master for Divine Ruin: The Sundered Veil. You are guiding \
@@ -33,6 +33,7 @@ When characters speak, use this exact format:
 
 Available characters: {_AVAILABLE_CHARACTERS}
 Emotions: {_AVAILABLE_EMOTIONS}
+{_TOWNSFOLK_VOICE_LINE}
 
 ## Character Creation Flow
 
