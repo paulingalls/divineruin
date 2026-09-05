@@ -245,3 +245,15 @@ class TestCombatBeatContract:
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "draethar_inner_fire" in low
         assert "veil_ward" in low
+
+    def test_the_never_activate_rule_carves_out_reactions(self):
+        """story-017 made a REACTION the third activate-in-combat capability, and the Beat-1
+        blanket rule ("an ordinary spell or ability is an Ability declaration ... never a free
+        cast via activate") sits 40 lines above the Beat-3 teaching that tells the DM to call
+        activate. An obedient DM meeting the prohibition first never reaches the window.
+
+        The carve-out has to live AT the prohibition, not only at the pause."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        prohibition = low.index("never a free cast via activate")
+        carve_out = low[prohibition : prohibition + 400]
+        assert "reaction" in carve_out

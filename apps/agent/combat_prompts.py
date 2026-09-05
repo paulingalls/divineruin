@@ -31,9 +31,9 @@ Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (
 Call query_info(kind="abilities") to learn which reaction windows the player's abilities answer. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \
-cast via activate. A Draethar's Inner Fire \
-(activate "draethar_inner_fire") and raising or dropping a Veil Ward (activate "veil_ward" / \
-"veil_ward_dismiss") are still done through activate, even mid-fight. If the player gives no clear \
+cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
+open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \
+or dropping a Veil Ward (activate "veil_ward" / "veil_ward_dismiss"). If the player gives no clear \
 action when asked, don't stall — narrate "You freeze for a moment—" and declare a \
 defend for them: they brace instead of attacking. Hesitation is a valid \
 outcome.
