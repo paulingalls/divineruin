@@ -33,6 +33,7 @@ logger = logging.getLogger("divineruin.tools")
 # one is a cross-language content change this story does not own. Their honesty against the
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
+SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
 AC_BONUS = {
     "cleric_shield_of_faith": 2,
     "oracle_shield_of_faith": 2,
@@ -76,6 +77,33 @@ def ac_bonus(state, head: dict) -> int:
     if spend is None:
         return 0
     return AC_BONUS.get(spend["ability_id"], 0)
+
+
+def shield_reaction(state, head: dict) -> str | None:
+    """The post-roll spend that puts a shield in the blow's way, if the reactor is the one hit.
+
+    A shield hit is accrued off the TARGET's inventory (combat_support reads
+    ``get_player_inventory(target.id)``), so a reactor who is not the target has no gear in that
+    call — reporting one would wear the wrong player's shield.
+    """
+    spend = bound_spend(state, head, reaction_windows.POST_ROLL)
+    if spend is None or spend["ability_id"] not in SHIELD_BEARING:
+        return None
+    target = _held_target(state, head)
+    return spend["ability_id"] if target is not None and spend["actor_id"] == target.id else None
+
+
+def record_shield_wear(packet: dict | None, summary: dict) -> None:
+    """Name the shield's wear on the reaction packet, once the resolved blow reports it happened.
+
+    Not decided at window close: the accrual needs the player's INVENTORY, which only
+    ``apply_attack_result`` reads (an async query), so "a shield reaction was spent" is not yet "a
+    shield took the hit" — a guardian with nothing equipped accrues nothing. Reading it back off
+    the resolved summary keeps ``mechanical_effect`` a statement of what happened rather than of
+    what was attempted.
+    """
+    if packet is not None and packet["mechanical_effect"] is None and "shield" in (summary.get("durability") or {}):
+        packet["mechanical_effect"] = "shield_durability"
 
 
 def _held_target(state, head: dict):

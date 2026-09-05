@@ -10,6 +10,8 @@ Every test drives the real ``resolve_phase`` / ``activate`` implementations end 
 reaction changes an outcome the same way the DM's own calls would produce it.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import (
@@ -23,6 +25,7 @@ from combat._helpers import (
 from sample_fixtures import make_mock_room, published_payloads
 
 import combat_reaction_effect
+import combat_support
 import event_types as E
 import reaction_windows
 from session_data import CombatParticipant, CombatState
@@ -243,11 +246,16 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     a new row in that window reds here instead of shipping unspendable.
     """
     catalog = load_fixture_config()
-    wired = combat_reaction_effect.HALVES_DAMAGE | set(combat_reaction_effect.AC_BONUS)
+    wired = (
+        combat_reaction_effect.HALVES_DAMAGE
+        | combat_reaction_effect.SHIELD_BEARING
+        | set(combat_reaction_effect.AC_BONUS)
+    )
     for ability_id in wired:
         assert catalog[ability_id].ability_type == "reaction", ability_id
 
     assert {catalog[i].window for i in combat_reaction_effect.HALVES_DAMAGE} == {"on_hit"}
+    assert {catalog[i].window for i in combat_reaction_effect.SHIELD_BEARING} == {"on_hit"}
     assert {catalog[i].window for i in combat_reaction_effect.AC_BONUS} == {"on_ally_targeted"}
 
     guarding = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_ally_targeted"}
@@ -350,3 +358,59 @@ async def test_a_wired_ability_against_an_action_with_no_roll_claims_nothing():
     await _drain(ctx, deps, packets)
 
     assert _reaction_packet(packets)["mechanical_effect"] is None
+
+
+RETALIATING_SHIELD = "guardian_retaliating_shield"  # on_hit, effect ends "Requires shield."
+_SHIELD = {"id": "shield_iron", "type": "shield", "durability_tier": "standard", "slot_info": {"equipped": True}}
+
+
+def _shield_bearing_deps():
+    deps = _resolve_deps(damage=6)
+    deps["queries"].get_player_inventory = AsyncMock(return_value=[_SHIELD])
+    return deps
+
+
+def _patched_accrual():
+    return patch.object(
+        combat_support,
+        "_accrue_durability",
+        AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_shield_bearing_reaction_accrues_a_shield_hit_through_the_pump():
+    """AC4, through the LIVE path. ``_resolve_attack_packet``'s ``shield_reaction`` parameter was
+    reachable only by a test calling the helper directly — a six-line branch whose sole exercise
+    certified itself (note 0f3945fa(h), constraint 1). The reaction the DM spends reaches it now.
+
+    The retaliation damage (1d6 + STR) is NOT wired and is not claimed: what ships is the wear the
+    shield takes for being interposed.
+    """
+    ctx = _ctx_at_resolution()
+    deps = _shield_bearing_deps()
+    packets: list[dict] = []
+
+    with _patched_accrual() as accrue:
+        await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
+        await _activate(ctx, RETALIATING_SHIELD, player_class="guardian")
+        await _drain(ctx, deps, packets)
+
+    assert "shield" in _enemy_blow(packets)["durability"]
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "shield_iron" and accrue.await_args.args[3] == 1
+    assert _reaction_packet(packets)["mechanical_effect"] == "shield_durability"
+
+
+@pytest.mark.asyncio
+async def test_the_same_blow_unanswered_wears_no_shield():
+    """AC4's baseline: the shield is equipped either way, so only the reaction explains the hit."""
+    ctx = _ctx_at_resolution()
+    deps = _shield_bearing_deps()
+    packets: list[dict] = []
+
+    with _patched_accrual() as accrue:
+        await _drain(ctx, deps, packets)
+
+    assert "shield" not in _enemy_blow(packets)["durability"]
+    accrue.assert_not_awaited()

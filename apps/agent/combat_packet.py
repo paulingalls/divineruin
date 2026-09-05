@@ -152,6 +152,7 @@ async def _resolve_one_packet(
     cast_outcome=None,
     players_by_id=None,
     reaction_ac_bonus: int = 0,
+    shield_reaction: str | None = None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -166,7 +167,8 @@ async def _resolve_one_packet(
     modelled + initiative-ordered but their mechanical resolution lands in later M4.x.
 
     ``reaction_ac_bonus`` is the Beat-3 hold's channel for a pre-roll reaction's +2 AC against the
-    ONE held blow it was spent against (story-018); 0 on every unpaused path."""
+    ONE held blow it was spent against (story-018), and ``shield_reaction`` the same channel for a
+    post-roll shield-bearing one; 0/None on every unpaused path."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
     # This actor's own pre-validated for_update row (M14 story-004): the ability branches below thread
@@ -279,6 +281,7 @@ async def _resolve_one_packet(
             # a pre-roll reaction's +2 against THIS held blow only (story-018), which is why it
             # rides the call instead of being written into that map.
             target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+            shield_reaction=shield_reaction,
             enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=is_first_attack,
             mutations=mutations,

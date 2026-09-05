@@ -209,11 +209,14 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     # the spend exists and the blow has not been applied yet (story-018).
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
+    reacted, reaction_packet = None, None
     if closed is not None and state.held_actions:
         reacted = state.held_actions[0]
-        packet = combat_reaction_effect.close(state, reacted, closed, attack_action=_attack_action(state, reacted))
-        if packet is not None:
-            summaries.append(packet)
+        reaction_packet = combat_reaction_effect.close(
+            state, reacted, closed, attack_action=_attack_action(state, reacted)
+        )
+        if reaction_packet is not None:
+            summaries.append(reaction_packet)
 
     while state.held_actions:
         head = state.held_actions[0]
@@ -238,7 +241,10 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                     _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
                     return summaries
 
-        summaries.append(await _resolve_held(session, state, head, packet_deps=packet_deps))
+        summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+        if head is reacted:
+            combat_reaction_effect.record_shield_wear(reaction_packet, summary)
+        summaries.append(summary)
         state.held_actions.pop(0)
 
     return summaries
@@ -297,5 +303,10 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
     return await _resolve_one_packet(
-        session, state, packet, reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head), **deps
+        session,
+        state,
+        packet,
+        reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        **deps,
     )
