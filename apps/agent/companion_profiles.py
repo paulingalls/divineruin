@@ -127,6 +127,7 @@ class Companion:
     reactions: tuple[CompanionReaction, ...]
     complements: tuple[str, ...]
     voice_id: str
+    errand_injury_reduction: int
     gender: str | None = None
     age: str | None = None
     appearance: str | None = None
@@ -292,6 +293,9 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             ),
             complements=parse_str_tuple(data["complements"], f"{companion_id}.complements"),
             voice_id=parse_str(data["voice_id"], f"{companion_id}.voice_id"),
+            errand_injury_reduction=parse_int(
+                data["errand_injury_reduction"], f"{companion_id}.errand_injury_reduction"
+            ),
             gender=opt_str(data.get("gender"), f"{companion_id}.gender"),
             age=opt_str(data.get("age"), f"{companion_id}.age"),
             appearance=opt_str(data.get("appearance"), f"{companion_id}.appearance"),

@@ -140,6 +140,12 @@ export interface Companion {
   save_proficiencies: string[]; // exactly 2 per spec
   scaling_rules: ScalingRules;
 
+  // Errand injury-risk reduction, subtracted from the errand risk table's injury_pct
+  // (game_mechanics_core.md L904 gives Kael "reduced injury risk — veteran survival instincts").
+  // Lira/Tam/Sable have entirely different scouting mechanics and no injury reduction, so they
+  // ship 0. Per-companion content, not a Kael-keyed table in code.
+  errand_injury_reduction: number;
+
   // Typed ability buckets.
   attacks: CompanionAttack[];
   passives: CompanionPassive[];
