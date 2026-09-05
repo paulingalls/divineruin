@@ -9,7 +9,7 @@ import {
 import { getMidpointDecision } from "./training_state_machine.ts";
 import { activityToFeedItem, getRelativeTime, str, type FeedItem } from "./catchup_items.ts";
 import { getCompanionIdleChatter } from "./companion_chatter.ts";
-import { resolveAssignedCompanion } from "./assigned_companion.ts";
+import { resolveAssignedCompanion, type AssignedCompanion } from "./assigned_companion.ts";
 
 interface TrainingRow {
   id: string;
@@ -135,9 +135,16 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       return [] as TrainingRow[];
     }) as Promise<TrainingRow[]>;
 
-    // Created after the four above so the idle line names the player's OWN companion. Same
-    // resolution the errand dispatcher uses — one helper, two callers, no second query.
-    const companionPromise = resolveAssignedCompanion(playerId);
+    // Same resolution the errand dispatcher uses — one helper, two callers, no second query.
+    // Sequenced after the four above because catchup.test.ts's sql mock hands back stubs by
+    // call order; production does not care which promise was constructed first.
+    //
+    // .catch, like the three non-critical queries above: this read exists to decorate a
+    // cosmetic line, so a transient DB fault on it must not take the whole HUD with it.
+    const companionPromise = resolveAssignedCompanion(playerId).catch((err): AssignedCompanion => {
+      logError("[catchup] companion resolution query failed:", err);
+      return { ok: false, status: 500, error: String(err) };
+    });
 
     const [rows, newsRows, whisperRows, trainingRows, companion] = await Promise.all([
       activitiesPromise,
@@ -204,26 +211,27 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     const hasActionable = items.some(
       (i) => i.type === "pending_decision" || i.type === "resolved" || i.type === "god_whisper",
     );
-    if (!hasActionable && !companion.ok) {
-      // The idle line is cosmetic; the rest of the feed is not. Dropping it beats 500-ing the
-      // whole HUD, and beats defaulting to a companion this player was never assigned.
-      logError("[catchup] companion resolution failed:", companion.error);
-      logDiag("catchup.companion", () => ({ playerId, error: companion.error }));
-    }
-    if (!hasActionable && companion.ok) {
-      items.push({
-        id: `idle_${Date.now()}`,
-        type: "companion_idle",
-        title: "Companion",
-        summary: getCompanionIdleChatter(playerId, companion.companionId),
-        timestamp: new Date().toISOString(),
-        relativeTime: "now",
-        hasAudio: false,
-        audioUrl: null,
-        decisionOptions: null,
-        activityType: null,
-        progress: null,
-      });
+    if (!hasActionable) {
+      if (!companion.ok) {
+        // The idle line is cosmetic; the rest of the feed is not. Dropping it beats 500-ing
+        // the whole HUD, and beats defaulting to a companion this player was never assigned.
+        logError("[catchup] companion resolution failed:", companion.error);
+        logDiag("catchup.companion", () => ({ playerId, error: companion.error }));
+      } else {
+        items.push({
+          id: `idle_${Date.now()}`,
+          type: "companion_idle",
+          title: "Companion",
+          summary: getCompanionIdleChatter(playerId, companion.companionId),
+          timestamp: new Date().toISOString(),
+          relativeTime: "now",
+          hasAudio: false,
+          audioUrl: null,
+          decisionOptions: null,
+          activityType: null,
+          progress: null,
+        });
+      }
     }
 
     logDiag("catchup.feed", () => ({

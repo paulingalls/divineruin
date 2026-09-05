@@ -192,8 +192,11 @@ class TestBeat34NamesTheAssignedCompanion:
 
         Zero, not "at most one per constant": four constants that each name a single companion
         ARE the forbidden shape, so a per-constant budget passes the very defect it guards.
-        And the modules scanned must include the one that now holds the prompt — the AC7 walker
-        allowlists onboarding_prompt.py, so it is blind here.
+
+        The AC7 walker now covers onboarding_prompt.py too (story-020 took it off the
+        allowlist), so this scan is no longer the only guard on that module — it is the one
+        that survives a future re-allowlisting, and the only one that reads onboarding_agent.py
+        for the same shape.
         """
         import onboarding_agent
         import onboarding_prompt

@@ -76,8 +76,12 @@ describe("AC4 — pronouns agree with content/companions.json", () => {
     }
   });
 
-  test("every set carries its own pronouns, so the check above is not vacuous", () => {
-    for (const c of companions) {
+  // The neutral bucket is excluded for the reason the Python half spells out: they/them is
+  // also the player's pronoun here, so this assertion greens on a set that never refers to the
+  // companion at all. A nonbinary set rests on the negative check above, which does red on a
+  // stray "he"/"she".
+  test("every gendered set carries its own pronouns, so the check above is not vacuous", () => {
+    for (const c of companions.filter((x) => x.gender !== NEUTRAL)) {
       const own = present(PRONOUNS[c.gender]!, COMPANION_IDLE_CHATTER[c.id]!.join(" "));
       expect({ id: c.id, own }).not.toEqual({ id: c.id, own: [] });
     }

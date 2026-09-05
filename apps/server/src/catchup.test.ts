@@ -92,6 +92,19 @@ describe("handleGetCatchUpFeed", () => {
     const body = (await res.json()) as { items: { type: string }[] };
     expect(body.items.map((i) => i.type)).not.toContain("companion_idle");
   });
+
+  // Same posture one layer down, and the one the three sibling queries' .catch already had:
+  // resolution is now a DB read, so it can REJECT as well as return not-ok. Without a .catch
+  // on it a five-second idle timeout on a query that decorates a cosmetic line takes the whole
+  // HUD with it — including a player holding a pending decision, who never needed the line.
+  test("a rejected companion query drops the idle line, it does not 500 the feed", async () => {
+    mockQueryResults = [[], [], [], [], new Error("ERR_POSTGRES_IDLE_TIMEOUT")];
+
+    const res = await handleGetCatchUpFeed(makeRequest("GET", "/api/catchup"), "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { type: string }[] };
+    expect(body.items.map((i) => i.type)).not.toContain("companion_idle");
+  });
   test("returns feed items sorted by type priority", async () => {
     mockQueryResults = withCompanion(
       [
