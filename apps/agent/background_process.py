@@ -13,11 +13,17 @@ import db_mutations_divine
 import db_queries
 import db_training
 import event_types as E
-from bg_event_handlers import handle_events
+from bg_event_handlers import handle_events, needs_combat_refresh
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
 from system_prompts import build_companion_cue, build_system_prompt, is_companion_cue
-from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
+from warm_prompts import (
+    build_full_prompt,
+    build_warm_layer,
+    compose_warm_layer,
+    format_combat_section,
+    quest_objective,
+)
 
 if TYPE_CHECKING:
     from livekit.agents import Agent, AgentSession
@@ -41,6 +47,10 @@ class BackgroundProcess:
         self._sd = session_data
         self._task: asyncio.Task | None = None
         self._last_warm_layer: str = ""
+        # None, not "", so "no rebuild has ever SUCCEEDED" stays distinct from "empty base":
+        # _rebuild_warm_layer fail-softs on a DB blip, and composing a combat block onto an
+        # empty base would push the combat block ALONE as the agent's whole warm layer.
+        self._warm_base: str | None = None
         self._speech_queue: list[PendingSpeech] = []
         self._stop = False
         self._quest_cache: list[dict] = []
@@ -87,10 +97,7 @@ class BackgroundProcess:
                 events.append(event)
             events.extend(self._sd.event_bus.drain())
 
-            needs_rebuild = self._handle_events(events)
-
-            if needs_rebuild or event is None:
-                await self._rebuild_warm_layer()
+            await self._process_events(events, timed_out=event is None)
 
             if self._paused:
                 continue
@@ -99,6 +106,14 @@ class BackgroundProcess:
             self._check_scene_beat_hints()
 
             await self._deliver_speech()
+
+    async def _process_events(self, events: list, timed_out: bool) -> None:
+        needs_rebuild = self._handle_events(events)
+        if needs_rebuild or timed_out:
+            # elif below, not a second if: a full rebuild already re-renders combat.
+            await self._rebuild_warm_layer()
+        elif needs_combat_refresh(events):
+            await self._refresh_combat_section()
 
     def _handle_events(self, events: list) -> bool:
         needs_rebuild, self._rider_triggered = handle_events(
@@ -284,11 +299,10 @@ class BackgroundProcess:
                 if quest_objective(q)
             ]
 
-            warm = await build_warm_layer(
+            base = await build_warm_layer(
                 self._sd.location_id,
                 self._sd.player_id,
                 self._sd.world_time,
-                combat_state=self._sd.combat_state,
                 companion=self._sd.companion,
                 quests=self._quest_cache or None,
                 corruption_level=self._sd.corruption_level,
@@ -301,6 +315,16 @@ class BackgroundProcess:
             logger.warning("Warm layer build failed", exc_info=True)
             return
 
+        self._warm_base = base
+        await self._apply_warm(compose_warm_layer(base, format_combat_section(self._sd.combat_state)))
+
+    async def _refresh_combat_section(self) -> None:
+        """Re-render only the ACTIVE COMBAT block from in-memory state — no DB round trip."""
+        if self._warm_base is None:
+            return
+        await self._apply_warm(compose_warm_layer(self._warm_base, format_combat_section(self._sd.combat_state)))
+
+    async def _apply_warm(self, warm: str) -> None:
         if warm == self._last_warm_layer:
             return
 

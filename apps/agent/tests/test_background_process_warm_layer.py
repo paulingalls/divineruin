@@ -49,6 +49,7 @@ class TestWarmLayerRebuild:
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
+        mock_sd.combat_state = None
         # A real CompanionState, not a MagicMock: the static layer renders the companion
         # section from the catalog profile, so a mock id raises "Unknown companion".
         mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
@@ -70,7 +71,6 @@ class TestWarmLayerRebuild:
                         "tavern",
                         "p1",
                         "evening",
-                        combat_state=mock_sd.combat_state,
                         companion=mock_sd.companion,
                         quests=None,
                         corruption_level=mock_sd.corruption_level,
@@ -94,6 +94,7 @@ class TestWarmLayerRebuild:
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
+        mock_sd.combat_state = None
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_warm_layer = "same content"
@@ -116,6 +117,7 @@ class TestWarmLayerRebuild:
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
+        mock_sd.combat_state = None
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_warm_layer = "old content"

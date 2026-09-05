@@ -169,7 +169,6 @@ async def build_warm_layer(
     location_id: str,
     player_id: str,
     world_time: str,
-    combat_state: CombatState | None = None,
     companion: CompanionState | None = None,
     quests: list[dict] | None = None,
     corruption_level: int = 0,
@@ -317,18 +316,30 @@ async def build_warm_layer(
         if guidance:
             sections.append(guidance)
 
-    # Active combat
-    if combat_state is not None:
-        combat_lines = [f"Round {combat_state.round_number}"]
-        for pid in combat_state.initiative_order:
-            p = combat_state.get_participant(pid)
-            if p is not None:
-                status = hp_threshold_status(p.hp_current, p.hp_max)
-                fallen = " [FALLEN]" if p.is_fallen else ""
-                combat_lines.append(f"- {p.name} ({p.type}) — {status}{fallen}")
-        sections.append("ACTIVE COMBAT\n" + "\n".join(combat_lines))
-
     return "\n\n".join(sections)
+
+
+def format_combat_section(combat_state: CombatState | None) -> str | None:
+    """Render the ACTIVE COMBAT block from combat_state alone — zero I/O.
+
+    Separate from build_warm_layer so the background process can re-render it on a
+    per-round COMBAT_UI_UPDATE without re-running the warm layer's DB fetches.
+    """
+    if combat_state is None:
+        return None
+    lines = [f"Round {combat_state.round_number}"]
+    for pid in combat_state.initiative_order:
+        p = combat_state.get_participant(pid)
+        if p is not None:
+            status = hp_threshold_status(p.hp_current, p.hp_max)
+            fallen = " [FALLEN]" if p.is_fallen else ""
+            lines.append(f"- {p.name} ({p.type}) — {status}{fallen}")
+    return "ACTIVE COMBAT\n" + "\n".join(lines)
+
+
+def compose_warm_layer(base: str, combat_section: str | None) -> str:
+    """Join the DB-backed base with the combat block, keeping ACTIVE COMBAT last."""
+    return "\n\n".join(part for part in (base, combat_section) if part)
 
 
 def build_full_prompt(static_layer: str, warm_layer: str) -> str:
