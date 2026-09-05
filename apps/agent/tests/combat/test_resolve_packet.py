@@ -6,6 +6,8 @@ HUD events/sounds in order, and returns a response dict — it does NOT persist 
 caller owns one save per phase).
 """
 
+import json
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,7 +19,14 @@ import conditions
 import event_types as E
 from check_resolution_attack import AttackResult
 from combat_events import EventSink
-from combat_support import _handle_hp_zero, _resolve_attack_packet
+from combat_support import (
+    _handle_hp_zero,
+    _resolve_attack_packet,
+    apply_attack_result,
+    deserialize_roll,
+    roll_attack,
+    serialize_roll,
+)
 from session_data import CombatParticipant, CompanionState
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
@@ -593,3 +602,85 @@ class TestHandleHpZero:
         assert target.is_fallen is True
         assert session.companion.is_conscious is False
         assert any("knocked unconscious" in m for m in session.companion.session_memories)
+
+
+class TestRollThenApply:
+    """The hold's seam (M29, story-016): the post-roll reaction window is PRE-DAMAGE, so the
+    roll must survive a tool-call boundary with no HP written and no event published. This is
+    also the seam story-018 needs — Uncanny Dodge halves damage between roll and apply.
+    """
+
+    def test_roll_writes_no_hp_and_publishes_nothing(self):
+        """The HOLD itself. A rolled-but-unapplied attack leaves the target untouched: that is
+        what makes the pause between the roll and the impact a legal resting state."""
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+        sink = EventSink()
+
+        attack_result, effective_ac = roll_attack(
+            attacker,
+            action,
+            target,
+            resolver=_fixed_resolver(damage=3, hp_remaining=22),
+        )
+
+        assert attack_result.damage == 3
+        assert target.hp_current == 25  # untouched — the blow is held
+        assert target.is_fallen is False
+        assert effective_ac == target.ac
+        assert sink.captured == []  # no DICE_ROLL, no sound, nothing published
+
+    @pytest.mark.asyncio
+    async def test_roll_then_apply_is_identical_to_the_unsplit_packet(self):
+        """_resolve_attack_packet is now the composition of the two halves, so a caller that
+        never pauses resolves exactly as on trunk (AC6). Same seeded resolver both times."""
+        ctx_a, ctx_b = make_context(), make_context()
+        cs_a, cs_b = _make_combat_state(player_hp=25), _make_combat_state(player_hp=25)
+        att_a, tgt_a, action_a = _attacker_target_action(cs_a)
+        att_b, tgt_b, action_b = _attacker_target_action(cs_b)
+
+        unsplit = await _resolve_attack_packet(
+            ctx_a.userdata,
+            att_a,
+            action_a,
+            tgt_a,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=3, hp_remaining=22),
+            concentration_break_mod=_break_mod(None),
+        )
+
+        result, effective_ac = roll_attack(att_b, action_b, tgt_b, resolver=_fixed_resolver(damage=3, hp_remaining=22))
+        split = await apply_attack_result(
+            ctx_b.userdata,
+            att_b,
+            action_b,
+            tgt_b,
+            result,
+            effective_ac,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            concentration_break_mod=_break_mod(None),
+        )
+
+        assert split == unsplit
+        assert tgt_b.hp_current == tgt_a.hp_current == 22
+
+    def test_a_held_roll_round_trips_through_json(self):
+        """The rolled AttackResult rides inside its held action across a tool-call boundary, so
+        it goes through JSONB. consumed_conditions is the one field JSON loses — it is a tuple
+        and comes back a list unless the deserializer re-tuples it, and a list would make the
+        M4.8 single-use die look unconsumed."""
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+        resolver = _fixed_resolver(damage=3, hp_remaining=22)
+        rolled = replace(resolver.resolve_attack.return_value, consumed_conditions=("blessed",))
+        resolver.resolve_attack = MagicMock(return_value=rolled)
+        result, effective_ac = roll_attack(attacker, action, target, resolver=resolver)
+
+        restored, restored_ac = deserialize_roll(json.loads(json.dumps(serialize_roll(result, effective_ac))))
+
+        assert restored == result
+        assert restored_ac == effective_ac
+        assert restored.consumed_conditions == ("blessed",)
+        assert isinstance(restored.consumed_conditions, tuple)
