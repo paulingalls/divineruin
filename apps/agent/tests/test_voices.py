@@ -9,6 +9,7 @@ from voices import (
     EMOTIONS,
     INWORLD_MARKUPS,
     ROLE_VOICE_KEYS,
+    VOICE_ENV_VARS,
     VOICE_RATE_OFFSETS,
     VOICES,
     VoiceConfig,
@@ -147,6 +148,12 @@ def _env_example_voice_assignments() -> dict[str, str]:
     return {m.group(1): m.group(2) for m in matches if m}
 
 
+# Sable is non-verbal; voices.py registers her with an empty default deliberately, so the
+# agent reads INWORLD_VOICE_SABLE while .env.example assigns nothing to it. A SECOND deliberate
+# omission has to be argued for in the diff rather than absorbed by a count.
+_UNSET_BY_DESIGN = frozenset({"INWORLD_VOICE_SABLE"})
+
+
 class TestEnvExample:
     """.env.example is what scripts/init-worktree.sh generates every fresh worktree's .env from.
 
@@ -161,11 +168,24 @@ class TestEnvExample:
             assert self._ASSIGNMENTS.get(key), f"INWORLD_VOICE_{key} is unassigned in .env.example"
 
     def test_every_assigned_inworld_voice_is_distinct(self):
-        """Across ALL 50 assignments, not just the 19 new ones.
+        """Across EVERY assignment, not just the role block.
 
         Checking distinctness within the new block alone would let a role be handed Clive
         (the DM narrator) or Blake (COMPANION_KAEL) — two characters sounding identical.
         """
         values = list(self._ASSIGNMENTS.values())
-        assert len(values) == 50
         assert len(values) == len(set(values))
+
+    def test_env_example_covers_exactly_the_names_voices_py_reads(self):
+        """Set equality, not cardinality: .env.example's 50 entries and voices.py's 51 names
+        differ by exactly SABLE, so a count check is green by coincidence and certifies nothing
+        about WHICH entry backs which key — the whole point of the guard.
+
+        Two directed assertions, because they fail for different reasons: an unassigned name
+        the agent reads means a fresh worktree cannot boot (validate_env raises), while an
+        orphan entry nothing reads is a stale line.
+        """
+        declared = {f"INWORLD_VOICE_{k}" for k in self._ASSIGNMENTS}
+        read = set(VOICE_ENV_VARS.values())
+        assert read - declared == _UNSET_BY_DESIGN, "names voices.py reads that .env.example does not assign"
+        assert declared - read == set(), "entries in .env.example that nothing reads"
