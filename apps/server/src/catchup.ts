@@ -8,35 +8,8 @@ import {
 } from "@divineruin/shared";
 import { getMidpointDecision } from "./training_state_machine.ts";
 import { activityToFeedItem, getRelativeTime, str, type FeedItem } from "./catchup_items.ts";
-
-const COMPANION_IDLE_CHATTER = [
-  "Kael is sharpening his blade and humming something off-key.",
-  "The guild hall is quiet. Kael leans against the wall, watching the door.",
-  "A faint breeze stirs dust motes in the lamplight. Nothing stirs.",
-  "Somewhere down the hall, someone drops a tankard. Then silence.",
-  "Kael traces old scars on the table with one finger, lost in thought.",
-  "The hearth crackles low. Kael glances at the embers, then at the door.",
-  "A cat winds between chair legs. Kael watches it with quiet amusement.",
-  "Rain taps the shutters. Kael pulls his cloak tighter and waits.",
-  "The smell of stew drifts from the kitchen. Kael's stomach growls.",
-  "Kael flips a coin, catches it, flips it again. The wait continues.",
-  "Candlelight flickers across old maps pinned to the wall.",
-  "Kael mutters something about 'needing better boots' under his breath.",
-  "A distant bell marks the hour. The guild hall settles deeper into silence.",
-  "Kael cleans his nails with a small knife, eyes half-closed.",
-  "The floorboards creak as the building breathes in the wind.",
-];
-
-function getCompanionIdleChatter(playerId: string): string {
-  const hour = new Date().getUTCHours();
-  // Simple hash from playerId + hour to pick a chatter line
-  let hash = hour;
-  for (let i = 0; i < playerId.length; i++) {
-    hash = (hash * 31 + playerId.charCodeAt(i)) | 0;
-  }
-  const index = Math.abs(hash) % COMPANION_IDLE_CHATTER.length;
-  return COMPANION_IDLE_CHATTER[index]!;
-}
+import { getCompanionIdleChatter } from "./companion_chatter.ts";
+import { resolveAssignedCompanion } from "./assigned_companion.ts";
 
 interface TrainingRow {
   id: string;
@@ -162,11 +135,16 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       return [] as TrainingRow[];
     }) as Promise<TrainingRow[]>;
 
-    const [rows, newsRows, whisperRows, trainingRows] = await Promise.all([
+    // Created after the four above so the idle line names the player's OWN companion. Same
+    // resolution the errand dispatcher uses — one helper, two callers, no second query.
+    const companionPromise = resolveAssignedCompanion(playerId);
+
+    const [rows, newsRows, whisperRows, trainingRows, companion] = await Promise.all([
       activitiesPromise,
       newsPromise,
       whispersPromise,
       trainingPromise,
+      companionPromise,
     ]);
 
     const items: FeedItem[] = [];
@@ -226,12 +204,18 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     const hasActionable = items.some(
       (i) => i.type === "pending_decision" || i.type === "resolved" || i.type === "god_whisper",
     );
-    if (!hasActionable) {
+    if (!hasActionable && !companion.ok) {
+      // The idle line is cosmetic; the rest of the feed is not. Dropping it beats 500-ing the
+      // whole HUD, and beats defaulting to a companion this player was never assigned.
+      logError("[catchup] companion resolution failed:", companion.error);
+      logDiag("catchup.companion", () => ({ playerId, error: companion.error }));
+    }
+    if (!hasActionable && companion.ok) {
       items.push({
         id: `idle_${Date.now()}`,
         type: "companion_idle",
         title: "Companion",
-        summary: getCompanionIdleChatter(playerId),
+        summary: getCompanionIdleChatter(playerId, companion.companionId),
         timestamp: new Date().toISOString(),
         relativeTime: "now",
         hasAudio: false,
@@ -268,6 +252,3 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-// Re-export helpers for testing
-export { getCompanionIdleChatter };

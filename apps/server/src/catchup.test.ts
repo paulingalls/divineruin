@@ -1,4 +1,5 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
+import type { Companion } from "@divineruin/shared";
 
 let mockQueryResults: (unknown[] | Error)[] = [];
 let queryCallIndex = 0;
@@ -19,11 +20,27 @@ void mock.module("./db.ts", () => {
   return { sql: mockSql };
 });
 
-const { handleGetCatchUpFeed, getCompanionIdleChatter } = await import("./catchup.ts");
+const { handleGetCatchUpFeed } = await import("./catchup.ts");
+const { chatterPool } = await import("./companion_chatter.ts");
+
+const companions = (await Bun.file(
+  new URL("../../../content/companions.json", import.meta.url),
+).json()) as Companion[];
 const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 
 function makeRequest(method: string, path: string): Request {
   return new Request(`http://localhost${path}`, { method });
+}
+
+// handleGetCatchUpFeed's companion resolution is created AFTER the four existing query
+// promises, so its `players` read is call #5 and its `companions` read #6 and every stub
+// array written before this story keeps its meaning.
+function withCompanion(
+  four: (unknown[] | Error)[],
+  archetype: string,
+  companionId: string,
+): (unknown[] | Error)[] {
+  return [...four, [{ class: archetype }], [{ id: companionId }]];
 }
 
 beforeEach(() => {
@@ -32,61 +49,84 @@ beforeEach(() => {
   setupTrainingConfigFixture();
 });
 
-describe("getCompanionIdleChatter", () => {
-  test("returns a string", () => {
-    const result = getCompanionIdleChatter("player_1");
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test("returns consistent result for same player+hour", () => {
-    const a = getCompanionIdleChatter("player_1");
-    const b = getCompanionIdleChatter("player_1");
-    expect(a).toBe(b);
-  });
-
-  test("returns different results for different players", () => {
-    // Not guaranteed, but should differ for these test IDs
-    const a = getCompanionIdleChatter("player_aaa");
-    const b = getCompanionIdleChatter("player_zzz");
-    // At least one should differ (probabilistic but very likely with 15 options)
-    expect(typeof a).toBe("string");
-    expect(typeof b).toBe("string");
-  });
-});
-
 describe("handleGetCatchUpFeed", () => {
+  // AC3, hour-independently. The pool is fifteen lines of which five are the companion-free
+  // ambient ones, and the selector is (playerId + UTC hour) % 15 — so a single sample lands on
+  // an ambient line about one hour in three. "the summary names the companion" would red
+  // against correct code at those hours, and the companion_kael fault-inject would fail to red
+  // at exactly the same ones. Sampling a spread of players and asserting pool membership +
+  // no-other-name + at-least-one-names is true at every hour, and reds under the hardcode.
+  for (const c of companions) {
+    const archetype = c.complements[0]!;
+    test(`a ${archetype} player's idle line is ${c.name}'s, and no one else's`, async () => {
+      const pool = chatterPool(c.id);
+      const others = companions.filter((o) => o.id !== c.id).map((o) => o.name);
+      const summaries: string[] = [];
+
+      for (let i = 0; i < 24; i++) {
+        queryCallIndex = 0;
+        mockQueryResults = withCompanion([[], [], [], []], archetype, c.id);
+        const res = await handleGetCatchUpFeed(makeRequest("GET", "/api/catchup"), `player_${i}`);
+        const body = (await res.json()) as { items: { type: string; summary: string }[] };
+        const idle = body.items.find((it) => it.type === "companion_idle");
+        expect(idle).toBeTruthy();
+        summaries.push(idle!.summary);
+      }
+
+      for (const summary of summaries) {
+        expect(pool).toContain(summary);
+        for (const other of others) expect(summary).not.toContain(other);
+      }
+      expect(summaries.some((summary) => summary.includes(c.name))).toBe(true);
+    });
+  }
+
+  // The idle line is cosmetic; the rest of the feed is not. A player whose class is missing
+  // loses the line and keeps their HUD, which is the file's posture for every other
+  // non-critical query. Defaulting to a companion is the defect this story deletes.
+  test("omits the idle line when the companion cannot be resolved", async () => {
+    mockQueryResults = [[], [], [], [], [{ class: null }]];
+
+    const res = await handleGetCatchUpFeed(makeRequest("GET", "/api/catchup"), "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { type: string }[] };
+    expect(body.items.map((i) => i.type)).not.toContain("companion_idle");
+  });
   test("returns feed items sorted by type priority", async () => {
-    mockQueryResults = [
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "act_1",
-          data: {
-            status: "in_progress",
-            activity_type: "crafting",
-            parameters: { result_item_name: "Sword" },
-            start_time: new Date(Date.now() - 3600_000).toISOString(),
-            resolve_at: new Date(Date.now() + 3600_000).toISOString(),
+        [
+          {
+            id: "act_1",
+            data: {
+              status: "in_progress",
+              activity_type: "crafting",
+              parameters: { result_item_name: "Sword" },
+              start_time: new Date(Date.now() - 3600_000).toISOString(),
+              resolve_at: new Date(Date.now() + 3600_000).toISOString(),
+            },
           },
-        },
-        {
-          id: "act_2",
-          data: {
-            status: "resolved",
-            activity_type: "training",
-            parameters: { stat: "strength" },
-            narration_text: "Training complete.",
-            narration_audio_url: "/api/audio/test.mp3",
-            decision_options: [{ id: "continue", label: "Continue" }],
-            start_time: new Date().toISOString(),
-            resolve_at: new Date().toISOString(),
+          {
+            id: "act_2",
+            data: {
+              status: "resolved",
+              activity_type: "training",
+              parameters: { stat: "strength" },
+              narration_text: "Training complete.",
+              narration_audio_url: "/api/audio/test.mp3",
+              decision_options: [{ id: "continue", label: "Continue" }],
+              start_time: new Date().toISOString(),
+              resolve_at: new Date().toISOString(),
+            },
           },
-        },
+        ],
+        [], // world_news query
+        [], // god_whispers query
+        [], // training_activities query
       ],
-      [], // world_news query
-      [], // god_whispers query
-      [], // training_activities query
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -99,23 +139,27 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("includes companion idle when no actionable items", async () => {
-    mockQueryResults = [
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "act_1",
-          data: {
-            status: "in_progress",
-            activity_type: "crafting",
-            parameters: { result_item_name: "Sword" },
-            start_time: new Date(Date.now() - 3600_000).toISOString(),
-            resolve_at: new Date(Date.now() + 3600_000).toISOString(),
+        [
+          {
+            id: "act_1",
+            data: {
+              status: "in_progress",
+              activity_type: "crafting",
+              parameters: { result_item_name: "Sword" },
+              start_time: new Date(Date.now() - 3600_000).toISOString(),
+              resolve_at: new Date(Date.now() + 3600_000).toISOString(),
+            },
           },
-        },
+        ],
+        [], // world_news query
+        [], // god_whispers query
+        [], // training_activities query
       ],
-      [], // world_news query
-      [], // god_whispers query
-      [], // training_activities query
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -126,25 +170,29 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("omits companion idle when resolved items exist", async () => {
-    mockQueryResults = [
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "act_1",
-          data: {
-            status: "resolved",
-            activity_type: "training",
-            parameters: { stat: "strength" },
-            narration_text: "Done.",
-            decision_options: null,
-            start_time: new Date().toISOString(),
-            resolve_at: new Date().toISOString(),
+        [
+          {
+            id: "act_1",
+            data: {
+              status: "resolved",
+              activity_type: "training",
+              parameters: { stat: "strength" },
+              narration_text: "Done.",
+              decision_options: null,
+              start_time: new Date().toISOString(),
+              resolve_at: new Date().toISOString(),
+            },
           },
-        },
+        ],
+        [], // world_news query
+        [], // god_whispers query
+        [], // training_activities query
       ],
-      [], // world_news query
-      [], // god_whispers query
-      [], // training_activities query
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -155,7 +203,7 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("returns empty feed with idle when no activities", async () => {
-    mockQueryResults = [[], [], [], []];
+    mockQueryResults = withCompanion([[], [], [], []], "mage", "companion_kael");
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -169,7 +217,7 @@ describe("handleGetCatchUpFeed", () => {
     // The SQL now filters to only resolved/in_progress, so collected rows
     // never arrive. Simulate DB returning nothing (as it would for a player
     // whose only activity is collected).
-    mockQueryResults = [[], [], [], []];
+    mockQueryResults = withCompanion([[], [], [], []], "mage", "companion_kael");
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -181,22 +229,26 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("god whispers appear in feed with top priority", async () => {
-    mockQueryResults = [
-      [], // activities
-      [], // world_news
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "whisper_abc123",
-          data: {
-            deity_id: "kaelen",
-            narration_text: "Your blade speaks louder than your words.",
-            audio_url: "/api/audio/whisper_test.mp3",
-            status: "pending",
+        [], // activities
+        [], // world_news
+        [
+          {
+            id: "whisper_abc123",
+            data: {
+              deity_id: "kaelen",
+              narration_text: "Your blade speaks louder than your words.",
+              audio_url: "/api/audio/whisper_test.mp3",
+              status: "pending",
+            },
           },
-        },
-      ], // god_whispers
-      [], // training_activities
-    ];
+        ], // god_whispers
+        [], // training_activities
+      ],
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -210,21 +262,25 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("god whisper suppresses companion idle", async () => {
-    mockQueryResults = [
-      [], // activities
-      [], // world_news
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "whisper_abc",
-          data: {
-            deity_id: "orenthel",
-            narration_text: "Light endures.",
-            status: "pending",
+        [], // activities
+        [], // world_news
+        [
+          {
+            id: "whisper_abc",
+            data: {
+              deity_id: "orenthel",
+              narration_text: "Light endures.",
+              status: "pending",
+            },
           },
-        },
-      ], // god_whispers
-      [], // training_activities
-    ];
+        ], // god_whispers
+        [], // training_activities
+      ],
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -238,25 +294,29 @@ describe("handleGetCatchUpFeed", () => {
   test("training in running_first_half appears as in_progress with progress", async () => {
     const createdAt = new Date(Date.now() - 3600_000).toISOString();
     const transitionAt = new Date(Date.now() + 3600_000).toISOString();
-    mockQueryResults = [
-      [], // async_activities
-      [], // world_news
-      [], // god_whispers
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "train_abc123",
-          activity_type: "technique_base",
-          state: "running_first_half",
-          data: {
-            program_name: "Combat Fundamentals",
-            first_half_seconds: 7200,
+        [], // async_activities
+        [], // world_news
+        [], // god_whispers
+        [
+          {
+            id: "train_abc123",
+            activity_type: "technique_base",
+            state: "running_first_half",
+            data: {
+              program_name: "Combat Fundamentals",
+              first_half_seconds: 7200,
+            },
+            transition_at: transitionAt,
+            created_at: createdAt,
+            updated_at: createdAt,
           },
-          transition_at: transitionAt,
-          created_at: createdAt,
-          updated_at: createdAt,
-        },
+        ],
       ],
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -279,21 +339,25 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("training in awaiting_decision appears as pending_decision with options", async () => {
-    mockQueryResults = [
-      [], // async_activities
-      [], // world_news
-      [], // god_whispers
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "train_mid123",
-          activity_type: "technique_base",
-          state: "awaiting_decision",
-          data: { program_name: "Combat Fundamentals" },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
+        [], // async_activities
+        [], // world_news
+        [], // god_whispers
+        [
+          {
+            id: "train_mid123",
+            activity_type: "technique_base",
+            state: "awaiting_decision",
+            data: { program_name: "Combat Fundamentals" },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
       ],
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -317,12 +381,16 @@ describe("handleGetCatchUpFeed", () => {
     // The async_activities query has no .catch (unlike the others), so a
     // rejection there propagates to the outer catch -> 500. Exercises the
     // failure path (and its structured diag) the close-reviewer flagged.
-    mockQueryResults = [
-      new Error("ERR_POSTGRES_IDLE_TIMEOUT"), // activities query rejects
-      [],
-      [],
-      [],
-    ];
+    mockQueryResults = withCompanion(
+      [
+        new Error("ERR_POSTGRES_IDLE_TIMEOUT"), // activities query rejects
+        [],
+        [],
+        [],
+      ],
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -332,25 +400,29 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("training in complete appears as resolved", async () => {
-    mockQueryResults = [
-      [], // async_activities
-      [], // world_news
-      [], // god_whispers
+    mockQueryResults = withCompanion(
       [
-        {
-          id: "train_done123",
-          activity_type: "skill_practice",
-          state: "complete",
-          data: {
-            program_name: "Perception Drills",
-            narration_text: "Your senses sharpen.",
-            narration_audio_url: "/api/audio/training_done.mp3",
+        [], // async_activities
+        [], // world_news
+        [], // god_whispers
+        [
+          {
+            id: "train_done123",
+            activity_type: "skill_practice",
+            state: "complete",
+            data: {
+              program_name: "Perception Drills",
+              narration_text: "Your senses sharpen.",
+              narration_audio_url: "/api/audio/training_done.mp3",
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
+        ],
       ],
-    ];
+      "mage",
+      "companion_kael",
+    );
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
