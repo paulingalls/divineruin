@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod
+from combat._helpers import _resolve_round as _resolve_combat_round
 from sample_fixtures import FixedRng, make_context
 
 import combat_resolution
@@ -364,14 +365,14 @@ class TestDeescalationE2EPhaseLoop:
         ):
             # Round 1: both enemies only reach +1 -> combat continues (a JSON response, not a handoff).
             await combat_turn._declare_phase_impl(ctx, decls, mutations=deps["mutations"])
-            raw1 = await combat_turn._resolve_phase_impl(ctx, **deps)
-            assert isinstance(raw1, str), "round 1 does not end combat"
+            raw1 = await _resolve_combat_round(ctx, **deps)
+            assert not isinstance(raw1, tuple), "round 1 does not end combat"
             assert ctx.userdata.combat_state.deescalated is False
             assert ctx.userdata.combat_state.deescalation_scene.round_counter == 1
 
             # Round 2: both cross +2 -> the wrap ends combat with outcome "deescalated" (a handoff tuple).
             await combat_turn._declare_phase_impl(ctx, decls, mutations=deps["mutations"])
-            raw2 = await combat_turn._resolve_phase_impl(ctx, **deps)
+            raw2 = await _resolve_combat_round(ctx, **deps)
 
         assert isinstance(raw2, tuple), "round 2 ends combat -> (agent, json) handoff"
         _agent, json_str = raw2

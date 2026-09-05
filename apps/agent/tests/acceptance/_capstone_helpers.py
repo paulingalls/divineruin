@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from typing import Any
 
 from acceptance.seeds import seed_player
 
@@ -103,3 +104,45 @@ def _dice_events(room) -> list[dict]:
 
 def _player_attack_events(room) -> list[dict]:
     return [e for e in _dice_events(room) if e.get("roll_type") == "attack" and e.get("attacker") == "Kael"]
+
+
+async def _resolve_round(ctx, *, max_calls: int = 64, **deps) -> Any:
+    """Drive resolve_phase to the END of the round: allies, then every held enemy action, then
+    the wrap (M29, story-016).
+
+    Beat 3 holds the enemy blows behind reaction windows, so ONE resolve_phase call no longer
+    resolves a whole phase — it resolves the ally band and then pauses once per window. Every
+    capstone that made one call and asserted on the whole phase changes by one line: call this.
+
+    ``max_calls`` bounds the loop rather than sizing it: a round costs one call for the ally band
+    plus up to two per held enemy action plus one for the wrap, so a 10-enemy encounter is ~22.
+    The bound exists to catch a pump that never terminates, not to predict the encounter.
+
+    Typed ``Any`` rather than ``dict | tuple`` on purpose: which shape comes back is decided at
+    RUNTIME by whether the round ended the fight, every caller disambiguates at its own call site
+    (``isinstance(result, tuple)``), and a declared union would make ~60 correct subscripts a type
+    error without catching a single real one.
+
+    Returns the FINAL result — the loop-back JSON (as a dict) or the end-of-combat handoff tuple —
+    with ``packets`` accumulated across every call. Fails loud rather than returning a
+    half-resolved round: never stops with a window still open, never spins past ``max_calls``.
+    """
+    import combat_turn
+
+    packets: list[dict] = []
+    for _ in range(max_calls):
+        result = await combat_turn._resolve_phase_impl(ctx, **deps)
+        if isinstance(result, tuple):
+            return result
+        payload = json.loads(result)
+        packets.extend(payload.get("packets", []))
+        if payload.get("next", {}).get("waiting_on") is None and payload["beat"] == "declaration":
+            payload["packets"] = packets
+            return payload
+    state = ctx.userdata.combat_state
+    raise AssertionError(
+        f"the round did not terminate within {max_calls} resolve_phase calls "
+        f"(beat={state.beat if state else None}, "
+        f"held={[h['actor_id'] for h in state.held_actions] if state else None}, "
+        f"open_window={state.open_window if state else None})"
+    )

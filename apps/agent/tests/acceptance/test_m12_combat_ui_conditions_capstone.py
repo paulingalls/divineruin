@@ -22,6 +22,7 @@ from acceptance._capstone_helpers import (
     _build_state,
     _d20,
     _enemy,
+    _resolve_round,
     _start_combat,
 )
 from sample_fixtures import make_context, make_mock_room
@@ -72,7 +73,7 @@ async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_poo
         }
         await combat_turn._declare_phase_impl(ctx, decls)
         with patch("check_resolution.dice_roll", return_value=_d20(20)):
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
 
         events = list(ctx.userdata.event_bus.drain())
         ui_updates = [e for e in events if e.event_type == E.COMBAT_UI_UPDATE]

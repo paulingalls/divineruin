@@ -29,7 +29,7 @@ import json
 import random
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -152,7 +152,7 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
             for e in living:
                 decls[e.id] = {"type": "attack", "action": e.action_pool[0]["name"], "target_id": player_id}
             await combat_turn._declare_phase_impl(ctx, decls)
-            result = await combat_turn._resolve_phase_impl(ctx)
+            result = await _resolve_round(ctx)
             if isinstance(result, tuple):
                 break
             # Combat continues: the boss (felled last) carries its per-round legendary budget.

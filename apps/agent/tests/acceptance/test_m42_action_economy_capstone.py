@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import random
 
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player_with_pools
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context
@@ -63,10 +64,12 @@ async def _seed_capstone_player(pool, player_id: str) -> None:
     )
 
 
-def _player_packet(raw: str, player_id: str) -> dict:
-    """Pull the player's resolution summary out of a (combat-continues) resolve_phase JSON response."""
-    packets = json.loads(raw)["packets"]
-    return next(p for p in packets if p["actor_id"] == player_id)
+def _player_packet(result, player_id: str) -> dict:
+    """Pull the player's resolution summary out of a (combat-continues) round result.
+
+    ``_resolve_round`` already accumulates every commit's packets and hands back the parsed
+    payload, so this reads the dict rather than a JSON string (M29, story-016)."""
+    return next(p for p in result["packets"] if p["actor_id"] == player_id)
 
 
 async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> None:
@@ -96,8 +99,8 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
 
     async def _run_phase(player_decl: dict) -> str:
         await combat_turn._declare_phase_impl(ctx, {player_id: player_decl, enemy.id: enemy_attack})
-        out = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(2))
-        assert isinstance(out, str), "the enemy survives these phases, so combat continues (JSON, not a handoff)"
+        out = await _resolve_round(ctx, resolver=_damage_resolver(2))
+        assert not isinstance(out, tuple), "the enemy survives these phases, so combat continues (JSON, not a handoff)"
         return out
 
     try:
@@ -166,7 +169,7 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
                 ctx,
                 {player_id: {"type": "attack", "action": "Greataxe", "target_id": enemy.id}, enemy.id: enemy_attack},
             )
-            result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(4))
+            result = await _resolve_round(ctx, resolver=_damage_resolver(4))
             if isinstance(result, tuple):
                 break
         assert isinstance(result, tuple), "the winning wrap fires end_combat and hands back"

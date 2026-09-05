@@ -1,9 +1,13 @@
 """Shared helpers for the combat-tools test suite."""
 
-from unittest.mock import MagicMock
+import json
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
+from _combat_end_fixtures import combat_end_mutations
 from sample_fixtures import make_db_mod
 
+import combat_turn
 from check_resolution_attack import AttackResult
 from session_data import CombatParticipant, CombatState
 
@@ -152,3 +156,68 @@ def _damage_resolver(damage):
     r = MagicMock()
     r.resolve_attack = MagicMock(side_effect=_resolve)
     return r
+
+
+def _resolve_deps(damage=3):
+    """DI bundle for resolve_phase: a deterministic damage resolver plus the mutations/queries/
+    concentration mocks the packet path touches, and a no-op db_mod so the per-phase transaction
+    wrapper runs without a real connection."""
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
+    # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
+    # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
+    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    mutations = combat_end_mutations()
+    mutations.save_combat_state = AsyncMock()
+    mutations.update_player_hp = AsyncMock()
+    return {
+        "mutations": mutations,
+        "queries": queries,
+        "resolver": _damage_resolver(damage),
+        "concentration_break_mod": break_mod,
+        "db_mod": _fake_db_mod(),
+    }
+
+
+async def _resolve_round(ctx, *, max_calls: int = 64, **deps) -> Any:
+    """Drive resolve_phase to the END of the round: allies, then every held enemy action, then
+    the wrap (M29, story-016).
+
+    Beat 3 holds the enemy blows behind reaction windows, so ONE resolve_phase call no longer
+    resolves a whole phase — it resolves the ally band and then pauses once per window. A test
+    that used to make one call and assert on the whole phase changes by one line: call this.
+
+    ``max_calls`` bounds the loop rather than sizing it: a round costs one call for the ally band
+    plus up to two per held enemy action plus one for the wrap, so a 10-enemy encounter is ~22.
+    The bound exists to catch a pump that never terminates, not to predict the encounter.
+
+    Typed ``Any`` rather than ``dict | tuple`` on purpose: which shape comes back is decided at
+    RUNTIME by whether the round ended the fight, every caller disambiguates at its own call site
+    (``isinstance(result, tuple)``), and a declared union would make ~60 correct subscripts a type
+    error without catching a single real one.
+
+    Returns the FINAL result — the loop-back JSON (as a dict) or the end-of-combat handoff tuple —
+    with ``packets`` accumulated across every call, so whole-phase assertions still see every
+    packet. Fails loud rather than returning a half-resolved round: never silently stops with a
+    window still open, and never spins past ``max_calls``.
+    """
+    packets: list[dict] = []
+    for _ in range(max_calls):
+        result = await combat_turn._resolve_phase_impl(ctx, **deps)
+        if isinstance(result, tuple):
+            # End-of-combat handoff: the fight ended on this beat, so the round is over.
+            return result
+        payload = json.loads(result)
+        packets.extend(payload.get("packets", []))
+        if payload.get("next", {}).get("waiting_on") is None and payload["beat"] == "declaration":
+            payload["packets"] = packets
+            return payload
+    state = ctx.userdata.combat_state
+    raise AssertionError(
+        f"the round did not terminate within {max_calls} resolve_phase calls "
+        f"(beat={state.beat if state else None}, "
+        f"held={[h['actor_id'] for h in state.held_actions] if state else None}, "
+        f"open_window={state.open_window if state else None})"
+    )
