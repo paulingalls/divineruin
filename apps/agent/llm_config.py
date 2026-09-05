@@ -12,14 +12,21 @@ if TYPE_CHECKING:
 
 MODEL = "claude-haiku-4-5-20251001"
 
-# Anthropic's strict-tool ceiling. Verbatim from the API 400 our acceptance
-# harness captured (ADR 0004): "The maximum number of strict tools supported
-# is 20". livekit-plugins-anthropic defaults _strict_tool_schema=True, so every
-# registered @function_tool counts. Pin each agent's tool list against this.
-# Strict is INTERIM-OFF in agent.py (2026-09-02, ADR 0004 addendum) because of a
-# second limit — 16 union-typed parameters per request; the 20-tool cap stays
-# pinned as the discipline strict will return to (sprint-47 story-016).
+# Anthropic's three strict-schema ceilings, verbatim from the API 400s probed for
+# ADR 0008. livekit-plugins-anthropic defaults _strict_tool_schema=True, so every
+# registered @function_tool counts, and all three are PER REQUEST, not per tool.
+# tests/test_strict_tool_budget.py walks every agent's emitted schema against them.
+#
+# "The maximum number of strict tools supported is 20" (ADR 0004).
 MAX_STRICT_TOOLS = 20
+# "Schemas contains too many parameters with union types (N parameters with type
+# arrays or anyOf). This causes exponential compilation cost... (limit: 16 parameters
+# with unions)". An `anyOf` of N kind-tagged variants costs ONE -- that is the whole
+# mechanism ADR 0008 rests on.
+MAX_UNION_PARAMS = 16
+# "Schema is too complex." -- a separate per-object cliff. 12 nullables in one object
+# is accepted; 14 is not. Cap at the last measured-good value.
+MAX_NULLABLE_PER_OBJECT = 12
 
 AUDIO_DIR = os.environ.get(
     "ASYNC_AUDIO_DIR",
