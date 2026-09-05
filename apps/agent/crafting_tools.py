@@ -165,17 +165,23 @@ async def _rent_workspace_impl(
     context.disallow_interruptions()
     _validate_id(workspace_type, "workspace_type")
     _validate_id(npc_id, "npc_id")
+    if workspace_type == WorkspaceType.FIELD.value:
+        raise ToolError(f"{workspace_type} is not rentable (Field is free and always available).")
     try:
-        wtype = WorkspaceType(workspace_type)
+        offer = workspace_mod.resolve_rental_offer(workspace_type)
     except ValueError as exc:
         raise ToolError(f"Unknown workspace type: {workspace_type}") from exc
-    if wtype not in workspace_mod.RENTAL_BASE_PRICE_SP:
-        raise ToolError(f"{wtype.value} is not rentable (Field is free and always available).")
     if days < 1:
         raise ToolError("Rental length must be at least 1 day.")
 
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
+
+    # A multi-workspace offer is only sold where the settlement can host every member
+    # (spec: Forge + Laboratory is a city-or-Keldaran-hold bundle). Refuse before any
+    # read that could charge.
+    if len(offer.grants) > 1:
+        await _require_bundle_location(location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod)
 
     # Co-location gate (concern bec87679b223): you can only rent from an NPC who is
     # actually here — disposition alone is not enough.
@@ -191,7 +197,7 @@ async def _rent_workspace_impl(
     pricing = await pricing_mod.get_economy_pricing()
     try:
         quote = workspace_mod.compute_workspace_rental_price(
-            workspace_mod.RENTAL_BASE_PRICE_SP[wtype],
+            offer.base_price_sp,
             disposition,
             multipliers=pricing["disposition_multipliers"],
         )
@@ -199,7 +205,7 @@ async def _rent_workspace_impl(
         raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     if not quote.available:
         raise ToolError(quote.reason)
-    # RENTAL_BASE_PRICE_SP is sp per CALENDAR DAY and `days` is what extends expires_at,
+    # An offer's base price is sp per CALENDAR DAY and `days` is what extends expires_at,
     # so the charge scales with the term — a 30-day forge is not a 1-day forge.
     price_sp = quote.price_sp * days
     price_gp = price_sp / pricing["silver_per_gold"]
@@ -214,19 +220,48 @@ async def _rent_workspace_impl(
             raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
         if price_sp:
             await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
-        rental_id = await mutations_mod.create_workspace_rental(
-            player_id, location_id, wtype.value, "rental", expires_at, conn=conn
-        )
+        # One row per granted workspace, inside the debit's transaction: the stored
+        # workspace_type must stay inside the four-member vocabulary the TS gate
+        # re-parses (apps/server/src/workspace.ts parseWorkspaceType), so the bundle
+        # token itself is never persisted.
+        rental_ids = [
+            await mutations_mod.create_workspace_rental(
+                player_id, location_id, granted.value, "rental", expires_at, conn=conn
+            )
+            for granted in offer.grants
+        ]
 
-    logger.info("rent_workspace: player=%s npc=%s type=%s days=%s", player_id, npc_id, wtype.value, days)
-    return json.dumps(
-        {
-            "rental_id": rental_id,
-            "workspace_type": wtype.value,
-            "price_sp": price_sp,
-            "expires_at": expires_at.isoformat(),
-        }
-    )
+    logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
+    result = {
+        "workspace_type": offer.token,
+        "price_sp": price_sp,
+        "expires_at": expires_at.isoformat(),
+    }
+    if len(offer.grants) > 1:
+        result["workspace_types"] = [granted.value for granted in offer.grants]
+        result["rental_ids"] = rental_ids
+    else:
+        result["rental_id"] = rental_ids[0]
+    return json.dumps(result)
+
+
+async def _require_bundle_location(location_id, offer, *, content_mod, workspace_mod) -> None:
+    """Refuse a multi-workspace bundle where the settlement cannot host every member.
+
+    Scoped to multi-grant offers: single rentals and the quote stay settlement-blind
+    (whole-quote availability gating is concern c5c5871115dc, Phase 6)."""
+    location = await content_mod.get_location(location_id)
+    tier = (location or {}).get("settlement_tier")
+    if not tier:
+        raise ToolError(f"{location_id} is not a settlement — no workspace to rent here.")
+    try:
+        size = workspace_mod.SettlementSize(tier)
+    except ValueError as exc:
+        raise ToolError(f"{location_id} has an unknown settlement tier {tier!r}.") from exc
+    missing = workspace_mod.bundle_missing_workspaces(size)
+    if missing:
+        names = " and ".join(w.value for w in missing)
+        raise ToolError(f"{location_id} has no {names} to rent — the {offer.token} bundle needs both.")
 
 
 async def _start_crafting_project_impl(
