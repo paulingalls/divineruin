@@ -287,3 +287,21 @@ class TestNavigationPromptIncluded:
 # NOTE: the training-hall referral moved from the city system prompt to the city
 # REGION_REGISTER (warm layer) in M7 story-002 — asserted in
 # tests/test_region_register.py::TestWarmLayerRegionRegister.test_city_location_yields_city_register.
+
+
+class TestTrainingMidpointNarration:
+    def test_prompt_tells_the_dm_to_voice_the_second_half_transition(self):
+        """resolve_activity(kind="training") returns state="running_second_half" and nothing
+        else surfaces it — constraint 6, and an audio-first gap besides.
+
+        Without this clause the DM narrates the mentor and the feel of the work and never
+        says the training resumed, so a player with their eyes closed cannot tell whether
+        their midpoint choice took effect or when the cycle ends. Measured at sprint-047
+        close: the judged acceptance scenario failed roughly two runs in five on exactly
+        that omission, and passed 3/3 once the clause landed. A prose rule with no pin is
+        one prompt edit from silently regressing, and the only lane that would notice is a
+        real-LLM judge that costs an API call and blocks a sprint close when it fires.
+        """
+        from system_prompts import DISPATCH_MODE_PROMPT
+
+        assert "running_second_half" in DISPATCH_MODE_PROMPT
