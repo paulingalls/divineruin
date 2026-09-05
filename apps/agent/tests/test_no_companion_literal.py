@@ -40,8 +40,6 @@ TEST_PATH_MARKERS = ("/tests/", "/__tests__/", ".test.", "_test.", ".feature")
 BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".mp3", ".wav", ".ico", ".ttf", ".otf"}
 
 ALLOWLIST = {
-    # story-020 owns every authored line about a companion (human decision 2026-09-04).
-    "apps/agent/onboarding_prompt.py": "beat-3/4 vignettes — story-020",
     "apps/server/src/catchup.ts": "catch-up chatter — story-020",
     # Kael-only portrait ASSETS: four companions need four asset sets (art task, debt 9f6a7ada).
     "apps/agent/db.py": "Kael is the only companion with generated portrait assets",
