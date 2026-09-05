@@ -32,12 +32,18 @@ from acceptance.seeds import seed_player
 from sample_fixtures import make_context
 
 import db
-from crafting_tools import _query_available_workspaces_impl
+from crafting_tools import _query_available_workspaces_impl, _rent_workspace_impl
 
 # A forge recipe an untrained crafter can still CREATE (the REST create gate checks
 # workspace access only; crafting tier is captured for resolution, not gated here).
 CAPSTONE_RECIPE = "iron_shield"  # forge | iron_ingot x2 + leather_strip x1
 CAPSTONE_LOCATION = "millhaven"
+
+# The Forge + Laboratory bundle (story-015) is a city offer, so it needs a city with a
+# rentable NPC present: accord_forge is settlement_tier "city" and grimjaw_blacksmith's
+# schedule puts him there (default_disposition neutral -> the full 12sp/day).
+BUNDLE_LOCATION = "accord_forge"
+BUNDLE_NPC = "grimjaw_blacksmith"
 
 
 @pytest.fixture(scope="module")
@@ -166,3 +172,49 @@ async def test_message_event_query_workspaces_honors_expiry(reset_db_pool: str) 
     await _set_forge_rental(player_id, expires_sql="NOW() + INTERVAL '1 day'")
     active = json.loads(await _query_available_workspaces_impl(ctx))
     assert "forge" in active["accessible"], active
+
+
+# --- the bundle write, read back by BOTH languages (story-015 AC3) ---
+
+
+async def test_python_bundle_rental_is_read_by_the_ts_gate_as_forge_access(
+    capstone_server: dict[str, str], reset_db_pool: str
+) -> None:
+    """The Python bundle write lands as two four-member rows the TS parser accepts.
+
+    Kills the both-sides-mocked hole: the unit tests each mock their own half, so
+    neither would catch Python writing a workspace_type the TS gate cannot parse. A
+    single "forge_laboratory" row would make parseWorkspaceType throw inside
+    accessibleWorkspaceTier and the REST create below would fail, not succeed.
+    """
+    player_id = "player_capstone_m52_bundle"
+    pool = await db.get_pool()
+    await _seed_forge_crafter(player_id)
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{location_id}', $2::jsonb) || jsonb_build_object('gold', 5.0) "
+        "WHERE player_id = $1",
+        player_id,
+        json.dumps(BUNDLE_LOCATION),
+    )
+
+    rental = json.loads(
+        await _rent_workspace_impl(
+            make_context(player_id=player_id, location_id=BUNDLE_LOCATION), "forge_laboratory", BUNDLE_NPC, 1
+        )
+    )
+    assert rental["price_sp"] == 12.0, rental
+
+    rows = await pool.fetch(
+        "SELECT workspace_type FROM workspace_rentals WHERE player_id = $1 ORDER BY workspace_type", player_id
+    )
+    assert [row["workspace_type"] for row in rows] == ["forge", "laboratory"]
+
+    # The load-bearing half: the TS crafting gate re-parses those rows.
+    resp = _post_craft(capstone_server, player_id)
+    assert resp.status_code == 200, resp.text
+    assert (
+        "forge"
+        in json.loads(
+            (await pool.fetchrow("SELECT data FROM async_activities WHERE id = $1", resp.json()["activity_id"]))["data"]
+        )["parameters"]["workspace_access"]
+    )
