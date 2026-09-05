@@ -19,6 +19,7 @@ from query_tools import (
 )
 from settlement_generation import generate_settlement_npcs
 from tools._helpers import SAMPLE_LOCATION, _make_context
+from voices import VOICES
 
 # Reference data for assertions (the catalogs themselves are seeded globally by the autouse
 # seed_role_archetypes / seed_settlement_templates fixtures in tests/conftest.py). This test
@@ -256,7 +257,10 @@ class TestSettlementPopulation:
         assert len(result["roster"]) == result["total"]
         assert Counter(npc["role"] for npc in result["roster"]) == Counter(expected)
         assert len({npc["name"] for npc in result["roster"]}) == result["total"]
-        assert all(set(npc) == {"role", "name", "personality"} for npc in result["roster"])
+        assert all(set(npc) == {"role", "name", "personality", "voice_id"} for npc in result["roster"])
+        # The tag the DM speaks the townsfolk with. Unregistered => silent DM_NARRATOR fallback.
+        assert all(npc["voice_id"] == f"ROLE_{npc['role'].upper()}" for npc in result["roster"])
+        assert all(npc["voice_id"] in VOICES for npc in result["roster"])
         assert all(2 <= len(npc["personality"]) <= 3 for npc in result["roster"])
 
     @pytest.mark.asyncio

@@ -60,8 +60,9 @@ async def query_info(
     - kind="inventory": the current player's carried items (no target_id needed).
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
       settlement, scaled by its size (tier) and character (personality), plus a `roster` of
-      those NPCs with a name and personality traits each — use it to voice an unnamed
-      townsfolk (a guard, an innkeeper) instead of inventing one.
+      those NPCs with a name, personality traits, and a `voice_id` each — use it to voice an
+      unnamed townsfolk (a guard, an innkeeper) instead of inventing one, speaking them with
+      the [voice_id, emotion]: "..." tag.
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
     - kind="training_programs": available training programs (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily

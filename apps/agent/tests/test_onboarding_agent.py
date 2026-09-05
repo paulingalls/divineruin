@@ -129,6 +129,42 @@ class TestBeat34NamesTheAssignedCompanion:
         for other in {"Kael", "Lira", "Tam", "Sable"} - {name}:
             assert other not in instructions, f"{other} leaked into {name}'s prompt"
 
+    @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy"])
+    def test_beats_3_4_render_that_companions_authored_vignette(self, archetype):
+        """AC1: the scene is the companion's own prose, read from the row, not re-typed here.
+
+        A copy of the words in the test would rot the moment the content is edited, and would
+        pass while the prompt shipped last sprint's scene.
+        """
+        from companion_profiles import get_companion_profile, select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        companion_id = select_companion_for_archetype(archetype)
+        c = get_companion_profile(companion_id)
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        assert c.onboarding_meeting in instructions
+        assert c.onboarding_suggestion in instructions
+
+    @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy", None])
+    def test_beat_3_4_scaffolding_survives_the_authored_prose(self, archetype):
+        """AC1: the beat markers the DM sequences on are the module's, not the content row's.
+
+        Beat 3's heading is the one that goes silently: interpolating the authored scene over
+        the old setup constant drops it while beats 1/2/4/5 keep theirs, and nothing else here
+        would notice.
+        """
+        from companion_profiles import select_companion_for_archetype
+        from onboarding_agent import OnboardingAgent
+
+        companion_id = select_companion_for_archetype(archetype) if archetype else None
+        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        assert "### Beat 3 — Companion Meeting" in instructions
+        assert "### Beat 4 — The Companion's Suggestion" in instructions
+        assert "(this initializes the companion)" in instructions
+        span = instructions.split("### Beat 3 — Companion Meeting")[1].split("### Beat 5")[0]
+        assert span.count("**Complete when:**") == 2
+        assert span.count("advance_onboarding_beat") == 2
+
     def test_a_verbal_companion_is_tagged_for_ventriloquism(self):
         from onboarding_agent import OnboardingAgent
 
@@ -156,8 +192,11 @@ class TestBeat34NamesTheAssignedCompanion:
 
         Zero, not "at most one per constant": four constants that each name a single companion
         ARE the forbidden shape, so a per-constant budget passes the very defect it guards.
-        And the modules scanned must include the one that now holds the prompt — the AC7 walker
-        allowlists onboarding_prompt.py, so it is blind here.
+
+        The AC7 walker now covers onboarding_prompt.py too (story-020 took it off the
+        allowlist), so this scan is no longer the only guard on that module — it is the one
+        that survives a future re-allowlisting, and the only one that reads onboarding_agent.py
+        for the same shape.
         """
         import onboarding_agent
         import onboarding_prompt

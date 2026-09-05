@@ -11,6 +11,7 @@ import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts"
 import { validateErrandDispatch } from "./errand_risk.ts";
 import { accessibleWorkspaceTier } from "./workspace.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
+import { resolveAssignedCompanion } from "./assigned_companion.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
@@ -245,30 +246,12 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Invalid destination for errand type" }, { status: 400 });
       }
 
-      // The errand resolves for the player's ASSIGNED companion (the archetype's complement,
-      // the same rule the agent's session start hydrates), so the blocked_companions gate is
-      // checked against that companion — never a caller-supplied or defaulted id, which let a
-      // Sable player past a Sable-only block. Mirrors errand_tools._dispatch_companion_errand_impl.
-      const errandPlayerRows = await sql<{ class: string | null }[]>`
-        SELECT data->>'class' AS class FROM players WHERE player_id = ${playerId}
-      `;
-      const errandArchetype = errandPlayerRows[0]?.class;
-      if (!errandArchetype) {
-        return Response.json(
-          { error: "Player has no class; cannot dispatch an errand" },
-          { status: 400 },
-        );
+      // The blocked_companions gate is checked against the player's ASSIGNED companion.
+      const assigned = await resolveAssignedCompanion(playerId);
+      if (!assigned.ok) {
+        return Response.json({ error: assigned.error }, { status: assigned.status });
       }
-      const complementRows = await sql<{ id: string }[]>`
-        SELECT id FROM companions WHERE data->'complements' ? ${errandArchetype}
-      `;
-      if (complementRows.length !== 1) {
-        return Response.json(
-          { error: `Archetype ${errandArchetype} matches ${complementRows.length} companions` },
-          { status: 500 },
-        );
-      }
-      const companionId = complementRows[0]!.id;
+      const companionId = assigned.companionId;
       const claimedCompanionId = params.companion_id as string | undefined;
       if (claimedCompanionId && claimedCompanionId !== companionId) {
         return Response.json(

@@ -85,6 +85,9 @@ export interface ArchetypeService {
 export interface RoleArchetype {
   id: string;
   name: string;
+  // VOICES key the DM tags a generated townsfolk's dialogue with: ROLE_<ID>, one per role.
+  // See apps/agent/voices.py ROLE_VOICE_KEYS.
+  voice_id: string;
   role_type: RoleType;
   default_disposition: Disposition;
   personality_traits: string[];
