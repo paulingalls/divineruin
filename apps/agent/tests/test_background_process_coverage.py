@@ -25,13 +25,12 @@ class TestBackgroundProcessLifecycle:
     @pytest.mark.asyncio
     async def test_start_creates_background_task(self):
         """start() should create a background task."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
         mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
 
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
             bp.start()
@@ -43,9 +42,29 @@ class TestBackgroundProcessLifecycle:
             await bp.stop()
 
     @pytest.mark.asyncio
+    async def test_session_close_stops_the_loop(self):
+        """The session's close is the ONLY thing that stops the loop now — no agent's on_exit
+        does, so nothing else would ever end it."""
+        handlers = {}
+        mock_session = MagicMock()
+        mock_session.on = lambda event, cb: handlers.__setitem__(event, cb)
+        mock_sd = MagicMock()
+        mock_sd.event_bus = MagicMock()
+        mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
+
+        bp = BackgroundProcess(mock_session, mock_sd)
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
+            bp.start()
+            handlers["close"](MagicMock())
+
+            assert bp._stop is True
+            assert bp._task is not None
+            await asyncio.gather(bp._task, return_exceptions=True)
+            assert bp._task.cancelled()
+
+    @pytest.mark.asyncio
     async def test_stop_cancels_background_task(self):
         """stop() should cancel the background task gracefully."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
@@ -54,7 +73,7 @@ class TestBackgroundProcessLifecycle:
         async def mock_run():
             await asyncio.sleep(10)
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._task = asyncio.create_task(mock_run())
 
         await bp.stop()
@@ -65,11 +84,10 @@ class TestBackgroundProcessLifecycle:
     @pytest.mark.asyncio
     async def test_stop_handles_already_cancelled_task(self):
         """stop() should handle task that's already cancelled."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._task = None
 
         await bp.stop()  # Should not raise
@@ -80,7 +98,6 @@ class TestBackgroundProcessLifecycle:
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_builds_initial_warm_layer(self, _mock_scene):
         """_run() should build warm layer on startup."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
@@ -88,7 +105,7 @@ class TestBackgroundProcessLifecycle:
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = 0
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
 
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
             with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
@@ -108,7 +125,6 @@ class TestEventHandling:
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_drains_multiple_events(self, _mock_scene):
         """_run() should drain all pending events from bus."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
@@ -123,7 +139,7 @@ class TestEventHandling:
         mock_sd.event_bus.get = AsyncMock(return_value=event1)
         mock_sd.event_bus.drain = MagicMock(return_value=[event2])
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._stop = True  # Stop after one iteration
 
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
@@ -144,7 +160,6 @@ class TestEventHandling:
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_rebuilds_on_timeout(self, _mock_scene):
         """_run() should rebuild warm layer on event timeout (no events)."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
@@ -164,7 +179,7 @@ class TestEventHandling:
         mock_sd.event_bus.get = mock_get
         mock_sd.event_bus.drain = MagicMock(return_value=[])
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
 
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
             with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
@@ -214,7 +229,7 @@ class TestGuidanceSystem:
         mock_sd = MagicMock()
         mock_sd.in_combat = True
         mock_sd.last_player_speech_time = time.time() - 100
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
@@ -225,7 +240,7 @@ class TestGuidanceSystem:
         mock_sd = MagicMock()
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = 0
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
@@ -240,7 +255,7 @@ class TestGuidanceSystem:
         mock_sd.last_agent_speech_end = past
         mock_sd.companion_can_act = True
         mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
@@ -255,7 +270,7 @@ class TestGuidanceSystem:
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = time.time() - 100
         mock_sd.last_agent_speech_end = time.time() - 5  # Agent spoke 5s ago
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
@@ -268,7 +283,7 @@ class TestGuidanceSystem:
         now = time.time()
         mock_sd.last_player_speech_time = now - 100
         mock_sd.last_agent_speech_end = now - 10  # Under 30s threshold
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
@@ -280,7 +295,7 @@ class TestGuidanceSystem:
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = time.time() - 100
         mock_sd.last_agent_speech_end = time.time() - 100
-        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp = BackgroundProcess(MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
         bp._scene_cache = BEAT_SCENE_CACHE
         bp._scene_hint_state = {
@@ -299,11 +314,10 @@ class TestSpeechQueue:
 
     def test_queue_speech_adds_to_queue(self):
         """_queue_speech should add speech to queue."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
 
         bp._queue_speech(SpeechPriority.ROUTINE, "Test message")
 
@@ -314,12 +328,11 @@ class TestSpeechQueue:
     @pytest.mark.asyncio
     async def test_deliver_speech_does_nothing_if_queue_empty(self):
         """_deliver_speech should do nothing if queue is empty."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = []
 
         await bp._deliver_speech()
@@ -329,12 +342,11 @@ class TestSpeechQueue:
     @pytest.mark.asyncio
     async def test_deliver_speech_delivers_highest_priority(self):
         """_deliver_speech should deliver highest priority speech."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
             PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="Low priority"),
             PendingSpeech(priority=SpeechPriority.CRITICAL, instructions="High priority"),
@@ -349,12 +361,11 @@ class TestSpeechQueue:
     @pytest.mark.asyncio
     async def test_deliver_speech_clears_queue_after_delivery(self):
         """_deliver_speech should clear entire queue after delivering top speech."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
             PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="msg1"),
             PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="msg2"),
@@ -367,12 +378,11 @@ class TestSpeechQueue:
     @pytest.mark.asyncio
     async def test_deliver_speech_handles_exception_gracefully(self):
         """_deliver_speech should not raise if generate_reply fails."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock(side_effect=Exception("TTS failed"))
         mock_sd = MagicMock()
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
             PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="Test"),
         ]

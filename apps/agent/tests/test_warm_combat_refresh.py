@@ -1,14 +1,15 @@
 """The warm layer's ACTIVE COMBAT block tracks the fight it describes.
 
-Every test here drives the event handler DIRECTLY (`_process_events`), never a loop tick
-and never the 30s bus fallback: `_run`'s timed-out branch rebuilds unconditionally, so a
-test that let the timer fire would go green against the timer and not against the fix.
+The refresh tests drive the event handler DIRECTLY (`_process_events`), never the 30s bus
+fallback: `_run`'s timed-out branch rebuilds unconditionally, so a test that let the timer
+fire would go green against the timer and not against the fix.
 
-These are RENDERER tests. Neither this block nor the hot layer reaches a live DM mid-fight
-today — see `BackgroundProcess._refresh_combat_section` for the lifecycle reason — so
-nothing here certifies that the two agree in front of a player.
+`TestProcessSurvivesTheHandoff` is the exception and drives the LIVE loop, because what it
+guards is the loop still being alive after the handoff into combat — a stopped process can
+still be driven by hand.
 """
 
+import asyncio
 import re
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,9 +18,11 @@ from prompt_fixtures import SAMPLE_LOCATION, sample_combat_state
 
 import event_types as E
 from background_process import BackgroundProcess
+from combat_agent import CombatAgent
 from event_bus import GameEvent
 from exploration_agent import ExplorationAgent
 from session_data import CombatParticipant, CombatState, SessionData
+from system_prompts import COMBAT_SYSTEM_PROMPT
 
 DB_SEAMS = (
     "background_process.db_queries.get_active_player_quests",
@@ -52,7 +55,12 @@ def _make_bg(combat_state: CombatState | None = None) -> tuple[BackgroundProcess
     sd.combat_state = combat_state
     agent = MagicMock()
     agent.update_instructions = AsyncMock()
-    return BackgroundProcess(agent=agent, session=MagicMock(), session_data=sd), agent
+    # The process composes the CURRENT agent's static half, so a mock target must answer with
+    # a real string (a MagicMock would not join).
+    agent.static_prompt = MagicMock(return_value="STATIC")
+    session = MagicMock()
+    session.current_agent = agent
+    return BackgroundProcess(session=session, session_data=sd), agent
 
 
 def _ui_update() -> list[GameEvent]:
@@ -176,3 +184,94 @@ class TestCombatEnded:
             )
 
         assert "ACTIVE COMBAT" not in _last_warm(agent)
+
+
+def _is_running(bg: BackgroundProcess) -> bool:
+    return bg._task is not None and not bg._task.done()
+
+
+async def _settle(predicate, what: str) -> None:
+    """Yield to the running loop until it has done its work — fail loud, never silently pass.
+
+    No timer is advanced and no fallback can fire: the loop is woken by the event we published,
+    and each iteration here is a bare event-loop turn.
+    """
+    for _ in range(50):
+        await asyncio.sleep(0)
+        if predicate():
+            return
+    raise AssertionError(f"background process never {what}")
+
+
+@contextmanager
+def _mock_startup_db():
+    """Everything `_run` touches before it parks on the bus: the rider-scene prefetch plus the
+    four warm-layer queries."""
+    with (
+        patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None),
+        _mock_db(),
+    ):
+        yield
+
+
+async def _enter_exploration(session: MagicMock, sd: SessionData) -> ExplorationAgent:
+    agent = ExplorationAgent()
+    session.current_agent = agent
+    with (
+        patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
+        patch("exploration_agent.start_specialization_tap"),
+        # Sync mock + no-op fire_and_forget: the real method is async, so an unawaited
+        # AsyncMock coroutine would leak.
+        patch.object(agent, "_publish_session_init", new_callable=MagicMock),
+        patch.object(agent, "_fire_and_forget"),
+    ):
+        await agent.on_enter()
+    return agent
+
+
+async def _exit_exploration(agent: ExplorationAgent, session: MagicMock) -> None:
+    """What LiveKit runs on the handoff INTO combat: AgentActivity.drain awaits on_exit."""
+    with (
+        patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
+        patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
+        patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
+        patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
+    ):
+        await agent.on_exit()
+
+
+class TestProcessSurvivesTheHandoff:
+    """AC5: the BackgroundProcess belongs to the SESSION, not to the agent that built it."""
+
+    async def test_the_running_loop_updates_the_combat_agent_mid_fight(self):
+        """Driven through the live loop, not `_process_events`: a stopped process can still be
+        driven by hand, so only the loop can red when the handoff kills it."""
+        sd = SessionData(player_id="p1", location_id="accord_guild_hall", room=MagicMock())
+        session = MagicMock()
+        session.userdata = sd
+
+        with _mock_startup_db():
+            exploration = await _enter_exploration(session, sd)
+            bg = sd.background
+            assert bg is not None
+            await _settle(lambda: bg._warm_base is not None, "built its initial warm layer")
+
+            await _exit_exploration(exploration, session)
+
+            combat = CombatAgent()
+            session.current_agent = combat
+            sd.combat_state = sample_combat_state(round_number=2, hp_current=8)
+            try:
+                sd.event_bus.publish(GameEvent(event_type=E.COMBAT_UI_UPDATE, payload={}))
+                await _settle(lambda: "ACTIVE COMBAT" in combat.instructions, "reached the combat agent")
+
+                assert _is_running(bg)
+                warm = str(combat.instructions)
+                assert "Round 2" in warm
+                assert "- Grosh (enemy) — bloodied" in warm
+                # The static half is the CURRENT agent's own: composing the exploration prompt
+                # here would silently replace COMBAT_SYSTEM_PROMPT mid-fight.
+                assert warm.startswith(COMBAT_SYSTEM_PROMPT)
+                assert "The player is currently at location ID" not in warm
+            finally:
+                await bg.stop()

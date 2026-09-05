@@ -61,9 +61,13 @@ def _session_data(companion: CompanionState | None) -> SessionData:
 def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     agent = MagicMock()
     agent.update_instructions = AsyncMock()
+    # The process composes the CURRENT agent's static half, so a mock target must answer with
+    # a real string (a MagicMock would not join).
+    agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
+    session.current_agent = agent
     session.generate_reply = AsyncMock()
-    return BackgroundProcess(agent, session, sd), session
+    return BackgroundProcess(session, sd), session
 
 
 def _assert_assigned_cue(instructions: str, companion_id: str) -> None:

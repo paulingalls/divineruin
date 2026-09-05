@@ -45,9 +45,13 @@ def _make_bg(session_data=None):
     sd = session_data or _make_session()
     agent = MagicMock()
     agent.update_instructions = AsyncMock()
+    # The process composes the CURRENT agent's static half, so a mock target must answer with
+    # a real string (a MagicMock would not join).
+    agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
+    session.current_agent = agent
     session.generate_reply = AsyncMock()
-    bg = BackgroundProcess(agent=agent, session=session, session_data=sd)
+    bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
 
 

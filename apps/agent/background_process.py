@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import db_activity_queries
 import db_content_queries
@@ -16,7 +16,7 @@ import event_types as E
 from bg_event_handlers import handle_events, needs_combat_refresh
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
-from system_prompts import build_companion_cue, build_system_prompt, is_companion_cue
+from system_prompts import build_companion_cue, is_companion_cue
 from warm_prompts import (
     build_full_prompt,
     build_warm_layer,
@@ -26,8 +26,9 @@ from warm_prompts import (
 )
 
 if TYPE_CHECKING:
-    from livekit.agents import Agent, AgentSession
+    from livekit.agents import AgentSession
 
+    from base_agent import BaseGameAgent
     from session_data import SessionData
 
 logger = logging.getLogger("divineruin.background")
@@ -38,11 +39,12 @@ TIMER_FALLBACK_SECS = 30.0
 class BackgroundProcess:
     def __init__(
         self,
-        agent: Agent,
         session: AgentSession,
         session_data: SessionData,
     ) -> None:
-        self._agent = agent
+        # No agent here on purpose: the process outlives every mode handoff, so it resolves
+        # the CURRENT agent at injection time (_apply_warm). One built for the exploration
+        # agent would keep writing the warm layer into an agent that no longer holds the floor.
         self._session = session
         self._sd = session_data
         self._task: asyncio.Task | None = None
@@ -57,12 +59,22 @@ class BackgroundProcess:
         self._scene_cache: dict[str, dict] = {}
         self._scene_hint_state: dict = {}
         self._rider_triggered: bool = False
-        self._last_static_key: tuple[str, str | None] | None = None
+        self._last_static_key: tuple[str, str, str | None] | None = None
         self._cached_static: str = ""
+        self._last_target: BaseGameAgent | None = None
         self._paused: bool = False
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
+        # The session is the owner, so the session's end is the only thing that stops the loop —
+        # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
+        self._session.on("close", self._on_session_close)
+
+    def _on_session_close(self, _ev: object) -> None:
+        """Sync half of ``stop`` — LiveKit emits ``close`` from a sync handler chain."""
+        self._stop = True
+        if self._task is not None:
+            self._task.cancel()
 
     def pause(self) -> None:
         self._paused = True
@@ -71,9 +83,9 @@ class BackgroundProcess:
         self._paused = False
 
     async def stop(self) -> None:
-        self._stop = True
+        """Awaitable twin of ``_on_session_close`` — for callers that can wait for the loop."""
+        self._on_session_close(None)
         if self._task is not None:
-            self._task.cancel()
             try:
                 await self._task
             except asyncio.CancelledError:
@@ -321,31 +333,39 @@ class BackgroundProcess:
     async def _refresh_combat_section(self) -> None:
         """Re-render only the ACTIVE COMBAT block from in-memory state — no DB round trip.
 
-        NOT REACHED IN PRODUCTION YET, and neither is the block it re-renders:
-        ``sd.combat_state`` is set only between start_combat's handoff to CombatAgent
-        (combat_init) and end_combat's handback (combat_end), and this process belongs to
-        ExplorationAgent — whose ``on_exit`` stops it, which is exactly what LiveKit runs on
-        that handoff. CombatAgent builds no BackgroundProcess and its instructions carry no
-        warm layer. Putting this block in front of the DM mid-fight needs a warm-layer owner
-        that survives the handoff; that is a lifecycle decision, not this seam's.
+        Once per round is exactly when the DM needs it and exactly when a full rebuild is
+        least affordable: the block reads ``combat_state`` and nothing else, while
+        ``_rebuild_warm_layer`` fans out to four DB queries plus a scenes batch.
         """
         if self._warm_base is None:
             return
         await self._apply_warm(compose_warm_layer(self._warm_base, format_combat_section(self._sd.combat_state)))
 
     async def _apply_warm(self, warm: str) -> None:
-        if warm == self._last_warm_layer:
+        # Every agent that can hold the floor while this process runs is a BaseGameAgent; one
+        # that is not raises on static_prompt rather than being quietly skipped.
+        agent = cast("BaseGameAgent", self._session.current_agent)
+        # The target is half the dedupe key: a handoff hands the floor to an agent whose
+        # instructions carry no warm layer at all, and an unchanged warm string must still
+        # reach it.
+        if warm == self._last_warm_layer and agent is self._last_target:
             return
 
         self._last_warm_layer = warm
+        self._last_target = agent
         # Keyed on companion IDENTITY, not merely presence: the static layer renders the
         # assigned companion's own name, tag and profile, so a bool would serve a stale
-        # section if the bound companion ever changed within a session.
+        # section if the bound companion ever changed within a session. Keyed on the agent
+        # too: each agent's static half is its own (COMBAT_SYSTEM_PROMPT for a fight).
         companion = self._sd.companion
-        static_key = (self._sd.location_id, companion.id if self._sd.has_companion and companion else None)
+        static_key = (
+            type(agent).__name__,
+            self._sd.location_id,
+            companion.id if self._sd.has_companion and companion else None,
+        )
         if static_key != self._last_static_key:
             self._last_static_key = static_key
-            self._cached_static = build_system_prompt(self._sd.location_id, companion=self._sd.companion)
+            self._cached_static = agent.static_prompt(self._sd)
         full_prompt = build_full_prompt(self._cached_static, warm)
-        await self._agent.update_instructions(full_prompt)
-        logger.info("Warm layer updated (%d chars)", len(warm))
+        await agent.update_instructions(full_prompt)
+        logger.info("Warm layer updated (%d chars) for %s", len(warm), type(agent).__name__)

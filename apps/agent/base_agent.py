@@ -51,8 +51,8 @@ class BaseGameAgent(Agent):
     STT with affect analysis, LLM with retry logic), background task management,
     and lifecycle hooks for affect analyzer and transcript logger.
 
-    Subclasses add agent-specific behavior: BackgroundProcess, hot context,
-    session summary (DungeonMasterAgent), or combat-specific logic (CombatAgent).
+    Subclasses add agent-specific behavior: hot context, session summary and the
+    session's BackgroundProcess (ExplorationAgent), or combat-specific logic (CombatAgent).
     """
 
     def __init__(
@@ -69,10 +69,20 @@ class BaseGameAgent(Agent):
             init_kwargs["chat_ctx"] = chat_ctx
         super().__init__(**init_kwargs)
 
+        self._static_instructions = instructions
         self._turn_timer = TurnTimer()
         self._affect_analyzer = PlayerAffectAnalyzer()
         self._transcript: TranscriptLogger | None = None
         self._bg_tasks: set[asyncio.Task[None]] = set()
+
+    def static_prompt(self, sd: SessionData) -> str:
+        """This agent's own static prompt half — what the session's warm layer is appended to.
+
+        The BackgroundProcess is session-scoped and injects into whichever agent holds the
+        floor, so the static half has to come from that agent: composing the exploration
+        prompt onto a CombatAgent would replace COMBAT_SYSTEM_PROMPT mid-fight.
+        """
+        return self._static_instructions
 
     def _fire_and_forget(self, coro: Any) -> None:
         task = asyncio.create_task(coro)

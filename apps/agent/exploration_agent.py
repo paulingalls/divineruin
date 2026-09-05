@@ -5,7 +5,8 @@ per-instance attribute (``region_type``), not a class — the location's Stage,
 not the agent class, carries the region. One unified tool list (the former city
 superset) serves city, wilderness, and dungeon alike.
 
-Owns the BackgroundProcess lifecycle, session init/end events, hot context
+Starts the SESSION's BackgroundProcess (once — it outlives every mode handoff and is
+stopped by the session's close, not by this agent's exit), session init/end events, hot context
 injection, affect analysis forwarding, the L5 specialization tap listener, and
 delayed session close.
 """
@@ -114,7 +115,6 @@ class ExplorationAgent(BaseGameAgent):
             chat_ctx=chat_ctx,
         )
         self._initial_location = initial_location
-        self._background: BackgroundProcess | None = None
         self._spec_tap: SpecializationTapHandler | None = None
         self._session_start_time: float = time.time()
         self._close_scheduled: bool = False
@@ -132,12 +132,12 @@ class ExplorationAgent(BaseGameAgent):
         self._session_start_time = time.time()
         sd: SessionData = self.session.userdata
 
-        self._background = BackgroundProcess(
-            agent=self,
-            session=self.session,
-            session_data=sd,
-        )
-        self._background.start()
+        # Session-scoped, and started at most once: a handback from combat/dispatch enters a
+        # NEW ExplorationAgent instance over the same SessionData, and a second loop would
+        # double every warm-layer injection and every proactive line.
+        if sd.background is None:
+            sd.background = BackgroundProcess(session=self.session, session_data=sd)
+            sd.background.start()
         self._fire_and_forget(self._publish_session_init(sd))
 
         # Consume L5 specialization taps from the HUD: a tap drives the DM to resolve
@@ -163,12 +163,6 @@ class ExplorationAgent(BaseGameAgent):
             if isinstance(result, Exception):
                 labels = ("publish session_end", "save session summary")
                 logger.exception("Failed to %s", labels[i], exc_info=result)
-
-        try:
-            if self._background:
-                await self._background.stop()
-        except Exception:
-            logger.exception("Failed to stop background process")
 
         await super().on_exit()
 
@@ -200,6 +194,12 @@ class ExplorationAgent(BaseGameAgent):
     async def _delayed_close(self) -> None:
         await asyncio.sleep(3.0)
         await self.session.aclose()
+
+    def static_prompt(self, sd: SessionData) -> str:
+        # Rebuilt from LIVE state rather than returning the constructor's instructions: the
+        # exploration static layer names the current location and companion, and both change
+        # within one agent instance (move_player, a companion binding).
+        return build_system_prompt(sd.location_id, companion=sd.companion)
 
     def _build_hot_context(self, sd: SessionData) -> str:
         """Build hot context from in-memory SessionData only — zero I/O."""

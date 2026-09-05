@@ -14,6 +14,7 @@ import pytest
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
+from exploration_agent import ExplorationAgent
 from session_data import CompanionState, SessionData
 
 
@@ -44,7 +45,9 @@ class TestWarmLayerRebuild:
         mock_agent = MagicMock()
         mock_agent.update_instructions = AsyncMock()
         mock_agent._agent_type = "city"
+        mock_agent.static_prompt = MagicMock(return_value="STATIC")
         mock_session = MagicMock()
+        mock_session.current_agent = mock_agent
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
@@ -54,7 +57,7 @@ class TestWarmLayerRebuild:
         # section from the catalog profile, so a mock id raises "Unknown companion".
         mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
 
         mock_location = {"name": "Tavern"}
         mock_npcs = [{"id": "npc1", "name": "Barkeep"}]
@@ -90,14 +93,18 @@ class TestWarmLayerRebuild:
         """_rebuild_warm_layer should skip update if warm layer unchanged."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
+        mock_session.current_agent = mock_agent
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
         mock_sd.world_time = "evening"
         mock_sd.combat_state = None
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._last_warm_layer = "same content"
+        # Same TARGET too: the dedupe is (warm, agent), so a fresh process with no target yet
+        # would apply even an unchanged layer.
+        bp._last_target = mock_agent
 
         with _mock_db_for_warm_layer(location={"name": "Tavern"}):
             with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
@@ -109,9 +116,39 @@ class TestWarmLayerRebuild:
                     mock_full.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_unchanged_warm_layer_still_reaches_a_new_agent(self):
+        """A handoff hands the floor to an agent whose instructions carry NO warm layer, so the
+        dedupe cannot key on the warm text alone — the fight would run with the combat prompt
+        and nothing else."""
+        mock_sd = MagicMock()
+        mock_sd.location_id = "tavern"
+        mock_sd.player_id = "p1"
+        mock_sd.world_time = "evening"
+        mock_sd.combat_state = None
+        mock_sd.companion = None
+
+        first, second = MagicMock(), MagicMock()
+        for agent in (first, second):
+            agent.update_instructions = AsyncMock()
+            agent.static_prompt = MagicMock(return_value="STATIC")
+        mock_session = MagicMock()
+        mock_session.current_agent = first
+
+        bp = BackgroundProcess(mock_session, mock_sd)
+
+        with _mock_db_for_warm_layer(location={"name": "Tavern"}):
+            with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
+                mock_build.return_value = "unchanged warm layer"
+                await bp._rebuild_warm_layer()
+                mock_session.current_agent = second
+                await bp._rebuild_warm_layer()
+
+        second.update_instructions.assert_awaited_once()
+        assert "unchanged warm layer" in second.update_instructions.await_args[0][0]
+
+    @pytest.mark.asyncio
     async def test_rebuild_warm_layer_handles_exception(self):
         """_rebuild_warm_layer should not raise if build_warm_layer fails."""
-        mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -119,7 +156,7 @@ class TestWarmLayerRebuild:
         mock_sd.world_time = "evening"
         mock_sd.combat_state = None
 
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp = BackgroundProcess(mock_session, mock_sd)
         bp._last_warm_layer = "old content"
 
         with _mock_db_for_warm_layer():
@@ -137,14 +174,17 @@ class TestWarmLayerRebuild:
     async def test_static_layer_rerenders_when_the_bound_companion_changes(self):
         """The cached static layer now renders the assigned companion's own name and tag, so
         the cache key must track companion identity — presence alone would serve Lira's
-        section to a player bound to Tam."""
-        mock_agent = MagicMock()
-        mock_agent.update_instructions = AsyncMock()
+        section to a player bound to Tam.
+
+        A real ExplorationAgent, not a mock: the static half is the CURRENT agent's own
+        (BaseGameAgent.static_prompt), so a mock target would certify the mock's return value.
+        """
         mock_session = MagicMock()
+        mock_session.current_agent = ExplorationAgent()
         sd = SessionData(player_id="p1", location_id="tavern")
         sd.companion = CompanionState(id="companion_lira", name="Lira")
 
-        bp = BackgroundProcess(mock_agent, mock_session, sd)
+        bp = BackgroundProcess(mock_session, sd)
 
         with _mock_db_for_warm_layer(location={"name": "Tavern"}):
             with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
