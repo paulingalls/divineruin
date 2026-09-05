@@ -25,14 +25,9 @@ from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
 from combat_support import deserialize_roll, roll_attack, serialize_roll
 from declarations import DeclarationType, resolve_declaration
+from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
-
-# The stages a held action passes through, in order. Recorded on the held entry (``opened``) so a
-# window is offered exactly once per stage — a non-attack action has no roll to mark its progress,
-# so the roll alone cannot serve as the position marker.
-PRE_ROLL = "pre_roll"
-POST_ROLL = "post_roll"
 
 
 def hold_enemy_packets(state, packets: list) -> list[dict]:
