@@ -86,9 +86,7 @@ def _given_dispatch_scene(harness: SimpleNamespace) -> None:
             ),
         )
         session = AgentSession(
-            # Parity with agent.py (ADR 0004 addendum): strict schemas are interim-OFF. At the
-            # plugin default this dispatch session 400s before any turn runs — 23 union-typed params.
-            llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral", _strict_tool_schema=False),
+            llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral"),
             userdata=session_data,
         )
         await session.start(create_dispatch_agent(chat_ctx=ctx))

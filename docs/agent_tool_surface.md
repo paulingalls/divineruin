@@ -407,6 +407,17 @@ flag, no `input_examples`, no `defer_loading`, and `extra_kwargs` cannot inject 
 Ordered so each step is green on its own and the strict flip lands as early as
 possible. Steps 1–3 are story-019's scope; 4–6 are follow-ons worth their own cards.
 
+**Steps 1–3 are DONE (story-019, 2026-09-04)**, at a narrower scope than step 2 lists:
+`check`, `begin_activity` and `declare_phase` alone take every agent inside the caps
+(exploration 9 unions, combat 6, dispatch 5, onboarding 2, blacksmith 1, creation 0), so
+`activate`, `travel`, `enter_mode`, `request_death_save` and the strays keep their
+defaults and are owed to a follow-on — with them, open questions 1 and 2 below stay open
+and do not block anything. Two other deviations: no "warn at 12" (the exact per-agent pin
+fires earlier) and no source lint for defaulted parameters (each default emits exactly one
+union, so the exact pin already reds on a new one — a second guard would have needed an
+allowlist that blessed the very defaults step 2 deletes). `max_tool_steps` on the combat
+session is unset, and moves to Sprint 48 with the rest of combat's chain.
+
 1. **Pin the real budget.** Extend `test_strict_tool_budget.py` to walk
    `parse_function_tools("anthropic", strict=True)` output per agent (the appendix
    describes the walk) and assert: strict tools ≤ 20, unions

@@ -1,8 +1,8 @@
 # ADR 0004 — Scaling agent tools past the strict-tool limit
 
-Status: **Accepted** (2026-05-20) — sprint-009 story-011; **amended 2026-09-02** —
-the Decision below is suspended in production while strict schemas are interim-OFF
-(see the sprint-046 addendum at the end).
+Status: **Accepted** (2026-05-20) — sprint-009 story-011. The 2026-09-02 addendum at the
+end, which suspended the Decision in production while strict schemas were interim-OFF, is
+**superseded (2026-09-04)** by ADR 0008: strict is back ON and the Decision holds again.
 Concerns: `4da5c6f4d298`
 
 ## Decision
@@ -108,7 +108,7 @@ difficulty-tier and DC are the same concept (DC = Difficulty Class), and
 `resolve_skill_check_dc` already rolls a skill vs a raw DC — unifying on numeric DC
 would make a future `request_check(kind=...)` merge clean.
 
-## Addendum (2026-09-02, sprint-046 close) — interim: strict schemas OFF
+## Addendum (2026-09-02, sprint-046 close) — interim: strict schemas OFF — SUPERSEDED 2026-09-04
 
 The sprint-046 close review drove three agents against the live API and found a
 **second, separate limit**: Anthropic rejects a strict request whose tool schemas
@@ -141,4 +141,13 @@ combat 400s on every real turn until strict fits. See `docs/agent_tool_surface.m
 the measurements and `docs/decisions/0008-sum-typed-verbs-and-next-in-results.md` for
 the decision. This addendum is retired when that work lands and `agent.py` stops
 passing `_strict_tool_schema=False`.
+
+**Retired 2026-09-04 — story-019 landed.** `check`, `begin_activity` and `declare_phase`
+take sum types; every agent is inside all three ceilings (exploration 9 union-typed
+parameters, combat 6, dispatch 5, onboarding 2, blacksmith 1, creation 0, ceiling 16), and
+no `AgentSession` passes `_strict_tool_schema` any more — the plugin default, strict ON,
+is what production and the real-LLM acceptance harnesses both run. Pinned by
+`apps/agent/tests/test_strict_tool_budget.py`, which walks the emitted schemas rather than
+counting by hand. The interim above is kept as the record of a real decision, not as
+current state.
 

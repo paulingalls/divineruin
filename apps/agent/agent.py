@@ -225,13 +225,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
             stt=deepgram.STT(model="nova-3", language="en"),
-            # INTERIM (2026-09-02, ADR 0004 addendum): strict tool schemas OFF. Anthropic also
-            # rejects a strict request whose schemas carry more than 16 union-typed parameters
-            # ("Schemas contains too many parameters with union types"); every `x | None`
-            # optional counts, so exploration (17) and dispatch (23) 400 on every real turn and
-            # combat's declare_phase.declarations (additionalProperties object) is refused
-            # outright. Sprint-47 story-016 restores strict with a schema design that fits.
-            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
+            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
             tts=_make_tts(),
             vad=inference.VAD(model="silero", min_silence_duration=0.5),
             # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's

@@ -137,30 +137,28 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
     return sites
 
 
-def test_every_agent_session_runs_strict_tool_schema_off():
-    """ADR 0004 addendum (2026-09-02): strict is interim-OFF until sprint-47 story-016 fits the
-    16-union-typed-parameter limit. Production and the real-LLM acceptance harnesses have to
-    agree: a harness left on the plugin default 400s on every dispatch turn, so the one tier
-    that reaches the API tests nothing. Scanning every site (not just agent.py) is what makes a
-    forgotten or newly-added session red here instead of at the API.
+def test_no_agent_session_disables_strict_tool_schema():
+    """ADR 0008 (story-019) superseded the ADR 0004 addendum's interim: the sum-typed verbs fit
+    the 16-union limit, so every session runs the plugin default — strict ON. Production and the
+    real-LLM acceptance harnesses have to agree, and one site left on the interim kwarg is a
+    session whose schemas nothing validates. Scanning every site (not just agent.py) is what
+    makes a forgotten or newly-added session red here instead of at the API.
     """
     sites = _agent_session_llm_calls()
     assert "agent.py" in {f for f, _ in sites}, f"matcher found no production session: {sites}"
     assert len(sites) >= 3, f"matcher drifted — only {len(sites)} AgentSession llm= sites found"
     for filename, call in sites:
-        flags = [
-            kw.value.value
-            for kw in call.keywords
-            if kw.arg == "_strict_tool_schema" and isinstance(kw.value, ast.Constant)
-        ]
-        assert flags == [False], f"{filename}: AgentSession llm must pass _strict_tool_schema=False"
+        disablers = [kw for kw in call.keywords if kw.arg == "_strict_tool_schema"]
+        assert not disablers, f"{filename}: AgentSession llm must not pass _strict_tool_schema"
 
 
-def test_plugin_still_accepts_the_interim_strict_kwarg():
-    """The interim rides a PRIVATE plugin kwarg. A plugin upgrade that renames or drops it raises
-    TypeError at session start — and nothing in the fast lane constructs an LLM (an API key is
-    required), so the source pin above would still be green. Pin the signature instead.
+def test_plugin_strict_tool_schema_defaults_on():
+    """Strict is now the plugin DEFAULT rather than an explicit kwarg, so a plugin upgrade that
+    flipped that default would silently revert this whole card — and nothing in the fast lane
+    constructs an LLM (an API key is required), so the source pin above would stay green. Pin
+    the signature's default instead.
     """
     from livekit.plugins import anthropic
 
-    assert "_strict_tool_schema" in inspect.signature(anthropic.LLM.__init__).parameters
+    param = inspect.signature(anthropic.LLM.__init__).parameters["_strict_tool_schema"]
+    assert param.default is True

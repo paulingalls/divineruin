@@ -1,6 +1,7 @@
 # ADR 0008 — Verbs take sum types; state machines name their next verbs
 
-Status: **Proposed** (2026-09-04) — design session, read-only against trunk `08fa9b8`.
+Status: **Accepted** (2026-09-04) — sprint-047 story-019. Decisions 1-3 are realized in
+the repo; decision 4 (`next` in results / the `NOW` block) is owed to Sprint 48.
 Supersedes the 2026-09-02 interim addendum of **ADR 0004**; refines **ADR 0007**'s
 standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
 (Sprint 47) and its follow-ons.
@@ -16,7 +17,7 @@ Design source: `docs/agent_tool_surface.md`.
    carrying the key.
 2. **The union budget is pinned beside the tool budget.** Per agent, the emitted strict
    schemas (`parse_function_tools("anthropic", strict=True)`) must satisfy: ≤ 20 strict
-   tools, ≤ 16 union-typed parameters counted recursively (warn at 12), ≤ 12 nullable
+   tools, ≤ 16 union-typed parameters counted recursively, ≤ 12 nullable
    fields in any single object, no `additionalProperties` object, no enum containing
    null, no `oneOf`. The exact per-agent union count is pinned, as the tool count is.
    **The walk resolves `$ref` into the root `$defs`** (visited-set guarded): decision 1's
@@ -120,6 +121,27 @@ fields go together.
   set differs by ≥ 4 verbs, the player stays ≥ 5 turns, and the interaction model
   changes. Blacksmith fails the first test and is a candidate to fold back into
   exploration (see the design doc's cost section).
+
+## Realized (story-019, 2026-09-04)
+
+Decisions 1-3, at the narrow scope the plan measured: sum-typing `check`, `begin_activity`
+and `declare_phase` alone lands every agent inside the caps, so `query_info` and
+`enter_mode` (the design doc's open questions 7.1/7.2) keep their present shapes and are
+not reshaped here. Per-agent union spend, walked from the emitted schemas and pinned
+exactly in `apps/agent/tests/test_strict_tool_budget.py`: exploration 17 → **9**, combat
+13 + a hard reject → **6**, dispatch 23 → **5**, onboarding 10 → **2**, blacksmith **1**,
+creation **0**.
+
+Two deviations, both deliberate:
+
+- **No "warn at 12" union mechanism** (decision 2). The exact per-agent pin fires strictly
+  earlier than a warning would, and a warning in a test lane is either a failure or noise.
+  The clause is struck from decision 2 above rather than left as an unmet requirement.
+- **Eight tools still carry defaulted parameters** (eleven parameters), against decision 1's
+  "no defaults" rule: `activate` (2), `travel` (2), `enter_mode` (2), `query_info` (1),
+  `transact` (1), `learn` (1), `resolve_activity` (1), `request_death_save` (1). Each is one
+  union slot and every agent is well inside 16 with them, so they are a follow-on, not a
+  blocker. Recorded as a debt at story-019 close.
 
 ## Deferred
 
