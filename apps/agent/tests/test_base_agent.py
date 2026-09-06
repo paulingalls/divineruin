@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
+from session_data import SessionData
 
 
 class TestBaseGameAgentInit:
@@ -72,19 +73,38 @@ class TestBaseGameAgentLifecycle:
     async def test_on_enter_creates_transcript_logger(self):
         """on_enter should initialize the transcript logger."""
         agent = BaseGameAgent(instructions="prompt")
+        room = MagicMock()
+        sd = SessionData(player_id="p", location_id="", room=room)
         mock_session = MagicMock()
-        mock_sd = MagicMock()
-        mock_sd.room = "test_room"
-        mock_sd.event_bus = MagicMock()
-        mock_session.userdata = mock_sd
+        mock_session.userdata = sd
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("base_agent.TranscriptLogger") as MockTL:
                 MockTL.return_value = MagicMock()
                 await agent.on_enter()
 
-                MockTL.assert_called_once_with("test_room", mock_sd.event_bus)
+                MockTL.assert_called_once_with(room, sd.event_bus, log_path=None)
                 assert agent._transcript is not None
+
+    @pytest.mark.asyncio
+    async def test_every_agent_in_a_session_appends_to_one_transcript(self):
+        """The transcript is SESSION-scoped, so the end-of-session recap reads the whole
+        conversation. TranscriptLogger mints a fresh timestamped path per instance when given
+        none, so per-agent handles left the recap holding only the last agent's half — the
+        post-fight agent's, after every combat handoff.
+        """
+        sd = SessionData(player_id="p", location_id="", room=None)
+        mock_session = MagicMock()
+        mock_session.userdata = sd
+
+        first, second = BaseGameAgent(instructions="a"), BaseGameAgent(instructions="b")
+        with patch.object(BaseGameAgent, "session", new_callable=lambda: property(lambda self: mock_session)):
+            await first.on_enter()
+            await first.on_exit()  # the handoff
+            await second.on_enter()
+
+        assert first._transcript is not None and second._transcript is not None
+        assert second._transcript.log_path == first._transcript.log_path == sd.transcript_path
 
     @pytest.mark.asyncio
     async def test_on_exit_cancels_bg_tasks(self):

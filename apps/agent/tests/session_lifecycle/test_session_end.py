@@ -16,6 +16,14 @@ from exploration_agent import ExplorationAgent
 from session_data import SessionData
 
 
+def _session_data() -> SessionData:
+    """SessionData with a room that accepts a real ``publish_game_event`` (game_events.py:50-58)."""
+    room = MagicMock()
+    room.isconnected.return_value = True
+    room.local_participant.publish_data = AsyncMock()
+    return SessionData(player_id="player_1", location_id="accord_guild_hall", room=room)
+
+
 @contextlib.contextmanager
 def _quiet_agent():
     """Silence the exploration agent's I/O — DB, data channel, HUD tap, warm loop."""
@@ -24,8 +32,9 @@ def _quiet_agent():
         patch("exploration_agent.BackgroundProcess"),
         patch("exploration_agent.db_session_queries.get_session_init_payload", new_callable=AsyncMock),
         patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
-        patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
-        patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+        patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        patch("db_mutations.save_session_summary", new_callable=AsyncMock),
     ):
         yield
 
@@ -43,7 +52,7 @@ class TestEndSessionReachesTheCloseEmit:
 
     @pytest.mark.asyncio
     async def test_end_session_closes_the_session(self):
-        sd = SessionData(player_id="player_1", location_id="accord_guild_hall")
+        sd = _session_data()
         session = AgentSession(max_tool_steps=5, userdata=sd)
         closed = asyncio.Event()
         session.on("close", lambda _ev: closed.set())

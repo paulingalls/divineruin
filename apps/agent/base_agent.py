@@ -51,8 +51,8 @@ class BaseGameAgent(Agent):
     STT with affect analysis, LLM with retry logic), background task management,
     and lifecycle hooks for affect analyzer and transcript logger.
 
-    Subclasses add agent-specific behavior: hot context, session summary and the
-    session's BackgroundProcess (ExplorationAgent), or combat-specific logic (CombatAgent).
+    Subclasses add agent-specific behavior: hot context and the session's BackgroundProcess
+    (ExplorationAgent), or combat-specific logic (CombatAgent).
     """
 
     def __init__(
@@ -98,7 +98,12 @@ class BaseGameAgent(Agent):
         logger.info("%s entered session", type(self).__name__)
         self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
-        self._transcript = TranscriptLogger(sd.room, sd.event_bus)
+        # One transcript file for the whole SESSION: the first agent to enter mints the path
+        # and every agent after it appends to the same file. TranscriptLogger mints a fresh
+        # timestamped path when given none, so per-agent handles left the end-of-session recap
+        # reading only the last agent's half of the conversation.
+        self._transcript = TranscriptLogger(sd.room, sd.event_bus, log_path=sd.transcript_path)
+        sd.transcript_path = self._transcript.log_path
 
     async def on_exit(self) -> None:
         logger.info("%s exiting session", type(self).__name__)
