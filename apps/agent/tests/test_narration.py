@@ -485,6 +485,16 @@ class TestMalformedSegmentsFromTheModel:
         assert [o.character for o in objs] == ["DM_NARRATOR"]
         assert [o.emotion for o in objs] == ["neutral"]
 
+    def test_a_payload_that_normalizes_to_nothing_raises(self):
+        """Coercion must not become silence. Dropping every segment leaves an errand that
+        "resolved" with no narration — in an audio-first game the player just gets nothing,
+        which is worse than the crash this normalizer replaced. Segments keyed on names we
+        do not know is a malformed response, not a recoverable one."""
+        with pytest.raises(ValueError, match="no speakable narration"):
+            narration._normalize_segments_or_raise([{"speaker": "DM", "line": "Lost."}])
+        with pytest.raises(ValueError, match="no speakable narration"):
+            narration._normalize_segments_or_raise([{"text": "   "}, 42])
+
     def test_an_unusable_segment_is_dropped_not_raised(self):
         assert narration._segments_to_segment_objects([{"character": "X"}, 42, None, "  "]) == []
         assert narration._segments_to_text([{"character": "X"}, 42, None, "  "]) == ""

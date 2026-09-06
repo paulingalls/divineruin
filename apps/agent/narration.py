@@ -207,6 +207,21 @@ def _normalize_segments(segments: object) -> list[Segment]:
     return out
 
 
+def _normalize_segments_or_raise(segments: object) -> list[Segment]:
+    """Normalize, but REFUSE to turn a non-empty payload into silence (constraint 4).
+
+    Coercion is for shapes we can still speak — a bare string, a missing character. A payload
+    that yields NOTHING is a malformed response, and returning "" there would leave the errand
+    "resolved" with no narration at all: in an audio-first game the player gets silence, which
+    is strictly worse than the crash this normalizer replaced. Raise instead, and let the
+    caller's retry or the loud failure stand.
+    """
+    out = _normalize_segments(segments)
+    if not out:
+        raise ValueError(f"narration payload carried no speakable narration: {segments!r:.300}")
+    return out
+
+
 def _segments_to_text(segments: object) -> str:
     """Concatenate segment text into a single plain-text narration."""
     return " ".join(seg.text for seg in _normalize_segments(segments))
@@ -261,8 +276,8 @@ async def generate_activity_narration(
     if not tool_input or not tool_input.get("segments"):
         raise RuntimeError(f"LLM did not return valid narration segments: {response.content}")
 
-    segments = _segments_to_segment_objects(tool_input["segments"])
-    narration_text = _segments_to_text(tool_input["segments"])
+    segments = _normalize_segments_or_raise(tool_input["segments"])
+    narration_text = " ".join(seg.text for seg in segments)
     summary = tool_input.get("summary", "")
 
     logger.info("Narration: %d segments, %d chars, summary=%s", len(segments), len(narration_text), summary[:60])
