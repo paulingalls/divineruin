@@ -74,7 +74,11 @@ def _handle_hp_zero(
 
     The ONE door for every zero-HP transition, whether the damage came from a blow or from the
     caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
-    (bug 16c5f8a0). ``overkill`` is the excess damage past 0. Mutates ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
+    (bug 16c5f8a0). The census that keeps it the only door is
+    ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
+
+    ``overkill`` is the excess damage past 0. Mutates ``target`` in place
+    (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
     ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
     ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
     HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
