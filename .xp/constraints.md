@@ -27,9 +27,12 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
 7. **A cross-language AC names both sides.** Content and contracts are mirrored
    in Python and TypeScript; a guard living on one side certifies nothing about
    the other. Verify names both files, or the directory — never one file whose
-   tests a later split can silently narrow. Prefer the whole fast lane
-   (`bun run test:python` / `bun run test:all`): a six-file Verify filter in
-   sprint-046 stayed green over two red tests the story had broken.
+   tests a later split can silently narrow (a six-file filter in sprint-046 stayed
+   green over two red tests). But `test:all` DOES NOT BELONG IN A VERIFY LINE
+   (human decision 2026-09-06): the configured `story` tier already runs it on the
+   merged tree at every close, so a card repeating it buys nothing and makes the
+   executor's loop minutes instead of seconds — `pytest apps/agent/tests/combat`
+   is 878 tests in 11s. Name the DIRECTORY that covers the change.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
