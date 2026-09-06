@@ -87,16 +87,7 @@ def _build_state(
     )
 
 
-async def _start_combat(
-    pool,
-    player_id: str,
-    state: CombatState,
-    ctx,
-    *,
-    player_class: str | None = None,
-    stamina: int = 10,
-    focus: int = 10,
-) -> None:
+async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player_class: str | None = None) -> None:
     """Seed the real player row + persist the hand-built combat SSOT, then wire the in-memory state.
 
     Pass ``player_class`` for a scenario whose player must OWN an archetype ability and PAY for it:
@@ -106,9 +97,7 @@ async def _start_combat(
     afterwards, because ``seed_player`` replaces ``data`` wholesale. Omitted, the seed is unchanged.
     """
     if player_class is not None:
-        await seed_player_with_pools(
-            pool, player_id=player_id, class_=player_class, stamina_current=stamina, focus_current=focus
-        )
+        await seed_player_with_pools(pool, player_id=player_id, class_=player_class)
     else:
         await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)

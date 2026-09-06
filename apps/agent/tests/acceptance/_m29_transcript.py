@@ -43,7 +43,17 @@ def resolve_packets(turns: list) -> list[dict]:
         output = output_for(turns, call)
         if output.is_error:
             continue
-        packets.extend(json.loads(output.output).get("packets", []))
+        try:
+            body = json.loads(output.output)
+        except json.JSONDecodeError as exc:
+            # resolve_phase answers a (agent, message) handoff TUPLE when the engine ends the
+            # fight, and livekit surfaces only the message — so a scenario whose fight ended
+            # early would otherwise die on "Expecting value: line 1 column 1" in the one lane
+            # that costs an API call to re-run.
+            raise AssertionError(f"resolve_phase handed back no JSON — combat ended: {output.output!r}") from exc
+        # `[...]`, not `.get(..., [])`: a response that stopped carrying packets would make every
+        # reader here silently empty, and each of them reports that as "the DM never acted".
+        packets.extend(body["packets"])
     return packets
 
 

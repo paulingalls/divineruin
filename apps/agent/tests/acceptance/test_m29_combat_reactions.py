@@ -99,9 +99,8 @@ _DODGE = "rogue_uncanny_dodge"
 #       closed the pre-roll window AND the post-roll one in the same turn and wrote the blow — the
 #       pause this scenario exists to reach never survived a turn boundary.
 # Neither constant carries a player ACTION, because anything that does gets declared as one. The
-# pre-roll
-# wording declines only THIS window: Uncanny Dodge fires on_hit, so the rogue genuinely has nothing
-# to spend before the roll and everything to spend after it.
+# pre-roll wording declines only THIS window: Uncanny Dodge fires on_hit, so the rogue genuinely
+# has nothing to spend before the roll and everything to spend after it.
 _DECLINE_WINDOW = "Not yet — I want to see whether the blow lands first."
 _BRING_IT_FORWARD = "Come on then — what does the mawling do?"
 
