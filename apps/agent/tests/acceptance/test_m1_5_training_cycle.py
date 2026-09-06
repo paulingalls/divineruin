@@ -146,9 +146,26 @@ def _agent_calls_tool(harness: SimpleNamespace, tool_name: str) -> None:
 
 
 def _judge(harness: SimpleNamespace, intent: str) -> None:
-    # The agent emits several assistant messages per turn (e.g. a "let me check"
-    # line before a tool call); the meaningful narration is the LAST one.
-    message = harness.state["result"].expect[-1].is_message(role="assistant")
+    """Judge the LAST assistant message of the turn, wherever it sits in the event order.
+
+    `expect[-1]` was the last EVENT, not the last message, and that is an assumption about
+    turn shape the DM does not owe us. It narrates the outcome and then calls the tool about
+    as often as the reverse, and when it does, the final event is a FunctionCallOutputEvent
+    and the assertion dies with "Expected ChatMessageEvent" over a narration that satisfied
+    the intent perfectly. Observed at the sprint-048 land: the DM said "The second half of
+    your training begins now" in event [0] and called resolve_activity in [1].
+    """
+    events = harness.state["result"].events
+    idx = next(
+        (
+            i
+            for i in range(len(events) - 1, -1, -1)
+            if events[i].type == "message" and events[i].item.role == "assistant"
+        ),
+        None,
+    )
+    assert idx is not None, f"turn emitted no assistant message to judge: {events}"
+    message = harness.state["result"].expect[idx].is_message(role="assistant")
     harness.run_sync(message.judge(harness.state["judge_llm"], intent=intent))
 
 
