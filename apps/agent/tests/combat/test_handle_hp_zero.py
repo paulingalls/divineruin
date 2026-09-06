@@ -4,7 +4,6 @@ Split out of test_resolve_packet.py (M29 story-016) for the 500-line cap: that f
 roll/apply split, and these two classes exercise paths the split does not touch.
 """
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 from sample_fixtures import make_context
@@ -156,16 +155,12 @@ class TestHandleHpZero:
             p.conditions = conditions
         return p
 
-    def _attack(self, overkill: int):
-        # _handle_hp_zero reads only attack_result.overkill.
-        return SimpleNamespace(overkill=overkill)
-
     def test_player_at_zero_falls(self):
         session = make_context().userdata  # no companion
         target = self._target(hp_current=0, hp_max=20)
         sounds: list[str] = []
         hp_status, rose = _handle_hp_zero(
-            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
+            session, target, overkill=0, was_fallen=False, hp_status="defeated", sounds=sounds
         )
         assert target.is_fallen is True
         assert target.is_dead is False
@@ -177,7 +172,7 @@ class TestHandleHpZero:
     def test_instant_death_when_overkill_ge_hp_max(self):
         session = make_context().userdata
         target = self._target(hp_current=-25, hp_max=20)
-        _handle_hp_zero(session, target, self._attack(25), was_fallen=False, hp_status="defeated", sounds=[])
+        _handle_hp_zero(session, target, overkill=25, was_fallen=False, hp_status="defeated", sounds=[])
         assert target.is_fallen is True
         assert target.is_dead is True
 
@@ -186,7 +181,7 @@ class TestHandleHpZero:
         # target (was_fallen=True) is the separate "damage while Fallen" mechanic, never instant death.
         session = make_context().userdata
         target = self._target(hp_current=-25, hp_max=20, is_fallen=True)
-        _handle_hp_zero(session, target, self._attack(25), was_fallen=True, hp_status="defeated", sounds=[])
+        _handle_hp_zero(session, target, overkill=25, was_fallen=True, hp_status="defeated", sounds=[])
         assert target.is_dead is False
 
     def test_stage2_hollowed_rises_instead_of_falling(self):
@@ -194,7 +189,7 @@ class TestHandleHpZero:
         target = self._target(hp_current=0, hp_max=20, conditions=_hollowed(2))
         sounds: list[str] = []
         hp_status, rose = _handle_hp_zero(
-            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
+            session, target, overkill=0, was_fallen=False, hp_status="defeated", sounds=sounds
         )
         assert target.type == "temporary_hollowed"
         assert target.hp_current == 10  # max(1, hp_max // 2)
@@ -210,7 +205,7 @@ class TestHandleHpZero:
         session.companion = CompanionState(id="companion_kael", name="Kael")
         session.companion.is_conscious = True
         target = self._target(id="companion_kael", name="Kael", type="companion", hp_current=0, hp_max=15)
-        _handle_hp_zero(session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=[])
+        _handle_hp_zero(session, target, overkill=0, was_fallen=False, hp_status="defeated", sounds=[])
         assert target.is_fallen is True
         assert session.companion.is_conscious is False
         assert any("knocked unconscious" in m for m in session.companion.session_memories)

@@ -64,16 +64,17 @@ async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: Even
 def _handle_hp_zero(
     session: SessionData,
     target: CombatParticipant,
-    attack_result,
     *,
+    overkill: int,
     was_fallen: bool,
     hp_status: str,
     sounds: list[str],
 ) -> tuple[str, bool]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
-    Called from ``_resolve_attack_packet`` only when ``target.hp_current <= 0``. Mutates
-    ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
+    The ONE door for every zero-HP transition, whether the damage came from a blow or from the
+    caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
+    (bug 16c5f8a0). ``overkill`` is the excess damage past 0. Mutates ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
     ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
     ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
     HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
@@ -99,10 +100,10 @@ def _handle_hp_zero(
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
     # _wrap reads it to end combat without a death-save beat. This is the one site with both
-    # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
+    # overkill + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
     # transition the spec scopes it to; a hit on an already-downed target is the separate
     # "damage while Fallen" failure mechanic.
-    if not was_fallen and attack_result.overkill >= target.hp_max:
+    if not was_fallen and overkill >= target.hp_max:
         target.is_dead = True
     sounds.append(SOUND_PLAYER_FALLEN)
     # Handle companion KO
@@ -299,7 +300,12 @@ async def apply_attack_result(
     rose_hollowed = False
     if target.hp_current <= 0:
         hp_status, rose_hollowed = _handle_hp_zero(
-            session, target, attack_result, was_fallen=was_fallen, hp_status=hp_status, sounds=sounds
+            session,
+            target,
+            overkill=attack_result.overkill,
+            was_fallen=was_fallen,
+            hp_status=hp_status,
+            sounds=sounds,
         )
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
