@@ -51,8 +51,8 @@ def sample_combat_state(round_number: int = 1, **enemy_overrides: object) -> Com
 
     ``enemy_overrides`` set attributes on Grosh, so a caller states only what it is testing
     (``hp_current=8``, ``is_fallen=True``). Lives here for the same reason the rows above do:
-    the ACTIVE COMBAT block is rendered by warm_prompts and refreshed by background_process,
-    and their two test modules were each carrying a copy of this builder.
+    the fight reaches the DM through warm_prompts.format_combat_hot_line, and the agent,
+    prompt-region and cache-prefix test modules were each carrying a copy of this builder.
     """
     kael = CombatParticipant(id="p_kael", name="Kael", type="player", initiative=18, hp_current=20, hp_max=20, ac=14)
     grosh = CombatParticipant(id="grosh", name="Grosh", type="enemy", initiative=9, hp_current=20, hp_max=20, ac=12)

@@ -13,6 +13,7 @@ import reaction_spend
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
+from token_tracker import TokenTracker
 
 if TYPE_CHECKING:
     from background_process import BackgroundProcess
@@ -360,6 +361,7 @@ class SessionData:
     recently_revealed_element_ids: list[str] = field(default_factory=list)
 
     # Session metrics tracking
+    tokens: TokenTracker = field(default_factory=TokenTracker)
     session_xp_earned: int = 0
     session_items_found: list[str] = field(default_factory=list)
     session_quests_progressed: list[str] = field(default_factory=list)

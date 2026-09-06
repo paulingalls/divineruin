@@ -142,6 +142,11 @@ class BaseGameAgent(Agent):
             try:
                 async for chunk in Agent.default.llm_node(self, chat_ctx, tools, model_settings):
                     yielded_any = True
+                    # The ONLY tap that sees cache_creation_tokens: livekit drops it building
+                    # LLMMetrics, so `metrics_collected` cannot report a cache write.
+                    usage = getattr(chunk, "usage", None)
+                    if usage is not None:
+                        self.session.userdata.tokens.on_usage(usage)
                     yield chunk
                 return
             except Exception as e:

@@ -13,17 +13,11 @@ import db_mutations_divine
 import db_queries
 import db_training
 import event_types as E
-from bg_event_handlers import handle_events, needs_combat_refresh
+from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
 from system_prompts import build_companion_cue, is_companion_cue
-from warm_prompts import (
-    build_full_prompt,
-    build_warm_layer,
-    compose_warm_layer,
-    format_combat_section,
-    quest_objective,
-)
+from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
 if TYPE_CHECKING:
     from livekit.agents import AgentSession
@@ -49,10 +43,6 @@ class BackgroundProcess:
         self._sd = session_data
         self._task: asyncio.Task | None = None
         self._last_warm_layer: str = ""
-        # None, not "", so "no rebuild has ever SUCCEEDED" stays distinct from "empty base":
-        # _rebuild_warm_layer fail-softs on a DB blip, and composing a combat block onto an
-        # empty base would push the combat block ALONE as the agent's whole warm layer.
-        self._warm_base: str | None = None
         self._speech_queue: list[PendingSpeech] = []
         self._stop = False
         self._quest_cache: list[dict] = []
@@ -126,10 +116,7 @@ class BackgroundProcess:
     async def _process_events(self, events: list, timed_out: bool) -> None:
         needs_rebuild = self._handle_events(events)
         if needs_rebuild or timed_out:
-            # elif below, not a second if: a full rebuild already re-renders combat.
             await self._rebuild_warm_layer()
-        elif needs_combat_refresh(events):
-            await self._refresh_combat_section()
 
     def _handle_events(self, events: list) -> bool:
         needs_rebuild, self._rider_triggered = handle_events(
@@ -331,19 +318,7 @@ class BackgroundProcess:
             logger.warning("Warm layer build failed", exc_info=True)
             return
 
-        self._warm_base = base
-        await self._apply_warm(compose_warm_layer(base, format_combat_section(self._sd.combat_state)))
-
-    async def _refresh_combat_section(self) -> None:
-        """Re-render only the ACTIVE COMBAT block from in-memory state — no DB round trip.
-
-        Once per round is exactly when the DM needs it and exactly when a full rebuild is
-        least affordable: the block reads ``combat_state`` and nothing else, while
-        ``_rebuild_warm_layer`` fans out to four DB queries plus a scenes batch.
-        """
-        if self._warm_base is None:
-            return
-        await self._apply_warm(compose_warm_layer(self._warm_base, format_combat_section(self._sd.combat_state)))
+        await self._apply_warm(base)
 
     async def _apply_warm(self, warm: str) -> None:
         # Every agent that can hold the floor while this process runs is a BaseGameAgent; one
