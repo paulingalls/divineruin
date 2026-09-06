@@ -180,11 +180,16 @@ class TestTheRecapFiresOncePerSession:
         assert mock_save.await_args.args == (sd.player_id, sd.session_id, payload)
 
     @pytest.mark.asyncio
-    async def test_the_recap_covers_the_whole_session_not_the_last_agent(self):
+    async def test_the_recap_covers_the_whole_session_not_the_last_agent(self, tmp_path):
         """Both inputs are read off SessionData, so a handback cannot restart them: the
         duration is measured from the session's start and the transcript is the session's
         one file, written to before the first handoff.
+
+        _default_log_path is stubbed to hand out DISTINCT paths: the real one is second-
+        granular, so two agents entering in the same second land on one file anyway and the
+        transcript half of this guard passes without the seam existing (constraint 1).
         """
+        minted = iter([str(tmp_path / "first.log"), str(tmp_path / "second.log")])
         sd = _session_data()
         sd.session_start_time = time.time() - 600
         session = AgentSession(max_tool_steps=5, userdata=sd)
@@ -192,6 +197,7 @@ class TestTheRecapFiresOncePerSession:
         with (
             _quiet_session(real_background=True) as mock_llm,
             patch.object(ExplorationAgent, "session", property(lambda _s: session)),
+            patch("transcript._default_log_path", side_effect=lambda: next(minted)),
             patch("db_mutations.save_session_summary", new_callable=AsyncMock),
         ):
             agent = await _enter()

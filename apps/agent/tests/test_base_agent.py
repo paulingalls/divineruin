@@ -87,18 +87,26 @@ class TestBaseGameAgentLifecycle:
                 assert agent._transcript is not None
 
     @pytest.mark.asyncio
-    async def test_every_agent_in_a_session_appends_to_one_transcript(self):
+    async def test_every_agent_in_a_session_appends_to_one_transcript(self, tmp_path):
         """The transcript is SESSION-scoped, so the end-of-session recap reads the whole
         conversation. TranscriptLogger mints a fresh timestamped path per instance when given
         none, so per-agent handles left the recap holding only the last agent's half — the
         post-fight agent's, after every combat handoff.
+
+        _default_log_path is stubbed to hand out DISTINCT paths. The real one is second-
+        granular, so two agents entering in the same second collide on one filename and this
+        guard passes without the seam existing at all (constraint 1).
         """
         sd = SessionData(player_id="p", location_id="", room=None)
         mock_session = MagicMock()
         mock_session.userdata = sd
+        minted = iter([str(tmp_path / "first.log"), str(tmp_path / "second.log")])
 
         first, second = BaseGameAgent(instructions="a"), BaseGameAgent(instructions="b")
-        with patch.object(BaseGameAgent, "session", new_callable=lambda: property(lambda self: mock_session)):
+        with (
+            patch.object(BaseGameAgent, "session", new_callable=lambda: property(lambda self: mock_session)),
+            patch("transcript._default_log_path", side_effect=lambda: next(minted)),
+        ):
             await first.on_enter()
             await first.on_exit()  # the handoff
             await second.on_enter()
