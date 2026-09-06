@@ -81,7 +81,7 @@ class TestEndSessionReachesTheCloseEmit:
 
     Real AgentSession, real AgentActivity, real ExplorationAgent (constraint 9): the question
     is whether the VENDOR's shutdown ordering — ``aclose`` -> ``activity.drain()`` -> our
-    ``on_exit`` -> ``emit("close")`` (agent_session.py:1025-1058) — survives what our
+    ``on_exit`` -> ``emit("close")`` (agent_session.py:1003-1058) — survives what our
     ``on_exit`` does to the task that is driving that very ``aclose``.
     """
 
@@ -97,7 +97,10 @@ class TestEndSessionReachesTheCloseEmit:
             _quiet_session(real_background=False),
             patch("db_mutations.save_session_summary", new_callable=AsyncMock),
             patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
-            patch("exploration_agent.asyncio.sleep", new_callable=AsyncMock),
+            # The named delay, NOT `exploration_agent.asyncio.sleep`: `exploration_agent.asyncio`
+            # IS the shared module object, so patching sleep there hands an AsyncMock to every
+            # await in the block — including the real AgentSession's own start and aclose.
+            patch("exploration_agent.CLOSE_DELAY_S", 0),
         ):
             await session.start(agent)
             sd.ending_requested = True
@@ -135,9 +138,15 @@ class TestTheRecapFiresOncePerSession:
 
     @pytest.mark.asyncio
     async def test_two_fights_do_not_multiply_the_recap(self):
-        """A handback builds a NEW ExplorationAgent over the SAME SessionData, and
-        ``EventEmitter.on`` appends rather than dedupes — so an unguarded registration would
-        publish the recap once per fight."""
+        """A handback builds a NEW ExplorationAgent over the SAME SessionData, so anything
+        session-scoped that on_enter rebuilds gets a second registration on the same emitter.
+
+        The mutation this reds against is dropping ``if sd.background is None`` — a fresh
+        ``BackgroundProcess`` per handback, hence a distinct bound ``_on_session_end`` per
+        fight. Re-registering the SAME instance's handler does NOT red here and is not a
+        defect: ``EventEmitter._events`` is a ``Dict[T, Set[Callable]]`` and ``on`` calls
+        ``.add`` (rtc/event_emitter.py:15,165), so an identical bound method collapses to one.
+        """
         sd = _session_data()
         session = AgentSession(max_tool_steps=5, userdata=sd)
 

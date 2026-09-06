@@ -43,6 +43,18 @@ from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
 
+# The pause between the DM's narrative wrap-up and the actual session close, so the
+# player hears the goodbye finish before the recap arrives. Named so a test can shorten
+# it without patching `asyncio.sleep`, which is the shared module object — patching it
+# there stubs the vendor's timing for everything running in the same block.
+CLOSE_DELAY_S = 3.0
+
+
+def _log_close_failure(task: asyncio.Task) -> None:
+    if not task.cancelled() and task.exception():
+        logger.error("Delayed session close failed", exc_info=task.exception())
+
+
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
@@ -183,9 +195,13 @@ class ExplorationAgent(BaseGameAgent):
             # inside it recursed until the close emit was never reached (bug 7a04caf1).
             # Closing the session is session-scoped work; the agent only holds the handle.
             self._close_task = asyncio.create_task(self._delayed_close())
+            # Leaving the bag also left the failure unlogged: `self.session` raises
+            # RuntimeError once the agent is no longer running, so a handoff inside the
+            # wrap-up window would silently abandon the close — and with it the recap.
+            self._close_task.add_done_callback(_log_close_failure)
 
     async def _delayed_close(self) -> None:
-        await asyncio.sleep(3.0)
+        await asyncio.sleep(CLOSE_DELAY_S)
         await self.session.aclose()
 
     def static_prompt(self, sd: SessionData) -> str:

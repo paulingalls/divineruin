@@ -45,8 +45,9 @@ class TestBackgroundProcessLifecycle:
     async def test_session_close_stops_the_loop(self):
         """The session's close is the ONLY thing that stops the loop now — no agent's on_exit
         does, so nothing else would ever end it."""
-        # A LIST per event, not one handler: LiveKit's EventEmitter.on appends, and
-        # start() registers two close handlers (loop stop, session-end recap).
+        # A COLLECTION per event, not one handler: start() registers two distinct close
+        # handlers (loop stop, session-end recap) and LiveKit's EventEmitter keeps both
+        # (a set, rtc/event_emitter.py:15) — the old dict silently kept only the last.
         handlers: dict[str, list] = {}
         mock_session = MagicMock()
         mock_session.on = lambda event, cb: handlers.setdefault(event, []).append(cb)
