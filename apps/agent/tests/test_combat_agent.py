@@ -1,7 +1,13 @@
 """Tests for CombatAgent — combat-specific agent with focused tools and prompt."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from livekit.agents.llm import ChatContext, ChatMessage
+from prompt_fixtures import sample_combat_state
+
 from base_agent import BaseGameAgent
 from combat_agent import COMBAT_AGENT_TOOLS, COMBAT_SYSTEM_PROMPT, CombatAgent
+from session_data import SessionData
 
 
 class TestCombatAgentConfig:
@@ -283,3 +289,52 @@ class TestCombatBeatContract:
         prohibition = low.index("never a free cast via activate")
         carve_out = low[prohibition : prohibition + 400]
         assert "reaction" in carve_out
+
+
+class TestCombatHotContext:
+    """AC2: the fight reaches the DM as a per-turn MESSAGE, never as instructions.
+
+    The combat block lives after the cache breakpoint or it invalidates the whole prefix
+    every round (debt ce06dd8c) — so these assert on the turn context, and an
+    implementation that reaches for update_instructions reds on assert_not_called.
+    """
+
+    @staticmethod
+    def _agent_and_session(combat_state):
+        sd = SessionData(player_id="p1", location_id="accord_guild_hall")
+        sd.combat_state = combat_state
+        session = MagicMock()
+        session.userdata = sd
+        return CombatAgent(), session
+
+    @staticmethod
+    async def _take_turn(agent, session, turn_ctx):
+        with (
+            patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
+            patch.object(agent, "update_instructions", new_callable=AsyncMock) as update,
+        ):
+            await agent.on_user_turn_completed(turn_ctx, ChatMessage(role="user", content=["I swing at Grosh."]))
+        return update
+
+    async def test_the_turn_carries_the_round_and_each_hp_status_as_a_message(self):
+        agent, session = self._agent_and_session(sample_combat_state(round_number=3, hp_current=8))
+        turn_ctx = ChatContext.empty()  # the real vendor type, not a mock (constraint 9)
+
+        update = await self._take_turn(agent, session, turn_ctx)
+
+        assert turn_ctx.items, "the turn context carries nothing at all"
+        text = " ".join(
+            str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage) and item.role == "assistant"
+        )
+        assert "Round 3" in text
+        assert "Kael(healthy)" in text
+        assert "Grosh(bloodied)" in text
+        update.assert_not_called()
+
+    async def test_no_message_out_of_combat(self):
+        agent, session = self._agent_and_session(None)
+        turn_ctx = ChatContext.empty()
+
+        await self._take_turn(agent, session, turn_ctx)
+
+        assert [item for item in turn_ctx.items if isinstance(item, ChatMessage) and item.role == "assistant"] == []

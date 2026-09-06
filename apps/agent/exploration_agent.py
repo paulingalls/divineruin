@@ -27,7 +27,6 @@ from base_agent import BaseGameAgent
 from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
-from combat_resolution import hp_threshold_status
 from game_events import publish_game_event
 from inventory_tools import transact
 from mode_tools import enter_mode
@@ -42,7 +41,7 @@ from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
 from travel_tools import travel
-from warm_prompts import format_affect_context
+from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
 
@@ -211,15 +210,9 @@ class ExplorationAgent(BaseGameAgent):
         loc_name = sd.cached_location_name or sd.location_id
         parts.append(f"[Context: {loc_name}, {sd.world_time}]")
 
-        if sd.combat_state is not None:
-            cs = sd.combat_state
-            combatants = []
-            for pid in cs.initiative_order:
-                p = cs.get_participant(pid)
-                if p is not None:
-                    status = hp_threshold_status(p.hp_current, p.hp_max)
-                    combatants.append(f"{p.name}({status})")
-            parts.append(f"[COMBAT Round {cs.round_number}: {', '.join(combatants)}]")
+        combat = format_combat_hot_line(sd.combat_state)
+        if combat:
+            parts.append(combat)
 
         if sd.cached_quest_summaries:
             parts.append("[Quests: " + "; ".join(sd.cached_quest_summaries) + "]")

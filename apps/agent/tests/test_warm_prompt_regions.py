@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
 
-from warm_prompts import build_full_prompt, build_warm_layer, compose_warm_layer, format_combat_section
+from session_data import CombatParticipant, CombatState
+from warm_prompts import build_full_prompt, build_warm_layer, format_combat_hot_line
 
 
 class TestRegionTypeWarmLayer:
@@ -125,29 +126,37 @@ class TestBuildFullPrompt:
         assert result == "STATIC"
 
 
-class TestCombatSection:
-    """format_combat_section is the ACTIVE COMBAT block, rendered from combat_state alone."""
+class TestCombatHotLine:
+    """format_combat_hot_line is the per-turn combat line, rendered from combat_state alone.
+
+    One renderer for both agents' hot layer — the warm layer carries no combat block at all.
+    """
 
     def test_renders_round_and_each_participant_status(self):
-        section = format_combat_section(sample_combat_state(round_number=2, hp_current=8))
-        assert section is not None
-        assert "Round 2" in section
-        assert "- Kael (player) — healthy" in section
-        assert "- Grosh (enemy) — bloodied" in section
+        line = format_combat_hot_line(sample_combat_state(round_number=2, hp_current=8))
+        assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"
 
-    def test_fallen_participant_marked(self):
-        section = format_combat_section(sample_combat_state(hp_current=0, is_fallen=True))
-        assert section is not None
-        assert "- Grosh (enemy) — fallen [FALLEN]" in section
+    def test_fallen_participant_reads_as_fallen(self):
+        line = format_combat_hot_line(sample_combat_state(hp_current=0))
+        assert line is not None
+        assert "Grosh(fallen)" in line
 
     def test_none_when_not_in_combat(self):
-        assert format_combat_section(None) is None
+        assert format_combat_hot_line(None) is None
 
+    def test_zero_hp_reads_as_fallen_even_with_the_flag_unset(self):
+        """The status is derived from HP, not from `is_fallen` — and the two diverge.
 
-class TestComposeWarmLayer:
-    def test_appends_section_last(self):
-        composed = compose_warm_layer("BASE", "ACTIVE COMBAT\nRound 2")
-        assert composed == "BASE\n\nACTIVE COMBAT\nRound 2"
+        combat_support.py:98 is the only site that sets `is_fallen`; draethar_inner_fire.py:91
+        drives hp_current to 0 and never sets it. Deriving from HP is what keeps the DM correct
+        over that gap, so this pins the derivation rather than the flag. Story-024 deleted
+        TestWarmAndHotAgree (the warm/hot comparison) when the second renderer went away; this
+        is what keeps the divergence named.
+        """
+        p = CombatParticipant(id="d", name="Draethar", type="player", initiative=10, hp_current=0, hp_max=20, ac=14)
+        assert not p.is_fallen  # exactly the state draethar_inner_fire leaves behind
+        cs = CombatState(combat_id="c", participants=[p], initiative_order=["d"])
 
-    def test_omits_none_section(self):
-        assert compose_warm_layer("BASE", None) == "BASE"
+        line = format_combat_hot_line(cs)
+        assert line is not None
+        assert "Draethar(fallen)" in line

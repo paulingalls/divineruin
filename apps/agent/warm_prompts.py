@@ -1,4 +1,4 @@
-"""Dynamic prompt builders — warm layer, affect context, quest objectives."""
+"""Dynamic prompt builders — warm layer, hot-line renderers, affect context, quest objectives."""
 
 from __future__ import annotations
 
@@ -319,27 +319,21 @@ async def build_warm_layer(
     return "\n\n".join(sections)
 
 
-def format_combat_section(combat_state: CombatState | None) -> str | None:
-    """Render the ACTIVE COMBAT block from combat_state alone — zero I/O.
+def format_combat_hot_line(combat_state: CombatState | None) -> str | None:
+    """Render the fight as ONE hot-layer line — zero I/O.
 
-    Separate from build_warm_layer so the background process can re-render it on a
-    per-round COMBAT_UI_UPDATE without re-running the warm layer's DB fetches.
+    Hot, not warm: the warm layer is injected via update_instructions, which moves the
+    system block and so invalidates the whole cached prefix behind it. This line rides the
+    turn context as a message, after the breakpoint, so a round costs a cache READ.
     """
     if combat_state is None:
         return None
-    lines = [f"Round {combat_state.round_number}"]
+    combatants = []
     for pid in combat_state.initiative_order:
         p = combat_state.get_participant(pid)
         if p is not None:
-            status = hp_threshold_status(p.hp_current, p.hp_max)
-            fallen = " [FALLEN]" if p.is_fallen else ""
-            lines.append(f"- {p.name} ({p.type}) — {status}{fallen}")
-    return "ACTIVE COMBAT\n" + "\n".join(lines)
-
-
-def compose_warm_layer(base: str, combat_section: str | None) -> str:
-    """Join the DB-backed base with the combat block, keeping ACTIVE COMBAT last."""
-    return "\n\n".join(part for part in (base, combat_section) if part)
+            combatants.append(f"{p.name}({hp_threshold_status(p.hp_current, p.hp_max)})")
+    return f"[COMBAT Round {combat_state.round_number}: {', '.join(combatants)}]"
 
 
 def build_full_prompt(static_layer: str, warm_layer: str) -> str:

@@ -1,6 +1,12 @@
-"""The warm layer's ACTIVE COMBAT block tracks the fight it describes.
+"""The warm layer does not MOVE during a fight — the fight rides the hot layer instead.
 
-The refresh tests drive the event handler DIRECTLY (`_process_events`), never the 30s bus
+Injecting the warm layer rewrites the system prompt, and the anthropic plugin caches on the
+last system block: a per-round rewrite invalidates the prefix AND the whole message history
+behind it. So the combat block left the warm layer entirely (story-024, debt ce06dd8c) and
+the guards here pin what remains — a system prompt that stands still across a fight, and
+story-023's OTHER warm sections still refreshing across the handoff.
+
+The prompt tests drive the event handler DIRECTLY (`_process_events`), never the 30s bus
 fallback: `_run`'s timed-out branch rebuilds unconditionally, so a test that let the timer
 fire would go green against the timer and not against the fix.
 
@@ -12,11 +18,10 @@ still be driven by hand.
 import ast
 import asyncio
 import pathlib
-import re
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from prompt_fixtures import SAMPLE_LOCATION, sample_combat_state
+from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_QUEST, sample_combat_state
 
 import background_process
 import event_types as E
@@ -74,121 +79,6 @@ def _last_warm(agent: MagicMock) -> str:
     return agent.update_instructions.await_args[0][0]
 
 
-class TestCombatUiUpdateRefresh:
-    async def test_round_and_hp_advance_in_the_warm_layer(self):
-        """AC1: a COMBAT_UI_UPDATE driven through the handler re-renders the block."""
-        cs = sample_combat_state(round_number=1)
-        bg, agent = _make_bg(cs)
-        with _mock_db():
-            await bg._rebuild_warm_layer()
-            assert "Round 1" in _last_warm(agent)
-
-            cs.round_number = 2
-            _participant(cs, "grosh").hp_current = 8  # 8/20 -> bloodied
-            await bg._process_events(_ui_update(), timed_out=False)
-
-        warm = _last_warm(agent)
-        assert "Round 2" in warm
-        assert "- Grosh (enemy) — bloodied" in warm
-        assert "Round 1" not in warm
-
-    async def test_refresh_before_first_successful_rebuild_is_a_noop(self):
-        """A base that was never built is not a base: composing onto it would ship the
-        combat block as the agent's ENTIRE warm layer, silently dropping location,
-        quests, NPCs, companion and corruption."""
-        bg, agent = _make_bg(sample_combat_state(round_number=2))
-        await bg._process_events(_ui_update(), timed_out=False)
-        assert agent.update_instructions.await_count == 0
-
-    async def test_refresh_issues_no_db_query(self):
-        """AC2: the block re-renders from session.combat_state alone.
-
-        Counts awaits rather than raising from a seam: _rebuild_warm_layer wraps its gather
-        in `except Exception: return`, so a raising seam would be swallowed and this guard
-        would pass while the prompt stayed stale. The round-2 assertion pairs with the counts
-        so "refreshed nothing at all" cannot pass either.
-        """
-        cs = sample_combat_state(round_number=1)
-        bg, agent = _make_bg(cs)
-        with _mock_db():
-            await bg._rebuild_warm_layer()
-
-        cs.round_number = 2
-        with _mock_db() as seams:
-            # A real str, so that under the naive "just add it to REBUILD_EVENT_TYPES" fix the
-            # rebuild COMPLETES and this test reds on the await counts — not on a TypeError from
-            # composing a mock.
-            with patch("background_process.build_warm_layer", new_callable=AsyncMock) as build:
-                build.return_value = "BASE"
-                await bg._process_events(_ui_update(), timed_out=False)
-
-        for seam in (*seams, build):
-            assert seam.await_count == 0
-        assert "Round 2" in _last_warm(agent)
-
-
-def _round_in(text: str, pattern: str) -> str:
-    """The round number a renderer reports — asserting the match so a renderer that stops
-    emitting a round at all fails here rather than comparing None to None."""
-    match = re.search(pattern, text)
-    assert match is not None, f"no round number in: {text}"
-    return match.group(1)
-
-
-def _warm_line_for(warm: str, name: str) -> str:
-    """The one ACTIVE COMBAT line for a participant — a whole-block substring check
-    passes by accident once a second participant is in the fight."""
-    return next(line for line in warm.splitlines() if line.startswith(f"- {name} ("))
-
-
-class TestWarmAndHotAgree:
-    async def test_same_round_and_fallen_state_after_a_refresh(self):
-        """AC3: the two renderers of the same fight, compared after a handler-driven refresh."""
-        cs = sample_combat_state(round_number=1)
-        bg, agent = _make_bg(cs)
-        with _mock_db():
-            await bg._rebuild_warm_layer()
-
-            cs.round_number = 3
-            kael = _participant(cs, "p_kael")
-            kael.hp_current = 0
-            kael.is_fallen = True
-            _participant(cs, "grosh").hp_current = 8
-            await bg._process_events(_ui_update(), timed_out=False)
-
-        warm = _last_warm(agent)
-        hot = ExplorationAgent()._build_hot_context(bg._sd)
-
-        assert _round_in(hot, r"\[COMBAT Round (\d+)") == _round_in(warm, r"Round (\d+)")
-        for p in cs.participants:
-            # TWO sources, not one: hot derives `fallen` from HP, warm's [FALLEN] from the
-            # is_fallen flag. Every fall site sets both, so they agree — except
-            # draethar_inner_fire.py:90, which drives HP to 0 and never sets is_fallen.
-            hot_fallen = f"{p.name}(fallen)" in hot
-            assert hot_fallen == ("[FALLEN]" in _warm_line_for(warm, p.name))
-        assert kael.name + "(fallen)" in hot  # the comparison is not vacuously false==false
-
-
-class TestCombatEnded:
-    async def test_block_is_gone_after_combat_ends(self):
-        """AC4: unchanged trunk behaviour, pinned — COMBAT_ENDED is a full-rebuild trigger
-        and compose drops a None section."""
-        cs = sample_combat_state(round_number=1)
-        bg, agent = _make_bg(cs)
-        with _mock_db():
-            await bg._rebuild_warm_layer()
-            cs.round_number = 2
-            await bg._process_events(_ui_update(), timed_out=False)
-            assert "ACTIVE COMBAT" in _last_warm(agent)
-
-            bg._sd.combat_state = None
-            await bg._process_events(
-                [GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})], timed_out=False
-            )
-
-        assert "ACTIVE COMBAT" not in _last_warm(agent)
-
-
 def _is_running(bg: BackgroundProcess) -> bool:
     return bg._task is not None and not bg._task.done()
 
@@ -212,9 +102,9 @@ def _mock_startup_db():
     four warm-layer queries."""
     with (
         patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None),
-        _mock_db(),
+        _mock_db() as seams,
     ):
-        yield
+        yield seams
 
 
 async def _enter_exploration(session: MagicMock, sd: SessionData) -> ExplorationAgent:
@@ -244,7 +134,12 @@ async def _exit_exploration(agent: ExplorationAgent, session: MagicMock) -> None
 
 
 class TestProcessSurvivesTheHandoff:
-    """AC5: the BackgroundProcess belongs to the SESSION, not to the agent that built it."""
+    """AC4: the OTHER warm sections still refresh across the handoff, and combat is not one.
+
+    Story-023's value, unchanged — quests, location, NPCs and corruption keep reaching whichever
+    agent holds the floor. What story-024 removes is the ACTIVE COMBAT block, so this drives the
+    live loop with a REBUILD event (a quest advancing) while a real fight is underway.
+    """
 
     async def test_the_running_loop_updates_the_combat_agent_mid_fight(self):
         """Driven through the live loop, not `_process_events`: a stopped process can still be
@@ -253,25 +148,33 @@ class TestProcessSurvivesTheHandoff:
         session = MagicMock()
         session.userdata = sd
 
-        with _mock_startup_db():
+        with _mock_startup_db() as (quests, _location, _npcs, _training):
             exploration = await _enter_exploration(session, sd)
             bg = sd.background
             assert bg is not None
-            await _settle(lambda: bg._warm_base is not None, "built its initial warm layer")
+            await _settle(lambda: bg._last_warm_layer != "", "built its initial warm layer")
 
             await _exit_exploration(exploration, session)
 
             combat = CombatAgent()
             session.current_agent = combat
+            # A LIVE fight, so "no ACTIVE COMBAT block" below cannot pass vacuously.
             sd.combat_state = sample_combat_state(round_number=2, hp_current=8)
             try:
-                sd.event_bus.publish(GameEvent(event_type=E.COMBAT_UI_UPDATE, payload={}))
-                await _settle(lambda: "ACTIVE COMBAT" in combat.instructions, "reached the combat agent")
+                quests.return_value = [SAMPLE_QUEST]
+                sd.event_bus.publish(
+                    GameEvent(
+                        event_type=E.QUEST_UPDATED,
+                        payload={"quest_name": SAMPLE_QUEST["quest_name"], "objective": "Find the source."},
+                    )
+                )
+                await _settle(lambda: SAMPLE_QUEST["quest_name"] in combat.instructions, "reached the combat agent")
 
                 assert _is_running(bg)
                 warm = str(combat.instructions)
-                assert "Round 2" in warm
-                assert "- Grosh (enemy) — bloodied" in warm
+                assert "Find the source of the anomaly." in warm  # the quest section refreshed
+                assert SAMPLE_LOCATION["name"] in warm  # and the location section is still there
+                assert "ACTIVE COMBAT" not in warm  # but the fight never enters the warm layer
                 # The static half is the CURRENT agent's own: composing the exploration prompt
                 # here would silently replace COMBAT_SYSTEM_PROMPT mid-fight.
                 assert warm.startswith(COMBAT_SYSTEM_PROMPT)
@@ -296,7 +199,7 @@ class TestStartedOnceForTheSession:
             await _enter_exploration(session, sd)
             first = sd.background
             assert first is not None
-            await _settle(lambda: first._warm_base is not None, "built its initial warm layer")
+            await _settle(lambda: first._last_warm_layer != "", "built its initial warm layer")
 
             try:
                 await _enter_exploration(session, sd)
@@ -322,3 +225,58 @@ class TestStartedOnceForTheSession:
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "BackgroundProcess"
         }
         assert built_in == {"exploration_agent.py"}
+
+
+# The per-round warm-refresh path, by name. Source text and not AST: "gone from the tree, not
+# left dormant behind a flag" includes a commented-out body, which an AST walk cannot see.
+DELETED_REFRESH_PATH = (
+    "format_combat_section",
+    "_refresh_combat_section",
+    "needs_combat_refresh",
+    "COMBAT_REFRESH_EVENT_TYPES",
+    "compose_warm_layer",
+)
+
+
+class TestTheRefreshPathIsGone:
+    def test_no_agent_module_still_names_it(self):
+        """AC5: the trigger that rewrote the system prompt every round is deleted, not disabled.
+
+        Top-level modules only — `tests/` is not matched by the glob, so this file may name
+        the strings freely.
+        """
+        agent_dir = pathlib.Path(background_process.__file__).parent  # cwd-independent
+        survivors = {
+            (path.name, name)
+            for path in agent_dir.glob("*.py")
+            for name in DELETED_REFRESH_PATH
+            if name in path.read_text()
+        }
+        assert survivors == set()
+
+
+class TestTheSystemPromptDoesNotMoveDuringAFight:
+    async def test_three_rounds_move_the_system_prompt_zero_times(self):
+        """AC1: the prefix is written at the handoff and never again while the fight runs."""
+        cs = sample_combat_state(round_number=1)
+        bg, agent = _make_bg(cs)
+        with _mock_db():
+            await bg._rebuild_warm_layer()
+            at_handoff = bg._last_warm_layer
+            assert at_handoff, "nothing was ever composed — the counts below would be vacuous"
+            agent.update_instructions.reset_mock()
+
+            for round_number in (2, 3, 4):
+                cs.round_number = round_number
+                _participant(cs, "grosh").hp_current = 20 - 4 * round_number
+                await bg._process_events(_ui_update(), timed_out=False)
+
+            assert agent.update_instructions.await_count == 0
+
+            # Byte-identical from the handoff into combat until the handback: a rebuild forced
+            # after three rounds of mutated combat state composes the same string, so it does
+            # not reach the agent either. Reds the moment combat data leaks back in.
+            await bg._rebuild_warm_layer()
+
+        assert bg._last_warm_layer == at_handoff
+        assert agent.update_instructions.await_count == 0
