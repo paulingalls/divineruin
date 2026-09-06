@@ -9,6 +9,7 @@ Set ACCEPTANCE_NO_REUSE=1 to tear the container down after the session.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import sys
 import threading
@@ -176,13 +177,18 @@ def harness(migrated_db: str) -> Iterator[SimpleNamespace]:
     os.environ["DATABASE_URL"] = migrated_db
     run_sync(db.close_all())
 
-    h = SimpleNamespace(run_sync=run_sync, state={})
+    # `stack` spans the discrete sync BDD steps: a patch or a log handler a Given step installs
+    # has to still be in place when a later Then step reads it, which a per-step `with` cannot do.
+    h = SimpleNamespace(run_sync=run_sync, state={}, stack=contextlib.ExitStack())
     try:
         yield h
     finally:
         session = h.state.get("session")
         if session is not None:
             run_sync(session.aclose())
+        # Before close_all: a registered callback may still need run_sync (e.g. deleting a
+        # per-scenario combat row from the shared testcontainer).
+        h.stack.close()
         run_sync(db.close_all())
         loop.call_soon_threadsafe(loop.stop)
         thread.join()
