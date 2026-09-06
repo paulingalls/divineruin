@@ -99,11 +99,13 @@ async def _request_ability_activation_impl(
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
-        # Record the spend as ONE field write on the CombatState the session holds NOW. Assigning a
-        # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
-        # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
-        # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
-        # prompt allows it mid-fight. AFTER the activation, so a refusal still costs nothing.
+        # Record the spend as ONE field write on the CombatState the session holds NOW, never by
+        # assigning a pre-await snapshot back: this transaction is the window in which some other
+        # path mutates the live state in place, and a snapshot would erase it. Every such writer
+        # now holds this same lock (draethar_inner_fire took it last), so the remaining reason is
+        # the plain one — a snapshot cannot see a write that happened after it was taken, and the
+        # lock is a guarantee about THIS process, not a substitute for the rule. AFTER the
+        # activation, so a refusal still costs nothing.
         combat_hold.record_spend(session.combat_state, session.player_id, ability_id)
         return result
 

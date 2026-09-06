@@ -241,8 +241,24 @@ class BackgroundProcess:
         if not self._speech_queue:
             return
 
-        top = max(self._speech_queue)
-        self._speech_queue.clear()
+        # A fight HOLDS proactive speech. The loop is session-scoped since story-023, so it runs
+        # through combat now, and the DM is mid-beat with the phase loop owning the floor — the
+        # same reason _check_companion_idle and _check_scene_beat_hints refuse to produce here.
+        # Held rather than dropped: an event cue is one-shot, so discarding it loses the
+        # announcement outright, where the idle/hint producers are remade by their own timers.
+        speakable, held = self._speech_queue, []
+        if self._sd.in_combat:
+            speakable = [s for s in self._speech_queue if s.combat_safe]
+            held = [s for s in self._speech_queue if not s.combat_safe]
+        if not speakable:
+            return
+
+        # Newest wins a tie, which matters only because of the hold above: `max` returns the FIRST
+        # maximal element, so a cue carried through the whole fight would outrank the same-priority
+        # cue the fight's END raises — on a defeat, a held god whisper spoken in place of "the
+        # player has fallen". At equal urgency the most recent event is the one the player is in.
+        top = max(speakable, key=lambda s: (s.priority, s.created))
+        self._speech_queue = held
 
         try:
             # Fire stinger SFX before god whisper speech

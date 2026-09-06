@@ -118,6 +118,65 @@ class TestEndCombat:
         assert mock_mutations.delete_combat_state.await_count == 1
 
     @pytest.mark.asyncio
+    async def test_an_end_arriving_mid_phase_waits_and_finds_the_enemy_actions_held(self):
+        """story-016 AC10, the half no test executed: resolve_phase and end_combat SERIALISE.
+
+        A round is two commits, and between them the enemy actions sit persisted as pending.
+        end_combat refuses while they are held — but that refusal reads ``session.combat_state``,
+        which resolve_phase only rebinds AFTER its commit. So during the ally commit the session
+        still holds the pristine pre-call state, whose ``held_actions`` is EMPTY, and an end
+        arriving there sails through the refusal and pays the party with an enemy's turn still
+        queued. Only the lock closes that: the waiter re-reads the state the phase adopted.
+
+        The sibling of the guard above — same two-callers-one-payout shape, the other pair of
+        callers. Deleting ``async with session.combat_end_lock`` from ``_resolve_phase_impl``
+        leaves the whole combat suite green without it.
+        """
+        import asyncio
+
+        from combat._helpers import _ctx_at_resolution, _resolve_deps
+
+        import combat_turn
+
+        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20)  # the enemy survives, so its turn is held
+        deps = _resolve_deps(damage=3)
+        deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
+        mock_mutations = _make_end_combat_mocks()
+
+        entered, release = asyncio.Event(), asyncio.Event()
+        real_transaction = deps["db_mod"].transaction
+
+        def gated_transaction():
+            entered.set()
+
+            class _Gate:
+                async def __aenter__(self):
+                    await release.wait()
+                    return await real_transaction().__aenter__()
+
+                async def __aexit__(self, *exc):
+                    return False
+
+            return _Gate()
+
+        deps["db_mod"].transaction = gated_transaction
+
+        phase = asyncio.create_task(combat_turn._resolve_phase_impl(ctx, **deps))
+        await entered.wait()
+        end = asyncio.create_task(
+            _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations, db_mod=_fake_db_mod())
+        )
+        await asyncio.sleep(0)
+        release.set()
+
+        assert not isinstance(await phase, tuple), "the ally commit does not end this fight"
+        with pytest.raises(ToolError, match="held pending"):
+            await end
+        # Nobody was paid and the fight is still on: the end is honest, not merely late.
+        mock_mutations.delete_combat_state.assert_not_awaited()
+        assert ctx.userdata.combat_state is not None
+
+    @pytest.mark.asyncio
     async def test_handoff_survives_a_failing_agent_build(self):
         """A raise while constructing the handoff agent must not strand the party in combat.
 

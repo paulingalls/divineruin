@@ -16,15 +16,18 @@ knocks on, so a self-immolating Draethar falls (or, Stage-2+ Hollowed, rises) ex
 would leave them (story-026).
 """
 
+import asyncio
 import json
 from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _call, _ctx_at_resolution, _resolve_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod, make_mock_room, published_payloads
 
 import combat_death_save
 import combat_phase
+import combat_turn
 import conditions
 import event_types as E
 import resonance as resonance_mod
@@ -387,3 +390,81 @@ async def test_no_combat_rejected():
     queries.get_player.assert_not_awaited()  # combat gate fires before the player fetch
     res_mut.update_player_resonance.assert_not_awaited()
     hp_mut.update_player_hp.assert_not_awaited()
+
+
+# --- the seam: Inner Fire spent at a Beat-3 pause, against a real held blow (story-016 + -026) ---
+
+
+async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
+    """Both halves real: the REAL Beat-3 hold, paused on a REAL rolled-but-unapplied enemy blow,
+    with the REAL Inner Fire tool burning HP in the gap.
+
+    This is the seam the two stories left between them. story-016 holds the enemy's blow with an
+    absolute ``target_hp_remaining`` captured at roll time; story-026 routed the burn through the
+    zero-HP door but it still writes ``hp_current`` on the live participant; and the combat prompt
+    tells the DM that Inner Fire is one of exactly three things it may activate mid-fight. Neither
+    story's own tests can see it — 016's never spend a resource at the pause, and 026's never hold
+    a blow — so it needed a test that drives both.
+    """
+    ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20)
+    deps = _resolve_deps(damage=3)
+    deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
+    session = ctx.userdata
+    session.resonance.current = 9
+
+    await _call(ctx, deps)  # the ally commit; the enemy blow is held
+    await _call(ctx, deps)  # the pre-roll window
+    await _call(ctx, deps)  # the roll lands in the held action; the damage does not
+    assert session.combat_state.open_window["stage"] == "post_roll"
+    assert session.combat_state.get_participant("player_1").hp_current == 20
+
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=6)
+    burn = await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
+    assert burn["hp_remaining"] == 14
+
+    await _call(ctx, deps)  # the window closes and the held blow finally lands
+
+    assert session.combat_state.get_participant("player_1").hp_current == 11
+
+
+async def test_inner_fire_serialises_against_the_phase_loop():
+    """Inner Fire writes the LIVE participant, and resolve_phase ADOPTS a deep copy — so the two
+    have to serialise on ``session.combat_end_lock`` or the burn is silently undone.
+
+    resolve_phase copies ``combat_state``, works the copy through its transaction, and rebinds
+    ``session.combat_state`` to it post-commit. An unlocked writer that lands in that gap has
+    everything it wrote erased on adoption. That was one ``hp_current`` assignment until
+    story-026, which routed the burn through ``_handle_hp_zero`` and so widened the loss to
+    ``is_fallen``/``is_dead``/``type``/``conditions`` — a Draethar who burned themselves down and
+    FELL is stood back up with the round's once-per-encounter spend already gone.
+
+    The gate suspends the phase AFTER its deep copy (the copy is taken inside the transaction,
+    before this write), which is the only ordering in which the defect exists: gating the
+    transaction's entry instead lets the burn land before the copy, where it survives for the
+    wrong reason and the guard certifies nothing.
+    """
+    ctx = _ctx_at_resolution(player_hp=4, enemy_hp=20, room=make_mock_room())
+    deps = _resolve_deps(damage=3)
+    deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
+
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def gated_save(*args, **kwargs):
+        entered.set()
+        await release.wait()
+
+    deps["mutations"].save_combat_state = AsyncMock(side_effect=gated_save)
+
+    phase = asyncio.create_task(combat_turn._resolve_phase_impl(ctx, **deps))
+    await entered.wait()
+
+    burn = asyncio.create_task(_invoke(ctx, *_mocks(_player(hp_current=4), roll_total=6)))
+    await asyncio.sleep(0)
+    release.set()
+    await phase
+    await burn
+
+    burned = ctx.userdata.combat_state.get_participant("player_1")
+    assert burned.hp_current == 0, "the phase adopted a copy taken before the burn and healed it away"
+    assert burned.is_fallen is True, "story-026's fall went with it — nothing owes this player a death save"
+    assert ctx.userdata.draethar_inner_fire_used is True

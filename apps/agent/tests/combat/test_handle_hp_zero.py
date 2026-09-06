@@ -259,7 +259,7 @@ class TestTheDoorIsTheOnlyDoor:
         assert _attribute_writers("hp_current") == {
             # The blow and the burn: both drive HP down, both knock (story-026).
             ("combat_support.py", "apply_attack_result"),
-            ("draethar_inner_fire.py", "_inner_fire_impl"),
+            ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
             ("combat_support.py", "_handle_hp_zero"),
             # The nat-20 revive writes 1 UPWARD and clears is_fallen in the same block, so it

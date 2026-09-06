@@ -18,7 +18,8 @@ Mirrors the veil_ward_tools seam: module-injection keyword args (db_mod/queries_
 hp_mutations_mod/resonance_mutations_mod/resonance_events_mod/racial_mod/dice_mod) for test
 mocking, a single db.transaction() block (the participant's HP and its zero-HP transition are
 written inside it), and a post-commit in-memory sync + RESONANCE_CHANGED push (mirroring the
-spell cast path).
+spell cast path). The whole call runs under session.combat_end_lock: it mutates the live
+CombatState, and the paths that adopt a copy of it would otherwise erase the burn.
 """
 
 import json
@@ -44,7 +45,28 @@ logger = logging.getLogger("divineruin.tools")
 _DRAETHAR = "draethar"
 
 
-async def _inner_fire_impl(
+async def _inner_fire_impl(context: RunContext[SessionData], **di) -> str:
+    """Serialise the burn against the paths that ADOPT a copy of the combat state.
+
+    resolve_phase and request_death_save both snapshot ``combat_state``, await a transaction, then
+    rebind the session to the snapshot. This tool writes the LIVE participant in place, so an
+    unlocked burn landing in that gap is erased wholesale on adoption — and since story-026 routed
+    it through ``_handle_hp_zero`` that is no longer one HP field but the fall itself
+    (``is_fallen``/``is_dead``/``type``/``conditions``), while the once-per-encounter spend stays
+    gone. Holding the lock for the WHOLE call also means the gates below re-read a combat_state a
+    concurrent end_combat has already cleared, and refuse honestly rather than burning a fight
+    that is over.
+
+    Not reentrant, and safe: ``activate`` dispatches here directly (activate_tools), so no lock
+    holder reaches this tool.
+    """
+    context.disallow_interruptions()
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _inner_fire_locked(context, **di)
+
+
+async def _inner_fire_locked(
     context: RunContext[SessionData],
     *,
     db_mod=db,
@@ -56,7 +78,6 @@ async def _inner_fire_impl(
     dice_mod=dice,
     concentration_break_mod=concentration_break,
 ) -> str:
-    context.disallow_interruptions()
     session: SessionData = context.userdata
     player_id = session.player_id
     logger.info("inner_fire called: player=%s", player_id)

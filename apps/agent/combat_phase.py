@@ -232,9 +232,10 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     window it existed to protect.
 
     Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
-    ``state`` here and the caller assigned the copy back after its await, which erased anything an
-    unlocked in-place writer committed meanwhile (draethar_inner_fire mutates participants directly
-    and holds no combat_end_lock). The caller records the spend as one field write instead."""
+    ``state`` here and the caller assigned the copy back after its await, which erased anything
+    another in-place writer committed meanwhile (draethar_inner_fire mutates participants
+    directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
+    it). The caller records the spend as one field write instead."""
     window = state.open_window
     if window is None:
         raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")

@@ -114,10 +114,11 @@ def _held_target(state, head: dict):
 def halve(head: dict, target) -> None:
     """Rewrite the held roll so the blow deals half its damage. Mutates ``head["roll"]``.
 
-    The HP write is recomputed, not scaled: ``apply_attack_result`` sets ``hp_current`` from the
-    roll's ABSOLUTE ``target_hp_remaining`` (combat_support.py:286) and never derives it from
-    ``damage``, so halving the damage number alone would leave the player at the unhalved HP.
-    ``target.hp_current`` IS the pre-roll HP — the post-roll window is pre-damage by construction.
+    ``damage`` is the load-bearing field: ``apply_attack_result`` derives ``hp_current`` from the
+    target's LIVE HP minus this number, so halving it is what halves the blow. The absolute
+    ``target_hp_remaining``/``overkill``/``target_killed`` are rewritten alongside it to keep the
+    serialized roll internally coherent across a persist/reload, not because the apply half reads
+    them — it stopped, so that a pause that moves the target's HP is not undone at impact.
 
     Rewriting the SERIALIZED ROLL rather than the summary is what carries the halving to all five
     of its consumers through the untouched trunk path: hp_current, the concentration DC, the

@@ -351,6 +351,10 @@ class TestSpeechQueue:
         """_queue_speech should add speech to queue."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
+        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
+        # tests are about which queued cue is chosen, and delivery now holds everything but a
+        # combat-safe cue while a fight runs.
+        mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
 
@@ -366,6 +370,10 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
+        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
+        # tests are about which queued cue is chosen, and delivery now holds everything but a
+        # combat-safe cue while a fight runs.
+        mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = []
@@ -380,6 +388,10 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
+        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
+        # tests are about which queued cue is chosen, and delivery now holds everything but a
+        # combat-safe cue while a fight runs.
+        mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
@@ -399,6 +411,10 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
+        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
+        # tests are about which queued cue is chosen, and delivery now holds everything but a
+        # combat-safe cue while a fight runs.
+        mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
@@ -416,6 +432,10 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock(side_effect=Exception("TTS failed"))
         mock_sd = MagicMock()
+        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
+        # tests are about which queued cue is chosen, and delivery now holds everything but a
+        # combat-safe cue while a fight runs.
+        mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [

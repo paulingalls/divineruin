@@ -287,8 +287,17 @@ async def apply_attack_result(
     # death — without this guard overkill = damage - 0 = damage would wrongly flag is_dead.
     was_fallen = target.is_fallen
 
-    # Update target HP
-    target.hp_current = attack_result.target_hp_remaining
+    # HP is derived from the target's LIVE hp_current and the roll's DAMAGE, never from the roll's
+    # absolute ``target_hp_remaining``. On the unpaused path the two are identical by construction
+    # — roll_attack was handed this same hp_current a moment earlier. They diverge only when
+    # something moved the target's HP between the roll and the damage, which the Beat-3 hold makes
+    # reachable: a pause hands the floor back to the DM, and the combat prompt names Inner Fire as
+    # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
+    # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
+    # hides the fall it caused, so every verdict below reads hp_before instead.
+    hp_before = target.hp_current
+    overkill = max(0, attack_result.damage - hp_before)
+    target.hp_current = max(0, hp_before - attack_result.damage)
 
     # Determine sounds
     sounds: list[str] = []
@@ -306,7 +315,7 @@ async def apply_attack_result(
         hp_status, rose_hollowed = _handle_hp_zero(
             session,
             target,
-            overkill=attack_result.overkill,
+            overkill=overkill,
             was_fallen=was_fallen,
             hp_status=hp_status,
             sounds=sounds,

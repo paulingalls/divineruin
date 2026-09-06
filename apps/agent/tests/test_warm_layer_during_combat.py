@@ -279,3 +279,32 @@ class TestTheSystemPromptDoesNotMoveDuringAFight:
 
         assert bg._last_warm_layer == at_handoff
         assert agent.update_instructions.await_count == 0
+
+    async def test_a_combat_round_issues_no_warm_layer_db_query(self):
+        """AC5's other half, and the half ``update_instructions.await_count == 0`` cannot see.
+
+        Putting ``COMBAT_UI_UPDATE`` back into ``REBUILD_EVENT_TYPES`` leaves every other guard in
+        this file green: the warm layer no longer CONTAINS the fight, so the rebuild recomposes a
+        byte-identical string, ``_apply_warm`` dedupes it, and the system prompt never moves. What
+        it silently restores is the COST — the four concurrent DB queries ``_rebuild_warm_layer``
+        fans out to, once per combat round, for a layer that cannot have changed. So the claim has
+        to be made where it bites: on the query seam, not on the injection.
+
+        story-023 owned this AC while the combat block still lived in the warm layer; story-024
+        deleted the block and the refresh path, and the assertion went with them.
+        """
+        cs = sample_combat_state(round_number=1)
+        bg, _agent = _make_bg(cs)
+        with _mock_db() as seams:
+            await bg._rebuild_warm_layer()  # the build at the handoff into combat
+            for seam in seams:
+                assert seam.await_count == 1, "the handoff build must really query, or the reset below is vacuous"
+                seam.reset_mock()
+
+            for round_number in (2, 3, 4):
+                cs.round_number = round_number
+                _participant(cs, "grosh").hp_current = 20 - 4 * round_number
+                await bg._process_events(_ui_update(), timed_out=False)
+
+            for seam in seams:
+                seam.assert_not_awaited()
