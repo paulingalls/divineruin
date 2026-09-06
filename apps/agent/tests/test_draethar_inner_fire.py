@@ -10,7 +10,10 @@ The -3 / "1d6" values come from the story-001 racial table; the real racial_reso
 used (the autouse seed_racial_resonance conftest fixture populates it), so the test exercises the
 real lookup. dice is injected for a deterministic roll. Inner Fire is combat-scoped, so the
 session carries a CombatState with the Draethar as a participant; HP is written to both the
-participant (in-memory) and persisted via update_player_hp, mirroring combat_turn.py.
+participant (in-memory) and persisted via update_player_hp, mirroring combat_turn.py. A burn that
+reaches 0 HP goes through combat_support._handle_hp_zero — the one door every zero-HP transition
+knocks on, so a self-immolating Draethar falls (or, Stage-2+ Hollowed, rises) exactly as a blow
+would leave them (story-026).
 """
 
 import json
@@ -18,11 +21,21 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_db_mod
+from sample_fixtures import make_context, make_db_mod, make_mock_room, published_payloads
 
+import combat_death_save
+import combat_phase
+import event_types as E
 import resonance as resonance_mod
 from draethar_inner_fire import _inner_fire_impl
 from session_data import CombatParticipant, CombatState
+from tool_support import SOUND_PLAYER_FALLEN
+from warm_prompts import format_combat_hot_line
+
+
+def _sounds(room) -> list[str]:
+    """Sound names published to the mock room, in order (each rides a PLAY_SOUND payload)."""
+    return [p["sound_name"] for p in published_payloads(room) if p["type"] == E.PLAY_SOUND]
 
 
 def _player(race: str = "draethar", hp_current: int = 20) -> dict:
@@ -36,8 +49,8 @@ def _player(race: str = "draethar", hp_current: int = 20) -> dict:
     }
 
 
-def _combat_ctx(*, resonance: int = 9, hp_current: int = 20, used: bool = False):
-    ctx = make_context()
+def _combat_ctx(*, resonance: int = 9, hp_current: int = 20, used: bool = False, room=None, player_conditions=None):
+    ctx = make_context(room=room)
     session = ctx.userdata
     session.resonance.current = resonance
     session.draethar_inner_fire_used = used
@@ -45,7 +58,14 @@ def _combat_ctx(*, resonance: int = 9, hp_current: int = 20, used: bool = False)
         combat_id="c1",
         participants=[
             CombatParticipant(
-                id="player_1", name="Varr", type="player", initiative=14, hp_current=hp_current, hp_max=20, ac=14
+                id="player_1",
+                name="Varr",
+                type="player",
+                initiative=14,
+                hp_current=hp_current,
+                hp_max=20,
+                ac=14,
+                conditions=player_conditions or [],
             ),
             CombatParticipant(id="goblin_1", name="Goblin", type="enemy", initiative=10, hp_current=7, hp_max=7, ac=13),
         ],
@@ -142,6 +162,38 @@ async def test_hp_floors_at_zero():
     hp_mut.update_player_hp.assert_awaited_once_with("player_1", 0, conn=ANY)
     assert session.combat_state.get_participant("player_1").hp_current == 0
     assert result["hp_remaining"] == 0
+
+
+# --- the zero-HP transition goes through the one door (story-026) ----------------
+
+
+async def test_burn_to_zero_falls_and_is_death_save_eligible():
+    """Bug 16c5f8a0: the burn drove HP to 0 without knocking on _handle_hp_zero, so `is_fallen`
+    stayed False and the Draethar was invisible to every consumer of that flag — un-downable AND
+    un-stabilizable for the rest of the fight — while the hot line already read "fallen".
+
+    The consumers are asserted against the state the burn REALLY produced, not a hand-built
+    participant: building the 0-HP participant by hand is what let the bug's own recorded
+    falsifier red both before and after the fix.
+    """
+    room = make_mock_room()
+    ctx = _combat_ctx(hp_current=3, room=room)
+    session = ctx.userdata
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(hp_current=3), roll_total=6)
+
+    await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
+
+    p = session.combat_state.get_participant("player_1")
+    assert p.is_fallen is True
+    assert p.is_dead is False  # overkill 3 < hp_max 20 — a burn-out is not instant death
+    assert SOUND_PLAYER_FALLEN in _sounds(room)
+    # AC 4: the HP-derived hot-line token and the flag report the same thing, and cannot diverge.
+    assert "Varr(fallen)" in (format_combat_hot_line(session.combat_state) or "")
+    # The flag's consumers: the phase wrap owes them a death save, and the tool accepts them —
+    # named or not.
+    assert combat_phase._wrap(session.combat_state).death_saves_due == ["player_1"]
+    assert combat_death_save._resolve_faller(session.combat_state, None) is p
+    assert combat_death_save._resolve_faller(session.combat_state, "player_1") is p
 
 
 async def test_persists_combat_state_after_self_damage():
