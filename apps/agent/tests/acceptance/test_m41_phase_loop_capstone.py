@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player
 from combat._helpers import _damage_resolver, _resolution_state
 from sample_fixtures import make_context
@@ -74,7 +75,7 @@ async def test_full_lifecycle_to_victory_on_real_pg(reset_db_pool: str) -> None:
             enemy.id: {"type": "attack", "action": enemy_action, "target_id": player_id},
         }
         await combat_turn._declare_phase_impl(ctx, decls)
-        result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(11))
+        result = await _resolve_round(ctx, resolver=_damage_resolver(11))
         if isinstance(result, tuple):
             break
 
@@ -168,9 +169,9 @@ async def test_resolution_packets_carry_dramatic_and_crit_flags(reset_db_pool: s
                 enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
             },
         )
-        result = await combat_turn._resolve_phase_impl(ctx, resolver=_crit_resolver())
-        assert isinstance(result, str), "a non-lethal crit loops the phase rather than ending it"
-        packets = json.loads(result)["packets"]
+        result = await _resolve_round(ctx, resolver=_crit_resolver())
+        assert not isinstance(result, tuple), "a non-lethal crit loops the phase rather than ending it"
+        packets = result["packets"]
         resolved = [p for p in packets if p.get("resolved")]
         assert resolved and all(p["critical"] is True for p in resolved)
     finally:

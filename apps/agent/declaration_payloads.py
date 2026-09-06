@@ -84,16 +84,7 @@ class RetreatDecl(BaseModel):
     actor_id: str = Field(description="The participant declaring this action.")
 
 
-class ReactionDecl(BaseModel):
-    """Arm a reaction ability so it can fire during this round's resolution."""
-
-    kind: Literal["reaction"]
-    actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description="The EXACT id of the actor's reaction ability.")
-    trigger: str = Field(description='The ability\'s catalog window, e.g. "on_hit".')
-
-
-DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, DefendDecl, RetreatDecl, ReactionDecl]
+DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, DefendDecl, RetreatDecl]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
 DECL_VARIANTS: tuple[type[BaseModel], ...] = (
@@ -103,7 +94,6 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     ManeuverDecl,
     DefendDecl,
     RetreatDecl,
-    ReactionDecl,
 )
 
 
@@ -132,7 +122,10 @@ def _raw(decl: DeclVariant) -> dict:
         return {"type": "defend"}
     if isinstance(decl, RetreatDecl):
         return {"type": "retreat"}
-    return {"type": "reaction", "action": decl.action, "trigger": decl.trigger}
+    # Not a fallthrough: an unmapped variant that inherited the last branch would reach the engine
+    # as some OTHER actor's action, and the round-trip test would pass because both sides read the
+    # same wrong type. A new variant fails here instead.
+    raise ValueError(f"no engine mapping for declaration variant {type(decl).__name__}")
 
 
 def to_engine_declarations(declarations: list[DeclVariant]) -> dict[str, dict]:

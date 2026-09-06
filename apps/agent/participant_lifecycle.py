@@ -4,8 +4,8 @@ focused and under the module-size limit).
 Two setup functions register LiveKit ``room.on`` handlers over a live session's participants:
 
 - ``_setup_reconnection`` — disconnect/grace-timeout/reconnect for the PRIMARY player (any agent
-  type). A drop pauses the background process and arms a grace timeout; a reconnect within the
-  grace window resumes and re-greets.
+  type). A drop pauses the session's background process and arms a grace timeout; a reconnect
+  within the grace window resumes and re-greets.
 - ``_setup_party_join`` — the live multi-PC trigger (M18 story-001): a SECOND participant joining
   the room becomes a PartyMember with its own hydrated per-member state.
 
@@ -62,9 +62,8 @@ def _setup_reconnection(
             return
         userdata.player_disconnected = True
         userdata.disconnect_time = time.time()
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.pause()
+        if userdata.background:
+            userdata.background.pause()
         reconnect_task = asyncio.create_task(_grace_timeout())
 
     @room.on("participant_connected")
@@ -76,9 +75,8 @@ def _setup_reconnection(
         if reconnect_task and not reconnect_task.done():
             reconnect_task.cancel()
             reconnect_task = None
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.resume()
+        if userdata.background:
+            userdata.background.resume()
         fire = getattr(agent, "_fire_and_forget", None)
         reconnect_reply = session.generate_reply(instructions=_build_reconnect_instruction(userdata))
         if fire:

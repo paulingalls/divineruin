@@ -1,5 +1,6 @@
 """Tests for CreationAgent — creation-only voice agent."""
 
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -49,6 +50,20 @@ class TestCreationAgentInit:
             "set_creation_choice",
             "finalize_character",
         }
+
+    def test_prompt_commands_no_tool_the_agent_lacks(self):
+        """A "Call <tool>" directive naming an unregistered tool is a turn the agent cannot
+        complete — the LLM is told to reach for something absent from its schema.
+
+        Derived from CREATION_TOOLS rather than listing offenders by name, so a tool added to
+        the prompt without being added to the agent reds on its own. The snake_case shape
+        keeps English ("Call BEFORE", "call when") out of the commanded set.
+        """
+        from creation_agent import CREATION_TOOLS
+
+        commanded = set(re.findall(r"[Cc]all ([a-z]+(?:_[a-z]+)+)", CREATION_SYSTEM_PROMPT))
+        available = {t.__name__ for t in CREATION_TOOLS}
+        assert commanded <= available, f"creation prompt commands absent tools: {commanded - available}"
 
     def test_accepts_chat_ctx(self):
         from creation_agent import CreationAgent

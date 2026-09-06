@@ -50,8 +50,17 @@ def _queue(
     priority: SpeechPriority,
     instructions: str,
     stinger_sound: str | None = None,
+    *,
+    combat_safe: bool = False,
 ) -> None:
-    speech_queue.append(PendingSpeech(priority=priority, instructions=instructions, stinger_sound=stinger_sound))
+    speech_queue.append(
+        PendingSpeech(
+            priority=priority,
+            instructions=instructions,
+            stinger_sound=stinger_sound,
+            combat_safe=combat_safe,
+        )
+    )
 
 
 def handle_events(
@@ -73,8 +82,15 @@ def handle_events(
 
         if ev.event_type == E.VAELTI_ECHO_WARNING:
             # Vaelti Hyper-awareness (story-009): voice the 1-round advance warning a beat
-            # before the Hollow Echo lands. CRITICAL — same urgency band as god whisper.
-            _queue(speech_queue, SpeechPriority.CRITICAL, vaelti_echo_warning.WARNING_INSTRUCTION)
+            # before the Hollow Echo lands. CRITICAL — same urgency band as god whisper, and the
+            # one cue that must reach the player MID-FIGHT: a warning held until the fight ends is
+            # not a warning. Everything else here waits (see BackgroundProcess._deliver_speech).
+            _queue(
+                speech_queue,
+                SpeechPriority.CRITICAL,
+                vaelti_echo_warning.WARNING_INSTRUCTION,
+                combat_safe=True,
+            )
             continue
 
         if ev.event_type == E.LOCATION_CHANGED:

@@ -85,7 +85,8 @@ async def _request_death_save_impl(
     session.combat_state to the snapshot. Unlocked, any field another path committed on the live
     state during that await is silently erased on adoption — a reaction spent through
     ability_tools (which does hold this lock) has its resource deduction committed and its
-    reactions_available flag restored to True, so the player pays and keeps the reaction.
+    reactions_available spend record reverted to unspent, so the player pays and keeps the
+    reaction, and story-018 loses the binding that says which blow it answered.
     Not reentrant, and safe: no lock holder reaches this tool (only combat_agent's toolset does)."""
     session: SessionData = context.userdata
     async with session.combat_end_lock:

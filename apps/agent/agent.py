@@ -16,7 +16,6 @@ from base_agent import _make_tts
 from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
-from token_tracker import TokenTracker
 from voices import ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +41,11 @@ def validate_env() -> None:
     so an unset role voice is not a degraded deploy, it is a silent all-narrator one: every
     generated townsfolk speaks as the DM. Non-role voices keep the warning — COMPANION_SABLE
     is deliberately empty (she is non-verbal) and other authored characters may be too.
+
+    Two populated keys resolving to the SAME voice id raises last: the checks above are
+    "cannot boot at all", this one is "boots wrong". Nothing on the committed files can catch
+    it — .env.example is correct and has its own guard, while the live .env nothing reads is
+    where the EMRIS/LIRA collision actually sat.
     """
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
     role_keys = set(ROLE_VOICE_KEYS)
@@ -56,6 +60,15 @@ def validate_env() -> None:
             "Role voices not configured — generated townsfolk would all speak in the DM's "
             f"voice. Set INWORLD_VOICE_<KEY> for: {', '.join(unset_roles)}"
         )
+
+    by_voice: dict[str, list[str]] = {}
+    for key, voice in VOICES.items():
+        if voice:
+            by_voice.setdefault(voice, []).append(key)
+    collisions = {v: ks for v, ks in sorted(by_voice.items()) if len(ks) > 1}
+    if collisions:
+        detail = "; ".join(f"{v} shared by {', '.join(ks)}" for v, ks in collisions.items())
+        raise OSError(f"Two characters would sound identical — one Inworld voice per VOICES key: {detail}")
 
 
 START_LOCATION = "accord_guild_hall"
@@ -120,7 +133,24 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
     return " " + " ".join(parts)
 
 
-@server.rtc_session(agent_name="divineruin-dm")
+async def _join_session_end(ctx: agents.JobContext) -> None:
+    """Wait for the end-of-session recap to finish publishing before the room goes away.
+
+    The job runner awaits this AFTER AgentSession.aclose() and BEFORE room.disconnect()
+    (ipc/job_proc_lazy_main.py:388-419) — the only awaitable point in between. The close
+    event that spawns the recap is emitted synchronously (rtc/event_emitter.py), so the
+    handler can only start a task; unjoined, that task races room.disconnect() and
+    publish_game_event drops the recap with "Room disconnected, skipping".
+    """
+    try:
+        sd = ctx.primary_session.userdata
+    except RuntimeError:
+        return  # no AgentSession was ever started for this job
+    if sd.session_end_task is not None:
+        await sd.session_end_task
+
+
+@server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
 
@@ -267,9 +297,6 @@ async def dm_session(ctx: agents.JobContext) -> None:
         def _on_agent_state(ev):
             if ev.old_state == "speaking" and ev.new_state == "listening":
                 userdata.last_agent_speech_end = time.time()
-
-        tracker = TokenTracker()
-        session.on("metrics_collected", tracker.on_metrics)
 
         return session
 

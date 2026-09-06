@@ -4,33 +4,34 @@ live in combat_support (_resolve_attack_packet) and combat_ability (_resolve_abi
 (story-007 split, to keep this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
 split, debt faa6dd19ab64)."""
 
+import copy
 import json
 import logging
+from typing import Any
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution_attack
 import check_resolution_save
+import combat_hold
 import combat_phase
+import combat_wrap
 import concentration_break
 import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
 import declaration_payloads
-import event_types as E
-import fatigue_narration
 import resonance_events
 import spell_casting
 import veil_ward_events
 import ward_resolution
 from combat_ability import AbilityCastOutcome
-from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, emit_or_publish, isolated_publish, scratch_guard
-from combat_packet import _prevalidate_ability_focus, _resolve_one_packet, _resolve_tick_saves
+from combat_end import _end_combat_finish
+from combat_events import EventSink, isolated_publish, scratch_guard
+from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
 from combat_support import _require_combat
-from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
 from declaration_payloads import DeclPayload
 from declarations import DeclarationType
@@ -48,7 +49,7 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, maneuver, defend, retreat or reaction. Include the player, every
+    interact, maneuver, defend or retreat. Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""
@@ -140,13 +141,20 @@ async def _resolve_phase_locked(
     session: SessionData = context.userdata
 
     cs = _require_combat(session)
-    if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
-        raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
+    if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
+        raise ToolError(f"Not at the resolution or narration beat (current beat: {cs.beat}). Call declare_phase first.")
+    resolving_allies = cs.beat == combat_phase.PhaseBeat.RESOLUTION
 
-    # One transaction spans every DB write of the phase — per-packet HP + durability, the per-phase
-    # Resonance decay, the trailing save_combat_state, and (on the end-condition) end_combat's
-    # durability + combat-row delete — so a mid-phase failure rolls back atomically and players/items
-    # can never diverge from the combat_instances JSONB SSOT (debt 084c7d0bc457, concern 7198554c2d4c).
+    # TWO commits, not one (M29, story-016). The ally pass commits first; the held enemy actions
+    # commit as each reaction window closes, and the wrap (Resonance decay, death saves,
+    # end-condition) rides the LAST one — an enemy blow can be what ends the fight. This
+    # deliberately overturns the single-transaction invariant this comment used to state. The
+    # replacement guarantee: after commit 1, ally results are durable and the enemy actions are
+    # persisted as PENDING, which is a legal resting state rather than a torn one, so a crash
+    # between commits loses no enemy turn. Within each commit the old atomicity still holds —
+    # per-packet HP + durability, the Resonance decay, the trailing save_combat_state, and (on the
+    # end-condition) end_combat's durability + combat-row delete either all land or none do, so
+    # players/items never diverge from the combat_instances JSONB SSOT.
     # The in-memory Resonance sync + HUD publish run AFTER commit (below). pending_by_member holds
     # each member's post-cast/decay Resonance total for THIS phase, keyed by player_id (M14 story-004)
     # — the WRAP decays each member against their OWN pool, never a shared value.
@@ -162,125 +170,120 @@ async def _resolve_phase_locked(
     # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
     # and restores it if the tx rolls back, so no in-memory state sticks through a failed phase (AC3).
     sink = EventSink()
+    # The per-packet resolver bundle, shared by the Beat-2 ally loop and the Beat-3 held pass so
+    # a held enemy action resolves down the SAME path an unpaused one does (AC6).
+    # Annotated Any because the bundle is heterogeneous by design — it is merged with conn/sink/
+    # cast_outcome below, and story-018 added an int kwarg the inferred dict[str, ModuleType]
+    # could not spread onto.
+    packet_deps: dict[str, Any] = {
+        "mutations": mutations,
+        "queries": queries,
+        "resolver": resolver,
+        "concentration_break_mod": concentration_break_mod,
+        "cast_resolver": cast_resolver,
+    }
+    # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
+    # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
+    # empty when no ability was declared, which is always true of the Beat-3 held pass.
+    cast_outcome = AbilityCastOutcome()
+    packet_summaries: list[dict] = []
     async with scratch_guard(session), db_mod.transaction() as conn:
-        # Beat 2 (resolution): the engine orders the pending declarations into initiative
-        # packets (no math of its own). Orchestration applies each attack against
-        # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
-        # stored declaration (e.g. a combat persisted before the explicit-type change)
-        # raises ValueError here as resolve_declaration re-validates; translate it to
-        # ToolError like declare_phase does so the DM re-prompts instead of crashing.
-        try:
-            state, adv = combat_phase.advance_combat_phase(cs)
-        except ValueError as e:
-            raise ToolError(str(e)) from e
+        if resolving_allies:
+            # Beat 2 (resolution): the engine orders the pending declarations into initiative
+            # packets (no math of its own). Orchestration applies each attack against
+            # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
+            # stored declaration (e.g. a combat persisted before the explicit-type change)
+            # raises ValueError here as resolve_declaration re-validates; translate it to
+            # ToolError like declare_phase does so the DM re-prompts instead of crashing.
+            try:
+                state, adv = combat_phase.advance_combat_phase(cs)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
 
-        # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
-        # initiative order, so apply every Defend's bonus to state.ac_modifiers before any
-        # attack packet resolves (otherwise a higher-initiative attacker would bypass it).
-        # A fallen defender grants no bonus — mirror the per-packet "actor unavailable" guard.
-        for packet in adv.packets:
-            if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
-                continue
-            defender = state.get_participant(packet.actor_id)
-            if defender is not None and not defender.is_fallen:
-                state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
+            # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
+            # initiative order, so apply every Defend's bonus to state.ac_modifiers before any
+            # attack packet resolves (otherwise a higher-initiative attacker would bypass it).
+            # A fallen defender grants no bonus — mirror the per-packet "actor unavailable" guard.
+            for packet in adv.packets:
+                if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
+                    continue
+                defender = state.get_participant(packet.actor_id)
+                if defender is not None and not defender.is_fallen:
+                    state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
-        # Pre-validate Focus for every player ABILITY BEFORE resolving anything (AC2): an unaffordable
-        # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
-        # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
-        # player row (the cast reuses it; the lock is taken once) or None when no player ability.
-        players_by_id = await _prevalidate_ability_focus(
-            session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
-        )
+            # Pre-validate Focus for every player ABILITY BEFORE resolving anything (AC2): an unaffordable
+            # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
+            # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
+            # player row (the cast reuses it; the lock is taken once) or None when no player ability.
+            players_by_id = await _prevalidate_ability_focus(
+                session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
+            )
 
-        # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
-        # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
-        # empty when no ability was declared.
-        cast_outcome = AbilityCastOutcome()
-        packet_summaries: list[dict] = []
-        for packet in adv.packets:
-            packet_summaries.append(
-                await _resolve_one_packet(
-                    session,
-                    state,
-                    packet,
-                    mutations=mutations,
-                    queries=queries,
-                    resolver=resolver,
-                    concentration_break_mod=concentration_break_mod,
-                    conn=conn,
-                    sink=sink,
-                    cast_resolver=cast_resolver,
-                    cast_outcome=cast_outcome,
-                    players_by_id=players_by_id,
+            # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
+            # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
+            # empty when no ability was declared.
+            # Beat 2 resolves the ALLY band only; the hostile band is HELD for Beat 3 behind reaction
+            # windows (AC1). Initiative still orders within each band — what ends is cross-band
+            # pre-emption, where a higher-initiative enemy dropped the player before their swing landed.
+            ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
+            for packet in ally_packets:
+                packet_summaries.append(
+                    await _resolve_one_packet(
+                        session,
+                        state,
+                        packet,
+                        **packet_deps,
+                        conn=conn,
+                        sink=sink,
+                        cast_outcome=cast_outcome,
+                        players_by_id=players_by_id,
+                    )
                 )
-            )
-
-        # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
-        # death saves due, and the per-phase Resonance decay signal.
-        state, _narr = combat_phase.advance_combat_phase(state)
-        # Beat-3 display layer (M4.3, story-005): surface exhaustion flavor for every participant
-        # carrying Exhausted stacks so the DM speaks it. Read here (pre-wrap, pre-tick) so a
-        # save-to-clear tick below never erases a participant's narration mid-beat.
-        exhaustion_narration = {
-            p.id: narrative
-            for p in state.participants
-            if (narrative := fatigue_narration.exhaustion_narrative_for_conditions(p.conditions))
-        }
-        state, wrap_adv = combat_phase.advance_combat_phase(state)
-        wrap = wrap_adv.wrap
-
-        # Beat-4 save-to-clear (M4.3, story-004): resolve the saves the wrap surfaced (Frightened's
-        # WIS save). A made save clears the condition on the actor in-memory; the change rides the
-        # save_combat_state / end-combat write below in this same tx.
-        if wrap is not None and wrap.tick_conditions_due:
-            _resolve_tick_saves(state, wrap.tick_conditions_due, save_resolver)
-
-        # Each in-combat ability GENERATES Resonance during resolution (beat 2); seed each caster's
-        # pending value with the cast's post-generation total so the WRAP decay below sheds from it
-        # (net = standing + generated - decay), not the stale standing value. new_resonance is None
-        # for a cantrip/floored cast (no write) — that member is omitted, leaving its standing value
-        # as the decay base.
-        pending_by_member = {
-            mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
-        }
-
-        ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
-        if ended_outcome is None:
-            # Combat continues: shed one step of Resonance per phase, per member against their OWN
-            # pool (M14 story-004) — never a shared value, never double. WRAP is the canonical combat
-            # decay clock (decision resonance-decay-phase-canonical) — cast-paced decay is suppressed
-            # in combat (spell_casting), so this never double-decays. Each member's decay base is its
-            # ability-generated total when it cast this phase (pending_by_member), else its standing
-            # value. Persist only when the value actually moved (a 0 floor stays silent); the in-memory
-            # sync + HUD push happen post-commit so a rolled-back phase shows no decay.
-            if wrap is not None and wrap.resonance_decay:
-                for m in session.party.members:
-                    base = pending_by_member.get(m.player_id, m.resonance.current)
-                    decayed = max(0, base - wrap.resonance_decay)
-                    if decayed != base:
-                        pending_by_member[m.player_id] = decayed
-                        await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
-            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
-            # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
-            # post-tick state (save-cleared conditions are gone) and buffered in the sink so the
-            # packet only reaches the client AFTER the phase tx commits — a rolled-back phase
-            # leaves the captured event discarded along with `state`. Skipped on the terminal wrap
-            # (the `else` branch below) because COMBAT_ENDED clears the mobile combat state.
-            await emit_or_publish(
-                sink,
-                session.room,
-                E.COMBAT_UI_UPDATE,
-                build_combat_ui_update(state),
-                event_bus=session.event_bus,
-            )
+            state.held_actions = combat_hold.hold_enemy_packets(state, enemy_packets)
         else:
-            # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
-            # transaction so a mid-end failure rolls the phase back atomically (concern 7198554c2d4c).
-            # Its COMBAT_ENDED + stinger buffer into the shared sink; the in-memory teardown + handoff
-            # run post-commit via _end_combat_finish below.
-            end_data = await _end_combat_db(
-                session, state, ended_outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
+            # Beat 3: step the held queue. The engine deep-copies like advance_combat_phase does, so a
+            # rollback leaves session.combat_state as the pristine pre-call `cs`.
+            state = copy.deepcopy(cs)
+            packet_summaries = await combat_hold.pump(
+                session, state, packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome}
+            )
+
+        # A pause — the ally commit, or a held action stopped on a window — persists and stops here.
+        # The wrap belongs to the LAST commit only (AC6): Resonance decay, death saves and the
+        # end-condition fire once, when the queue has drained, because an enemy blow can end the fight.
+        if resolving_allies or state.open_window is not None:
+            exhaustion_narration: dict[str, str] = {}
+            wrap = None
+            wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
+            ended_outcome = None
+            # An ability GENERATES Resonance during the ally pass and writes it inside THIS commit,
+            # but the WRAP that decays it now rides a later commit. Seed the post-commit sync here
+            # so the caster's in-memory total is the post-generation value; the wrap then decays
+            # from that (net = standing + generated - decay) rather than from the stale standing
+            # value it would otherwise still be holding a commit later.
+            pending_by_member = {
+                mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
+            }
+            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        else:
+            (
+                state,
+                wrap,
+                wrap_adv,
+                exhaustion_narration,
+                ended_outcome,
+                end_data,
+                pending_by_member,
+            ) = await combat_wrap.wrap_phase(
+                session,
+                state,
+                conn=conn,
+                sink=sink,
+                cast_outcome=cast_outcome,
+                mutations=mutations,
+                queries=queries,
+                save_resolver=save_resolver,
+                resonance_mutations=resonance_mutations,
             )
 
     # Sync the looped in-memory state ONLY after the transaction commits, and do it FIRST — before
@@ -375,6 +378,10 @@ async def _resolve_phase_locked(
         "beat": state.beat,
         "round": state.round_number,
         "packets": packet_summaries,
+        # ADR 0008 decision 4: name the phase, the verbs legal in it, and what the machine is
+        # waiting on. THIS is the window producer constraint 6 demands — a window id the DM has to
+        # guess among nine is not shipped (M29, story-016).
+        "next": combat_wrap.next_envelope(state),
         "death_saves_due": wrap.death_saves_due if wrap else [],
         "exhaustion_narration": exhaustion_narration,
         # Boss legendary actions available for the round just entered (M4.7, story-009): the engine

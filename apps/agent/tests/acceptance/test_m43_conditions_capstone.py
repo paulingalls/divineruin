@@ -19,23 +19,23 @@ combat_id since the testcontainer DB is shared.
 
 from __future__ import annotations
 
-import json
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _start_combat
+from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _resolve_round, _start_combat
 from sample_fixtures import make_context, make_mock_room
 
-import combat_turn
 import conditions
 import db
 import db_mutations
 import db_mutations_conditions
 
 
-def _player_packet(result: str) -> dict:
-    """The player's resolution packet summary from a (non-ending) resolve_phase JSON response."""
-    packets = json.loads(result)["packets"]
-    return next(p for p in packets if p["attacker"] == "Kael")
+def _player_packet(result: dict) -> dict:
+    """The player's resolution packet summary from a (non-ending) round result.
+
+    ``_resolve_round`` accumulates every commit's packets and returns the parsed payload, so this
+    reads the dict rather than a JSON string (M29, story-016)."""
+    return next(p for p in result["packets"] if p["attacker"] == "Kael")
 
 
 # --- AC1: a condition's modifier folds into the REAL attack resolver ---
@@ -64,15 +64,15 @@ async def test_exhausted_modifier_folds_into_real_attack(reset_db_pool: str) -> 
         await _start_combat(pool, clean_id, clean_state, ctx_clean)
         await _declare_attacks(ctx_clean, clean_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(10)):
-            clean_result = await combat_turn._resolve_phase_impl(ctx_clean)
+            clean_result = await _resolve_round(ctx_clean)
 
         ctx_exh = make_context(exh_id, room=make_mock_room())
         await _start_combat(pool, exh_id, exh_state, ctx_exh)
         await _declare_attacks(ctx_exh, exh_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(10)):
-            exh_result = await combat_turn._resolve_phase_impl(ctx_exh)
+            exh_result = await _resolve_round(ctx_exh)
 
-        assert isinstance(clean_result, str) and isinstance(exh_result, str)  # non-ending phases loop
+        assert not isinstance(clean_result, tuple) and not isinstance(exh_result, tuple)  # phases loop
         clean_total = _player_packet(clean_result)["attack_total"]
         exh_total = _player_packet(exh_result)["attack_total"]
         # Same forced d20, same weapon/attributes — the only delta is Exhausted's -1/stack.
@@ -100,7 +100,7 @@ async def test_beat4_wrap_expires_and_clears_then_persists(reset_db_pool: str) -
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(20)):  # WIS save succeeds (>= DC 10)
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
 
         # In-memory participant: Stunned expired, Frightened cleared by the made save.
         live = ctx.userdata.combat_state.get_participant(player_id)
@@ -132,7 +132,7 @@ async def test_beat4_failed_save_keeps_frightened(reset_db_pool: str) -> None:
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(1)):  # WIS save fails (< DC 10)
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
 
         reloaded = await db_mutations.load_combat_state(state.combat_id, conn=pool)
         assert reloaded is not None
@@ -164,7 +164,7 @@ async def test_persistent_condition_survives_combat_end(reset_db_pool: str) -> N
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(20)):
-            result = await combat_turn._resolve_phase_impl(ctx)
+            result = await _resolve_round(ctx)
         assert isinstance(result, tuple), "dropping the last enemy ends combat (handoff tuple)"
 
         stored = await db_mutations_conditions.read_player_conditions(player_id, conn=pool)

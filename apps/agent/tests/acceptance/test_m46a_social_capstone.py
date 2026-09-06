@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _build_state, _d20, _dice_events, _enemy
+from acceptance._capstone_helpers import _build_state, _d20, _dice_events, _enemy, _resolve_round
 from acceptance.seeds import seed_player, seed_player_with_pools
 from sample_fixtures import make_context, make_mock_room
 
@@ -116,7 +116,7 @@ async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> Non
         for _round in range(4):  # MAX_DEESCALATION_ROUNDS
             await combat_turn._declare_phase_impl(ctx, decls)
             with patch("check_resolution.dice_roll", return_value=_d20(20)):
-                result = await combat_turn._resolve_phase_impl(ctx)
+                result = await _resolve_round(ctx)
             if isinstance(result, tuple):
                 break
 

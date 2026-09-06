@@ -1,4 +1,4 @@
-"""Dynamic prompt builders — warm layer, affect context, quest objectives."""
+"""Dynamic prompt builders — warm layer, hot-line renderers, affect context, quest objectives."""
 
 from __future__ import annotations
 
@@ -169,7 +169,6 @@ async def build_warm_layer(
     location_id: str,
     player_id: str,
     world_time: str,
-    combat_state: CombatState | None = None,
     companion: CompanionState | None = None,
     quests: list[dict] | None = None,
     corruption_level: int = 0,
@@ -317,18 +316,24 @@ async def build_warm_layer(
         if guidance:
             sections.append(guidance)
 
-    # Active combat
-    if combat_state is not None:
-        combat_lines = [f"Round {combat_state.round_number}"]
-        for pid in combat_state.initiative_order:
-            p = combat_state.get_participant(pid)
-            if p is not None:
-                status = hp_threshold_status(p.hp_current, p.hp_max)
-                fallen = " [FALLEN]" if p.is_fallen else ""
-                combat_lines.append(f"- {p.name} ({p.type}) — {status}{fallen}")
-        sections.append("ACTIVE COMBAT\n" + "\n".join(combat_lines))
-
     return "\n\n".join(sections)
+
+
+def format_combat_hot_line(combat_state: CombatState | None) -> str | None:
+    """Render the fight as ONE hot-layer line — zero I/O.
+
+    Hot, not warm: the warm layer is injected via update_instructions, which moves the
+    system block and so invalidates the whole cached prefix behind it. This line rides the
+    turn context as a message, after the breakpoint, so a round costs a cache READ.
+    """
+    if combat_state is None:
+        return None
+    combatants = []
+    for pid in combat_state.initiative_order:
+        p = combat_state.get_participant(pid)
+        if p is not None:
+            combatants.append(f"{p.name}({hp_threshold_status(p.hp_current, p.hp_max)})")
+    return f"[COMBAT Round {combat_state.round_number}: {', '.join(combatants)}]"
 
 
 def build_full_prompt(static_layer: str, warm_layer: str) -> str:

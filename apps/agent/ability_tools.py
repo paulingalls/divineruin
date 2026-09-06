@@ -11,9 +11,10 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). An IN-COMBAT reaction is gated against the current declaration before any
-resource write, and the round's in-memory reaction budget is spent only AFTER the activation
-succeeds — a refused activation must not burn the reaction (test_reaction_refused_by_cost_*).
+7b34ebf86b57). An IN-COMBAT reaction is gated against the OPEN Beat-3 window (story-017 — a
+reaction interrupts a held enemy blow, it is not pre-declared) before any resource write, and the
+round's in-memory reaction budget is spent only AFTER the activation succeeds — a refused
+activation must not burn the reaction (test_reaction_refused_by_cost_*).
 """
 
 import json
@@ -24,6 +25,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import combat_hold
 import combat_phase
 import condition_produce
 import conditions
@@ -97,12 +99,14 @@ async def _request_ability_activation_impl(
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
-        # Record the spend as ONE field write on the CombatState the session holds NOW. Assigning a
-        # pre-await snapshot back would erase whatever an unlocked in-place writer committed while
-        # this transaction was open: draethar_inner_fire mutates session.combat_state's participants
-        # directly (draethar_inner_fire.py:74,104) and takes no combat_end_lock, and the combat
-        # prompt allows it mid-fight.
-        session.combat_state.reactions_available[session.player_id] = False
+        # Record the spend as ONE field write on the CombatState the session holds NOW, never by
+        # assigning a pre-await snapshot back: this transaction is the window in which some other
+        # path mutates the live state in place, and a snapshot would erase it. Every such writer
+        # now holds this same lock (draethar_inner_fire took it last), so the remaining reason is
+        # the plain one — a snapshot cannot see a write that happened after it was taken, and the
+        # lock is a guarantee about THIS process, not a substitute for the rule. AFTER the
+        # activation, so a refusal still costs nothing.
+        combat_hold.record_spend(session.combat_state, session.player_id, ability_id)
         return result
 
 

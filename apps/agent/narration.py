@@ -178,22 +178,58 @@ def _extract_tool_input(response: Any) -> dict[str, Any] | None:
     return None
 
 
-def _segments_to_text(segments: list[dict[str, str]]) -> str:
+def _normalize_segments(segments: object) -> list[Segment]:
+    """Coerce the model's `segments` into Segments, dropping what carries no speakable text.
+
+    THE SHAPE HERE IS THE MODEL'S, NOT OURS (constraint 9), and it varies. A live errand
+    resolution died intermittently on `AttributeError: 'str' object has no attribute 'get'`
+    at the sprint-048 close because one segment came back as a bare string. A bare string IS
+    narration — the DM's own voice — so it is accepted as such rather than raising: this is
+    an audio-first game and a malformed segment must not take the whole errand down with it.
+    A dict missing `character` or `emotion` narrates with the defaults for the same reason.
+    What is DROPPED is only what cannot be spoken: no text, blank text, or a segment that is
+    neither a string nor a mapping.
+    """
+    out: list[Segment] = []
+    for seg in segments if isinstance(segments, list) else []:
+        if isinstance(seg, str):
+            character, emotion, text = DEFAULT_VOICE, "neutral", seg
+        elif isinstance(seg, dict):
+            character = seg.get("character") or DEFAULT_VOICE
+            emotion = seg.get("emotion") or "neutral"
+            text = seg.get("text") or ""
+        else:
+            logger.warning("Dropping narration segment of unusable type %s", type(seg).__name__)
+            continue
+        if not isinstance(text, str) or not text.strip():
+            continue
+        out.append(Segment(character=character, emotion=emotion, text=text))
+    return out
+
+
+def _normalize_segments_or_raise(segments: object) -> list[Segment]:
+    """Normalize, but REFUSE to turn a non-empty payload into silence (constraint 4).
+
+    Coercion is for shapes we can still speak — a bare string, a missing character. A payload
+    that yields NOTHING is a malformed response, and returning "" there would leave the errand
+    "resolved" with no narration at all: in an audio-first game the player gets silence, which
+    is strictly worse than the crash this normalizer replaced. Raise instead, and let the
+    caller's retry or the loud failure stand.
+    """
+    out = _normalize_segments(segments)
+    if not out:
+        raise ValueError(f"narration payload carried no speakable narration: {segments!r:.300}")
+    return out
+
+
+def _segments_to_text(segments: object) -> str:
     """Concatenate segment text into a single plain-text narration."""
-    return " ".join(seg["text"] for seg in segments)
+    return " ".join(seg.text for seg in _normalize_segments(segments))
 
 
-def _segments_to_segment_objects(segments: list[dict[str, str]]) -> list[Segment]:
-    """Convert raw dicts from tool output to Segment dataclass instances."""
-    return [
-        Segment(
-            character=seg["character"],
-            emotion=seg["emotion"],
-            text=seg["text"],
-        )
-        for seg in segments
-        if seg.get("text", "").strip()
-    ]
+def _segments_to_segment_objects(segments: object) -> list[Segment]:
+    """Convert raw tool output to Segment dataclass instances."""
+    return _normalize_segments(segments)
 
 
 async def generate_activity_narration(
@@ -240,8 +276,8 @@ async def generate_activity_narration(
     if not tool_input or not tool_input.get("segments"):
         raise RuntimeError(f"LLM did not return valid narration segments: {response.content}")
 
-    segments = _segments_to_segment_objects(tool_input["segments"])
-    narration_text = _segments_to_text(tool_input["segments"])
+    segments = _normalize_segments_or_raise(tool_input["segments"])
+    narration_text = " ".join(seg.text for seg in segments)
     summary = tool_input.get("summary", "")
 
     logger.info("Narration: %d segments, %d chars, summary=%s", len(segments), len(narration_text), summary[:60])

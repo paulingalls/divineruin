@@ -98,6 +98,16 @@ API cost) and runs at pre-push and sprint close only.
   any push or merge, or it is SIGTERM'd and fails silently. On a gate failure,
   read repo-root `flake-artifacts/` before calling anything a flake.
 
+**A falsifier is a path into a moving tree, and nothing re-checks it until it
+fires.** Sprint-048 hit this three times, once aborting a close: sprint-047's
+`3aea2529` pointed at `tests/test_e2e_playtest.py -k TokenTracker`, story-024
+moved those tests, and the filter then deselected all 10 and exited 5 — read as
+RED with the code perfectly healthy. Two more named files that never existed.
+So: when a change MOVES or RENAMES a test file, grep `work.md` for the old path
+and re-resolve what points at it; and prefer a falsifier that names a FILE or a
+DIRECTORY over one carrying a `-k` filter, because a filter that matches nothing
+is indistinguishable from a failure.
+
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

@@ -6,20 +6,24 @@ HUD events/sounds in order, and returns a response dict — it does NOT persist 
 caller owns one save per phase).
 """
 
-from types import SimpleNamespace
+import json
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
-import conditions
 import event_types as E
 from check_resolution_attack import AttackResult
 from combat_events import EventSink
-from combat_support import _handle_hp_zero, _resolve_attack_packet
-from session_data import CombatParticipant, CompanionState
-from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
+from combat_support import (
+    _resolve_attack_packet,
+    apply_attack_result,
+    deserialize_roll,
+    roll_attack,
+    serialize_roll,
+)
 
 
 def _fixed_resolver(*, damage: int, hp_remaining: int, dramatic: bool = False, context: str = ""):
@@ -394,202 +398,88 @@ class TestDramaticEmission:
         assert response["context"] == "natural_20"
 
 
-class TestResolveAbilityPacket:
-    """story-007: an in-combat ABILITY declaration resolves through the shared cast logic.
+class TestRollThenApply:
+    """The hold's seam (M29, story-016): the post-roll reaction window is PRE-DAMAGE, so the
+    roll must survive a tool-call boundary with no HP written and no event published.
 
-    Player-gated (only the player has a Focus pool + resonance track); the CastResult is stashed on
-    the AbilityCastOutcome so the phase loop can commit resonance/concentration/events post-commit."""
+    This is also the seam story-018 needs, with one trap named here rather than rediscovered:
+    ``apply_attack_result`` writes ``target.hp_current = attack_result.target_hp_remaining`` and
+    never reads ``damage``. So halving ``damage`` between the halves changes NOTHING — an Uncanny
+    Dodge must re-derive ``target_hp_remaining`` (and ``overkill``) from the pre-hit HP too, or the
+    reaction reports half damage while the full blow still lands.
+    """
 
-    def _player(self) -> CombatParticipant:
-        return CombatParticipant(
-            id="player_1", name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
-        )
+    def test_roll_writes_no_hp_and_publishes_nothing(self):
+        """The HOLD itself. A rolled-but-unapplied attack leaves the target untouched: that is
+        what makes the pause between the roll and the impact a legal resting state."""
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+        sink = EventSink()
 
-    def _cast_resolver(self, result):
-        mod = MagicMock()
-        mod._resolve_cast = AsyncMock(return_value=result)
-        return mod
-
-    async def test_player_ability_resolves_and_stashes_castresult(self):
-        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
-        from declarations import Declaration, DeclarationType
-        from spell_casting import _UNCHANGED, CastResult
-
-        session = make_context().userdata
-        attacker = self._player()
-        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_bolt")
-        result = CastResult(
-            packet={"effect": "zap", "state": "stable"},
-            new_resonance=6,
-            concentration_spell_id=_UNCHANGED,
-            generated=6,
-            events=[],
-        )
-        cast_resolver = self._cast_resolver(result)
-        outcome = AbilityCastOutcome()
-
-        summary = await _resolve_ability_packet(
-            session,
+        attack_result, effective_ac = roll_attack(
             attacker,
-            decl,
-            state=None,
-            cast_resolver=cast_resolver,
-            conn=object(),
-            player=None,
-            cast_outcome=outcome,
+            action,
+            target,
+            resolver=_fixed_resolver(damage=3, hp_remaining=22),
         )
 
-        assert summary["resolved"] is True
-        assert summary["actor_id"] == "player_1"
-        assert summary["declaration_type"] == "ability"
-        assert summary["action"] == "arcane_bolt"
-        assert summary["cast"] == {"effect": "zap", "state": "stable"}
-        # the CastResult is handed to the loop keyed by the caster's id (in-memory sync is post-commit)
-        assert outcome.results["player_1"] is result
-        # routed through the shared cast core with the cast's own RESONANCE_CHANGED suppressed —
-        # in combat the phase WRAP push is the single authoritative HUD update.
-        _args, kwargs = cast_resolver._resolve_cast.call_args
-        assert kwargs["suppress_resonance_changed"] is True
-
-    async def test_non_player_ability_is_wasted(self):
-        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
-        from declarations import Declaration, DeclarationType
-
-        session = make_context().userdata
-        enemy = CombatParticipant(
-            id="goblin_1", name="Goblin", type="enemy", initiative=10, hp_current=7, hp_max=7, ac=13
-        )
-        decl = Declaration(type=DeclarationType.ABILITY, action="goblin_hex")
-        cast_resolver = MagicMock()
-        cast_resolver._resolve_cast = AsyncMock()
-        outcome = AbilityCastOutcome()
-
-        summary = await _resolve_ability_packet(
-            session,
-            enemy,
-            decl,
-            state=None,
-            cast_resolver=cast_resolver,
-            conn=object(),
-            player=None,
-            cast_outcome=outcome,
-        )
-
-        assert summary["resolved"] is False
-        cast_resolver._resolve_cast.assert_not_called()
-        assert outcome.results == {}
-
-    async def test_missing_action_is_wasted(self):
-        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
-        from declarations import Declaration, DeclarationType
-
-        session = make_context().userdata
-        attacker = self._player()
-        decl = Declaration(type=DeclarationType.ABILITY, action=None)
-        cast_resolver = MagicMock()
-        cast_resolver._resolve_cast = AsyncMock()
-        outcome = AbilityCastOutcome()
-
-        summary = await _resolve_ability_packet(
-            session,
-            attacker,
-            decl,
-            state=None,
-            cast_resolver=cast_resolver,
-            conn=object(),
-            player=None,
-            cast_outcome=outcome,
-        )
-
-        assert summary["resolved"] is False
-        cast_resolver._resolve_cast.assert_not_called()
-        assert outcome.results == {}
-
-
-def _hollowed(stage: int) -> list[dict]:
-    conds: list[dict] = []
-    for _ in range(stage):
-        conds = conditions.apply_condition(conds, "hollowed")
-    return conds
-
-
-class TestHandleHpZero:
-    """story-007: _handle_hp_zero resolves a target dropped to 0 HP — the fall / instant-death /
-    Stage-2+ Hollowed-rise / companion-KO branch extracted from _resolve_attack_packet. It mutates
-    the target + sounds in place and returns (hp_status, rose_hollowed)."""
-
-    def _target(
-        self,
-        *,
-        id: str = "player_1",
-        name: str = "Lyra",
-        type: str = "player",
-        hp_current: int = 0,
-        hp_max: int = 20,
-        is_fallen: bool = False,
-        conditions: list[dict] | None = None,
-    ) -> CombatParticipant:
-        p = CombatParticipant(id=id, name=name, type=type, initiative=15, hp_current=hp_current, hp_max=hp_max, ac=14)
-        p.is_fallen = is_fallen
-        if conditions is not None:
-            p.conditions = conditions
-        return p
-
-    def _attack(self, overkill: int):
-        # _handle_hp_zero reads only attack_result.overkill.
-        return SimpleNamespace(overkill=overkill)
-
-    def test_player_at_zero_falls(self):
-        session = make_context().userdata  # no companion
-        target = self._target(hp_current=0, hp_max=20)
-        sounds: list[str] = []
-        hp_status, rose = _handle_hp_zero(
-            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
-        )
-        assert target.is_fallen is True
-        assert target.is_dead is False
-        assert rose is False
-        assert SOUND_PLAYER_FALLEN in sounds
-        # non-rise path passes the caller's pre-computed hp_status straight through
-        assert hp_status == "defeated"
-
-    def test_instant_death_when_overkill_ge_hp_max(self):
-        session = make_context().userdata
-        target = self._target(hp_current=-25, hp_max=20)
-        _handle_hp_zero(session, target, self._attack(25), was_fallen=False, hp_status="defeated", sounds=[])
-        assert target.is_fallen is True
-        assert target.is_dead is True
-
-    def test_already_fallen_does_not_flag_dead(self):
-        # The instant-death verdict is scoped to the live -> 0 transition; a hit on an already-downed
-        # target (was_fallen=True) is the separate "damage while Fallen" mechanic, never instant death.
-        session = make_context().userdata
-        target = self._target(hp_current=-25, hp_max=20, is_fallen=True)
-        _handle_hp_zero(session, target, self._attack(25), was_fallen=True, hp_status="defeated", sounds=[])
-        assert target.is_dead is False
-
-    def test_stage2_hollowed_rises_instead_of_falling(self):
-        session = make_context().userdata
-        target = self._target(hp_current=0, hp_max=20, conditions=_hollowed(2))
-        sounds: list[str] = []
-        hp_status, rose = _handle_hp_zero(
-            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
-        )
-        assert target.type == "temporary_hollowed"
-        assert target.hp_current == 10  # max(1, hp_max // 2)
-        assert any(c["type"] == "temporary_hollowed" for c in target.conditions)
+        assert attack_result.damage == 3
+        assert target.hp_current == 25  # untouched — the blow is held
         assert target.is_fallen is False
-        assert rose is True
-        assert SOUND_HOLLOW_RISE in sounds
-        # rise restores HP, so hp_status is recomputed (no longer the caller's "defeated" sentinel)
-        assert hp_status != "defeated"
+        assert effective_ac == target.ac
+        assert sink.captured == []  # no DICE_ROLL, no sound, nothing published
 
-    def test_companion_ko_marks_unconscious_and_records_memory(self):
-        session = make_context().userdata
-        session.companion = CompanionState(id="companion_kael", name="Kael")
-        session.companion.is_conscious = True
-        target = self._target(id="companion_kael", name="Kael", type="companion", hp_current=0, hp_max=15)
-        _handle_hp_zero(session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=[])
-        assert target.is_fallen is True
-        assert session.companion.is_conscious is False
-        assert any("knocked unconscious" in m for m in session.companion.session_memories)
+    @pytest.mark.asyncio
+    async def test_roll_then_apply_is_identical_to_the_unsplit_packet(self):
+        """_resolve_attack_packet is now the composition of the two halves, so a caller that
+        never pauses resolves exactly as on trunk (AC6). Same seeded resolver both times."""
+        ctx_a, ctx_b = make_context(), make_context()
+        cs_a, cs_b = _make_combat_state(player_hp=25), _make_combat_state(player_hp=25)
+        att_a, tgt_a, action_a = _attacker_target_action(cs_a)
+        att_b, tgt_b, action_b = _attacker_target_action(cs_b)
+
+        unsplit = await _resolve_attack_packet(
+            ctx_a.userdata,
+            att_a,
+            action_a,
+            tgt_a,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=3, hp_remaining=22),
+            concentration_break_mod=_break_mod(None),
+        )
+
+        result, effective_ac = roll_attack(att_b, action_b, tgt_b, resolver=_fixed_resolver(damage=3, hp_remaining=22))
+        split = await apply_attack_result(
+            ctx_b.userdata,
+            att_b,
+            action_b,
+            tgt_b,
+            result,
+            effective_ac,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            concentration_break_mod=_break_mod(None),
+        )
+
+        assert split == unsplit
+        assert tgt_b.hp_current == tgt_a.hp_current == 22
+
+    def test_a_held_roll_round_trips_through_json(self):
+        """The rolled AttackResult rides inside its held action across a tool-call boundary, so
+        it goes through JSONB. consumed_conditions is the one field JSON loses — it is a tuple
+        and comes back a list unless the deserializer re-tuples it, and a list would make the
+        M4.8 single-use die look unconsumed."""
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+        resolver = _fixed_resolver(damage=3, hp_remaining=22)
+        rolled = replace(resolver.resolve_attack.return_value, consumed_conditions=("blessed",))
+        resolver.resolve_attack = MagicMock(return_value=rolled)
+        result, effective_ac = roll_attack(attacker, action, target, resolver=resolver)
+
+        restored, restored_ac = deserialize_roll(json.loads(json.dumps(serialize_roll(result, effective_ac))))
+
+        assert restored == result
+        assert restored_ac == effective_ac
+        assert restored.consumed_conditions == ("blessed",)
+        assert isinstance(restored.consumed_conditions, tuple)

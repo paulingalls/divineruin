@@ -18,11 +18,10 @@ import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver
+from combat._helpers import _damage_resolver, _resolve_round
 from sample_fixtures import GUILD_PLAYER
 
 import archetypes
-import combat_turn
 import db_mutations
 import db_mutations_conditions
 import db_queries
@@ -482,7 +481,7 @@ async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
     break_mod = MagicMock(break_concentration_on_damage=AsyncMock(return_value=None))
 
     try:
-        result = await combat_turn._resolve_phase_impl(
+        result = await _resolve_round(
             ctx, queries=queries, resolver=_damage_resolver(3), concentration_break_mod=break_mod
         )
         assert json.loads(result[1])["outcome"] == "victory"

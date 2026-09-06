@@ -42,9 +42,9 @@ must not hand-pin the counts below — its budget test walks the emitted schema 
    transition.
 5. **Right information at the right time** follows one placement rule: put each datum
    in the layer whose refresh rate matches its volatility (cold = session, warm =
-   event, hot = turn, result = call). Two current violations to fix: `ACTIVE COMBAT`
-   is rendered in the warm layer where it goes stale after round 1, and
-   `enter_location` pulls what the Stage already pushes.
+   event, hot = turn, result = call). The warm `ACTIVE COMBAT` violation is FIXED —
+   story-024 moved the fight to the hot layer. The one still open is `enter_location`
+   pulling what the Stage already pushes.
 6. **Do not reach for tool search / ToolProxy.** Both add a round trip inside the
    1500 ms budget and (in the LiveKit beta) route calls through a non-strict
    `call_tool(parameters: object)` that bypasses every guarantee you are trying to
@@ -212,7 +212,8 @@ async def check(context, roll: SkillCheck | SocialCheck | DiscoverCheck | SaveCh
 Training | CompanionErrand | Crafting | WorkspaceRental | Experiment   # each with only its required fields
 
 # declare_phase — a mapping of free-form dicts → a list of typed declarations
-declarations: list[AttackDecl | AbilityDecl | DefendDecl | ReactionDecl | ...]   # each carries actor_id
+declarations: list[AttackDecl | AbilityDecl | DefendDecl | ManeuverDecl | ...]   # each carries actor_id
+# (ReactionDecl was a seventh variant until story-017 made a reaction an interrupt, not a declaration)
 # (probed live in exactly this shape and accepted)
 
 # activate
@@ -291,10 +292,10 @@ refreshes slower than it changes goes stale (Golden Rule 4).
 
 Concrete fixes on trunk:
 
-- **Remove `ACTIVE COMBAT` from the warm layer.** Only `COMBAT_STARTED`/`ENDED`
-  trigger a rebuild, so the warm HP bands are stale from round 2 on while the hot
-  block carries the truth. Two renderings of the same state, one wrong, is the exact
-  hazard §8 of the verbs doc names.
+- **~~Remove `ACTIVE COMBAT` from the warm layer.~~ DONE — story-024.** The warm block
+  and its per-round refresh are deleted; `format_combat_hot_line` is now the single
+  rendering, on the hot layer of both agents. It also closed a cache regression: the
+  per-round system-prompt rewrite invalidated the whole prefix behind it (debt `ce06dd8c`).
 - **Fold `enter_location` into the Stage push.** The warm layer already renders the
   scene on arrival, `move_player` already returns `_build_scene_context`, and the
   greeting instructs the DM to call `enter_location` anyway, costing a tool round trip
@@ -448,9 +449,9 @@ lists the three that are computable from a schema, and there are at least five.
 4. **`NOW` block + `next` in results + `ActResult` envelope** (4.3, 4.4). Start with
    combat (it has the richest state machine and story-016/017 already need `next`),
    then the L5 fork and downtime midpoints.
-5. **Stage hygiene**: drop warm `ACTIVE COMBAT`; fold `enter_location` into arrival
-   Resolves; shrink descriptions to "when" and move field semantics into variant
-   `Field` descriptions.
+5. **Stage hygiene**: warm `ACTIVE COMBAT` is dropped (story-024); still open — fold
+   `enter_location` into arrival Resolves; shrink descriptions to "when" and move field
+   semantics into variant `Field` descriptions.
 6. **Eval-gated experiments**: `input_examples` via a plugin subclass; combat per-beat
    scoping; system-initiated-reply scoping (`tools=[]` on proactive beats is cheap
    enough to do in step 4 without an eval).

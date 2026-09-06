@@ -25,6 +25,7 @@ import json
 import random
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_mock_room, published_payloads
@@ -144,7 +145,7 @@ async def test_real_2pc_victory_attributes_loot_and_scopes_primary_haul(reset_db
             if len(living) > 1:
                 decls[pc_b] = _attack("Longsword", living[1].id)  # distinct target — no double-hit on one
             await combat_turn._declare_phase_impl(ctx, decls)
-            result = await combat_turn._resolve_phase_impl(ctx, resolver=_lethal_resolver())
+            result = await _resolve_round(ctx, resolver=_lethal_resolver())
             if isinstance(result, tuple):
                 break
 
@@ -198,14 +199,14 @@ async def test_real_echo_destroyed_while_ally_stands_defers_defeat(reset_db_pool
     await combat_turn._declare_phase_impl(
         ctx, {pc_a: _DEFEND, pc_b: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc_a)}
     )
-    r_a = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
-    assert isinstance(r_a, str)  # combat continues
+    r_a = await _resolve_round(ctx, resolver=_damage_resolver(3))
+    assert not isinstance(r_a, tuple)  # combat continues
     assert _participants(ctx)[pc_a].type == "temporary_hollowed"  # echo rose
 
     # Phase B: the enemy destroys the echo while pc_b still stands -> combat does NOT end (M20 gate).
     await combat_turn._declare_phase_impl(ctx, {pc_b: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc_a)})
-    r_b = await combat_turn._resolve_phase_impl(ctx, resolver=_lethal_resolver())
-    assert isinstance(r_b, str)  # the destroyed echo did NOT end combat — the ally keeps it alive
+    r_b = await _resolve_round(ctx, resolver=_lethal_resolver())
+    assert not isinstance(r_b, tuple)  # the destroyed echo did NOT end combat — the ally keeps it alive
     assert ctx.userdata.combat_state is not None
     assert _participants(ctx)[pc_a].is_fallen or _participants(ctx)[pc_a].is_dead  # echo destroyed
 
@@ -214,7 +215,7 @@ async def test_real_echo_destroyed_while_ally_stands_defers_defeat(reset_db_pool
         await combat_turn._declare_phase_impl(
             ctx, {pc_b: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc_b)}
         )
-        r_c = await combat_turn._resolve_phase_impl(ctx, resolver=_lethal_resolver())
+        r_c = await _resolve_round(ctx, resolver=_lethal_resolver())
 
     assert isinstance(r_c, tuple)  # combat ENDED (defeat) only once the ally also fell
     assert ctx.userdata.combat_state is None

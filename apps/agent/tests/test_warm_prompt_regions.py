@@ -2,9 +2,9 @@
 
 from unittest.mock import AsyncMock, patch
 
-from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
+from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
 
-from warm_prompts import build_full_prompt, build_warm_layer
+from warm_prompts import build_full_prompt, build_warm_layer, format_combat_hot_line
 
 
 class TestRegionTypeWarmLayer:
@@ -123,3 +123,24 @@ class TestBuildFullPrompt:
     def test_empty_warm_layer(self):
         result = build_full_prompt("STATIC", "")
         assert result == "STATIC"
+
+
+class TestCombatHotLine:
+    """format_combat_hot_line is the per-turn combat line, rendered from combat_state alone.
+
+    One renderer for both agents' hot layer — the warm layer carries no combat block at all.
+    """
+
+    def test_renders_round_and_each_participant_status(self):
+        line = format_combat_hot_line(sample_combat_state(round_number=2, hp_current=8))
+        assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"
+
+    def test_fallen_participant_reads_as_fallen(self):
+        """0 HP with the flag SET — the only state a zero-HP transition can now leave behind,
+        since story-026 routed every writer through combat_support._handle_hp_zero."""
+        line = format_combat_hot_line(sample_combat_state(hp_current=0, is_fallen=True))
+        assert line is not None
+        assert "Grosh(fallen)" in line
+
+    def test_none_when_not_in_combat(self):
+        assert format_combat_hot_line(None) is None

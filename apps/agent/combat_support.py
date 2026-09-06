@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 from livekit.agents.llm import ToolError
 
@@ -64,16 +64,21 @@ async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: Even
 def _handle_hp_zero(
     session: SessionData,
     target: CombatParticipant,
-    attack_result,
     *,
+    overkill: int,
     was_fallen: bool,
     hp_status: str,
     sounds: list[str],
 ) -> tuple[str, bool]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
-    Called from ``_resolve_attack_packet`` only when ``target.hp_current <= 0``. Mutates
-    ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
+    The ONE door for every zero-HP transition, whether the damage came from a blow or from the
+    caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
+    (bug 16c5f8a0). The census that keeps it the only door is
+    ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
+
+    ``overkill`` is the excess damage past 0. Mutates ``target`` in place
+    (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
     ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
     ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
     HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
@@ -99,10 +104,10 @@ def _handle_hp_zero(
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
     # _wrap reads it to end combat without a death-save beat. This is the one site with both
-    # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
+    # overkill + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
     # transition the spec scopes it to; a hit on an already-downed target is the separate
     # "damage while Fallen" failure mechanic.
-    if not was_fallen and attack_result.overkill >= target.hp_max:
+    if not was_fallen and overkill >= target.hp_max:
         target.is_dead = True
     sounds.append(SOUND_PLAYER_FALLEN)
     # Handle companion KO
@@ -132,6 +137,10 @@ async def _resolve_attack_packet(
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
+    The composition of ``roll_attack`` and ``apply_attack_result`` — the unpaused path, which
+    resolves exactly as it did before the two halves were separable (M29, story-016). Callers
+    that must PAUSE between the roll and the damage (the Beat-3 hold) drive the halves directly.
+
     Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
     DICE_ROLL, sounds, and any durability hits in strike order, and returns a
     response dict for the caller (a per-packet narration summary). It does NOT
@@ -139,9 +148,52 @@ async def _resolve_attack_packet(
     phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
     ``action`` is an entry from the attacker's action_pool (weapon-shaped).
 
-    ``shield_reaction`` remains unwired because player reactions resolve through
-    ``activate`` and ``validate_reaction_activation``, outside the attack packet. It is therefore
-    ``None`` on the live path; direct durability tests exercise the accrual seam."""
+    ``shield_reaction`` names the shield-bearing reaction the target spent against THIS blow, and
+    is what accrues a durability hit on their shield. Its live producer is the Beat-3 window close
+    (combat_reaction_effect.shield_reaction, story-018); ``None`` on every unpaused path."""
+    attack_result, effective_ac = roll_attack(
+        attacker,
+        action,
+        target,
+        target_ac_bonus=target_ac_bonus,
+        enemies_remaining=enemies_remaining,
+        is_first_attack_of_combat=is_first_attack_of_combat,
+        resolver=resolver,
+    )
+    return await apply_attack_result(
+        session,
+        attacker,
+        action,
+        target,
+        attack_result,
+        effective_ac,
+        shield_reaction=shield_reaction,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        combat_state=combat_state,
+        conn=conn,
+        sink=sink,
+    )
+
+
+def roll_attack(
+    attacker,
+    action: dict,
+    target,
+    *,
+    target_ac_bonus: int = 0,
+    enemies_remaining: int | None = None,
+    is_first_attack_of_combat: bool = False,
+    resolver=check_resolution_attack,
+) -> tuple:
+    """Roll ONE attack and return ``(AttackResult, effective_ac)`` — WITHOUT touching HP.
+
+    Pure and synchronous by design: no mutation, no await, no event. That is what lets the
+    Beat-3 hold pause between the roll and the impact (M29, story-016) — the post-roll reaction
+    window is PRE-DAMAGE, so the outcome must be known while the target is still untouched.
+    ``apply_attack_result`` is the other half; ``_resolve_attack_packet`` composes both.
+    """
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,
@@ -183,6 +235,51 @@ async def _resolve_attack_packet(
         if verdict.dramatic:
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
+    return attack_result, effective_ac
+
+
+def serialize_roll(attack_result, effective_ac: int) -> dict:
+    """A rolled-but-unapplied attack as JSONB, for the held action it rides inside.
+
+    ``consumed_conditions`` is the one field JSON loses: it is a tuple, and a list coming back
+    would make the M4.8 single-use +1d4 die look unconsumed. It is emitted as a LIST here so the
+    serialized shape is already JSONB-native and a persisted state round-trips byte-identical
+    (asdict alone leaves a tuple, which json turns into a list only on the way out — so the state
+    written and the state reloaded would differ). ``deserialize_roll`` re-tuples it on the way back.
+    """
+    fields = asdict(attack_result)
+    fields["consumed_conditions"] = list(fields["consumed_conditions"])
+    return {"attack_result": fields, "effective_ac": effective_ac}
+
+
+def deserialize_roll(data: dict) -> tuple:
+    """The read-side inverse of ``serialize_roll`` — ``(AttackResult, effective_ac)``."""
+    fields = dict(data["attack_result"])
+    fields["consumed_conditions"] = tuple(fields.get("consumed_conditions") or ())
+    return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
+
+
+async def apply_attack_result(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
+    attack_result,
+    effective_ac: int,
+    *,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    concentration_break_mod=concentration_break,
+    combat_state=None,
+    conn=None,
+    sink=None,
+) -> dict:
+    """Apply an already-rolled attack: HP, fall/death, events, durability, and the summary.
+
+    Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
+    story-016), so the engine can pause on a post-roll, pre-damage reaction window.
+    """
     # Capture pre-hit Fallen state: the instant-death verdict (below) is scoped to the
     # live -> 0 transition (spec game_mechanics_combat.md L350 + on_hp_zero pseudocode L554:
     # "a single source of damage REDUCES HP to 0"). A hit on a target already at 0 is the
@@ -190,8 +287,17 @@ async def _resolve_attack_packet(
     # death — without this guard overkill = damage - 0 = damage would wrongly flag is_dead.
     was_fallen = target.is_fallen
 
-    # Update target HP
-    target.hp_current = attack_result.target_hp_remaining
+    # HP is derived from the target's LIVE hp_current and the roll's DAMAGE, never from the roll's
+    # absolute ``target_hp_remaining``. On the unpaused path the two are identical by construction
+    # — roll_attack was handed this same hp_current a moment earlier. They diverge only when
+    # something moved the target's HP between the roll and the damage, which the Beat-3 hold makes
+    # reachable: a pause hands the floor back to the DM, and the combat prompt names Inner Fire as
+    # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
+    # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
+    # hides the fall it caused, so every verdict below reads hp_before instead.
+    hp_before = target.hp_current
+    overkill = max(0, attack_result.damage - hp_before)
+    target.hp_current = max(0, hp_before - attack_result.damage)
 
     # Determine sounds
     sounds: list[str] = []
@@ -207,7 +313,12 @@ async def _resolve_attack_packet(
     rose_hollowed = False
     if target.hp_current <= 0:
         hp_status, rose_hollowed = _handle_hp_zero(
-            session, target, attack_result, was_fallen=was_fallen, hp_status=hp_status, sounds=sounds
+            session,
+            target,
+            overkill=overkill,
+            was_fallen=was_fallen,
+            hp_status=hp_status,
+            sounds=sounds,
         )
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)

@@ -14,12 +14,11 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _start_combat
+from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _resolve_round, _start_combat
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
 import check_resolution_save
-import combat_turn
 import concentration_break
 import condition_produce
 import conditions
@@ -140,7 +139,7 @@ async def test_bless_in_combat_attack_consumes_once(reset_db_pool: str) -> None:
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(10)):
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
         # Consume-once rides the working state's participant (in-combat SSOT).
         live = ctx.userdata.combat_state.get_participant(player_id)
         assert live is not None

@@ -19,8 +19,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import abilities
+import reaction_spend
 from conditions import tick_conditions
-from declarations import Declaration, DeclarationType, resolve_declaration
+from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -127,11 +128,11 @@ def advance_combat_phase(
         # here (the tool layer translates ValueError -> ToolError) rather than at the
         # later resolution beat. Raw dicts are still what's stored/persisted.
         for raw in declarations.values():
-            decl = resolve_declaration(raw)
-            if decl.type is DeclarationType.REACTION:
-                check_reaction_window(decl)
+            resolve_declaration(raw)
         next_state.pending_declarations = dict(declarations)
-        next_state.reactions_available = {p.id: True for p in next_state.participants if p.type == "player"}
+        next_state.reactions_available = {
+            p.id: reaction_spend.unspent() for p in next_state.participants if p.type == "player"
+        }
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
 
@@ -217,47 +218,40 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
     return next_state
 
 
-def check_reaction_window(declaration: Declaration) -> None:
-    """Raise unless a REACTION declaration's trigger equals its ability's catalog `window`.
-
-    Checked at DECLARATION as well as at activation, because a reaction's window lives only in
-    the ability catalog and nothing surfaces it to the DM -- so its trigger is a guess. Caught at
-    Beat 1 the guess is loud, names the right window, and the beat is still open to re-declare;
-    caught only at activation it costs the round's reaction with the phase already committed.
-    The activation-time call is not redundant: state can reach RESOLUTION without passing the
-    declaration loop (a combat persisted before this check), and that must still not spend."""
-    if declaration.action is None:
-        raise ValueError("reaction declaration requires an 'action'")
-    window = abilities.get_ability(declaration.action).window
-    if declaration.trigger != window:
-        raise ValueError(
-            f"declared reaction trigger {declaration.trigger!r} does not match {declaration.action!r} window {window!r}"
-        )
-
-
 def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
     """Raise unless ``actor_id`` may spend a reaction on ``ability_id`` right now.
 
+    The permission is an OPEN WINDOW (story-017, decision 46), not a pre-declaration: the player
+    shouts "I block!" in conversational time, against a held enemy blow the DM has just narrated.
+    Beat 1 could not know whether that blow would hit, miss, or land at all, so the declared
+    trigger was an unmakeable judgement; the window the Beat-3 pump is paused on knows.
+
+    The open-window check is deliberately not a beat comparison. A beat gate has to track the
+    pause it guards and cannot fail loud when it drifts: the RESOLUTION gate this replaced was
+    left behind by story-016's move of the pause to NARRATION, and silently refused every held
+    window it existed to protect.
+
     Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
-    ``state`` here and the caller assigned the copy back after its await, which erased anything an
-    unlocked in-place writer committed meanwhile (draethar_inner_fire mutates participants directly
-    and holds no combat_end_lock). The caller records the spend as one field write instead."""
-    if state.beat != PhaseBeat.RESOLUTION:
-        raise ValueError("reactions can only activate during the resolution beat")
+    ``state`` here and the caller assigned the copy back after its await, which erased anything
+    another in-place writer committed meanwhile (draethar_inner_fire mutates participants
+    directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
+    it). The caller records the spend as one field write instead."""
+    window = state.open_window
+    if window is None:
+        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
 
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
 
-    raw_declaration = state.pending_declarations.get(actor_id)
-    if raw_declaration is None:
-        raise ValueError(f"player {actor_id!r} has no pending reaction declaration")
-    declaration = resolve_declaration(raw_declaration)
-    if declaration.type is not DeclarationType.REACTION or declaration.action != ability_id:
-        raise ValueError(f"ability {ability_id!r} is not the player's exact pending reaction")
+    catalog_window = abilities.get_ability(ability_id).window
+    if catalog_window not in window["triggers"]:
+        raise ValueError(
+            f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
+            f"{window['id']!r} offers {window['triggers']}"
+        )
 
-    check_reaction_window(declaration)
-    if not state.reactions_available.get(actor_id, False):
+    if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
 
 
@@ -290,6 +284,27 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
         )
         for actor_id in ordered_ids
     ]
+
+
+def partition_packets(
+    state: CombatState, packets: list[ResolutionPacket]
+) -> tuple[list[ResolutionPacket], list[ResolutionPacket]]:
+    """Split an initiative-ordered packet list into ``(allies, enemies)``.
+
+    Beat 2 resolves the ally band; Beat 3 HOLDS the hostile band behind reaction windows
+    (gm_combat:154-187, decision 46). Relative initiative order is preserved within each band, so
+    a Boss still acts before its Minions — what ends is CROSS-band pre-emption, where a
+    higher-initiative enemy dropped the player before their declared swing landed.
+
+    A packet whose actor is unknown goes to the ALLY band: it resolves in commit 1 to the same
+    "actor unavailable" summary as on trunk, rather than being held for a window nobody can open.
+    """
+    allies: list[ResolutionPacket] = []
+    enemies: list[ResolutionPacket] = []
+    for packet in packets:
+        actor = state.get_participant(packet.actor_id)
+        (enemies if actor is not None and not actor.is_ally else allies).append(packet)
+    return allies, enemies
 
 
 def is_terminally_down(p: CombatParticipant) -> bool:

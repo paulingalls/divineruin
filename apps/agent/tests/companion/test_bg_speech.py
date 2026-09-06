@@ -23,9 +23,13 @@ def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock
     sd = session_data or _make_session_data()
     agent = MagicMock()
     agent.update_instructions = AsyncMock()
+    # The process composes the CURRENT agent's static half, so a mock target must answer with
+    # a real string (a MagicMock would not join).
+    agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
+    session.current_agent = agent
     session.generate_reply = AsyncMock()
-    bg = BackgroundProcess(agent=agent, session=session, session_data=sd)
+    bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
 
 
@@ -240,3 +244,99 @@ class TestDeliverSpeechUpdatesCompanionTime:
         ]
         await bg._deliver_speech()
         assert sd.companion.last_speech_time > 0
+
+
+def _in_combat(sd: SessionData) -> None:
+    sd.combat_state = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(id="player_1", name="Kael", type="player", initiative=15, hp_current=20, hp_max=20, ac=14)
+        ],
+        initiative_order=["player_1"],
+    )
+
+
+class TestProactiveSpeechDoesNotInterruptAFight:
+    """story-023 gave the loop SESSION lifetime, so it now runs THROUGH a fight.
+
+    On trunk the process was stopped by ExplorationAgent.on_exit at the handoff into combat, so
+    proactive speech could not reach a fight however it was queued. Session-scoped, it can: the
+    event-driven producers in ``handle_events`` carry no combat gate, and ``_deliver_speech`` calls
+    ``generate_reply`` regardless — so a quest that ticks over on a killing blow makes the DM break
+    off mid-beat to narrate an objective. That proactive speech must be suppressed in a fight is
+    the module's own position, stated twice: ``_check_companion_idle`` and
+    ``_check_scene_beat_hints`` both return early on ``in_combat``. These are the third and fourth
+    producers saying it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_event_cue_raised_mid_fight_is_not_spoken(self):
+        sd = _make_session_data()
+        _in_combat(sd)
+        bg, _, session = _make_bg(session_data=sd)
+        bg._handle_events(
+            [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "The Rider", "objective": "Ride"})]
+        )
+        assert bg._speech_queue, "the producer must still queue, or the hold below is vacuous"
+
+        await bg._deliver_speech()
+
+        session.generate_reply.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_it_is_held_rather_than_dropped_and_speaks_once_the_fight_ends(self):
+        """Held, not discarded: an event cue is one-shot — nothing re-queues it — so dropping it
+        loses a player-facing announcement outright. The idle and hint producers can be skipped
+        because a timer remakes them next tick; these cannot."""
+        sd = _make_session_data()
+        _in_combat(sd)
+        bg, _, session = _make_bg(session_data=sd)
+        bg._handle_events(
+            [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "The Rider", "objective": "Ride"})]
+        )
+
+        await bg._deliver_speech()
+        assert len(bg._speech_queue) == 1, "the cue must survive the fight, not be cleared unspoken"
+
+        sd.combat_state = None  # end_combat clears this BEFORE COMBAT_ENDED reaches the bus
+        await bg._deliver_speech()
+
+        session.generate_reply.assert_awaited_once()
+        assert "The Rider" in session.generate_reply.await_args.kwargs["instructions"]
+
+    @pytest.mark.asyncio
+    async def test_the_vaelti_advance_warning_still_speaks_mid_fight(self):
+        """The one producer whose whole purpose is to reach the player DURING a fight: a Vaelti
+        senses a Hollow Echo one round before it lands (game_mechanics_magic.md:246-252), so a
+        blanket gate would delete the mechanic rather than protect it."""
+        sd = _make_session_data()
+        _in_combat(sd)
+        bg, _, session = _make_bg(session_data=sd)
+        bg._handle_events([GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})])
+
+        await bg._deliver_speech()
+
+        session.generate_reply.assert_awaited_once()
+        assert "through the Veil" in session.generate_reply.await_args.kwargs["instructions"]
+        assert bg._speech_queue == []
+
+    @pytest.mark.asyncio
+    async def test_the_end_of_fight_cue_is_not_outranked_by_what_the_fight_held(self):
+        """The hold's one sharp edge, closed deliberately. ``_deliver_speech`` speaks the most
+        urgent item and discards the rest, and ``max`` returns the FIRST maximal element — so a cue
+        held through the fight would beat the same-priority cue the fight's END raises, which for a
+        defeat means a god whisper spoken instead of "the player has fallen". At equal urgency the
+        newest event is the one the player is actually in."""
+        sd = _make_session_data()
+        _in_combat(sd)
+        bg, _, session = _make_bg(session_data=sd)
+        bg._handle_events(
+            [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "The Rider", "objective": "Ride"})]
+        )
+        await bg._deliver_speech()
+
+        sd.combat_state = None
+        bg._handle_events([GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})])
+        await bg._deliver_speech()
+
+        assert "Combat has ended in victory" in session.generate_reply.await_args.kwargs["instructions"]

@@ -5,9 +5,10 @@ per-instance attribute (``region_type``), not a class — the location's Stage,
 not the agent class, carries the region. One unified tool list (the former city
 superset) serves city, wilderness, and dungeon alike.
 
-Owns the BackgroundProcess lifecycle, session init/end events, hot context
+Starts the SESSION's BackgroundProcess (once — it outlives every mode handoff and is
+stopped by the session's close, not by this agent's exit), the session init event, hot context
 injection, affect analysis forwarding, the L5 specialization tap listener, and
-delayed session close.
+delayed session close. The session END is not here: see ``session_end.py``.
 """
 
 import asyncio
@@ -17,7 +18,6 @@ from typing import Any
 
 from livekit import agents
 
-import db_mutations
 import db_session_queries
 import event_types as E
 from activate_tools import activate
@@ -26,7 +26,6 @@ from base_agent import BaseGameAgent
 from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
-from combat_resolution import hp_threshold_status
 from game_events import publish_game_event
 from inventory_tools import transact
 from mode_tools import enter_mode
@@ -37,13 +36,24 @@ from region_types import REGION_CITY
 from reputation_tools import adjust_faction_reputation
 from scene_tools import enter_location
 from session_data import SessionData
-from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
 from travel_tools import travel
-from warm_prompts import format_affect_context
+from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
+
+# The pause between the DM's narrative wrap-up and the actual session close, so the
+# player hears the goodbye finish before the recap arrives. Named so a test can shorten
+# it without patching `asyncio.sleep`, which is the shared module object — patching it
+# there stubs the vendor's timing for everything running in the same block.
+CLOSE_DELAY_S = 3.0
+
+
+def _log_close_failure(task: asyncio.Task) -> None:
+    if not task.cancelled() and task.exception():
+        logger.error("Delayed session close failed", exc_info=task.exception())
+
 
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
@@ -114,10 +124,9 @@ class ExplorationAgent(BaseGameAgent):
             chat_ctx=chat_ctx,
         )
         self._initial_location = initial_location
-        self._background: BackgroundProcess | None = None
         self._spec_tap: SpecializationTapHandler | None = None
-        self._session_start_time: float = time.time()
         self._close_scheduled: bool = False
+        self._close_task: asyncio.Task | None = None
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
@@ -129,15 +138,17 @@ class ExplorationAgent(BaseGameAgent):
     async def on_enter(self) -> None:
         await super().on_enter()
         logger.info("%sAgent entered session", self._agent_type.capitalize())
-        self._session_start_time = time.time()
         sd: SessionData = self.session.userdata
 
-        self._background = BackgroundProcess(
-            agent=self,
-            session=self.session,
-            session_data=sd,
-        )
-        self._background.start()
+        # Session-scoped, and started at most once: a handback from combat/dispatch enters a
+        # NEW ExplorationAgent instance over the same SessionData, and nothing stops the first
+        # loop any more. The bus is a QUEUE, so two loops do not duplicate the stream — they
+        # SPLIT it, each seeing half the events and keeping its own quest/scene/warm caches, and
+        # both rebuilding on the 30s fallback. That is a doubled DB fan-out over two divergent
+        # warm layers racing each other into the same agent.
+        if sd.background is None:
+            sd.background = BackgroundProcess(session=self.session, session_data=sd)
+            sd.background.start()
         self._fire_and_forget(self._publish_session_init(sd))
 
         # Consume L5 specialization taps from the HUD: a tap drives the DM to resolve
@@ -146,30 +157,14 @@ class ExplorationAgent(BaseGameAgent):
         self._spec_tap = start_specialization_tap(sd.room, self.session, sd)
 
     async def on_exit(self) -> None:
+        """Agent-scoped teardown ONLY — this runs on every mode handoff, not at session end.
+
+        The session summary, the SESSION_END publish and the summary row live in
+        ``session_end.run_session_end``, fired from the session's own ``close`` event.
+        """
         logger.info("%sAgent exiting session", self._agent_type.capitalize())
         if self._spec_tap:
             self._spec_tap.stop()
-        sd: SessionData = self.session.userdata
-
-        transcript_path = self._transcript.log_path if self._transcript else None
-        summary_payload = await generate_session_summary(sd, transcript_path, self._session_start_time)
-
-        results = await asyncio.gather(
-            publish_game_event(sd.room, E.SESSION_END, summary_payload, sd.event_bus),
-            db_mutations.save_session_summary(sd.player_id, sd.session_id, summary_payload),
-            return_exceptions=True,
-        )
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                labels = ("publish session_end", "save session summary")
-                logger.exception("Failed to %s", labels[i], exc_info=result)
-
-        try:
-            if self._background:
-                await self._background.stop()
-        except Exception:
-            logger.exception("Failed to stop background process")
-
         await super().on_exit()
 
     async def on_user_turn_completed(
@@ -195,11 +190,25 @@ class ExplorationAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
         if sd.ending_requested and not self._close_scheduled:
             self._close_scheduled = True
-            self._fire_and_forget(self._delayed_close())
+            # NOT _fire_and_forget: that bag is cancelled by BaseGameAgent.on_exit, and
+            # on_exit is what this task's own aclose() is waiting on — cancelling it from
+            # inside it recursed until the close emit was never reached (bug 7a04caf1).
+            # Closing the session is session-scoped work; the agent only holds the handle.
+            self._close_task = asyncio.create_task(self._delayed_close())
+            # Leaving the bag also left the failure unlogged: `self.session` raises
+            # RuntimeError once the agent is no longer running, so a handoff inside the
+            # wrap-up window would silently abandon the close — and with it the recap.
+            self._close_task.add_done_callback(_log_close_failure)
 
     async def _delayed_close(self) -> None:
-        await asyncio.sleep(3.0)
+        await asyncio.sleep(CLOSE_DELAY_S)
         await self.session.aclose()
+
+    def static_prompt(self, sd: SessionData) -> str:
+        # Rebuilt from LIVE state rather than returning the constructor's instructions: the
+        # exploration static layer names the current location and companion, and both change
+        # within one agent instance (move_player, a companion binding).
+        return build_system_prompt(sd.location_id, companion=sd.companion)
 
     def _build_hot_context(self, sd: SessionData) -> str:
         """Build hot context from in-memory SessionData only — zero I/O."""
@@ -208,15 +217,9 @@ class ExplorationAgent(BaseGameAgent):
         loc_name = sd.cached_location_name or sd.location_id
         parts.append(f"[Context: {loc_name}, {sd.world_time}]")
 
-        if sd.combat_state is not None:
-            cs = sd.combat_state
-            combatants = []
-            for pid in cs.initiative_order:
-                p = cs.get_participant(pid)
-                if p is not None:
-                    status = hp_threshold_status(p.hp_current, p.hp_max)
-                    combatants.append(f"{p.name}({status})")
-            parts.append(f"[COMBAT Round {cs.round_number}: {', '.join(combatants)}]")
+        combat = format_combat_hot_line(sd.combat_state)
+        if combat:
+            parts.append(combat)
 
         if sd.cached_quest_summaries:
             parts.append("[Quests: " + "; ".join(sd.cached_quest_summaries) + "]")

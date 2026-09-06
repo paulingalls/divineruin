@@ -88,6 +88,17 @@ async def _end_combat_locked(
     session: SessionData = context.userdata
     cs = _require_combat(session)
 
+    # A round is TWO commits (M29, story-016), and combat_end_lock cannot cover the GAP between
+    # them: after the ally commit the enemy actions sit persisted as pending, and ending here would
+    # pay the party and delete the combat row with an enemy's turn still queued. Refuse loud and
+    # name the next action rather than force-end into a silent data loss (constraint 4). The cost,
+    # on the record: end_combat("fled") is unavailable for one beat.
+    if cs.held_actions:
+        raise ToolError(
+            f"{len(cs.held_actions)} enemy action(s) are still held pending at the narration beat — "
+            "call resolve_phase to close the beat, then end combat."
+        )
+
     if outcome.lower() not in _VALID_OUTCOMES:
         raise ToolError(f"Invalid outcome. Must be one of: {_VALID_OUTCOMES}")
     outcome = outcome.lower()

@@ -29,13 +29,13 @@ from acceptance._capstone_helpers import (
     _enemy,
     _player,
     _player_attack_events,
+    _resolve_round,
     _start_combat,
 )
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
 import combat_death_save
-import combat_turn
 import db
 import db_mutations
 
@@ -54,7 +54,7 @@ async def test_combat_nat20_crit_is_dramatic_chain(reset_db_pool: str) -> None:
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(20)):
-            result = await combat_turn._resolve_phase_impl(ctx)
+            result = await _resolve_round(ctx)
 
         # Event side of the chain.
         attacks = _player_attack_events(room)
@@ -62,8 +62,8 @@ async def test_combat_nat20_crit_is_dramatic_chain(reset_db_pool: str) -> None:
         assert attacks[0]["dramatic"] is True
         assert attacks[0]["context"] == "natural_20"
         # Summary side of the chain (DM-facing packet from resolve_phase).
-        assert isinstance(result, str), "a non-lethal crit (enemy at 100 HP) loops the phase"
-        summaries = json.loads(result)["packets"]
+        assert not isinstance(result, tuple), "a non-lethal crit (enemy at 100 HP) loops the phase"
+        summaries = result["packets"]
         dramatic_summaries = [p for p in summaries if p.get("dramatic") is True]
         assert dramatic_summaries, "the resolve packet summary carries the dramatic flag"
     finally:
@@ -83,7 +83,7 @@ async def test_combat_killing_blow_is_dramatic(reset_db_pool: str) -> None:
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a", "goblin_b"])
         with patch("check_resolution.dice_roll", return_value=_d20(11)):
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
 
         attacks = _player_attack_events(room)
         assert attacks, "the player's attack emitted a DICE_ROLL"
@@ -111,7 +111,7 @@ async def test_combat_routine_hit_is_not_dramatic(reset_db_pool: str) -> None:
         await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a", "goblin_b"])
         with patch("check_resolution.dice_roll", return_value=_d20(11)):
-            await combat_turn._resolve_phase_impl(ctx)
+            await _resolve_round(ctx)
 
         attacks = _player_attack_events(room)
         assert attacks, "the player's attack emitted a DICE_ROLL"
@@ -204,7 +204,7 @@ async def test_scarcity_bar_holds_over_representative_fight(reset_db_pool: str) 
                 if phase == 4:
                     next(p for p in cs.participants if p.id == "goblin_a").hp_current = 1
                 await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a", "goblin_b"])
-                await combat_turn._resolve_phase_impl(ctx)
+                await _resolve_round(ctx)
 
         player_attacks = _player_attack_events(room)
         assert len(player_attacks) >= 3, "the fight ran several phases of player attacks"

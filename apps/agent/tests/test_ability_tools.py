@@ -17,6 +17,8 @@ from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import reaction_spend
+import reaction_windows
 from ability_tools import _request_ability_activation_impl
 from combat_phase import PhaseBeat
 
@@ -71,18 +73,37 @@ async def _call(
     return json.loads(raw), persistence
 
 
-def _reaction_context(*, trigger="on_enemy_move", beat=PhaseBeat.RESOLUTION):
+def _reaction_context(*, hit=True, window_open=True):
+    """A phase PAUSED on a real Beat-3 window, which is the whole permission (story-017).
+
+    No declaration is staged: a reaction is an interrupt now, so `pending_declarations` stays
+    empty and the open window built by the real producer is what the gate reads.
+    """
     ctx = make_context()
     state = _make_combat_state()
-    state.beat = beat
-    state.pending_declarations = {
-        "player_1": {
-            "type": "reaction",
-            "action": "warrior_opportunity_strike",
-            "trigger": trigger,
-        }
-    }
-    state.reactions_available = {"player_1": True}
+    state.beat = PhaseBeat.NARRATION
+    if window_open:
+        # A real pause always has the held action the window belongs to at the head of the queue
+        # — record_spend binds the spend to its `seq`, and refuses loud if the two disagree.
+        state.held_actions = [
+            {
+                "seq": 0,
+                "actor_id": "goblin_scout_1",
+                "initiative": 12,
+                "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+                "roll": None,
+                "opened": ["pre_roll", "post_roll"],
+            }
+        ]
+        state.open_window = reaction_windows.open_window_for(
+            round_number=1,
+            seq=0,
+            stage="post_roll",
+            actor_id="goblin_scout_1",
+            target_id="player_1",
+            triggers=reaction_windows.post_roll_triggers({}, hit=hit),
+        )
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
     ctx.userdata.combat_state = state
     return ctx
 
@@ -125,43 +146,60 @@ class TestActivation:
         save_combat_state = AsyncMock()
         with patch("db_mutations.save_combat_state", save_combat_state):
             result, persistence = await _call(
-                "warrior_opportunity_strike", stamina=5, context=ctx, persistence=persistence
+                "warrior_brace_for_impact", stamina=5, context=ctx, persistence=persistence
             )
 
-        assert result["deducted"]["stamina"] == 1
+        assert result["deducted"]["stamina"] == 2
         assert result["narration_cue"]
         persistence.update_player_resources.assert_awaited_once()
-        assert ctx.userdata.combat_state.reactions_available["player_1"] is False
+        # AC1: the spend NAMES the ability and the held action it answers. A bare False here is
+        # exactly story-018 losing the binding — it would know a reaction fired, but not which one
+        # or against which blow, so it could neither halve THIS damage nor raise AC against THIS
+        # attack. Fault-inject by writing the bool.
+        window = ctx.userdata.combat_state.open_window
+        assert ctx.userdata.combat_state.reactions_available["player_1"] == {
+            "spent": True,
+            "ability_id": "warrior_brace_for_impact",
+            "window_id": window["id"],
+            "stage": "post_roll",
+            "held_seq": 0,
+        }
         save_combat_state.assert_not_called()
 
     async def test_second_reaction_is_refused_before_resource_write(self):
         ctx = _reaction_context()
-        await _call("warrior_opportunity_strike", context=ctx)
+        await _call("warrior_brace_for_impact", context=ctx)
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
 
         with pytest.raises(ToolError, match="already spent"):
-            await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
+            await _call("warrior_brace_for_impact", context=ctx, persistence=persistence)
 
         persistence.update_player_resources.assert_not_called()
 
     async def test_mismatched_reaction_window_is_refused_before_resource_write(self):
-        ctx = _reaction_context(trigger="on_hit")
+        """AC3 at the tool boundary: the refusal names both windows and costs nothing.
+
+        warrior_opportunity_strike fires on on_enemy_move, which the post-roll window never
+        offers — the reaction the player owns simply does not answer this blow."""
+        ctx = _reaction_context()
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
 
-        with pytest.raises(ToolError, match=r"does not match.*on_enemy_move"):
+        with pytest.raises(ToolError, match=r"on_enemy_move.*on_hit"):
             await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
 
         persistence.update_player_resources.assert_not_called()
+        assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
-    async def test_reaction_outside_resolution_is_refused_before_resource_write(self):
-        ctx = _reaction_context(beat=PhaseBeat.NARRATION)
+    async def test_reaction_with_no_open_window_is_refused_before_resource_write(self):
+        """AC4: in combat with no window open, the interrupt has nothing to interrupt."""
+        ctx = _reaction_context(window_open=False)
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
 
-        with pytest.raises(ToolError, match="resolution beat"):
-            await _call("warrior_opportunity_strike", context=ctx, persistence=persistence)
+        with pytest.raises(ToolError, match="no reaction window is open"):
+            await _call("warrior_brace_for_impact", context=ctx, persistence=persistence)
 
         persistence.update_player_resources.assert_not_called()
 
@@ -176,9 +214,9 @@ class TestActivation:
         persistence.update_player_resources = AsyncMock()
 
         with pytest.raises(ToolError, match="Not enough Stamina"):
-            await _call("warrior_opportunity_strike", stamina=0, context=ctx, persistence=persistence)
+            await _call("warrior_brace_for_impact", stamina=0, context=ctx, persistence=persistence)
 
-        assert ctx.userdata.combat_state.reactions_available["player_1"] is True
+        assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
         persistence.update_player_resources.assert_not_called()
 
     async def test_reaction_outside_combat_activates_ungated(self):

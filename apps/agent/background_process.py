@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import db_activity_queries
 import db_content_queries
@@ -16,12 +16,14 @@ import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
-from system_prompts import build_companion_cue, build_system_prompt, is_companion_cue
+from session_end import run_session_end
+from system_prompts import build_companion_cue, is_companion_cue
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
 if TYPE_CHECKING:
-    from livekit.agents import Agent, AgentSession
+    from livekit.agents import AgentSession
 
+    from base_agent import BaseGameAgent
     from session_data import SessionData
 
 logger = logging.getLogger("divineruin.background")
@@ -32,11 +34,12 @@ TIMER_FALLBACK_SECS = 30.0
 class BackgroundProcess:
     def __init__(
         self,
-        agent: Agent,
         session: AgentSession,
         session_data: SessionData,
     ) -> None:
-        self._agent = agent
+        # No agent here on purpose: the process outlives every mode handoff, so it resolves
+        # the CURRENT agent at injection time (_apply_warm). One built for the exploration
+        # agent would keep writing the warm layer into an agent that no longer holds the floor.
         self._session = session
         self._sd = session_data
         self._task: asyncio.Task | None = None
@@ -47,12 +50,33 @@ class BackgroundProcess:
         self._scene_cache: dict[str, dict] = {}
         self._scene_hint_state: dict = {}
         self._rider_triggered: bool = False
-        self._last_static_key: tuple[str, str | None] | None = None
+        self._last_static_key: tuple[str, str, str | None] | None = None
         self._cached_static: str = ""
+        self._last_target: BaseGameAgent | None = None
         self._paused: bool = False
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
+        # The session is the owner, so the session's end is the only thing that stops the loop —
+        # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
+        self._session.on("close", self._on_session_close)
+        # ...and the same reasoning puts the end-of-session recap here. start() is called from
+        # ExplorationAgent.on_enter's `if sd.background is None:` block, so a handback registers
+        # nothing new and the recap fires exactly once per session. Its own handler, not folded
+        # into _on_session_close: stop() calls that one directly to join the loop, and a recap
+        # there would run an LLM call and a DB write from inside the fast lane.
+        self._session.on("close", self._on_session_end)
+
+    def _on_session_close(self, _ev: object) -> None:
+        """Sync half of ``stop`` — LiveKit emits ``close`` from a sync handler chain."""
+        self._stop = True
+        if self._task is not None:
+            self._task.cancel()
+
+    def _on_session_end(self, _ev: object) -> None:
+        """Spawn the end-of-session recap. ``emit`` is synchronous (rtc/event_emitter.py), so
+        this cannot await; ``agent._join_session_end`` joins the handle before room teardown."""
+        self._sd.session_end_task = asyncio.create_task(run_session_end(self._sd))
 
     def pause(self) -> None:
         self._paused = True
@@ -61,9 +85,13 @@ class BackgroundProcess:
         self._paused = False
 
     async def stop(self) -> None:
-        self._stop = True
+        """Awaitable twin of ``_on_session_close``, for callers that can wait for the loop.
+
+        No production caller: the session's ``close`` handler is the whole shutdown path now.
+        Tests use this to join the loop before the event loop goes away.
+        """
+        self._on_session_close(None)
         if self._task is not None:
-            self._task.cancel()
             try:
                 await self._task
             except asyncio.CancelledError:
@@ -87,10 +115,7 @@ class BackgroundProcess:
                 events.append(event)
             events.extend(self._sd.event_bus.drain())
 
-            needs_rebuild = self._handle_events(events)
-
-            if needs_rebuild or event is None:
-                await self._rebuild_warm_layer()
+            await self._process_events(events, timed_out=event is None)
 
             if self._paused:
                 continue
@@ -99,6 +124,11 @@ class BackgroundProcess:
             self._check_scene_beat_hints()
 
             await self._deliver_speech()
+
+    async def _process_events(self, events: list, timed_out: bool) -> None:
+        needs_rebuild = self._handle_events(events)
+        if needs_rebuild or timed_out:
+            await self._rebuild_warm_layer()
 
     def _handle_events(self, events: list) -> bool:
         needs_rebuild, self._rider_triggered = handle_events(
@@ -211,8 +241,24 @@ class BackgroundProcess:
         if not self._speech_queue:
             return
 
-        top = max(self._speech_queue)
-        self._speech_queue.clear()
+        # A fight HOLDS proactive speech. The loop is session-scoped since story-023, so it runs
+        # through combat now, and the DM is mid-beat with the phase loop owning the floor — the
+        # same reason _check_companion_idle and _check_scene_beat_hints refuse to produce here.
+        # Held rather than dropped: an event cue is one-shot, so discarding it loses the
+        # announcement outright, where the idle/hint producers are remade by their own timers.
+        speakable, held = self._speech_queue, []
+        if self._sd.in_combat:
+            speakable = [s for s in self._speech_queue if s.combat_safe]
+            held = [s for s in self._speech_queue if not s.combat_safe]
+        if not speakable:
+            return
+
+        # Newest wins a tie, which matters only because of the hold above: `max` returns the FIRST
+        # maximal element, so a cue carried through the whole fight would outrank the same-priority
+        # cue the fight's END raises — on a defeat, a held god whisper spoken in place of "the
+        # player has fallen". At equal urgency the most recent event is the one the player is in.
+        top = max(speakable, key=lambda s: (s.priority, s.created))
+        self._speech_queue = held
 
         try:
             # Fire stinger SFX before god whisper speech
@@ -284,11 +330,10 @@ class BackgroundProcess:
                 if quest_objective(q)
             ]
 
-            warm = await build_warm_layer(
+            base = await build_warm_layer(
                 self._sd.location_id,
                 self._sd.player_id,
                 self._sd.world_time,
-                combat_state=self._sd.combat_state,
                 companion=self._sd.companion,
                 quests=self._quest_cache or None,
                 corruption_level=self._sd.corruption_level,
@@ -301,18 +346,33 @@ class BackgroundProcess:
             logger.warning("Warm layer build failed", exc_info=True)
             return
 
-        if warm == self._last_warm_layer:
+        await self._apply_warm(base)
+
+    async def _apply_warm(self, warm: str) -> None:
+        # Every agent that can hold the floor while this process runs is a BaseGameAgent; one
+        # that is not raises on static_prompt rather than being quietly skipped.
+        agent = cast("BaseGameAgent", self._session.current_agent)
+        # The target is half the dedupe key: a handoff hands the floor to an agent whose
+        # instructions carry no warm layer at all, and an unchanged warm string must still
+        # reach it.
+        if warm == self._last_warm_layer and agent is self._last_target:
             return
 
         self._last_warm_layer = warm
+        self._last_target = agent
         # Keyed on companion IDENTITY, not merely presence: the static layer renders the
         # assigned companion's own name, tag and profile, so a bool would serve a stale
-        # section if the bound companion ever changed within a session.
+        # section if the bound companion ever changed within a session. Keyed on the agent
+        # too: each agent's static half is its own (COMBAT_SYSTEM_PROMPT for a fight).
         companion = self._sd.companion
-        static_key = (self._sd.location_id, companion.id if self._sd.has_companion and companion else None)
+        static_key = (
+            type(agent).__name__,
+            self._sd.location_id,
+            companion.id if self._sd.has_companion and companion else None,
+        )
         if static_key != self._last_static_key:
             self._last_static_key = static_key
-            self._cached_static = build_system_prompt(self._sd.location_id, companion=self._sd.companion)
+            self._cached_static = agent.static_prompt(self._sd)
         full_prompt = build_full_prompt(self._cached_static, warm)
-        await self._agent.update_instructions(full_prompt)
-        logger.info("Warm layer updated (%d chars)", len(warm))
+        await agent.update_instructions(full_prompt)
+        logger.info("Warm layer updated (%d chars) for %s", len(warm), type(agent).__name__)

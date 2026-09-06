@@ -5,12 +5,18 @@ import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
+from typing import TYPE_CHECKING
 
 from livekit import rtc
 
+import reaction_spend
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
+from token_tracker import TokenTracker
+
+if TYPE_CHECKING:
+    from background_process import BackgroundProcess
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -153,13 +159,13 @@ class CombatState:
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
-    # Reaction availability for the current phase (actor_id -> bool). The declaration beat
+    # The round's one reaction per player (actor_id -> reaction_spend record). The declaration beat
     # refreshes it for PLAYERS ONLY — the reaction economy is player-only by design (only a
     # trained archetype technique is a reaction; enemy action_pool entries carry no catalog
-    # id, so no enemy can declare one). combat_phase.validate_reaction_activation guards the spend at the
-    # resolution beat and combat_packet reads it to decide whether a REACTION declaration
-    # resolved; the wrap loop-back clears it. Absent actor => no budget (never a free spend).
-    reactions_available: dict[str, bool] = field(default_factory=dict)
+    # id, so no enemy can declare one). combat_phase.validate_reaction_activation guards the spend
+    # at an OPEN Beat-3 window (story-017) and combat_hold.pause_allowed reads it to decide whether
+    # to pause at all; the wrap loop-back clears it. Absent actor => no budget (never a free spend).
+    reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
@@ -183,6 +189,19 @@ class CombatState:
     # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
     # rounds_remaining at the WRAP beat, beside tick_conditions.
     veil_ward: dict | None = None
+    # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
+    # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
+    # finds the enemy's turn still pending rather than silently deleted. Each entry:
+    #   {"seq": int, "actor_id": str, "declaration": <raw decl dict>, "initiative": int,
+    #    "roll": <serialize_roll shape> | None, "opened": [<stage>, ...]}
+    # ``opened`` is the position marker the pump reads (combat_hold): a non-attack action has no
+    # roll, so the roll alone cannot say which windows this action has already offered.
+    # JSONB-native (plain dicts, like veil_ward) so it round-trips with no nested rebuild.
+    held_actions: list[dict] = field(default_factory=list)
+    # The reaction window the machine is PAUSED on, or None. Surfaced to the DM verbatim in
+    # resolve_phase's `next.waiting_on` — the DM never guesses a window id (constraint 6).
+    # See reaction_windows.open_window_for for the shape.
+    open_window: dict | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -210,14 +229,22 @@ class CombatState:
             location_id=data.get("location_id", ""),
             faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
-            pending_declarations=data.get("pending_declarations", {}),
-            reactions_available=data.get("reactions_available", {}),
+            # A row written before story-017 can carry a REACTION pre-declaration, whose type
+            # resolve_declaration no longer knows (see reaction_spend.drop_pre_declared_reactions).
+            pending_declarations=reaction_spend.drop_pre_declared_reactions(data.get("pending_declarations", {})),
+            # Normalized, not passed through: rows written before story-017 carry dict[str, bool]
+            # on the field story-018 reads for the reaction binding (see reaction_spend.normalize).
+            reactions_available=reaction_spend.normalize(data.get("reactions_available", {})),
             ac_modifiers=data.get("ac_modifiers", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
             # Plain dict (or None) — no rebuild. Absent on rows written before story-004.
             veil_ward=data.get("veil_ward"),
+            # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
+            # with no held actions and no open window: a legacy combat is simply not mid-pause.
+            held_actions=data.get("held_actions", []),
+            open_window=data.get("open_window"),
         )
 
 
@@ -334,6 +361,7 @@ class SessionData:
     recently_revealed_element_ids: list[str] = field(default_factory=list)
 
     # Session metrics tracking
+    tokens: TokenTracker = field(default_factory=TokenTracker)
     session_xp_earned: int = 0
     session_items_found: list[str] = field(default_factory=list)
     session_quests_progressed: list[str] = field(default_factory=list)
@@ -341,6 +369,24 @@ class SessionData:
     ending_requested: bool = False
     player_disconnected: bool = False
     disconnect_time: float = 0.0
+
+    # The warm-layer loop, owned by the SESSION rather than by the agent that built it: it is
+    # constructed once (ExplorationAgent.on_enter, if absent) and survives every mode handoff,
+    # so the DM keeps a warm layer while a CombatAgent holds the floor. Not serialized.
+    background: BackgroundProcess | None = field(default=None, repr=False, compare=False)
+
+    # Session-scoped, all three, because the end-of-session recap covers the SESSION and an
+    # agent instance only ever sees one slice of it: a handback from combat builds a NEW
+    # ExplorationAgent, so anything the recap reads off `self` restarts at every fight.
+    session_start_time: float = field(default_factory=time.time)
+    # One transcript file per session, seeded by the first agent to enter and appended to by
+    # every agent after it (BaseGameAgent.on_enter). TranscriptLogger mints a fresh timestamped
+    # path when given none, so per-agent handles meant the recap read only the last agent's half.
+    transcript_path: str | None = None
+    # The handle agent.py's on_session_end joins. AgentSession emits "close" synchronously
+    # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
+    # races room.disconnect(), which makes publish_game_event drop the recap.
+    session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)

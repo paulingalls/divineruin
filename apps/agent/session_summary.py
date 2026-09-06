@@ -55,7 +55,9 @@ async def generate_session_summary(
     metrics = {
         "xp_earned": session_data.session_xp_earned,
         "items_found": session_data.session_items_found,
-        "quests_progressed": session_data.session_quests_progressed,
+        # The wire key the client reads (game-event-handler.ts:279). NOT the field name
+        # or the prompt kwarg below, both of which say quests_progressed.
+        "quest_progress": session_data.session_quests_progressed,
         "locations_visited": session_data.session_locations_visited,
         "duration": round(elapsed),
     }
@@ -88,7 +90,7 @@ async def generate_session_summary(
         _call_llm_summary(
             xp_earned=metrics["xp_earned"],
             items_found=", ".join(metrics["items_found"]) or "none",
-            quests_progressed=", ".join(metrics["quests_progressed"]) or "none",
+            quests_progressed=", ".join(metrics["quest_progress"]) or "none",
             locations_visited=", ".join(metrics["locations_visited"]) or "none",
             duration_minutes=duration_minutes,
             transcript_tail=transcript_tail,
