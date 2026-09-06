@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
 
-from session_data import CombatParticipant, CombatState
 from warm_prompts import build_full_prompt, build_warm_layer, format_combat_hot_line
 
 
@@ -137,28 +136,11 @@ class TestCombatHotLine:
         assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"
 
     def test_fallen_participant_reads_as_fallen(self):
-        """The flag SET, so this and the flag-unset case below are two states, not one test
-        written twice — `sample_combat_state(hp_current=0)` alone leaves is_fallen False."""
+        """0 HP with the flag SET — the only state a zero-HP transition can now leave behind,
+        since story-026 routed every writer through combat_support._handle_hp_zero."""
         line = format_combat_hot_line(sample_combat_state(hp_current=0, is_fallen=True))
         assert line is not None
         assert "Grosh(fallen)" in line
 
     def test_none_when_not_in_combat(self):
         assert format_combat_hot_line(None) is None
-
-    def test_zero_hp_reads_as_fallen_even_with_the_flag_unset(self):
-        """The status is derived from HP, not from `is_fallen` — and the two diverge.
-
-        combat_support.py:98 is the only site that sets `is_fallen`; draethar_inner_fire.py:91
-        drives hp_current to 0 and never sets it. Deriving from HP is what keeps the DM correct
-        over that gap, so this pins the derivation rather than the flag. Story-024 deleted
-        TestWarmAndHotAgree (the warm/hot comparison) when the second renderer went away; this
-        is what keeps the divergence named.
-        """
-        p = CombatParticipant(id="d", name="Draethar", type="player", initiative=10, hp_current=0, hp_max=20, ac=14)
-        assert not p.is_fallen  # exactly the state draethar_inner_fire leaves behind
-        cs = CombatState(combat_id="c", participants=[p], initiative_order=["d"])
-
-        line = format_combat_hot_line(cs)
-        assert line is not None
-        assert "Draethar(fallen)" in line
