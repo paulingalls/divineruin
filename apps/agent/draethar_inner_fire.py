@@ -93,8 +93,9 @@ async def _inner_fire_impl(
         # to death_saves_due and to request_death_save (bug 16c5f8a0). In-tx, on the live
         # participant, with the rollback window that opens: note c4607772.
         sounds: list[str] = []
+        rose_hollowed = False
         if new_hp <= 0:
-            _handle_hp_zero(
+            _, rose_hollowed = _handle_hp_zero(
                 session,
                 participant,
                 overkill=overkill,
@@ -104,7 +105,11 @@ async def _inner_fire_impl(
             )
 
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
-        await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
+        # A Hollowed rise flipped `type` off "player" above, and that flip is the gate: the echo's
+        # HP is the monster's, not the player's, so neither players.data nor the caster's
+        # concentration follows it down. Same suppression the attack path gets, same reason.
+        if participant.type == "player":
+            await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
 
     # Transaction committed — sync the in-memory SSOTs and push the HUD state.
     resonance_reduced = session.resonance.current - new_resonance
@@ -118,9 +123,11 @@ async def _inner_fire_impl(
 
     # The self-inflicted fire damage is still damage: a concentrating Draethar rolls the CON save
     # like any other combat damage (incapacitated when the burn drops them to 0 HP).
-    concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-        session, fire_damage, incapacitated=new_hp <= 0, damaged_player_id=player_id
-    )
+    concentration_broken = None
+    if participant.type == "player":
+        concentration_broken = await concentration_break_mod.break_concentration_on_damage(
+            session, fire_damage, incapacitated=new_hp <= 0, damaged_player_id=player_id
+        )
     if concentration_broken is not None:
         # A broken concentration spell that granted a beneficial condition strips it from the
         # in-combat participants (M4.8 story-006). That mutation lands AFTER the save_combat_state
@@ -133,7 +140,10 @@ async def _inner_fire_impl(
         {
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
-            "hp_remaining": new_hp,
+            # The participant's HP, not the burn's arithmetic: a Hollowed rise restores the echo
+            # to half its max, and that is what stands on the board.
+            "hp_remaining": participant.hp_current,
+            "rose_hollowed": rose_hollowed,
             # Canonical band: ResonanceTrack.state derives from session.resonance.current (set
             # above to new_resonance) + flickering_bonus. For a Draethar the bonus is always 0,
             # so this equals the old get_resonance_state(new_resonance) — one SSOT for the band.

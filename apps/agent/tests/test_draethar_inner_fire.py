@@ -25,12 +25,20 @@ from sample_fixtures import make_context, make_db_mod, make_mock_room, published
 
 import combat_death_save
 import combat_phase
+import conditions
 import event_types as E
 import resonance as resonance_mod
 from draethar_inner_fire import _inner_fire_impl
 from session_data import CombatParticipant, CombatState
-from tool_support import SOUND_PLAYER_FALLEN
+from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 from warm_prompts import format_combat_hot_line
+
+
+def _hollowed(stage: int) -> list[dict]:
+    conds: list[dict] = []
+    for _ in range(stage):
+        conds = conditions.apply_condition(conds, "hollowed")
+    return conds
 
 
 def _sounds(room) -> list[str]:
@@ -194,6 +202,46 @@ async def test_burn_to_zero_falls_and_is_death_save_eligible():
     assert combat_phase._wrap(session.combat_state).death_saves_due == ["player_1"]
     assert combat_death_save._resolve_faller(session.combat_state, None) is p
     assert combat_death_save._resolve_faller(session.combat_state, "player_1") is p
+
+
+async def test_burn_to_zero_raises_a_stage2_hollowed_draethar():
+    """The door's other verdict, reached the same way: a Stage-2+ Hollowed player at 0 HP does NOT
+    fall — their corpse rises as a hostile Temporary Hollowed combatant (M4.4 story-008). Flipping
+    `type` off "player" is what suppresses the players.data HP write and the concentration break,
+    exactly as it does on the attack path — the echo's HP is the monster's, not the player's.
+    """
+    room = make_mock_room()
+    ctx = _combat_ctx(hp_current=3, room=room, player_conditions=_hollowed(2))
+    session = ctx.userdata
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(hp_current=3), roll_total=6)
+    break_mod = _break_mod(None)
+
+    result = json.loads(
+        await _inner_fire_impl(
+            ctx,
+            db_mod=mock_db,
+            queries_mod=queries,
+            hp_mutations_mod=hp_mut,
+            resonance_mutations_mod=res_mut,
+            resonance_events_mod=res_events,
+            dice_mod=dice_mod,
+            concentration_break_mod=break_mod,
+        )
+    )
+
+    p = session.combat_state.get_participant("player_1")
+    assert p.type == "temporary_hollowed"
+    assert p.hp_current == 10  # max(1, hp_max // 2)
+    assert any(c["type"] == "temporary_hollowed" for c in p.conditions)
+    assert p.is_fallen is False
+    assert result["rose_hollowed"] is True
+    assert result["hp_remaining"] == 10  # the echo's HP, not the player's 0
+    assert SOUND_HOLLOW_RISE in _sounds(room)
+    # The rise suppresses both player-scoped writes, exactly as the attack path does.
+    hp_mut.update_player_hp.assert_not_awaited()
+    break_mod.break_concentration_on_damage.assert_not_awaited()
+    # The flipped type is what the phase engine reloads, so it has to be persisted.
+    assert hp_mut.save_combat_state.await_args.args[1]["participants"][0]["type"] == "temporary_hollowed"
 
 
 async def test_persists_combat_state_after_self_damage():
