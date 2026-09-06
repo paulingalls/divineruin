@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import narration
 from activity_templates import build_narration_prompt
 from narration import (
     MODEL,
@@ -457,3 +458,33 @@ class TestGenerateNotificationHook:
 
         mock_create.assert_awaited_once()
         assert "forge" in result
+
+
+class TestMalformedSegmentsFromTheModel:
+    """The segments come from an LLM tool call, so their SHAPE is the model's output, not ours.
+
+    A live errand resolution died on `AttributeError: 'str' object has no attribute 'get'`
+    during the sprint-048 close, intermittently: the model returned one segment as a bare
+    string instead of an object. Both helpers assumed dicts — `_segments_to_text` on
+    `seg["text"]` and `_segments_to_segment_objects` on `seg.get(...)`. Constraint 9: never
+    model the other side's shape, validate it.
+    """
+
+    def test_a_bare_string_segment_is_narration_not_a_crash(self):
+        segments = [
+            "The cart wheel finally turns.",
+            {"character": "COMPANION_KAEL", "emotion": "calm", "text": "Done."},
+        ]
+        objs = narration._segments_to_segment_objects(segments)
+        assert [o.text for o in objs] == ["The cart wheel finally turns.", "Done."]
+        assert objs[0].character == "DM_NARRATOR"
+        assert narration._segments_to_text(segments) == "The cart wheel finally turns. Done."
+
+    def test_a_segment_missing_character_or_emotion_still_narrates(self):
+        objs = narration._segments_to_segment_objects([{"text": "Only text."}])
+        assert [o.character for o in objs] == ["DM_NARRATOR"]
+        assert [o.emotion for o in objs] == ["neutral"]
+
+    def test_an_unusable_segment_is_dropped_not_raised(self):
+        assert narration._segments_to_segment_objects([{"character": "X"}, 42, None, "  "]) == []
+        assert narration._segments_to_text([{"character": "X"}, 42, None, "  "]) == ""
