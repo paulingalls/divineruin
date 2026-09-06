@@ -31,23 +31,23 @@ def _usage(*, prompt: int = 100, completion: int = 50, cached: int = 0, cache_wr
 
 
 class TestTokenTracker:
-    def test_accumulates_one_turn(self):
+    def test_accumulates_one_request(self):
         tracker = TokenTracker()
         tracker.on_usage(_usage(prompt=100, completion=50, cached=80))
 
         summary = tracker.summary()
-        assert summary["turns"] == 1
+        assert summary["requests"] == 1
         assert summary["total_input"] == 100
         assert summary["total_output"] == 50
         assert summary["total_cache_read"] == 80
 
-    def test_accumulates_multiple_turns(self):
+    def test_accumulates_multiple_requests(self):
         tracker = TokenTracker()
         for _i in range(3):
             tracker.on_usage(_usage(prompt=100, completion=50, cached=80))
 
         summary = tracker.summary()
-        assert summary["turns"] == 3
+        assert summary["requests"] == 3
         assert summary["total_input"] == 300
         assert summary["total_cache_read"] == 240
 
@@ -58,8 +58,8 @@ class TestTokenTracker:
         assert tracker.summary()["total_cache_write"] == 7000
         assert tracker.cache_writes == [7000]
 
-    def test_per_turn_cache_writes_are_kept_in_order(self):
-        """Per turn, not aggregate: the claim story-024 measures is that a round does not
+    def test_per_request_cache_writes_are_kept_in_order(self):
+        """Per request, not aggregate: the claim story-024 measures is that a round does not
         rewrite the prefix, and a running total cannot tell round 3 from round 1."""
         tracker = TokenTracker()
         for write in (7000, 0, 120):

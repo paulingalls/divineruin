@@ -137,7 +137,9 @@ class TestCombatHotLine:
         assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"
 
     def test_fallen_participant_reads_as_fallen(self):
-        line = format_combat_hot_line(sample_combat_state(hp_current=0))
+        """The flag SET, so this and the flag-unset case below are two states, not one test
+        written twice — `sample_combat_state(hp_current=0)` alone leaves is_fallen False."""
+        line = format_combat_hot_line(sample_combat_state(hp_current=0, is_fallen=True))
         assert line is not None
         assert "Grosh(fallen)" in line
 

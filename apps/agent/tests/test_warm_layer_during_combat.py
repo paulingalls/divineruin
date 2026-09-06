@@ -75,10 +75,6 @@ def _ui_update() -> list[GameEvent]:
     return [GameEvent(event_type=E.COMBAT_UI_UPDATE, payload={})]
 
 
-def _last_warm(agent: MagicMock) -> str:
-    return agent.update_instructions.await_args[0][0]
-
-
 def _is_running(bg: BackgroundProcess) -> bool:
     return bg._task is not None and not bg._task.done()
 
@@ -145,6 +141,9 @@ class TestProcessSurvivesTheHandoff:
         """Driven through the live loop, not `_process_events`: a stopped process can still be
         driven by hand, so only the loop can red when the handoff kills it."""
         sd = SessionData(player_id="p1", location_id="accord_guild_hall", room=MagicMock())
+        # Corruption is the one other section AC4 names that is gated on its own branch
+        # (`if corruption_level > 0`), so it can be dropped independently of quests and location.
+        sd.corruption_level = 1
         session = MagicMock()
         session.userdata = sd
 
@@ -174,6 +173,7 @@ class TestProcessSurvivesTheHandoff:
                 warm = str(combat.instructions)
                 assert "Find the source of the anomaly." in warm  # the quest section refreshed
                 assert SAMPLE_LOCATION["name"] in warm  # and the location section is still there
+                assert "HOLLOW CORRUPTION — Stage 1" in warm  # and so is corruption
                 assert "ACTIVE COMBAT" not in warm  # but the fight never enters the warm layer
                 # The static half is the CURRENT agent's own: composing the exploration prompt
                 # here would silently replace COMBAT_SYSTEM_PROMPT mid-fight.
