@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from acceptance._judged_turn import last_assistant_message_index
 from acceptance.seeds import clear_training_activities, seed_player, seed_training_activity
 from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
@@ -148,24 +149,11 @@ def _agent_calls_tool(harness: SimpleNamespace, tool_name: str) -> None:
 def _judge(harness: SimpleNamespace, intent: str) -> None:
     """Judge the LAST assistant message of the turn, wherever it sits in the event order.
 
-    `expect[-1]` was the last EVENT, not the last message, and that is an assumption about
-    turn shape the DM does not owe us. It narrates the outcome and then calls the tool about
-    as often as the reverse, and when it does, the final event is a FunctionCallOutputEvent
-    and the assertion dies with "Expected ChatMessageEvent" over a narration that satisfied
-    the intent perfectly. Observed at the sprint-048 land: the DM said "The second half of
-    your training begins now" in event [0] and called resolve_activity in [1].
+    The selection lives in ``_judged_turn`` because it is pure and has been wrong twice: its
+    falsifiers run in the fast lane, not only when a real turn is paid for (constraint 1).
     """
-    events = harness.state["result"].events
-    idx = next(
-        (
-            i
-            for i in range(len(events) - 1, -1, -1)
-            if events[i].type == "message" and events[i].item.role == "assistant"
-        ),
-        None,
-    )
-    assert idx is not None, f"turn emitted no assistant message to judge: {events}"
-    message = harness.state["result"].expect[idx].is_message(role="assistant")
+    result = harness.state["result"]
+    message = result.expect[last_assistant_message_index(result.events)].is_message(role="assistant")
     harness.run_sync(message.judge(harness.state["judge_llm"], intent=intent))
 
 
