@@ -117,6 +117,7 @@ class ExplorationAgent(BaseGameAgent):
         self._spec_tap: SpecializationTapHandler | None = None
         self._session_start_time: float = time.time()
         self._close_scheduled: bool = False
+        self._close_task: asyncio.Task | None = None
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
@@ -191,7 +192,11 @@ class ExplorationAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
         if sd.ending_requested and not self._close_scheduled:
             self._close_scheduled = True
-            self._fire_and_forget(self._delayed_close())
+            # NOT _fire_and_forget: that bag is cancelled by BaseGameAgent.on_exit, and
+            # on_exit is what this task's own aclose() is waiting on — cancelling it from
+            # inside it recursed until the close emit was never reached (bug 7a04caf1).
+            # Closing the session is session-scoped work; the agent only holds the handle.
+            self._close_task = asyncio.create_task(self._delayed_close())
 
     async def _delayed_close(self) -> None:
         await asyncio.sleep(3.0)
