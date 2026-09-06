@@ -122,12 +122,7 @@ async def _enter_exploration(session: MagicMock, sd: SessionData) -> Exploration
 
 async def _exit_exploration(agent: ExplorationAgent, session: MagicMock) -> None:
     """What LiveKit runs on the handoff INTO combat: AgentActivity.drain awaits on_exit."""
-    with (
-        patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
-        patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
-        patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
-        patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
-    ):
+    with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)):
         await agent.on_exit()
 
 

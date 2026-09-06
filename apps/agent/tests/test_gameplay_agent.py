@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from prompt_fixtures import sample_combat_state
 
-import event_types as E
 from exploration_agent import ExplorationAgent
 from session_data import SessionData
 
@@ -89,45 +88,45 @@ class TestGameplaySpecializationTapWiring:
         agent, mock_session, _ = _agent_with_session()
         mock_sth = MagicMock()
         agent._spec_tap = mock_sth
-        with (
-            patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-            patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
-            patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
-            patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
-        ):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             await agent.on_exit()
 
         mock_sth.stop.assert_called_once()
 
 
-class TestSessionEndOnExit:
-    """AC6: this story moves the BackgroundProcess ownership out of on_exit and NOTHING else.
+class TestOnExitIsAgentScoped:
+    """AC4: on_exit runs on every HANDOFF (``AgentActivity.drain`` awaits it,
+    agent_activity.py:919-932), so only agent-scoped teardown may live there.
 
-    on_exit still generates a summary, publishes E.SESSION_END and writes the summary row on
-    every handoff — including the handoff INTO combat, which is why every fight currently ends
-    and restarts the session as far as the lifecycle is concerned (debt 2009d9ef owns that;
-    splitting it is client-facing and belongs in its own card).
+    The session summary, the E.SESSION_END publish and the summary row moved to
+    ``session_end.run_session_end``, fired from the session's own ``close`` event
+    (``BackgroundProcess._on_session_end``). What stays is the specialization tap and the
+    ``super().on_exit()`` chain — the affect analyzer, the agent's background tasks and the
+    transcript handle, all of which belong to THIS agent.
     """
 
     @pytest.mark.asyncio
-    async def test_on_exit_ends_the_session_and_leaves_the_process_running(self):
+    async def test_on_exit_does_no_session_end_work(self):
         agent, mock_session, sd = _agent_with_session()
-        summary = {"summary": "They crossed the bridge.", "key_events": ["bridge"]}
+        sd.room = None  # so an unmoved publish lands on the bus and nowhere else
+        agent._spec_tap = MagicMock()
         background = MagicMock()
         background.stop = AsyncMock()
         sd.background = background
 
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-            patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value=summary),
-            patch("exploration_agent.publish_game_event", new_callable=AsyncMock) as mock_publish,
-            patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
+            # Only the summary's LLM and DB edges — the assertions below name no producer,
+            # so they cannot go green by mocking whatever module the work moved out of.
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+            patch("db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
         ):
             await agent.on_exit()
 
-        mock_publish.assert_awaited_once_with(sd.room, E.SESSION_END, summary, sd.event_bus)
-        mock_save.assert_awaited_once_with(sd.player_id, sd.session_id, summary)
-        # The process outlives the agent that built it — a handoff into combat is an agent
-        # exit, not a session end.
+        assert [e.event_type for e in sd.event_bus.drain()] == []
+        mock_save.assert_not_awaited()
+        # Agent-scoped teardown still runs, and the session's loop outlives the agent.
+        agent._spec_tap.stop.assert_called_once()
         background.stop.assert_not_awaited()
         assert sd.background is background
