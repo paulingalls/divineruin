@@ -7,6 +7,7 @@ hosts the L5 specialization-tap consumer so a tap resolves where leveling happen
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from prompt_fixtures import sample_combat_state
 
 import event_types as E
 from exploration_agent import ExplorationAgent
@@ -41,6 +42,26 @@ class TestHotContextReveal:
         sd = SessionData(player_id="p", location_id="ruins")
         hot = agent._build_hot_context(sd)
         assert "Revealed" not in hot
+
+
+class TestHotContextCombat:
+    """The fight reaches the DM as a per-turn hot line on BOTH agents (story-024).
+
+    Pinned here because story-024 deleted TestWarmAndHotAgree along with the warm-layer
+    renderer it compared against, and that was the only guard on the exploration side —
+    dropping this block from _build_hot_context left the whole fast lane green.
+    """
+
+    def test_carries_the_round_and_each_hp_status(self):
+        sd = SessionData(player_id="p", location_id="ruins")
+        sd.combat_state = sample_combat_state(round_number=2, hp_current=8)
+
+        assert "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]" in ExplorationAgent()._build_hot_context(sd)
+
+    def test_no_combat_part_out_of_combat(self):
+        sd = SessionData(player_id="p", location_id="ruins")
+
+        assert "COMBAT" not in ExplorationAgent()._build_hot_context(sd)
 
 
 class TestGameplaySpecializationTapWiring:

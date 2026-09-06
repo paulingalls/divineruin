@@ -21,7 +21,7 @@ import pathlib
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_QUEST, sample_combat_state
+from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
 
 import background_process
 import event_types as E
@@ -42,12 +42,14 @@ DB_SEAMS = (
 
 @contextmanager
 def _mock_db():
-    """The four DB seams _rebuild_warm_layer fans out to."""
+    """The four DB seams _rebuild_warm_layer fans out to, plus the disposition read the NPC
+    affordance makes as soon as a caller gives the npcs seam a non-empty row."""
     with (
         patch(DB_SEAMS[0], new_callable=AsyncMock, return_value=[]) as quests,
         patch(DB_SEAMS[1], new_callable=AsyncMock, return_value=SAMPLE_LOCATION) as location,
         patch(DB_SEAMS[2], new_callable=AsyncMock, return_value=[]) as npcs,
         patch(DB_SEAMS[3], new_callable=AsyncMock, return_value=[]) as training,
+        patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={}),
     ):
         yield (quests, location, npcs, training)
 
@@ -147,7 +149,8 @@ class TestProcessSurvivesTheHandoff:
         session = MagicMock()
         session.userdata = sd
 
-        with _mock_startup_db() as (quests, _location, _npcs, _training):
+        with _mock_startup_db() as (quests, _location, npcs, _training):
+            npcs.return_value = [SAMPLE_NPC_RAW]
             exploration = await _enter_exploration(session, sd)
             bg = sd.background
             assert bg is not None
@@ -174,6 +177,7 @@ class TestProcessSurvivesTheHandoff:
                 assert "Find the source of the anomaly." in warm  # the quest section refreshed
                 assert SAMPLE_LOCATION["name"] in warm  # and the location section is still there
                 assert "HOLLOW CORRUPTION — Stage 1" in warm  # and so is corruption
+                assert "Guildmaster Torin" in warm  # and the NPC affordance AC4 also names
                 assert "ACTIVE COMBAT" not in warm  # but the fight never enters the warm layer
                 # The static half is the CURRENT agent's own: composing the exploration prompt
                 # here would silently replace COMBAT_SYSTEM_PROMPT mid-fight.
