@@ -8,6 +8,7 @@ from _combat_end_fixtures import combat_end_mutations
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
 from sample_fixtures import make_context as _make_context
 
+import event_types as E
 from exploration_agent import ExplorationAgent
 from session_data import CompanionState, SessionData
 
@@ -54,6 +55,72 @@ class TestRoundTrip:
 
         # Step 3: Location preserved through round trip
         assert ctx.userdata.location_id == "greyvale_south_road"
+
+    @pytest.mark.asyncio
+    async def test_the_round_trip_does_not_end_the_session(self):
+        """AC1: a fight is a handoff, not a session end — no SESSION_END, no summary row.
+
+        Drives the real lifecycle methods, not just the tool impls. ``on_exit`` IS the
+        handoff: ``AgentActivity.drain`` awaits it whenever a tool returns a new agent
+        (agent_activity.py:919-932), which is what ``start_combat`` does
+        (combat_init.py:425), and ``end_combat`` then enters a fresh ExplorationAgent
+        (combat_end.py:468).
+
+        Both assertions are producer-agnostic, so the guard does not name the module the
+        work happens to live in today: SESSION_END is read off ``sd.event_bus`` (every
+        ``publish_game_event`` reaches it, game_events.py:62-64) and the summary write is
+        patched at its own module. Only the LLM and DB edges of ``generate_session_summary``
+        are stubbed, so the real summary path runs.
+        """
+        from combat_end import _end_combat_impl
+        from combat_init import _start_combat_impl
+
+        mock_mutations = combat_end_mutations()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+
+        room = MagicMock()
+        room.isconnected.return_value = True
+        room.local_participant.publish_data = AsyncMock()
+        ctx = _make_context(location_id="greyvale_south_road", room=room)
+        sd = ctx.userdata
+        session = MagicMock()
+        session.userdata = sd
+
+        exploration = ExplorationAgent(region_type="wilderness")
+        with (
+            patch.object(type(exploration), "session", property(lambda _self: session)),
+            patch("exploration_agent.start_specialization_tap"),
+            patch("exploration_agent.BackgroundProcess"),
+            patch.object(ExplorationAgent, "_publish_session_init", new_callable=AsyncMock),
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+            patch(
+                "db_activity_queries.get_session_story_moments",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch("db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
+        ):
+            await exploration.on_enter()
+            await _start_combat_impl(
+                ctx,
+                encounter_id="wolf_pack",
+                encounter_description="Wolves!",
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+            await exploration.on_exit()  # the handoff INTO combat
+
+            await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
+            await ExplorationAgent(region_type="wilderness").on_enter()  # the handback
+
+        published = [e.event_type for e in sd.event_bus.drain()]
+        assert E.SESSION_END not in published
+        mock_save.assert_not_awaited()
 
 
 class TestCreationOnboardingCityRoundTrip:

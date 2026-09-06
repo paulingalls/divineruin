@@ -375,6 +375,19 @@ class SessionData:
     # so the DM keeps a warm layer while a CombatAgent holds the floor. Not serialized.
     background: BackgroundProcess | None = field(default=None, repr=False, compare=False)
 
+    # Session-scoped, all three, because the end-of-session recap covers the SESSION and an
+    # agent instance only ever sees one slice of it: a handback from combat builds a NEW
+    # ExplorationAgent, so anything the recap reads off `self` restarts at every fight.
+    session_start_time: float = field(default_factory=time.time)
+    # One transcript file per session, seeded by the first agent to enter and appended to by
+    # every agent after it (BaseGameAgent.on_enter). TranscriptLogger mints a fresh timestamped
+    # path when given none, so per-agent handles meant the recap read only the last agent's half.
+    transcript_path: str | None = None
+    # The handle agent.py's on_session_end joins. AgentSession emits "close" synchronously
+    # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
+    # races room.disconnect(), which makes publish_game_event drop the recap.
+    session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
+
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
 

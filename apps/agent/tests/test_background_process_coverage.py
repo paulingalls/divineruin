@@ -45,17 +45,24 @@ class TestBackgroundProcessLifecycle:
     async def test_session_close_stops_the_loop(self):
         """The session's close is the ONLY thing that stops the loop now — no agent's on_exit
         does, so nothing else would ever end it."""
-        handlers = {}
+        # A COLLECTION per event, not one handler: start() registers two distinct close
+        # handlers (loop stop, session-end recap) and LiveKit's EventEmitter keeps both
+        # (a set, rtc/event_emitter.py:15) — the old dict silently kept only the last.
+        handlers: dict[str, list] = {}
         mock_session = MagicMock()
-        mock_session.on = lambda event, cb: handlers.__setitem__(event, cb)
+        mock_session.on = lambda event, cb: handlers.setdefault(event, []).append(cb)
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
         mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
 
         bp = BackgroundProcess(mock_session, mock_sd)
-        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
+        with (
+            patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock),
+            patch("background_process.run_session_end", new_callable=AsyncMock),
+        ):
             bp.start()
-            handlers["close"](MagicMock())
+            for handler in handlers["close"]:
+                handler(MagicMock())
 
             assert bp._stop is True
             assert bp._task is not None

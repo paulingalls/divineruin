@@ -160,3 +160,62 @@ test("session_end without story_moments has empty storyMoments array", () => {
   expect(s).not.toBeNull();
   expect(s!.storyMoments).toEqual([]);
 });
+
+// --- AC3 (story-025): a session containing two fights reaches "summary" once, at the end ---
+
+const SUMMARY_EVENT = {
+  type: "session_end",
+  summary: "You cleared the mill.",
+  xp_earned: 100,
+  items_found: [],
+  quest_progress: [],
+  duration: 900,
+  next_hooks: [],
+};
+
+/** A session with two fights. `endPerFight` reproduces the defect: before story-025 the
+ *  agent's on_exit published session_end on the handoff INTO each fight. */
+function twoFights(opts: { endPerFight: boolean }): object[] {
+  const fight = [
+    { type: "combat_started", difficulty: "standard" },
+    ...(opts.endPerFight ? [SUMMARY_EVENT] : []),
+    { type: "combat_ended" },
+  ];
+  return [
+    { type: "session_init", character: null, location: null, quests: [], inventory: [] },
+    ...fight,
+    ...fight,
+    SUMMARY_EVENT,
+  ];
+}
+
+/** The phase after each event in turn — so a "summary" that arrives EARLY is visible as a
+ *  position, not just as a value. A change-only log cannot see it: a second setPhase("summary")
+ *  changes nothing. */
+function phaseAfterEach(events: object[]): string[] {
+  return events.map((event) => {
+    handleGameEvent(event as Parameters<typeof handleGameEvent>[0]);
+    return sessionStore.getState().phase;
+  });
+}
+
+test("two fights reach the summary phase exactly once, at the end", () => {
+  sessionStore.getState().setPhase("active");
+
+  const phases = phaseAfterEach(twoFights({ endPerFight: false }));
+
+  expect(phases.filter((p) => p === "summary")).toHaveLength(1);
+  expect(phases[phases.length - 1]).toBe("summary");
+});
+
+test("a session_end per fight strands the player on the summary screen from fight one", () => {
+  // The injection for the guard above, kept as documentation: the client has no defence
+  // against a mid-session session_end, and session.tsx:109-113 then navigates off the live
+  // session screen for good. The fix is and must stay upstream, in apps/agent/session_end.py.
+  sessionStore.getState().setPhase("active");
+
+  const phases = phaseAfterEach(twoFights({ endPerFight: true }));
+
+  expect(phases.indexOf("summary")).toBe(2); // the FIRST combat_started's session_end
+  expect(phases.filter((p) => p === "summary").length).toBeGreaterThan(1);
+});

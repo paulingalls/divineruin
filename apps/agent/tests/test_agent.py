@@ -1,5 +1,6 @@
 """Tests for agent.py - main DM agent and session management."""
 
+import asyncio
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,6 +9,7 @@ import pytest
 from agent import _extract_player_id
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
 from exploration_agent import ExplorationAgent
+from session_data import SessionData
 
 
 class _TestAgent(BaseGameAgent):
@@ -409,3 +411,51 @@ class TestDMSession:
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
                 assert "market" in instructions.lower()
+
+
+class TestJoinSessionEnd:
+    """The end-of-session recap is spawned by a synchronous close handler, so something has
+    to wait for it. _join_session_end is that wait, and the job runner is what calls it —
+    after AgentSession.aclose() and before room.disconnect()
+    (ipc/job_proc_lazy_main.py:388-419).
+    """
+
+    def test_the_hook_is_registered_on_the_rtc_session(self):
+        """Without this, _join_session_end is a function nothing calls (constraint 6)."""
+        import agent
+
+        assert agent.server._session_end_fnc is agent._join_session_end
+
+    @pytest.mark.asyncio
+    async def test_it_does_not_return_until_the_recap_is_published(self):
+        from agent import _join_session_end
+
+        published = False
+
+        async def recap():
+            nonlocal published
+            await asyncio.sleep(0)
+            published = True
+
+        sd = SessionData(player_id="p1", location_id="")
+        sd.session_end_task = asyncio.create_task(recap())
+        ctx = MagicMock()
+        ctx.primary_session.userdata = sd
+
+        await _join_session_end(ctx)
+
+        assert published is True
+
+    @pytest.mark.asyncio
+    async def test_it_returns_quietly_when_there_is_nothing_to_join(self):
+        from agent import _join_session_end
+
+        no_session = MagicMock()
+        type(no_session).primary_session = property(
+            lambda _s: (_ for _ in ()).throw(RuntimeError("No AgentSession was started for this job"))
+        )
+        await _join_session_end(no_session)  # a job that never started a session
+
+        never_ended = MagicMock()
+        never_ended.primary_session.userdata = SessionData(player_id="p1", location_id="")
+        await _join_session_end(never_ended)

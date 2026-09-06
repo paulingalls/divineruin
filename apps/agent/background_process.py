@@ -16,6 +16,7 @@ import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from sanitize import sanitize_for_prompt
+from session_end import run_session_end
 from system_prompts import build_companion_cue, is_companion_cue
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
@@ -59,12 +60,23 @@ class BackgroundProcess:
         # The session is the owner, so the session's end is the only thing that stops the loop —
         # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
         self._session.on("close", self._on_session_close)
+        # ...and the same reasoning puts the end-of-session recap here. start() is called from
+        # ExplorationAgent.on_enter's `if sd.background is None:` block, so a handback registers
+        # nothing new and the recap fires exactly once per session. Its own handler, not folded
+        # into _on_session_close: stop() calls that one directly to join the loop, and a recap
+        # there would run an LLM call and a DB write from inside the fast lane.
+        self._session.on("close", self._on_session_end)
 
     def _on_session_close(self, _ev: object) -> None:
         """Sync half of ``stop`` — LiveKit emits ``close`` from a sync handler chain."""
         self._stop = True
         if self._task is not None:
             self._task.cancel()
+
+    def _on_session_end(self, _ev: object) -> None:
+        """Spawn the end-of-session recap. ``emit`` is synchronous (rtc/event_emitter.py), so
+        this cannot await; ``agent._join_session_end`` joins the handle before room teardown."""
+        self._sd.session_end_task = asyncio.create_task(run_session_end(self._sd))
 
     def pause(self) -> None:
         self._paused = True
