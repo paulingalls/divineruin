@@ -104,24 +104,39 @@ async def test_a_combat_round_reads_the_prefix_instead_of_rewriting_it(reset_db_
     print(f"\n[measured] hot-layer cache writes per round: {hot_rounds}")
     print(f"[measured] hot-layer summary: {hot.summary()}")
 
-    firsts = [writes[0] for writes in hot_rounds]
     assert all(writes for writes in hot_rounds), "a round issued no LLM request at all"
-    assert firsts[0] > 0, (
-        "round 1 created no cache entry — the prefix is under this model's 4096-token minimum, "
-        "so every assertion below would be vacuously true"
+
+    # Anti-vacuity on the FIGHT, not on request one. The first request of a session has
+    # nothing cached yet AND sits under this model's 4096-token minimum until the history
+    # grows past it, so it legitimately creates no entry — measured round 1 is
+    # [0, 163, 85, 212]. Requiring a write on request one asserted a wrong model of when
+    # prefix caching begins and aborted before the arm below could run at all.
+    hot_summary = hot.summary()
+    assert hot_summary["total_cache_write"] > 0, (
+        f"the fight created no cache entry at all — nothing below can measure a prefix "
+        f"that was never cached: {hot_rounds}"
     )
-    assert hot.summary()["total_cache_read"] > 0, "nothing was ever read from cache"
-    assert firsts[2] < firsts[0], f"round 3 still rewrote the prefix: {firsts}"
-    assert firsts[2] <= firsts[1] * 1.5 + 1, f"cache writes grow with the fight: {firsts}"
+    assert hot_summary["total_cache_read"] > 0, "nothing was ever read from cache"
+
+    # NOT asserted here: a read/write ratio, or a per-round decay shape. Both are too
+    # noisy to be a guard. The DM's tool-calling varies run to run, so the number of
+    # requests per round varies with it — two measured runs of this same fight gave
+    # 8 requests ([[0,163,85,212],[377...]] shaped) and 3 ([[8742],[377],[98]]). The
+    # second decays beautifully and the first does not, and NEITHER is a defect: the
+    # first request that crosses the 4096-token minimum pays the one-time creation,
+    # and where that lands depends on how many tool calls preceded it. The claim this
+    # test exists to defend is a COMPARISON, and it is made against the arm below.
 
     injected, injected_rounds = await _drive_fight(3, rewrite_system_prompt=True)
     print(f"[measured] system-prompt-rewrite cache writes per round: {injected_rounds}")
     print(f"[measured] system-prompt-rewrite summary: {injected.summary()}")
 
-    injected_firsts = [writes[0] for writes in injected_rounds]
-    assert injected_firsts[2] > injected_firsts[0], (
-        f"the fault injection did not reproduce the regression: {injected_firsts}"
-    )
-    assert injected_firsts[2] > firsts[2] * 2, (
-        f"the guard cannot tell the regression from the fix: injected={injected_firsts} hot={firsts}"
+    # Compare ARMS on fight totals, not request-one values: the per-round request count
+    # varies with the tool chain (measured 4/3/1), so a single request is not comparable
+    # across rounds while the fight total is.
+    injected_summary = injected.summary()
+    assert injected_summary["total_cache_write"] > hot_summary["total_cache_write"] * 2, (
+        f"the fault injection did not reproduce the regression — rewriting the system prompt "
+        f"each round cost no more than leaving it alone: "
+        f"injected={injected_summary} hot={hot_summary}"
     )
