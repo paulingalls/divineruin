@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from acceptance.seeds import seed_player
+from acceptance.seeds import seed_player, seed_player_with_pools
 from combat import _helpers as _combat_helpers
 
 import db_mutations
@@ -31,6 +31,16 @@ def _d20(face: int):
     check_resolution_attack.dice_roll, which this does NOT touch.
     """
     return SimpleNamespace(total=face)
+
+
+def _damage_die(total: int):
+    """A check_resolution_attack.dice_roll stand-in that forces every DAMAGE die to `total`.
+
+    The other half of the seam `_d20` names: resolve_attack reads only `.total` off it. Needed
+    where a test asserts a HALVED figure — a real 1d6 can roll 1, and `1 // 2 == 0` makes "halved"
+    indistinguishable from "missed", so the guard could not red against its target defect.
+    """
+    return SimpleNamespace(total=total)
 
 
 def _player(player_id: str, hp: int = 100) -> CombatParticipant:
@@ -77,9 +87,19 @@ def _build_state(
     )
 
 
-async def _start_combat(pool, player_id: str, state: CombatState, ctx) -> None:
-    """Seed the real player row + persist the hand-built combat SSOT, then wire the in-memory state."""
-    await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
+async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player_class: str | None = None) -> None:
+    """Seed the real player row + persist the hand-built combat SSOT, then wire the in-memory state.
+
+    Pass ``player_class`` for a scenario whose player must OWN an archetype ability and PAY for it:
+    ``abilities.owns_ability`` gates a core/reaction ability on ``players.data.class`` matching the
+    ability's archetype, and the activation deducts Stamina/Focus the default seed has no pools for.
+    It seeds through ``seed_player_with_pools`` in the SAME call rather than topping the pools up
+    afterwards, because ``seed_player`` replaces ``data`` wholesale. Omitted, the seed is unchanged.
+    """
+    if player_class is not None:
+        await seed_player_with_pools(pool, player_id=player_id, class_=player_class)
+    else:
+        await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
     ctx.userdata.combat_state = state
 
