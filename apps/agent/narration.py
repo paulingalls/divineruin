@@ -1,5 +1,6 @@
 """LLM narration generation for async activities using Anthropic SDK directly."""
 
+import json
 import logging
 import re
 from typing import Any
@@ -188,8 +189,15 @@ def _normalize_segments(segments: object) -> list[Segment]:
     an audio-first game and a malformed segment must not take the whole errand down with it.
     A dict missing `character` or `emotion` narrates with the defaults for the same reason.
     What is DROPPED is only what cannot be spoken: no text, blank text, or a segment that is
-    neither a string nor a mapping.
+    neither a string nor a mapping. The whole array sent as a JSON-encoded STRING (seen live at
+    sprint-049) is decoded and normalized as that list; any other top-level string yields
+    nothing, so the caller's floor still refuses it.
     """
+    if isinstance(segments, str):
+        try:
+            segments = json.loads(segments)
+        except json.JSONDecodeError:
+            segments = None
     out: list[Segment] = []
     for seg in segments if isinstance(segments, list) else []:
         if isinstance(seg, str):
