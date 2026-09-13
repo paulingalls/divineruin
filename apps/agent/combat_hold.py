@@ -32,7 +32,12 @@ logger = logging.getLogger("divineruin.tools")
 
 
 class HeldActionUnresolvable(ValueError):
-    pass
+    """A held action the engine can never resolve, so a retried phase would re-raise it forever.
+
+    ``pump`` pops it as an unresolved summary instead of rolling the phase back — the only way the
+    queue drains and ``end_combat`` stops refusing. Raising this type opts a failure into that
+    tolerance; every other exception still rolls the phase back.
+    """
 
 
 def hold_enemy_packets(state, packets: list) -> list[dict]:

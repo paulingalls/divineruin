@@ -83,3 +83,24 @@ async def test_iteration_with_no_pop_unresolved_summary_or_new_window_raises(mon
     assert committed.held_actions == committed_queue
     assert committed.open_window is None
     deps["mutations"].save_combat_state.assert_not_awaited()
+
+
+class _PopRemovesNothing(list):
+    popped = 0
+
+    def pop(self, index=-1):
+        # Without the floor the pump re-resolves the same head forever; trip rather than hang.
+        self.popped += 1
+        assert self.popped == 1, "pump looped on a head it never removed"
+        return self[index]
+
+
+async def test_a_resolved_iteration_that_removes_nothing_raises():
+    ctx = _ctx_at_resolution(enemy_hp=20)
+    ctx.userdata.combat_state.reactions_available = {}
+    deps = _resolve_deps(damage=3)
+    await _call(ctx, deps)
+    ctx.userdata.combat_state.held_actions = _PopRemovesNothing(ctx.userdata.combat_state.held_actions)
+
+    with pytest.raises(RuntimeError, match=r"goblin_scout_1.*made no progress"):
+        await combat_turn._resolve_phase_impl(ctx, **deps)
