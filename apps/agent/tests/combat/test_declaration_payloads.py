@@ -8,13 +8,22 @@ than only compared to a literal: a variant that satisfies the schema but not the
 would otherwise pass here and ValueError on the DM's first call.
 """
 
+import ast
 import json
 import typing
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from combat._helpers import _damage_resolver, _make_combat_state
 from livekit.agents.llm import ToolContext
+from sample_fixtures import make_context
 
+import combat_support
 import combat_turn
+from combat_packet import _resolve_one_packet
+from combat_phase import ResolutionPacket, advance_combat_phase
 from declaration_payloads import (
     DECL_VARIANTS,
     AbilityDecl,
@@ -28,11 +37,113 @@ from declaration_payloads import (
 from declarations import DeclarationType, resolve_declaration
 
 
+def _calls(source: Path, function_name: str) -> bool:
+    tree = ast.parse(source.read_text())
+    return any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == function_name
+        for node in ast.walk(tree)
+    )
+
+
+def test_production_and_m29_use_the_shared_action_roster():
+    tests_dir = Path(__file__).resolve().parents[1]
+    combat_init = tests_dir.parent / "combat_init.py"
+    acceptance = tests_dir / "acceptance" / "test_m29_combat_reactions.py"
+
+    assert _calls(combat_init, "_participant_roster")
+    assert _calls(acceptance, "_participant_roster")
+    acceptance_tree = ast.parse(acceptance.read_text())
+    assert not any(
+        isinstance(node, (ast.Assign, ast.AnnAssign))
+        and any(
+            isinstance(target, ast.Subscript)
+            and isinstance(target.slice, ast.Constant)
+            and target.slice.value == "actions"
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+        )
+        for node in ast.walk(acceptance_tree)
+    )
+
+    roster = getattr(combat_support, "_participant_roster", None)
+    assert callable(roster)
+    roster = typing.cast(typing.Callable[..., list[dict]], roster)
+    state = _make_combat_state()
+    companion, enemy = state.participants
+    companion.type = "companion"
+    companion.action_pool = [{"name": "Longsword"}]
+    assert [p["actions"] for p in roster([companion, enemy])] == [["Longsword"], ["Scimitar"]]
+
+
+@pytest.mark.asyncio
+async def test_catalog_condition_action_is_invocable_from_the_produced_name():
+    catalog_path = Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json"
+    catalog = json.loads(catalog_path.read_text())
+    inventory = [
+        (encounter["id"], enemy["id"], action["name"], action["applies_condition"])
+        for encounter in catalog
+        for enemy in encounter["enemies"]
+        for action in enemy["action_pool"]
+        if action.get("applies_condition")
+    ]
+    assert inventory == [("hollow_patrol_greyvale", "hollow_rend_1", "Hollow Shriek", "frightened")]
+
+    encounter = next(item for item in catalog if item["id"] == inventory[0][0])
+    action = next(item for item in encounter["enemies"][0]["action_pool"] if item.get("applies_condition"))
+    state = _make_combat_state()
+    enemy = state.get_participant("goblin_scout_1")
+    assert enemy is not None
+    enemy.action_pool = [action]
+    roster = getattr(combat_support, "_participant_roster", None)
+    assert callable(roster)
+    roster = typing.cast(typing.Callable[..., list[dict]], roster)
+    produced_name = roster(state.participants)[1]["actions"][0]
+    mapped = to_engine_declarations(
+        [AttackDecl(kind="attack", actor_id=enemy.id, action=produced_name, target_id="player_1", rider="")]
+    )
+    packet = ResolutionPacket(enemy.id, resolve_declaration(mapped[enemy.id]), enemy.initiative)
+
+    with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):
+        summary = await _resolve_one_packet(
+            make_context().userdata,
+            state,
+            packet,
+            mutations=MagicMock(update_player_hp=AsyncMock()),
+            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            resolver=_damage_resolver(0),
+            concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
+        )
+
+    assert summary["condition_inflicted"] == "frightened"
+    player = state.get_participant("player_1")
+    assert player is not None
+    assert any(condition["type"] == "frightened" for condition in player.conditions)
+
+
 def test_attack_maps_to_the_engine_attack_shape():
     engine = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id="player_1", action="Longsword", target_id="goblin_1", rider="")]
     )
     assert engine == {"player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"}}
+
+
+def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
+    state = _make_combat_state()
+    engine = to_engine_declarations(
+        [
+            AttackDecl(
+                kind="attack",
+                actor_id="goblin_scout_1",
+                action="Claw",
+                target_id="player_1",
+                rider="",
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError) as raised:
+        advance_combat_phase(state, engine)
+
+    assert all(value in str(raised.value) for value in ("Goblin Scout", "goblin_scout_1", "Claw", "Scimitar"))
 
 
 def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():

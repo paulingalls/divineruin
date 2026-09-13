@@ -18,7 +18,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import rules_engine
-from combat_support import _participant_summary, _publish_sounds
+from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -397,7 +397,7 @@ async def _start_combat_impl(
         "encounter_name": encounter.get("name", encounter_id),
         "encounter_description": encounter_description,
         "initiative_order": initiative_summary,
-        "participants": [_participant_summary(p) for p in participants],
+        "participants": _participant_roster(participants),
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 

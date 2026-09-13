@@ -148,6 +148,8 @@ class TestCombatBeatContract:
         assert "do not open an undeclared reaction window" not in low, "the reversed model is back"
         assert "next.waiting_on" in low
         assert "window_id" in low and "never invent one" in low
+        assert "next.waiting_on.action" in low
+        assert low.index("next.waiting_on.action") < low.index("the pause is the mechanic")
         # The pause is the mechanic, and both stages are named so the DM knows what it may voice.
         assert "the pause is the mechanic" in low
         assert "pre_roll" in low and "post_roll" in low
@@ -193,6 +195,9 @@ class TestCombatBeatContract:
         # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "exact name" in low and "equipped weapon" in low
+        assert "participants[].actions" in low
+        assert low.index("participants[].actions") < low.index("call declare_phase")
+        assert "from their action_pool" not in low
 
     def test_in_combat_ability_is_a_declaration_not_activate(self):
         # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;

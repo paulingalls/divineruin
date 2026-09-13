@@ -38,7 +38,12 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "hp_status": combat_resolution.hp_threshold_status(p.hp_current, p.hp_max),
         "ac": p.ac,
         "is_fallen": p.is_fallen,
+        "actions": [action["name"] for action in p.action_pool],
     }
+
+
+def _participant_roster(participants: list[CombatParticipant]) -> list[dict]:
+    return [_participant_summary(participant) for participant in participants]
 
 
 def _require_combat(session: SessionData) -> CombatState:

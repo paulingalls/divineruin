@@ -14,20 +14,14 @@ PRODUCTION PARITY IS THE POINT (constraint 9). Model, ``caching="ephemeral"``,
 the plugin defaults exercises a different ceiling than production and proves nothing about it.
 ``tests/test_strict_tool_budget.py`` AST-scans this file for both.
 
-ONE DELIBERATE DIVERGENCE, stated rather than hidden: the entry roster tells the DM what each
-combatant can DO, because production does not. Both halves are constraint-6 violations this card
-found and does not own (notes e17cb747 and 51c7b362):
-
-* ``declare_phase``'s ``action`` must be "the EXACT name of one of the actor's equipped weapons",
-  yet ``combat_support._participant_summary`` emits no actions, the warm layer has no equipment
-  section, and no other producer exists. Production's DM guesses the name.
-* ``combat_prompts.py:15`` tells the DM to decide each enemy's action "from its tactics", and
+ONE DELIBERATE DIVERGENCE, stated rather than hidden: ``combat_prompts.py:15`` tells the DM to
+decide each enemy's action "from its tactics", and
   ``tactics`` occurs NOWHERE else in the repo — not in content, not in any producer. Measured:
   without it, Haiku omitted the enemy from ``declare_phase`` entirely in ~1 run in 8, declaring the
   player alone for every round of the fight, so no enemy action was ever held and no reaction
   window ever opened.
 
-Supplying both makes this green EASIER than production on exactly those two axes, and nowhere else.
+Supplying tactics makes this green easier than production on that axis, and nowhere else.
 
 ``session.run()`` skips ``on_user_turn_completed``, so the per-turn hot layer is REPRODUCED here
 (``_apply_hot_line``) rather than diverged from — see that function for why it is load-bearing.
@@ -72,7 +66,7 @@ import db
 import db_mutations
 import reaction_windows
 from combat_agent import create_combat_agent
-from combat_support import _participant_summary
+from combat_support import _participant_roster
 from session_data import SessionData
 
 pytestmark = [
@@ -108,20 +102,17 @@ scenarios("features/m29_combat_reactions.feature")
 
 
 def _entry_context(state) -> ChatContext:
-    """The combat-entry system message, mirroring combat_init's handoff — plus the action names.
+    """The combat-entry system message, mirroring combat_init's handoff — plus tactics.
 
-    combat_init puts the roster in start_combat's TOOL RESPONSE (``_participant_summary`` per
+    combat_init puts the roster in start_combat's TOOL RESPONSE (``_participant_roster`` over
     participant) and the scene line in the handoff ChatContext; ``session.run()`` replays neither,
-    so both ride the entry context here. ``actions`` and ``tactics`` are the module docstring's one
-    divergence — production surfaces neither, and this harness must not guess.
+    so both ride the entry context here. Only ``tactics`` is hand-fed; production now surfaces
+    ``actions`` through the same roster function this harness calls.
     """
-    roster = []
-    for p in state.participants:
-        summary = _participant_summary(p)
-        summary["actions"] = [a["name"] for a in p.action_pool]
-        if p.type == "enemy":
+    roster = _participant_roster(state.participants)
+    for summary in roster:
+        if summary["type"] == "enemy":
             summary["tactics"] = f"Attacks the nearest living enemy with {summary['actions'][0]} every round."
-        roster.append(summary)
     ctx = ChatContext()
     ctx.add_message(
         role="system",

@@ -20,8 +20,9 @@ from enum import StrEnum
 
 import abilities
 import reaction_spend
+from combat_ability import _find_action
 from conditions import tick_conditions
-from declarations import Declaration, resolve_declaration
+from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -127,8 +128,19 @@ def advance_combat_phase(
         # Validate every declaration's shape at declare time so a bad one fails loud
         # here (the tool layer translates ValueError -> ToolError) rather than at the
         # later resolution beat. Raw dicts are still what's stored/persisted.
-        for raw in declarations.values():
-            resolve_declaration(raw)
+        resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
+        for actor_id, declaration in resolved.items():
+            actor = next_state.get_participant(actor_id)
+            if (
+                declaration.type is DeclarationType.ATTACK
+                and actor is not None
+                and _find_action(actor, declaration.action) is None
+            ):
+                available = [action["name"] for action in actor.action_pool]
+                raise ValueError(
+                    f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
+                    f"available actions: {available}"
+                )
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {
             p.id: reaction_spend.unspent() for p in next_state.participants if p.type == "player"
