@@ -31,6 +31,10 @@ from reaction_windows import POST_ROLL, PRE_ROLL
 logger = logging.getLogger("divineruin.tools")
 
 
+class HeldActionUnresolvable(ValueError):
+    pass
+
+
 def hold_enemy_packets(state, packets: list) -> list[dict]:
     """Build the Beat-3 queue from the hostile band's resolution packets.
 
@@ -170,7 +174,7 @@ def _replay_resolver(head: dict):
 
     def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
         if target_ac != held_ac:
-            raise ValueError(
+            raise HeldActionUnresolvable(
                 f"held roll for {head['actor_id']!r} was made against AC {held_ac}, but the target's "
                 f"effective AC is now {target_ac} — the pause changed the roll's premise"
             )
@@ -189,11 +193,19 @@ def _assert_single_swing(state, head: dict, action: dict) -> None:
     actor = state.get_participant(head["actor_id"])
     swings = combat_enhancers.attack_sequence(actor.enhancers if actor else [], action)
     if len(swings) > 1:
-        raise ValueError(
+        raise HeldActionUnresolvable(
             f"held enemy action {action.get('name')!r} for {head['actor_id']!r} expands to "
             f"{len(swings)} swings; Beat 3 holds a single swing per window, so swings 2+ would "
             "land with no reaction window"
         )
+
+
+def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary_start: int) -> None:
+    popped = not state.held_actions or state.held_actions[0] is not head
+    unresolved = any(summary.get("resolved") is False for summary in summaries[summary_start:])
+    opened = state.open_window is not None
+    if not (popped or unresolved or opened):
+        raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
 async def pump(session, state, *, packet_deps: dict) -> list[dict]:
@@ -220,32 +232,45 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
 
     while state.held_actions:
         head = state.held_actions[0]
+        summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
 
-        if opens:
-            if PRE_ROLL not in head["opened"]:
-                head["opened"].append(PRE_ROLL)
-                if pause_allowed(state):
-                    _open(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
-                    return summaries
+        try:
+            if opens:
+                if PRE_ROLL not in head["opened"]:
+                    head["opened"].append(PRE_ROLL)
+                    if pause_allowed(state):
+                        _open(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        return summaries
 
-            if action is not None and head["roll"] is None:
-                _assert_single_swing(state, head, action)
-                head["roll"] = serialize_roll(*_roll(state, head, action, packet_deps["resolver"]))
+                if action is not None and head["roll"] is None:
+                    _assert_single_swing(state, head, action)
+                    head["roll"] = serialize_roll(*_roll(state, head, action, packet_deps["resolver"]))
 
-            if head["roll"] is not None and POST_ROLL not in head["opened"]:
-                head["opened"].append(POST_ROLL)
-                if pause_allowed(state):
-                    hit = head["roll"]["attack_result"]["hit"]
-                    _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
-                    return summaries
+                if head["roll"] is not None and POST_ROLL not in head["opened"]:
+                    head["opened"].append(POST_ROLL)
+                    if pause_allowed(state):
+                        hit = head["roll"]["attack_result"]["hit"]
+                        _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
+                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        return summaries
 
-        summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+            summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+        except HeldActionUnresolvable as exc:
+            summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
+            logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
+            summaries.append(summary)
+            _assert_iteration_progress(state, head, summaries, summary_start)
+            state.held_actions.pop(0)
+            continue
+
         if head is reacted:
             combat_reaction_effect.record_shield_wear(reaction_packet, summary)
         summaries.append(summary)
         state.held_actions.pop(0)
+        _assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
 
