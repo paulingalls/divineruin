@@ -415,21 +415,6 @@ class TestBeatGuards:
         with pytest.raises(Exception, match="narration"):
             await combat_turn._resolve_phase_impl(ctx, **_resolve_deps())
 
-    @pytest.mark.asyncio
-    async def test_a_multi_swing_held_enemy_action_fails_loud(self):
-        """No enemy in content carries `enhancers` (combat_init populates them only from
-        players.data.flags), so a held enemy action is always a single swing. If that ever
-        changes, swings 2+ would apply damage with no window — raise rather than resolve them
-        silently (constraint 4)."""
-        ctx = _ctx_at_resolution(enemy_hp=20, reactions=False)
-        deps = _resolve_deps()
-        await _call(ctx, deps)  # the ally commit; the enemy action is held
-
-        ctx.userdata.combat_state.get_participant("goblin_scout_1").enhancers = ["extra_attack"]
-
-        with pytest.raises(ValueError, match="single swing"):
-            await combat_turn._resolve_phase_impl(ctx, **deps)
-
 
 class TestMidWindowPersistence:
     @pytest.mark.asyncio

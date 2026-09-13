@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+from _combat_end_fixtures import combat_end_mutations, combat_end_queries
+from combat._helpers import _call, _ctx_at_resolution, _fake_db_mod, _resolve_deps
+
 import db_mutations_conditions
-from combat_end import _end_combat_db
+from combat_end import _end_combat_db, _end_combat_impl
 from combat_events import EventSink
 from session_data import CombatParticipant, CombatState, SessionData
 
@@ -48,6 +51,39 @@ async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=No
         rng=FakeRng(),
     )
     return end_data, mutations, party, on_def
+
+
+async def test_multi_swing_held_action_drains_and_flee_succeeds(caplog):
+    ctx = _ctx_at_resolution(enemy_hp=20)
+    ctx.userdata.combat_state.reactions_available = {}
+    deps = _resolve_deps(damage=3)
+    caplog.set_level("ERROR", logger="divineruin.tools")
+    await _call(ctx, deps)
+    ctx.userdata.combat_state.get_participant("goblin_scout_1").enhancers = ["extra_attack"]
+
+    result = await _call(ctx, deps)
+
+    reason = (
+        "held enemy action 'Scimitar' for 'goblin_scout_1' expands to 2 swings; "
+        "Beat 3 holds a single swing per window, so swings 2+ would land with no reaction window"
+    )
+    assert result["packets"] == [{"actor_id": "goblin_scout_1", "resolved": False, "reason": reason}]
+    assert ctx.userdata.combat_state.held_actions == []
+    matching_logs = [
+        record for record in caplog.records if "goblin_scout_1" in record.message and reason in record.message
+    ]
+    assert len(matching_logs) == 1
+
+    handoff = await _end_combat_impl(
+        ctx,
+        "fled",
+        mutations=combat_end_mutations(),
+        queries=combat_end_queries(),
+        db_mod=_fake_db_mod(),
+    )
+
+    assert isinstance(handoff, tuple)
+    assert ctx.userdata.combat_state is None
 
 
 async def test_fled_abandons_fallen_ally_to_mortaen(monkeypatch):
