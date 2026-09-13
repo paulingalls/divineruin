@@ -51,3 +51,8 @@ tests:
   # (close/overlap.py) — the pre-push hook only ever sees the branch as-pushed.
   story: bun run test:all          # TS + Python unit lanes; the old system's sole test_command
   full: bun run test:acceptance    # the one lane test:all omits by design (ADR 0003, API cost)
+
+# EMPTY on purpose: story (test:all) and full (test:acceptance) are disjoint lanes,
+# so neither tier's run covers a record declared against the other.
+tier_coverage:       # e.g. covered: covering
+tier_coverage_pins:  # e.g. tier: exact configured command
