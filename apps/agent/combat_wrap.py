@@ -9,11 +9,25 @@ the DM does after whichever commit just landed.
 import combat_phase
 import event_types as E
 import fatigue_narration
+from combat_ability import _find_action
 from combat_end import _end_combat_db
 from combat_events import emit_or_publish
 from combat_packet import _resolve_tick_saves
 from combat_ui_update import build_combat_ui_update
+from declarations import DeclarationType, resolve_declaration
 from session_data import SessionData
+
+
+def _held_action_name(state) -> str | None:
+    head = state.held_actions[0]
+    declaration = resolve_declaration(head["declaration"])
+    actor = state.get_participant(head["actor_id"])
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is not None:
+        return action["name"]
+    if declaration.type is DeclarationType.ATTACK:
+        raise ValueError(f"held attack action {declaration.action!r} for {head['actor_id']!r} is unavailable")
+    return None
 
 
 def next_envelope(state) -> dict:
@@ -48,6 +62,7 @@ def next_envelope(state) -> dict:
                 "actor_id": window["actor_id"],
                 "target_id": window["target_id"],
                 "triggers": window["triggers"],
+                "action": _held_action_name(state),
             },
         }
     if state.beat == combat_phase.PhaseBeat.NARRATION:

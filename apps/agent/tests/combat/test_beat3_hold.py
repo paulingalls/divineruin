@@ -90,6 +90,7 @@ class TestTheTwoWindows:
         so the enemy blow cannot have landed when the DM starts narrating Beat 3; each subsequent
         call steps the held queue by one stage."""
         ctx = _ctx_at_resolution(player_hp=25)
+        ctx.userdata.combat_state.pending_declarations["goblin_scout_1"]["action"] = "sCiMiTaR"
         deps = _resolve_deps(damage=3)
 
         # Call 1: the ally band resolves and commits. Nothing is held open yet.
@@ -106,6 +107,7 @@ class TestTheTwoWindows:
         assert w1["stage"] == "pre_roll"
         assert w1["actor_id"] == "goblin_scout_1"
         assert w1["target_id"] == "player_1"
+        assert w1["action"] == "Scimitar"
         assert set(w1["triggers"]) <= abilities.REACTION_WINDOWS
         assert "on_targeted" in w1["triggers"] and "on_enemy_action" in w1["triggers"]
         assert _p(ctx).hp_current == 25
@@ -117,6 +119,7 @@ class TestTheTwoWindows:
         assert w2 is not None
         assert w2["stage"] == "post_roll"
         assert w2["window_id"] != w1["window_id"]
+        assert w2["action"] == "Scimitar"
         assert "on_hit" in w2["triggers"]  # the seeded resolver hits
         assert _p(ctx).hp_current == 25
         assert ctx.userdata.combat_state.held_actions[0]["roll"]["attack_result"]["hit"] is True
@@ -173,8 +176,23 @@ class TestTheTwoWindows:
         r1 = await _call(ctx, deps)  # the pre-roll window
 
         assert set(r1["next"]) == {"phase", "verbs", "waiting_on"}
-        assert set(r1["next"]["waiting_on"]) == {"window_id", "stage", "actor_id", "target_id", "triggers"}
+        assert set(r1["next"]["waiting_on"]) == {"window_id", "stage", "actor_id", "target_id", "triggers", "action"}
         assert "resolve_phase" in r1["next"]["verbs"]
+
+    @pytest.mark.asyncio
+    async def test_non_pool_interact_names_no_held_action(self):
+        ctx = _ctx_at_resolution()
+        ctx.userdata.combat_state.pending_declarations["goblin_scout_1"] = {
+            "type": "interact",
+            "action": "Taunt",
+            "target_id": "player_1",
+        }
+        deps = _resolve_deps()
+
+        await _call(ctx, deps)
+        result = await _call(ctx, deps)
+
+        assert result["next"]["waiting_on"]["action"] is None
 
 
 class TestTheNoReactionGate:

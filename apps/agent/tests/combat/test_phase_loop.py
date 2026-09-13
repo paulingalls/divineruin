@@ -125,6 +125,22 @@ class TestDeclarePhase:
         mutations.save_combat_state.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_unknown_attack_action_fails_before_persisting(self):
+        mutations = _make_mutations()
+        ctx = make_context()
+        state = _make_combat_state()
+        ctx.userdata.combat_state = state
+        declarations = _declarations()
+        declarations["goblin_scout_1"]["action"] = "Claw"
+        with pytest.raises(ToolError) as raised:
+            await _declare_phase_impl(ctx, declarations, mutations=mutations)
+
+        assert all(value in str(raised.value) for value in ("Goblin Scout", "goblin_scout_1", "Claw", "Scimitar"))
+        assert ctx.userdata.combat_state is state
+        assert state.beat == "declaration" and state.pending_declarations == {}
+        mutations.save_combat_state.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_empty_declarations_raises(self):
         mutations = _make_mutations()
         ctx = make_context()
@@ -167,13 +183,10 @@ class TestResolvePhaseNonEnding:
         goblin = cs.get_participant("goblin_scout_1")
         kael = cs.get_participant("player_1")
         assert goblin is not None and kael is not None
-        # Player (init 15) attacks the goblin (7-3); goblin (init 12) attacks Kael (25-3).
         assert goblin.hp_current == 4
         assert kael.hp_current == 22
-        # Resolution order is initiative-desc: player before enemy.
         assert [p["actor_id"] for p in result["packets"]] == ["player_1", "goblin_scout_1"]
         assert all(p["resolved"] for p in result["packets"])
-        # No one fell -> engine loops back to the next declaration beat.
         assert result["beat"] == "declaration"
         assert result["round"] == 2
         assert result["death_saves_due"] == []

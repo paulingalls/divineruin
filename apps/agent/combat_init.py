@@ -18,7 +18,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import rules_engine
-from combat_support import _participant_summary, _publish_sounds
+from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -397,7 +397,7 @@ async def _start_combat_impl(
         "encounter_name": encounter.get("name", encounter_id),
         "encounter_description": encounter_description,
         "initiative_order": initiative_summary,
-        "participants": [_participant_summary(p) for p in participants],
+        "participants": _participant_roster(participants),
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
@@ -418,6 +418,8 @@ async def _start_combat_impl(
 
         parts.append(f"{session.companion.name} fights alongside the player.")
         parts.append(companion_voice_directive(session.companion))
+    # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
+    parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
     combat_ctx = ChatContext()
     combat_ctx.add_message(role="system", content=" ".join(parts))
