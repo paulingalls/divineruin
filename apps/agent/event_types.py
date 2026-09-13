@@ -23,9 +23,9 @@ LOCATION_CHANGED = "location_changed"
 COMBAT_STARTED = "combat_started"
 COMBAT_ENDED = "combat_ended"
 # Combat HUD condition + tracker push (M12). Combat start emits directly after COMBAT_STARTED;
-# reaction-window pauses and non-terminal Beat-4 wraps use the buffered EventSink after building
-# from their current state. Rolled-back pause/wrap transactions therefore publish nothing, and a
-# terminal wrap relies on COMBAT_ENDED + hudStore.clearCombatState instead.
+# every pause commit (ally pass, reaction window) and non-terminal Beat-4 wrap uses the buffered
+# EventSink after building from their current state. Rolled-back pause/wrap transactions therefore
+# publish nothing, and a terminal wrap relies on COMBAT_ENDED + hudStore.clearCombatState instead.
 #   Packet: {round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
 #           conditions:[{type, stacks, source}], isActive}]}
 # `round` reflects the supplied current state; at wrap that is the newly entered round. `isActive`

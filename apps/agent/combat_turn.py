@@ -266,14 +266,13 @@ async def _resolve_phase_locked(
             pending_by_member = {
                 mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
             }
-            if state.open_window is not None:
-                await emit_or_publish(
-                    sink,
-                    session.room,
-                    E.COMBAT_UI_UPDATE,
-                    build_combat_ui_update(state),
-                    event_bus=session.event_bus,
-                )
+            await emit_or_publish(
+                sink,
+                session.room,
+                E.COMBAT_UI_UPDATE,
+                build_combat_ui_update(state),
+                event_bus=session.event_bus,
+            )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
         else:
             (

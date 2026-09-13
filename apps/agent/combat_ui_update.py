@@ -1,7 +1,8 @@
 """Pure COMBAT_UI_UPDATE packet projection.
 
-Combat start publishes it directly. Reaction-window pauses and non-terminal Beat-4 wraps buffer
-it in the phase EventSink, so rolled-back state never reaches the client.
+Combat start publishes it directly. Every pause commit (the ally pass and each reaction window) and
+each non-terminal Beat-4 wrap buffer it in the phase EventSink, so rolled-back state never reaches
+the client.
 """
 
 from session_data import CombatParticipant, CombatState

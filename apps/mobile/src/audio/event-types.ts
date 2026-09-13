@@ -27,7 +27,8 @@ export const LOCATION_CHANGED = "location_changed" as const;
 export const COMBAT_STARTED = "combat_started" as const;
 export const COMBAT_ENDED = "combat_ended" as const;
 // Combat HUD condition + tracker push (M12) — mirrors apps/agent/event_types.py COMBAT_UI_UPDATE.
-// Emitted at combat-start, at reaction-window pauses, and at each non-terminal Beat-4 wrap.
+// Emitted at combat-start, at every pause commit (ally pass, reaction window), and at each
+// non-terminal Beat-4 wrap.
 // Pause/wrap packets ride the buffered EventSink, so a rolled-back phase publishes nothing;
 // COMBAT_ENDED + hudStore.clearCombatState own terminal-wrap teardown.
 //   Packet: {round, combatants:[{id, name, isAlly, hpCurrent, hpMax,

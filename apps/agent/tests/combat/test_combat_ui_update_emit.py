@@ -1,4 +1,4 @@
-"""COMBAT_UI_UPDATE timing at reaction pauses, non-terminal wraps, and terminal wraps."""
+"""COMBAT_UI_UPDATE timing at pause commits, non-terminal wraps, and terminal wraps."""
 
 import json
 from unittest.mock import MagicMock
@@ -70,9 +70,9 @@ async def test_resolve_phase_emits_combat_ui_update_at_wrap_with_post_tick_condi
         )
         events = list(session.event_bus.drain())
         ui_updates = [e for e in events if e.event_type == E.COMBAT_UI_UPDATE]
-        assert len(ui_updates) == 1, f"expected one COMBAT_UI_UPDATE, got {[e.event_type for e in events]}"
+        assert len(ui_updates) == 2, f"expected ally-commit + wrap updates, got {[e.event_type for e in events]}"
 
-        packet = ui_updates[0].payload
+        packet = ui_updates[-1].payload
         by_id = {c["id"]: c for c in packet["combatants"]}
         player_combatant = by_id[player_id]
         assert all(c["type"] != "frightened" for c in player_combatant["conditions"]), (
@@ -104,11 +104,10 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     queries = combat_end_queries()
 
     try:
-        await _resolve_round(
-            ctx,
-            resolver=_damage_resolver(5),
-            queries=queries,
-        )
+        deps = {"resolver": _damage_resolver(5), "queries": queries}
+        await _call(ctx, deps)
+        session.event_bus.drain()
+        await _resolve_round(ctx, **deps)
         events = [e.event_type for e in session.event_bus.drain()]
         assert E.COMBAT_ENDED in events, f"expected COMBAT_ENDED in {events}"
         assert E.COMBAT_UI_UPDATE not in events, f"COMBAT_UI_UPDATE leaked on terminal wrap: {events}"
@@ -116,6 +115,19 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
         # end_combat already deleted the row; this is the safety net for a partial-run.
         await db_mutations.delete_combat_state(combat_id, conn=pool)
+
+
+async def test_ally_commit_emits_ui_update_with_the_ally_bands_damage():
+    ctx = _ctx_at_resolution(enemy_hp=20)
+
+    paused = await _call(ctx, _resolve_deps(damage=3))
+
+    assert paused["next"]["waiting_on"] is None
+    assert ctx.userdata.combat_state.held_actions
+    updates = [event for event in ctx.userdata.event_bus.drain() if event.event_type == E.COMBAT_UI_UPDATE]
+    assert len(updates) == 1
+    combatants = {combatant["id"]: combatant for combatant in updates[0].payload["combatants"]}
+    assert combatants["goblin_scout_1"]["hpCurrent"] == 17
 
 
 async def test_pre_roll_pause_emits_ui_update_with_the_ally_bands_damage():

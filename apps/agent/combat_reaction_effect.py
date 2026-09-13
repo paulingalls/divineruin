@@ -120,9 +120,10 @@ def halve(head: dict, target) -> None:
     serialized roll internally coherent across a persist/reload, not because the apply half reads
     them — it stopped, so that a pause that moves the target's HP is not undone at impact.
 
-    Rewriting the SERIALIZED ROLL rather than the summary is what carries the halving to all five
+    Rewriting the SERIALIZED ROLL rather than the summary is what carries the halving to all four
     of its consumers through the untouched trunk path: hp_current, the concentration DC, the
-    DICE_ROLL payload, the recorded event line and the packet summary.
+    recorded event line and the packet summary. The DICE_ROLL is not one: a post-roll spend needs
+    the POST_ROLL pause, which already announced the blow as rolled.
 
     ``bonus_damage`` is halved with it because it is a COMPONENT of ``damage``, not a label
     (check_resolution_attack.py:150 does ``damage += bonus_damage``) and the summary surfaces both

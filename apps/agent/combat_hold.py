@@ -189,7 +189,6 @@ def _replay_resolver(head: dict):
 
     class _Replay:
         resolve_attack = staticmethod(_resolve)
-        roll_already_published = head.get("roll_published", False)
 
     return _Replay()
 
@@ -350,5 +349,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
         packet,
         reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        publish_roll=not head.get("roll_published", False),
         **deps,
     )

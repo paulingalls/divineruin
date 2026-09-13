@@ -139,6 +139,7 @@ async def _resolve_attack_packet(
     combat_state=None,
     conn=None,
     sink=None,
+    publish_roll: bool = True,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -147,9 +148,10 @@ async def _resolve_attack_packet(
     that must PAUSE between the roll and the damage (the Beat-3 hold) drive the halves directly.
 
     Mutates ``target`` in place (hp_current, is_fallen), publishes sounds and durability hits,
-    and returns a per-packet narration summary. The DICE_ROLL publishes here unless a held replay
-    already announced it at the POST_ROLL pause. It does not persist; the caller owns the phase
-    save. ``attacker``/``target`` are CombatParticipants and ``action`` is weapon-shaped.
+    and returns a per-packet narration summary. The DICE_ROLL publishes here unless ``publish_roll``
+    says a held replay already announced it at the POST_ROLL pause. It does not persist; the
+    caller owns the phase save. ``attacker``/``target`` are CombatParticipants and ``action`` is
+    weapon-shaped.
 
     ``shield_reaction`` names the shield-bearing reaction the target spent against THIS blow, and
     is what accrues a durability hit on their shield. Its live producer is the Beat-3 window close
@@ -177,7 +179,7 @@ async def _resolve_attack_packet(
         combat_state=combat_state,
         conn=conn,
         sink=sink,
-        publish_roll=getattr(resolver, "roll_already_published", False) is not True,
+        publish_roll=publish_roll,
     )
 
 
