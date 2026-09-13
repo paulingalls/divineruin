@@ -1,19 +1,14 @@
-"""Tests for _resolve_attack_packet: per-attack resolution against CombatParticipant HP.
-
-This is the shared resolver the phase-loop packet path (story-003) drives via
-``_resolve_one_packet``. It mutates the target participant in place, publishes its
-HUD events/sounds in order, and returns a response dict — it does NOT persist (the
-caller owns one save per phase).
-"""
+"""Tests for per-attack resolution against CombatParticipant HP."""
 
 import json
 from dataclasses import replace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
+import combat_support
 import event_types as E
 from check_resolution_attack import AttackResult
 from combat_events import EventSink
@@ -27,10 +22,6 @@ from combat_support import (
 
 
 def _fixed_resolver(*, damage: int, hp_remaining: int, dramatic: bool = False, context: str = ""):
-    """A resolver whose resolve_attack returns a fixed hit — pins the damage the
-    concentration break-check sees and whether the hit drops the target to 0. The
-    intrinsic dramatic verdict (story-002) is injectable so emission tests can drive
-    both the dramatic and non-dramatic paths."""
     result = AttackResult(
         hit=True,
         roll=15,
@@ -53,7 +44,6 @@ def _fixed_resolver(*, damage: int, hp_remaining: int, dramatic: bool = False, c
 
 
 def _dice_payload(sink: EventSink) -> dict:
-    """The DICE_ROLL event payload buffered by the sink for the attack (story-004)."""
     for ev in sink.captured:
         if ev.event_type == E.DICE_ROLL:
             return ev.payload
@@ -75,8 +65,6 @@ def _make_mocks():
 
 
 def _make_queries():
-    """No equipped items, so a player hit accrues no durability (the accrual path
-    is covered in test_combat_durability)."""
     mock_queries = MagicMock()
     mock_queries.get_player_inventory = AsyncMock(return_value=[])
     return mock_queries
@@ -275,11 +263,6 @@ class TestResolveAttackPacket:
 
 
 class TestDramaticEmission:
-    """story-004: the attack DICE_ROLL event payload and the returned summary surface the
-    dramatic verdict. The resolver's intrinsic verdict (nat-20/nat-1/killing-blow) is the
-    floor; the emission site PROMOTES a non-dramatic attack on the encounter-context signals
-    last_enemy + first_attack, never downgrading an intrinsic-dramatic one."""
-
     @pytest.mark.asyncio
     async def test_intrinsic_dramatic_reaches_payload_and_summary(self):
         sink = EventSink()
@@ -303,6 +286,44 @@ class TestDramaticEmission:
         payload = _dice_payload(sink)
         assert payload["dramatic"] is True
         assert payload["context"] == "natural_20"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("hit", [True, False])
+    async def test_attack_payload_uses_the_shared_complete_wire_mapping(self, hit):
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+        result = replace(
+            _fixed_resolver(damage=5 if hit else 0, hp_remaining=20 if hit else 25).resolve_attack.return_value,
+            hit=hit,
+            narrative_hint="Mapped attack result.",
+        )
+        sink = EventSink()
+        with patch.object(
+            combat_support,
+            "build_attack_dice_roll_payload",
+            wraps=combat_support.build_attack_dice_roll_payload,
+        ) as builder:
+            await apply_attack_result(
+                make_context().userdata,
+                attacker,
+                action,
+                target,
+                result,
+                target.ac,
+                mutations=_make_mocks(),
+                queries=_make_queries(),
+                concentration_break_mod=_break_mod(None),
+                sink=sink,
+            )
+        builder.assert_called_once_with(attacker, result)
+        payload = _dice_payload(sink)
+        assert (payload["modifier"], payload["total"], payload["success"], payload["narrative"]) == (
+            result.attack_modifier,
+            result.attack_total,
+            result.hit,
+            result.narrative_hint,
+        )
+        assert "hit" not in payload
 
     @pytest.mark.asyncio
     async def test_routine_attack_is_not_dramatic(self):
@@ -399,15 +420,7 @@ class TestDramaticEmission:
 
 
 class TestRollThenApply:
-    """The hold's seam (M29, story-016): the post-roll reaction window is PRE-DAMAGE, so the
-    roll must survive a tool-call boundary with no HP written and no event published.
-
-    This is also the seam story-018 needs, with one trap named here rather than rediscovered:
-    ``apply_attack_result`` writes ``target.hp_current = attack_result.target_hp_remaining`` and
-    never reads ``damage``. So halving ``damage`` between the halves changes NOTHING — an Uncanny
-    Dodge must re-derive ``target_hp_remaining`` (and ``overkill``) from the pre-hit HP too, or the
-    reaction reports half damage while the full blow still lands.
-    """
+    """The rolled attack survives a PRE-DAMAGE tool-call boundary."""
 
     def test_roll_writes_no_hp_and_publishes_nothing(self):
         """The HOLD itself. A rolled-but-unapplied attack leaves the target untouched: that is

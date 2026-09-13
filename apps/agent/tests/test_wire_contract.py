@@ -1,7 +1,7 @@
 """Cross-language wire-contract test (story-007, closes 82fc).
 
 ``packages/shared/fixtures/event_wire.json`` is the single source of truth for the
-wire shape both lanes assert against. Here is the Python half: each M3.2 event
+wire shape both lanes assert against. Here is the Python half: each covered event
 publisher, driven from the fixture's own values, must serialize exactly the fixture's
 ``{type, ...payload}`` shape, and the session-init spell-row builder must emit exactly
 the fixture ``spell_row`` keys. A renamed payload key on the Python side fails this
@@ -18,12 +18,14 @@ from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_f
 
 import combat_events
 import combat_rewards
+import combat_support
 import db_session_queries
 import event_types
 import hollow_echo
 import hollow_echo_events
 import resonance_events
 import veil_ward_events
+from check_resolution_attack import AttackResult
 from hollow_echo import HollowEchoResult
 from progression_tools import _award_divine_favor_core, _award_xp_core
 from spells import Spell
@@ -53,6 +55,34 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["specialization_choice"]["type"] == event_types.SPECIALIZATION_CHOICE
     assert FIXTURE["events"]["divine_favor_changed"]["type"] == event_types.DIVINE_FAVOR_CHANGED
     assert FIXTURE["events"]["item_acquired"]["type"] == event_types.ITEM_ACQUIRED
+    assert FIXTURE["events"]["combat_attack_hit"]["type"] == event_types.DICE_ROLL
+    assert FIXTURE["events"]["combat_attack_miss"]["type"] == event_types.DICE_ROLL
+
+
+@pytest.mark.parametrize("fixture_name", ["combat_attack_hit", "combat_attack_miss"])
+def test_combat_attack_dice_roll_serializes_to_fixture(fixture_name: str) -> None:
+    expected = FIXTURE["events"][fixture_name]
+    attack_result = AttackResult(
+        hit=expected["success"],
+        roll=expected["roll"],
+        attack_modifier=expected["modifier"],
+        attack_total=expected["total"],
+        target_ac=13,
+        damage=expected["damage"],
+        damage_type="slashing",
+        target_hp_remaining=1,
+        target_killed=False,
+        narrative_hint=expected["narrative"],
+        critical_success=expected["critical"],
+        dramatic=expected["dramatic"],
+        context=expected["context"],
+    )
+    attacker = MagicMock(name="attacker")
+    attacker.name = expected["attacker"]
+
+    payload = combat_support.build_attack_dice_roll_payload(attacker, attack_result)
+
+    assert {"type": event_types.DICE_ROLL, **payload} == expected
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:

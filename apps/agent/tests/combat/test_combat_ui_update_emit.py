@@ -1,27 +1,22 @@
-"""resolve_phase emit-timing tests for COMBAT_UI_UPDATE (M12, story-001).
-
-The pure packet builder is covered by tests/test_combat_ui_update.py; this
-file pins the emit placement inside _resolve_phase_impl:
-
-- At Beat-4 wrap POST-tick (save-cleared conditions are absent from the
-  emitted packet).
-- ONLY when the wrap does NOT end combat (terminal wrap relies on
-  COMBAT_ENDED + the mobile clearCombatState path).
-- Via the buffered EventSink (so a rolled-back tx publishes nothing).
-
-Uses the shared dev DB (:55432) for the player row that _prevalidate_ability_focus
-would read; non-ability declarations don't actually need it, but we follow the
-project convention for resolve_phase tests.
-"""
+"""COMBAT_UI_UPDATE timing at reaction pauses, non-terminal wraps, and terminal wraps."""
 
 import json
 from unittest.mock import MagicMock
 
 from _combat_end_fixtures import combat_end_queries
-from combat._helpers import _damage_resolver, _resolution_state, _resolve_round
+from combat._helpers import (
+    _call,
+    _ctx_at_resolution,
+    _damage_resolver,
+    _resolution_state,
+    _resolve_deps,
+    _resolve_round,
+)
+from combat._reaction_helpers import _guarded_ally_state, _pause_at
 
 import db_mutations
 import event_types as E
+import reaction_windows
 from session_data import SessionData
 
 
@@ -121,3 +116,42 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
         # end_combat already deleted the row; this is the safety net for a partial-run.
         await db_mutations.delete_combat_state(combat_id, conn=pool)
+
+
+async def test_pre_roll_pause_emits_ui_update_with_the_ally_bands_damage():
+    ctx = _ctx_at_resolution(enemy_hp=20)
+    deps = _resolve_deps(damage=3)
+
+    await _call(ctx, deps)
+    ctx.userdata.event_bus.drain()
+    paused = await _call(ctx, deps)
+
+    assert paused["next"]["waiting_on"]["stage"] == reaction_windows.PRE_ROLL
+    updates = [event for event in ctx.userdata.event_bus.drain() if event.event_type == E.COMBAT_UI_UPDATE]
+    assert len(updates) == 1
+    combatants = {combatant["id"]: combatant for combatant in updates[0].payload["combatants"]}
+    assert combatants["goblin_scout_1"]["hpCurrent"] == 17
+
+
+async def test_pause_ui_update_reads_damage_applied_in_the_pausing_call():
+    state = _guarded_ally_state(enemy_ids=("goblin_scout_1", "goblin_scout_2"))
+    ctx = _ctx_at_resolution(state=state)
+    deps = _resolve_deps(damage=3)
+    packets: list[dict] = []
+    await _pause_at(
+        ctx,
+        deps,
+        actor_id="goblin_scout_1",
+        stage=reaction_windows.POST_ROLL,
+        packets=packets,
+    )
+    ctx.userdata.event_bus.drain()
+
+    paused = await _call(ctx, deps)
+
+    assert paused["next"]["waiting_on"]["actor_id"] == "goblin_scout_2"
+    assert paused["next"]["waiting_on"]["stage"] == reaction_windows.PRE_ROLL
+    updates = [event for event in ctx.userdata.event_bus.drain() if event.event_type == E.COMBAT_UI_UPDATE]
+    assert len(updates) == 1
+    combatants = {combatant["id"]: combatant for combatant in updates[0].payload["combatants"]}
+    assert combatants["player_2"]["hpCurrent"] == 17

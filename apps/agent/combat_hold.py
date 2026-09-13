@@ -20,11 +20,12 @@ import logging
 
 import combat_enhancers
 import combat_reaction_effect
+import event_types as E
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
-from combat_support import deserialize_roll, roll_attack, serialize_roll
+from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from declarations import DeclarationType, resolve_declaration
 from reaction_windows import POST_ROLL, PRE_ROLL
 
@@ -53,6 +54,7 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
             "initiative": packet.initiative,
             "declaration": dict(state.pending_declarations.get(packet.actor_id, {})),
             "roll": None,
+            "roll_published": False,
             "opened": [],
         }
         for seq, packet in enumerate(packets)
@@ -187,6 +189,7 @@ def _replay_resolver(head: dict):
 
     class _Replay:
         resolve_attack = staticmethod(_resolve)
+        roll_already_published = head.get("roll_published", False)
 
     return _Replay()
 
@@ -258,6 +261,15 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                     head["opened"].append(POST_ROLL)
                     if pause_allowed(state):
                         hit = head["roll"]["attack_result"]["hit"]
+                        attack_result, _effective_ac = deserialize_roll(head["roll"])
+                        attacker = state.get_participant(head["actor_id"])
+                        await packet_deps["sink"].emit(
+                            session.room,
+                            E.DICE_ROLL,
+                            build_attack_dice_roll_payload(attacker, attack_result),
+                            event_bus=session.event_bus,
+                        )
+                        head["roll_published"] = True
                         _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries

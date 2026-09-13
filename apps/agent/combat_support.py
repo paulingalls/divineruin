@@ -146,12 +146,10 @@ async def _resolve_attack_packet(
     resolves exactly as it did before the two halves were separable (M29, story-016). Callers
     that must PAUSE between the roll and the damage (the Beat-3 hold) drive the halves directly.
 
-    Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
-    DICE_ROLL, sounds, and any durability hits in strike order, and returns a
-    response dict for the caller (a per-packet narration summary). It does NOT
-    persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
-    phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
-    ``action`` is an entry from the attacker's action_pool (weapon-shaped).
+    Mutates ``target`` in place (hp_current, is_fallen), publishes sounds and durability hits,
+    and returns a per-packet narration summary. The DICE_ROLL publishes here unless a held replay
+    already announced it at the POST_ROLL pause. It does not persist; the caller owns the phase
+    save. ``attacker``/``target`` are CombatParticipants and ``action`` is weapon-shaped.
 
     ``shield_reaction`` names the shield-bearing reaction the target spent against THIS blow, and
     is what accrues a durability hit on their shield. Its live producer is the Beat-3 window close
@@ -179,6 +177,7 @@ async def _resolve_attack_packet(
         combat_state=combat_state,
         conn=conn,
         sink=sink,
+        publish_roll=getattr(resolver, "roll_already_published", False) is not True,
     )
 
 
@@ -264,6 +263,22 @@ def deserialize_roll(data: dict) -> tuple:
     return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
 
 
+def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
+    return {
+        "roll_type": "attack",
+        "attacker": attacker.name,
+        "roll": attack_result.roll,
+        "modifier": attack_result.attack_modifier,
+        "total": attack_result.attack_total,
+        "success": attack_result.hit,
+        "narrative": attack_result.narrative_hint,
+        "damage": attack_result.damage,
+        "critical": attack_result.critical_success,
+        "dramatic": attack_result.dramatic,
+        "context": attack_result.context,
+    }
+
+
 async def apply_attack_result(
     session: SessionData,
     attacker,
@@ -279,6 +294,7 @@ async def apply_attack_result(
     combat_state=None,
     conn=None,
     sink=None,
+    publish_roll: bool = True,
 ) -> dict:
     """Apply an already-rolled attack: HP, fall/death, events, durability, and the summary.
 
@@ -352,22 +368,14 @@ async def apply_attack_result(
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
-    await emit_or_publish(
-        sink,
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "attack",
-            "attacker": attacker.name,
-            "hit": attack_result.hit,
-            "roll": attack_result.roll,
-            "damage": attack_result.damage,
-            "critical": attack_result.critical_success,
-            "dramatic": attack_result.dramatic,
-            "context": attack_result.context,
-        },
-        event_bus=session.event_bus,
-    )
+    if publish_roll:
+        await emit_or_publish(
+            sink,
+            session.room,
+            E.DICE_ROLL,
+            build_attack_dice_roll_payload(attacker, attack_result),
+            event_bus=session.event_bus,
+        )
     await _publish_sounds(session, sounds, sink=sink)
 
     # Accrue durability on the player's equipped armor (1 hit per damage taken),

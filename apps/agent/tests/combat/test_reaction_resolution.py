@@ -49,11 +49,8 @@ async def _to_post_roll_pause(ctx, deps) -> dict:
 async def test_uncanny_dodge_halves_the_damage_of_the_blow_it_answers():
     """AC1. The SAME seeded blow, run twice: the only difference is the spend.
 
-    Asserted from BOTH ends on purpose. ``apply_attack_result`` writes HP from the roll's
-    ABSOLUTE ``target_hp_remaining`` (combat_support.py:286) and never derives it from ``damage``,
-    so halving the reported damage alone leaves hp_current at the unhalved value — and recomputing
-    HP without rewriting the roll leaves the DICE_ROLL, the event line and the packet all
-    narrating the full number at a player who took half.
+    The DICE_ROLL announces the as-rolled blow at the POST_ROLL pause. The later packet, HP, and
+    event line pin the reaction's halving without publishing a second, corrected roll.
     """
     room = make_mock_room()
     ctx = _ctx_at_resolution(room=room)
@@ -65,7 +62,7 @@ async def test_uncanny_dodge_halves_the_damage_of_the_blow_it_answers():
     assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 22
     assert _enemy_blow(final["packets"])["damage"] == 3
     dice = [p for p in published_payloads(room) if p.get("type") == E.DICE_ROLL and p.get("attacker") == "Goblin Scout"]
-    assert [d["damage"] for d in dice] == [3]
+    assert [d["damage"] for d in dice] == [6]
     assert "Goblin Scout attacks Kael: hit, 3 damage" in ctx.userdata.recent_events
 
 

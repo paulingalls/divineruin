@@ -1,14 +1,7 @@
-"""COMBAT_UI_UPDATE packet builder (M12, story-001).
+"""Pure COMBAT_UI_UPDATE packet projection.
 
-Projects a CombatState into the wire packet the mobile HUD's `parseCombatant`
-consumes (apps/mobile/src/audio/game-event-handler.ts:93-119) so the
-combat-tracker + persistent-bar condition chips have a live source. M4.3
-shipped the client render keyed on `combatant.conditions` but never wired a
-producer (concern 76fc7caa200c) — this is the producer.
-
-Pure: no IO, no async. The single caller emits via the buffered EventSink at
-Beat-4 wrap post-tick in combat_turn.resolve_phase, so a rolled-back phase tx
-publishes nothing.
+Combat start publishes it directly. Reaction-window pauses and non-terminal Beat-4 wraps buffer
+it in the phase EventSink, so rolled-back state never reaches the client.
 """
 
 from session_data import CombatParticipant, CombatState
@@ -61,15 +54,7 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
 
 
 def build_combat_ui_update(state: CombatState) -> dict:
-    """Build the COMBAT_UI_UPDATE wire packet for a CombatState.
-
-    Caller emits this at Beat-4 wrap post-tick — by which point
-    advance_combat_phase has already transitioned `beat -> "declaration"`
-    and incremented `round_number` for the round just entered, so the
-    packet's `round` describes the NEW round (not the wrap that just
-    completed). `current_turn_index` has been reset to 0, so `isActive`
-    lights up the next-up actor.
-    """
+    """Build the current tracker packet without publishing it."""
     active_id = _active_id(state)
     return {
         "round": state.round_number,

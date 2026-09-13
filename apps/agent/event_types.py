@@ -22,18 +22,14 @@ LOCATION_CHANGED = "location_changed"
 # Combat
 COMBAT_STARTED = "combat_started"
 COMBAT_ENDED = "combat_ended"
-# Combat HUD condition + tracker push (M12) — emitted by combat_turn._resolve_phase_impl at the
-# Beat-4 wrap POST-tick (save-cleared conditions are absent), only when combat does NOT end on the
-# wrap (the terminal wrap path relies on COMBAT_ENDED + hudStore.clearCombatState). Also emitted
-# directly by combat_init.start_combat after COMBAT_STARTED so the HUD has live combatants from
-# round 1 (story-001 close fix). The wrap-time packet is built by combat_ui_update.build_combat_ui_update
-# and rides the buffered EventSink, so a rolled-back phase tx publishes nothing.
+# Combat HUD condition + tracker push (M12). Combat start emits directly after COMBAT_STARTED;
+# reaction-window pauses and non-terminal Beat-4 wraps use the buffered EventSink after building
+# from their current state. Rolled-back pause/wrap transactions therefore publish nothing, and a
+# terminal wrap relies on COMBAT_ENDED + hudStore.clearCombatState instead.
 #   Packet: {round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
 #           conditions:[{type, stacks, source}], isActive}]}
-# `round` reflects the NEW round at wrap (advance_combat_phase has already incremented round_number
-# before the emit). `isActive=True` marks initiative_order[current_turn_index] — the next-up LIVE
-# actor (fallen/dead are skipped). Conditions are projected to {type, stacks, source} only (mobile
-# parseCondition reads no more); duration/stage stay server-side.
+# `round` reflects the supplied current state; at wrap that is the newly entered round. `isActive`
+# marks the next-up live actor (fallen/dead skipped). Conditions carry {type, stacks, source} only.
 # Mirror const in apps/mobile/src/audio/event-types.ts.
 COMBAT_UI_UPDATE = "combat_ui_update"
 

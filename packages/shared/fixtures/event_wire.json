@@ -54,6 +54,34 @@
       "quantity": 2,
       "source": "combat_loot",
       "player_id": "player_1"
+    },
+    "combat_attack_hit": {
+      "type": "dice_roll",
+      "roll_type": "attack",
+      "attacker": "Goblin Scout",
+      "roll": 14,
+      "modifier": 4,
+      "total": 18,
+      "success": true,
+      "narrative": "The hooked blade catches the guard.",
+      "damage": 6,
+      "critical": false,
+      "dramatic": false,
+      "context": ""
+    },
+    "combat_attack_miss": {
+      "type": "dice_roll",
+      "roll_type": "attack",
+      "attacker": "Goblin Scout",
+      "roll": 5,
+      "modifier": 3,
+      "total": 8,
+      "success": false,
+      "narrative": "The blade scrapes harmlessly past.",
+      "damage": 0,
+      "critical": false,
+      "dramatic": false,
+      "context": ""
     }
   },
   "hollow_echo_bands": [
