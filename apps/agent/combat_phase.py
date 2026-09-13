@@ -131,11 +131,10 @@ def advance_combat_phase(
         resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
         for actor_id, declaration in resolved.items():
             actor = next_state.get_participant(actor_id)
-            if (
-                declaration.type is DeclarationType.ATTACK
-                and actor is not None
-                and _find_action(actor, declaration.action) is None
-            ):
+            if actor is None:
+                participant_ids = [participant.id for participant in next_state.participants]
+                raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+            if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:
                 available = [action["name"] for action in actor.action_pool]
                 raise ValueError(
                     f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "

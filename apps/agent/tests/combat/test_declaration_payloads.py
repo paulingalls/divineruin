@@ -140,6 +140,20 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
     assert all(value in str(raised.value) for value in ("Goblin Scout", "goblin_scout_1", "Claw", "Scimitar"))
 
 
+@pytest.mark.parametrize(
+    "decl",
+    [
+        AttackDecl(kind="attack", actor_id="goblin_1", action="Scimitar", target_id="player_1", rider=""),
+        DefendDecl(kind="defend", actor_id="goblin_1"),
+    ],
+)
+def test_mapped_unknown_actor_fails_at_the_engine_boundary(decl):
+    with pytest.raises(ValueError) as raised:
+        advance_combat_phase(_make_combat_state(), to_engine_declarations([decl]))
+
+    assert all(value in str(raised.value) for value in ("goblin_1", "player_1", "goblin_scout_1"))
+
+
 def test_declare_time_action_check_matches_case_insensitively_like_resolution():
     engine = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id="goblin_scout_1", action="sCiMiTaR", target_id="player_1", rider="")]
