@@ -125,9 +125,9 @@ def advance_combat_phase(
     if state.beat == PhaseBeat.DECLARATION:
         if not declarations:
             raise ValueError("declaration beat requires declarations")
-        # Validate every declaration's shape at declare time so a bad one fails loud
-        # here (the tool layer translates ValueError -> ToolError) rather than at the
-        # later resolution beat. Raw dicts are still what's stored/persisted.
+        # Refuse a bad declaration here (the tool layer translates ValueError -> ToolError)
+        # rather than let it waste a turn at the later resolution beat. Raw dicts are still
+        # what's stored/persisted.
         resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
         for actor_id, declaration in resolved.items():
             actor = next_state.get_participant(actor_id)

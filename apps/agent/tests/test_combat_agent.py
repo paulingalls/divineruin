@@ -194,8 +194,9 @@ class TestCombatBeatContract:
         # Concern 4fa8d5aedce6: the player's Attack action is the exact name of an equipped
         # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
-        assert "exact name" in low and "equipped weapon" in low
-        assert "combatants[].actions" in low
+        attack_kind = low[low.index("attack — action is") : low.index("ability — action is")]
+        assert "exact name" in attack_kind and "equipped weapon" in attack_kind
+        assert "combatants[].actions" in attack_kind
         assert low.index("combatants[].actions") < low.index("call declare_phase")
         # start_combat's tool output never reaches CombatAgent (the handoff drops it).
         assert "start_combat's participants" not in low and "from their action_pool" not in low

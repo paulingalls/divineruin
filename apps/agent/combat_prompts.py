@@ -12,13 +12,13 @@ Beat 2 resolution -> Beat 3 narration -> Beat 4 wrap], looping until combat_end.
 Walk it one phase at a time, one beat at a time.
 
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
-from its tactics and each conscious companion's action. Read every combatant's id and exact pool \
-action names from the combat-entry roster's Combatants[].actions. Then call declare_phase with \
+from its tactics and each conscious companion's action. The combat-entry Combatants roster gives \
+every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Three \
 kinds resolve in combat today: \
-attack — action is the EXACT name of one of the actor's equipped weapons (for example \
-"Longsword"), because that is what resolve_phase matches against, and target_id is who \
-they strike. Send rider as an empty string unless the actor has Cunning Action, which \
+attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
+equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
+target_id is who they strike. Send rider as an empty string unless the actor has Cunning Action, which \
 spends it on "dash", "disengage" or "hide". \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
