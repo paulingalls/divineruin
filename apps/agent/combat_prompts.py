@@ -12,8 +12,8 @@ Beat 2 resolution -> Beat 3 narration -> Beat 4 wrap], looping until combat_end.
 Walk it one phase at a time, one beat at a time.
 
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
-from its tactics and each conscious companion's action. Read every combatant's exact pool action \
-name from start_combat's participants[].actions. Then call declare_phase with \
+from its tactics and each conscious companion's action. Read every combatant's id and exact pool \
+action names from the combat-entry roster's Combatants[].actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Three \
 kinds resolve in combat today: \
 attack — action is the EXACT name of one of the actor's equipped weapons (for example \
@@ -137,7 +137,7 @@ Keep combat moving. One sentence per action, two for a kill. The rhythm is: \
 action, result, next. Save longer narration for the decisive blow.
 
 Include each conscious companion in declare_phase with an attack declaration naming \
-the companion's exact action from participants[].actions and the most tactically sound target. Have the companion make a brief \
+the companion's exact action from Combatants[].actions and the most tactically sound target. Have the companion make a brief \
 tactical callout in the urgent register, using the companion's own voice exactly as the \
 combat-entry context specifies. "Flanking left!" "Watch the spellcaster!" Keep it to one \
 clipped sentence.

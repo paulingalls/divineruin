@@ -104,10 +104,9 @@ scenarios("features/m29_combat_reactions.feature")
 def _entry_context(state) -> ChatContext:
     """The combat-entry system message, mirroring combat_init's handoff — plus tactics.
 
-    combat_init puts the roster in start_combat's TOOL RESPONSE (``_participant_roster`` over
-    participant) and the scene line in the handoff ChatContext; ``session.run()`` replays neither,
-    so both ride the entry context here. Only ``tactics`` is hand-fed; production now surfaces
-    ``actions`` through the same roster function this harness calls.
+    combat_init's handoff ChatContext carries the scene line and ``Combatants: <_participant_roster>``;
+    ``session.run()`` performs no handoff, so both ride the entry context here. Only ``tactics`` is
+    hand-fed — the module docstring's one divergence.
     """
     roster = _participant_roster(state.participants)
     for summary in roster:

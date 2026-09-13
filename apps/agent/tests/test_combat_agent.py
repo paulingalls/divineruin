@@ -195,9 +195,10 @@ class TestCombatBeatContract:
         # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "exact name" in low and "equipped weapon" in low
-        assert "participants[].actions" in low
-        assert low.index("participants[].actions") < low.index("call declare_phase")
-        assert "from their action_pool" not in low
+        assert "combatants[].actions" in low
+        assert low.index("combatants[].actions") < low.index("call declare_phase")
+        # start_combat's tool output never reaches CombatAgent (the handoff drops it).
+        assert "start_combat's participants" not in low and "from their action_pool" not in low
 
     def test_in_combat_ability_is_a_declaration_not_activate(self):
         # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;

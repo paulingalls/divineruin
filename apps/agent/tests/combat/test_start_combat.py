@@ -238,7 +238,7 @@ class TestStartCombatStanceGate:
 
 class TestStartCombat:
     @pytest.mark.asyncio
-    async def test_creates_combat_state(self):
+    async def test_creates_combat_state(self, mock_combat_agent_factory):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = make_context(companion_id="companion_kael")
 
@@ -260,6 +260,8 @@ class TestStartCombat:
         participants = {p["id"]: p for p in result["participants"]}
         assert participants["goblin_scout_1"]["actions"] == ["Scimitar", "Shortbow"]
         assert participants["companion_kael"]["actions"] == ["Longsword", "Shield Bash"]
+        entry = mock_combat_agent_factory.call_args.kwargs["chat_ctx"].items[0].text_content
+        assert f"Combatants: {json.dumps(result['participants'])}" in entry
         assert ctx.userdata.in_combat is True
         assert ctx.userdata.combat_state is not None
         mock_mutations.save_combat_state.assert_called_once()

@@ -418,6 +418,8 @@ async def _start_combat_impl(
 
         parts.append(f"{session.companion.name} fights alongside the player.")
         parts.append(companion_voice_directive(session.companion))
+    # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
+    parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
     combat_ctx = ChatContext()
     combat_ctx.add_message(role="system", content=" ".join(parts))

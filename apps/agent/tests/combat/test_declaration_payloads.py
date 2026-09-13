@@ -20,10 +20,10 @@ from combat._helpers import _damage_resolver, _make_combat_state
 from livekit.agents.llm import ToolContext
 from sample_fixtures import make_context
 
-import combat_support
 import combat_turn
 from combat_packet import _resolve_one_packet
 from combat_phase import ResolutionPacket, advance_combat_phase
+from combat_support import _participant_roster
 from declaration_payloads import (
     DECL_VARIANTS,
     AbilityDecl,
@@ -64,14 +64,11 @@ def test_production_and_m29_use_the_shared_action_roster():
         for node in ast.walk(acceptance_tree)
     )
 
-    roster = getattr(combat_support, "_participant_roster", None)
-    assert callable(roster)
-    roster = typing.cast(typing.Callable[..., list[dict]], roster)
     state = _make_combat_state()
     companion, enemy = state.participants
     companion.type = "companion"
     companion.action_pool = [{"name": "Longsword"}]
-    assert [p["actions"] for p in roster([companion, enemy])] == [["Longsword"], ["Scimitar"]]
+    assert [p["actions"] for p in _participant_roster([companion, enemy])] == [["Longsword"], ["Scimitar"]]
 
 
 @pytest.mark.asyncio
@@ -93,10 +90,7 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
     enemy = state.get_participant("goblin_scout_1")
     assert enemy is not None
     enemy.action_pool = [action]
-    roster = getattr(combat_support, "_participant_roster", None)
-    assert callable(roster)
-    roster = typing.cast(typing.Callable[..., list[dict]], roster)
-    produced_name = roster(state.participants)[1]["actions"][0]
+    produced_name = _participant_roster(state.participants)[1]["actions"][0]
     mapped = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id=enemy.id, action=produced_name, target_id="player_1", rider="")]
     )
@@ -144,6 +138,16 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
         advance_combat_phase(state, engine)
 
     assert all(value in str(raised.value) for value in ("Goblin Scout", "goblin_scout_1", "Claw", "Scimitar"))
+
+
+def test_declare_time_action_check_matches_case_insensitively_like_resolution():
+    engine = to_engine_declarations(
+        [AttackDecl(kind="attack", actor_id="goblin_scout_1", action="sCiMiTaR", target_id="player_1", rider="")]
+    )
+
+    next_state, _ = advance_combat_phase(_make_combat_state(), engine)
+
+    assert next_state.pending_declarations == engine
 
 
 def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
