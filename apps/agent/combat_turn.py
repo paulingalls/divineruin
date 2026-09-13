@@ -23,15 +23,17 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import declaration_payloads
+import event_types as E
 import resonance_events
 import spell_casting
 import veil_ward_events
 import ward_resolution
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_finish
-from combat_events import EventSink, isolated_publish, scratch_guard
+from combat_events import EventSink, emit_or_publish, isolated_publish, scratch_guard
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
 from combat_support import _require_combat
+from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
 from declaration_payloads import DeclPayload
 from declarations import DeclarationType
@@ -264,6 +266,13 @@ async def _resolve_phase_locked(
             pending_by_member = {
                 mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
             }
+            await emit_or_publish(
+                sink,
+                session.room,
+                E.COMBAT_UI_UPDATE,
+                build_combat_ui_update(state),
+                event_bus=session.event_bus,
+            )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
         else:
             (

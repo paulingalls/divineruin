@@ -1,4 +1,4 @@
-import { test, expect, beforeEach } from "bun:test";
+import { test, expect, beforeEach, spyOn } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import {
@@ -10,12 +10,13 @@ import {
   VEIL_WARD_CHANGED,
   XP_AWARDED,
 } from "@/audio/event-types";
-import { handleGameEvent } from "@/audio/game-event-handler";
+import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handler";
+import * as sfxPlayer from "@/audio/sfx-player";
 import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
-import { resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
+import { captureTimers, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 // packages/shared/fixtures/event_wire.json is the cross-language SSOT wire shape. The
 // Python lane (apps/agent/tests/test_wire_contract.py) asserts each publisher serializes
@@ -37,7 +38,38 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.specialization_choice.type).toBe(SPECIALIZATION_CHOICE);
   expect(EVENTS.divine_favor_changed.type).toBe(DIVINE_FAVOR_CHANGED);
   expect(EVENTS.item_acquired.type).toBe(ITEM_ACQUIRED);
+  expect(EVENTS.combat_attack_hit.type).toBe("dice_roll");
+  expect(EVENTS.combat_attack_miss.type).toBe("dice_roll");
 });
+
+for (const [fixtureName, expectedStinger] of [
+  ["combat_attack_hit", "success_sting"],
+  ["combat_attack_miss", "fail_sting"],
+] as const) {
+  test(`${fixtureName} fixture drives the complete dice overlay and stinger`, () => {
+    const event = EVENTS[fixtureName];
+    const playSfx = spyOn(sfxPlayer, "playSfx").mockImplementation(() => {});
+    try {
+      const timers = captureTimers(() => handleGameEvent({ ...event }));
+      const overlay = hudStore.getState().overlays[0];
+      expect(overlay.type).toBe("dice_result");
+      expect(overlay.payload).toMatchObject({
+        roll: event.roll,
+        modifier: event.modifier,
+        total: event.total,
+        success: event.success,
+        rollType: event.roll_type,
+        narrative: event.narrative,
+      });
+      const stinger = timers.find((timer) => timer.delay === DICE_STINGER_DELAY_MS);
+      expect(stinger).toBeDefined();
+      stinger!.fn();
+      expect(playSfx).toHaveBeenCalledWith(expectedStinger);
+    } finally {
+      playSfx.mockRestore();
+    }
+  });
+}
 
 test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
   // The Python lane pins this same list to the agent resolver bands; pinning it here to the

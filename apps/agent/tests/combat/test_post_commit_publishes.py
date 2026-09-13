@@ -1,24 +1,24 @@
-"""Post-commit publish isolation for the phase loop.
-
-Once the phase transaction commits, its HUD pushes are a mirror of an authoritative result:
-a failure in one is logged, never raised (combat_events.POST_COMMIT_PUBLISH_FAILED). Sharing
-ONE try made the first failure skip every push behind it — and none of them re-fires, so a
-transient sink error left the ward indicator and every member's Resonance track stale for the
-rest of the fight.
-
-Scope, stated so the file does not read as more than it is: this pins ONE direction — a
-failing sink flush must not skip the resonance pushes. The per-caster cast-flush guard and
-the per-member resonance guard are NOT pinned here; collapsing either loop back under a
-shared try would still pass. Filed as debt f3c008ab87b9.
-"""
+"""Post-commit isolation, ordering, and one-shot publication for the phase loop."""
 
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
+from combat._helpers import (
+    _activate,
+    _call,
+    _ctx_at_resolution,
+    _damage_resolver,
+    _fake_db_mod,
+    _resolve_deps,
+    _resolve_round,
+)
 from sample_fixtures import make_context
 
 import combat_events
+import combat_hold
+import combat_support
+import event_types as E
+import reaction_windows
 from session_data import CombatParticipant, CombatState
 
 
@@ -118,3 +118,62 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
     assert pushed == {"player_1", "player_2"}, (
         "a failed sink flush must not skip the per-member Resonance pushes behind it — nothing re-pushes them"
     )
+
+
+@pytest.mark.asyncio
+async def test_post_roll_pause_publishes_the_attack_once_before_the_hud():
+    ctx = _ctx_at_resolution()
+    deps = _resolve_deps(damage=6)
+    await _call(ctx, deps)
+    ctx.userdata.event_bus.drain()
+    await _call(ctx, deps)
+    ctx.userdata.event_bus.drain()
+
+    original = combat_hold.build_attack_dice_roll_payload
+    builder = MagicMock(wraps=original)
+    combat_hold.build_attack_dice_roll_payload = builder
+    try:
+        paused = await _call(ctx, deps)
+    finally:
+        combat_hold.build_attack_dice_roll_payload = original
+
+    assert paused["next"]["waiting_on"]["stage"] == reaction_windows.POST_ROLL
+    head = ctx.userdata.combat_state.held_actions[0]
+    result, _effective_ac = combat_support.deserialize_roll(head["roll"])
+    builder.assert_called_once_with(ctx.userdata.combat_state.get_participant(head["actor_id"]), result)
+    events = list(ctx.userdata.event_bus.drain())
+    assert [event.event_type for event in events] == [E.DICE_ROLL, E.COMBAT_UI_UPDATE]
+    roll = events[0].payload
+    assert (roll["modifier"], roll["total"], roll["success"], roll["narrative"]) == (
+        result.attack_modifier,
+        result.attack_total,
+        result.hit,
+        result.narrative_hint,
+    )
+
+    await _activate(ctx, "rogue_uncanny_dodge", player_class="rogue")
+    final = await _call(ctx, deps)
+    later_events = list(ctx.userdata.event_bus.drain())
+    assert not [event for event in later_events if event.event_type == E.DICE_ROLL]
+    enemy_packets = [packet for packet in final["packets"] if packet.get("actor_id") == "goblin_scout_1"]
+    assert enemy_packets[0]["damage"] == 3
+    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 22
+
+
+@pytest.mark.asyncio
+async def test_rolled_back_post_roll_pause_publishes_neither_event():
+    ctx = _ctx_at_resolution()
+    deps = _resolve_deps(damage=6)
+    await _call(ctx, deps)
+    ctx.userdata.event_bus.drain()
+    await _call(ctx, deps)
+    ctx.userdata.event_bus.drain()
+    deps["mutations"].save_combat_state.side_effect = RuntimeError("save failed")
+
+    with pytest.raises(RuntimeError, match="save failed"):
+        await _call(ctx, deps)
+
+    assert list(ctx.userdata.event_bus.drain()) == []
+    head = ctx.userdata.combat_state.held_actions[0]
+    assert head["roll"] is None
+    assert ctx.userdata.combat_state.open_window["stage"] == reaction_windows.PRE_ROLL

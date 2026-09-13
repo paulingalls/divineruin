@@ -12,8 +12,7 @@ export const SET_MUSIC_STATE = "set_music_state" as const;
 // Dice
 // Payload {roll, modifier, total, success, roll_type, narrative}. Optional `dramatic`
 // (boolean): when explicitly true, the HUD plays the full tumble-and-reveal; false/absent
-// suppresses it (scarcity gate, story-006). The agent does not emit `dramatic` until
-// stories 004/005, so live rolls carry no flag yet and stay suppressed in the interim.
+// suppresses it (scarcity gate, story-006).
 export const DICE_ROLL = "dice_roll" as const;
 export const DICE_RESULT = "dice_result" as const;
 
@@ -28,10 +27,10 @@ export const LOCATION_CHANGED = "location_changed" as const;
 export const COMBAT_STARTED = "combat_started" as const;
 export const COMBAT_ENDED = "combat_ended" as const;
 // Combat HUD condition + tracker push (M12) — mirrors apps/agent/event_types.py COMBAT_UI_UPDATE.
-// Emitted at combat-start (after COMBAT_STARTED, before SOUND_COMBAT_START) AND at each Beat-4
-// wrap POST-tick (save-cleared conditions are absent). Skipped on the terminal wrap so
-// COMBAT_ENDED + hudStore.clearCombatState own the teardown. Wrap-time packet rides the buffered
-// EventSink, so a rolled-back phase tx publishes nothing.
+// Emitted at combat-start, at every pause commit (ally pass, reaction window), and at each
+// non-terminal Beat-4 wrap.
+// Pause/wrap packets ride the buffered EventSink, so a rolled-back phase publishes nothing;
+// COMBAT_ENDED + hudStore.clearCombatState own terminal-wrap teardown.
 //   Packet: {round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
 //           conditions:[{type, stacks, source}], isActive}]}
 // `round` reflects the NEW round at wrap (round_number was incremented by advance_combat_phase
