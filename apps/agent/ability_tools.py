@@ -100,8 +100,8 @@ async def _request_ability_activation_impl(
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
-        # The live state, not `state`: consume_legendary_action swaps in a deep copy without this
-        # lock, and a spend written to the pre-await object would vanish with it.
+        # The live state, not `state`: an awaited activation may replace the session state through
+        # a test seam or future nested operation; recording against the stale object would lose it.
         combat_hold.record_spend(session.combat_state, session.player_id, spend)
         return result
 

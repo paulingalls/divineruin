@@ -1,6 +1,8 @@
-"""Combat initialization — _start_combat_impl, the combat-entry handoff behind
-enter_mode(mode="combat") (mode_tools.py). Rolls initiative, persists CombatState,
-and hands off to CombatAgent."""
+"""Combat initialization — the locked combat-entry handoff behind enter_mode(mode="combat").
+
+The session lock precedes the in-combat gate, content reads, persistence, and state adoption, so
+concurrent starts cannot create two rows. Successful entry hands off to CombatAgent.
+"""
 
 import json
 import logging
@@ -92,6 +94,27 @@ def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
 
 
 async def _start_combat_impl(
+    context: RunContext[SessionData],
+    encounter_id: str,
+    encounter_description: str,
+    *,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str | tuple:
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _start_combat_locked(
+            context,
+            encounter_id,
+            encounter_description,
+            mutations=mutations,
+            queries=queries,
+            content=content,
+        )
+
+
+async def _start_combat_locked(
     context: RunContext[SessionData],
     encounter_id: str,
     encounter_description: str,
