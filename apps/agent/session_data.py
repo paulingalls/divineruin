@@ -113,7 +113,7 @@ class CombatParticipant:
     # Unknown keeps legacy in-flight combats eligible rather than silently removing a capability.
     has_reaction_ability: bool | None = None
     # The class catalog's reaction ids: a participant carries no class, and the DM must be handed
-    # an exact id at a window. Empty for legacy rows, which leaves query_info as the fallback.
+    # an exact id at a window.
     reaction_ids: list[str] = field(default_factory=list)
 
     @property

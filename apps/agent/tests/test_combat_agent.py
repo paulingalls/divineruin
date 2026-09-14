@@ -235,7 +235,7 @@ class TestCombatBeatContract:
         teaching = low[pause : pause + 1100]
         assert "activate" in teaching
         assert "next.waiting_on.reactions" in teaching
-        assert "whose window is listed in" not in teaching, "the prompt still sends the DM to triggers for an id"
+        assert "next.waiting_on.triggers" not in teaching, "the prompt still sends the DM to triggers for an id"
         assert "one reaction per round" in teaching
         assert "no pre-declaration" in teaching
 
