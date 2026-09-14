@@ -268,6 +268,8 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
+    if actor.is_fallen:
+        raise ValueError(f"player {actor_id!r} is down and cannot react")
 
     # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
     # so "no window is open" would send the DM waiting for one that cannot come.
@@ -294,11 +296,25 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     elif catalog_window not in UNBOUND_REACTION_WINDOWS:
         raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
 
-    if actor.has_reaction_ability is False:
-        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
-
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
+
+
+def offered_reactions(state: CombatState) -> list[dict]:
+    """The reaction ids the DM may pass to activate at the open window (constraint 6).
+
+    Every player's catalog ids go through validate_reaction_activation itself, not a copy of its
+    rule, so the ids the DM is handed are exactly the ones activation will accept."""
+    offered = []
+    for participant in state.participants:
+        for ability_id in participant.reaction_ids:
+            try:
+                validate_reaction_activation(state, participant.id, ability_id)
+            except ValueError:
+                continue
+            name = abilities.get_ability(ability_id).name
+            offered.append({"actor_id": participant.id, "id": ability_id, "name": name})
+    return offered
 
 
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:

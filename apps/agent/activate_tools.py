@@ -29,6 +29,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_tools
+import combat_phase
 import draethar_inner_fire
 import mentor_variants
 import spell_casting
@@ -75,8 +76,8 @@ async def activate(
     refused); a Veil Ward raise is refused while one is already up (one shared ward per party) or
     for an ineligible/underleveled/unaffordable caster; Inner Fire is once per encounter and
     combat-only. IN COMBAT a reaction ability is an INTERRUPT: call it while resolve_phase reports an
-    open window in next.waiting_on, naming a reaction whose catalog window is among that window's
-    triggers — no declaration first. It is refused when no window is open, when the reaction
+    open window in next.waiting_on, passing an id listed in next.waiting_on.reactions — the exact
+    ids that fit that window — with no declaration first. It is refused when no window is open, when the reaction
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
@@ -126,13 +127,21 @@ async def _activate_impl(
 ) -> str:
     logger.info("activate called: id=%s", id)
 
-    kind = _resolve_kind(
-        id,
-        spells_mod=spells_mod,
-        abilities_mod=abilities_mod,
-        variants_mod=variants_mod,
-        anchors_mod=anchors_mod,
-    )
+    try:
+        kind = _resolve_kind(
+            id,
+            spells_mod=spells_mod,
+            abilities_mod=abilities_mod,
+            variants_mod=variants_mod,
+            anchors_mod=anchors_mod,
+        )
+    except ToolError as unknown:
+        combat = context.userdata.combat_state
+        offered = combat_phase.offered_reactions(combat) if combat is not None and combat.open_window else []
+        if not offered:
+            raise
+        valid = ", ".join(reaction["id"] for reaction in offered)
+        raise ToolError(f"{unknown} Reactions that fit the open window: {valid}.") from unknown
 
     if kind == _VEIL_WARD:
         return await ward_mod._activate_veil_ward_impl(context, active=True, caster_id=target_id)

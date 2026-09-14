@@ -40,6 +40,14 @@ from tool_support import SOUND_COMBAT_START
 logger = logging.getLogger("divineruin.tools")
 
 
+def class_reaction_ids(player_class: str) -> list[str]:
+    """A class's catalog reaction ids. The capstone harness hand-builds its combat and calls this too,
+    so a harness player cannot silently lack the ids a real one is handed at a window."""
+    return [
+        ability.id for ability in abilities.get_archetype_abilities(player_class) if ability.ability_type == "reaction"
+    ]
+
+
 def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
     """Fail loud if any enemy condition action is malformed — the load-boundary strict guard.
 
@@ -275,6 +283,7 @@ async def _start_combat_locked(
             validated_conditions,
             rules_engine.exhaustion_stack_cap(row),
         )
+        reaction_ids = class_reaction_ids(player_class)
         participants.append(
             CombatParticipant(
                 id=mid,
@@ -291,7 +300,8 @@ async def _start_combat_locked(
                 # extra_attack is grantable today; the rest populate when their grants land.
                 enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
                 conditions=row_conditions,
-                has_reaction_ability=any(ability.ability_type == "reaction" for ability in archetype_abilities),
+                has_reaction_ability=bool(reaction_ids),
+                reaction_ids=reaction_ids,
                 # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
                 # the participant so resolve_saving_throw adds the bonus when an enemy imposes
                 # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).

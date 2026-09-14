@@ -157,16 +157,16 @@ def _start_mocks(player_class):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("player_class", "owns_reaction"),
+    ("player_class", "owns_reaction", "reaction_ids"),
     [
-        pytest.param("warrior", True, id="warrior"),
-        pytest.param("artificer", False, id="artificer"),
-        pytest.param("beastcaller", False, id="beastcaller"),
-        pytest.param("seeker", False, id="seeker"),
+        pytest.param("warrior", True, ["warrior_brace_for_impact", "warrior_opportunity_strike"], id="warrior"),
+        pytest.param("artificer", False, [], id="artificer"),
+        pytest.param("beastcaller", False, [], id="beastcaller"),
+        pytest.param("seeker", False, [], id="seeker"),
     ],
 )
 async def test_start_combat_derives_reaction_ownership_from_real_class_catalog(
-    player_class, owns_reaction, mock_combat_agent_factory
+    player_class, owns_reaction, reaction_ids, mock_combat_agent_factory
 ):
     mutations, queries, content = _start_mocks(player_class)
     ctx = make_context()
@@ -182,8 +182,65 @@ async def test_start_combat_derives_reaction_ownership_from_real_class_catalog(
 
     participant = ctx.userdata.combat_state.get_participant("player_1")
     assert participant.has_reaction_ability is owns_reaction
+    assert participant.reaction_ids == reaction_ids
     persisted = mutations.save_combat_state.await_args.args[1]
     assert persisted["participants"][0]["has_reaction_ability"] is owns_reaction
+    assert persisted["participants"][0]["reaction_ids"] == reaction_ids
+
+
+def test_a_saved_combat_without_reaction_ids_loads_an_empty_list():
+    serialized = _resolution_state().to_dict()
+    for participant in serialized["participants"]:
+        participant.pop("reaction_ids")
+
+    loaded = CombatState.from_dict(json.loads(json.dumps(serialized)))
+
+    assert all(participant.reaction_ids == [] for participant in loaded.participants)
+
+
+@pytest.mark.asyncio
+async def test_each_window_names_only_the_reactions_the_gate_would_accept():
+    state = _resolution_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
+    player.reaction_ids = ["rogue_uncanny_dodge", "rogue_slippery"]
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
+    ctx = _context(state)
+    deps = _resolve_deps(damage=3)
+
+    await _step(ctx, deps)
+    pre_roll = (await _step(ctx, deps))["next"]["waiting_on"]
+    post_roll = (await _step(ctx, deps))["next"]["waiting_on"]
+
+    assert pre_roll["stage"] == "pre_roll"
+    assert pre_roll["reactions"] == []
+    assert post_roll["stage"] == "post_roll"
+    assert post_roll["reactions"] == [{"actor_id": "player_1", "id": "rogue_uncanny_dodge", "name": "Uncanny Dodge"}]
+
+
+@pytest.mark.asyncio
+async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
+    state = _resolution_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
+    player.reaction_ids = ["rogue_uncanny_dodge"]
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
+    ctx = _context(state)
+    deps = _resolve_deps(damage=3)
+    await _step(ctx, deps)
+    await _step(ctx, deps)
+    await _step(ctx, deps)
+    paused = ctx.userdata.combat_state
+    assert paused.open_window is not None and paused.open_window["stage"] == "post_roll"
+    downed = paused.get_participant("player_1")
+    assert downed is not None
+    downed.is_fallen = True
+
+    assert combat_phase.offered_reactions(paused) == []
+    with pytest.raises(ValueError, match="down"):
+        combat_phase.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
 
 
 @pytest.mark.asyncio
