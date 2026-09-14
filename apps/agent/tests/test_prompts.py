@@ -1,13 +1,19 @@
 """Tests for prompt building (warm layer)."""
 
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, patch
+import json
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
+from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
+import system_prompts
 from creation_prompts import CREATION_SYSTEM_PROMPT
 from system_prompts import DISPATCH_MODE_PROMPT, SYSTEM_PROMPT, build_system_prompt
-from training_rules import get_midpoint_decision, resolve_midpoint_decision
+from training_rules import MidpointResult, get_midpoint_decision, resolve_midpoint_decision
+from training_tools import _resolve_training_midpoint_impl
 from voices import ROLE_VOICE_KEYS
 from warm_prompts import build_warm_layer, format_training_section
 
@@ -313,6 +319,52 @@ class TestTrainingMidpointNarration:
         assert result.state in DISPATCH_MODE_PROMPT, (
             f"dispatch prompt does not name the state resolve_activity(kind='training') returns ({result.state!r})"
         )
+
+    @pytest.mark.asyncio
+    async def test_training_paragraph_speaks_the_resolve_cue(self):
+        ctx = make_context()
+        mock_db, _ = make_db_mod()
+        mock_training = MagicMock()
+        mock_training.get_training_activity = AsyncMock(
+            return_value={
+                "id": "train_mid01",
+                "player_id": "player_1",
+                "activity_type": "technique_base",
+                "state": "awaiting_decision",
+                "data": {},
+            }
+        )
+        mock_training.update_training_activity = AsyncMock()
+        midpoint = MidpointResult(
+            state="running_second_half",
+            second_half_seconds=9_000,
+            completes_at=FIXED_NOW + timedelta(seconds=9_000),
+            micro_bonus={},
+            decision_id="fundamentals",
+        )
+        payload = json.loads(
+            await _resolve_training_midpoint_impl(
+                ctx,
+                "train_mid01",
+                "fundamentals",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                rules_mod=lambda *_: midpoint,
+                now_fn=lambda: FIXED_NOW,
+            )
+        )
+        cue_fields = [
+            key
+            for key, value in payload.items()
+            if isinstance(value, str) and "second half" in value and "3 hours" in value
+        ]
+        assert len(cue_fields) == 1, f"expected one spoken cue in resolve payload, got {cue_fields}"
+        training_paragraph = DISPATCH_MODE_PROMPT.split("For training:", 1)[1].split("For companion errands:", 1)[0]
+
+        assert f"speak the returned {cue_fields[0]}" in training_paragraph.lower()
+
+    def test_system_prompts_file_stays_within_hard_cap(self):
+        assert len(Path(system_prompts.__file__).read_text().splitlines()) <= 500
 
 
 # The 31 authored VOICES keys, in insertion order, written out as a LITERAL. Recomputing this

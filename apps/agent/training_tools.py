@@ -148,6 +148,7 @@ async def _resolve_training_midpoint_impl(
             conn=conn,
         )
 
+    hours_left = (result.second_half_seconds + 30 * 60) // 3600
     return json.dumps(
         {
             "activity_id": training_id,
@@ -155,6 +156,7 @@ async def _resolve_training_midpoint_impl(
             "second_half_seconds": result.second_half_seconds,
             "completes_at": result.completes_at.isoformat(),
             "decision_id": decision_id,
+            "narration_cue": f"Training resumes into its second half, with about {hours_left} hours left.",
         }
     )
 

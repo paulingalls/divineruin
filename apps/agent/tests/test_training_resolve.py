@@ -81,6 +81,37 @@ class TestResolveTrainingMidpoint:
         assert kwargs["conn"] is mock_conn
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("second_half_seconds", "hours_left"),
+        [(9_000, 3), (12_600, 4)],
+    )
+    async def test_result_carries_spoken_second_half_cue(self, second_half_seconds, hours_left):
+        ctx = make_context()
+        mock_db, _ = make_db_mod()
+        mock_training = MagicMock()
+        mock_training.get_training_activity = AsyncMock(return_value=SAMPLE_AWAITING_ROW)
+        mock_training.update_training_activity = AsyncMock()
+        result = _make_midpoint_result(second_half_seconds=second_half_seconds)
+
+        payload = json.loads(
+            await _resolve_training_midpoint_impl(
+                ctx,
+                "train_abc123",
+                "fundamentals",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                rules_mod=_stub_resolve_factory(result),
+                now_fn=lambda: FIXED_NOW,
+            )
+        )
+
+        assert payload["narration_cue"] == (
+            f"Training resumes into its second half, with about {hours_left} hours left."
+        )
+        assert payload["second_half_seconds"] == second_half_seconds
+        assert payload["state"] == "running_second_half"
+
+    @pytest.mark.asyncio
     async def test_invalid_training_id_format(self):
         ctx = make_context()
         mock_db, _ = make_db_mod()

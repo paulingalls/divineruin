@@ -1,5 +1,6 @@
 {
   "name": "divineruin",
+  "version": "0.5.1",
   "type": "module",
   "private": true,
   "workspaces": [
