@@ -19,7 +19,7 @@ from combat_turn import _consume_legendary_action_impl, _declare_phase_impl
 from session_data import CombatState
 
 _AGENT_ROOT = Path(__file__).resolve().parents[2]
-EXEMPT_FULL_STATE_SAVES = frozenset()
+EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset()
 
 
 class _ObservedLock:
@@ -83,45 +83,49 @@ def _save_references() -> Counter:
     return found
 
 
-def _production_callers() -> dict[tuple[str, str], set[tuple[str, str]]]:
-    functions: dict[str, list[tuple[str, str]]] = {}
-    calls: list[tuple[str, str, str]] = []
+def _is_session_lock(node: ast.AST) -> bool:
+    return isinstance(node, ast.AsyncWith) and any(
+        isinstance(item.context_expr, ast.Attribute) and item.context_expr.attr == "combat_end_lock"
+        for item in node.items
+    )
+
+
+def _name_references() -> dict[str, set[tuple[tuple[str, str], bool]]]:
+    """Map each loaded name to the production functions that load it, each flagged with whether the
+    load sits lexically inside an ``async with ....combat_end_lock`` body.
+
+    Names match by bare identifier, so a collision only ADDS referrers: it can red spuriously, never
+    certify an unlocked route. A load, not just a call, counts, so a function handed off as a
+    callback still needs a locked referrer."""
+    refs: dict[str, set[tuple[tuple[str, str], bool]]] = {}
+
     for path in sorted(_AGENT_ROOT.glob("*.py")):
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            functions.setdefault(node.name, []).append((path.name, node.name))
-            for child in ast.walk(node):
-                if not isinstance(child, ast.Call):
-                    continue
-                if isinstance(child.func, ast.Name):
-                    calls.append((path.name, node.name, child.func.id))
-                elif isinstance(child.func, ast.Attribute):
-                    calls.append((path.name, node.name, child.func.attr))
-    callers: dict[tuple[str, str], set[tuple[str, str]]] = {}
-    for caller_file, caller_name, callee_name in calls:
-        for callee in functions.get(callee_name, []):
-            callers.setdefault(callee, set()).add((caller_file, caller_name))
-    return callers
+
+        def visit(node, owner, under_lock, *, module_name=path.name):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                owner, under_lock = (module_name, node.name), False
+            under_lock = under_lock or _is_session_lock(node)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                refs.setdefault(node.id, set()).add((owner, under_lock))
+            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
+                refs.setdefault(node.attr, set()).add((owner, under_lock))
+            for child in ast.iter_child_nodes(node):
+                visit(child, owner, under_lock)
+
+        visit(ast.parse(path.read_text()), (path.name, "<module>"), False)
+    return refs
 
 
-def _lock_owners() -> set[tuple[str, str]]:
-    owners = set()
-    for path in sorted(_AGENT_ROOT.glob("*.py")):
-        for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            for child in ast.walk(node):
-                if isinstance(child, ast.AsyncWith) and any(
-                    isinstance(part.context_expr, ast.Attribute) and part.context_expr.attr == "combat_end_lock"
-                    for part in child.items
-                ):
-                    owners.add((path.name, node.name))
-    return owners
+def _reached_only_under_lock(function: tuple[str, str], refs, seen: frozenset = frozenset()) -> bool:
+    if function in seen:
+        return True
+    referrers = refs.get(function[1])
+    if not referrers:
+        return False
+    return all(locked or _reached_only_under_lock(referrer, refs, seen | {function}) for referrer, locked in referrers)
 
 
-def test_every_full_state_save_has_one_known_locked_route():
+def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
             ("combat_init.py", "_start_combat_locked", "call"): 1,
@@ -136,20 +140,13 @@ def test_every_full_state_save_has_one_known_locked_route():
         }
     )
     assert _save_references() == expected
-    assert not EXEMPT_FULL_STATE_SAVES
 
 
-FORMERLY_UNLOCKED = {"veil_raise", "veil_dismiss", "declare_phase", "consume_legendary_action", "combat_init"}
-
-
-def test_runtime_inventory_names_all_five_formerly_unlocked_writers():
-    assert {
-        "veil_raise",
-        "veil_dismiss",
-        "declare_phase",
-        "consume_legendary_action",
-        "combat_init",
-    } == FORMERLY_UNLOCKED
+def test_every_full_state_save_is_reached_only_under_the_session_lock():
+    refs = _name_references()
+    savers = {(module, function) for module, function, _kind in _save_references()}
+    unlocked = {saver for saver in savers if not _reached_only_under_lock(saver, refs)}
+    assert unlocked == EXEMPT_FULL_STATE_SAVES
 
 
 async def _run_writer(name, observations):
@@ -170,7 +167,7 @@ async def _run_writer(name, observations):
             active=name == "veil_raise",
             combat_mod=mutations,
         )
-        return ctx
+        return
     if name == "declare_phase":
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
@@ -180,7 +177,7 @@ async def _run_writer(name, observations):
             )
         )
         await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
-        return ctx
+        return
     if name == "consume_legendary_action":
         ctx = make_context()
         ctx.userdata.combat_state = _boss_combat_state()
@@ -190,17 +187,19 @@ async def _run_writer(name, observations):
             )
         )
         await _consume_legendary_action_impl(ctx, "warlord_1", mutations=mutations)
-        return ctx
+        return
+    assert name == "combat_init", name
     ctx = make_context()
     mutations, queries, content = _make_start_combat_mocks()
     mutations.save_combat_state = AsyncMock(
         side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_end_lock.locked())
     )
     await _start_combat_impl(ctx, "goblin_patrol", "Ambush!", mutations=mutations, queries=queries, content=content)
-    return ctx
 
 
-@pytest.mark.parametrize("writer", sorted(FORMERLY_UNLOCKED))
+@pytest.mark.parametrize(
+    "writer", ["combat_init", "consume_legendary_action", "declare_phase", "veil_dismiss", "veil_raise"]
+)
 async def test_formerly_unlocked_writer_saves_under_the_session_lock(writer, mock_combat_agent_factory):
     seen = []
     await _run_writer(writer, seen)
@@ -290,8 +289,7 @@ async def test_concurrent_holder_change_survives_real_full_state_mutator(writer)
     task = asyncio.create_task(invoke())
     attempted = asyncio.create_task(lock.attempted.wait())
     reached = asyncio.create_task(save_reached.wait())
-    done, pending = await asyncio.wait({attempted, reached}, return_when=asyncio.FIRST_COMPLETED)
-    assert done
+    _done, pending = await asyncio.wait({attempted, reached}, return_when=asyncio.FIRST_COMPLETED)
     for wait in pending:
         wait.cancel()
 
@@ -302,16 +300,18 @@ async def test_concurrent_holder_change_survives_real_full_state_mutator(writer)
     await task
 
     assert len(saved) == 2
-    assert ctx.userdata.combat_state.round_number == holder_state.round_number
-    if writer == "veil_raise":
-        assert ctx.userdata.combat_state.veil_ward is not None
-    elif writer == "veil_dismiss":
-        assert ctx.userdata.combat_state.veil_ward is None
-    elif writer == "declare_phase":
-        assert ctx.userdata.combat_state.beat == "resolution"
-    else:
-        boss = ctx.userdata.combat_state.get_participant("warlord_1")
-        assert boss is not None and boss.legendary_actions == 0
+    # The last row written is the DB's truth, so it must carry both changes, not just memory.
+    for final in (ctx.userdata.combat_state, CombatState.from_dict(saved[-1])):
+        assert final.round_number == holder_state.round_number
+        if writer == "veil_raise":
+            assert final.veil_ward is not None
+        elif writer == "veil_dismiss":
+            assert final.veil_ward is None
+        elif writer == "declare_phase":
+            assert final.beat == "resolution"
+        else:
+            boss = final.get_participant("warlord_1")
+            assert boss is not None and boss.legendary_actions == 0
 
 
 async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_combat_agent_factory):
@@ -357,30 +357,3 @@ async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_c
 async def _wait_for_second(items):
     while len(items) < 2:
         await asyncio.sleep(0)
-
-
-def test_locked_helpers_have_only_their_named_production_callers():
-    callers = _production_callers()
-    owners = {
-        ("combat_init.py", "_start_combat_impl"),
-        ("veil_ward_tools.py", "_activate_veil_ward_impl"),
-        ("combat_turn.py", "_declare_phase_impl"),
-        ("combat_turn.py", "_resolve_phase_impl"),
-        ("combat_turn.py", "_consume_legendary_action_impl"),
-        ("combat_death_save.py", "_request_death_save_impl"),
-        ("draethar_inner_fire.py", "_inner_fire_impl"),
-    }
-    assert owners <= _lock_owners()
-    expected = {
-        ("combat_init.py", "_start_combat_locked"): {("combat_init.py", "_start_combat_impl")},
-        ("veil_ward_tools.py", "_activate_veil_ward_locked"): {("veil_ward_tools.py", "_activate_veil_ward_impl")},
-        ("veil_ward_tools.py", "_dismiss_impl"): {("veil_ward_tools.py", "_activate_veil_ward_locked")},
-        ("combat_turn.py", "_declare_phase_locked"): {("combat_turn.py", "_declare_phase_impl")},
-        ("combat_turn.py", "_resolve_phase_locked"): {("combat_turn.py", "_resolve_phase_impl")},
-        ("combat_wrap.py", "wrap_phase"): {("combat_turn.py", "_resolve_phase_locked")},
-        ("combat_turn.py", "_consume_legendary_action_locked"): {("combat_turn.py", "_consume_legendary_action_impl")},
-        ("combat_death_save.py", "_request_death_save_locked"): {("combat_death_save.py", "_request_death_save_impl")},
-        ("draethar_inner_fire.py", "_inner_fire_locked"): {("draethar_inner_fire.py", "_inner_fire_impl")},
-    }
-    for helper, named_callers in expected.items():
-        assert callers[helper] == named_callers

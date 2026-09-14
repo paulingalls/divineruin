@@ -326,10 +326,12 @@ class SessionData:
     # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
     # SpecializationTapHandler from the verified sender, consumed and cleared by select.
     pending_specialization_tap: SpecializationTap | None = None
-    # Serialises every read/copy/full-save/adopt operation on combat_state, including combat start
-    # and end. It is held across nested DB transactions so all writers use one lock order. Combat
-    # is session-scoped and lives in one process; a combat resumed by a second agent process would
-    # still need a DB-level token.
+    # Serialises every path that saves or adopts a whole combat_state — start and end included — so
+    # no holder writes back a snapshot that predates another holder's change. Readers do not take
+    # it. Held for the WHOLE call and acquired BEFORE any DB transaction: an end released before its
+    # commit lets a retried end pay the party twice, and a writer that took it inside a transaction
+    # could hold a row a lock-holding resolver is waiting on. Combat is session-scoped and lives in
+    # one process; a combat resumed by a second agent process would still need a DB-level token.
     combat_end_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):

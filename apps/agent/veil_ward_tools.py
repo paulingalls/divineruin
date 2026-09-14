@@ -27,8 +27,10 @@ never by reading the one scope it is about to write. Dismissal drops the innermo
 then reads the LOCATION — the only scope that can still cover the party once the inner one is
 gone — so that single read IS the resolved state, no separate resolve call needed.
 
-The session combat-state lock is acquired before any nested transaction. Mirrors the ability_tools
-seam: module-injection keyword args (db_mod/queries_mod/
+Both paths take session.combat_end_lock BEFORE db.transaction(), the order every combat writer uses:
+taken inside, the ward's row locks could block a resolver that already holds the session lock.
+
+Mirrors the ability_tools seam: module-injection keyword args (db_mod/queries_mod/
 persistence_mod/ward_mutations_mod/ward_mod/combat_mod/resolution_mod) for test mocking, a single
 db.transaction() block, and ToolError for every user-facing failure. The publish lands on the
 session's game_events channel post-commit, mirroring the spell cast path.
