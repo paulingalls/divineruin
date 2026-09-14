@@ -265,13 +265,18 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
     directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
-    window = state.open_window
-    if window is None:
-        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
-
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
+
+    # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
+    # so "no window is open" would send the DM waiting for one that cannot come.
+    if actor.has_reaction_ability is False:
+        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
+
+    window = state.open_window
+    if window is None:
+        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
 
     catalog_window = abilities.get_ability(ability_id).window
     if catalog_window not in window["triggers"]:

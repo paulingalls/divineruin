@@ -15,6 +15,7 @@ seeded players in a finally (unique keys, mirroring the other fast-lane real-PG 
 from __future__ import annotations
 
 import json
+import uuid
 
 import pytest
 
@@ -26,8 +27,11 @@ from combat_end import _end_combat_db
 from combat_events import EventSink
 from session_data import CombatParticipant, CombatState, SessionData
 
-_PRIMARY = "s006_wipe_primary"
-_SECOND = "s006_wipe_second"
+# Per worker process: -n 8 runs this file's tests on several workers at once, and a shared row
+# one worker's cleanup deletes reads back as None in another's test.
+_WORKER = uuid.uuid4().hex[:8]
+_PRIMARY = f"s006_wipe_primary_{_WORKER}"
+_SECOND = f"s006_wipe_second_{_WORKER}"
 _OFF_CATALOG = "off_catalog_wilds"  # region-less -> tier-1 + tier-2 skipped, falls to tier-3
 _PRIMARY_ANCHOR = "millhaven"  # greyvale village (real seed)
 _SECOND_ANCHOR = "accord_guild_hall"  # sunward_coast city (real seed)

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import random
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -25,8 +26,11 @@ from combat_end import _end_combat_db
 from combat_events import EventSink
 from session_data import CombatParticipant, CombatState, SessionData
 
-_PLAYER_ID = "s002_combat_end_loot_player"
-_ITEM_ID = "s002_loot_test_residue"
+# Per worker process: -n 8 runs this file's tests on several workers at once, and a shared row
+# one worker's cleanup deletes reads back as None in another's test.
+_WORKER = uuid.uuid4().hex[:8]
+_PLAYER_ID = f"s002_combat_end_loot_player_{_WORKER}"
+_ITEM_ID = f"s002_loot_test_residue_{_WORKER}"
 _LOOT_TABLE_ID = "s002_loot_test_table"
 
 
