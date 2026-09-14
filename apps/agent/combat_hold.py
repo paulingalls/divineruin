@@ -8,9 +8,9 @@ TWO WINDOWS PER ENEMY ATTACK, because story-018 needs both on the same blow: a P
 (on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
 (on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
 grapple). The window VOCABULARY is reaction_windows.py's — a pure function of the action. The
-PAUSE GATE is here, because it reads ``reactions_available``: gm_combat:131, "if the player has no
-reaction abilities, the DM doesn't pause — narration flows continuously." Without that gate a
-three-enemy round opens six windows the party cannot consume after its first spend.
+PAUSE GATE is here, because it combines participant ownership with the round's reaction budget:
+gm_combat:131, "if the player has no reaction abilities, the DM doesn't pause — narration flows
+continuously." Without that gate a three-enemy round opens six unusable windows.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -64,10 +64,9 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
 def pause_allowed(state) -> bool:
     """Can ANY standing player still spend a reaction this round? (AC9, gm_combat:131.)
 
-    Reads ``reactions_available`` only. That map records whether the round's one reaction is
-    SPENT, not whether the character owns any — the ownership half needs the ability catalog per
-    member at the DECLARATION beat and is recorded as debt (1ffd99cf), not faked here. A fallen
-    player's stale unspent entry must not hold the beat: a downed character cannot react.
+    ``CombatParticipant.has_reaction_ability`` records ownership; ``reactions_available`` records
+    whether the round's one reaction is spent. A fallen player's stale unspent entry must not hold
+    the beat: a downed character cannot react.
 
     Asks ``reaction_spend.is_spent``, never the entry's truthiness: since story-017 a spent
     reaction is a truthy RECORD, so a boolean test would report it available and keep pausing on
@@ -76,7 +75,7 @@ def pause_allowed(state) -> bool:
     return any(
         not reaction_spend.is_spent(state.reactions_available.get(p.id))
         for p in state.participants
-        if p.type == "player" and not p.is_fallen
+        if p.type == "player" and not p.is_fallen and p.has_reaction_ability is not False
     )
 
 

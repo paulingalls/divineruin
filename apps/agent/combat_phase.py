@@ -142,7 +142,9 @@ def advance_combat_phase(
                 )
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {
-            p.id: reaction_spend.unspent() for p in next_state.participants if p.type == "player"
+            p.id: reaction_spend.unspent()
+            for p in next_state.participants
+            if p.type == "player" and p.has_reaction_ability is not False
         }
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
