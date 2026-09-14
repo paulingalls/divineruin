@@ -83,6 +83,7 @@ async def test_mixed_party_skips_non_owner_budget_and_one_owner_opens_window():
     )
     state.participants.append(owner)
     state.initiative_order.append(owner.id)
+    # is_spent({}) raises KeyError, so a gate that consults the non-owner reds here.
     state.reactions_available = {non_owner.id: {}, owner.id: reaction_spend.unspent()}
     ctx = _context(state)
 
@@ -186,11 +187,17 @@ async def test_start_combat_derives_reaction_ownership_from_real_class_catalog(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("player_class", [pytest.param("not_a_class", id="unknown"), pytest.param(None, id="missing")])
-async def test_start_combat_refuses_a_class_with_no_catalog_rows(player_class, mock_combat_agent_factory):
+@pytest.mark.parametrize(
+    ("player_class", "refusal"),
+    [
+        pytest.param("not_a_class", "'not_a_class' with no catalog abilities", id="unknown"),
+        pytest.param(None, "invalid class None", id="missing"),
+    ],
+)
+async def test_start_combat_refuses_a_class_with_no_catalog_rows(player_class, refusal, mock_combat_agent_factory):
     mutations, queries, content = _start_mocks(player_class)
 
-    with pytest.raises(ToolError, match=repr(player_class)):
+    with pytest.raises(ToolError, match=refusal):
         await _start_combat_impl(
             make_context(),
             encounter_id="empty_road",

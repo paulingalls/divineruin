@@ -162,7 +162,8 @@ class CombatState:
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
     # Round budget/spend state per eligible player; ownership lives on CombatParticipant.
-    # The wrap loop-back clears it. Absent actor => no budget (never a free spend).
+    # Players only by design: a reaction is an archetype technique, and enemy action_pool entries
+    # carry no catalog id. The wrap loop-back clears it. Absent actor => no budget (never a free spend).
     reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.

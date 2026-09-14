@@ -71,14 +71,11 @@ def test_reaction_ownership_values_roundtrip_and_absence_defaults_unknown(owners
     state = _make_combat_state()
     player = state.get_participant("player_1")
     assert player is not None
+    player.has_reaction_ability = ownership
     serialized = state.to_dict()
-
+    assert serialized["participants"][0]["has_reaction_ability"] is ownership
     if ownership is None:
-        serialized["participants"][0].pop("has_reaction_ability", None)
-    else:
-        player.has_reaction_ability = ownership
-        serialized = state.to_dict()
-        assert serialized["participants"][0]["has_reaction_ability"] is ownership
+        serialized["participants"][0].pop("has_reaction_ability")
 
     loaded = CombatState.from_dict(json.loads(json.dumps(serialized)))
     loaded_player = loaded.get_participant("player_1")
