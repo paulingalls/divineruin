@@ -289,6 +289,9 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     elif catalog_window not in UNBOUND_REACTION_WINDOWS:
         raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
 
+    if actor.has_reaction_ability is False:
+        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
+
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")
 
