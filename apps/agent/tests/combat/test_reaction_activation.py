@@ -165,7 +165,7 @@ class TestTheInterruptLoop:
     @pytest.mark.asyncio
     async def test_activate_is_still_not_the_advance_verb(self):
         """D5: `verbs` names the move that ADVANCES the beat, and only resolve_phase does. The
-        producer for activation is the prompt plus this window's own `triggers` — listing a
+        producer for activation is `next.waiting_on.reactions` — listing a
         non-advancing verb would contradict the "not a whitelist" reading in the same payload."""
         ctx = _ctx_at_resolution()
         deps = _resolve_deps()
