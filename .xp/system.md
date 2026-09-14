@@ -99,14 +99,13 @@ API cost) and runs at pre-push and sprint close only.
   read repo-root `flake-artifacts/` before calling anything a flake.
 
 **A falsifier is a path into a moving tree, and nothing re-checks it until it
-fires.** Sprint-048 hit this three times, once aborting a close: sprint-047's
-`3aea2529` pointed at `tests/test_e2e_playtest.py -k TokenTracker`, story-024
-moved those tests, and the filter then deselected all 10 and exited 5 — read as
-RED with the code perfectly healthy. Two more named files that never existed.
-So: when a change MOVES or RENAMES a test file, grep `work.md` for the old path
-and re-resolve what points at it; and prefer a falsifier that names a FILE or a
-DIRECTORY over one carrying a `-k` filter, because a filter that matches nothing
-is indistinguishable from a failure.
+fires.** So it must run BEHAVIOUR — a test FILE or DIRECTORY, or a call — never
+a grep of the fix site's text, and never a `-k` filter. A `-k` that matches
+nothing exits 5, read as RED over healthy code: `3aea2529` at sprint-048's close,
+and `1ffd99cf` at sprint-049's after story-030 renamed a test class. A text grep
+reds the moment a correct fix moves the code: `b8b869ae` went red when story-029
+put the payload in a builder. When a change MOVES or RENAMES a test file or
+class, grep `work.md` for the old name and re-resolve every record pointing at it.
 
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 
