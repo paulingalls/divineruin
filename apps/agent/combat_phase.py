@@ -44,6 +44,13 @@ _STABILIZE_LIMIT = 3
 # A Temporary Hollowed echo (M4.4 story-008) acts in the enemy band — it's a hostile combatant.
 _TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2, "temporary_hollowed": 2}
 
+# Ally windows name somebody other than the reactor by definition; enemy event windows describe
+# the acting enemy rather than the player affected by the reaction.
+SELF_TARGETED_REACTION_WINDOWS = frozenset({"on_hit", "on_targeted", "on_condition_imposed"})
+UNBOUND_REACTION_WINDOWS = frozenset(
+    {"on_ally_hit", "on_ally_targeted", "on_enemy_miss", "on_enemy_move", "on_spell_cast", "on_enemy_action"}
+)
+
 
 class PhaseBeat(StrEnum):
     """The four beats of a combat phase. StrEnum so members serialize transparently
@@ -263,6 +270,15 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
+        if window["target_id"] != actor_id:
+            raise ValueError(
+                f"reaction {ability_id!r} requires a window targeting reactor {actor_id!r}, "
+                f"but the open window targets {window['target_id']!r}"
+            )
+    elif catalog_window not in UNBOUND_REACTION_WINDOWS:
+        raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
 
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")

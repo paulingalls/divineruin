@@ -9,6 +9,7 @@ ability with cost{0,0}+scaling (paladin_lay_on_hands) must NOT be treated as a
 free activation — its scaling rule is surfaced as variable_cost for the DM.
 """
 
+import copy
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -73,7 +74,7 @@ async def _call(
     return json.loads(raw), persistence
 
 
-def _reaction_context(*, hit=True, window_open=True):
+def _reaction_context(*, hit=True, window_open=True, target_id="player_1"):
     """A phase PAUSED on a real Beat-3 window, which is the whole permission (story-017).
 
     No declaration is staged: a reaction is an interrupt now, so `pending_declarations` stays
@@ -84,13 +85,13 @@ def _reaction_context(*, hit=True, window_open=True):
     state.beat = PhaseBeat.NARRATION
     if window_open:
         # A real pause always has the held action the window belongs to at the head of the queue
-        # — record_spend binds the spend to its `seq`, and refuses loud if the two disagree.
+        # — preflight_spend binds the spend to its `seq`, and refuses loud if the two disagree.
         state.held_actions = [
             {
                 "seq": 0,
                 "actor_id": "goblin_scout_1",
                 "initiative": 12,
-                "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+                "declaration": {"type": "attack", "action": "Scimitar", "target_id": target_id},
                 "roll": None,
                 "opened": ["pre_roll", "post_roll"],
             }
@@ -100,7 +101,7 @@ def _reaction_context(*, hit=True, window_open=True):
             seq=0,
             stage="post_roll",
             actor_id="goblin_scout_1",
-            target_id="player_1",
+            target_id=target_id,
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
     state.reactions_available = {"player_1": reaction_spend.unspent()}
@@ -192,6 +193,34 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
         assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
+    async def test_self_targeted_reaction_refuses_an_ally_s_window_without_spending(self):
+        ctx = _reaction_context(target_id="player_2")
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError) as refused:
+            await _call("rogue_uncanny_dodge", context=ctx, persistence=persistence)
+
+        assert "player_2" in str(refused.value)
+        assert "player_1" in str(refused.value)
+        persistence.update_player_resources.assert_not_called()
+        assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
+
+    async def test_ally_targeted_reaction_accepts_an_ally_s_window(self):
+        ctx = _reaction_context(target_id="player_2")
+
+        result, persistence = await _call("guardian_intercept", context=ctx)
+
+        assert result["deducted"]["stamina"] == 3
+        persistence.update_player_resources.assert_awaited_once()
+        assert ctx.userdata.combat_state.reactions_available["player_1"] == {
+            "spent": True,
+            "ability_id": "guardian_intercept",
+            "window_id": ctx.userdata.combat_state.open_window["id"],
+            "stage": "post_roll",
+            "held_seq": 0,
+        }
+
     async def test_reaction_with_no_open_window_is_refused_before_resource_write(self):
         """AC4: in combat with no window open, the interrupt has nothing to interrupt."""
         ctx = _reaction_context(window_open=False)
@@ -218,6 +247,24 @@ class TestActivation:
 
         assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
         persistence.update_player_resources.assert_not_called()
+
+    async def test_reaction_spend_lands_on_the_state_the_session_holds_after_payment(self):
+        """consume_legendary_action takes no combat_end_lock and swaps in a deep copy of the state,
+        and LiveKit runs one generation's tool calls as concurrent tasks — so the swap can land
+        while this activation awaits its resource write. A spend written to the pre-await object
+        is lost: the player paid and the live state still holds an unspent reaction."""
+        ctx = _reaction_context()
+        persistence = MagicMock()
+
+        async def _swap_state(*_args, **_kwargs):
+            ctx.userdata.combat_state = copy.deepcopy(ctx.userdata.combat_state)
+
+        persistence.update_player_resources = AsyncMock(side_effect=_swap_state)
+
+        await _call("rogue_uncanny_dodge", context=ctx, persistence=persistence)
+
+        persistence.update_player_resources.assert_awaited_once()
+        assert reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
     async def test_reaction_outside_combat_activates_ungated(self):
         """OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01).

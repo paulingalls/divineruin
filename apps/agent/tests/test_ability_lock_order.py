@@ -19,10 +19,15 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _make_combat_state
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import condition_produce
+import reaction_spend
+import reaction_windows
 from ability_tools import _request_ability_activation_impl
+from combat_phase import PhaseBeat
 from spell_casting import _resolve_cast
 from spells import Spell
 
@@ -107,6 +112,51 @@ class TestAbilityLockOrder:
         assert _first_lock_ids(queries) == ["alice"]
         # Only the caster union lock — no non-caster target batch inside produce_ooc_condition.
         assert queries.get_players_for_update.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_reaction_spend_preflight_refuses_before_player_lock_or_resource_write(self):
+        ctx = make_context()
+        state = _make_combat_state()
+        state.beat = PhaseBeat.NARRATION
+        state.held_actions = [
+            {
+                "seq": 0,
+                "actor_id": "goblin_scout_1",
+                "initiative": 12,
+                "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+                "roll": None,
+                "opened": ["pre_roll", "post_roll"],
+            }
+        ]
+        state.open_window = reaction_windows.open_window_for(
+            round_number=1,
+            seq=0,
+            stage=reaction_windows.POST_ROLL,
+            actor_id="goblin_scout_2",
+            target_id="player_1",
+            triggers=reaction_windows.post_roll_triggers({}, hit=True),
+        )
+        state.reactions_available = {"player_1": reaction_spend.unspent()}
+        ctx.userdata.combat_state = state
+        db_mod, _conn = make_db_mod()
+        queries = _lock_spy("rogue")
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+        persistence.get_active_variant = AsyncMock(return_value=None)
+        persistence.owns_elective = AsyncMock(return_value=False)
+
+        with pytest.raises(ToolError, match="queue head"):
+            await _request_ability_activation_impl(
+                ctx,
+                "rogue_uncanny_dodge",
+                db_mod=db_mod,
+                queries_mod=queries,
+                persistence_mod=persistence,
+            )
+
+        queries.get_players_for_update.assert_not_called()
+        persistence.update_player_resources.assert_not_called()
+        assert not reaction_spend.is_spent(state.reactions_available["player_1"])
 
 
 # --- Spell path (scope expansion, decision story-008-scope-both-paths): _resolve_cast's OOC entry
