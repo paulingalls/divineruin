@@ -80,7 +80,15 @@ def pause_allowed(state) -> bool:
 
 
 def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
-    """Validate the paused-action binding and prepare its spend without mutating state."""
+    """Validate the paused-action binding and prepare its spend without mutating state.
+
+    Separate from ``record_spend`` so every refusal happens before the resource write. The head of
+    ``held_actions`` IS the paused action by construction of ``pump`` — checked rather than
+    assumed, because a spend bound to the wrong blow is a defect story-018 would silently inherit.
+    The check is an actor-id match, not a parse of the window id's ``r<round>-<seq>-<stage>``
+    format: one declaration per actor per phase makes the actor unique, and parsing the id would
+    make its format a contract reaction_spend deliberately refused to give it.
+    """
     if state.open_window is None or not state.held_actions:
         raise ValueError(
             f"cannot prepare a reaction spend for {actor_id!r}: the machine is not paused on a "
