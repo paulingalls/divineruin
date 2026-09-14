@@ -243,6 +243,16 @@ async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
         combat_phase.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
 
 
+def test_a_stored_reaction_id_the_catalog_does_not_know_fails_loud():
+    state = _resolution_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = ["rogue_no_such_reaction"]
+
+    with pytest.raises(ValueError, match="Unknown ability"):
+        combat_phase.offered_reactions(state)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("player_class", "refusal"),

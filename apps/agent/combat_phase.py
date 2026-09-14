@@ -308,12 +308,13 @@ def offered_reactions(state: CombatState) -> list[dict]:
     offered = []
     for participant in state.participants:
         for ability_id in participant.reaction_ids:
+            # Outside the try: a stored id the catalog no longer knows is a defect, not an ineligible reaction.
+            ability = abilities.get_ability(ability_id)
             try:
                 validate_reaction_activation(state, participant.id, ability_id)
             except ValueError:
                 continue
-            name = abilities.get_ability(ability_id).name
-            offered.append({"actor_id": participant.id, "id": ability_id, "name": name})
+            offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})
     return offered
 
 

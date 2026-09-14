@@ -136,12 +136,13 @@ async def _activate_impl(
             anchors_mod=anchors_mod,
         )
     except ToolError as unknown:
-        combat = context.userdata.combat_state
-        offered = combat_phase.offered_reactions(combat) if combat is not None and combat.open_window else []
-        if not offered:
+        session = context.userdata
+        offered = combat_phase.offered_reactions(session.combat_state) if session.combat_state is not None else []
+        # activate always spends as the session's player, so another member's id would only buy a second refusal.
+        valid = [reaction["id"] for reaction in offered if reaction["actor_id"] == session.player_id]
+        if not valid:
             raise
-        valid = ", ".join(reaction["id"] for reaction in offered)
-        raise ToolError(f"{unknown} Reactions that fit the open window: {valid}.") from unknown
+        raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
     if kind == _VEIL_WARD:
         return await ward_mod._activate_veil_ward_impl(context, active=True, caster_id=target_id)
