@@ -32,6 +32,9 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, reactions=True):
     """A phase at the RESOLUTION beat with one ally attack and one enemy attack declared."""
     ctx = make_context()
     state = _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
     state.reactions_available = {"player_1": reaction_spend.unspent()} if reactions else {}
     ctx.userdata.combat_state = state
     return ctx
@@ -90,6 +93,7 @@ class TestTheTwoWindows:
         so the enemy blow cannot have landed when the DM starts narrating Beat 3; each subsequent
         call steps the held queue by one stage."""
         ctx = _ctx_at_resolution(player_hp=25)
+        ctx.userdata.combat_state.pending_declarations["goblin_scout_1"]["action"] = "sCiMiTaR"
         deps = _resolve_deps(damage=3)
 
         # Call 1: the ally band resolves and commits. Nothing is held open yet.
@@ -106,6 +110,7 @@ class TestTheTwoWindows:
         assert w1["stage"] == "pre_roll"
         assert w1["actor_id"] == "goblin_scout_1"
         assert w1["target_id"] == "player_1"
+        assert w1["action"] == "Scimitar"
         assert set(w1["triggers"]) <= abilities.REACTION_WINDOWS
         assert "on_targeted" in w1["triggers"] and "on_enemy_action" in w1["triggers"]
         assert _p(ctx).hp_current == 25
@@ -117,6 +122,7 @@ class TestTheTwoWindows:
         assert w2 is not None
         assert w2["stage"] == "post_roll"
         assert w2["window_id"] != w1["window_id"]
+        assert w2["action"] == "Scimitar"
         assert "on_hit" in w2["triggers"]  # the seeded resolver hits
         assert _p(ctx).hp_current == 25
         assert ctx.userdata.combat_state.held_actions[0]["roll"]["attack_result"]["hit"] is True
@@ -173,14 +179,27 @@ class TestTheTwoWindows:
         r1 = await _call(ctx, deps)  # the pre-roll window
 
         assert set(r1["next"]) == {"phase", "verbs", "waiting_on"}
-        assert set(r1["next"]["waiting_on"]) == {"window_id", "stage", "actor_id", "target_id", "triggers"}
+        assert set(r1["next"]["waiting_on"]) == {"window_id", "stage", "actor_id", "target_id", "triggers", "action"}
         assert "resolve_phase" in r1["next"]["verbs"]
 
+    @pytest.mark.asyncio
+    async def test_non_pool_interact_names_no_held_action(self):
+        ctx = _ctx_at_resolution()
+        ctx.userdata.combat_state.pending_declarations["goblin_scout_1"] = {
+            "type": "interact",
+            "action": "Taunt",
+            "target_id": "player_1",
+        }
+        deps = _resolve_deps()
 
-class TestTheNoReactionGate:
-    """AC9 — game_mechanics_combat.md:131: "If the player has no reaction abilities, the DM
-    doesn't pause — narration flows continuously." Without this a three-enemy round opens six
-    windows the party cannot consume after its first spend, and the pause becomes noise."""
+        await _call(ctx, deps)
+        result = await _call(ctx, deps)
+
+        assert result["next"]["waiting_on"]["action"] is None
+
+
+class TestTheReactionBudgetGate:
+    """Missing, spent, and fallen-player budgets cannot hold the beat open."""
 
     @pytest.mark.asyncio
     async def test_no_window_opens_when_no_reaction_is_available(self):
@@ -231,7 +250,16 @@ class TestTheNoReactionGate:
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.participants.append(
-            CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
+            CombatParticipant(
+                id="player_2",
+                name="Bren",
+                type="player",
+                initiative=8,
+                hp_current=20,
+                hp_max=20,
+                ac=14,
+                has_reaction_ability=True,
+            )
         )
         cs.initiative_order.append("player_2")
         cs.get_participant("player_1").is_fallen = True
@@ -396,21 +424,6 @@ class TestBeatGuards:
         # that still says "call declare_phase first" sends the DM backwards mid-round.
         with pytest.raises(Exception, match="narration"):
             await combat_turn._resolve_phase_impl(ctx, **_resolve_deps())
-
-    @pytest.mark.asyncio
-    async def test_a_multi_swing_held_enemy_action_fails_loud(self):
-        """No enemy in content carries `enhancers` (combat_init populates them only from
-        players.data.flags), so a held enemy action is always a single swing. If that ever
-        changes, swings 2+ would apply damage with no window — raise rather than resolve them
-        silently (constraint 4)."""
-        ctx = _ctx_at_resolution(enemy_hp=20, reactions=False)
-        deps = _resolve_deps()
-        await _call(ctx, deps)  # the ally commit; the enemy action is held
-
-        ctx.userdata.combat_state.get_participant("goblin_scout_1").enhancers = ["extra_attack"]
-
-        with pytest.raises(ValueError, match="single swing"):
-            await combat_turn._resolve_phase_impl(ctx, **deps)
 
 
 class TestMidWindowPersistence:

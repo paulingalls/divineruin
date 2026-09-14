@@ -20,8 +20,9 @@ from enum import StrEnum
 
 import abilities
 import reaction_spend
+from combat_ability import _find_action
 from conditions import tick_conditions
-from declarations import Declaration, resolve_declaration
+from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -42,6 +43,13 @@ _STABILIZE_LIMIT = 3
 # this table additionally orders WITHIN the ally band (player before companion).
 # A Temporary Hollowed echo (M4.4 story-008) acts in the enemy band — it's a hostile combatant.
 _TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2, "temporary_hollowed": 2}
+
+# Ally windows name somebody other than the reactor by definition; enemy event windows describe
+# the acting enemy rather than the player affected by the reaction.
+SELF_TARGETED_REACTION_WINDOWS = frozenset({"on_hit", "on_targeted", "on_condition_imposed"})
+UNBOUND_REACTION_WINDOWS = frozenset(
+    {"on_ally_hit", "on_ally_targeted", "on_enemy_miss", "on_enemy_move", "on_spell_cast", "on_enemy_action"}
+)
 
 
 class PhaseBeat(StrEnum):
@@ -124,14 +132,35 @@ def advance_combat_phase(
     if state.beat == PhaseBeat.DECLARATION:
         if not declarations:
             raise ValueError("declaration beat requires declarations")
-        # Validate every declaration's shape at declare time so a bad one fails loud
-        # here (the tool layer translates ValueError -> ToolError) rather than at the
-        # later resolution beat. Raw dicts are still what's stored/persisted.
-        for raw in declarations.values():
-            resolve_declaration(raw)
+        # Refuse a bad declaration here (the tool layer translates ValueError -> ToolError)
+        # rather than let it waste a turn at the later resolution beat. Raw dicts are still
+        # what's stored/persisted.
+        resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
+        for actor_id, declaration in resolved.items():
+            actor = next_state.get_participant(actor_id)
+            if actor is None:
+                participant_ids = [participant.id for participant in next_state.participants]
+                raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+            if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:
+                available = [action["name"] for action in actor.action_pool]
+                raise ValueError(
+                    f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
+                    f"available actions: {available}"
+                )
+            if declaration.type is DeclarationType.ABILITY and actor.type != "player":
+                # Resolution wastes every other non-player ABILITY (combat_ability._resolve_ability_packet).
+                pool_action = _find_action(actor, declaration.action)
+                if actor.is_ally or pool_action is None or not pool_action.get("applies_condition"):
+                    available = [action["name"] for action in actor.action_pool]
+                    raise ValueError(
+                        f"{actor.name} ({actor.id}) cannot declare ability {declaration.action!r}: only players "
+                        f"cast abilities, and an enemy only its condition actions; declare an attack from {available}"
+                    )
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {
-            p.id: reaction_spend.unspent() for p in next_state.participants if p.type == "player"
+            p.id: reaction_spend.unspent()
+            for p in next_state.participants
+            if p.type == "player" and p.has_reaction_ability is not False
         }
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
@@ -236,13 +265,18 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
     directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
-    window = state.open_window
-    if window is None:
-        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
-
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
+
+    # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
+    # so "no window is open" would send the DM waiting for one that cannot come.
+    if actor.has_reaction_ability is False:
+        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
+
+    window = state.open_window
+    if window is None:
+        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
 
     catalog_window = abilities.get_ability(ability_id).window
     if catalog_window not in window["triggers"]:
@@ -250,6 +284,18 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
+        if window["target_id"] != actor_id:
+            raise ValueError(
+                f"reaction {ability_id!r} requires a window targeting reactor {actor_id!r}, "
+                f"but the open window targets {window['target_id']!r}"
+            )
+    elif catalog_window not in UNBOUND_REACTION_WINDOWS:
+        raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
+
+    if actor.has_reaction_ability is False:
+        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
 
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ValueError(f"player {actor_id!r} already spent their reaction this round")

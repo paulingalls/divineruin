@@ -42,12 +42,14 @@ import event_types as E
 
 async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_pool: str) -> None:
     """A real combat phase with a player carrying Blessed (persists) + Frightened
-    (cleared by a forced-success WIS save at the wrap) emits one COMBAT_UI_UPDATE.
+    (cleared by a forced-success WIS save at the wrap) pushes a COMBAT_UI_UPDATE at every
+    pause commit and one more at the wrap.
 
-    The packet's combatant shape mirrors the mobile parseCombatant contract
-    verbatim, its conditions carry only {type, stacks, source}, and the player's
-    post-tick conditions show Blessed still present and Frightened gone — proving
-    the producer reads state AFTER the Beat-4 tick.
+    The wrap's packet is the last: its combatant shape mirrors the mobile parseCombatant
+    contract verbatim, its conditions carry only {type, stacks, source}, and the player's
+    post-tick conditions show Blessed still present and Frightened gone — proving the
+    producer reads state AFTER the Beat-4 tick. Every earlier pause packet still carries
+    Frightened, so none of them ran the tick early.
     """
     pool = await db.get_pool()
     player_id = "cap_m12_round_trip"
@@ -77,9 +79,14 @@ async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_poo
 
         events = list(ctx.userdata.event_bus.drain())
         ui_updates = [e for e in events if e.event_type == E.COMBAT_UI_UPDATE]
-        assert len(ui_updates) == 1, f"expected exactly one COMBAT_UI_UPDATE, got {[e.event_type for e in events]}"
+        assert len(ui_updates) >= 2, f"expected pause + wrap COMBAT_UI_UPDATEs, got {[e.event_type for e in events]}"
+        for pause_update in ui_updates[:-1]:
+            pause_player = next(c for c in pause_update.payload["combatants"] if c["id"] == player_id)
+            assert "frightened" in [c["type"] for c in pause_player["conditions"]], (
+                f"a pause packet already ran the wrap tick: {pause_player['conditions']}"
+            )
 
-        packet = ui_updates[0].payload
+        packet = ui_updates[-1].payload
         by_id = {c["id"]: c for c in packet["combatants"]}
         assert set(by_id) == {player_id, "goblin_a"}
 

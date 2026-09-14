@@ -15,6 +15,7 @@ calls _end_combat_db in a real transaction, and asserts the persisted outcome.
 from __future__ import annotations
 
 import json
+import uuid
 
 import pytest
 
@@ -25,8 +26,11 @@ from combat_end import _end_combat_db
 from combat_events import EventSink
 from session_data import CombatParticipant, CombatState, SessionData
 
-_PRIMARY = "s003_fallen_ally_primary"
-_ALLY = "s003_fallen_ally_ally"
+# Per worker process: -n 8 runs this file's tests on several workers at once, and a shared row
+# one worker's cleanup deletes reads back as None in another's test.
+_WORKER = uuid.uuid4().hex[:8]
+_PRIMARY = f"s003_fallen_ally_primary_{_WORKER}"
+_ALLY = f"s003_fallen_ally_ally_{_WORKER}"
 _OFF_CATALOG = "off_catalog_wilds"  # region-less -> tier-1 + tier-2 skipped, falls to tier-3
 _PRIMARY_ANCHOR = "millhaven"  # greyvale village (real seed)
 _ALLY_ANCHOR = "accord_guild_hall"  # sunward_coast city (real seed)

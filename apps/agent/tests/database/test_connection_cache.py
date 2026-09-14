@@ -10,6 +10,15 @@ import db
 import db_content_queries
 
 
+@pytest.fixture(autouse=True)
+def _restore_db_globals():
+    # These tests assign db's module-global pool and redis. A leaked mock outlives the test and
+    # breaks the next real-PG test on the same xdist worker, whose pool reset awaits it.
+    pool, redis = db._pool, db._redis
+    yield
+    db._pool, db._redis = pool, redis
+
+
 class TestConnectionPoolManagement:
     """Test connection pool initialization and lifecycle."""
 

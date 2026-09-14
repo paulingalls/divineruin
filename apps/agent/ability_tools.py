@@ -11,10 +11,9 @@ Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with t
 real cost in the free-text scaling field. The tool always surfaces scaling as
 variable_cost so the DM tracks the pool/variable portion — a scaling-bearing
 ability is NEVER reported as a plain free activation (resolves concern
-7b34ebf86b57). An IN-COMBAT reaction is gated against the OPEN Beat-3 window (story-017 — a
-reaction interrupts a held enemy blow, it is not pre-declared) before any resource write, and the
-round's in-memory reaction budget is spent only AFTER the activation succeeds — a refused
-activation must not burn the reaction (test_reaction_refused_by_cost_*).
+7b34ebf86b57). An IN-COMBAT reaction first validates its OPEN Beat-3 window and preflights the
+held-action binding, then activates the resource transaction, then installs the prepared spend.
+A refusal must deduct neither resources nor the round's reaction (test_reaction_refused_by_cost_*).
 """
 
 import json
@@ -93,20 +92,17 @@ async def _request_ability_activation_impl(
         return await activate_unlocked()
 
     async with session.combat_end_lock:
+        state = session.combat_state
         try:
-            combat_phase.validate_reaction_activation(session.combat_state, session.player_id, ability_id)
+            combat_phase.validate_reaction_activation(state, session.player_id, ability_id)
+            spend = combat_hold.preflight_spend(state, session.player_id, ability_id)
         except ValueError as e:
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
-        # Record the spend as ONE field write on the CombatState the session holds NOW, never by
-        # assigning a pre-await snapshot back: this transaction is the window in which some other
-        # path mutates the live state in place, and a snapshot would erase it. Every such writer
-        # now holds this same lock (draethar_inner_fire took it last), so the remaining reason is
-        # the plain one — a snapshot cannot see a write that happened after it was taken, and the
-        # lock is a guarantee about THIS process, not a substitute for the rule. AFTER the
-        # activation, so a refusal still costs nothing.
-        combat_hold.record_spend(session.combat_state, session.player_id, ability_id)
+        # The live state, not `state`: a reference taken before an await cannot see a replacement made
+        # during it. combat_end_lock orders this process's writers; it is not a substitute for that rule.
+        combat_hold.record_spend(session.combat_state, session.player_id, spend)
         return result
 
 

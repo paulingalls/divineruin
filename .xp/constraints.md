@@ -35,25 +35,14 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    green over two red tests). But `test:all` DOES NOT BELONG IN A VERIFY LINE
    (human decision 2026-09-06): the configured `story` tier already runs it on the
    merged tree at every close, so a card repeating it buys nothing and makes the
-   executor's loop minutes instead of seconds — `pytest apps/agent/tests/combat`
-   is 878 tests in 11s. Name the DIRECTORY that covers the change.
+   executor's loop minutes instead of seconds. Name the DIRECTORY that covers the
+   change.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
    why. Sprint-046 story-008 excluded four `companion_kael` sites as "off the
    session path" without grepping; the reviewer found sixteen more that were on
    it, and the combat prompt's tag survived to round 2.
-
-10. **A claim about code is a code claim — open the file.** Four times in
-   sprint-048 the lead asserted what code does from a DESCRIPTION of it and was
-   wrong: `reactions_available`'s polarity stated backwards from the field's name;
-   "no distinctness guard exists" after grepping a 171-line test file and stopping
-   at 138; "TokenTracker records cache_creation" from a close narrative, when that
-   counter had been deliberately deleted; and a reaction census off by seventeen.
-   Every one was caught by a reviewer or a refresh, none by the author. An AC that
-   names a field's VALUES — polarity, sentinel, shape — or an ABSENCE ("nothing
-   checks X") is the code claim this rule is about.
-
 9. **A guard that models someone else's contract certifies the model, not the
    contract.** Where the real thing can be executed — a vendor type, a live
    endpoint, a schema the provider compiles — the test constructs or calls it.
@@ -63,3 +52,12 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    read 0 for months. Sprint-048 added the PARSING side — we read the model's
    narration `segments` assuming dicts, and it sent a bare string. Mock our own
    seams; never the other side's shape, in or out.
+10. **A claim about code is a code claim — open the file.** Four times in
+   sprint-048 the lead asserted what code does from a DESCRIPTION of it and was
+   wrong: `reactions_available`'s polarity stated backwards from the field's name;
+   "no distinctness guard exists" after grepping a 171-line test file and stopping
+   at 138; "TokenTracker records cache_creation" from a close narrative, when that
+   counter had been deliberately deleted; and a reaction census off by seventeen.
+   Every one was caught by a reviewer or a refresh, none by the author. An AC that
+   names a field's VALUES — polarity, sentinel, shape — or an ABSENCE ("nothing
+   checks X") is the code claim this rule is about.

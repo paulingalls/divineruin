@@ -27,6 +27,7 @@ from combat._reaction_helpers import (
 )
 
 import combat_reaction_effect
+import reaction_spend
 import reaction_windows
 from check_resolution_attack import AttackResult
 from combat_support import deserialize_roll, serialize_roll
@@ -169,17 +170,19 @@ async def test_uncanny_dodge_spent_by_a_bystander_leaves_the_allys_damage_whole(
     """A reaction only halves the blow aimed at the REACTOR.
 
     ``on_hit`` means "when YOU are hit"; taking an ally's damage is guardian_intercept's
-    ``on_ally_hit``, a different and unwired mechanic. The open window offers both triggers to
-    whoever is holding a reaction, so validate_reaction_activation accepts this spend — Bram is
-    the one being hit, Kael reacts. Halving off it would invent the mechanic the catalog gives
-    somebody else, and it would do so on a live path.
+    ``on_ally_hit``, a different and unwired mechanic. The activation gate refuses this spend;
+    install it directly to prove the effect guard remains defense-in-depth if a bad record reaches
+    the pump by another path. Bram is the one being hit, Kael is the recorded reactor.
     """
     ctx = _ctx_at_resolution(state=_guarded_ally_state())
     deps = _resolve_deps(damage=6)
     packets: list[dict] = []
 
     await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
-    await _activate(ctx, UNCANNY_DODGE, player_class="rogue")
+    cs = ctx.userdata.combat_state
+    cs.reactions_available["player_1"] = reaction_spend.spend(
+        UNCANNY_DODGE, cs.open_window, held_seq=cs.held_actions[0]["seq"]
+    )
     await _drain(ctx, deps, packets)
 
     assert _enemy_blow(packets)["damage"] == 6
@@ -193,7 +196,8 @@ async def test_a_shield_reaction_spent_by_a_bystander_wears_nobodys_shield():
 
     combat_support reads ``get_player_inventory(target.id)``: report a shield reaction for a
     reactor who is not the target and the wear lands on the ally's gear, billed to a reaction they
-    never spent. Bram is the one hit here and both players are carrying a shield.
+    never spent. The activation gate refuses this case; direct installation keeps the downstream
+    guard executable. Bram is the one hit here and both players are carrying a shield.
     """
     ctx = _ctx_at_resolution(state=_guarded_ally_state())
     deps = _shield_bearing_deps()
@@ -201,7 +205,10 @@ async def test_a_shield_reaction_spent_by_a_bystander_wears_nobodys_shield():
 
     with _patched_accrual() as accrue:
         await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
-        await _activate(ctx, RETALIATING_SHIELD, player_class="guardian")
+        cs = ctx.userdata.combat_state
+        cs.reactions_available["player_1"] = reaction_spend.spend(
+            RETALIATING_SHIELD, cs.open_window, held_seq=cs.held_actions[0]["seq"]
+        )
         await _drain(ctx, deps, packets)
 
     assert "shield" not in _enemy_blow(packets)["durability"]

@@ -44,6 +44,14 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
                 hp_current=player_hp,
                 hp_max=25,
                 ac=14,
+                action_pool=[
+                    {
+                        "name": "Longsword",
+                        "damage": "1d8",
+                        "damage_type": "slashing",
+                        "properties": [],
+                    }
+                ],
                 is_fallen=player_fallen,
             ),
             CombatParticipant(

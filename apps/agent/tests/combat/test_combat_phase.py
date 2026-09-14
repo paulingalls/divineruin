@@ -199,6 +199,27 @@ class TestValidateReactionActivation:
         with pytest.raises(ValueError, match="already spent"):
             validate_reaction_activation(state, "player_1", self.accepts)
 
+    @pytest.mark.parametrize("window_open", [True, False], ids=["window_open", "no_window"])
+    def test_a_player_owning_no_reaction_is_told_so_not_that_it_is_spent(self, window_open):
+        """story-030 seeds no budget entry for a class with no reaction, so is_spent(None) alone
+        would tell that player they already spent a reaction they never had. A party with no
+        owner never gets a window at all, so "no window is open" would mislead the same way."""
+        state = self._window_state()
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.has_reaction_ability = False
+        state.reactions_available = {}
+        if not window_open:
+            state.open_window = None
+
+        with pytest.raises(ValueError) as excinfo:
+            validate_reaction_activation(state, "player_1", self.accepts)
+
+        message = str(excinfo.value)
+        assert "owns no reaction" in message
+        assert "already spent" not in message
+        assert "no reaction window" not in message
+
     def test_rejects_non_player_actor(self):
         """The reaction economy is player-only (note 964465e5): no enemy or companion spends one,
         even standing at a window whose triggers their ability would match."""

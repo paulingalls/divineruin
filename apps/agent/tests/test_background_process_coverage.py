@@ -88,7 +88,11 @@ class TestBackgroundProcessLifecycle:
         mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
 
         bp = BackgroundProcess(session, mock_sd)
-        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
+        with (
+            patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock),
+            # The real recap opens mock_sd.transcript_path; a MagicMock opens as fd 1 and closes stdout.
+            patch("background_process.run_session_end", new_callable=AsyncMock),
+        ):
             bp.start()
             session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
 

@@ -153,6 +153,7 @@ async def _resolve_one_packet(
     players_by_id=None,
     reaction_ac_bonus: int = 0,
     shield_reaction: str | None = None,
+    publish_roll: bool = True,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -168,7 +169,8 @@ async def _resolve_one_packet(
 
     ``reaction_ac_bonus`` is the Beat-3 hold's channel for a pre-roll reaction's +2 AC against the
     ONE held blow it was spent against (story-018), and ``shield_reaction`` the same channel for a
-    post-roll shield-bearing one; 0/None on every unpaused path."""
+    post-roll shield-bearing one; 0/None on every unpaused path. ``publish_roll`` is False only
+    for a held attack whose DICE_ROLL was already announced at its POST_ROLL pause."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
     # This actor's own pre-validated for_update row (M14 story-004): the ability branches below thread
@@ -291,6 +293,7 @@ async def _resolve_one_packet(
             combat_state=state,
             conn=conn,
             sink=sink,
+            publish_roll=publish_roll,
         )
         attack_summaries.append(sub)
         # Consume the single-use beneficial die ONCE per declaration (M4.8 story-003): the swing

@@ -110,6 +110,8 @@ class CombatParticipant:
     # players/companions and untagged/pre-M15 enemy rows (from_dict uses CombatParticipant(**p),
     # so the default covers legacy rows), mirroring enhancers/conditions/saving_throw_proficiencies.
     resistance_tags: list[str] = field(default_factory=list)
+    # Unknown keeps legacy in-flight combats eligible rather than silently removing a capability.
+    has_reaction_ability: bool | None = None
 
     @property
     def is_ally(self) -> bool:
@@ -159,12 +161,9 @@ class CombatState:
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
-    # The round's one reaction per player (actor_id -> reaction_spend record). The declaration beat
-    # refreshes it for PLAYERS ONLY — the reaction economy is player-only by design (only a
-    # trained archetype technique is a reaction; enemy action_pool entries carry no catalog
-    # id, so no enemy can declare one). combat_phase.validate_reaction_activation guards the spend
-    # at an OPEN Beat-3 window (story-017) and combat_hold.pause_allowed reads it to decide whether
-    # to pause at all; the wrap loop-back clears it. Absent actor => no budget (never a free spend).
+    # Round budget/spend state per eligible player; ownership lives on CombatParticipant.
+    # Players only by design: a reaction is an archetype technique, and enemy action_pool entries
+    # carry no catalog id. The wrap loop-back clears it. Absent actor => no budget (never a free spend).
     reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
@@ -327,19 +326,12 @@ class SessionData:
     # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
     # SpecializationTapHandler from the verified sender, consumed and cleared by select.
     pending_specialization_tap: SpecializationTap | None = None
-    # Serialises the two tools that can END a fight — resolve_phase (whose WRAP may hit the engine's
-    # end-condition) and the standalone end_combat. Both use `combat_state` as their only re-entry
-    # guard and can only release it AFTER their transaction commits (releasing earlier would let a
-    # retried end pay the party twice). That leaves a window in which a second end passes
-    # _require_combat while the first is still inside its transaction, and both run
-    # grant_victory_rewards: the encounter's XP, coin and loot granted twice, level-ups and
-    # milestone auto-grants included (concern a2e2398451ee). Two parallel tool calls in one LLM
-    # turn are the ordinary way in.
-    #
-    # Held for the WHOLE call, transaction included: the waiter then re-reads combat_state after the
-    # holder cleared it and gets an honest "Not in combat" instead of a second payout. Combat is
-    # session-scoped and lives in one process, so this is the guard — not a stand-in for one. A
-    # combat resumed by a SECOND agent process would still need a DB-level end token.
+    # Serialises every path that saves or adopts a whole combat_state — start and end included — so
+    # no holder writes back a snapshot that predates another holder's change. Readers do not take
+    # it. Held for the WHOLE call and acquired BEFORE any DB transaction: an end released before its
+    # commit lets a retried end pay the party twice, and a writer that took it inside a transaction
+    # could hold a row a lock-holding resolver is waiting on. Combat is session-scoped and lives in
+    # one process; a combat resumed by a second agent process would still need a DB-level token.
     combat_end_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):

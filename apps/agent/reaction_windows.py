@@ -6,9 +6,9 @@ window closes. Nothing in the tree mapped an enemy action to a member of
 ``abilities.REACTION_WINDOWS`` before this module, so the DM had to guess a window among nine
 (constraint 6). This is that map.
 
-Pure: a function of the action dict alone. It cannot see who owns which reaction — that gate
-(``reactions_available``) lives in the Beat-3 pump, per game_mechanics_combat.md:131 ("if the
-player has no reaction abilities, the DM doesn't pause").
+Pure: a function of the action dict alone. It cannot see ownership or budget. The Beat-3 pump
+combines ``CombatParticipant.has_reaction_ability`` with ``CombatState.reactions_available``, per
+game_mechanics_combat.md:131 ("if the player has no reaction abilities, the DM doesn't pause").
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
 content/encounter_templates.json's 68 action_pool entries — ranged 6, buff 5, knockback 4,

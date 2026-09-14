@@ -8,9 +8,9 @@ TWO WINDOWS PER ENEMY ATTACK, because story-018 needs both on the same blow: a P
 (on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
 (on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
 grapple). The window VOCABULARY is reaction_windows.py's — a pure function of the action. The
-PAUSE GATE is here, because it reads ``reactions_available``: gm_combat:131, "if the player has no
-reaction abilities, the DM doesn't pause — narration flows continuously." Without that gate a
-three-enemy round opens six windows the party cannot consume after its first spend.
+PAUSE GATE is here, because it combines participant ownership with the round's reaction budget:
+gm_combat:131, "if the player has no reaction abilities, the DM doesn't pause — narration flows
+continuously." Without that gate a three-enemy round opens six unusable windows.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -20,15 +20,25 @@ import logging
 
 import combat_enhancers
 import combat_reaction_effect
+import event_types as E
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
-from combat_support import deserialize_roll, roll_attack, serialize_roll
+from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from declarations import DeclarationType, resolve_declaration
 from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
+
+
+class HeldActionUnresolvable(ValueError):
+    """A held action the engine can never resolve, so a retried phase would re-raise it forever.
+
+    ``pump`` pops it as an unresolved summary instead of rolling the phase back — the only way the
+    queue drains and ``end_combat`` stops refusing. Raising this type opts a failure into that
+    tolerance; every other exception still rolls the phase back.
+    """
 
 
 def hold_enemy_packets(state, packets: list) -> list[dict]:
@@ -44,6 +54,7 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
             "initiative": packet.initiative,
             "declaration": dict(state.pending_declarations.get(packet.actor_id, {})),
             "roll": None,
+            "roll_published": False,
             "opened": [],
         }
         for seq, packet in enumerate(packets)
@@ -53,10 +64,9 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
 def pause_allowed(state) -> bool:
     """Can ANY standing player still spend a reaction this round? (AC9, gm_combat:131.)
 
-    Reads ``reactions_available`` only. That map records whether the round's one reaction is
-    SPENT, not whether the character owns any — the ownership half needs the ability catalog per
-    member at the DECLARATION beat and is recorded as debt (1ffd99cf), not faked here. A fallen
-    player's stale unspent entry must not hold the beat: a downed character cannot react.
+    ``CombatParticipant.has_reaction_ability`` records ownership; ``reactions_available`` records
+    whether the round's one reaction is spent. A fallen player's stale unspent entry must not hold
+    the beat: a downed character cannot react.
 
     Asks ``reaction_spend.is_spent``, never the entry's truthiness: since story-017 a spent
     reaction is a truthy RECORD, so a boolean test would report it available and keep pausing on
@@ -65,34 +75,37 @@ def pause_allowed(state) -> bool:
     return any(
         not reaction_spend.is_spent(state.reactions_available.get(p.id))
         for p in state.participants
-        if p.type == "player" and not p.is_fallen
+        if p.type == "player" and not p.is_fallen and p.has_reaction_ability is not False
     )
 
 
-def record_spend(state, actor_id: str, ability_id: str) -> None:
-    """Bind this actor's reaction to the held action the machine is paused on (story-017).
+def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
+    """Validate the paused-action binding and prepare its spend without mutating state.
 
-    ONE field write on the live CombatState — the caller holds the combat-end lock and must not
-    assign a snapshot back (see combat_phase.validate_reaction_activation). The head of
-    ``held_actions`` IS the paused action by construction of ``pump``, which returns the moment it
-    opens a window and never pops past it — checked here rather than assumed, because a spend
-    bound to the wrong blow is a defect story-018 would silently inherit (constraint 4). The check
-    is an actor-id match, not the window id's ``r<round>-<seq>-<stage>`` format: one declaration
-    per actor per phase means the actor names the held action uniquely, and parsing the id would
+    Separate from ``record_spend`` so every refusal happens before the resource write. The head of
+    ``held_actions`` IS the paused action by construction of ``pump`` — checked rather than
+    assumed, because a spend bound to the wrong blow is a defect story-018 would silently inherit.
+    The check is an actor-id match, not a parse of the window id's ``r<round>-<seq>-<stage>``
+    format: one declaration per actor per phase makes the actor unique, and parsing the id would
     make its format a contract reaction_spend deliberately refused to give it.
     """
     if state.open_window is None or not state.held_actions:
         raise ValueError(
-            f"cannot record a reaction spend for {actor_id!r}: the machine is not paused on a "
+            f"cannot prepare a reaction spend for {actor_id!r}: the machine is not paused on a "
             f"held action (open_window={state.open_window!r}, {len(state.held_actions)} held)"
         )
     head = state.held_actions[0]
     if state.open_window["actor_id"] != head["actor_id"]:
         raise ValueError(
-            f"cannot record a reaction spend for {actor_id!r}: the open window answers "
+            f"cannot prepare a reaction spend for {actor_id!r}: the open window answers "
             f"{state.open_window['actor_id']!r} but the queue head is {head['actor_id']!r}"
         )
-    state.reactions_available[actor_id] = reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
+    return reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
+
+
+def record_spend(state, actor_id: str, spend: dict) -> None:
+    """Install a preflighted spend as one non-awaiting field write."""
+    state.reactions_available[actor_id] = spend
 
 
 def _held_declaration(head: dict):
@@ -170,7 +183,7 @@ def _replay_resolver(head: dict):
 
     def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
         if target_ac != held_ac:
-            raise ValueError(
+            raise HeldActionUnresolvable(
                 f"held roll for {head['actor_id']!r} was made against AC {held_ac}, but the target's "
                 f"effective AC is now {target_ac} — the pause changed the roll's premise"
             )
@@ -189,11 +202,19 @@ def _assert_single_swing(state, head: dict, action: dict) -> None:
     actor = state.get_participant(head["actor_id"])
     swings = combat_enhancers.attack_sequence(actor.enhancers if actor else [], action)
     if len(swings) > 1:
-        raise ValueError(
+        raise HeldActionUnresolvable(
             f"held enemy action {action.get('name')!r} for {head['actor_id']!r} expands to "
             f"{len(swings)} swings; Beat 3 holds a single swing per window, so swings 2+ would "
             "land with no reaction window"
         )
+
+
+def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary_start: int) -> None:
+    popped = not state.held_actions or state.held_actions[0] is not head
+    unresolved = any(summary.get("resolved") is False for summary in summaries[summary_start:])
+    opened = state.open_window is not None
+    if not (popped or unresolved or opened):
+        raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
 async def pump(session, state, *, packet_deps: dict) -> list[dict]:
@@ -220,32 +241,54 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
 
     while state.held_actions:
         head = state.held_actions[0]
+        summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
 
-        if opens:
-            if PRE_ROLL not in head["opened"]:
-                head["opened"].append(PRE_ROLL)
-                if pause_allowed(state):
-                    _open(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
-                    return summaries
+        try:
+            if opens:
+                if PRE_ROLL not in head["opened"]:
+                    head["opened"].append(PRE_ROLL)
+                    if pause_allowed(state):
+                        _open(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        return summaries
 
-            if action is not None and head["roll"] is None:
-                _assert_single_swing(state, head, action)
-                head["roll"] = serialize_roll(*_roll(state, head, action, packet_deps["resolver"]))
+                if action is not None and head["roll"] is None:
+                    _assert_single_swing(state, head, action)
+                    head["roll"] = serialize_roll(*_roll(state, head, action, packet_deps["resolver"]))
 
-            if head["roll"] is not None and POST_ROLL not in head["opened"]:
-                head["opened"].append(POST_ROLL)
-                if pause_allowed(state):
-                    hit = head["roll"]["attack_result"]["hit"]
-                    _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
-                    return summaries
+                if head["roll"] is not None and POST_ROLL not in head["opened"]:
+                    head["opened"].append(POST_ROLL)
+                    if pause_allowed(state):
+                        hit = head["roll"]["attack_result"]["hit"]
+                        attack_result, _effective_ac = deserialize_roll(head["roll"])
+                        attacker = state.get_participant(head["actor_id"])
+                        await packet_deps["sink"].emit(
+                            session.room,
+                            E.DICE_ROLL,
+                            build_attack_dice_roll_payload(attacker, attack_result),
+                            event_bus=session.event_bus,
+                        )
+                        head["roll_published"] = True
+                        _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
+                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        return summaries
 
-        summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+            summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+        except HeldActionUnresolvable as exc:
+            summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
+            logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
+            summaries.append(summary)
+            _assert_iteration_progress(state, head, summaries, summary_start)
+            state.held_actions.pop(0)
+            continue
+
         if head is reacted:
             combat_reaction_effect.record_shield_wear(reaction_packet, summary)
         summaries.append(summary)
         state.held_actions.pop(0)
+        _assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
 
@@ -308,5 +351,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
         packet,
         reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        publish_roll=not head.get("roll_published", False),
         **deps,
     )

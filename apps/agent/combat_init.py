@@ -1,6 +1,8 @@
-"""Combat initialization — _start_combat_impl, the combat-entry handoff behind
-enter_mode(mode="combat") (mode_tools.py). Rolls initiative, persists CombatState,
-and hands off to CombatAgent."""
+"""Combat initialization — the locked combat-entry handoff behind enter_mode(mode="combat").
+
+The session lock precedes the in-combat gate, content reads, persistence, and state adoption, so
+concurrent starts cannot create two rows. Successful entry hands off to CombatAgent.
+"""
 
 import json
 import logging
@@ -9,6 +11,7 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import abilities
 import check_resolution_save
 import combat_enhancers
 import combat_resolution
@@ -18,7 +21,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import rules_engine
-from combat_support import _participant_summary, _publish_sounds
+from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -91,6 +94,27 @@ def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
 
 
 async def _start_combat_impl(
+    context: RunContext[SessionData],
+    encounter_id: str,
+    encounter_description: str,
+    *,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str | tuple:
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _start_combat_locked(
+            context,
+            encounter_id,
+            encounter_description,
+            mutations=mutations,
+            queries=queries,
+            content=content,
+        )
+
+
+async def _start_combat_locked(
     context: RunContext[SessionData],
     encounter_id: str,
     encounter_description: str,
@@ -233,6 +257,12 @@ async def _start_combat_impl(
     participants: list[CombatParticipant] = []
     for mid, row in member_players:
         row_hp = row.get("hp", {})
+        player_class = row.get("class")
+        if not isinstance(player_class, str):
+            raise ToolError(f"Player {mid!r} has invalid class {player_class!r}.")
+        archetype_abilities = abilities.get_archetype_abilities(player_class)
+        if not archetype_abilities:
+            raise ToolError(f"Player {mid!r} has class {player_class!r} with no catalog abilities.")
         # Synthesize the member's combat action_pool from equipped weapons. Each equipment
         # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
         # player attack declaration resolves through the same packet path as enemies and
@@ -261,6 +291,7 @@ async def _start_combat_impl(
                 # extra_attack is grantable today; the rest populate when their grants land.
                 enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
                 conditions=row_conditions,
+                has_reaction_ability=any(ability.ability_type == "reaction" for ability in archetype_abilities),
                 # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
                 # the participant so resolve_saving_throw adds the bonus when an enemy imposes
                 # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
@@ -397,7 +428,7 @@ async def _start_combat_impl(
         "encounter_name": encounter.get("name", encounter_id),
         "encounter_description": encounter_description,
         "initiative_order": initiative_summary,
-        "participants": [_participant_summary(p) for p in participants],
+        "participants": _participant_roster(participants),
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
@@ -418,6 +449,8 @@ async def _start_combat_impl(
 
         parts.append(f"{session.companion.name} fights alongside the player.")
         parts.append(companion_voice_directive(session.companion))
+    # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
+    parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
     combat_ctx = ChatContext()
     combat_ctx.add_message(role="system", content=" ".join(parts))

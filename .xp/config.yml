@@ -1,10 +1,11 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
-#                    # INERT while every role is claude/* (harness.resolve_codex_sandbox
-#                    # returns early for non-codex); kept for a role pointed back at codex
+#                    # LIVE since sprint-049 open: executor, planner, slate-reviewer and fixer
+#                    # are codex/*, so this posture now governs four roles.
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
+#                    # by denying ALL outbound network — DNS, loopback, the docker socket.
 # trunk: develop       # UNCOMMENT where releases do NOT land on git's DEFAULT branch;
 #                      # they land and tag here, any develop -> main cut stays yours
 # lifecycle_command: ./scripts/xp-lifecycle "fixed value"  # argv prefix, no shell
@@ -19,18 +20,25 @@ constraints_chars_cap: 4500  # hard character ceiling; retire or shorten a rule
 #                       # spend: candidates are batched across this many, never
 #                       # one agent per candidate.
 
+profile_target: 806  # token budget the shipped role profiles are written against
+
 roles:               # harness/model[/effort]; the lead overrides per story in plan.md
                      # effort: low | medium | high | xhigh | max
+                     # SPRINT-049 OPEN: the write-and-fix roles moved to codex; the
+                     # judgment roles stayed claude. The split is the experiment.
   lead: claude/opus/high
-  executor: claude/opus/high
-  reviewer: claude/opus/xhigh      # the wall. sprint-047 open: the shipped slate-reviewer
+  executor: codex/gpt-5.6-sol/high
+  reviewer: claude/opus/high       # the wall. sprint-047 open: the shipped slate-reviewer
                                    # charter found a false construction premise, a vacuous
                                    # AC and an unusable grep gate that the lead's own pass
-                                   # missed. Review effort buys more than executor effort.
+                                   # missed.
   plan-reviewer: claude/opus/high  # scripts/plan_review.py; a teammate runs it itself
+  planner: codex/gpt-5.6-sol/high  # read-only implementation plan for a multi-file story
+  slate-reviewer: codex/gpt-5.6-sol/high  # the fresh reader over the sprint slate
+  card-refresher: claude/opus      # rewrites a card's stale HEAD claims before it is minted
   finder: claude/opus/high     # the four round-1 stages of `close.py sprint <id> review`;
-  verifier: claude/opus/xhigh  # each falls back to `reviewer` when its key is absent, so
-  fixer: claude/opus/high      # an older config keeps working untouched.
+  verifier: claude/opus/high   # each falls back to `reviewer` when its key is absent, so
+  fixer: codex/gpt-5.6-sol/high  # an older config keeps working untouched.
   closer: claude/opus/medium   # verifier is adversarial (kills false positives); closer
                                # is judgment over an already-verified set.
 
@@ -43,3 +51,8 @@ tests:
   # (close/overlap.py) — the pre-push hook only ever sees the branch as-pushed.
   story: bun run test:all          # TS + Python unit lanes; the old system's sole test_command
   full: bun run test:acceptance    # the one lane test:all omits by design (ADR 0003, API cost)
+
+# EMPTY on purpose: story (test:all) and full (test:acceptance) are disjoint lanes,
+# so neither tier's run covers a record declared against the other.
+tier_coverage:       # e.g. covered: covering
+tier_coverage_pins:  # e.g. tier: exact configured command

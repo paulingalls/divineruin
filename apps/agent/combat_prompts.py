@@ -12,12 +12,13 @@ Beat 2 resolution -> Beat 3 narration -> Beat 4 wrap], looping until combat_end.
 Walk it one phase at a time, one beat at a time.
 
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
-from its tactics and each conscious companion's action. Then call declare_phase with \
+from its tactics and each conscious companion's action. The combat-entry Combatants roster gives \
+every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Three \
 kinds resolve in combat today: \
-attack — action is the EXACT name of one of the actor's equipped weapons (for example \
-"Longsword"), because that is what resolve_phase matches against, and target_id is who \
-they strike. Send rider as an empty string unless the actor has Cunning Action, which \
+attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
+equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
+target_id is who they strike. Send rider as an empty string unless the actor has Cunning Action, which \
 spends it on "dash", "disengage" or "hide". \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
@@ -76,7 +77,8 @@ resolve_phase again to bring each enemy action forward, and read "next" every ti
 
 When next.waiting_on is null, the enemy actions in that result have fully resolved — narrate them \
 and move on. When next.waiting_on is present, the machine has PAUSED mid-blow and is holding the \
-damage: narrate right up to the moment and STOP. The pause IS the mechanic — the raised axe, the \
+damage. next.waiting_on.action names the exact held action: narrate right up to the moment and STOP. \
+The pause IS the mechanic — the raised axe, the \
 indrawn breath — not a delay to smooth over. next.waiting_on names the actor, the target, and \
 which reaction windows are open (its "triggers"), plus a window_id; use those ids as given and \
 never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
@@ -135,7 +137,7 @@ Keep combat moving. One sentence per action, two for a kill. The rhythm is: \
 action, result, next. Save longer narration for the decisive blow.
 
 Include each conscious companion in declare_phase with an attack declaration naming \
-an action from their action_pool and the most tactically sound target. Have the companion make a brief \
+the companion's exact action from Combatants[].actions and the most tactically sound target. Have the companion make a brief \
 tactical callout in the urgent register, using the companion's own voice exactly as the \
 combat-entry context specifies. "Flanking left!" "Watch the spellcaster!" Keep it to one \
 clipped sentence.

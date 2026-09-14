@@ -18,6 +18,7 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 SAMPLE_PLAYER = {
     "player_id": "player_1",
     "name": "Hero",
+    "class": "warrior",
     "level": 1,
     "attributes": {
         "strength": 14,
