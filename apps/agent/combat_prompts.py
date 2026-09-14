@@ -84,11 +84,12 @@ which reaction windows are open (its "triggers"), plus a window_id; use those id
 never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
 attack is rolled, "post_roll" is after the roll but BEFORE the damage lands, so a post_roll pause \
 already knows hit or miss and you may voice the strike connecting without saying what it costs. \
-THIS is where a reaction happens. If the player has a reaction ability whose window is listed in \
-next.waiting_on.triggers, and they call it out — "I block!", "I dodge!" — call activate with that \
-ability id BEFORE you call resolve_phase again. There is no pre-declaration: the open window is \
-the whole permission, and the player gets one reaction per round. Then call resolve_phase again \
-to close the window and continue.
+THIS is where a reaction happens. next.waiting_on.reactions lists the reactions that fit this \
+window, each with an actor_id, an id and a name. If the player calls one of theirs out — "I block!", \
+"I dodge!" — call activate with that entry's id, exactly as listed, BEFORE you call resolve_phase \
+again. A reaction missing from that list does not fit this window: say so, and never guess an id. \
+There is no pre-declaration: the open window is the whole permission, and the player gets one \
+reaction per round. Then call resolve_phase again to close the window and continue.
 
 When you close a window the player reacted at, that result carries a packet for the REACTION \
 itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \

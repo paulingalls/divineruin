@@ -227,15 +227,15 @@ class TestCombatBeatContract:
     def test_the_dm_activates_a_reaction_at_an_open_window(self):
         """AC8: the interrupt teaching, at the ONE place the DM meets it — the Beat-3 pause.
 
-        The window is the permission now, and `next.waiting_on.triggers` is the only thing that
-        says which reaction fits. A prompt that named `activate` without naming `triggers` would
-        send the DM back to guessing among nine windows (constraint 6), which is the defect
-        sprint-045 shipped twice."""
+        The window is the permission now, and `next.waiting_on.reactions` names the exact ids that
+        fit it. A prompt that sends the DM to `triggers` for the id has it guess one (constraint 6),
+        which is the defect sprint-045 shipped twice."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         pause = low.index("the pause is the mechanic")
-        teaching = low[pause : pause + 900]
+        teaching = low[pause : pause + 1100]
         assert "activate" in teaching
-        assert "next.waiting_on.triggers" in teaching
+        assert "next.waiting_on.reactions" in teaching
+        assert "whose window is listed in" not in teaching, "the prompt still sends the DM to triggers for an id"
         assert "one reaction per round" in teaching
         assert "no pre-declaration" in teaching
 
