@@ -8,6 +8,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
+from system_prompts import DISPATCH_MODE_PROMPT
 from training_rules import MidpointResult
 from training_tools import _resolve_training_midpoint_impl
 
@@ -79,6 +80,62 @@ class TestResolveTrainingMidpoint:
             "micro_bonus": {"type": "fundamentals"},
         }
         assert kwargs["conn"] is mock_conn
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("second_half_seconds", "hours_left"),
+        [(9_000, 3), (12_600, 4)],
+    )
+    async def test_result_carries_spoken_second_half_cue(self, second_half_seconds, hours_left):
+        ctx = make_context()
+        mock_db, _ = make_db_mod()
+        mock_training = MagicMock()
+        mock_training.get_training_activity = AsyncMock(return_value=SAMPLE_AWAITING_ROW)
+        mock_training.update_training_activity = AsyncMock()
+        result = _make_midpoint_result(second_half_seconds=second_half_seconds)
+
+        payload = json.loads(
+            await _resolve_training_midpoint_impl(
+                ctx,
+                "train_abc123",
+                "fundamentals",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                rules_mod=_stub_resolve_factory(result),
+                now_fn=lambda: FIXED_NOW,
+            )
+        )
+
+        assert payload["narration_cue"] == (
+            f"Training resumes into its second half, with about {hours_left} hours left."
+        )
+        assert payload["second_half_seconds"] == second_half_seconds
+        assert payload["state"] == "running_second_half"
+
+    @pytest.mark.asyncio
+    async def test_dispatch_prompt_tells_the_dm_to_speak_the_cue(self):
+        ctx = make_context()
+        mock_db, _ = make_db_mod()
+        mock_training = MagicMock()
+        mock_training.get_training_activity = AsyncMock(return_value=SAMPLE_AWAITING_ROW)
+        mock_training.update_training_activity = AsyncMock()
+
+        payload = json.loads(
+            await _resolve_training_midpoint_impl(
+                ctx,
+                "train_abc123",
+                "fundamentals",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                rules_mod=_stub_resolve_factory(_make_midpoint_result()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        )
+        cue_keys = [key for key, value in payload.items() if isinstance(value, str) and "second half" in value]
+        assert len(cue_keys) == 1, f"expected one spoken cue in resolve payload, got {cue_keys}"
+        training_paragraph = DISPATCH_MODE_PROMPT.split("For training:", 1)[1].split("For companion errands:", 1)[0]
+
+        assert f"speak the returned {cue_keys[0]}" in training_paragraph.lower()
 
     @pytest.mark.asyncio
     async def test_invalid_training_id_format(self):

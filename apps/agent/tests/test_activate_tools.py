@@ -8,15 +8,20 @@ behavior. The one exception is the variant namespace, whose id resolution is als
 the real loaded catalog so mocking both sides cannot hide a content/routing drift.
 """
 
+import dataclasses
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import abilities
+import combat_phase
 import mentor_variants
+import reaction_spend
+import reaction_windows
 import spells
 import veil_ward
 from activate_tools import _activate_impl, _resolve_kind, activate
@@ -210,6 +215,67 @@ class TestUnknownId:
             await _call("not_a_real_id", spells_mod=spells_mod, abilities_mod=abilities_mod, **mods)
         for fn in fns.values():
             fn.assert_not_awaited()
+
+    async def test_unknown_id_at_an_open_window_names_the_reactions_that_would_fit(self):
+        mods, fns = _mocks()
+        state = _make_combat_state()
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.has_reaction_ability = True
+        player.reaction_ids = ["rogue_uncanny_dodge", "rogue_slippery"]
+        state.open_window = reaction_windows.open_window_for(
+            round_number=1,
+            seq=0,
+            stage=reaction_windows.POST_ROLL,
+            actor_id="goblin_scout_1",
+            target_id="player_1",
+            triggers=reaction_windows.post_roll_triggers({}, hit=True),
+        )
+        state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))
+        state.reactions_available = {"player_1": reaction_spend.unspent(), "player_2": reaction_spend.unspent()}
+        assert [reaction["id"] for reaction in combat_phase.offered_reactions(state)] == [
+            "rogue_uncanny_dodge",
+            "guardian_intercept",
+        ]
+        ctx = make_context()
+        ctx.userdata.combat_state = state
+
+        with pytest.raises(ToolError) as raised:
+            await _activate_impl(ctx, "uncanny_dodge", **mods)
+
+        message = str(raised.value)
+        assert "not an activatable capability" in message
+        assert "rogue_uncanny_dodge" in message
+        assert "rogue_slippery" not in message
+        assert "guardian_intercept" not in message, "activate spends as the session player, not player_2"
+        for fn in fns.values():
+            fn.assert_not_awaited()
+
+    async def test_unknown_id_outside_combat_keeps_the_plain_refusal(self):
+        mods, _fns = _mocks()
+        ctx = make_context()
+        ctx.userdata.combat_state = None
+
+        with pytest.raises(ToolError) as raised:
+            await _activate_impl(ctx, "uncanny_dodge", **mods)
+
+        assert str(raised.value) == "'uncanny_dodge' is not an activatable capability."
+
+    async def test_unknown_id_in_combat_with_no_open_window_keeps_the_plain_refusal(self):
+        mods, _fns = _mocks()
+        state = _make_combat_state()
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.has_reaction_ability = True
+        player.reaction_ids = ["rogue_uncanny_dodge"]
+        state.reactions_available = {"player_1": reaction_spend.unspent()}
+        ctx = make_context()
+        ctx.userdata.combat_state = state
+
+        with pytest.raises(ToolError) as raised:
+            await _activate_impl(ctx, "uncanny_dodge", **mods)
+
+        assert str(raised.value) == "'uncanny_dodge' is not an activatable capability."
 
 
 class TestToolRegistration:

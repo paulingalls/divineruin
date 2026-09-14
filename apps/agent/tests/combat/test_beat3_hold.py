@@ -179,7 +179,15 @@ class TestTheTwoWindows:
         r1 = await _call(ctx, deps)  # the pre-roll window
 
         assert set(r1["next"]) == {"phase", "verbs", "waiting_on"}
-        assert set(r1["next"]["waiting_on"]) == {"window_id", "stage", "actor_id", "target_id", "triggers", "action"}
+        assert set(r1["next"]["waiting_on"]) == {
+            "window_id",
+            "stage",
+            "actor_id",
+            "target_id",
+            "triggers",
+            "action",
+            "reactions",
+        }
         assert "resolve_phase" in r1["next"]["verbs"]
 
     @pytest.mark.asyncio

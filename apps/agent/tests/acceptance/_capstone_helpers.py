@@ -18,6 +18,7 @@ from combat import _helpers as _combat_helpers
 
 import db_mutations
 import event_types as E
+from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
 
 _PLAYER_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -95,8 +96,14 @@ async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player
     ability's archetype, and the activation deducts Stamina/Focus the default seed has no pools for.
     It seeds through ``seed_player_with_pools`` in the SAME call rather than topping the pools up
     afterwards, because ``seed_player`` replaces ``data`` wholesale. Omitted, the seed is unchanged.
+    The class also gives the participant its reaction ids, as ``start_combat`` does; without them no
+    window names a reaction the DM can pass.
     """
     if player_class is not None:
+        player = state.get_participant(player_id)
+        assert player is not None, f"{player_id!r} is not in the hand-built combat"
+        player.reaction_ids = class_reaction_ids(player_class)
+        player.has_reaction_ability = bool(player.reaction_ids)
         await seed_player_with_pools(pool, player_id=player_id, class_=player_class)
     else:
         await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")

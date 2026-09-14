@@ -47,9 +47,9 @@ def next_envelope(state) -> dict:
     ``activate`` IS legal at an open window since story-017 — validate_reaction_activation gates
     on this very ``open_window`` — and it is still deliberately ABSENT from ``verbs``, because
     ``verbs`` names the ADVANCE move and only resolve_phase advances a paused beat. The producer
-    for activation is the prompt plus ``waiting_on.triggers``, which name the windows the DM's
-    reaction must match (constraint 6); listing a non-advancing verb here would contradict the
-    "not a whitelist" reading in the same payload.
+    for activation is ``waiting_on.reactions``: the exact reaction ids this window accepts, named
+    by the same gate activation enforces, so the DM never guesses an id (constraint 6). Listing a
+    non-advancing verb here would contradict the "not a whitelist" reading in the same payload.
     """
     if state.open_window is not None:
         window = state.open_window
@@ -63,6 +63,7 @@ def next_envelope(state) -> dict:
                 "target_id": window["target_id"],
                 "triggers": window["triggers"],
                 "action": _held_action_name(state),
+                "reactions": combat_phase.offered_reactions(state),
             },
         }
     if state.beat == combat_phase.PhaseBeat.NARRATION:

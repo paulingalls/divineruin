@@ -278,6 +278,12 @@ def _bring_the_blow_forward(harness: SimpleNamespace) -> None:
     attack = sd.combat_state.held_actions[0]["roll"]["attack_result"]
     assert "on_hit" in window["triggers"], f"the post-roll window offers {window['triggers']}"
     assert attack["hit"] is True, "the held blow missed — a halved figure would be indistinguishable"
+    # What the DM was HANDED at the pause, not engine state: the producer of the id it must pass
+    # (constraint 6). A DM that guesses, is refused, and looks the id up still passes the activate step.
+    turns = harness.state["turns"]
+    paused_on = [o for o in (output_for(turns, c) for c in calls(turns, "resolve_phase")) if not o.is_error][-1]
+    offered = [reaction["id"] for reaction in json.loads(paused_on.output)["next"]["waiting_on"]["reactions"]]
+    assert _DODGE in offered, f"the post-roll pause offered the DM {offered}"
     harness.state["premise"] = {
         "window_id": window["id"],
         "full": attack["damage"],
