@@ -147,6 +147,15 @@ def advance_combat_phase(
                     f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
                     f"available actions: {available}"
                 )
+            if declaration.type is DeclarationType.ABILITY and actor.type != "player":
+                # Resolution wastes every other non-player ABILITY (combat_ability._resolve_ability_packet).
+                pool_action = _find_action(actor, declaration.action)
+                if actor.is_ally or pool_action is None or not pool_action.get("applies_condition"):
+                    available = [action["name"] for action in actor.action_pool]
+                    raise ValueError(
+                        f"{actor.name} ({actor.id}) cannot declare ability {declaration.action!r}: only players "
+                        f"cast abilities, and an enemy only its condition actions; declare an attack from {available}"
+                    )
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {
             p.id: reaction_spend.unspent()

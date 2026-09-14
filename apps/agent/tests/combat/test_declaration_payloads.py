@@ -154,6 +154,48 @@ def test_mapped_unknown_actor_fails_at_the_engine_boundary(decl):
     assert all(value in str(raised.value) for value in ("goblin_1", "player_1", "goblin_scout_1"))
 
 
+def _state_whose_enemy_can_shriek():
+    state = _make_combat_state()
+    enemy = state.get_participant("goblin_scout_1")
+    assert enemy is not None
+    enemy.action_pool = [*enemy.action_pool, {"name": "Hollow Shriek", "applies_condition": "frightened"}]
+    return state
+
+
+def _ability(action: str):
+    return to_engine_declarations(
+        [AbilityDecl(kind="ability", actor_id="goblin_scout_1", action=action, targets=["player_1"], argument_type="")]
+    )
+
+
+@pytest.mark.parametrize(
+    ("actor_type", "action"),
+    [
+        pytest.param("enemy", "Scimitar", id="enemy-plain-pool-action"),
+        pytest.param("enemy", "Grasping Maw", id="enemy-unknown-action"),
+        pytest.param("companion", "Hollow Shriek", id="companion-even-with-a-condition-action"),
+    ],
+)
+def test_a_non_player_ability_that_cannot_resolve_fails_at_the_engine_boundary(actor_type, action):
+    state = _state_whose_enemy_can_shriek()
+    actor = state.get_participant("goblin_scout_1")
+    assert actor is not None
+    actor.type = actor_type
+
+    with pytest.raises(ValueError) as raised:
+        advance_combat_phase(state, _ability(action))
+
+    assert all(value in str(raised.value) for value in ("goblin_scout_1", action, "Scimitar"))
+
+
+def test_an_enemy_ability_naming_its_condition_action_is_accepted():
+    engine = _ability("Hollow Shriek")
+
+    next_state, _ = advance_combat_phase(_state_whose_enemy_can_shriek(), engine)
+
+    assert next_state.pending_declarations == engine
+
+
 def test_declare_time_action_check_matches_case_insensitively_like_resolution():
     engine = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id="goblin_scout_1", action="sCiMiTaR", target_id="player_1", rider="")]
