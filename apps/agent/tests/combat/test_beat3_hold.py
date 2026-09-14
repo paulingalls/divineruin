@@ -32,6 +32,9 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, reactions=True):
     """A phase at the RESOLUTION beat with one ally attack and one enemy attack declared."""
     ctx = make_context()
     state = _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
     state.reactions_available = {"player_1": reaction_spend.unspent()} if reactions else {}
     ctx.userdata.combat_state = state
     return ctx
@@ -195,10 +198,8 @@ class TestTheTwoWindows:
         assert result["next"]["waiting_on"]["action"] is None
 
 
-class TestTheNoReactionGate:
-    """AC9 — game_mechanics_combat.md:131: "If the player has no reaction abilities, the DM
-    doesn't pause — narration flows continuously." Without this a three-enemy round opens six
-    windows the party cannot consume after its first spend, and the pause becomes noise."""
+class TestTheReactionBudgetGate:
+    """Missing, spent, and fallen-player budgets cannot hold the beat open."""
 
     @pytest.mark.asyncio
     async def test_no_window_opens_when_no_reaction_is_available(self):
@@ -249,7 +250,16 @@ class TestTheNoReactionGate:
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.participants.append(
-            CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
+            CombatParticipant(
+                id="player_2",
+                name="Bren",
+                type="player",
+                initiative=8,
+                hp_current=20,
+                hp_max=20,
+                ac=14,
+                has_reaction_ability=True,
+            )
         )
         cs.initiative_order.append("player_2")
         cs.get_participant("player_1").is_fallen = True

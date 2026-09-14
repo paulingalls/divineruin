@@ -9,6 +9,7 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import abilities
 import check_resolution_save
 import combat_enhancers
 import combat_resolution
@@ -233,6 +234,12 @@ async def _start_combat_impl(
     participants: list[CombatParticipant] = []
     for mid, row in member_players:
         row_hp = row.get("hp", {})
+        player_class = row.get("class")
+        if not isinstance(player_class, str):
+            raise ToolError(f"Player {mid!r} has invalid class {player_class!r}.")
+        archetype_abilities = abilities.get_archetype_abilities(player_class)
+        if not archetype_abilities:
+            raise ToolError(f"Player {mid!r} has class {player_class!r} with no catalog abilities.")
         # Synthesize the member's combat action_pool from equipped weapons. Each equipment
         # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
         # player attack declaration resolves through the same packet path as enemies and
@@ -261,6 +268,7 @@ async def _start_combat_impl(
                 # extra_attack is grantable today; the rest populate when their grants land.
                 enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
                 conditions=row_conditions,
+                has_reaction_ability=any(ability.ability_type == "reaction" for ability in archetype_abilities),
                 # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
                 # the participant so resolve_saving_throw adds the bonus when an enemy imposes
                 # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).

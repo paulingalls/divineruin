@@ -46,6 +46,7 @@ class TestStartCombatDifficulty:
         mock_queries.get_player = AsyncMock(
             return_value={
                 "name": "Kael",
+                "class": "warrior",
                 "hp": {"current": 25, "max": 30},
                 "ac": 15,
                 "attributes": {"dexterity": 12},
@@ -103,6 +104,7 @@ class TestStartCombatDifficulty:
         mock_queries.get_player = AsyncMock(
             return_value={
                 "name": "Kael",
+                "class": "warrior",
                 "hp": {"current": 25, "max": 30},
                 "ac": 15,
                 "attributes": {"dexterity": 12},
