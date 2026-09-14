@@ -27,7 +27,8 @@ never by reading the one scope it is about to write. Dismissal drops the innermo
 then reads the LOCATION — the only scope that can still cover the party once the inner one is
 gone — so that single read IS the resolved state, no separate resolve call needed.
 
-Mirrors the ability_tools seam: module-injection keyword args (db_mod/queries_mod/
+The session combat-state lock is acquired before any nested transaction. Mirrors the ability_tools
+seam: module-injection keyword args (db_mod/queries_mod/
 persistence_mod/ward_mutations_mod/ward_mod/combat_mod/resolution_mod) for test mocking, a single
 db.transaction() block, and ToolError for every user-facing failure. The publish lands on the
 session's game_events channel post-commit, mirroring the spell cast path.
@@ -69,6 +70,35 @@ async def _activate_veil_ward_impl(
     resolution_mod=ward_resolution,
 ) -> str:
     context.disallow_interruptions()
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _activate_veil_ward_locked(
+            context,
+            active,
+            caster_id=caster_id,
+            db_mod=db_mod,
+            queries_mod=queries_mod,
+            persistence_mod=persistence_mod,
+            ward_mutations_mod=ward_mutations_mod,
+            ward_mod=ward_mod,
+            combat_mod=combat_mod,
+            resolution_mod=resolution_mod,
+        )
+
+
+async def _activate_veil_ward_locked(
+    context: RunContext[SessionData],
+    active: bool,
+    *,
+    caster_id: str | None,
+    db_mod,
+    queries_mod,
+    persistence_mod,
+    ward_mutations_mod,
+    ward_mod,
+    combat_mod,
+    resolution_mod,
+) -> str:
     session: SessionData = context.userdata
     pid = caster_id or session.player_id
     # caster_id is untrusted LLM input at the tool boundary; member_state fails loud (ValueError)

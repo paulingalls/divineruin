@@ -68,6 +68,17 @@ async def _declare_phase_impl(
     *,
     mutations=db_mutations,
 ) -> str:
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _declare_phase_locked(context, declarations, mutations=mutations)
+
+
+async def _declare_phase_locked(
+    context: RunContext[SessionData],
+    declarations: dict[str, dict],
+    *,
+    mutations=db_mutations,
+) -> str:
     logger.info("declare_phase called: %d declarations", len(declarations or {}))
     session: SessionData = context.userdata
 
@@ -419,6 +430,17 @@ async def consume_legendary_action(
 
 
 async def _consume_legendary_action_impl(
+    context: RunContext[SessionData],
+    boss_id: str,
+    *,
+    mutations=db_mutations,
+) -> str:
+    session: SessionData = context.userdata
+    async with session.combat_end_lock:
+        return await _consume_legendary_action_locked(context, boss_id, mutations=mutations)
+
+
+async def _consume_legendary_action_locked(
     context: RunContext[SessionData],
     boss_id: str,
     *,

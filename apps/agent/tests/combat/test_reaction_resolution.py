@@ -90,6 +90,7 @@ SHIELD_OF_FAITH = "cleric_shield_of_faith"
 # against fear/charm, not +2 AC (reaction_windows' module docstring names both). Excluded by name
 # so a SEVENTH row appearing in that window is a decision someone made, not an accident.
 COUNTERCHARMS = frozenset({"bard_countercharm", "diplomat_countercharm"})
+UNWIRED_ON_HIT = frozenset({"druid_bark_skin", "warden_bark_skin", "warrior_brace_for_impact"})
 
 
 @pytest.mark.asyncio
@@ -172,6 +173,11 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
 
     guarding = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_ally_targeted"}
     assert guarding - COUNTERCHARMS == set(combat_reaction_effect.AC_BONUS)
+
+    on_hit = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_hit"}
+    wired_on_hit = combat_reaction_effect.HALVES_DAMAGE | combat_reaction_effect.SHIELD_BEARING
+    assert not (wired_on_hit & UNWIRED_ON_HIT)
+    assert on_hit == wired_on_hit | UNWIRED_ON_HIT
 
 
 INERT_REACTION = "skirmisher_sidestep"  # on_targeted — deliberately outside the wired set

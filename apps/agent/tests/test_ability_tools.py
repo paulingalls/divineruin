@@ -249,10 +249,8 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
 
     async def test_reaction_spend_lands_on_the_state_the_session_holds_after_payment(self):
-        """consume_legendary_action takes no combat_end_lock and swaps in a deep copy of the state,
-        and LiveKit runs one generation's tool calls as concurrent tasks — so the swap can land
-        while this activation awaits its resource write. A spend written to the pre-await object
-        is lost: the player paid and the live state still holds an unspent reaction."""
+        """An awaited payment can replace state through an injected persistence seam. A spend
+        written to the pre-await object is lost: the player paid and live state remains unspent."""
         ctx = _reaction_context()
         persistence = MagicMock()
 

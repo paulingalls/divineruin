@@ -326,19 +326,10 @@ class SessionData:
     # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
     # SpecializationTapHandler from the verified sender, consumed and cleared by select.
     pending_specialization_tap: SpecializationTap | None = None
-    # Serialises the two tools that can END a fight — resolve_phase (whose WRAP may hit the engine's
-    # end-condition) and the standalone end_combat. Both use `combat_state` as their only re-entry
-    # guard and can only release it AFTER their transaction commits (releasing earlier would let a
-    # retried end pay the party twice). That leaves a window in which a second end passes
-    # _require_combat while the first is still inside its transaction, and both run
-    # grant_victory_rewards: the encounter's XP, coin and loot granted twice, level-ups and
-    # milestone auto-grants included (concern a2e2398451ee). Two parallel tool calls in one LLM
-    # turn are the ordinary way in.
-    #
-    # Held for the WHOLE call, transaction included: the waiter then re-reads combat_state after the
-    # holder cleared it and gets an honest "Not in combat" instead of a second payout. Combat is
-    # session-scoped and lives in one process, so this is the guard — not a stand-in for one. A
-    # combat resumed by a SECOND agent process would still need a DB-level end token.
+    # Serialises every read/copy/full-save/adopt operation on combat_state, including combat start
+    # and end. It is held across nested DB transactions so all writers use one lock order. Combat
+    # is session-scoped and lives in one process; a combat resumed by a second agent process would
+    # still need a DB-level token.
     combat_end_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):
