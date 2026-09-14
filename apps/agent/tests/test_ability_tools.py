@@ -249,8 +249,9 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
 
     async def test_reaction_spend_lands_on_the_state_the_session_holds_after_payment(self):
-        """An awaited payment can replace state through an injected persistence seam. A spend
-        written to the pre-await object is lost: the player paid and live state remains unspent."""
+        """The spend is recorded on the state the session holds after payment, never on the reference
+        read before the await. The persistence seam swaps state mid-payment to exercise that rule; a
+        spend written to the pre-await object is lost, the player paid and live state stays unspent."""
         ctx = _reaction_context()
         persistence = MagicMock()
 
