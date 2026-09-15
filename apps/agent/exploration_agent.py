@@ -14,6 +14,7 @@ delayed session close. The session END is not here: see ``session_end.py``.
 import asyncio
 import logging
 import time
+from functools import partial
 from typing import Any
 
 from livekit import agents
@@ -38,6 +39,7 @@ from scene_tools import enter_location
 from session_data import SessionData
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
+from task_logging import log_task_failure
 from travel_tools import travel
 from warm_prompts import format_affect_context, format_combat_hot_line
 
@@ -48,11 +50,6 @@ logger = logging.getLogger("divineruin.exploration")
 # it without patching `asyncio.sleep`, which is the shared module object — patching it
 # there stubs the vendor's timing for everything running in the same block.
 CLOSE_DELAY_S = 3.0
-
-
-def _log_close_failure(task: asyncio.Task) -> None:
-    if not task.cancelled() and task.exception():
-        logger.error("Delayed session close failed", exc_info=task.exception())
 
 
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
@@ -198,7 +195,9 @@ class ExplorationAgent(BaseGameAgent):
             # Leaving the bag also left the failure unlogged: `self.session` raises
             # RuntimeError once the agent is no longer running, so a handoff inside the
             # wrap-up window would silently abandon the close — and with it the recap.
-            self._close_task.add_done_callback(_log_close_failure)
+            self._close_task.add_done_callback(
+                partial(log_task_failure, logger=logger, message="Delayed session close failed")
+            )
 
     async def _delayed_close(self) -> None:
         await asyncio.sleep(CLOSE_DELAY_S)

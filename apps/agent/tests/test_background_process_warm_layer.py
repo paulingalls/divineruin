@@ -148,7 +148,7 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_handles_exception(self):
-        """_rebuild_warm_layer should not raise if build_warm_layer fails."""
+        """A transient fetch failure preserves the prior warm layer."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -163,11 +163,10 @@ class TestWarmLayerRebuild:
             with patch(
                 "background_process.db_content_queries.get_location",
                 new_callable=AsyncMock,
-                side_effect=Exception("DB down"),
+                side_effect=OSError("DB down"),
             ):
-                await bp._rebuild_warm_layer()  # Should not raise
+                await bp._rebuild_warm_layer()
 
-                # Warm layer should be unchanged since build failed
                 assert bp._last_warm_layer == "old content"
 
     @pytest.mark.asyncio

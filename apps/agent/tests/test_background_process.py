@@ -316,7 +316,7 @@ class TestRebuildWarmLayer:
 
     @patch("background_process.build_warm_layer", new_callable=AsyncMock)
     async def test_handles_build_failure(self, mock_build):
-        mock_build.side_effect = Exception("DB down")
+        mock_build.side_effect = OSError("DB down")
         bg, agent, _ = _make_bg()
         with _mock_db_for_warm_layer():
             await bg._rebuild_warm_layer()

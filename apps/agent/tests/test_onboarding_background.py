@@ -1,7 +1,9 @@
 """Tests for OnboardingBackgroundProcess — lightweight stall detection for beats 4-5."""
 
+import asyncio
+import logging
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -188,3 +190,28 @@ class TestCheckNudge:
         )
         await bg._check_nudge()
         assert companion.last_speech_time > 0
+
+
+@pytest.mark.asyncio
+async def test_running_process_logs_check_failure(caplog):
+    bg, _, _ = _make_bg()
+    failure = RuntimeError("nudge broke")
+    with (
+        patch("onboarding_background.POLL_INTERVAL_SECONDS", 0),
+        patch.object(bg, "_check_nudge", new_callable=AsyncMock, side_effect=failure),
+        caplog.at_level(logging.ERROR, logger="divineruin.onboarding_background"),
+    ):
+        bg.start()
+        with pytest.raises(RuntimeError, match="nudge broke") as raised:
+            await asyncio.wait_for(bg._task, timeout=2)
+        await asyncio.sleep(0)
+
+    records = [
+        record
+        for record in caplog.records
+        if record.name == "divineruin.onboarding_background" and record.levelno == logging.ERROR
+    ]
+    assert len(records) == 1
+    assert records[0].message == "Onboarding background process failed"
+    assert records[0].exc_info is not None
+    assert records[0].exc_info[1] is raised.value
