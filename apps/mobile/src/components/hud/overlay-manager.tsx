@@ -15,6 +15,7 @@ import { DivineFavorToast } from "./divine-favor-toast";
 import { CreationCardRow } from "./creation-card-row";
 import { SpecializationOverlay } from "./specialization-overlay";
 import { NpcPortraitOverlay } from "./npc-portrait-overlay";
+import { CompanionPortraitOverlay } from "./companion-portrait-overlay";
 import { HollowEchoOverlay } from "./hollow-echo-overlay";
 import { VeilWardIndicator } from "./veil-ward-indicator";
 
@@ -114,6 +115,7 @@ export function OverlayManager() {
 
       {/* NPC portrait */}
       <NpcPortraitOverlay />
+      <CompanionPortraitOverlay />
     </View>
   );
 }

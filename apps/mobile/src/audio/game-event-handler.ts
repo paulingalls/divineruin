@@ -306,6 +306,12 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
+    case E.COMPANION_CUE:
+      if (typeof event.voice_id === "string") {
+        handleTranscriptPortraits("npc", event.voice_id);
+      }
+      break;
+
     case E.ITEM_ACQUIRED:
       if (isEventForLocalPlayer(event.player_id)) {
         hudStore.getState().pushOverlay("item_acquired", {

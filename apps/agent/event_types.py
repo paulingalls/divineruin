@@ -107,6 +107,7 @@ HIDDEN_REVEALED = "hidden_revealed"
 
 # Transcript
 TRANSCRIPT_ENTRY = "transcript_entry"
+COMPANION_CUE = "companion_cue"
 
 # Character creation
 CREATION_CARDS = "creation_cards"

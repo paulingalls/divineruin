@@ -19,6 +19,7 @@ from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_f
 import combat_events
 import combat_rewards
 import combat_support
+import companion_cue_events
 import db_session_queries
 import event_types
 import hollow_echo
@@ -28,6 +29,7 @@ import veil_ward_events
 from check_resolution_attack import AttackResult
 from hollow_echo import HollowEchoResult
 from progression_tools import _award_divine_favor_core, _award_xp_core
+from session_data import CompanionState
 from spells import Spell
 from veil_ward import WardScope
 
@@ -57,6 +59,23 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["item_acquired"]["type"] == event_types.ITEM_ACQUIRED
     assert FIXTURE["events"]["combat_attack_hit"]["type"] == event_types.DICE_ROLL
     assert FIXTURE["events"]["combat_attack_miss"]["type"] == event_types.DICE_ROLL
+    assert FIXTURE["events"]["companion_cue"]["type"] == event_types.COMPANION_CUE
+
+
+@pytest.mark.asyncio
+async def test_companion_cue_serializes_to_fixture_without_event_bus() -> None:
+    expected = FIXTURE["events"]["companion_cue"]
+    sd = MagicMock()
+    companion = CompanionState(id="companion_sable", name="Sable")
+
+    with patch("companion_cue_events.publish_game_event", new_callable=AsyncMock) as pub:
+        await companion_cue_events.publish_companion_cue(sd, companion)
+
+    assert _captured_wire(pub) == expected
+    call = pub.await_args
+    assert call is not None
+    assert call.args == (sd.room, event_types.COMPANION_CUE, {"voice_id": expected["voice_id"]})
+    assert call.kwargs == {}
 
 
 @pytest.mark.parametrize("fixture_name", ["combat_attack_hit", "combat_attack_miss"])
