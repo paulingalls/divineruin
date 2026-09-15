@@ -6,6 +6,10 @@
     "gender": "male",
     "age": "early 30s",
     "appearance": "broad-shouldered, practical gear worn soft from use, old scars on his forearms, watchful eyes that track exits",
+    "portrait": {
+      "primary": "companion_kael_primary",
+      "alert": "companion_kael_alert"
+    },
     "personality": [
       "steady",
       "practical",
@@ -160,6 +164,10 @@
     "gender": "female",
     "age": "late 20s",
     "appearance": "slight, ink-stained fingers, a scholar's satchel always within reach, eyes that narrow when she's working something out",
+    "portrait": {
+      "primary": "companion_lira_primary",
+      "alert": "companion_lira_alert"
+    },
     "personality": [
       "sharp",
       "precise",
@@ -309,6 +317,10 @@
     "gender": "nonbinary",
     "age": "early 20s",
     "appearance": "wiry and quick, frontier leathers, a half-grin that fades fast, always half-turned toward the nearest exit or vantage",
+    "portrait": {
+      "primary": "companion_tam_primary",
+      "alert": "companion_tam_alert"
+    },
     "personality": [
       "bright",
       "energetic",
@@ -458,6 +470,10 @@
     "gender": "female",
     "age": "unknown",
     "appearance": "a sleek dark fox edged in shifting shadow, eyes that catch impossible light, moves without sound",
+    "portrait": {
+      "primary": "companion_sable_primary",
+      "alert": "companion_sable_alert"
+    },
     "personality": [
       "watchful",
       "intuitive",

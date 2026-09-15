@@ -1,6 +1,18 @@
 import { test, expect } from "bun:test";
 import { resolvePrompt, PROMPT_TEMPLATES } from "./image-prompt-templates.ts";
 
+interface CompanionPromptVars {
+  id: string;
+  appearance: string;
+  species: string;
+  gender: string;
+  age: string;
+}
+
+const companions = (await Bun.file(
+  new URL("../../../content/companions.json", import.meta.url),
+).json()) as CompanionPromptVars[];
+
 test("resolvePrompt substitutes variables correctly", () => {
   const { prompt } = resolvePrompt("npc_portrait", {
     description: "an elderly female merchant",
@@ -11,10 +23,27 @@ test("resolvePrompt substitutes variables correctly", () => {
   expect(prompt).not.toContain("{{");
 });
 
-test("resolvePrompt works with no variables", () => {
-  const { prompt } = resolvePrompt("companion_portrait_primary", {});
-  expect(prompt).toContain("Ink wash portrait");
-  expect(prompt).not.toContain("{{");
+test("companion portraits use each authored subject without Kael assumptions", () => {
+  const subjects = companions.filter((companion) =>
+    ["companion_lira", "companion_tam", "companion_sable"].includes(companion.id),
+  );
+
+  for (const companion of subjects) {
+    const vars = {
+      appearance: companion.appearance,
+      species: companion.species,
+      gender: companion.gender,
+      age: companion.age,
+    };
+    for (const templateId of ["companion_portrait_primary", "companion_portrait_alert"]) {
+      const { prompt } = resolvePrompt(templateId, vars);
+      expect(prompt).toContain(companion.appearance);
+      expect(prompt).not.toContain("{{");
+      expect(prompt.toLowerCase()).not.toContain("young male ranger");
+      expect(prompt.toLowerCase()).not.toContain("scar across");
+      expect(prompt).not.toMatch(/\b(?:he|him|his)\b/i);
+    }
+  }
 });
 
 test("resolvePrompt throws on missing required variable", () => {
