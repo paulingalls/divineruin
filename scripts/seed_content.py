@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import asyncpg
 
@@ -14,7 +15,7 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
-from world_effect_targets import is_valid_disposition_target  # noqa: E402
+from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent / "content"
 
@@ -73,6 +74,28 @@ def upsert_query(table: str) -> str:
         raise ValueError(f"Invalid table name: {table}")
     pk_col = PK_COLUMN.get(table, "id")
     return UPSERT_SQL.format(table=table, pk_col=pk_col)
+
+
+_MISPARSED_URL = "DATABASE_URL does not parse; percent-encode reserved characters in the password"
+
+
+def database_target(database_url: str) -> str:
+    # A reserved character left unencoded in the password misparses the URL, and the refusal must
+    # not print it: the parse's ValueError quotes what it misread (`from None` drops that from the
+    # traceback), and an unencoded '/' can parse cleanly with the user read as the host, the digits
+    # before the '/' as the port, and the rest of the password stranded, '@' and all, after the netloc
+    # (in the path, or the query or fragment when it also holds a '?' or '#').
+    try:
+        parsed = urlsplit(database_url)
+        port = parsed.port
+    except ValueError:
+        raise RuntimeError(_MISPARSED_URL) from None
+    if "@" in parsed.path + parsed.query + parsed.fragment:
+        raise RuntimeError(_MISPARSED_URL)
+    database = parsed.path.lstrip("/")
+    if not parsed.hostname or port is None or not database:
+        raise RuntimeError("DATABASE_URL must include an explicit host, port, and database")
+    return f"host={parsed.hostname} port={port} database={database}"
 
 
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
@@ -262,10 +285,11 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 
 async def main() -> None:
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin",
-    )
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL must be set to seed content")
+    target = database_target(database_url)
+    print(f"Target database: {target}")
     conn = await asyncpg.connect(database_url)
 
     try:
@@ -285,7 +309,7 @@ async def main() -> None:
             sys.exit(1)
         else:
             total = sum(counts.values())
-            print(f"\nDone: {total} entities seeded, all validations passed.")
+            print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:
         await conn.close()
 
