@@ -18,6 +18,7 @@ import db_training
 import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
+from companion_cue_events import publish_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
 from system_prompts import build_companion_cue, is_companion_cue
@@ -267,6 +268,10 @@ class BackgroundProcess:
         # player has fallen". At equal urgency the most recent event is the one the player is in.
         top = max(speakable, key=lambda s: (s.priority, s.created))
         self._speech_queue = held
+
+        companion = self._sd.companion
+        if companion and is_companion_cue(top.instructions, companion):
+            await publish_companion_cue(self._sd, companion)
 
         try:
             # Fire stinger SFX before god whisper speech

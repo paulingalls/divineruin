@@ -30,7 +30,7 @@ import {
 } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
 import { handleSessionInit } from "./game-event-session-init";
-import { handleTranscriptPortraits } from "./transcript-portrait-gate";
+import { handleTranscriptPortraits, showCompanionPortrait } from "./transcript-portrait-gate";
 
 /** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
 const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
@@ -305,6 +305,12 @@ export function handleGameEvent(event: DataChannelEvent): void {
       handleTranscriptPortraits(speaker, characterName);
       break;
     }
+
+    case E.COMPANION_CUE:
+      if (typeof event.voice_id === "string") {
+        showCompanionPortrait(event.voice_id);
+      }
+      break;
 
     case E.ITEM_ACQUIRED:
       if (isEventForLocalPlayer(event.player_id)) {

@@ -1,6 +1,7 @@
 import { test, expect, beforeEach, spyOn } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
+import * as E from "@/audio/event-types";
 import {
   DIVINE_FAVOR_CHANGED,
   HOLLOW_ECHO_RESULT,
@@ -14,6 +15,7 @@ import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handl
 import * as sfxPlayer from "@/audio/sfx-player";
 import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
+import { portraitStore } from "@/stores/portrait-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
 import { captureTimers, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
@@ -31,6 +33,7 @@ const SPELL_ROW = FIXTURE.spell_row;
 // --- Type-string parity: the fixture pins to the TS constants (mirrors the Python pin) ---
 
 test("fixture event types match the TS wire constants", () => {
+  expect(EVENTS.companion_cue.type).toBe(E.COMPANION_CUE);
   expect(EVENTS.resonance_changed.type).toBe(RESONANCE_CHANGED);
   expect(EVENTS.hollow_echo_result.type).toBe(HOLLOW_ECHO_RESULT);
   expect(EVENTS.veil_ward_changed.type).toBe(VEIL_WARD_CHANGED);
@@ -40,6 +43,15 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.item_acquired.type).toBe(ITEM_ACQUIRED);
   expect(EVENTS.combat_attack_hit.type).toBe("dice_roll");
   expect(EVENTS.combat_attack_miss.type).toBe("dice_roll");
+});
+
+test("companion_cue fixture shows the assigned companion portrait", () => {
+  portraitStore.getState().setCompanionIdentity("Sable", EVENTS.companion_cue.voice_id);
+  portraitStore.getState().setCompanionPortraits("/api/assets/images/sable", null);
+
+  handleGameEvent({ ...EVENTS.companion_cue });
+
+  expect(portraitStore.getState().companionVisible).toBe(true);
 });
 
 for (const [fixtureName, expectedStinger] of [

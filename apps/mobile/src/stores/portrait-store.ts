@@ -3,16 +3,16 @@ import { createStore } from "zustand/vanilla";
 export type NpcPortrait = { name: string; url: string };
 
 interface PortraitState {
-  // Written by session_init and the transcript gate; read by NO component today —
-  // npc-portrait-overlay renders activeNpc only, so the companion portrait reaches the store
-  // and stops there. The HUD consumer is unbuilt, not merely unstyled.
+  // Both variants arrive at session init so combat can change expression locally without
+  // waiting for another server event.
   companionPrimaryUrl: string | null;
   companionAlertUrl: string | null;
   companionVisible: boolean;
   /** The assigned companion's display name, from session_init. */
   companionName: string | null;
   /** The assigned companion's voice tag (e.g. "COMPANION_LIRA") — the value
-   *  transcript_entry.character actually carries, so it is what the portrait gate matches. */
+   *  transcript_entry.character and companion_cue.voice_id carry, so it is what the portrait
+   *  gate matches. */
   companionVoiceId: string | null;
   activeNpc: NpcPortrait | null;
   npcPortraitMap: Partial<Record<string, NpcPortrait>>;

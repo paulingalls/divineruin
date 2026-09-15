@@ -1,8 +1,10 @@
 """Assigned-companion cues emitted by background and onboarding processes."""
 
+import json
 import re
 import time
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -50,12 +52,25 @@ def _companion(companion_id: str, **changes: object) -> CompanionState:
 
 
 def _session_data(companion: CompanionState | None) -> SessionData:
-    return SessionData(
+    sd = SessionData(
         player_id="player_1",
         location_id="accord_guild_hall",
         patron_id="kaelen",
         companion=companion,
     )
+    room = MagicMock()
+    room.isconnected.return_value = True
+    room.local_participant.publish_data = AsyncMock()
+    sd.room = room
+    return sd
+
+
+def _publisher(sd: SessionData) -> AsyncMock:
+    return cast(AsyncMock, cast(Any, sd.room).local_participant.publish_data)
+
+
+def _published_packets(sd: SessionData) -> list[dict]:
+    return [json.loads(call.args[0]) for call in _publisher(sd).await_args_list]
 
 
 def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
@@ -153,6 +168,9 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
     sd.last_player_speech_time = time.time() - NUDGE_DELAY_SECONDS - 5
     session = MagicMock()
     session.generate_reply = AsyncMock()
+    order: list[str] = []
+    _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
+    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
     background = OnboardingBackgroundProcess(session, sd)
     background._last_active_beat = beat
     background._hint_index = index
@@ -161,6 +179,10 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
 
     instructions = session.generate_reply.await_args.kwargs["instructions"]
     _assert_assigned_cue(instructions, companion_id)
+    assert order == ["publish", "reply"]
+    assert _published_packets(sd) == [
+        {"type": "companion_cue", "voice_id": get_companion_profile(companion_id).voice_id}
+    ]
 
 
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)
@@ -169,11 +191,19 @@ async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -
     """Reader against the WRITER's own output — a reworded cue must not silently stop matching."""
     companion = _companion(companion_id, last_speech_time=0.0)
     instructions = build_companion_cue(companion, "reacts to the moment.", "steady")
-    background, _ = _background(_session_data(companion))
+    sd = _session_data(companion)
+    background, session = _background(sd)
+    order: list[str] = []
+    _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
+    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
     background._speech_queue.append(PendingSpeech(SpeechPriority.IMPORTANT, instructions))
 
     await background._deliver_speech()
 
+    assert order == ["publish", "reply"]
+    assert _published_packets(sd) == [
+        {"type": "companion_cue", "voice_id": get_companion_profile(companion_id).voice_id}
+    ]
     assert companion.last_speech_time > 0
 
 
@@ -183,7 +213,8 @@ async def test_delivery_gate_ignores_narration_that_is_not_a_companion_cue(compa
     """Narration-only delivery must not reset the idle clock, or it suppresses the next
     companion beat for a full COMPANION_IDLE_SECS."""
     companion = _companion(companion_id, last_speech_time=0.0)
-    background, _ = _background(_session_data(companion))
+    sd = _session_data(companion)
+    background, _ = _background(sd)
     background._speech_queue.append(
         PendingSpeech(
             SpeechPriority.IMPORTANT,
@@ -193,7 +224,21 @@ async def test_delivery_gate_ignores_narration_that_is_not_a_companion_cue(compa
 
     await background._deliver_speech()
 
+    assert _published_packets(sd) == []
     assert companion.last_speech_time == 0.0
+
+
+@pytest.mark.parametrize("companion_id", COMPANION_IDS)
+@pytest.mark.asyncio
+async def test_delivered_god_whisper_publishes_no_companion_cue(companion_id: str) -> None:
+    sd = _session_data(_companion(companion_id))
+    background, _ = _background(sd)
+    background._handle_events([GameEvent(E.WORLD_EVENT, GOD_WHISPER_PAYLOAD)])
+
+    with patch("background_process.asyncio.sleep", new_callable=AsyncMock):
+        await background._deliver_speech()
+
+    assert [packet["type"] for packet in _published_packets(sd)] == [E.PLAY_SOUND]
 
 
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)

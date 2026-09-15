@@ -29,3 +29,57 @@ test("tagged NPC transcript shows the authored portrait with an absolute image U
     /^http:\/\/localhost:3001\/api\/assets\/images\//,
   );
 });
+
+test("tagged companion transcript shows the assigned companion portrait", async ({
+  sessionPage,
+}) => {
+  await sessionPage.injectSessionInit({
+    companion: { name: "Lira", voice_id: "COMPANION_LIRA" },
+    portraits: {
+      companion: {
+        primary: "/api/assets/images/companion_lira_primary",
+        alert: "/api/assets/images/companion_lira_alert",
+      },
+      npcs: {},
+    },
+  });
+  await sessionPage.injectEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "COMPANION_LIRA",
+    text: "The road bends ahead.",
+  });
+
+  const overlay = sessionPage.page.getByTestId("companion-portrait-overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText("Lira");
+  await expect(overlay.locator("img")).toHaveAttribute(
+    "src",
+    /^http:\/\/localhost:3001\/api\/assets\/images\//,
+  );
+});
+
+test("Sable companion cue shows her portrait without a transcript tag", async ({ sessionPage }) => {
+  await sessionPage.injectSessionInit({
+    companion: { name: "Sable", voice_id: "COMPANION_SABLE" },
+    portraits: {
+      companion: {
+        primary: "/api/assets/images/companion_sable_primary",
+        alert: "/api/assets/images/companion_sable_alert",
+      },
+      npcs: {},
+    },
+  });
+  await sessionPage.injectEvent({
+    type: "companion_cue",
+    voice_id: "COMPANION_SABLE",
+  });
+
+  const overlay = sessionPage.page.getByTestId("companion-portrait-overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText("Sable");
+  await expect(overlay.locator("img")).toHaveAttribute(
+    "src",
+    /^http:\/\/localhost:3001\/api\/assets\/images\//,
+  );
+});
