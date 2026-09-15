@@ -4,9 +4,16 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents import Agent
 
 from base_agent import BaseGameAgent
 from session_data import SessionData
+
+
+def _instructions_text(agent: Agent) -> str:
+    instructions = agent._instructions
+    assert isinstance(instructions, str)
+    return instructions
 
 
 class TestOnboardingBeatField:
@@ -101,7 +108,7 @@ class TestOnboardingAgentClass:
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=1)
-        instructions = agent._instructions
+        instructions = _instructions_text(agent)
         assert "Arrival" in instructions or "arrival" in instructions
         assert "Market" in instructions or "market" in instructions
         assert "Companion" in instructions
@@ -124,7 +131,7 @@ class TestBeat34NamesTheAssignedCompanion:
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=3, companion_id=select_companion_for_archetype(archetype))
-        instructions = agent._instructions
+        instructions = _instructions_text(agent)
         assert name in instructions
         for other in {"Kael", "Lira", "Tam", "Sable"} - {name}:
             assert other not in instructions, f"{other} leaked into {name}'s prompt"
@@ -141,7 +148,7 @@ class TestBeat34NamesTheAssignedCompanion:
 
         companion_id = select_companion_for_archetype(archetype)
         c = get_companion_profile(companion_id)
-        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        instructions = _instructions_text(OnboardingAgent(onboarding_beat=3, companion_id=companion_id))
         assert c.onboarding_meeting in instructions
         assert c.onboarding_suggestion in instructions
 
@@ -157,7 +164,7 @@ class TestBeat34NamesTheAssignedCompanion:
         from onboarding_agent import OnboardingAgent
 
         companion_id = select_companion_for_archetype(archetype) if archetype else None
-        instructions = OnboardingAgent(onboarding_beat=3, companion_id=companion_id)._instructions
+        instructions = _instructions_text(OnboardingAgent(onboarding_beat=3, companion_id=companion_id))
         assert "### Beat 3 — Companion Meeting" in instructions
         assert "### Beat 4 — The Companion's Suggestion" in instructions
         assert "(this initializes the companion)" in instructions
@@ -169,21 +176,22 @@ class TestBeat34NamesTheAssignedCompanion:
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_lira")
-        assert "[COMPANION_LIRA," in agent._instructions
+        assert "[COMPANION_LIRA," in _instructions_text(agent)
 
     def test_a_non_verbal_companion_is_narrated_never_tagged(self):
         """Sable cannot self-introduce: a tagged line would send her to TTS she has no voice for."""
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_sable")
-        assert "[COMPANION_SABLE," not in agent._instructions
-        assert "narrate" in agent._instructions.lower()
+        instructions = _instructions_text(agent)
+        assert "[COMPANION_SABLE," not in instructions
+        assert "narrate" in instructions.lower()
 
     def test_an_unresolved_companion_renders_the_span_agnostically(self):
         """creation_tools swallows a failed selection deliberately; the character stays playable."""
         from onboarding_agent import OnboardingAgent
 
-        instructions = OnboardingAgent(onboarding_beat=3, companion_id=None)._instructions
+        instructions = _instructions_text(OnboardingAgent(onboarding_beat=3, companion_id=None))
         for cname in ("Kael", "Lira", "Tam", "Sable"):
             assert cname not in instructions
 
