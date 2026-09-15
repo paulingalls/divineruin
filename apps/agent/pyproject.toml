@@ -3,14 +3,15 @@ name = "divineruin-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents~=1.6.1",
-    "livekit-plugins-noise-cancellation~=0.2",
-    "livekit-plugins-anthropic~=1.6",
-    "livekit-plugins-deepgram~=1.6",
-    "livekit-plugins-inworld~=1.6",
+    "livekit-agents~=1.8.1",
+    "livekit-plugins-anthropic~=1.8.1",
+    "livekit-plugins-deepgram~=1.8.1",
+    "livekit-plugins-inworld~=1.8.1",
     "asyncpg>=0.30.0",
     "redis>=7.4.0",
-    "anthropic>=0.105.2",
+    # LiveKit 1.8.1 + Anthropic 1.x: "Invalid `http_client` argument; `httpx.AsyncClient` is from the `httpx` package, but this SDK uses `httpx2`."
+    # livekit/agents#7235; cap PR #7242 is unreleased in 1.8.1.
+    "anthropic>=0.105.2,<1",
     "httpx>=0.27.0",
 ]
 

@@ -3,10 +3,14 @@ import json
 import logging
 import os
 import re
+import sys
 import time
+from collections.abc import MutableMapping
+from pathlib import Path
 
 from livekit import agents
 from livekit.agents import AgentServer, AgentSession, inference
+from livekit.agents.__main__ import main as livekit_main
 from livekit.plugins import anthropic, deepgram
 
 import db
@@ -75,6 +79,24 @@ START_LOCATION = "accord_guild_hall"
 
 
 server = AgentServer()
+
+
+def _register_speech_end_tracking(session: AgentSession) -> None:
+    @session.on("agent_state_changed")
+    def _on_agent_state(ev):
+        if ev.old_state == "speaking":
+            session.userdata.last_agent_speech_end = time.time()
+
+
+def _livekit_cli_argv(argv: list[str], entrypoint: Path, environ: MutableMapping[str, str]) -> list[str]:
+    if argv[:1] == ["dev"]:
+        # The deprecated `dev` command set this and `start --dev` does not. livekit's is_dev_mode()
+        # selects the full v1 turn detector and enables adaptive interruption off LiveKit Cloud.
+        environ["LIVEKIT_DEV_MODE"] = "1"
+        return ["start", str(entrypoint), "--dev", "--log-format", "colored", "--log-level", "DEBUG", *argv[1:]]
+    if argv[:1] == ["start"]:
+        return ["start", str(entrypoint), *argv[1:]]
+    return argv
 
 
 def _extract_player_id(ctx: agents.JobContext) -> str:
@@ -270,8 +292,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
             # audio directly — intonation, pacing, trailing-off — instead of the STT transcript, so
             # natural mid-thought pauses don't get misread as end-of-turn. Replaces the deprecated
-            # text MultilingualModel. Version auto-selects per environment (v1 full on LiveKit Cloud,
-            # v1-mini local CPU elsewhere, with automatic fallback).
+            # text MultilingualModel. Version auto-selects per environment (v1 over the inference gateway
+            # on LiveKit Cloud and under `agent.py dev`, v1-mini local CPU elsewhere, with automatic fallback).
             turn_handling={
                 "turn_detection": inference.TurnDetector(),
                 "endpointing": {"min_delay": 0.5},
@@ -293,10 +315,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             userdata=userdata,
         )
 
-        @session.on("agent_state_changed")
-        def _on_agent_state(ev):
-            if ev.old_state == "speaking" and ev.new_state == "listening":
-                userdata.last_agent_speech_end = time.time()
+        _register_speech_end_tracking(session)
 
         return session
 
@@ -440,4 +459,4 @@ if __name__ == "__main__":
             pass
 
     atexit.register(_cleanup_db)
-    agents.cli.run_app(server)
+    raise SystemExit(livekit_main(_livekit_cli_argv(sys.argv[1:], Path(__file__).resolve(), os.environ)))

@@ -94,8 +94,10 @@ class TestReturningPlayerCompanion:
         assert isinstance(agent, OnboardingAgent)
         # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
         # reconnect construction is the site the card names as the fault-injection target.
-        assert "Lira" in agent._instructions
-        assert "Kael" not in agent._instructions
+        instructions = agent._instructions
+        assert isinstance(instructions, str)
+        assert "Lira" in instructions
+        assert "Kael" not in instructions
 
     @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
