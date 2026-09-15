@@ -21,19 +21,9 @@ test("the MVP batch derives exactly two portrait rows per companion without imag
   const expected = buildCompanionBatch(companions);
   expect(expected).toHaveLength(8);
   expect(expected.map((row) => row.assetId)).toEqual(
-    companions.flatMap((companion: { portrait: { primary: string; alert: string } }) => [
-      companion.portrait.primary,
-      companion.portrait.alert,
-    ]),
+    companions.flatMap((companion) => [companion.portrait.primary, companion.portrait.alert]),
   );
-  for (let index = 0; index < companions.length; index++) {
-    const companion = companions[index] as {
-      name: string;
-      appearance: string;
-      species: string;
-      gender: string;
-      age: string;
-    };
+  for (const [index, companion] of companions.entries()) {
     const vars = {
       appearance: companion.appearance,
       species: companion.species,
