@@ -118,13 +118,37 @@ async def transaction() -> AsyncIterator[asyncpg.Connection]:
             yield cast(asyncpg.Connection, conn)
 
 
+DESYNCED_REPLY_LOG = "Redis GET %s answered %r, not a string: discarding the desynced client (pool %r, loop %#x)"
+
+
 async def _cache_get(key: str) -> str | None:
     try:
         r = await get_redis()
-        return await r.get(key)
+        value = await r.get(key)
     except Exception:
         logger.warning("Redis read failed for key %s, falling through to DB", key)
         return None
+    if value is None or isinstance(value, str):
+        return value
+    await _discard_desynced_redis(r, key, value)
+    return None
+
+
+async def _discard_desynced_redis(r: aioredis.Redis, key: str, reply: object) -> None:
+    """Drop a client whose GET was answered with a non-string.
+
+    A string GET cannot reply with anything else, so the connection read bytes meant for another
+    command, and no later read on that client can be trusted. This tolerates exactly that shape; a
+    desynced connection that happens to hand back another key's string passes unseen.
+    """
+    global _redis
+    logger.error(DESYNCED_REPLY_LOG, key, reply, r.connection_pool, id(asyncio.get_running_loop()))
+    if _redis is r:
+        _redis = None
+    try:
+        await r.connection_pool.disconnect()
+    except Exception:
+        logger.exception("Disconnecting the desynced Redis pool failed")
 
 
 async def _cache_set(key: str, value: str) -> None:
