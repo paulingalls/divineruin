@@ -39,9 +39,8 @@ from crafting_tools import _query_available_workspaces_impl, _rent_workspace_imp
 CAPSTONE_RECIPE = "iron_shield"  # forge | iron_ingot x2 + leather_strip x1
 CAPSTONE_LOCATION = "millhaven"
 
-# The Forge + Laboratory bundle (story-015) is a city offer, so it needs a city with a
-# rentable NPC present: accord_forge is settlement_tier "city" and grimjaw_blacksmith's
-# schedule puts him there (default_disposition neutral -> the full 12sp/day).
+# The authored accord_forge row hosts both bundle workspace tags, and
+# grimjaw_blacksmith's schedule puts the rentable NPC there.
 BUNDLE_LOCATION = "accord_forge"
 BUNDLE_NPC = "grimjaw_blacksmith"
 
@@ -196,6 +195,7 @@ async def test_python_bundle_rental_is_read_by_the_ts_gate_as_forge_access(
         player_id,
         json.dumps(BUNDLE_LOCATION),
     )
+    await (await db.get_redis()).delete(f"location:{BUNDLE_LOCATION}")
 
     rental = json.loads(
         await _rent_workspace_impl(

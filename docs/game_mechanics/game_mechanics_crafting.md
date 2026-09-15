@@ -201,10 +201,12 @@ The primary method for accessing Workshop, Forge, and Laboratory. The player pay
 | Forge + Laboratory | City with both (or Keldaran hold) | 12 sp / day | 1 day minimum | Any recipe. Required for highest-tier crafting (Anti-Hollow weapons, Veil-Forged items) |
 
 **Rental rules:**
+- A multi-workspace offer is available only when the current location's tags host every workspace it grants
 - Rental requires the NPC's disposition to be **Neutral or better.** An unfriendly blacksmith won't let you touch their forge
 - Rental is during off-hours — you use the forge when the blacksmith isn't (evenings/nights). During business hours, the NPC uses it. Multi-day projects accommodate this automatically
 - The NPC may observe your work. If you craft something impressive (Exceptional result), their disposition improves by 1. If you damage their equipment (Failure on Expert+ recipe), disposition drops by 1 and you owe repair costs (5-15 sp)
 - Rental cost is modified by disposition: Friendly = 80%, Trusted = 60%. This stacks with faction reputation price modifiers
+- Apply the disposition multiplier and round half up to whole silver when quoting the daily price. The charge is that integer quote multiplied by the rental term, with no second rounding
 - Payment is per calendar day, not per crafting hour. A 2-hour project still costs a full day's rental. Plan batches
 
 **Method 3: Earned access through reputation**
@@ -547,6 +549,8 @@ A battered, scarred tower shield recovered from the ruins of Greyhaven's watchto
 | Uncommon | 10 sp | 1 day |
 | Rare | 50 sp | 3 days |
 | Legendary | 200+ sp or quest | 1 week |
+
+Repair quotes use the same whole-silver rule as rentals: apply the disposition multiplier, then round half up once at the quote. Pricing content accepts finite numeric disposition multipliers greater than or equal to zero with at most four decimal places, including surcharges above 1.0. A repair cost must be a non-boolean integer greater than or equal to zero.
 
 ---
 

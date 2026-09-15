@@ -337,13 +337,13 @@ async def test_query_info_training_programs_lists_seeded_content(reset_db_pool: 
 async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db_pool: str) -> None:
     """kind='workspaces' (no target_id) routes to _query_available_workspaces_impl -- field
     is the universal floor, so it must always appear as accessible."""
+    await (await db.get_redis()).delete("location:accord_guild_hall")
     raw = await _query_info_impl(make_context(), "workspaces")
     result = json.loads(raw)
     assert "field" in result["accessible"]
     rentable_types = {r["workspace_type"] for r in result["rentable"]}
-    # forge_laboratory is story-015's bundle, quoted here because the seeded test location
-    # is a settlement that hosts both. It is a rental OPTION, not a WorkspaceType member.
-    assert rentable_types == {"workshop", "forge", "laboratory", "forge_laboratory"}
+    assert rentable_types == {"workshop", "forge", "laboratory"}
+    assert "forge_laboratory" not in rentable_types
 
 
 async def test_query_info_recipe_returns_seeded_requirements(reset_db_pool: str) -> None:

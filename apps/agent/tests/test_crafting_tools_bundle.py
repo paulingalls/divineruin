@@ -1,7 +1,7 @@
 """Tests for the Forge + Laboratory bundle rental (story-015, M5.2).
 
-The spec prices Forge + Laboratory together at 12sp/day, offered by a city (or a
-Keldaran hold) that has both. The bundle is requested as the single token
+The spec prices Forge + Laboratory together at 12sp/day, offered only where the
+location tags host both workspaces. The bundle is requested as the single token
 `forge_laboratory` but PERSISTS AS TWO workspace_rentals rows, one per granted
 workspace: apps/server/src/workspace.ts parseWorkspaceType re-parses every stored
 workspace_type against a closed four-member vocabulary, so a single
@@ -14,6 +14,7 @@ _content/_pricing/_queries seams are imported from there rather than forked.
 """
 
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -77,14 +78,14 @@ class TestBundleWrites:
         written = {call.args[2] for call in mutations.create_workspace_rental.await_args_list}
         assert written.isdisjoint({BUNDLE, "combined"})
 
-    @pytest.mark.parametrize("disposition,expected_daily", [("neutral", 12.0), ("friendly", 9.6), ("trusted", 0.0)])
+    @pytest.mark.parametrize("disposition,expected_daily", [("neutral", 12), ("friendly", 10), ("trusted", 0)])
     async def test_bundle_debit_is_twelve_times_disposition_times_days(self, disposition, expected_daily):
         days = 3
         result, mutations, _, _ = await _rent(days=days, disposition=disposition)
-        assert result["price_sp"] == pytest.approx(expected_daily * days)
+        assert result["price_sp"] == expected_daily * days
         # Free must not mean access-free: trusted still gets both rows.
         assert mutations.create_workspace_rental.await_count == 2
-        if expected_daily == 0.0:
+        if expected_daily == 0:
             mutations.update_player_gold.assert_not_awaited()
         else:
             assert mutations.update_player_gold.await_args.args[1] == pytest.approx(15.0 - expected_daily * days / 10)
@@ -105,50 +106,59 @@ class TestBundleWrites:
 
 class TestBundleLocationGate:
     @pytest.mark.parametrize(
-        "tier,missing_clause",
-        [("village", "has no forge and laboratory to rent"), ("town", "has no laboratory to rent")],
+        "tags,missing_clause",
+        [
+            ([], "has no forge and laboratory to rent"),
+            (["forge"], "has no laboratory to rent"),
+            (["laboratory"], "has no forge to rent"),
+        ],
     )
-    async def test_refusal_names_exactly_the_missing_workspaces(self, tier, missing_clause):
-        # A town HAS a forge; naming it as missing would send the player to look for
-        # the wrong thing. The clause is matched whole so "no forge and laboratory"
-        # cannot satisfy the town case.
+    async def test_refusal_names_exactly_the_missing_workspaces(self, tags, missing_clause):
         mutations = _mutations()
         queries = _queries()
         with pytest.raises(ToolError) as exc:
-            await _rent(content=_content(tier), mutations=mutations, queries=queries)
+            await _rent(
+                content=_content(location={"id": "somewhere", "settlement_tier": "city", "tags": tags}),
+                mutations=mutations,
+                queries=queries,
+            )
         assert missing_clause in str(exc.value)
-        # Refusal precedes every read that could charge.
         queries.get_npc_disposition.assert_not_awaited()
         mutations.create_workspace_rental.assert_not_awaited()
         mutations.update_player_gold.assert_not_awaited()
 
     @pytest.mark.parametrize(
-        "location,reason",
+        "location",
         [
-            (None, "is not a settlement"),
-            ({}, "is not a settlement"),
-            ({"settlement_tier": "metropolis"}, "unknown settlement tier 'metropolis'"),
+            {"id": "city_without_lab", "settlement_tier": "city", "tags": ["forge"]},
+            {"id": "tagless_hold", "settlement_tier": "keldaran_hold", "tags": []},
         ],
     )
-    async def test_non_settlement_and_unknown_tier_refuse_for_their_own_reason(self, location, reason):
-        # Message-blind here would be vacuous: with no settlement_tier, SettlementSize(None)
-        # ALSO raises ValueError, so deleting the not-a-settlement branch still refuses —
-        # just by telling a player standing in open wilderness their tier is corrupt.
+    async def test_settlement_tier_does_not_host_missing_tags(self, location):
         mutations = _mutations()
-        with pytest.raises(ToolError, match=reason):
+        with pytest.raises(ToolError, match="has no"):
             await _rent(content=_content(location=location), mutations=mutations)
         mutations.create_workspace_rental.assert_not_awaited()
 
-    async def test_keldaran_hold_hosts_the_bundle(self):
-        _, mutations, _, _ = await _rent(content=_content("keldaran_hold"))
-        assert mutations.create_workspace_rental.await_count == 2
+    async def test_unknown_location_refuses_for_its_own_reason_before_charge_reads(self):
+        mutations = _mutations()
+        queries = _queries()
+        with pytest.raises(ToolError, match="unknown location"):
+            await _rent(content=_content(location=None), mutations=mutations, queries=queries)
+        queries.get_npc_disposition.assert_not_awaited()
+        mutations.create_workspace_rental.assert_not_awaited()
+        mutations.update_player_gold.assert_not_awaited()
 
     async def test_single_rental_needs_no_location_read(self):
-        # The settlement gate is scoped to the bundle; single rentals stay
-        # settlement-blind (whole-quote gating is concern c5c5871115dc, Phase 6).
+        # Single-rental settlement gating is deferred by note 2301b33e.
         content = _content("village")
         await _rent("forge", content=content, mutations=_mutations(("rent_solo",)))
         content.get_location.assert_not_awaited()
+
+    def test_accord_forge_authors_both_bundle_workspace_tags(self):
+        locations = json.loads((Path(__file__).parents[3] / "content" / "locations.json").read_text())
+        accord_forge = next(location for location in locations if location["id"] == "accord_forge")
+        assert {ws.WorkspaceType.FORGE.value, ws.WorkspaceType.LABORATORY.value} <= set(accord_forge["tags"])
 
 
 class TestUnrentableTokens:
@@ -165,13 +175,13 @@ class TestUnrentableTokens:
 class TestQuoteMatchesCharge:
     """The debt in one class: a price the DM can quote but no call can charge."""
 
-    async def _quote(self, npc_id=None, *, tier="city", **kwargs):
+    async def _quote(self, npc_id=None, *, tags=("forge", "laboratory"), **kwargs):
         return json.loads(
             await _query_available_workspaces_impl(
                 make_context(),
                 npc_id,
                 queries_mod=_queries(**kwargs),
-                content_mod=_content(tier),
+                content_mod=_content(location={"id": "somewhere", "settlement_tier": "city", "tags": list(tags)}),
                 pricing_mod=_pricing(),
             )
         )
@@ -179,7 +189,7 @@ class TestQuoteMatchesCharge:
     async def test_untargeted_quote_prices_the_bundle_by_disposition(self):
         quote = await self._quote()
         prices = {entry["workspace_type"]: entry["prices_sp_per_day_by_disposition"] for entry in quote["rentable"]}
-        assert prices["forge_laboratory"] == pytest.approx({"neutral": 12.0, "friendly": 9.6, "trusted": 0.0})
+        assert prices["forge_laboratory"] == {"neutral": 12, "friendly": 10, "trusted": 0}
 
     async def test_every_quoted_offer_names_what_it_grants(self):
         quote = await self._quote()
@@ -187,12 +197,12 @@ class TestQuoteMatchesCharge:
         assert grants["forge_laboratory"] == ["forge", "laboratory"]
         assert grants["forge"] == ["forge"]
 
-    async def test_quoted_bundle_price_times_days_equals_the_charge(self):
+    async def test_friendly_bundle_rounds_daily_price_before_multiplying_term(self):
         quote = await self._quote("grimjaw", disposition="friendly")
         daily = next(e for e in quote["rentable"] if e["workspace_type"] == BUNDLE)["price_sp_per_day"]
         rental, _, _, _ = await _rent(days=3, disposition="friendly")
-        assert daily == pytest.approx(9.6)
-        assert rental["price_sp"] == pytest.approx(daily * 3)
+        assert daily == 10
+        assert rental["price_sp"] == daily * 3 == 30
 
     async def test_every_quoted_token_is_rentable(self):
         # The falsifier for the whole story: whatever query_info(kind="workspaces")
@@ -204,11 +214,8 @@ class TestQuoteMatchesCharge:
             assert result["price_sp"] == pytest.approx(entry["price_sp_per_day"])
 
     @pytest.mark.parametrize("npc_id", [None, "grimjaw"])
-    async def test_a_settlement_that_cannot_host_the_bundle_is_never_quoted_it(self, npc_id):
-        # Same claim where the rental REFUSES: a village quote that still carried the
-        # 12sp bundle would put the DM back to voicing a price no call can charge —
-        # the debt in a new shape. Both quote shapes, because the DM calls both.
-        quote = await self._quote(npc_id, tier="village")
+    async def test_a_location_without_laboratory_never_quotes_the_bundle(self, npc_id):
+        quote = await self._quote(npc_id, tags=("forge",))
         assert {e["workspace_type"] for e in quote["rentable"]} == {"workshop", "forge", "laboratory"}
-        with pytest.raises(ToolError, match="has no forge and laboratory to rent"):
-            await _rent(content=_content("village"))
+        with pytest.raises(ToolError, match="has no laboratory to rent"):
+            await _rent(content=_content(location={"id": "somewhere", "settlement_tier": "city", "tags": ["forge"]}))

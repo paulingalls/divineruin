@@ -65,9 +65,16 @@ describe("repairQuote", () => {
     expect(repairQuote("legendary", "neutral").priceSp).toBe(200);
   });
 
-  test("friendly = 0.8x, trusted = 0.6x", () => {
-    expect(repairQuote("uncommon", "friendly").priceSp).toBeCloseTo(8); // 10 * 0.8
-    expect(repairQuote("common", "trusted").priceSp).toBeCloseTo(1.2); // 2 * 0.6
+  test("friendly uncommon repair is exactly 8sp", () => {
+    expect(repairQuote("uncommon", "friendly").priceSp).toBe(8);
+  });
+
+  test("friendly discount rounds away for common repair", () => {
+    expect(repairQuote("common", "friendly").priceSp).toBe(2);
+  });
+
+  test("trusted common repair rounds to one silver", () => {
+    expect(repairQuote("common", "trusted").priceSp).toBe(1);
   });
 
   test("legacy wary/cautious dispositions are retired (throw, non-canonical)", () => {
@@ -77,7 +84,7 @@ describe("repairQuote", () => {
   });
 
   test("disposition is case-insensitive (mirrors Python .lower())", () => {
-    expect(repairQuote("uncommon", "Friendly").priceSp).toBeCloseTo(8); // not full 10
+    expect(repairQuote("uncommon", "Friendly").priceSp).toBe(8);
     expect(repairQuote("rare", "NEUTRAL").priceSp).toBe(50);
     expect(repairQuote("rare", "UNFRIENDLY").available).toBe(false);
   });

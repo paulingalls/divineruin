@@ -5,6 +5,8 @@ the three-check pipeline's Check 3 (story-003); rental pricing + settlement
 availability mirror the spec (game_mechanics_crafting.md §Workspace Access).
 """
 
+import re
+
 import pytest
 
 import workspace as ws
@@ -55,17 +57,16 @@ class TestRentalPricing:
         assert quote.available is True
         assert quote.price_sp == pytest.approx(4.0)
 
-    def test_trusted_pays_60_percent(self):
-        # 12sp combined bundle at Trusted: 12 * 0.6 = 7.2.
+    def test_trusted_pays_60_percent_rounded_to_whole_silver(self):
         quote = ws.compute_rental_price(ws.COMBINED_FORGE_LAB_RENTAL_SP, "trusted", multipliers=_MULT)
         assert quote.available is True
-        assert quote.price_sp == pytest.approx(7.2)
+        assert quote.price_sp == 7
 
     def test_trusted_workspace_rental_is_free_without_changing_shared_pricing(self):
         quote = ws.compute_workspace_rental_price(5, "trusted", multipliers=_MULT)
         assert quote.available is True
-        assert quote.price_sp == 0.0
-        assert ws.compute_rental_price(5, "trusted", multipliers=_MULT).price_sp == pytest.approx(3.0)
+        assert quote.price_sp == 0
+        assert ws.compute_rental_price(5, "trusted", multipliers=_MULT).price_sp == 3
 
     @pytest.mark.parametrize("disposition", ["cautious", "wary"])
     def test_legacy_disposition_rejected(self, disposition):
@@ -90,6 +91,36 @@ class TestRentalPricing:
     def test_unknown_disposition_fails_loud(self):
         with pytest.raises(ValueError):
             ws.compute_rental_price(5, "ecstatic", multipliers=_MULT)
+
+
+@pytest.mark.parametrize(
+    ("base_sp", "multiplier", "expected"),
+    [
+        pytest.param(5, 0.9, 5, id="rounds_half_up_5_times_0_9"),
+        pytest.param(45, 0.7, 32, id="rounds_half_up_45_times_0_7"),
+        pytest.param(12, 0.8, 10, id="rounds_half_up_12_times_0_8"),
+        pytest.param(2, 0.8, 2, id="rounds_half_up_2_times_0_8"),
+        pytest.param(2, 0.6, 1, id="rounds_half_up_2_times_0_6"),
+    ],
+)
+def test_whole_silver_rounds_half_up_to_whole_silver(base_sp, multiplier, expected):
+    assert ws.whole_silver(base_sp, multiplier) == expected
+
+
+def test_whole_silver_rounds_multiplier_to_basis_points_before_pricing():
+    assert ws.whole_silver(10_000, 0.89999999999995) == 9_000
+
+
+@pytest.mark.parametrize("base_sp", [True, 2.5, -1])
+def test_whole_silver_rejects_invalid_base(base_sp):
+    with pytest.raises(ValueError, match=f"^{re.escape('base_sp must be a non-negative integer')}$"):
+        ws.whole_silver(base_sp, 1.0)
+
+
+def test_whole_silver_rejects_result_above_safe_integer():
+    message = "whole-silver result exceeds Number.MAX_SAFE_INTEGER"
+    with pytest.raises(OverflowError, match=f"^{re.escape(message)}$"):
+        ws.whole_silver(2**53 - 1, 2.0)
 
 
 class TestSettlementAvailability:
@@ -180,18 +211,3 @@ class TestRentalOffers:
         for offer in ws.RENTAL_OFFERS:
             for granted in offer.grants:
                 assert granted in ws.WorkspaceType
-
-
-class TestBundleLocationRule:
-    def test_only_city_and_keldaran_hold_can_host_the_bundle(self):
-        hosts = {s for s in ws.SettlementSize if not ws.bundle_missing_workspaces(s)}
-        assert hosts == {ws.SettlementSize.CITY, ws.SettlementSize.KELDARAN_HOLD}
-
-    def test_town_is_missing_only_the_laboratory(self):
-        assert ws.bundle_missing_workspaces(ws.SettlementSize.TOWN) == (ws.WorkspaceType.LABORATORY,)
-
-    def test_hamlet_is_missing_both(self):
-        assert ws.bundle_missing_workspaces(ws.SettlementSize.HAMLET) == (
-            ws.WorkspaceType.FORGE,
-            ws.WorkspaceType.LABORATORY,
-        )
