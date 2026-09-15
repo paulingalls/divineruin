@@ -15,6 +15,7 @@ from affect_analyzer import PlayerAffectAnalyzer
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
 from session_data import SessionData
+from task_logging import log_task_failure
 from transcript import TranscriptLogger
 from tts_pauses import PAUSE_DURATIONS as _PAUSE_DURATIONS
 from tts_pauses import PAUSE_PATTERN as _PAUSE_PATTERN
@@ -91,8 +92,7 @@ class BaseGameAgent(Agent):
 
     def _on_bg_task_done(self, task: asyncio.Task[None]) -> None:
         self._bg_tasks.discard(task)
-        if not task.cancelled() and task.exception():
-            logger.error("Background task failed", exc_info=task.exception())
+        log_task_failure(task, logger, "Background task failed")
 
     async def on_enter(self) -> None:
         logger.info("%s entered session", type(self).__name__)
