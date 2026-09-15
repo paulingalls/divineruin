@@ -1,5 +1,7 @@
+import { resolveImageDir } from "./image-dir.ts";
+
 function getImageDir(): string {
-  return Bun.env.ASSET_IMAGE_DIR ?? `${import.meta.dir}/../../../assets/images`;
+  return resolveImageDir(Bun.env.ASSET_IMAGE_DIR);
 }
 
 export async function handleImageAsset(assetId: string): Promise<Response> {

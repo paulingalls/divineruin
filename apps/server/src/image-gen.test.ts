@@ -89,6 +89,12 @@ test("getAssetPath returns expected path format", async () => {
   expect(p).toContain("img_abc123.png");
 });
 
+test("an empty ASSET_IMAGE_DIR resolves under the repo image dir, not filesystem root", async () => {
+  process.env.ASSET_IMAGE_DIR = "";
+  const { getAssetPath } = await import("./image-gen.ts");
+  expect(getAssetPath("img_abc123")).toMatch(/\/assets\/images\/img_abc123\.png$/);
+});
+
 test("assetExists returns false for nonexistent asset", async () => {
   const { assetExists } = await import("./image-gen.ts");
   expect(await assetExists("img_does_not_exist")).toBe(false);

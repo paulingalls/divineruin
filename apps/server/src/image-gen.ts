@@ -3,9 +3,10 @@ import { requireEnv, logError } from "./env.ts";
 import { sql } from "./db.ts";
 import { resolvePrompt } from "./image-prompt-templates.ts";
 import { postProcessImage } from "./image-post-process.ts";
+import { resolveImageDir } from "./image-dir.ts";
 
 function getImageDir(): string {
-  return Bun.env.ASSET_IMAGE_DIR ?? `${import.meta.dir}/../../../assets/images`;
+  return resolveImageDir(Bun.env.ASSET_IMAGE_DIR);
 }
 
 export function computeAssetId(templateId: string, vars: Record<string, string>): string {
