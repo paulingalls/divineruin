@@ -15,7 +15,7 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
-from world_effect_targets import is_valid_disposition_target  # noqa: E402
+from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent / "content"
 
@@ -76,16 +76,21 @@ def upsert_query(table: str) -> str:
     return UPSERT_SQL.format(table=table, pk_col=pk_col)
 
 
+_MISPARSED_URL = "DATABASE_URL does not parse; percent-encode reserved characters in the password"
+
+
 def database_target(database_url: str) -> str:
-    parsed = urlsplit(database_url)
+    # A reserved character left unencoded in the password misparses the URL, and the refusal must
+    # not print it: the parse's ValueError quotes what it misread (`from None` drops that from the
+    # traceback), and an unencoded '/' can parse cleanly with the user read as the host, the digits
+    # before the '/' as the port, and the rest of the password stranded, '@' and all, in the path.
     try:
+        parsed = urlsplit(database_url)
         port = parsed.port
     except ValueError:
-        # The ValueError quotes the text it read as a port, which is a password fragment when the
-        # password carries an unencoded '/', '#' or '?'; `from None` keeps it out of the traceback.
-        raise RuntimeError(
-            "DATABASE_URL has an unparseable port; percent-encode reserved characters in the password"
-        ) from None
+        raise RuntimeError(_MISPARSED_URL) from None
+    if "@" in parsed.path:
+        raise RuntimeError(_MISPARSED_URL)
     database = parsed.path.lstrip("/")
     if not parsed.hostname or port is None or not database:
         raise RuntimeError("DATABASE_URL must include an explicit host, port, and database")

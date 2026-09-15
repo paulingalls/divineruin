@@ -44,8 +44,11 @@ async def test_main_requires_explicit_target_components(monkeypatch, database_ur
         await seed_content.main()
 
 
-@pytest.mark.parametrize("password", ["Xy7/rest", "Xy7#rest", "Xy7?rest"])
-async def test_unparseable_port_refusal_does_not_echo_password(monkeypatch, capsys, password):
+@pytest.mark.parametrize(
+    ("password", "fragment"),
+    [("Xy7/rest", "Xy7"), ("Xy7#rest", "Xy7"), ("Xy7?rest", "Xy7"), ("Xy7[rest", "Xy7"), ("12345/rest", "12345")],
+)
+async def test_unencoded_password_refusal_does_not_echo_it(monkeypatch, capsys, password, fragment):
     monkeypatch.setenv("DATABASE_URL", f"postgresql://seed_operator:{password}@seed-db.example:6543/worktree_world")
     monkeypatch.setattr(seed_content.asyncpg, "connect", _connect_must_not_run)
 
@@ -53,7 +56,8 @@ async def test_unparseable_port_refusal_does_not_echo_password(monkeypatch, caps
         await seed_content.main()
 
     reported = "".join(traceback.format_exception(refused.value)) + capsys.readouterr().out
-    assert "Xy7" not in reported
+    assert fragment not in reported
+    assert "rest" not in reported
 
 
 async def test_main_prints_redacted_target_before_connect(monkeypatch, capsys):
