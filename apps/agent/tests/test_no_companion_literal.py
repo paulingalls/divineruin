@@ -59,7 +59,7 @@ ALLOWLIST = {
     "apps/agent/errand_tools.py": "docstring example",
     "packages/shared/src/entities/companion.ts": "comments + an id-format example",
     # "Kael" as a PLAYER character, not the companion — renaming is a different change.
-    "apps/server/src/debug.ts": "debug-page fixture player",
+    "apps/server/src/debug-page.ts": "debug-page fixture player",
     "content/players.json": "seed player",
     # Applied migration — immutable, never edit.
     "scripts/migrations/042_companions.sql": "comment in an applied migration",

@@ -1,5 +1,7 @@
 import { createStore } from "zustand/vanilla";
 
+export type NpcPortrait = { name: string; url: string };
+
 interface PortraitState {
   // Written by session_init and the transcript gate; read by NO component today —
   // npc-portrait-overlay renders activeNpc only, so the companion portrait reaches the store
@@ -12,14 +14,14 @@ interface PortraitState {
   /** The assigned companion's voice tag (e.g. "COMPANION_LIRA") — the value
    *  transcript_entry.character actually carries, so it is what the portrait gate matches. */
   companionVoiceId: string | null;
-  activeNpc: { name: string; url: string } | null;
-  npcPortraitMap: Record<string, string>;
+  activeNpc: NpcPortrait | null;
+  npcPortraitMap: Partial<Record<string, NpcPortrait>>;
   playerPortraitUrl: string | null;
 
   setCompanionPortraits: (primary: string | null, alert: string | null) => void;
   setCompanionVisible: (visible: boolean) => void;
   setCompanionIdentity: (name: string | null, voiceId: string | null) => void;
-  setNpcPortraitMap: (map: Record<string, string>) => void;
+  setNpcPortraitMap: (map: Partial<Record<string, NpcPortrait>>) => void;
   setActiveNpc: (name: string, url: string) => void;
   clearActiveNpc: () => void;
   setPlayerPortraitUrl: (url: string) => void;
@@ -32,8 +34,8 @@ const INITIAL = {
   companionVisible: false,
   companionName: null as string | null,
   companionVoiceId: null as string | null,
-  activeNpc: null as { name: string; url: string } | null,
-  npcPortraitMap: {} as Record<string, string>,
+  activeNpc: null as NpcPortrait | null,
+  npcPortraitMap: {} as Partial<Record<string, NpcPortrait>>,
   playerPortraitUrl: null as string | null,
 };
 

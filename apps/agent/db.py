@@ -10,6 +10,7 @@ from typing import cast
 import asyncpg
 import redis.asyncio as aioredis
 
+import npcs
 from asset_utils import slug_asset_url
 from companion_profiles import select_companion_for_archetype
 
@@ -23,25 +24,6 @@ _COMPANION_PORTRAITS: dict[str, dict[str, str]] = {
     "companion_kael": {
         "primary": slug_asset_url("companion_kael_primary"),
         "alert": slug_asset_url("companion_kael_alert"),
-    },
-}
-
-# Pre-generated portrait URLs — slug-based, matching files in assets/images/
-_PORTRAITS_CACHE: dict = {
-    "npcs": {
-        "Guildmaster Torin": slug_asset_url("npc_torin"),
-        "Elder Yanna": slug_asset_url("npc_yanna"),
-        "Scholar Emris": slug_asset_url("npc_emris"),
-        "Wounded Rider": slug_asset_url("npc_wounded_rider"),
-        "Maren": slug_asset_url("npc_maren"),
-        "Investigator Valdris": slug_asset_url("npc_valdris"),
-        "Grimjaw": slug_asset_url("npc_grimjaw"),
-        "Bryn": slug_asset_url("npc_bryn"),
-        "Warden Selene": slug_asset_url("npc_selene"),
-        "Aldric": slug_asset_url("npc_aldric"),
-        "Nyx": slug_asset_url("npc_nyx"),
-        "Archivist Theron": slug_asset_url("npc_theron"),
-        "Guild Master Dara": slug_asset_url("npc_dara"),
     },
 }
 
@@ -205,4 +187,15 @@ def _build_portraits(companion_id: str | None) -> dict:
     portrait store on that null rather than fall through — falling through is how the previous
     companion's face survives into the next player's HUD.
     """
-    return {**_PORTRAITS_CACHE, "companion": _COMPANION_PORTRAITS.get(companion_id or "")}
+    npc_portraits = {
+        npc["voice_id"]: {
+            "name": npc["name"],
+            "url": slug_asset_url(npc["portrait"]),
+        }
+        for npc in npcs.all_npcs()
+        if "portrait" in npc
+    }
+    return {
+        "npcs": npc_portraits,
+        "companion": _COMPANION_PORTRAITS.get(companion_id or ""),
+    }

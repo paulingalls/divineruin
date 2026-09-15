@@ -30,6 +30,7 @@ import {
 } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
 import { handleSessionInit } from "./game-event-session-init";
+import { handleTranscriptPortraits } from "./transcript-portrait-gate";
 
 /** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
 const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
@@ -41,7 +42,6 @@ export const DICE_ROLL_TTL_MS = 5000;
 /** TTL for the dramatic Hollow Echo band overlay — lingers so the band is glanceable. */
 export const HOLLOW_ECHO_TTL_MS = 5000;
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
-let _companionHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Trust only the DM/agent participant. A player co-participant is Standard-kind;
 // isAgent gates out forged game_events (fake HP/XP) from other players.
@@ -302,32 +302,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         timestamp: typeof event.timestamp === "number" ? event.timestamp : Date.now() / 1000,
       });
 
-      // Show NPC portrait when an NPC speaks
-      const ps = portraitStore.getState();
-      if (speaker === "npc" && characterName) {
-        const npcUrl = ps.npcPortraitMap[characterName];
-        if (npcUrl) {
-          ps.setActiveNpc(characterName, npcUrl);
-        }
-        // Show companion avatar for companion speech. Matched against the VOICE TAG
-        // (session_init's companion.voice_id), because transcript_entry.character always
-        // carries the uppercase tag the dialogue parser emitted — never a display name.
-        if (
-          ps.companionVoiceId &&
-          characterName === ps.companionVoiceId &&
-          ps.companionPrimaryUrl
-        ) {
-          ps.setCompanionVisible(true);
-          if (_companionHideTimer) clearTimeout(_companionHideTimer);
-          _companionHideTimer = setTimeout(() => {
-            _companionHideTimer = null;
-            portraitStore.getState().setCompanionVisible(false);
-          }, 5000);
-        }
-      } else {
-        // Different speaker — clear NPC portrait
-        ps.clearActiveNpc();
-      }
+      handleTranscriptPortraits(speaker, characterName);
       break;
     }
 

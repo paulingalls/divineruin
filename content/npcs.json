@@ -46,6 +46,7 @@
     ],
     "faction": "accord_guild",
     "voice_id": "GUILDMASTER_TORIN",
+    "portrait": "npc_torin",
     "voice_notes": "deep baritone, clipped delivery, softens slightly when genuinely worried"
   },
   {
@@ -97,6 +98,7 @@
     ],
     "faction": "independent",
     "voice_id": "ELDER_YANNA",
+    "portrait": "npc_yanna",
     "voice_notes": "alto, gravelly, speaks slowly and deliberately, rural accent"
   },
   {
@@ -159,6 +161,7 @@
     ],
     "faction": "aelindran_diaspora",
     "voice_id": "SCHOLAR_EMRIS",
+    "portrait": "npc_emris",
     "voice_notes": "soft, quick, slightly breathless when excited, Elari accent — elongated vowels, precise consonants"
   },
   {
@@ -199,6 +202,7 @@
     "secrets": [],
     "faction": "independent",
     "voice_id": "WOUNDED_RIDER",
+    "portrait": "npc_wounded_rider",
     "voice_notes": "young, strained, breathless, voice cracks under pressure"
   },
   {
@@ -258,6 +262,7 @@
     ],
     "faction": "independent",
     "voice_id": "INNKEEPER_MAREN",
+    "portrait": "npc_maren",
     "voice_notes": "alto, brisk, northern accent, softens when talking about people she cares about"
   },
   {
@@ -317,6 +322,7 @@
     ],
     "faction": "temple_authority",
     "voice_id": "FACTION_VALDRIS",
+    "portrait": "npc_valdris",
     "voice_notes": "baritone, precise enunciation, slight pause before important words, occasionally drops the formal register when surprised"
   },
   {
@@ -375,6 +381,7 @@
     ],
     "faction": "independent",
     "voice_id": "GRIMJAW_BLACKSMITH",
+    "portrait": "npc_grimjaw",
     "voice_notes": "deep gravelly bass, dwarvish accent — rolled Rs, clipped endings, speaks like every word costs him something"
   },
   {
@@ -438,6 +445,7 @@
     ],
     "faction": "independent",
     "voice_id": "TAVERN_BRYN",
+    "portrait": "npc_bryn",
     "voice_notes": "warm contralto, even-keeled, sounds like she's smiling even when she's not, gets very quiet when serious"
   },
   {
@@ -499,6 +507,7 @@
     ],
     "faction": "temple_authority",
     "voice_id": "TEMPLE_SELENE",
+    "portrait": "npc_selene",
     "voice_notes": "clear soprano, measured pace, Elari accent, pauses before the sacred, reverent"
   },
   {
@@ -558,6 +567,7 @@
     ],
     "faction": "independent",
     "voice_id": "ALDRIC_HOLLOWED",
+    "portrait": "npc_aldric",
     "voice_notes": "hollow, distant, barely present, words come from far away, flat affect, something essential is missing"
   },
   {
@@ -618,6 +628,7 @@
     ],
     "faction": "temple_authority",
     "voice_id": "SYRATH_NYX",
+    "portrait": "npc_nyx",
     "voice_notes": "low, amused, intimate — speaks like sharing a secret even when saying nothing important"
   },
   {
@@ -680,6 +691,7 @@
     ],
     "faction": "temple_authority",
     "voice_id": "VEYTHAR_THERON",
+    "portrait": "npc_theron",
     "voice_notes": "tenor, earnest, scholarly, slightly too eager — enthusiasm that masks nervousness he doesn't fully understand"
   },
   {
@@ -742,6 +754,7 @@
     ],
     "faction": "temple_authority",
     "voice_id": "AELORA_DARA",
+    "portrait": "npc_dara",
     "voice_notes": "warm alto, practical, direct, no-nonsense, laughs easily but the laugh has an edge lately"
   },
   {

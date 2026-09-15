@@ -76,6 +76,21 @@ describe("handleDebugPage", () => {
     }
   });
 
+  test("NPC portrait events use voice tags and authored portrait objects", () => {
+    expect(
+      html.match(
+        /GUILDMASTER_TORIN:\{name:'Guildmaster Torin',url:'\/api\/assets\/images\/placeholder'\}/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      html.match(/INNKEEPER_MAREN:\{name:'Maren',url:'\/api\/assets\/images\/placeholder'\}/g),
+    ).toHaveLength(2);
+    expect(html.match(/character:'GUILDMASTER_TORIN'/g)).toHaveLength(1);
+    expect(html.match(/character:'INNKEEPER_MAREN'/g)).toHaveLength(2);
+    expect(html).not.toContain("character:'Torin'");
+    expect(html).not.toContain("character:'Maren the Innkeeper'");
+  });
+
   test("combat_started payloads include difficulty", () => {
     expect(html).toContain("difficulty:'moderate'");
     expect(html).toContain("difficulty:'hard'");

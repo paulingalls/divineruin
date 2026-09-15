@@ -4,11 +4,24 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from npcs_config_fixture import load_fixture_config
 
 import db
 import db_content_queries
 import db_queries
 import db_session_queries
+
+
+def _expected_npc_portraits() -> dict[str, dict[str, str]]:
+    rows = load_fixture_config().values()
+    return {
+        row["voice_id"]: {
+            "name": row["name"],
+            "url": f"/api/assets/images/{row['portrait']}",
+        }
+        for row in rows
+        if "portrait" in row
+    }
 
 
 async def _session_init(player: dict) -> dict:
@@ -33,9 +46,13 @@ class TestSessionInitPortraits:
         assert "npcs" in result["portraits"]
         assert "primary" in result["portraits"]["companion"]
         assert "alert" in result["portraits"]["companion"]
-        # Verify NPC portrait URLs are present
-        assert "Guildmaster Torin" in result["portraits"]["npcs"]
-        assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/npc_")
+        expected = _expected_npc_portraits()
+        assert len(expected) == 13
+        assert result["portraits"]["npcs"] == expected
+        assert result["portraits"]["npcs"]["GUILDMASTER_TORIN"] == {
+            "name": "Guildmaster Torin",
+            "url": "/api/assets/images/npc_torin",
+        }
 
     @pytest.mark.asyncio
     async def test_payload_names_the_assigned_companion(self):
@@ -79,8 +96,8 @@ class TestSessionInitPortraits:
         result = db._build_portraits("companion_kael")
         assert result["companion"]["primary"].startswith("/api/assets/images/companion_")
         assert result["companion"]["alert"].startswith("/api/assets/images/companion_")
-        for url in result["npcs"].values():
-            assert url.startswith("/api/assets/images/npc_")
+        for portrait in result["npcs"].values():
+            assert portrait["url"].startswith("/api/assets/images/npc_")
 
         assert db._build_portraits("companion_lira")["companion"] is None
         assert db._build_portraits(None)["companion"] is None
