@@ -1,4 +1,5 @@
 import sys
+import traceback
 from pathlib import Path
 
 import pytest
@@ -11,26 +12,20 @@ if str(_SCRIPTS_DIR) not in sys.path:
 import seed_content  # type: ignore[import-not-found]  # noqa: E402
 
 
+async def _connect_must_not_run(_database_url):
+    pytest.fail("seed connected before refusing its target")
+
+
 @pytest.mark.parametrize("database_url", [None, ""])
 async def test_main_requires_nonempty_database_url(monkeypatch, database_url):
     if database_url is None:
         monkeypatch.delenv("DATABASE_URL", raising=False)
     else:
         monkeypatch.setenv("DATABASE_URL", database_url)
-
-    connect_calls = 0
-
-    async def fail_connect(_database_url):
-        nonlocal connect_calls
-        connect_calls += 1
-        raise RuntimeError("connection attempted without DATABASE_URL")
-
-    monkeypatch.setattr(seed_content.asyncpg, "connect", fail_connect)
+    monkeypatch.setattr(seed_content.asyncpg, "connect", _connect_must_not_run)
 
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         await seed_content.main()
-
-    assert connect_calls == 0
 
 
 @pytest.mark.parametrize(
@@ -43,19 +38,22 @@ async def test_main_requires_nonempty_database_url(monkeypatch, database_url):
 )
 async def test_main_requires_explicit_target_components(monkeypatch, database_url):
     monkeypatch.setenv("DATABASE_URL", database_url)
-    connect_calls = 0
-
-    async def fail_connect(_database_url):
-        nonlocal connect_calls
-        connect_calls += 1
-        raise RuntimeError("connection attempted with incomplete DATABASE_URL")
-
-    monkeypatch.setattr(seed_content.asyncpg, "connect", fail_connect)
+    monkeypatch.setattr(seed_content.asyncpg, "connect", _connect_must_not_run)
 
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         await seed_content.main()
 
-    assert connect_calls == 0
+
+@pytest.mark.parametrize("password", ["Xy7/rest", "Xy7#rest", "Xy7?rest"])
+async def test_unparseable_port_refusal_does_not_echo_password(monkeypatch, capsys, password):
+    monkeypatch.setenv("DATABASE_URL", f"postgresql://seed_operator:{password}@seed-db.example:6543/worktree_world")
+    monkeypatch.setattr(seed_content.asyncpg, "connect", _connect_must_not_run)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL") as refused:
+        await seed_content.main()
+
+    reported = "".join(traceback.format_exception(refused.value)) + capsys.readouterr().out
+    assert "Xy7" not in reported
 
 
 async def test_main_prints_redacted_target_before_connect(monkeypatch, capsys):
