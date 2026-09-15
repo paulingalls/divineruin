@@ -255,6 +255,20 @@ async def test_build_keyerror_ends_loop_and_logs(caplog):
             await _finish(process)
 
 
+@pytest.mark.parametrize("site", ["rider", "location"], ids=["rider-prefetch", "fetch-fan-out"])
+@pytest.mark.asyncio
+async def test_untolerated_fetch_error_ends_loop_and_logs(caplog, site):
+    process, _, _ = _make_process()
+    with _background_data() as mocks, caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER):
+        getattr(mocks, site).side_effect = KeyError("missing field")
+        process.start()
+        try:
+            exception = await _failed(process._task, KeyError)
+            _assert_failure_record(caplog, exception)
+        finally:
+            await _finish(process)
+
+
 @pytest.mark.asyncio
 async def test_session_cancellation_logs_no_error(caplog):
     process, _, agent = _make_process()
@@ -266,5 +280,5 @@ async def test_session_cancellation_logs_no_error(caplog):
         await process.stop()
         await asyncio.sleep(0)
 
-    records = [r for r in caplog.records if r.name == BACKGROUND_LOGGER and r.levelno == logging.ERROR]
-    assert records == []
+    # Every logger, not just ours: a done-callback that raises is reported by asyncio's own logger.
+    assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []
