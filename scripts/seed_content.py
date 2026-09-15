@@ -78,7 +78,13 @@ def upsert_query(table: str) -> str:
 
 def database_target(database_url: str) -> str:
     parsed = urlsplit(database_url)
-    return f"host={parsed.hostname} port={parsed.port or 5432} database={parsed.path.lstrip('/')}"
+    port = parsed.port
+    database = parsed.path.lstrip("/")
+    if not parsed.hostname or port is None or not database:
+        raise RuntimeError(
+            "DATABASE_URL must include an explicit host, port, and database"
+        )
+    return f"host={parsed.hostname} port={port} database={database}"
 
 
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:

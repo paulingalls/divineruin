@@ -33,6 +33,31 @@ async def test_main_requires_nonempty_database_url(monkeypatch, database_url):
     assert connect_calls == 0
 
 
+@pytest.mark.parametrize(
+    "database_url",
+    [
+        "postgresql:///worktree_world",
+        "postgresql://seed-db.example/worktree_world",
+        "postgresql://seed-db.example:6543",
+    ],
+)
+async def test_main_requires_explicit_target_components(monkeypatch, database_url):
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    connect_calls = 0
+
+    async def fail_connect(_database_url):
+        nonlocal connect_calls
+        connect_calls += 1
+        raise RuntimeError("connection attempted with incomplete DATABASE_URL")
+
+    monkeypatch.setattr(seed_content.asyncpg, "connect", fail_connect)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        await seed_content.main()
+
+    assert connect_calls == 0
+
+
 async def test_main_prints_redacted_target_before_connect(monkeypatch, capsys):
     database_url = "postgresql://seed_operator:swordfish@seed-db.example:6543/worktree_world"
     monkeypatch.setenv("DATABASE_URL", database_url)
