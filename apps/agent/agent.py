@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from livekit import agents
@@ -87,9 +88,12 @@ def _register_speech_end_tracking(session: AgentSession) -> None:
             session.userdata.last_agent_speech_end = time.time()
 
 
-def _livekit_cli_argv(argv: list[str], entrypoint: Path) -> list[str]:
+def _livekit_cli_argv(argv: list[str], entrypoint: Path, environ: MutableMapping[str, str]) -> list[str]:
     if argv[:1] == ["dev"]:
-        return ["start", str(entrypoint), "--dev", "--log-format", "colored", *argv[1:]]
+        # The deprecated `dev` command set this and `start --dev` does not. livekit's is_dev_mode()
+        # selects the full v1 turn detector and enables adaptive interruption off LiveKit Cloud.
+        environ["LIVEKIT_DEV_MODE"] = "1"
+        return ["start", str(entrypoint), "--dev", "--log-format", "colored", "--log-level", "DEBUG", *argv[1:]]
     if argv[:1] == ["start"]:
         return ["start", str(entrypoint), *argv[1:]]
     return argv
@@ -455,4 +459,4 @@ if __name__ == "__main__":
             pass
 
     atexit.register(_cleanup_db)
-    raise SystemExit(livekit_main(_livekit_cli_argv(sys.argv[1:], Path(__file__).resolve())))
+    raise SystemExit(livekit_main(_livekit_cli_argv(sys.argv[1:], Path(__file__).resolve(), os.environ)))

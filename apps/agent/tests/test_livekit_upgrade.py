@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import pytest
-from livekit.agents import AgentSession, AgentStateChangedEvent
+from livekit.agents import AgentSession, AgentStateChangedEvent, utils
 from livekit.plugins import anthropic
 
 import agent
@@ -73,24 +73,34 @@ async def test_speech_end_tracks_every_transition_out_of_speaking(old_state, new
     assert (session.userdata.last_agent_speech_end > 0) is records_end
 
 
-def test_livekit_cli_argument_mapping():
+def test_start_and_download_files_map_without_dev_mode(monkeypatch):
+    monkeypatch.delenv("LIVEKIT_DEV_MODE", raising=False)
     entrypoint = Path(agent.__file__).resolve()
-    assert agent._livekit_cli_argv(["dev", "--url", "ws://127.0.0.1:1"], entrypoint) == [
-        "start",
-        str(entrypoint),
-        "--dev",
-        "--log-format",
-        "colored",
-        "--url",
-        "ws://127.0.0.1:1",
-    ]
-    assert agent._livekit_cli_argv(["start", "--log-level", "debug"], entrypoint) == [
+    assert agent._livekit_cli_argv(["start", "--log-level", "debug"], entrypoint, os.environ) == [
         "start",
         str(entrypoint),
         "--log-level",
         "debug",
     ]
-    assert agent._livekit_cli_argv(["download-files"], entrypoint) == ["download-files"]
+    assert agent._livekit_cli_argv(["download-files"], entrypoint, os.environ) == ["download-files"]
+    assert not utils.is_dev_mode()
+
+
+def test_dev_command_keeps_the_legacy_dev_mode_and_debug_logs(monkeypatch):
+    monkeypatch.delenv("LIVEKIT_DEV_MODE", raising=False)
+    entrypoint = Path(agent.__file__).resolve()
+    assert agent._livekit_cli_argv(["dev", "--url", "ws://127.0.0.1:1"], entrypoint, os.environ) == [
+        "start",
+        str(entrypoint),
+        "--dev",
+        "--log-format",
+        "colored",
+        "--log-level",
+        "DEBUG",
+        "--url",
+        "ws://127.0.0.1:1",
+    ]
+    assert utils.is_dev_mode()
 
 
 def _fake_agent_env() -> dict[str, str]:
