@@ -11,8 +11,6 @@
 
 import { Socket } from "node:net";
 
-// Mirrors scripts/seed_content.py's default so the helper works even if
-// DATABASE_URL isn't set in the environment.
 const DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 const COMPOSE_FILE = new URL("../docker-compose.yml", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
