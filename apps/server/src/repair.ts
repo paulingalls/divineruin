@@ -5,7 +5,7 @@ import { DISPOSITION_ORDER } from "./dispositions.ts";
 import { logError } from "./env.ts";
 import { getItem } from "./items.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
-import { dispositionMultiplier, repairCostSp } from "./pricing.ts";
+import { dispositionMultiplier, repairCostSp, wholeSilver } from "./pricing.ts";
 
 // Repair pricing + quote endpoint — the REST surface for NPC-blacksmith item repair (M5.4).
 //
@@ -43,7 +43,7 @@ export interface RepairQuote {
   reason: string;
 }
 
-/** Price an item repair by rarity, adjusted by the blacksmith's disposition.
+/** Price an item repair by rarity, adjusted and rounded to whole silver at the quote.
  * Refuses (unavailable, priceSp 0) below Neutral; friendly 0.8x / trusted 0.6x.
  * Throws on an unknown rarity or disposition (caller maps to 400/500). */
 export function repairQuote(rarity: string, disposition: string): RepairQuote {
@@ -60,7 +60,7 @@ export function repairQuote(rarity: string, disposition: string): RepairQuote {
   }
   return {
     available: true,
-    priceSp: baseSp * dispositionMultiplier(disposition),
+    priceSp: wholeSilver(baseSp, dispositionMultiplier(disposition)),
     reason: "",
   };
 }

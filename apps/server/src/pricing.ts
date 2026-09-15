@@ -47,12 +47,43 @@ export function silverPerGold(): number {
   return getPricing().silverPerGold;
 }
 
-function numberRecord(raw: unknown, ctx: string): Record<string, number> {
+function repairCostRecord(raw: unknown, ctx: string): Record<string, number> {
   const obj = asRecord(raw, ctx);
   for (const [k, v] of Object.entries(obj)) {
-    if (typeof v !== "number") throw new Error(`${ctx}.${k} is not a number`);
+    if (typeof v !== "number" || !Number.isInteger(v)) {
+      throw new Error(`${ctx}.${k} must be an integer`);
+    }
+    if (v < 0) throw new Error(`${ctx}.${k} must be >= 0`);
   }
   return obj as Record<string, number>;
+}
+
+function multiplierRecord(raw: unknown, ctx: string): Record<string, number> {
+  const obj = asRecord(raw, ctx);
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v !== "number") throw new Error(`${ctx}.${k} must be a number`);
+    if (!Number.isFinite(v)) throw new Error(`${ctx}.${k} must be finite`);
+    if (v < 0) throw new Error(`${ctx}.${k} must be >= 0`);
+    if (Math.abs(v * 10_000 - Math.round(v * 10_000)) >= 1e-9) {
+      throw new Error(`${ctx}.${k} must have at most 4 decimal places`);
+    }
+  }
+  return obj as Record<string, number>;
+}
+
+export function wholeSilver(baseSp: number, multiplier: number): number {
+  if (!Number.isInteger(baseSp)) {
+    throw new Error("base_sp must be a non-negative integer");
+  }
+  if (baseSp < 0) {
+    throw new Error("base_sp must be a non-negative integer");
+  }
+  const basisPoints = Math.round(multiplier * 10_000);
+  const result = (2n * BigInt(baseSp) * BigInt(basisPoints) + 10_000n) / 20_000n;
+  if (result > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error("whole-silver result exceeds Number.MAX_SAFE_INTEGER");
+  }
+  return Number(result);
 }
 
 /** Fail-loud parse of the `economy` pricing row's JSONB (snake_case) into EconomyPricing. */
@@ -62,8 +93,8 @@ export function parsePricingRow(raw: unknown): EconomyPricing {
     throw new Error("pricing[economy].silver_per_gold is not a number");
   }
   return {
-    repairCostSp: numberRecord(d.repair_cost_sp, "pricing[economy].repair_cost_sp"),
-    dispositionMultipliers: numberRecord(
+    repairCostSp: repairCostRecord(d.repair_cost_sp, "pricing[economy].repair_cost_sp"),
+    dispositionMultipliers: multiplierRecord(
       d.disposition_multipliers,
       "pricing[economy].disposition_multipliers",
     ),

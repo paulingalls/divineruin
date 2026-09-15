@@ -15,12 +15,10 @@ crafting activity (the outcome is rolled later at resolution, not here).
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=` /
 `now_fn=` keyword seams for TEST-ONLY injection; production callers use the
-`@function_tool` wrappers. Settlement-by-size availability gates ONLY the
-`forge_laboratory` bundle, whose spec cell names the settlement ("city with both, or
-Keldaran hold"): `_bundle_refusal` maps the location's `settlement_tier` onto a
-SettlementSize, and BOTH the quote and the rental apply it, so the DM never voices a
-bundle price the rental would refuse. The single rentals stay settlement-blind —
-gating those too is concern c5c5871115dc (Phase 6 settlement templates).
+`@function_tool` wrappers. A location hosts the `forge_laboratory` bundle only when
+its tags carry every granted workspace. BOTH the quote and rental apply that rule,
+so the DM never voices a bundle price the rental would refuse. Single-rental
+settlement gating is deferred by note 2301b33e.
 """
 
 import json
@@ -185,11 +183,9 @@ async def _rent_workspace_impl(
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
 
-    # A multi-workspace offer is only sold where the settlement can host every member
-    # (spec: Forge + Laboratory is a city-or-Keldaran-hold bundle). Refuse before any
-    # read that could charge.
+    # A multi-workspace offer is sold only where location tags host every grant.
     if len(offer.grants) > 1:
-        refusal = await _bundle_refusal(location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod)
+        refusal = await _bundle_refusal(location_id, offer, content_mod=content_mod)
         if refusal:
             raise ToolError(refusal)
 
@@ -255,22 +251,18 @@ async def _rent_workspace_impl(
     return json.dumps(result)
 
 
-async def _bundle_refusal(location_id: str, offer: workspace.RentalOffer, *, content_mod, workspace_mod) -> str | None:
+async def _bundle_refusal(location_id: str, offer: workspace.RentalOffer, *, content_mod) -> str | None:
     """Why `location_id` cannot host a multi-workspace `offer`, or None if it can.
 
     One rule, two callers — the rental raises it and the quote drops the offer — because
     a price the DM can voice but no call can charge is the exact debt this path pays.
-    Scoped to multi-grant offers: single rentals stay settlement-blind (whole-quote
-    availability gating is concern c5c5871115dc, Phase 6)."""
+    Scoped to multi-grant offers: single-rental settlement gating is deferred by
+    note 2301b33e."""
     location = await content_mod.get_location(location_id)
-    tier = (location or {}).get("settlement_tier")
-    if not tier:
-        return f"{location_id} is not a settlement — the {offer.token} bundle needs a city or Keldaran hold."
-    try:
-        size = workspace_mod.SettlementSize(tier)
-    except ValueError:
-        return f"{location_id} has an unknown settlement tier {tier!r}."
-    missing = workspace_mod.bundle_missing_workspaces(size)
+    if location is None:
+        return f"{location_id} is an unknown location — the {offer.token} bundle cannot be hosted."
+    tags = set(location.get("tags", []))
+    missing = tuple(grant for grant in offer.grants if grant.value not in tags)
     if missing:
         names = " and ".join(w.value for w in missing)
         return f"{location_id} has no {names} to rent — the {offer.token} bundle needs both."
@@ -281,9 +273,7 @@ async def _offers_hosted_here(location_id: str, *, content_mod, workspace_mod) -
     """The rental offers `location_id` can actually host, in RENTAL_OFFERS order."""
     hosted = []
     for offer in workspace_mod.RENTAL_OFFERS:
-        if len(offer.grants) > 1 and await _bundle_refusal(
-            location_id, offer, content_mod=content_mod, workspace_mod=workspace_mod
-        ):
+        if len(offer.grants) > 1 and await _bundle_refusal(location_id, offer, content_mod=content_mod):
             continue
         hosted.append(offer)
     return hosted
