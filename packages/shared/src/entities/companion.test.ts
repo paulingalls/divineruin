@@ -114,6 +114,23 @@ describe("companions.json — row shape", () => {
       expect(c.onboarding_suggestion.length).toBeGreaterThan(0);
     }
   });
+
+  test("every companion declares two tracked portrait slugs", () => {
+    const repoRoot = new URL("../../../../", import.meta.url).pathname;
+    const tracked = Bun.spawnSync(["git", "ls-files", "assets/images/companion_*.png"], {
+      cwd: repoRoot,
+    });
+    expect(tracked.exitCode).toBe(0);
+    const trackedPaths = new Set(tracked.stdout.toString().trim().split("\n"));
+
+    for (const companion of companions) {
+      for (const slug of [companion.portrait.primary, companion.portrait.alert]) {
+        expect(typeof slug).toBe("string");
+        expect(slug).toMatch(/^companion_[a-z0-9_]+$/);
+        expect(trackedPaths.has(`assets/images/${slug}.png`)).toBe(true);
+      }
+    }
+  });
 });
 
 describe("companions.json — scaling contract (story-002 reads these)", () => {

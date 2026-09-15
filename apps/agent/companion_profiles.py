@@ -108,6 +108,12 @@ class ProgressionMilestone:
 
 
 @dataclass(frozen=True)
+class CompanionPortrait:
+    primary: str
+    alert: str
+
+
+@dataclass(frozen=True)
 class Companion:
     id: str
     name: str
@@ -131,6 +137,7 @@ class Companion:
     gender: str
     onboarding_meeting: str
     onboarding_suggestion: str
+    portrait: CompanionPortrait | None = None
     age: str | None = None
     appearance: str | None = None
     mannerisms: tuple[str, ...] = ()
@@ -245,6 +252,17 @@ def _parse_progression(raw: object, ctx: str) -> ProgressionMilestone:
     )
 
 
+def _parse_portrait(raw: object, ctx: str) -> CompanionPortrait | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError(f"{ctx} is not an object or null")
+    return CompanionPortrait(
+        primary=parse_str(raw.get("primary"), f"{ctx}.primary"),
+        alert=parse_str(raw.get("alert"), f"{ctx}.alert"),
+    )
+
+
 def parse_companion_row(companion_id: str, data: dict) -> Companion:
     """Parse a raw dict (JSON file or DB JSONB) into a Companion, fail-loud.
 
@@ -301,6 +319,7 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             gender=parse_str(data["gender"], f"{companion_id}.gender"),
             onboarding_meeting=parse_str(data["onboarding_meeting"], f"{companion_id}.onboarding_meeting"),
             onboarding_suggestion=parse_str(data["onboarding_suggestion"], f"{companion_id}.onboarding_suggestion"),
+            portrait=_parse_portrait(data.get("portrait"), f"{companion_id}.portrait"),
             age=opt_str(data.get("age"), f"{companion_id}.age"),
             appearance=opt_str(data.get("appearance"), f"{companion_id}.appearance"),
             mannerisms=parse_str_tuple(data.get("mannerisms", []), f"{companion_id}.mannerisms"),

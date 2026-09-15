@@ -12,20 +12,9 @@ import redis.asyncio as aioredis
 
 import npcs
 from asset_utils import slug_asset_url
-from companion_profiles import select_companion_for_archetype
+from companion_profiles import get_companion_profile, select_companion_for_archetype
 
 logger = logging.getLogger("divineruin.db")
-
-# Companion portraits, keyed by companion id. Only Kael has a generated asset set
-# (assets/images/companion_kael_{primary,alert}.png); Lira/Tam/Sable resolve to None until
-# scripts/generate_art.ts produces theirs (debt 9f6a7ada). A missing entry is an explicit null in the
-# payload, never a fall-through to whoever happens to have a face.
-_COMPANION_PORTRAITS: dict[str, dict[str, str]] = {
-    "companion_kael": {
-        "primary": slug_asset_url("companion_kael_primary"),
-        "alert": slug_asset_url("companion_kael_alert"),
-    },
-}
 
 CACHE_TTL = 300  # 5 minutes
 
@@ -183,9 +172,8 @@ def _build_portraits(companion_id: str | None) -> dict:
     Takes the already-resolved id rather than the player row so the payload's `companion` block
     and its portrait can never name two different companions.
 
-    A companion with no generated asset set yields an explicit None. The client must CLEAR its
-    portrait store on that null rather than fall through — falling through is how the previous
-    companion's face survives into the next player's HUD.
+    A companion with no authored portrait yields an explicit None. The client must clear its
+    portrait store on that null so the previous companion's face cannot survive a player change.
     """
     npc_portraits = {
         npc["voice_id"]: {
@@ -195,7 +183,15 @@ def _build_portraits(companion_id: str | None) -> dict:
         for npc in npcs.all_npcs()
         if "portrait" in npc
     }
+    companion_portrait = None
+    if companion_id is not None:
+        portrait = get_companion_profile(companion_id).portrait
+        if portrait is not None:
+            companion_portrait = {
+                "primary": slug_asset_url(portrait.primary),
+                "alert": slug_asset_url(portrait.alert),
+            }
     return {
         "npcs": npc_portraits,
-        "companion": _COMPANION_PORTRAITS.get(companion_id or ""),
+        "companion": companion_portrait,
     }

@@ -41,9 +41,6 @@ BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".mp3", ".wav", ".ico", ".ttf", ".ot
 
 ALLOWLIST = {
     "apps/server/src/companion_chatter.ts": "catch-up idle chatter — all four companions",
-    # Kael-only portrait ASSETS: four companions need four asset sets (art task, debt 9f6a7ada).
-    "apps/agent/db.py": "Kael is the only companion with generated portrait assets",
-    "scripts/generate_art.ts": "the asset generator for the above",
     # Kael's own rows.
     "content/companions.json": "Kael's companion row",
     "content/voice_registry.json": "Kael's voice row",
