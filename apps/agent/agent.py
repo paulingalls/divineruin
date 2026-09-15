@@ -292,8 +292,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
             # audio directly — intonation, pacing, trailing-off — instead of the STT transcript, so
             # natural mid-thought pauses don't get misread as end-of-turn. Replaces the deprecated
-            # text MultilingualModel. Version auto-selects per environment (v1 full on LiveKit Cloud,
-            # v1-mini local CPU elsewhere, with automatic fallback).
+            # text MultilingualModel. Version auto-selects per environment (v1 over the inference gateway
+            # on LiveKit Cloud and under `agent.py dev`, v1-mini local CPU elsewhere, with automatic fallback).
             turn_handling={
                 "turn_detection": inference.TurnDetector(),
                 "endpointing": {"min_delay": 0.5},
