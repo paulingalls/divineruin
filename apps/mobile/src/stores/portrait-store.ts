@@ -14,7 +14,7 @@ interface PortraitState {
   /** The assigned companion's voice tag (e.g. "COMPANION_LIRA") — the value
    *  transcript_entry.character actually carries, so it is what the portrait gate matches. */
   companionVoiceId: string | null;
-  activeNpc: { name: string; url: string } | null;
+  activeNpc: NpcPortrait | null;
   npcPortraitMap: Partial<Record<string, NpcPortrait>>;
   playerPortraitUrl: string | null;
 
@@ -34,7 +34,7 @@ const INITIAL = {
   companionVisible: false,
   companionName: null as string | null,
   companionVoiceId: null as string | null,
-  activeNpc: null as { name: string; url: string } | null,
+  activeNpc: null as NpcPortrait | null,
   npcPortraitMap: {} as Partial<Record<string, NpcPortrait>>,
   playerPortraitUrl: null as string | null,
 };

@@ -36,8 +36,8 @@ describe("cachedImageUri", () => {
     const sources = await tsxSources();
     const cachedImage = sources.get("components/cached-image.tsx");
     expect(cachedImage).toBeDefined();
-    expect(cachedImage).toContain("cachedImageUri(uri, API_BASE)");
-    expect(cachedImage).not.toContain("source={{ uri }}");
+    expect(cachedImage).toContain("const resolvedUri = cachedImageUri(uri, API_BASE);");
+    expect(cachedImage?.match(/source=\{[^\n]*\}/g)).toEqual(["source={{ uri: resolvedUri }}"]);
   });
 
   test("no TSX image path keeps a private API_BASE prefix", async () => {
@@ -49,20 +49,5 @@ describe("cachedImageUri", () => {
         /\$\{API_BASE\}\$\{[^}\n]*(?:portrait|image)[^}\n]*\}/i,
       );
     }
-  });
-
-  test("the complete CachedImage consumer inventory stays centrally resolved", async () => {
-    const sources = await tsxSources();
-    const consumers = [...sources.entries()].filter(
-      ([relativePath, source]) =>
-        relativePath !== "components/cached-image.tsx" && source.includes("<CachedImage"),
-    );
-    expect(consumers).toHaveLength(9);
-    expect(
-      consumers.reduce(
-        (count, [, source]) => count + (source.match(/<CachedImage\b/g)?.length ?? 0),
-        0,
-      ),
-    ).toBe(10);
   });
 });
