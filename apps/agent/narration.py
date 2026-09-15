@@ -226,7 +226,7 @@ def _normalize_segments_or_raise(segments: object) -> list[Segment]:
     """
     out = _normalize_segments(segments)
     if not out:
-        raise ValueError(f"narration payload carried no speakable narration: {segments!r:.300}")
+        raise ValueError(f"narration payload carried no speakable narration: {segments!r}")
     return out
 
 
@@ -284,7 +284,15 @@ async def generate_activity_narration(
     if not tool_input or not tool_input.get("segments"):
         raise RuntimeError(f"LLM did not return valid narration segments: {response.content}")
 
-    segments = _normalize_segments_or_raise(tool_input["segments"])
+    try:
+        segments = _normalize_segments_or_raise(tool_input["segments"])
+    except ValueError as exc:
+        # An undecodable payload is either cut off at max_tokens or malformed JSON; the two need
+        # different fixes, so the refusal names which one it saw.
+        raise ValueError(
+            f"{exc} (stop_reason={response.stop_reason!r}, output_tokens={response.usage.output_tokens}, "
+            f"max_tokens={MAX_TOKENS})"
+        ) from exc
     narration_text = " ".join(seg.text for seg in segments)
     summary = tool_input.get("summary", "")
 
