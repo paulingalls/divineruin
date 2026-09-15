@@ -33,6 +33,7 @@ from combat_deescalation import (
 )
 from combat_support import _resolve_attack_packet
 from declarations import DeclarationType
+from encounter_actions import action_kind
 from session_data import SessionData
 
 # Beat-4 save-to-clear DC (M4.3, story-004): the spec's end-of-turn condition saves (Frightened's
@@ -260,6 +261,17 @@ async def _resolve_one_packet(
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
+
+    # A hostile command is an order, not a swing: it resolves without a roll (encounter_actions).
+    if not attacker.is_ally and action_kind(action) == "command":
+        return {
+            "actor_id": packet.actor_id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "kind": "command",
+            "action": decl.action,
+            "target": target.name,
+        }
 
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
     # short attack sequence (still ONE declaration, never a second), narrated riders attach

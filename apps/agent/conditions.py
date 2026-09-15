@@ -135,6 +135,7 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         clearance="duration_greater_restoration_or_source_removed",
         auto_fail_saves=("str", "dex"),
         restrictions=("skip_phase", "incoming_advantage", "incoming_melee_autocrit"),
+        tick_save="wis",
     ),
     "poisoned": ConditionSpec(
         clearance="short_rest_medicine_or_antidote",
@@ -387,7 +388,7 @@ def tick_conditions(conditions: list[dict]) -> tuple[list[dict], list[dict]]:
 
     Integer durations decrement; conditions hitting 0 are dropped. ``None`` durations
     persist until explicitly cleared. Conditions whose catalog spec names a recurring
-    ``tick_save`` (only Frightened, per the spec) surface a save event so the wrap
+    ``tick_save`` (Frightened and Paralyzed) surface a save event so the wrap
     caller (story-002) can resolve the save-to-clear — this module only *signals* it,
     it never rolls. Never mutates the input.
     """

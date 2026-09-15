@@ -15,8 +15,8 @@ content/encounter_templates.json's 68 action_pool entries — ranged 6, buff 5, 
 grapple 2, control 2, aoe 2, healing 1, 46 bare — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
-its one carrier is Hollow Shriek, which applies `frightened`, and neither on_condition_imposed
-consumer reads fear — both read grapple/restrain — so deriving off it would open a window nothing
+its two carriers are Hollow Shriek (`frightened`) and Hold Person (`paralyzed`), and neither
+on_condition_imposed consumer reads fear or paralysis — both read grapple/restrain — so deriving off it would open a window nothing
 can use. Fear IS consumed, by bard_countercharm and diplomat_countercharm on `on_ally_targeted`,
 which the pre-roll window already reaches.
 """

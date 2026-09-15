@@ -36,6 +36,8 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
+from encounter_actions import action_kind
+
 
 class EncounterRole(StrEnum):
     MINION = "minion"
@@ -113,8 +115,11 @@ _ACTIVE_PROPERTY_MARKERS = frozenset({"buff", "debuff", "aoe", "healing", "contr
 
 
 def _is_active_ability(action: dict) -> bool:
-    """An action is an active ability (vs. a basic weapon attack) when it deals no direct damage
-    (``damage`` falsy or "0"/"0d0") or carries an active-effect property marker."""
+    """An action is an active ability (vs. a basic weapon attack) when it is not attack-kind (a
+    command), deals no direct damage (``damage`` falsy or "0"/"0d0"), or carries an active-effect
+    property marker."""
+    if action_kind(action) != "attack":
+        return True
     damage = str(action.get("damage", "")).strip()
     if damage in ("", "0", "0d0"):
         return True
