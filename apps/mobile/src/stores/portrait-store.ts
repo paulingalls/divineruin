@@ -11,7 +11,8 @@ interface PortraitState {
   /** The assigned companion's display name, from session_init. */
   companionName: string | null;
   /** The assigned companion's voice tag (e.g. "COMPANION_LIRA") — the value
-   *  transcript_entry.character actually carries, so it is what the portrait gate matches. */
+   *  transcript_entry.character and companion_cue.voice_id carry, so it is what the portrait
+   *  gate matches. */
   companionVoiceId: string | null;
   activeNpc: NpcPortrait | null;
   npcPortraitMap: Partial<Record<string, NpcPortrait>>;

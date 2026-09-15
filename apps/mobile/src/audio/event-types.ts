@@ -92,6 +92,8 @@ export const WORLD_EVENT = "world_event" as const;
 
 // Transcript
 export const TRANSCRIPT_ENTRY = "transcript_entry" as const;
+
+// Companion HUD
 export const COMPANION_CUE = "companion_cue" as const;
 
 // Character creation

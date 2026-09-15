@@ -107,6 +107,8 @@ HIDDEN_REVEALED = "hidden_revealed"
 
 # Transcript
 TRANSCRIPT_ENTRY = "transcript_entry"
+
+# Companion HUD
 COMPANION_CUE = "companion_cue"
 
 # Character creation

@@ -35,6 +35,18 @@ test("another companion's cue does not show the assigned portrait", () => {
   expect(portraitStore.getState().companionVisible).toBe(false);
 });
 
+test("companion cue leaves the active NPC portrait on screen", () => {
+  assignCompanion();
+  portraitStore.getState().setActiveNpc("Torin", "/api/assets/images/torin");
+
+  handleGameEvent({ type: "companion_cue", voice_id: "COMPANION_SABLE" });
+
+  expect(portraitStore.getState().activeNpc).toEqual({
+    name: "Torin",
+    url: "/api/assets/images/torin",
+  });
+});
+
 test("companion cue with no primary portrait does not show", () => {
   assignCompanion(null);
 

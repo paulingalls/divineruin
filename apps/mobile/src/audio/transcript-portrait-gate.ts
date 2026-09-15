@@ -14,19 +14,24 @@ export function handleTranscriptPortraits(
     } else {
       portraits.clearActiveNpc();
     }
-    if (
-      portraits.companionVoiceId &&
-      characterName === portraits.companionVoiceId &&
-      portraits.companionPrimaryUrl
-    ) {
-      portraits.setCompanionVisible(true);
-      if (companionHideTimer) clearTimeout(companionHideTimer);
-      companionHideTimer = setTimeout(() => {
-        companionHideTimer = null;
-        portraitStore.getState().setCompanionVisible(false);
-      }, 5000);
-    }
+    showCompanionPortrait(characterName);
   } else {
     portraits.clearActiveNpc();
+  }
+}
+
+export function showCompanionPortrait(voiceId: string): void {
+  const portraits = portraitStore.getState();
+  if (
+    portraits.companionVoiceId &&
+    voiceId === portraits.companionVoiceId &&
+    portraits.companionPrimaryUrl
+  ) {
+    portraits.setCompanionVisible(true);
+    if (companionHideTimer) clearTimeout(companionHideTimer);
+    companionHideTimer = setTimeout(() => {
+      companionHideTimer = null;
+      portraitStore.getState().setCompanionVisible(false);
+    }, 5000);
   }
 }

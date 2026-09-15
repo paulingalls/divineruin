@@ -65,13 +65,12 @@ def _session_data(companion: CompanionState | None) -> SessionData:
     return sd
 
 
-def _published_packets(sd: SessionData) -> list[dict]:
-    publisher = cast(AsyncMock, cast(Any, sd.room).local_participant.publish_data)
-    return [json.loads(call.args[0]) for call in publisher.await_args_list]
-
-
 def _publisher(sd: SessionData) -> AsyncMock:
     return cast(AsyncMock, cast(Any, sd.room).local_participant.publish_data)
+
+
+def _published_packets(sd: SessionData) -> list[dict]:
+    return [json.loads(call.args[0]) for call in _publisher(sd).await_args_list]
 
 
 def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
