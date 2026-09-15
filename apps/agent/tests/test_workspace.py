@@ -66,6 +66,7 @@ class TestRentalPricing:
         quote = ws.compute_workspace_rental_price(5, "trusted", multipliers=_MULT)
         assert quote.available is True
         assert quote.price_sp == 0
+        assert type(quote.price_sp) is int
         assert ws.compute_rental_price(5, "trusted", multipliers=_MULT).price_sp == 3
 
     @pytest.mark.parametrize("disposition", ["cautious", "wary"])
@@ -104,7 +105,9 @@ class TestRentalPricing:
     ],
 )
 def test_whole_silver_rounds_half_up_to_whole_silver(base_sp, multiplier, expected):
-    assert ws.whole_silver(base_sp, multiplier) == expected
+    result = ws.whole_silver(base_sp, multiplier)
+    assert result == expected
+    assert type(result) is int
 
 
 def test_whole_silver_rounds_multiplier_to_basis_points_before_pricing():

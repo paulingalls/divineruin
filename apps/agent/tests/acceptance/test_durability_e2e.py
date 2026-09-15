@@ -26,6 +26,7 @@ from sample_fixtures import make_context, make_mock_room
 
 import combat_resolution
 import db
+import db_mutations
 import durability
 from combat_durability import _accrue_durability
 from pricing_queries import get_economy_pricing
@@ -185,13 +186,7 @@ async def test_rest_repair_quote_matches_agent_price_and_scales_with_rarity(
     player_id = "player_repair_http"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)
-    await pool.execute(
-        "INSERT INTO npc_dispositions (npc_id, player_id, data) VALUES ($1, $2, $3::jsonb) "
-        "ON CONFLICT (npc_id, player_id) DO UPDATE SET data = $3::jsonb",
-        SMITH,
-        player_id,
-        json.dumps({"disposition": "trusted"}),
-    )
+    await db_mutations.set_npc_disposition(SMITH, player_id, "trusted", "trusted repair rounds 1.2sp to 1sp")
     headers = {"Authorization": f"Bearer {mint_server_jwt(player_id=player_id)}"}
     base = durability_server["base_url"]
 

@@ -337,7 +337,6 @@ async def test_query_info_training_programs_lists_seeded_content(reset_db_pool: 
 async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db_pool: str) -> None:
     """kind='workspaces' (no target_id) routes to _query_available_workspaces_impl -- field
     is the universal floor, so it must always appear as accessible."""
-    await (await db.get_redis()).delete("location:accord_guild_hall")
     raw = await _query_info_impl(make_context(), "workspaces")
     result = json.loads(raw)
     assert "field" in result["accessible"]

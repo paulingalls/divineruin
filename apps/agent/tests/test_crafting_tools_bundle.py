@@ -211,7 +211,7 @@ class TestQuoteMatchesCharge:
         assert {e["workspace_type"] for e in quote["rentable"]} == {o.token for o in ws.RENTAL_OFFERS}
         for entry in quote["rentable"]:
             result, _, _, _ = await _rent(entry["workspace_type"], mutations=_mutations(("a", "b")))
-            assert result["price_sp"] == pytest.approx(entry["price_sp_per_day"])
+            assert result["price_sp"] == entry["price_sp_per_day"]
 
     @pytest.mark.parametrize("npc_id", [None, "grimjaw"])
     async def test_a_location_without_laboratory_never_quotes_the_bundle(self, npc_id):
