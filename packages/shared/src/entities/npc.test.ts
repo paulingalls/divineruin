@@ -15,6 +15,8 @@ const npcs = (await Bun.file(
   new URL("../../../../content/npcs.json", import.meta.url),
 ).json()) as Npc[];
 
+const rawNpcs = npcs as unknown as Array<Record<string, unknown>>;
+
 describe("npcs.json — age schema (story-006)", () => {
   test("the catalog is non-empty", () => {
     expect(npcs.length).toBeGreaterThan(0);
@@ -40,5 +42,28 @@ describe("npcs.json — age schema (story-006)", () => {
     expect(ages).toContain("late 100s (middle-aged for a dwarf)");
     // At least one NPC's age reads as appearance-vs-true-age narrative, not a single enum bucket.
     expect(ages.some((a) => (a ?? "").startsWith("appears"))).toBe(true);
+  });
+});
+
+describe("npcs.json — portrait schema", () => {
+  test("exactly 13 NPCs carry tracked portrait slugs", () => {
+    const portraitRows = rawNpcs.filter((npc) => "portrait" in npc);
+    expect(portraitRows).toHaveLength(13);
+
+    const repoRoot = new URL("../../../../", import.meta.url).pathname;
+    const tracked = Bun.spawnSync(["git", "ls-files", "assets/images/npc_*.png"], {
+      cwd: repoRoot,
+    });
+    expect(tracked.exitCode).toBe(0);
+    const trackedPaths = new Set(tracked.stdout.toString().trim().split("\n"));
+    expect(trackedPaths.size).toBe(13);
+
+    for (const npc of portraitRows) {
+      const portrait = npc.portrait;
+      expect(typeof portrait).toBe("string");
+      if (typeof portrait !== "string") throw new TypeError("portrait is not a string");
+      expect(portrait).toMatch(/^npc_[a-z0-9_]+$/);
+      expect(trackedPaths.has(`assets/images/${portrait}.png`)).toBe(true);
+    }
   });
 });

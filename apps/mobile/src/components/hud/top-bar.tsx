@@ -11,7 +11,6 @@ import { characterStore } from "@/stores/character-store";
 import { sessionStore } from "@/stores/session-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore, type PanelTab } from "@/stores/panel-store";
-import { API_BASE } from "@/utils/api";
 
 export interface TopBarProps {
   mode: "home" | "session";
@@ -145,15 +144,7 @@ function CharacterIdentity({ trailing }: { trailing?: ReactNode }) {
         style={styles.identityTappable}
         onPress={() => panelStore.getState().openPanel("character")}
       >
-        <CachedImage
-          uri={
-            character.portraitUrl
-              ? `${API_BASE}${character.portraitUrl.replace(/^"|"$/g, "")}`
-              : null
-          }
-          style={styles.portrait}
-          borderRadius={Radius.sm}
-        />
+        <CachedImage uri={character.portraitUrl} style={styles.portrait} borderRadius={Radius.sm} />
         <ThemedText variant="label" numberOfLines={1} style={styles.characterName}>
           {character.name}
         </ThemedText>

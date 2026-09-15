@@ -3,6 +3,7 @@ import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
+import type { NpcPortrait } from "@/stores/portrait-store";
 import type { QuestView, QuestStage, CharacterDetail } from "@/stores/panel-store";
 import { parseInventoryItems, extractExitConnections } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
@@ -175,7 +176,7 @@ export function handleSessionInit(event: DataChannelEvent): void {
     const alert = typeof companion?.alert === "string" ? companion.alert : null;
     portraitStore.getState().setCompanionPortraits(primary, alert);
 
-    const npcs = portraits.npcs as Record<string, string> | undefined;
+    const npcs = portraits.npcs as Partial<Record<string, NpcPortrait>> | undefined;
     if (npcs && typeof npcs === "object") {
       portraitStore.getState().setNpcPortraitMap(npcs);
     }

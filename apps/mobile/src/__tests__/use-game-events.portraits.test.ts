@@ -24,14 +24,22 @@ test("session_init populates portrait store from portraits field", () => {
     location: { id: "loc1", name: "Town" },
     portraits: {
       companion: { primary: "/api/assets/images/img_comp1", alert: "/api/assets/images/img_comp2" },
-      npcs: { "Guildmaster Torin": "/api/assets/images/img_torin" },
+      npcs: {
+        GUILDMASTER_TORIN: {
+          name: "Guildmaster Torin",
+          url: "/api/assets/images/img_torin",
+        },
+      },
     },
   });
 
   const ps = portraitStore.getState();
   expect(ps.companionPrimaryUrl).toBe("/api/assets/images/img_comp1");
   expect(ps.companionAlertUrl).toBe("/api/assets/images/img_comp2");
-  expect(ps.npcPortraitMap["Guildmaster Torin"]).toBe("/api/assets/images/img_torin");
+  expect(ps.npcPortraitMap.GUILDMASTER_TORIN).toEqual({
+    name: "Guildmaster Torin",
+    url: "/api/assets/images/img_torin",
+  });
 
   // Player portrait should also be set
   const cs = characterStore.getState();
@@ -40,15 +48,18 @@ test("session_init populates portrait store from portraits field", () => {
 
 // --- Transcript entry triggers NPC portrait ---
 
-test("transcript_entry with npc speaker shows portrait", () => {
-  portraitStore
-    .getState()
-    .setNpcPortraitMap({ "Guildmaster Torin": "/api/assets/images/img_torin" });
+test("transcript_entry with an NPC voice tag shows the authored portrait", () => {
+  portraitStore.getState().setNpcPortraitMap({
+    GUILDMASTER_TORIN: {
+      name: "Guildmaster Torin",
+      url: "/api/assets/images/img_torin",
+    },
+  });
 
   handleGameEvent({
     type: "transcript_entry",
     speaker: "npc",
-    character: "Guildmaster Torin",
+    character: "GUILDMASTER_TORIN",
     text: "Welcome, traveler.",
   });
 
@@ -56,6 +67,30 @@ test("transcript_entry with npc speaker shows portrait", () => {
     name: "Guildmaster Torin",
     url: "/api/assets/images/img_torin",
   });
+});
+
+test("a faceless NPC clears the previous NPC portrait", () => {
+  portraitStore.getState().setNpcPortraitMap({
+    GUILDMASTER_TORIN: {
+      name: "Guildmaster Torin",
+      url: "/api/assets/images/img_torin",
+    },
+  });
+
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "GUILDMASTER_TORIN",
+    text: "Welcome, traveler.",
+  });
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "npc",
+    character: "DRATHIAN_HESSA",
+    text: "Hold the line.",
+  });
+
+  expect(portraitStore.getState().activeNpc).toBeNull();
 });
 
 test("transcript_entry with dm speaker clears NPC portrait", () => {

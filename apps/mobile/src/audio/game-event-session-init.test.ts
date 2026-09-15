@@ -89,12 +89,20 @@ test("handleSessionInit seeds portrait store from portraits payload", () => {
     companion: { id: "companion_kael", name: "Kael", voice_id: "COMPANION_KAEL" },
     portraits: {
       companion: { primary: "/api/assets/companion.png", alert: "/api/assets/companion_alert.png" },
-      npcs: { Torin: "/api/assets/torin.png" },
+      npcs: {
+        GUILDMASTER_TORIN: {
+          name: "Guildmaster Torin",
+          url: "/api/assets/torin.png",
+        },
+      },
     },
   });
 
   expect(portraitStore.getState().companionPrimaryUrl).toBe("/api/assets/companion.png");
-  expect(portraitStore.getState().npcPortraitMap.Torin).toBe("/api/assets/torin.png");
+  expect(portraitStore.getState().npcPortraitMap.GUILDMASTER_TORIN).toEqual({
+    name: "Guildmaster Torin",
+    url: "/api/assets/torin.png",
+  });
   expect(portraitStore.getState().playerPortraitUrl).toBe("/api/assets/player.png");
 });
 

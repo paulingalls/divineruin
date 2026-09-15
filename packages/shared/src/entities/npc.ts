@@ -59,5 +59,6 @@ export interface Npc {
   secrets?: string[];
   faction: string;
   voice_id: string;
+  portrait?: string;
   voice_notes?: string;
 }
