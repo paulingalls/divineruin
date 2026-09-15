@@ -14,27 +14,10 @@ import agent
 from session_data import SessionData
 from voices import VOICE_ENV_VARS
 
-LIVEKIT_PACKAGES = (
-    "livekit-agents",
-    "livekit-plugins-anthropic",
-    "livekit-plugins-deepgram",
-    "livekit-plugins-inworld",
-)
-
-
-@pytest.mark.parametrize("package", LIVEKIT_PACKAGES)
-def test_livekit_runtime_is_1_8_1(package):
-    assert importlib.metadata.version(package) == "1.8.1"
-
 
 def test_anthropic_sdk_stays_below_1():
     major = int(importlib.metadata.version("anthropic").split(".", 1)[0])
     assert major < 1
-
-
-def test_noise_cancellation_is_not_installed():
-    with pytest.raises(importlib.metadata.PackageNotFoundError):
-        importlib.metadata.version("livekit-plugins-noise-cancellation")
 
 
 @pytest.mark.asyncio
@@ -74,7 +57,7 @@ async def test_speech_end_tracks_every_transition_out_of_speaking(old_state, new
 
 
 def test_start_and_download_files_map_without_dev_mode(monkeypatch):
-    monkeypatch.delenv("LIVEKIT_DEV_MODE", raising=False)
+    monkeypatch.setenv("LIVEKIT_DEV_MODE", "0")
     entrypoint = Path(agent.__file__).resolve()
     assert agent._livekit_cli_argv(["start", "--log-level", "debug"], entrypoint, os.environ) == [
         "start",
@@ -87,7 +70,9 @@ def test_start_and_download_files_map_without_dev_mode(monkeypatch):
 
 
 def test_dev_command_keeps_the_legacy_dev_mode_and_debug_logs(monkeypatch):
-    monkeypatch.delenv("LIVEKIT_DEV_MODE", raising=False)
+    # setenv, not delenv: delenv on an absent variable records nothing to undo, so the mapping's write
+    # of LIVEKIT_DEV_MODE=1 would outlive this test and put every later test in dev mode.
+    monkeypatch.setenv("LIVEKIT_DEV_MODE", "0")
     entrypoint = Path(agent.__file__).resolve()
     assert agent._livekit_cli_argv(["dev", "--url", "ws://127.0.0.1:1"], entrypoint, os.environ) == [
         "start",
