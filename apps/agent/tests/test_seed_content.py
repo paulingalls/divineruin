@@ -46,7 +46,15 @@ async def test_main_requires_explicit_target_components(monkeypatch, database_ur
 
 @pytest.mark.parametrize(
     ("password", "fragment"),
-    [("Xy7/rest", "Xy7"), ("Xy7#rest", "Xy7"), ("Xy7?rest", "Xy7"), ("Xy7[rest", "Xy7"), ("12345/rest", "12345")],
+    [
+        ("Xy7/rest", "Xy7"),
+        ("Xy7#rest", "Xy7"),
+        ("Xy7?rest", "Xy7"),
+        ("Xy7[rest", "Xy7"),
+        ("12345/rest", "12345"),
+        ("12345/re?st", "12345"),
+        ("12345/re#st", "12345"),
+    ],
 )
 async def test_unencoded_password_refusal_does_not_echo_it(monkeypatch, capsys, password, fragment):
     monkeypatch.setenv("DATABASE_URL", f"postgresql://seed_operator:{password}@seed-db.example:6543/worktree_world")

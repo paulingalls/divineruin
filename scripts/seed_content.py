@@ -83,13 +83,14 @@ def database_target(database_url: str) -> str:
     # A reserved character left unencoded in the password misparses the URL, and the refusal must
     # not print it: the parse's ValueError quotes what it misread (`from None` drops that from the
     # traceback), and an unencoded '/' can parse cleanly with the user read as the host, the digits
-    # before the '/' as the port, and the rest of the password stranded, '@' and all, in the path.
+    # before the '/' as the port, and the rest of the password stranded, '@' and all, after the netloc
+    # (in the path, or the query or fragment when it also holds a '?' or '#').
     try:
         parsed = urlsplit(database_url)
         port = parsed.port
     except ValueError:
         raise RuntimeError(_MISPARSED_URL) from None
-    if "@" in parsed.path:
+    if "@" in parsed.path + parsed.query + parsed.fragment:
         raise RuntimeError(_MISPARSED_URL)
     database = parsed.path.lstrip("/")
     if not parsed.hostname or port is None or not database:
