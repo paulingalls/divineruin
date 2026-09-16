@@ -14,6 +14,7 @@ import db_queries
 import event_types as E
 from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
+from condition_restrictions import cannot_act
 from dramatic import DramaticContext, evaluate_dramatic_context
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
@@ -38,6 +39,7 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "hp_status": combat_resolution.hp_threshold_status(p.hp_current, p.hp_max),
         "ac": p.ac,
         "is_fallen": p.is_fallen,
+        "cannot_act": list(cannot_act(p.conditions)),
         "actions": [action["name"] for action in p.action_pool],
     }
 
@@ -218,6 +220,7 @@ def roll_attack(
         action,
         effective_ac,
         target.hp_current,
+        target_conditions=target.conditions,
         # Encounter-role overlay (M4.7, story-001): a role-derived attacker carries a flat to-hit
         # bonus and a damage multiplier (Elite/Boss boost, Minion soften). Players carry identity
         # defaults, so the player attack path is unchanged.

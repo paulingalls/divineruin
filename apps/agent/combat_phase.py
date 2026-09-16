@@ -21,6 +21,7 @@ from enum import StrEnum
 import abilities
 import reaction_spend
 from combat_ability import _find_action
+from condition_restrictions import cannot_act
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
@@ -141,6 +142,10 @@ def advance_combat_phase(
             if actor is None:
                 participant_ids = [participant.id for participant in next_state.participants]
                 raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+            if blocked := cannot_act(actor.conditions):
+                raise ValueError(
+                    f"{actor.name} ({actor.id}) is {blocked[0]}; omit that actor and narrate the helplessness"
+                )
             if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:
                 available = [action["name"] for action in actor.action_pool]
                 raise ValueError(
@@ -205,7 +210,7 @@ def _reset_legendary_actions(state: CombatState) -> None:
     (they stay at the dataclass default of 0). A fallen Boss is skipped — a downed creature
     takes no legendary actions."""
     for p in state.participants:
-        if p.role == EncounterRole.BOSS and not p.is_fallen:
+        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions):
             p.legendary_actions = 1
 
 
@@ -223,7 +228,7 @@ def _boss_legendaries(state: CombatState) -> list[dict]:
             "signature_ability": p.signature_ability,
         }
         for p in state.participants
-        if p.role == EncounterRole.BOSS and not p.is_fallen and p.legendary_actions > 0
+        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions) and p.legendary_actions > 0
     ]
 
 
@@ -241,6 +246,8 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
         raise ValueError(f"unknown participant {boss_id!r}")
     if boss.role != EncounterRole.BOSS:
         raise ValueError(f"{boss_id!r} is not a Boss (role={boss.role!r}); only Bosses have legendary actions")
+    if blocked := cannot_act(boss.conditions):
+        raise ValueError(f"{boss.name} ({boss.id}) is {blocked[0]} and cannot take a legendary action")
     if boss.legendary_actions <= 0:
         raise ValueError(f"Boss {boss_id!r} has no legendary action remaining this round")
     boss.legendary_actions -= 1
@@ -270,6 +277,8 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
         raise ValueError("only players can activate reactions")
     if actor.is_fallen:
         raise ValueError(f"player {actor_id!r} is down and cannot react")
+    if blocked := cannot_act(actor.conditions):
+        raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
 
     # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
     # so "no window is open" would send the DM waiting for one that cannot come.

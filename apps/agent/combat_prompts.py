@@ -31,6 +31,7 @@ phase (use it when the player guards, takes cover, or braces). \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") to learn which reaction windows the player's abilities answer. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
+An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
 In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \

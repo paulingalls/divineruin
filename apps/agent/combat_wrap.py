@@ -14,6 +14,7 @@ from combat_end import _end_combat_db
 from combat_events import emit_or_publish
 from combat_packet import _resolve_tick_saves
 from combat_ui_update import build_combat_ui_update
+from condition_restrictions import cannot_act
 from declarations import DeclarationType, resolve_declaration
 from session_data import SessionData
 
@@ -68,7 +69,16 @@ def next_envelope(state) -> dict:
         }
     if state.beat == combat_phase.PhaseBeat.NARRATION:
         return {"phase": "narration", "verbs": ["resolve_phase"], "waiting_on": None}
-    return {"phase": "declaration", "verbs": ["declare_phase"], "waiting_on": None}
+    return {
+        "phase": "declaration",
+        "verbs": ["declare_phase"],
+        "waiting_on": None,
+        "cannot_act": [
+            {"actor_id": p.id, "name": p.name, "conditions": list(blocked)}
+            for p in state.participants
+            if (blocked := cannot_act(p.conditions))
+        ],
+    }
 
 
 async def wrap_phase(
