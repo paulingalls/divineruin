@@ -40,6 +40,10 @@ AC_BONUS = {
     "paladin_shield_of_faith": 2,
     "marshal_interceding_order": 2,
 }
+SAVE_ADVANTAGE = {
+    "bard_countercharm": frozenset({"frightened", "charmed"}),
+    "diplomat_countercharm": frozenset({"frightened", "charmed"}),
+}
 
 
 def bound_spend(state, head: dict, stage: str) -> dict | None:
@@ -79,6 +83,11 @@ def ac_bonus(state, head: dict) -> int:
     return AC_BONUS.get(spend["ability_id"], 0)
 
 
+def save_advantage(state, head: dict, condition: str | None) -> bool:
+    spend = bound_spend(state, head, reaction_windows.PRE_ROLL)
+    return spend is not None and condition in SAVE_ADVANTAGE.get(spend["ability_id"], ())
+
+
 def shield_reaction(state, head: dict) -> str | None:
     """The post-roll spend that puts a shield in the blow's way, if the reactor is the one hit.
 
@@ -104,6 +113,11 @@ def record_shield_wear(packet: dict | None, summary: dict) -> None:
     """
     if packet is not None and packet["mechanical_effect"] is None and "shield" in (summary.get("durability") or {}):
         packet["mechanical_effect"] = "shield_durability"
+
+
+def record_save_advantage(packet: dict | None, summary: dict) -> None:
+    if packet is not None and packet["mechanical_effect"] is None and summary.get("save_advantage"):
+        packet["mechanical_effect"] = "save_advantage"
 
 
 def _held_target(state, head: dict):

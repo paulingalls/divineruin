@@ -16,6 +16,7 @@ from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
 from condition_restrictions import cannot_act
 from dramatic import DramaticContext, evaluate_dramatic_context
+from encounter_actions import action_kind
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -41,6 +42,11 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "is_fallen": p.is_fallen,
         "cannot_act": list(cannot_act(p.conditions)),
         "actions": [action["name"] for action in p.action_pool],
+        "mark_actions": [
+            {"name": action["name"], "kind": action_kind(action)}
+            for action in p.action_pool
+            if action_kind(action) != "attack"
+        ],
     }
 
 

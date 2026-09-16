@@ -65,6 +65,7 @@ def resolve_saving_throw(
     dc_mod: int = 0,
     *,
     bonus_dice_eligible: bool = True,
+    advantage: bool = False,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
@@ -93,7 +94,7 @@ def resolve_saving_throw(
     # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
     effects = get_condition_effects(player_data.get("conditions") or [])
     scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
-    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(effects, scopes)
+    flat_mod, condition_advantage, disadvantage, auto_fail = _apply_condition_modifiers(effects, scopes)
     if auto_fail:
         return SavingThrowResult(
             save_type=save_lower,
@@ -120,7 +121,13 @@ def resolve_saving_throw(
     # story-003 to remove.
     bonus, consumed = roll_bonus_dice(effects, "save", rng=rng) if bonus_dice_eligible else (0, ())
     save_modifier = mod + flat_mod + bonus
-    core = _roll_d20_check(save_modifier, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
+    core = _roll_d20_check(
+        save_modifier,
+        dc,
+        rng=rng,
+        advantage=advantage or condition_advantage,
+        disadvantage=disadvantage,
+    )
     # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
     verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
@@ -152,6 +159,7 @@ def roll_participant_save(
     bonus_dice_eligible: bool = False,
     include_proficiency: bool = True,
     rng: random.Random | None = None,
+    advantage: bool = False,
 ) -> SavingThrowResult:
     """Roll a CombatParticipant's saving throw against ``dc`` (+ ``dc_mod``).
 
@@ -185,4 +193,5 @@ def roll_participant_save(
         rng=rng,
         dc_mod=dc_mod,
         bonus_dice_eligible=bonus_dice_eligible,
+        advantage=advantage,
     )

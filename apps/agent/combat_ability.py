@@ -220,6 +220,7 @@ async def _resolve_enemy_condition_packet(
     state,
     conn,
     save_resolver=check_resolution_save,
+    reaction_save_advantage: bool = False,
 ) -> dict:
     """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
     carries applies_condition/save/dc; the dispatch (combat_packet._resolve_one_packet) routes here
@@ -246,7 +247,13 @@ async def _resolve_enemy_condition_packet(
     # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
     # consumed_conditions plumbing the attack path has; deferred, not what bfe4bac441d0 prescribes.
     result = save_resolver.roll_participant_save(
-        target, action["save"], action["dc"], cond_type, dc_mod=attacker.dc_mod, bonus_dice_eligible=False
+        target,
+        action["save"],
+        action["dc"],
+        cond_type,
+        dc_mod=attacker.dc_mod,
+        bonus_dice_eligible=False,
+        advantage=reaction_save_advantage,
     )
     # The HOSTILE inflict uses its OWN summary keys (condition_inflicted / condition_resisted /
     # condition_immune) + the target's name — NOT the beneficial `condition_applied`, which the DM
@@ -259,6 +266,8 @@ async def _resolve_enemy_condition_packet(
         "action": decl.action,
         "target": target.name,
     }
+    if reaction_save_advantage:
+        summary["save_advantage"] = True
     if result.success:
         summary["condition_resisted"] = cond_type
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path

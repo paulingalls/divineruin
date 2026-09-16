@@ -17,8 +17,10 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 """
 
 import logging
+from dataclasses import replace
 
 import combat_enhancers
+import combat_marks
 import combat_reaction_effect
 import event_types as E
 import reaction_spend
@@ -292,6 +294,7 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
 
         if head is reacted:
             combat_reaction_effect.record_shield_wear(reaction_packet, summary)
+            combat_reaction_effect.record_save_advantage(reaction_packet, summary)
         summaries.append(summary)
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
@@ -304,6 +307,7 @@ def _roll(state, head: dict, action: dict, resolver):
     declaration = _held_declaration(head)
     attacker = state.get_participant(head["actor_id"])
     target = state.get_participant(declaration.target_id)
+    attacker = replace(attacker, attack_mod=attacker.attack_mod + combat_marks.attack_bonus(state, attacker, target))
     return roll_attack(
         attacker,
         action,
@@ -343,11 +347,14 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
     """
     from combat_phase import ResolutionPacket
 
+    declaration = _held_declaration(head)
     packet = ResolutionPacket(
         actor_id=head["actor_id"],
-        declaration=_held_declaration(head),
+        declaration=declaration,
         initiative=head["initiative"],
     )
+    attacker = state.get_participant(head["actor_id"])
+    action = _find_action(attacker, declaration.action) if attacker is not None else None
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
@@ -356,6 +363,9 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
         state,
         packet,
         reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        reaction_save_advantage=combat_reaction_effect.save_advantage(
+            state, head, action.get("applies_condition") if action is not None else None
+        ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
         publish_roll=not head.get("roll_published", False),
         **deps,
