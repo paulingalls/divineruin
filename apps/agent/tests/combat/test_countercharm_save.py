@@ -10,7 +10,9 @@ from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _guarded_ally_state, _pause_at, _reaction_packet
 
 import reaction_windows
+from check_resolution_save import resolve_saving_throw
 from combat_prompts import COMBAT_PROMPT
+from conditions import apply_condition
 from dice import roll as roll_dice
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
@@ -93,6 +95,13 @@ async def test_countercharm_cancelled_by_hollowed_wis_disadvantage_claims_no_adv
     summary = next(packet for packet in packets if packet.get("condition_inflicted") == "frightened")
     assert "save_advantage" not in summary
     assert _reaction_packet(packets)["mechanical_effect"] is None
+
+
+def test_granted_advantage_is_not_applied_to_a_save_that_auto_fails():
+    stunned = {"attributes": {"dexterity": 10}, "conditions": apply_condition([], "stunned", source="test")}
+    result = resolve_saving_throw(stunned, "dexterity", 10, "prone", advantage=True)
+
+    assert result.success is False and result.advantage_applied is False
 
 
 @pytest.mark.asyncio
