@@ -7,6 +7,34 @@ import pytest
 import narration
 
 
+class TestTheNarrationToolSchema:
+    """Strict is what makes the string-shaped `segments` impossible at the source.
+
+    The schema has always declared an array of objects and the model sent a JSON string twice
+    anyway (sprint-049, sprint-050). ADR 0004's ceilings — 20 strict tools, compiled grammar size —
+    are about the gameplay agents' toolsets; this is one small tool on a direct call, and the live
+    API accepts it strict, which it does only when every object closes itself.
+    """
+
+    def test_the_tool_is_built_strict_with_every_object_closed(self):
+        tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
+        schema = tool["input_schema"]
+
+        assert tool["strict"] is True
+        assert schema["additionalProperties"] is False
+        assert schema["properties"]["segments"]["items"]["additionalProperties"] is False
+
+    def test_strict_requires_every_declared_property_to_be_required(self):
+        """A strict request is refused outright when `required` omits a declared property, and the
+        refusal names the schema, not the field — so pin it here rather than pay an API call."""
+        tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
+        schema = tool["input_schema"]
+        item = schema["properties"]["segments"]["items"]
+
+        assert set(schema["required"]) == set(schema["properties"])
+        assert set(item["required"]) == set(item["properties"])
+
+
 class TestMalformedSegmentsFromTheModel:
     """The segments come from an LLM tool call, so their SHAPE is the model's output, not ours.
 
@@ -59,6 +87,28 @@ class TestMalformedSegmentsFromTheModel:
             ("DM_NARRATOR", "neutral", "Kael emerges from the mist."),
             ("COMPANION_KAEL", "weary", "Millhaven is quiet."),
         ]
+
+    def test_a_json_array_missing_its_closing_bracket_still_narrates(self):
+        """The shape that red the Sprint 50 close, verbatim from the gate log: three complete
+        segments, `stop_reason='tool_use'` at 308 of 500 tokens — the model simply never wrote the
+        `]`. Nothing was cut off and nothing is malformed inside, so refusing it spends a whole
+        errand's narration on one absent character."""
+        raw = (
+            '[\n  {\n    "character": "DM_NARRATOR", "emotion": "calm",\n'
+            '    "text": "Kael emerges from the mist-shrouded path."\n  },\n'
+            '  {\n    "character": "COMPANION_KAEL", "emotion": "calm",\n'
+            '    "text": "It\'s there. The mark you described."\n  }\n'
+        )
+        objs = narration._normalize_segments_or_raise(raw)
+        assert [(o.character, o.text) for o in objs] == [
+            ("DM_NARRATOR", "Kael emerges from the mist-shrouded path."),
+            ("COMPANION_KAEL", "It's there. The mark you described."),
+        ]
+
+    def test_a_trailing_half_written_segment_is_dropped_and_the_rest_narrates(self):
+        raw = '[{"character": "DM_NARRATOR", "emotion": "calm", "text": "The forge cools."}, {"character": "COMPAN'
+        objs = narration._normalize_segments_or_raise(raw)
+        assert [o.text for o in objs] == ["The forge cools."]
 
     @pytest.mark.parametrize(
         "raw",

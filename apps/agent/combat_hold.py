@@ -27,6 +27,7 @@ from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from declarations import DeclarationType, resolve_declaration
+from encounter_actions import action_kind
 from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
@@ -142,8 +143,8 @@ def _opens_windows(state, head: dict) -> bool:
     Nothing reachable today is lost by this: an untargeted enemy action could only ever reach the
     ``on_enemy_action`` catch-all, whose four consumers the census already classifies as one
     post-roll row (whisper_implant_doubt, "when an enemy SUCCEEDS an attack") plus three
-    inapplicable social rows. When an enemy command/leadership action does land — the debt those
-    three are filed under — it needs a targetless window shape, not this predicate loosened.
+    inapplicable social rows. An enemy command (``encounter_actions`` kind "command") names the party
+    member it orders the attack on, so it pauses here too, at the pre-roll stage only: it never rolls.
     """
     if _is_wasted(state, head):
         return False
@@ -156,14 +157,15 @@ def _attack_action(state, head: dict) -> dict | None:
     An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
     save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
     exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
-    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not.
+    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A command
+    (``encounter_actions`` kind "command") is an order, not a swing, so it never rolls either.
     """
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
         return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or action.get("applies_condition"):
+    if action is None or action.get("applies_condition") or action_kind(action) == "command":
         return None
     return action
 

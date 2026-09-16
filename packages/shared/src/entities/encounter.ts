@@ -16,16 +16,42 @@ import type { Attributes } from "./role_archetype";
 export const ENCOUNTER_ROLE_VALUES = ["minion", "standard", "elite", "boss", "named"] as const;
 export type EncounterRole = (typeof ENCOUNTER_ROLE_VALUES)[number];
 
+// The kinds an enemy action resolves as, mirrored from apps/agent/encounter_actions.py (constraint 7).
+// An absent `kind` is "attack"; a "command" is an order that never rolls, so it carries no strike fields.
+export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command"] as const;
+export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
+
 // One entry in an enemy's action_pool, as stored in encounter_templates.json. Matches the shape
-// combat_init.py reads (name/damage/damage_type/properties) plus the content `description` blurb;
-// `ranged` marks ranged attacks.
-export interface EncounterAction {
+// combat_init.py reads plus the content `description` blurb.
+interface EncounterActionBase {
   name: string;
-  damage: string; // dice expression, e.g. "1d8" or "0" for non-damaging actions
-  damage_type: string; // "slashing" | "piercing" | ... | "none"
   properties: string[];
   description?: string;
+}
+
+// A strike rolls to hit and deals `damage`; `applies_condition` makes it a save-gated condition row.
+export interface EncounterAttackAction extends EncounterActionBase {
+  kind?: "attack";
+  damage: string; // dice expression, e.g. "1d8", or "0" for a save-gated condition row
+  damage_type: string; // "slashing" | "piercing" | ... | "none"
   ranged?: boolean;
+  applies_condition?: string;
+  save?: string;
+  dc?: number;
+}
+
+export interface EncounterCommandAction extends EncounterActionBase {
+  kind: "command";
+}
+
+export type EncounterAction = EncounterAttackAction | EncounterCommandAction;
+
+export function encounterActionKind(action: { name: string; kind?: string }): EncounterActionKind {
+  const kind = action.kind ?? "attack";
+  if (!(ENCOUNTER_ACTION_KIND_VALUES as readonly string[]).includes(kind)) {
+    throw new Error(`action ${action.name} has unknown kind ${kind}`);
+  }
+  return kind as EncounterActionKind;
 }
 
 // A Boss's unique signature ability (authored content, not generated). derive_role_stats attaches

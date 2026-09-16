@@ -7,7 +7,6 @@ import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { BrandColors, Spacing, Radius, FontStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import { API_BASE } from "@/utils/api";
 
 function hpColor(ratio: number, theme: ReturnType<typeof useTheme>): string {
   if (ratio > 0.5) return theme.hpGreen;
@@ -39,15 +38,7 @@ export function CharacterSummaryBar({ trailing }: { trailing?: ReactNode }) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.nameRow}>
-        <CachedImage
-          uri={
-            character.portraitUrl
-              ? `${API_BASE}${character.portraitUrl.replace(/^"|"$/g, "")}`
-              : null
-          }
-          style={styles.portrait}
-          borderRadius={Radius.md}
-        />
+        <CachedImage uri={character.portraitUrl} style={styles.portrait} borderRadius={Radius.md} />
         <ThemedText
           variant="label"
           themeColor="textSecondary"

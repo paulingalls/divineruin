@@ -15,10 +15,7 @@ from livekit.agents.utils.audio import audio_frames_from_file
 
 logger = logging.getLogger("divineruin.prologue")
 
-AUDIO_DIR = os.environ.get(
-    "ASYNC_AUDIO_DIR",
-    os.path.join(os.path.dirname(__file__), "..", "..", "assets", "audio"),
-)
+AUDIO_DIR = os.environ.get("ASYNC_AUDIO_DIR") or os.path.join(os.path.dirname(__file__), "..", "..", "assets", "audio")
 PROLOGUE_PATH = os.path.join(AUDIO_DIR, "prologue.mp3")
 MAX_PARTICIPANT_WAIT_S = 15.0
 

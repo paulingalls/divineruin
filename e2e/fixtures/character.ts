@@ -13,8 +13,8 @@ export interface TestCharacter {
 
 export const TEST_CHARACTER = {
   name: "Edrin Ashvale",
-  race: "Human",
-  class: "Warden",
+  race: "human",
+  class: "warden",
   level: 3,
   xp: 450,
   location_id: "accord_hearthstone_tavern",

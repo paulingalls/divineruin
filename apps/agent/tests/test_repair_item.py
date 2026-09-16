@@ -153,19 +153,27 @@ async def test_malformed_durability_tier_raises_toolerror_not_valueerror():
 # --- success: restore to max + debit disposition-adjusted gold once -----------
 
 
-async def test_success_restores_hits_and_debits_gold_once():
-    # common=2sp, trusted=0.6x -> 1.2sp = 0.12gp; standard tier max 10; gold 15.
+async def test_trusted_common_repair_rounds_to_one_silver():
     kwargs, mutations, inv_mutations = _repair_kwargs(
         item=_item(rarity="common", tier="standard", current_hits=3), disposition="trusted", gold=15.0
     )
     raw = await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     result = json.loads(raw)
-    assert result == {"item_id": "longsword_guild", "restored_to": 10, "price_sp": pytest.approx(1.2)}
+    assert result == {"item_id": "longsword_guild", "restored_to": 10, "price_sp": 1}
     inv_mutations.update_item_durability.assert_awaited_once()
     assert inv_mutations.update_item_durability.await_args.args[:3] == ("player_1", "longsword_guild", 10)
     mutations.update_player_gold.assert_awaited_once()
     assert mutations.update_player_gold.await_args.args[0] == "player_1"
-    assert mutations.update_player_gold.await_args.args[1] == pytest.approx(15.0 - 0.12)
+    assert mutations.update_player_gold.await_args.args[1] == pytest.approx(15.0 - 0.1)
+
+
+async def test_friendly_discount_rounds_away_for_common_repair():
+    kwargs, mutations, _ = _repair_kwargs(
+        item=_item(rarity="common", tier="standard", current_hits=3), disposition="friendly", gold=15.0
+    )
+    result = json.loads(await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs))
+    assert result["price_sp"] == 2
+    assert mutations.update_player_gold.await_args.args[1] == pytest.approx(14.8)
 
 
 # --- _can_repair_tier (pure) -------------------------------------------------

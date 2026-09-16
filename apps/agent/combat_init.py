@@ -29,6 +29,7 @@ from companion_scaling import (
     scale_companion_stats_to_player_level,
 )
 from db_errors import validated_player_conditions
+from encounter_actions import validate_encounter_actions
 from encounter_roles import derive_role_stats
 from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
@@ -200,11 +201,12 @@ async def _start_combat_locked(
     ]
 
     enemies = encounter.get("enemies", [])
-    # Surface malformed enemy content (condition actions, resistance tags) as a DM-narratable
+    # Surface malformed enemy content (condition actions, action kinds, resistance tags) as a DM-narratable
     # ToolError (the _start_combat_impl content-error convention, matching the stance-gate above),
     # not a raw ValueError at the tool boundary. The inner {e} names the specific defect.
     try:
         _validate_enemy_action_conditions(enemies)
+        validate_encounter_actions(enemies)
         _validate_enemy_resistance_tags(enemies)
     except ValueError as e:
         raise ToolError(f"Encounter '{encounter_id}' has malformed enemy data: {e}") from e

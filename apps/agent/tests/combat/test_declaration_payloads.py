@@ -82,7 +82,10 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         for action in enemy["action_pool"]
         if action.get("applies_condition")
     ]
-    assert inventory == [("hollow_patrol_greyvale", "hollow_rend_1", "Hollow Shriek", "frightened")]
+    assert inventory == [
+        ("hollow_patrol_greyvale", "hollow_rend_1", "Hollow Shriek", "frightened"),
+        ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
+    ]
 
     encounter = next(item for item in catalog if item["id"] == inventory[0][0])
     action = next(item for item in encounter["enemies"][0]["action_pool"] if item.get("applies_condition"))

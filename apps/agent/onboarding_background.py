@@ -3,11 +3,14 @@
 import asyncio
 import logging
 import time
+from functools import partial
 
 from livekit.agents import AgentSession
 
+from companion_cue_events import publish_companion_cue
 from session_data import SessionData
 from system_prompts import build_companion_cue
+from task_logging import log_task_failure
 
 logger = logging.getLogger("divineruin.onboarding_background")
 
@@ -56,6 +59,9 @@ class OnboardingBackgroundProcess:
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
+        self._task.add_done_callback(
+            partial(log_task_failure, logger=logger, message="Onboarding background process failed")
+        )
 
     async def stop(self) -> None:
         self._stop = True
@@ -109,6 +115,7 @@ class OnboardingBackgroundProcess:
 
         staging, emotion = nudges[self._hint_index]
         instruction = build_companion_cue(companion, staging, emotion)
+        await publish_companion_cue(self._sd, companion)
         logger.info(
             "Delivering onboarding nudge %d for beat %d to player %s",
             self._hint_index,

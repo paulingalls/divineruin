@@ -5,7 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from functools import partial
 from typing import TYPE_CHECKING, cast
+
+import asyncpg
 
 import db_activity_queries
 import db_content_queries
@@ -15,9 +18,11 @@ import db_training
 import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
+from companion_cue_events import publish_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
 from system_prompts import build_companion_cue, is_companion_cue
+from task_logging import log_task_failure
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
 if TYPE_CHECKING:
@@ -29,6 +34,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("divineruin.background")
 
 TIMER_FALLBACK_SECS = 30.0
+TRANSIENT_IO_ERRORS = (OSError, TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
 
 
 class BackgroundProcess:
@@ -57,6 +63,7 @@ class BackgroundProcess:
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
+        self._task.add_done_callback(partial(log_task_failure, logger=logger, message="Background process failed"))
         # The session is the owner, so the session's end is the only thing that stops the loop —
         # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
         self._session.on("close", self._on_session_close)
@@ -98,10 +105,12 @@ class BackgroundProcess:
                 pass
 
     async def _run(self) -> None:
-        # Pre-fetch event scenes into cache
-        rider = await db_content_queries.get_scene("scene_rider_arrival")
-        if rider:
-            self._scene_cache["scene_rider_arrival"] = rider
+        try:
+            rider = await db_content_queries.get_scene("scene_rider_arrival")
+            if rider:
+                self._scene_cache["scene_rider_arrival"] = rider
+        except TRANSIENT_IO_ERRORS:
+            logger.error("Rider scene prefetch failed", exc_info=True)
 
         # Initial warm layer build
         await self._rebuild_warm_layer()
@@ -260,6 +269,10 @@ class BackgroundProcess:
         top = max(speakable, key=lambda s: (s.priority, s.created))
         self._speech_queue = held
 
+        companion = self._sd.companion
+        if companion and is_companion_cue(top.instructions, companion):
+            await publish_companion_cue(self._sd, companion)
+
         try:
             # Fire stinger SFX before god whisper speech
             if top.stinger_sound is not None:
@@ -310,8 +323,8 @@ class BackgroundProcess:
                 self._scene_cache = await db_content_queries.get_scenes_batch(scene_ids)
             else:
                 self._scene_cache = {}
-        except Exception:
-            logger.debug("Warm layer data fetch failed", exc_info=True)
+        except TRANSIENT_IO_ERRORS:
+            logger.error("Warm layer data fetch failed", exc_info=True)
             return
 
         try:
@@ -342,8 +355,8 @@ class BackgroundProcess:
                 scene_cache=self._scene_cache or None,
                 training=training or None,
             )
-        except Exception:
-            logger.warning("Warm layer build failed", exc_info=True)
+        except TRANSIENT_IO_ERRORS:
+            logger.error("Warm layer build failed", exc_info=True)
             return
 
         await self._apply_warm(base)

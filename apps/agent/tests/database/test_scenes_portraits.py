@@ -4,11 +4,24 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from npcs_config_fixture import load_fixture_config
 
 import db
 import db_content_queries
 import db_queries
 import db_session_queries
+
+
+def _expected_npc_portraits() -> dict[str, dict[str, str]]:
+    rows = load_fixture_config().values()
+    return {
+        row["voice_id"]: {
+            "name": row["name"],
+            "url": f"/api/assets/images/{row['portrait']}",
+        }
+        for row in rows
+        if "portrait" in row
+    }
 
 
 async def _session_init(player: dict) -> dict:
@@ -33,9 +46,13 @@ class TestSessionInitPortraits:
         assert "npcs" in result["portraits"]
         assert "primary" in result["portraits"]["companion"]
         assert "alert" in result["portraits"]["companion"]
-        # Verify NPC portrait URLs are present
-        assert "Guildmaster Torin" in result["portraits"]["npcs"]
-        assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/npc_")
+        expected = _expected_npc_portraits()
+        assert len(expected) == 13
+        assert result["portraits"]["npcs"] == expected
+        assert result["portraits"]["npcs"]["GUILDMASTER_TORIN"] == {
+            "name": "Guildmaster Torin",
+            "url": "/api/assets/images/npc_torin",
+        }
 
     @pytest.mark.asyncio
     async def test_payload_names_the_assigned_companion(self):
@@ -47,18 +64,29 @@ class TestSessionInitPortraits:
         }
 
     @pytest.mark.asyncio
-    async def test_companion_without_a_generated_asset_set_yields_an_explicit_null(self):
-        """Lira/Tam/Sable have no generated portrait assets. An explicit null, not Kael's face,
-        and not a missing key the client can fall through on."""
-        result = await _session_init({"name": "Test", "class": "warrior", "location_id": "tavern"})
-        assert result["portraits"]["companion"] is None
-        assert result["portraits"]["npcs"]
+    @pytest.mark.parametrize(
+        ("archetype", "companion_id"),
+        [
+            ("warrior", "companion_lira"),
+            ("cleric", "companion_tam"),
+            ("spy", "companion_sable"),
+        ],
+    )
+    async def test_each_non_kael_companion_gets_its_authored_portraits(self, archetype: str, companion_id: str):
+        result = await _session_init({"name": "Test", "class": archetype, "location_id": "tavern"})
+        assert result["portraits"]["companion"] == {
+            "primary": f"/api/assets/images/{companion_id}_primary",
+            "alert": f"/api/assets/images/{companion_id}_alert",
+        }
 
     @pytest.mark.asyncio
     async def test_kael_player_still_gets_kaels_portraits(self):
         result = await _session_init({"name": "Test", "class": "mage", "location_id": "tavern"})
         assert result["companion"]["id"] == "companion_kael"
-        assert result["portraits"]["companion"]["primary"].endswith("companion_kael_primary")
+        assert result["portraits"]["companion"] == {
+            "primary": "/api/assets/images/companion_kael_primary",
+            "alert": "/api/assets/images/companion_kael_alert",
+        }
 
     @pytest.mark.asyncio
     async def test_a_player_row_with_no_resolvable_class_still_yields_a_payload(self):
@@ -74,15 +102,16 @@ class TestSessionInitPortraits:
         assert result["character"]["name"] == "Test"
 
     def test_build_portraits_produces_valid_urls(self):
-        """_build_portraits keys the companion entry on the assigned companion; a companion
-        with no generated asset set, and an unresolved one, both get an explicit null."""
-        result = db._build_portraits("companion_kael")
-        assert result["companion"]["primary"].startswith("/api/assets/images/companion_")
-        assert result["companion"]["alert"].startswith("/api/assets/images/companion_")
-        for url in result["npcs"].values():
-            assert url.startswith("/api/assets/images/npc_")
+        """_build_portraits derives every companion URL from the loaded catalog."""
+        for companion_id in ("companion_kael", "companion_lira", "companion_tam", "companion_sable"):
+            result = db._build_portraits(companion_id)
+            assert result["companion"] == {
+                "primary": f"/api/assets/images/{companion_id}_primary",
+                "alert": f"/api/assets/images/{companion_id}_alert",
+            }
+        for portrait in result["npcs"].values():
+            assert portrait["url"].startswith("/api/assets/images/npc_")
 
-        assert db._build_portraits("companion_lira")["companion"] is None
         assert db._build_portraits(None)["companion"] is None
 
     def test_resolve_player_companion_id_is_the_single_resolution_point(self):

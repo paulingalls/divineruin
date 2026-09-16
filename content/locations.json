@@ -547,11 +547,12 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": ["forge", "crafting", "commerce", "fire"],
+    "tags": ["forge", "laboratory", "crafting", "commerce", "fire"],
     "description": "Heat rolls out the open door in waves. Inside, the air shimmers. The forge takes up the back wall \u2014 a massive stone hearth fed by bellows that wheeze like something alive. Hammers hang from pegs, smallest to largest, each worn smooth. The smell is hot metal, coal smoke, and sweat. Every surface is scorched or scarred.",
     "atmosphere": "intense, industrious, fire-lit",
     "key_features": [
       "the great forge, stone-built and roaring",
+      "the bubbling hiss and sharp mineral smell of an alchemical laboratory behind a heat-shielded partition",
       "a wall of weapons in various stages of completion",
       "a workbench covered in metal scraps and half-finished projects"
     ],

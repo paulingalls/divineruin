@@ -33,9 +33,8 @@ _load_env(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from tts_prerender import synthesize_with_pauses  # noqa: E402
 from voices import get_voice_config  # noqa: E402
 
-AUDIO_DIR = os.environ.get(
-    "ASYNC_AUDIO_DIR",
-    os.path.join(os.path.dirname(__file__), "..", "apps", "server", "audio"),
+AUDIO_DIR = os.environ.get("ASYNC_AUDIO_DIR") or os.path.join(
+    os.path.dirname(__file__), "..", "apps", "server", "audio"
 )
 
 PROLOGUE_TEXT = (

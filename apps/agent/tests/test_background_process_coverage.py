@@ -396,6 +396,7 @@ class TestSpeechQueue:
         # tests are about which queued cue is chosen, and delivery now holds everything but a
         # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
+        mock_sd.companion = None
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
@@ -419,6 +420,7 @@ class TestSpeechQueue:
         # tests are about which queued cue is chosen, and delivery now holds everything but a
         # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
+        mock_sd.companion = None
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [
@@ -440,6 +442,7 @@ class TestSpeechQueue:
         # tests are about which queued cue is chosen, and delivery now holds everything but a
         # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
+        mock_sd.companion = None
 
         bp = BackgroundProcess(mock_session, mock_sd)
         bp._speech_queue = [

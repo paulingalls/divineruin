@@ -52,10 +52,8 @@ from urllib.parse import unquote, urlparse
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _COMPOSE_FILE = _REPO_ROOT / "docker-compose.yml"
 
-# Mirrors scripts/seed_content.py's default so the helper works even when
-# DATABASE_URL isn't exported into the pytest environment. Last resort ONLY:
-# it names the PRIMARY checkout's stack, so a worktree reaching it is a bug
-# (see resolve_database_url).
+# Last resort ONLY: this names the PRIMARY checkout's stack, so a worktree
+# reaching it is a bug (see resolve_database_url).
 _DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
 
 _READY_TIMEOUT_SECONDS = 60

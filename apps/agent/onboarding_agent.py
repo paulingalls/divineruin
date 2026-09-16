@@ -12,8 +12,11 @@ from typing import Any
 
 from livekit.agents import llm
 
+import db_session_queries
+import event_types as E
 from base_agent import BaseGameAgent
 from check_tools import check
+from game_events import publish_game_event
 from movement_tools import move_player
 from onboarding_background import OnboardingBackgroundProcess
 from onboarding_prompt import build_onboarding_instructions
@@ -48,19 +51,33 @@ class OnboardingAgent(BaseGameAgent):
     companion; see onboarding_prompt._unassigned_span.
     """
 
-    def __init__(self, onboarding_beat: int = 1, chat_ctx: Any = None, companion_id: str | None = None) -> None:
+    def __init__(
+        self,
+        onboarding_beat: int = 1,
+        chat_ctx: Any = None,
+        companion_id: str | None = None,
+        *,
+        publish_session_init: bool = False,
+    ) -> None:
         super().__init__(
             instructions=build_onboarding_instructions(onboarding_beat, companion_id),
             tools=ONBOARDING_TOOLS,
             chat_ctx=chat_ctx,
         )
         self._onboarding_beat = onboarding_beat
+        self._publish_session_init_on_enter = publish_session_init
         self._background: OnboardingBackgroundProcess | None = None
 
     async def on_enter(self) -> None:
         await super().on_enter()
         sd: SessionData = self.session.userdata
         sd.onboarding_beat = self._onboarding_beat
+        if self._publish_session_init_on_enter:
+            try:
+                payload = await db_session_queries.get_session_init_payload(sd.player_id)
+                await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
+            except Exception:
+                logger.exception("Failed to publish session_init after onboarding reconnect")
         self._background = OnboardingBackgroundProcess(session=self.session, session_data=sd)
         self._background.start()
 

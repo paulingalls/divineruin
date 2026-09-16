@@ -10,6 +10,7 @@ _pricing rides here since only rent_workspace prices.
 """
 
 import json
+from types import EllipsisType
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -34,12 +35,16 @@ def _pricing():
     return mod
 
 
-def _content(settlement_tier="city", *, location=...):
+def _content(settlement_tier: str = "city", *, location: dict | None | EllipsisType = ...):
     """A content_mod seam: the location the bundle offer-gate reads, plus the get_npc the
     disposition fallback would use (unused here — _queries records a disposition)."""
     mod = MagicMock()
     if location is ...:
-        location = {"id": "accord_guild_hall", "settlement_tier": settlement_tier}
+        location = {
+            "id": "accord_guild_hall",
+            "settlement_tier": settlement_tier,
+            "tags": ["forge", "laboratory"],
+        }
     mod.get_location = AsyncMock(return_value=location)
     mod.get_npc = AsyncMock(return_value=None)
     return mod
@@ -81,12 +86,10 @@ class TestQueryAvailableWorkspaces:
         )
         assert set(result["accessible"]) == {"field", "forge"}
         prices = {entry["workspace_type"]: entry["prices_sp_per_day_by_disposition"] for entry in result["rentable"]}
-        assert prices["workshop"] == {"neutral": 2.0, "friendly": 1.6, "trusted": 0.0}
-        assert prices["forge"] == {"neutral": 5.0, "friendly": 4.0, "trusted": 0.0}
-        assert prices["laboratory"] == {"neutral": 10.0, "friendly": 8.0, "trusted": 0.0}
-        # approx, not ==: 12 * 0.8 is 9.600000000000001. No pricing path rounds (the
-        # shared multiplier has a TS twin in repair.ts), so the float rides through.
-        assert prices["forge_laboratory"] == pytest.approx({"neutral": 12.0, "friendly": 9.6, "trusted": 0.0})
+        assert prices["workshop"] == {"neutral": 2, "friendly": 2, "trusted": 0}
+        assert prices["forge"] == {"neutral": 5, "friendly": 4, "trusted": 0}
+        assert prices["laboratory"] == {"neutral": 10, "friendly": 8, "trusted": 0}
+        assert prices["forge_laboratory"] == {"neutral": 12, "friendly": 10, "trusted": 0}
         assert "base_price_sp" not in json.dumps(result)
 
     async def test_untargeted_table_covers_every_rentable_ladder_tier(self):
@@ -242,7 +245,7 @@ class TestRentWorkspace:
         assert mutations.update_player_gold.call_args.args[1] == pytest.approx(14.5)
         mutations.create_workspace_rental.assert_awaited_once()
 
-    async def test_friendly_gets_discount(self):
+    async def test_friendly_discount_rounds_away_for_workshop(self):
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
         mutations.update_player_gold = AsyncMock()
@@ -250,7 +253,7 @@ class TestRentWorkspace:
         result = json.loads(
             await _rent_workspace_impl(
                 make_context(),
-                "forge",
+                "workshop",
                 "grimjaw",
                 1,
                 db_mod=db_mod,
@@ -259,7 +262,8 @@ class TestRentWorkspace:
                 pricing_mod=_pricing(),
             )
         )
-        assert result["price_sp"] == pytest.approx(4.0)  # 5 * 0.8
+        assert result["price_sp"] == 2
+        assert mutations.update_player_gold.await_args.args[1] == pytest.approx(14.8)
 
     async def test_trusted_rents_free_no_debit(self):
         db_mod, _ = make_db_mod()

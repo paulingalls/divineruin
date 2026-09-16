@@ -14,7 +14,6 @@ import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { lookupSoundscape } from "@/audio/soundscape-registry";
 import { authStore } from "@/stores/auth-store";
 import { characterStore } from "@/stores/character-store";
-import { API_BASE } from "@/utils/api";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 let previewPlayer: AudioPlayer | null = null;
@@ -83,12 +82,6 @@ function VolumeSlider({ label, bus, disabled }: SliderRowProps) {
   );
 }
 
-function resolvePortraitUri(url: string | null): string | null {
-  if (!url) return null;
-  const clean = url.replace(/^"|"$/g, "");
-  return `${API_BASE}${clean}`;
-}
-
 export default function SettingsScreen() {
   const router = useRouter();
   const email = useStore(authStore, (s) => s.email);
@@ -128,7 +121,7 @@ export default function SettingsScreen() {
             <ThemedText style={styles.sectionTitle}>CHARACTER</ThemedText>
             <View style={styles.portraitRow}>
               <CachedImage
-                uri={resolvePortraitUri(character.portraitUrl)}
+                uri={character.portraitUrl}
                 style={styles.portraitImage}
                 borderRadius={28}
               />

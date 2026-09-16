@@ -28,6 +28,16 @@ logger = logging.getLogger("divineruin.npcs")
 _npcs: dict[str, dict] = {}
 
 
+def _validate_unique_voice_ids(config: dict[str, dict]) -> None:
+    owners: dict[str, str] = {}
+    for npc_id, npc in config.items():
+        voice_id = npc["voice_id"]
+        previous = owners.get(voice_id)
+        if previous is not None:
+            raise ValueError(f"duplicate voice_id {voice_id!r} on NPCs {previous!r} and {npc_id!r}")
+        owners[voice_id] = npc_id
+
+
 def parse_npc_row(npc_id: str, data: dict) -> dict:
     """Validate a raw NPC dict (JSON file or DB JSONB) fail-loud; return it unchanged.
 
@@ -42,6 +52,8 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
         parse_str(data["role_archetype"], f"{npc_id}.role_archetype")
         parse_str(data["speech_style"], f"{npc_id}.speech_style")
         parse_str(data["voice_id"], f"{npc_id}.voice_id")
+        if "portrait" in data:
+            parse_str(data["portrait"], f"{npc_id}.portrait")
         parse_str(data["faction"], f"{npc_id}.faction")
         parse_str_list(data["personality"], f"{npc_id}.personality")
         parse_dict(data["knowledge"], f"{npc_id}.knowledge")
@@ -64,6 +76,7 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
 
 def set_npcs(config: dict[str, dict]) -> None:
     """Test seam: populate _npcs directly without going through the DB."""
+    _validate_unique_voice_ids(config)
     _npcs.clear()
     _npcs.update(config)
 
@@ -76,6 +89,13 @@ def get_npc_sync(npc_id: str) -> dict | None:
 def is_loaded() -> bool:
     """True once the catalog has been populated (startup load or test seam)."""
     return bool(_npcs)
+
+
+def all_npcs() -> list[dict]:
+    """Return a snapshot of the loaded NPC catalog."""
+    if not _npcs:
+        raise RuntimeError("NPC catalog is not loaded")
+    return list(_npcs.values())
 
 
 async def load_npcs() -> None:
@@ -94,6 +114,7 @@ async def load_npcs() -> None:
     for row in rows:
         data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
         loaded[row["id"]] = parse_npc_row(row["id"], data)
+    _validate_unique_voice_ids(loaded)
     _npcs.clear()
     _npcs.update(loaded)
     logger.info("Loaded %d NPCs", len(_npcs))

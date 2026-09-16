@@ -91,8 +91,8 @@ class TestConditionImposedComesFromProperties:
 
     @pytest.mark.parametrize("hit", [True, False])
     def test_applies_condition_alone_opens_no_condition_window(self, hit):
-        """The vacuous route. Hollow Shriek is the ONLY action_pool entry carrying
-        applies_condition, and it applies `frightened` — which neither on_condition_imposed
+        """The vacuous route. The action_pool entries carrying applies_condition are Hollow Shriek
+        (`frightened`) and Hold Person (`paralyzed`), which neither on_condition_imposed
         consumer reads; both read grapple/restrain. Deriving off it would open a window nothing
         can use, and AC5 would go green while both consumers stayed unusable (constraint 1)."""
         assert "on_condition_imposed" not in reaction_windows.post_roll_triggers(_SHRIEK, hit=hit)

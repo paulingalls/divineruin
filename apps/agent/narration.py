@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 
 from anthropic.types import ToolParam
 
@@ -131,11 +131,18 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
     """
     valid_characters = [DEFAULT_VOICE, *npc_voice_ids]
 
-    return {
+    # strict compiles the schema into the decoder, so `segments` cannot come back as the JSON
+    # string it was at sprint-049 and sprint-050. ADR 0004 turned strict OFF for the gameplay
+    # AGENTS, whose toolsets hit the 20-strict-tool limit and the compiled-grammar ceiling; this
+    # is one small tool on a direct call, and the live API accepts it (probed 2026-09-16) — but
+    # only with every object closed and every declared property required.
+    tool: dict[str, Any] = {
         "name": "narration_result",
+        "strict": True,
         "description": "Submit the structured narration segments and a short UI summary.",
         "input_schema": {
             "type": "object",
+            "additionalProperties": False,
             "required": ["segments", "summary"],
             "properties": {
                 "segments": {
@@ -143,6 +150,7 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
                     "description": "Ordered narration segments. Each is one voice block.",
                     "items": {
                         "type": "object",
+                        "additionalProperties": False,
                         "required": ["character", "emotion", "text"],
                         "properties": {
                             "character": {
@@ -169,6 +177,7 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
             },
         },
     }
+    return cast(ToolParam, tool)
 
 
 def _extract_tool_input(response: Any) -> dict[str, Any] | None:
@@ -177,6 +186,30 @@ def _extract_tool_input(response: Any) -> dict[str, Any] | None:
         if block.type == "tool_use" and block.name == "narration_result":
             return block.input
     return None
+
+
+def _decode_segment_array(raw: str) -> object:
+    """Decode a JSON-encoded `segments` array, closing one the model left open.
+
+    Tolerated: an array that opens with `[` and never closes, its half-written trailing segment
+    cut back to the last complete `}`. Refused, by decoding to None: a JSON object, a bare string,
+    prose, and JSON broken anywhere but its end. Sprint 50's close saw the open array three
+    complete segments long at `stop_reason='tool_use'` — not a truncated response, just a missing
+    bracket, and refusing it cost the errand every word of its narration.
+    """
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    if not raw.lstrip().startswith("["):
+        return None
+    last_complete = raw.rfind("}")
+    if last_complete == -1:
+        return None
+    try:
+        return json.loads(f"{raw[: last_complete + 1]}]")
+    except json.JSONDecodeError:
+        return None
 
 
 def _normalize_segments(segments: object) -> list[Segment]:
@@ -190,14 +223,11 @@ def _normalize_segments(segments: object) -> list[Segment]:
     A dict missing `character` or `emotion` narrates with the defaults for the same reason.
     What is DROPPED is only what cannot be spoken: no text, blank text, or a segment that is
     neither a string nor a mapping. The whole array sent as a JSON-encoded STRING (seen live at
-    sprint-049) is decoded and normalized as that list; any other top-level string yields
-    nothing, so the caller's floor still refuses it.
+    sprint-049) is decoded by `_decode_segment_array`, which also closes an array the model left
+    open; any other top-level string yields nothing, so the caller's floor still refuses it.
     """
     if isinstance(segments, str):
-        try:
-            segments = json.loads(segments)
-        except json.JSONDecodeError:
-            segments = None
+        segments = _decode_segment_array(segments)
     out: list[Segment] = []
     for seg in segments if isinstance(segments, list) else []:
         if isinstance(seg, str):
@@ -226,7 +256,7 @@ def _normalize_segments_or_raise(segments: object) -> list[Segment]:
     """
     out = _normalize_segments(segments)
     if not out:
-        raise ValueError(f"narration payload carried no speakable narration: {segments!r:.300}")
+        raise ValueError(f"narration payload carried no speakable narration: {segments!r}")
     return out
 
 
@@ -284,7 +314,15 @@ async def generate_activity_narration(
     if not tool_input or not tool_input.get("segments"):
         raise RuntimeError(f"LLM did not return valid narration segments: {response.content}")
 
-    segments = _normalize_segments_or_raise(tool_input["segments"])
+    try:
+        segments = _normalize_segments_or_raise(tool_input["segments"])
+    except ValueError as exc:
+        # An undecodable payload is either cut off at max_tokens or malformed JSON; the two need
+        # different fixes, so the refusal names which one it saw.
+        raise ValueError(
+            f"{exc} (stop_reason={response.stop_reason!r}, output_tokens={response.usage.output_tokens}, "
+            f"max_tokens={MAX_TOKENS})"
+        ) from exc
     narration_text = " ".join(seg.text for seg in segments)
     summary = tool_input.get("summary", "")
 

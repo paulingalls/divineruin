@@ -10,40 +10,11 @@ from typing import cast
 import asyncpg
 import redis.asyncio as aioredis
 
+import npcs
 from asset_utils import slug_asset_url
-from companion_profiles import select_companion_for_archetype
+from companion_profiles import get_companion_profile, select_companion_for_archetype
 
 logger = logging.getLogger("divineruin.db")
-
-# Companion portraits, keyed by companion id. Only Kael has a generated asset set
-# (assets/images/companion_kael_{primary,alert}.png); Lira/Tam/Sable resolve to None until
-# scripts/generate_art.ts produces theirs (debt 9f6a7ada). A missing entry is an explicit null in the
-# payload, never a fall-through to whoever happens to have a face.
-_COMPANION_PORTRAITS: dict[str, dict[str, str]] = {
-    "companion_kael": {
-        "primary": slug_asset_url("companion_kael_primary"),
-        "alert": slug_asset_url("companion_kael_alert"),
-    },
-}
-
-# Pre-generated portrait URLs — slug-based, matching files in assets/images/
-_PORTRAITS_CACHE: dict = {
-    "npcs": {
-        "Guildmaster Torin": slug_asset_url("npc_torin"),
-        "Elder Yanna": slug_asset_url("npc_yanna"),
-        "Scholar Emris": slug_asset_url("npc_emris"),
-        "Wounded Rider": slug_asset_url("npc_wounded_rider"),
-        "Maren": slug_asset_url("npc_maren"),
-        "Investigator Valdris": slug_asset_url("npc_valdris"),
-        "Grimjaw": slug_asset_url("npc_grimjaw"),
-        "Bryn": slug_asset_url("npc_bryn"),
-        "Warden Selene": slug_asset_url("npc_selene"),
-        "Aldric": slug_asset_url("npc_aldric"),
-        "Nyx": slug_asset_url("npc_nyx"),
-        "Archivist Theron": slug_asset_url("npc_theron"),
-        "Guild Master Dara": slug_asset_url("npc_dara"),
-    },
-}
 
 CACHE_TTL = 300  # 5 minutes
 
@@ -147,13 +118,37 @@ async def transaction() -> AsyncIterator[asyncpg.Connection]:
             yield cast(asyncpg.Connection, conn)
 
 
+DESYNCED_REPLY_LOG = "Redis GET %s answered %r, not a string: discarding the desynced client (pool %r, loop %#x)"
+
+
 async def _cache_get(key: str) -> str | None:
     try:
         r = await get_redis()
-        return await r.get(key)
+        value = await r.get(key)
     except Exception:
         logger.warning("Redis read failed for key %s, falling through to DB", key)
         return None
+    if value is None or isinstance(value, str):
+        return value
+    await _discard_desynced_redis(r, key, value)
+    return None
+
+
+async def _discard_desynced_redis(r: aioredis.Redis, key: str, reply: object) -> None:
+    """Drop a client whose GET was answered with a non-string.
+
+    A string GET cannot reply with anything else, so the connection read bytes meant for another
+    command, and no later read on that client can be trusted. This tolerates exactly that shape; a
+    desynced connection that happens to hand back another key's string passes unseen.
+    """
+    global _redis
+    logger.error(DESYNCED_REPLY_LOG, key, reply, r.connection_pool, id(asyncio.get_running_loop()))
+    if _redis is r:
+        _redis = None
+    try:
+        await r.connection_pool.disconnect()
+    except Exception:
+        logger.exception("Disconnecting the desynced Redis pool failed")
 
 
 async def _cache_set(key: str, value: str) -> None:
@@ -201,8 +196,26 @@ def _build_portraits(companion_id: str | None) -> dict:
     Takes the already-resolved id rather than the player row so the payload's `companion` block
     and its portrait can never name two different companions.
 
-    A companion with no generated asset set yields an explicit None. The client must CLEAR its
-    portrait store on that null rather than fall through — falling through is how the previous
-    companion's face survives into the next player's HUD.
+    A companion with no authored portrait yields an explicit None. The client must clear its
+    portrait store on that null so the previous companion's face cannot survive a player change.
     """
-    return {**_PORTRAITS_CACHE, "companion": _COMPANION_PORTRAITS.get(companion_id or "")}
+    npc_portraits = {
+        npc["voice_id"]: {
+            "name": npc["name"],
+            "url": slug_asset_url(npc["portrait"]),
+        }
+        for npc in npcs.all_npcs()
+        if "portrait" in npc
+    }
+    companion_portrait = None
+    if companion_id is not None:
+        portrait = get_companion_profile(companion_id).portrait
+        if portrait is not None:
+            companion_portrait = {
+                "primary": slug_asset_url(portrait.primary),
+                "alert": slug_asset_url(portrait.alert),
+            }
+    return {
+        "npcs": npc_portraits,
+        "companion": companion_portrait,
+    }

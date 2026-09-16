@@ -122,6 +122,10 @@ export interface Companion {
   gender: string; // "male" | "female" | "nonbinary" — the pronoun map's input
   age?: string;
   appearance?: string;
+  portrait: {
+    primary: string;
+    alert: string;
+  };
 
   // Narrative subset reused from the NPC schema.
   personality: string[];

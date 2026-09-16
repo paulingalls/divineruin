@@ -85,7 +85,10 @@ never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" 
 attack is rolled, "post_roll" is after the roll but BEFORE the damage lands, so a post_roll pause \
 already knows hit or miss and you may voice the strike connecting without saying what it costs. \
 THIS is where a reaction happens. next.waiting_on.reactions lists the reactions that fit this \
-window, each with an actor_id, an id and a name. If the player calls one of theirs out — "I block!", \
+window, each with an actor_id, an id and a name. When that list is EMPTY, nothing anyone holds can \
+answer this window, so it is no pause: never ask whether the player reacts — call resolve_phase \
+again in the same turn to bring the blow on to its next pause, and STOP only where the list names a \
+reaction. If the player calls one of theirs out — "I block!", \
 "I dodge!" — call activate with that entry's id, exactly as listed, BEFORE you call resolve_phase \
 again. A reaction missing from that list does not fit this window: say so, and never guess an id. \
 There is no pre-declaration: the open window is the whole permission, and the player gets one \

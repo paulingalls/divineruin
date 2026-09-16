@@ -32,7 +32,7 @@ RENTAL_BASE_PRICE_SP: dict[WorkspaceType, int] = {
     WorkspaceType.LABORATORY: 10,
 }
 
-# A city (or Keldaran hold) may rent Forge + Laboratory together as a discounted
+# A location tagged with both Forge and Laboratory may rent them as a discounted
 # bundle (12sp < 5+10). It is a rental OPTION, not a WorkspaceType member — no
 # recipe ever *requires* "combined" — so it lives as its own price constant.
 COMBINED_FORGE_LAB_RENTAL_SP = 12
@@ -49,8 +49,21 @@ COMBINED_FORGE_LAB_RENTAL_SP = 12
 @dataclass(frozen=True)
 class RentalQuote:
     available: bool
-    price_sp: float  # 0.0 when not available
+    price_sp: int  # 0 when not available
     reason: str  # "" when available
+
+
+def whole_silver(base_sp: int, multiplier: float) -> int:
+    """Round a multiplied integer price half up to whole silver."""
+    if isinstance(base_sp, bool) or not isinstance(base_sp, int):
+        raise ValueError("base_sp must be a non-negative integer")
+    if base_sp < 0:
+        raise ValueError("base_sp must be a non-negative integer")
+    basis_points = round(multiplier * 10_000)
+    result = (2 * base_sp * basis_points + 10_000) // 20_000
+    if result > 2**53 - 1:
+        raise OverflowError("whole-silver result exceeds Number.MAX_SAFE_INTEGER")
+    return result
 
 
 def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: dict[str, float]) -> RentalQuote:
@@ -77,8 +90,8 @@ def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: d
     if rank is None:
         raise ValueError(f"unknown disposition {disposition!r}")
     if rank < DISPOSITION_TIERS["neutral"]:
-        return RentalQuote(False, 0.0, f"NPC refuses to rent at {key} disposition (below neutral)")
-    return RentalQuote(True, base_price_sp * multipliers.get(key, 1.0), "")
+        return RentalQuote(False, 0, f"NPC refuses to rent at {key} disposition (below neutral)")
+    return RentalQuote(True, whole_silver(base_price_sp, multipliers.get(key, 1.0)), "")
 
 
 # The tiers an untargeted quote prices, derived from the canonical ladder
@@ -96,11 +109,11 @@ def compute_workspace_rental_price(
     """Price a workspace rental while preserving trusted repair pricing.
 
     Trusted NPCs grant free workspace access. The generic disposition multiplier
-    remains in ``compute_rental_price`` because repairs share it and still cost 0.6x.
+    remains in ``compute_rental_price`` because repairs share its whole-silver quote.
     """
     quote = compute_rental_price(base_price_sp, disposition, multipliers=multipliers)
     if quote.available and disposition.lower() == "trusted":
-        return RentalQuote(True, 0.0, "")
+        return RentalQuote(True, 0, "")
     return quote
 
 
@@ -168,8 +181,7 @@ def settlement_workspace_availability(size: SettlementSize, workspace_type: Work
     return _SETTLEMENT_AVAILABILITY[size][workspace_type]
 
 
-# The rentable offers, defined after the availability matrix because the bundle's
-# location rule reads it. COMBINED_FORGE_LAB_TOKEN is the string the DM asks for
+# The rentable offers. COMBINED_FORGE_LAB_TOKEN is the string the DM asks for
 # (begin_activity(kind="workspace", workspace_type=...)); _validate_id rejects a "+".
 COMBINED_FORGE_LAB_TOKEN = "forge_laboratory"
 
@@ -207,13 +219,3 @@ def resolve_rental_offer(token: str) -> RentalOffer:
     if offer is None:
         raise ValueError(f"unknown workspace rental {token!r}")
     return offer
-
-
-def bundle_missing_workspaces(size: SettlementSize) -> tuple[WorkspaceType, ...]:
-    """Which Forge+Laboratory bundle members a `size` settlement cannot host, in offer order.
-
-    Spec: the bundle is offered by a "City with both (or Keldaran hold)". Derived from the
-    availability matrix rather than a second copy of that sentence — requiring both members
-    at SOMETIMES-or-better admits exactly city and keldaran_hold."""
-    bundle = _OFFERS_BY_TOKEN[COMBINED_FORGE_LAB_TOKEN]
-    return tuple(w for w in bundle.grants if settlement_workspace_availability(size, w) < Availability.SOMETIMES)

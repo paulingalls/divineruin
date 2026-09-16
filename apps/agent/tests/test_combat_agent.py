@@ -232,7 +232,7 @@ class TestCombatBeatContract:
         which is the defect sprint-045 shipped twice."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         pause = low.index("the pause is the mechanic")
-        teaching = low[pause : pause + 1100]
+        teaching = low[pause : low.index("when you close a window", pause)]
         assert "activate" in teaching
         assert "next.waiting_on.reactions" in teaching
         assert "next.waiting_on.triggers" not in teaching, "the prompt still sends the DM to triggers for an id"

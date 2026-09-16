@@ -33,6 +33,13 @@ test("handleImageAsset returns 404 for missing file", async () => {
   expect(body.error).toBe("Not found");
 });
 
+test("an empty ASSET_IMAGE_DIR serves tracked assets from the repo image dir", async () => {
+  process.env.ASSET_IMAGE_DIR = "";
+  const mod = await import("./image-assets.ts");
+  const res = await mod.handleImageAsset("companion_kael_primary");
+  expect(res.status).toBe(200);
+});
+
 test("handleImageAsset returns PNG with correct headers for valid file", async () => {
   // Create a test PNG in the tmp dir
   const testId = "img_testvalid1234";

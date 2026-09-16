@@ -72,6 +72,20 @@ def _real_llm_key_required(request: pytest.FixtureRequest) -> None:
         pytest.fail(str(exc))
 
 
+@pytest.fixture(autouse=True)
+def _no_desynced_redis_reply(caplog: pytest.LogCaptureFixture) -> Iterator[None]:
+    """Red a test whose cache read met a desynced Redis connection.
+
+    Production tolerates that reply by reading the DB, and a tolerated read passes the test, so
+    without this the lane would discard the only capture of a defect no local run reproduces.
+    """
+    import db
+
+    yield
+    desynced = [record.getMessage() for record in caplog.get_records("call") if record.msg == db.DESYNCED_REPLY_LOG]
+    assert not desynced, f"a cache read met a desynced Redis connection: {desynced}"
+
+
 def _wait_ready(http_url: str) -> None:
     """Poll until the LiveKit server answers HTTP healthily (<500), within budget."""
     deadline = time.monotonic() + _READINESS_BUDGET_S

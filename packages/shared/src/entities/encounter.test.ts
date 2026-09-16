@@ -1,5 +1,10 @@
 import { test, expect, describe } from "bun:test";
-import { ENCOUNTER_ROLE_VALUES, type Encounter } from "./encounter";
+import {
+  ENCOUNTER_ACTION_KIND_VALUES,
+  ENCOUNTER_ROLE_VALUES,
+  encounterActionKind,
+  type Encounter,
+} from "./encounter";
 
 // Conformance test for content/encounter_templates.json (Phase 4 M4.7 / story-001). The JSON row
 // IS the cross-language contract apps/agent/combat_init.py parses to build CombatParticipants; this
@@ -60,5 +65,47 @@ describe("encounter_templates.json — encounter-role overlay", () => {
         expect(enc.enemies.some((en) => en.role !== "minion")).toBe(true);
       }
     }
+  });
+});
+
+// The action `kind` is mirrored from apps/agent/encounter_actions.py (constraint 7): absent means
+// "attack", and a "command" is an order that never rolls, so it carries no strike fields.
+describe("encounter_templates.json — enemy action kinds", () => {
+  const actions = encounters.flatMap((enc) =>
+    enc.enemies.flatMap((enemy) =>
+      enemy.action_pool.map((action) => ({ encounterId: enc.id, enemyId: enemy.id, action })),
+    ),
+  );
+
+  test("every action's kind is a known value", () => {
+    for (const { action } of actions) {
+      expect([...ENCOUNTER_ACTION_KIND_VALUES]).toContain(encounterActionKind(action));
+    }
+  });
+
+  test("an unknown kind is refused", () => {
+    expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
+  });
+
+  test("a command carries no damage, damage type or applied condition", () => {
+    const commands = actions.filter(({ action }) => encounterActionKind(action) === "command");
+    for (const { action } of commands) {
+      expect(Object.keys(action)).not.toContain("damage");
+      expect(Object.keys(action)).not.toContain("damage_type");
+      expect(Object.keys(action)).not.toContain("applies_condition");
+    }
+  });
+
+  test("the five orders are the command carriers", () => {
+    const carriers = actions
+      .filter(({ action }) => encounterActionKind(action) === "command")
+      .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
+    expect(carriers.sort()).toEqual([
+      "ashmark_patrol/ashmark_sergeant/Rally",
+      "bandit_ambush/bandit_captain/Press the Attack",
+      "cult_cell/cult_fanatic_1/Bless",
+      "cult_cell/cult_fanatic_2/Bless",
+      "hollow_corrupted_settlement/hollowed_knight/Command Lesser",
+    ]);
   });
 });

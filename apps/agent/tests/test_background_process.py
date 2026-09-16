@@ -315,12 +315,16 @@ class TestRebuildWarmLayer:
         agent.update_instructions.assert_not_awaited()
 
     @patch("background_process.build_warm_layer", new_callable=AsyncMock)
-    async def test_handles_build_failure(self, mock_build):
-        mock_build.side_effect = Exception("DB down")
+    async def test_handles_build_failure(self, mock_build, caplog):
+        failure = OSError("DB down")
+        mock_build.side_effect = failure
         bg, agent, _ = _make_bg()
-        with _mock_db_for_warm_layer():
+        with _mock_db_for_warm_layer(), caplog.at_level("ERROR", logger="divineruin.background"):
             await bg._rebuild_warm_layer()
         agent.update_instructions.assert_not_awaited()
+        [record] = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert record.message == "Warm layer build failed"
+        assert record.exc_info is not None and record.exc_info[1] is failure
 
 
 class TestGodWhisperFlow:

@@ -26,6 +26,7 @@ from sample_fixtures import make_context, make_mock_room
 
 import combat_resolution
 import db
+import db_mutations
 import durability
 from combat_durability import _accrue_durability
 from pricing_queries import get_economy_pricing
@@ -181,11 +182,11 @@ async def test_seeded_magic_items_satisfy_craft_tier_gate(reset_db_pool: str) ->
 async def test_rest_repair_quote_matches_agent_price_and_scales_with_rarity(
     durability_server: dict[str, str], reset_db_pool: str
 ) -> None:
-    """The REST repair quote (1) scales with rarity tier (rare > common) and (2) prices
-    the same common item identically to the agent tool — both off one rarity SSOT."""
+    """The REST and agent repair paths share the rounded trusted price and real DB row."""
     player_id = "player_repair_http"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)
+    await db_mutations.set_npc_disposition(SMITH, player_id, "trusted", "trusted repair rounds 1.2sp to 1sp")
     headers = {"Authorization": f"Bearer {mint_server_jwt(player_id=player_id)}"}
     base = durability_server["base_url"]
 
@@ -199,17 +200,17 @@ async def test_rest_repair_quote_matches_agent_price_and_scales_with_rarity(
     assert common["available"] and rare["available"], (common, rare)
     assert rare["priceSp"] > common["priceSp"]  # rarity tier is load-bearing
 
-    # Value correctness: the REST quote returns the exact rarity SSOT cost for
-    # common at neutral disposition (anchors to the SSOT, not just self-parity).
     pricing = await get_economy_pricing()
     expected_common_sp = compute_rental_price(
-        pricing["repair_cost_sp"]["common"], "neutral", multipliers=pricing["disposition_multipliers"]
+        pricing["repair_cost_sp"]["common"], "trusted", multipliers=pricing["disposition_multipliers"]
     ).price_sp
-    assert common["priceSp"] == expected_common_sp
+    assert common["priceSp"] == expected_common_sp == 1
 
     # Parity: the Python agent path prices the same common item identically (one SSOT, two surfaces).
     await _set_gold_and_crafting(pool, player_id, gold=100, tier="trained")
     await _seed_inventory_item(pool, player_id, "shortsword_basic", current_hits=2)
     ctx = make_context(player_id=player_id, location_id=FORGE, room=make_mock_room())
     agent_result = json.loads(await _repair_item_impl(ctx, "shortsword_basic", SMITH))
-    assert agent_result["price_sp"] == common["priceSp"]
+    assert agent_result["price_sp"] == common["priceSp"] == 1
+    player = await pool.fetchrow("SELECT data FROM players WHERE player_id = $1", player_id)
+    assert json.loads(player["data"])["gold"] == pytest.approx(100 - 0.1)
