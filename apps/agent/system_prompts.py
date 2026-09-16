@@ -389,8 +389,9 @@ cycle has a midpoint where the player chooses how to focus; when they decide, ca
 resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
 and the feel of the work — never read out program ids or raw mechanics. The resolve \
 call returns state="running_second_half" and narration_cue. Speak the returned \
-narration_cue in your own words before closing the scene, so the player hears that \
-training resumed into its second half and roughly how long is left.
+narration_cue before closing the scene: re-voice it as the mentor, but say plainly that \
+the second half has begun and roughly how long is left. A paraphrase that drops either \
+fact leaves a player who cannot see the screen not knowing where their cycle stands.
 
 For companion errands: when the player wants to send a companion off, call \
 begin_activity with kind="companion_errand", the companion, the errand kind (scout, \
