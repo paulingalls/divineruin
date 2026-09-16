@@ -28,6 +28,16 @@ logger = logging.getLogger("divineruin.npcs")
 _npcs: dict[str, dict] = {}
 
 
+def _validate_unique_voice_ids(config: dict[str, dict]) -> None:
+    owners: dict[str, str] = {}
+    for npc_id, npc in config.items():
+        voice_id = npc["voice_id"]
+        previous = owners.get(voice_id)
+        if previous is not None:
+            raise ValueError(f"duplicate voice_id {voice_id!r} on NPCs {previous!r} and {npc_id!r}")
+        owners[voice_id] = npc_id
+
+
 def parse_npc_row(npc_id: str, data: dict) -> dict:
     """Validate a raw NPC dict (JSON file or DB JSONB) fail-loud; return it unchanged.
 
@@ -66,6 +76,7 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
 
 def set_npcs(config: dict[str, dict]) -> None:
     """Test seam: populate _npcs directly without going through the DB."""
+    _validate_unique_voice_ids(config)
     _npcs.clear()
     _npcs.update(config)
 
@@ -103,6 +114,7 @@ async def load_npcs() -> None:
     for row in rows:
         data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
         loaded[row["id"]] = parse_npc_row(row["id"], data)
+    _validate_unique_voice_ids(loaded)
     _npcs.clear()
     _npcs.update(loaded)
     logger.info("Loaded %d NPCs", len(_npcs))

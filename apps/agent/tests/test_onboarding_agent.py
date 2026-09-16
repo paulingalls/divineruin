@@ -238,23 +238,33 @@ class TestOnboardingAgentIntegration:
         assert before <= sd.last_player_speech_time <= after
 
     @pytest.mark.asyncio
-    async def test_on_enter_starts_background_process(self):
+    async def test_reconnect_on_enter_publishes_session_init_before_background(self):
         from onboarding_agent import OnboardingAgent
 
-        agent = OnboardingAgent(onboarding_beat=1)
+        agent = OnboardingAgent(onboarding_beat=3, publish_session_init=True)
         mock_session = MagicMock()
-        sd = SessionData(player_id="p1", location_id="accord_market_square", onboarding_beat=1)
+        sd = SessionData(player_id="p1", location_id="accord_market_square", onboarding_beat=3)
         mock_session.userdata = sd
+        order = []
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("onboarding_agent.OnboardingBackgroundProcess") as MockBG:
+            with (
+                patch("onboarding_agent.db_session_queries.get_session_init_payload", new_callable=AsyncMock) as get,
+                patch("onboarding_agent.publish_game_event", new_callable=AsyncMock) as publish,
+                patch("onboarding_agent.OnboardingBackgroundProcess") as MockBG,
+            ):
                 mock_bg = MagicMock()
                 MockBG.return_value = mock_bg
+                publish.side_effect = lambda *_args: order.append("session_init")
+                mock_bg.start.side_effect = lambda: order.append("background")
                 await agent.on_enter()
 
+                get.assert_awaited_once_with("p1")
+                publish.assert_awaited_once_with(sd.room, "session_init", get.return_value, sd.event_bus)
                 MockBG.assert_called_once_with(session=mock_session, session_data=sd)
                 mock_bg.start.assert_called_once()
                 assert agent._background is mock_bg
+                assert order == ["session_init", "background"]
 
     @pytest.mark.asyncio
     async def test_on_exit_stops_background_process(self):

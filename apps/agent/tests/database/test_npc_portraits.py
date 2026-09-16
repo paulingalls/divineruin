@@ -1,6 +1,7 @@
 """NPC portrait catalog validation and session payload derivation."""
 
 from copy import deepcopy
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from npcs_config_fixture import load_fixture_config
@@ -31,6 +32,38 @@ def test_all_npcs_fails_loud_when_the_catalog_is_empty():
 
     with pytest.raises(RuntimeError, match="NPC catalog is not loaded"):
         npcs.all_npcs()
+
+
+def test_set_npcs_rejects_duplicate_voice_ids():
+    with pytest.raises(ValueError, match=r"duplicate voice_id 'SHARED_VOICE'.*first.*second"):
+        npcs.set_npcs(
+            {
+                "first": {"voice_id": "SHARED_VOICE"},
+                "second": {"voice_id": "SHARED_VOICE"},
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_load_npcs_rejects_duplicate_voice_ids_before_replacing_the_catalog():
+    rows = list(load_fixture_config().items())[:2]
+    duplicate = deepcopy(rows[1][1])
+    duplicate["voice_id"] = rows[0][1]["voice_id"]
+    pool = MagicMock()
+    pool.fetch = AsyncMock(
+        return_value=[
+            {"id": rows[0][0], "data": rows[0][1]},
+            {"id": rows[1][0], "data": duplicate},
+        ]
+    )
+
+    with (
+        patch("db.get_pool", new_callable=AsyncMock, return_value=pool),
+        pytest.raises(ValueError, match="duplicate voice_id"),
+    ):
+        await npcs.load_npcs()
+
+    assert len(npcs.all_npcs()) == 17
 
 
 def test_build_portraits_derives_only_portrait_bearing_catalog_rows():

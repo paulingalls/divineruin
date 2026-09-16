@@ -390,6 +390,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             onboarding_agent = OnboardingAgent(
                 onboarding_beat=onboarding_beat,
                 companion_id=select_companion_for_archetype(player["class"]),
+                publish_session_init=True,
             )
             await session.start(room=ctx.room, agent=onboarding_agent)
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)

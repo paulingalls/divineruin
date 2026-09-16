@@ -46,6 +46,11 @@ describe("npcs.json — age schema (story-006)", () => {
 });
 
 describe("npcs.json — portrait schema", () => {
+  test("voice tags are unique so one NPC cannot replace another's portrait", () => {
+    const voiceIds = npcs.map((npc) => npc.voice_id);
+    expect(new Set(voiceIds).size).toBe(voiceIds.length);
+  });
+
   test("exactly 13 NPCs carry tracked portrait slugs", () => {
     const portraitRows = rawNpcs.filter((npc) => "portrait" in npc);
     expect(portraitRows).toHaveLength(13);

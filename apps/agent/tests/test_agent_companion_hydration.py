@@ -98,6 +98,7 @@ class TestReturningPlayerCompanion:
         assert isinstance(instructions, str)
         assert "Lira" in instructions
         assert "Kael" not in instructions
+        assert agent._publish_session_init_on_enter is True
 
     @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
