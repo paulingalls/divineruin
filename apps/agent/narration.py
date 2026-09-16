@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 
 from anthropic.types import ToolParam
 
@@ -131,11 +131,18 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
     """
     valid_characters = [DEFAULT_VOICE, *npc_voice_ids]
 
-    return {
+    # strict compiles the schema into the decoder, so `segments` cannot come back as the JSON
+    # string it was at sprint-049 and sprint-050. ADR 0004 turned strict OFF for the gameplay
+    # AGENTS, whose toolsets hit the 20-strict-tool limit and the compiled-grammar ceiling; this
+    # is one small tool on a direct call, and the live API accepts it (probed 2026-09-16) — but
+    # only with every object closed and every declared property required.
+    tool: dict[str, Any] = {
         "name": "narration_result",
+        "strict": True,
         "description": "Submit the structured narration segments and a short UI summary.",
         "input_schema": {
             "type": "object",
+            "additionalProperties": False,
             "required": ["segments", "summary"],
             "properties": {
                 "segments": {
@@ -143,6 +150,7 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
                     "description": "Ordered narration segments. Each is one voice block.",
                     "items": {
                         "type": "object",
+                        "additionalProperties": False,
                         "required": ["character", "emotion", "text"],
                         "properties": {
                             "character": {
@@ -169,6 +177,7 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
             },
         },
     }
+    return cast(ToolParam, tool)
 
 
 def _extract_tool_input(response: Any) -> dict[str, Any] | None:

@@ -7,6 +7,34 @@ import pytest
 import narration
 
 
+class TestTheNarrationToolSchema:
+    """Strict is what makes the string-shaped `segments` impossible at the source.
+
+    The schema has always declared an array of objects and the model sent a JSON string twice
+    anyway (sprint-049, sprint-050). ADR 0004's ceilings — 20 strict tools, compiled grammar size —
+    are about the gameplay agents' toolsets; this is one small tool on a direct call, and the live
+    API accepts it strict, which it does only when every object closes itself.
+    """
+
+    def test_the_tool_is_built_strict_with_every_object_closed(self):
+        tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
+        schema = tool["input_schema"]
+
+        assert tool["strict"] is True
+        assert schema["additionalProperties"] is False
+        assert schema["properties"]["segments"]["items"]["additionalProperties"] is False
+
+    def test_strict_requires_every_declared_property_to_be_required(self):
+        """A strict request is refused outright when `required` omits a declared property, and the
+        refusal names the schema, not the field — so pin it here rather than pay an API call."""
+        tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
+        schema = tool["input_schema"]
+        item = schema["properties"]["segments"]["items"]
+
+        assert set(schema["required"]) == set(schema["properties"])
+        assert set(item["required"]) == set(item["properties"])
+
+
 class TestMalformedSegmentsFromTheModel:
     """The segments come from an LLM tool call, so their SHAPE is the model's output, not ours.
 
