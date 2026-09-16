@@ -32,6 +32,7 @@ from combat_deescalation import (
     _validate_argument_type,
 )
 from combat_support import _resolve_attack_packet
+from condition_restrictions import cannot_act
 from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import SessionData
@@ -181,6 +182,9 @@ async def _resolve_one_packet(
 
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
+    if blocked := cannot_act(attacker.conditions):
+        reason = f"{attacker.name} is {blocked[0]} and loses the phase"
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
 
     if decl.type is DeclarationType.DEFEND:
         return {

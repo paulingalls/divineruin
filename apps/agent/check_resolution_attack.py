@@ -33,9 +33,8 @@ class AttackResult:
     # instant-death verdict (combat_support) compares it against the target's max HP. Defaulted
     # for direct constructors (tests); the resolver always sets it explicitly.
     overkill: int = 0
-    # Crit flags read from D20CheckCore.critical_success/critical_failure (nat-20 /
-    # nat-1), so every roll-result packet agrees on crits. Defaulted for direct
-    # constructors (tests); the resolver always sets them explicitly.
+    # A critical success is a natural 20 or an incoming melee autocrit; critical
+    # failure remains natural-1. Defaulted for direct constructors (tests).
     critical_success: bool = False
     critical_failure: bool = False
     # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 or killing_blow. The
@@ -94,6 +93,7 @@ def resolve_attack(
     rng: random.Random | None = None,
     attack_mod: int = 0,
     damage_mult: float = 1.0,
+    target_conditions: list[dict] | tuple = (),
 ) -> AttackResult:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
@@ -103,9 +103,10 @@ def resolve_attack(
     # to-hit bonus and a damage multiplier the role-derived attacker carries (Elite +1/x1.25,
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
+    target_effects = get_condition_effects(list(target_conditions))
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
     attack_disadvantage = "attack" in effects.disadvantage_scopes
-    attack_advantage = "attack" in effects.advantage_scopes
+    attack_advantage = "attack" in effects.advantage_scopes or "incoming_advantage" in target_effects.restrictions
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
@@ -121,7 +122,10 @@ def resolve_attack(
     d20 = core.roll
     attack_total = core.total
     hit = core.success
-    critical = core.critical_success
+    ranged = bool(weapon.get("ranged") or "ranged" in weapon.get("properties", []))
+    critical = core.critical_success or (
+        hit and "incoming_melee_autocrit" in target_effects.restrictions and not ranged
+    )
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
@@ -183,7 +187,7 @@ def resolve_attack(
         target_ac=target_ac,
         damage=damage,
         damage_type=damage_type,
-        critical_success=core.critical_success,
+        critical_success=critical,
         critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,

@@ -46,7 +46,7 @@ def _killing_resolver(damage: int):
     suite can show what halving does to a blow that was about to kill someone.
     """
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         dealt = max(0, int(damage * damage_mult))
         remaining = max(0, target_hp - dealt)
         killed = remaining == 0

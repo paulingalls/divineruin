@@ -26,6 +26,7 @@ import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
+from condition_restrictions import cannot_act
 from declarations import DeclarationType, resolve_declaration
 from encounter_actions import action_kind
 from reaction_windows import POST_ROLL, PRE_ROLL
@@ -76,7 +77,10 @@ def pause_allowed(state) -> bool:
     return any(
         not reaction_spend.is_spent(state.reactions_available.get(p.id))
         for p in state.participants
-        if p.type == "player" and not p.is_fallen and p.has_reaction_ability is not False
+        if p.type == "player"
+        and not p.is_fallen
+        and not cannot_act(p.conditions)
+        and p.has_reaction_ability is not False
     )
 
 
@@ -121,7 +125,7 @@ def _is_wasted(state, head: dict) -> bool:
     "already fell" summary.
     """
     actor = state.get_participant(head["actor_id"])
-    if actor is None or actor.is_fallen:
+    if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
@@ -183,7 +187,7 @@ def _replay_resolver(head: dict):
     """
     attack_result, held_ac = deserialize_roll(head["roll"])
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         if target_ac != held_ac:
             raise HeldActionUnresolvable(
                 f"held roll for {head['actor_id']!r} was made against AC {held_ac}, but the target's "

@@ -143,7 +143,7 @@ def _damage_resolver(damage):
     """A resolve_attack mock that always hits for a fixed damage, computing the target's
     remaining HP from the call args so multiple packets resolve coherently."""
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         # attack_mod/damage_mult are the M4.7 role-overlay params (story-001). This stub always
         # hits; it scales the fixed damage by damage_mult so role-modified packets stay coherent.
         scaled = max(0, int(damage * damage_mult))
@@ -291,7 +291,7 @@ def _ac_sensitive_resolver(attack_total, damage):
     can be shown to be what turned the blow aside.
     """
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         hit = attack_total + attack_mod >= target_ac
         dealt = max(0, int(damage * damage_mult)) if hit else 0
         remaining = max(0, target_hp - dealt)
