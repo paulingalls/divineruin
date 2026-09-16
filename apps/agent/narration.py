@@ -179,6 +179,30 @@ def _extract_tool_input(response: Any) -> dict[str, Any] | None:
     return None
 
 
+def _decode_segment_array(raw: str) -> object:
+    """Decode a JSON-encoded `segments` array, closing one the model left open.
+
+    Tolerated: an array that opens with `[` and never closes, its half-written trailing segment
+    cut back to the last complete `}`. Refused, by decoding to None: a JSON object, a bare string,
+    prose, and JSON broken anywhere but its end. Sprint 50's close saw the open array three
+    complete segments long at `stop_reason='tool_use'` — not a truncated response, just a missing
+    bracket, and refusing it cost the errand every word of its narration.
+    """
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    if not raw.lstrip().startswith("["):
+        return None
+    last_complete = raw.rfind("}")
+    if last_complete == -1:
+        return None
+    try:
+        return json.loads(f"{raw[: last_complete + 1]}]")
+    except json.JSONDecodeError:
+        return None
+
+
 def _normalize_segments(segments: object) -> list[Segment]:
     """Coerce the model's `segments` into Segments, dropping what carries no speakable text.
 
@@ -190,14 +214,11 @@ def _normalize_segments(segments: object) -> list[Segment]:
     A dict missing `character` or `emotion` narrates with the defaults for the same reason.
     What is DROPPED is only what cannot be spoken: no text, blank text, or a segment that is
     neither a string nor a mapping. The whole array sent as a JSON-encoded STRING (seen live at
-    sprint-049) is decoded and normalized as that list; any other top-level string yields
-    nothing, so the caller's floor still refuses it.
+    sprint-049) is decoded by `_decode_segment_array`, which also closes an array the model left
+    open; any other top-level string yields nothing, so the caller's floor still refuses it.
     """
     if isinstance(segments, str):
-        try:
-            segments = json.loads(segments)
-        except json.JSONDecodeError:
-            segments = None
+        segments = _decode_segment_array(segments)
     out: list[Segment] = []
     for seg in segments if isinstance(segments, list) else []:
         if isinstance(seg, str):

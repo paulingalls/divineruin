@@ -60,6 +60,28 @@ class TestMalformedSegmentsFromTheModel:
             ("COMPANION_KAEL", "weary", "Millhaven is quiet."),
         ]
 
+    def test_a_json_array_missing_its_closing_bracket_still_narrates(self):
+        """The shape that red the Sprint 50 close, verbatim from the gate log: three complete
+        segments, `stop_reason='tool_use'` at 308 of 500 tokens — the model simply never wrote the
+        `]`. Nothing was cut off and nothing is malformed inside, so refusing it spends a whole
+        errand's narration on one absent character."""
+        raw = (
+            '[\n  {\n    "character": "DM_NARRATOR", "emotion": "calm",\n'
+            '    "text": "Kael emerges from the mist-shrouded path."\n  },\n'
+            '  {\n    "character": "COMPANION_KAEL", "emotion": "calm",\n'
+            '    "text": "It\'s there. The mark you described."\n  }\n'
+        )
+        objs = narration._normalize_segments_or_raise(raw)
+        assert [(o.character, o.text) for o in objs] == [
+            ("DM_NARRATOR", "Kael emerges from the mist-shrouded path."),
+            ("COMPANION_KAEL", "It's there. The mark you described."),
+        ]
+
+    def test_a_trailing_half_written_segment_is_dropped_and_the_rest_narrates(self):
+        raw = '[{"character": "DM_NARRATOR", "emotion": "calm", "text": "The forge cools."}, {"character": "COMPAN'
+        objs = narration._normalize_segments_or_raise(raw)
+        assert [o.text for o in objs] == ["The forge cools."]
+
     @pytest.mark.parametrize(
         "raw",
         [
