@@ -12,6 +12,7 @@ state and write through injected mutation/query modules, but own no transaction.
 from livekit.agents.llm import ToolError
 
 import combat_enhancers
+import combat_marks
 import combat_resolution
 import conditions
 import spell_casting
@@ -154,6 +155,7 @@ async def _resolve_one_packet(
     cast_outcome=None,
     players_by_id=None,
     reaction_ac_bonus: int = 0,
+    reaction_save_advantage: bool = False,
     shield_reaction: str | None = None,
     publish_roll: bool = True,
 ) -> dict:
@@ -214,7 +216,15 @@ async def _resolve_one_packet(
     # through to the normal attack/ability path. (The opening-strike dramatic beat stays with the
     # first real ATTACK — a save-based condition is not an attack roll, so it does not consume it.)
     if not attacker.is_ally and action is not None and action.get("applies_condition"):
-        return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
+        return await _resolve_enemy_condition_packet(
+            session,
+            attacker,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            reaction_save_advantage=reaction_save_advantage,
+        )
 
     if decl.type is DeclarationType.ABILITY:
         # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
@@ -268,6 +278,7 @@ async def _resolve_one_packet(
 
     # A hostile command is an order, not a swing: it resolves without a roll (encounter_actions).
     if not attacker.is_ally and action_kind(action) == "command":
+        combat_marks.resolve_mark_action(state, attacker, target, "command")
         return {
             "actor_id": packet.actor_id,
             "resolved": True,

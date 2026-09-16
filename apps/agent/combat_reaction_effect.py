@@ -5,9 +5,9 @@ story-017 made a reaction an interrupt and recorded WHICH ability answered WHICH
 blow landed unaltered — note 0f3945fa(f). game_mechanics_combat.md:187 names the outcomes that
 were missing ("Uncanny Dodge halves damage, Shield of Faith causes a miss"); this module is them.
 
-It owns ONE hook: ``close``, called by ``combat_hold.pump`` at the moment it discards the window
-the DM just came back from. Everything it needs it derives from the spend record and the held
-entry — it adds no state of its own.
+Its hook is ``close``, called by ``combat_hold.pump`` at the moment it discards the window the DM
+just came back from; ``combat_hold`` reads the rest as the held action resolves. Everything it
+needs it derives from the spend record and the held entry — it adds no state of its own.
 
 Counterspell, the third outcome the spec names, is NOT here and is not faked: its window is
 ``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
@@ -39,6 +39,10 @@ AC_BONUS = {
     "oracle_shield_of_faith": 2,
     "paladin_shield_of_faith": 2,
     "marshal_interceding_order": 2,
+}
+SAVE_ADVANTAGE = {
+    "bard_countercharm": frozenset({"frightened", "charmed"}),
+    "diplomat_countercharm": frozenset({"frightened", "charmed"}),
 }
 
 
@@ -79,6 +83,11 @@ def ac_bonus(state, head: dict) -> int:
     return AC_BONUS.get(spend["ability_id"], 0)
 
 
+def save_advantage(state, head: dict, condition: str | None) -> bool:
+    spend = bound_spend(state, head, reaction_windows.PRE_ROLL)
+    return spend is not None and condition in SAVE_ADVANTAGE.get(spend["ability_id"], ())
+
+
 def shield_reaction(state, head: dict) -> str | None:
     """The post-roll spend that puts a shield in the blow's way, if the reactor is the one hit.
 
@@ -104,6 +113,12 @@ def record_shield_wear(packet: dict | None, summary: dict) -> None:
     """
     if packet is not None and packet["mechanical_effect"] is None and "shield" in (summary.get("durability") or {}):
         packet["mechanical_effect"] = "shield_durability"
+
+
+def record_save_advantage(packet: dict | None, summary: dict) -> None:
+    """Label the reaction from the resolved save: ``close`` runs before the save is rolled."""
+    if packet is not None and packet["mechanical_effect"] is None and summary.get("save_advantage"):
+        packet["mechanical_effect"] = "save_advantage"
 
 
 def _held_target(state, head: dict):

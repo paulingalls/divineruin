@@ -189,6 +189,7 @@ def advance_combat_phase(
             next_state.pending_declarations = {}
             next_state.reactions_available = {}
             next_state.ac_modifiers = {}  # phase-scoped Defend bonuses expire here
+            next_state.focus_marks = {}
             # Refresh each living Boss's 1/round legendary budget for the round just entered,
             # then surface what's available so the DM can narrate the extra Boss beat.
             _reset_legendary_actions(next_state)

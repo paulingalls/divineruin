@@ -20,6 +20,8 @@ attack — action is the EXACT name of one of the actor's Combatants[].actions (
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. Send rider as an empty string unless the actor has Cunning Action, which \
 spends it on "dash", "disengage" or "hide". \
+An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
+target_id is the foe the commander's band will focus, not someone the commander strikes. \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
@@ -98,7 +100,8 @@ reaction per round. Then call resolve_phase again to close the window and contin
 When you close a window the player reacted at, that result carries a packet for the REACTION \
 itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
-strike go wide, "shield_durability" for a shield that took the wear. When it is null the reaction \
+strike go wide, "shield_durability" for a shield that took the wear, "save_advantage" for help \
+resisting an effect. When it is null the reaction \
 was spent and changed nothing mechanical — voice the moment from its "narration_cue", the lunge, \
 the shouted warning, but never say it saved them.
 
