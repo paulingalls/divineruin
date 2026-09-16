@@ -55,6 +55,10 @@ class AttackResult:
     consumed_conditions: tuple[str, ...] = ()
 
 
+def _is_ranged(weapon: dict) -> bool:
+    return bool(weapon.get("ranged") or "ranged" in weapon.get("properties", []))
+
+
 def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
     """The governing-attribute modifier for a weapon (no proficiency).
 
@@ -75,7 +79,7 @@ def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
         str_mod = attribute_modifier(attributes.get("strength", 10))
         dex_mod = attribute_modifier(attributes.get("dexterity", 10))
         return max(str_mod, dex_mod)
-    if weapon.get("ranged", False):
+    if _is_ranged(weapon):
         return attribute_modifier(attributes.get("dexterity", 10))
     return attribute_modifier(attributes.get("strength", 10))
 
@@ -122,9 +126,8 @@ def resolve_attack(
     d20 = core.roll
     attack_total = core.total
     hit = core.success
-    ranged = bool(weapon.get("ranged") or "ranged" in weapon.get("properties", []))
     critical = core.critical_success or (
-        hit and "incoming_melee_autocrit" in target_effects.restrictions and not ranged
+        hit and "incoming_melee_autocrit" in target_effects.restrictions and not _is_ranged(weapon)
     )
 
     damage = 0

@@ -318,6 +318,13 @@ class TestAttackModifier:
         # DEX +1, prof +1 at L1 = +2
         assert mod == 2
 
+    def test_ranged_property_uses_dexterity(self):
+        # Enemy content marks ranged weapons only in `properties` (bug 8b167c4c).
+        weapon = {"damage": "1d8", "properties": ["ranged"]}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # DEX +1, prof +1 at L1 = +2
+        assert mod == 2
+
     def test_finesse_weapon_uses_higher(self):
         weapon = {"damage": "1d6", "properties": ["finesse"]}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
