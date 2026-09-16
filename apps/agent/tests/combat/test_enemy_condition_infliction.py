@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
+from check_resolution_save import SavingThrowResult
 from combat_ability import _resolve_enemy_condition_packet
 from combat_packet import _resolve_one_packet
 from declarations import Declaration, DeclarationType
@@ -47,9 +48,19 @@ def _state_with_enemy_action(action, *, player_conditions=None):
 
 
 def _save_resolver(*, success: bool):
-    # The resolver rolls the target's save via the shared roll_participant_save SSOT.
-    result = MagicMock()
-    result.success = success
+    # The resolver rolls the target's save via the shared roll_participant_save SSOT. The result
+    # is the real type: a MagicMock answers any field the production code reads with a truthy mock.
+    result = SavingThrowResult(
+        save_type="wisdom",
+        roll=12 if success else 10,
+        modifier=0,
+        total=12 if success else 10,
+        dc=12,
+        success=success,
+        margin=0 if success else -2,
+        effect_applied=None,
+        narrative_hint="",
+    )
     resolver = MagicMock()
     resolver.roll_participant_save = MagicMock(return_value=result)
     return resolver
@@ -75,6 +86,7 @@ class TestResolveEnemyConditionPacket:
         assert summary["resolved"] is True
         assert summary["condition_inflicted"] == "frightened"
         assert "condition_resisted" not in summary
+        assert "save_advantage" not in summary
         assert any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_successful_save_resists(self):
