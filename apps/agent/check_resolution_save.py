@@ -54,6 +54,9 @@ class SavingThrowResult:
     # save never rolls, so it consumes nothing (the die is not wasted). story-003 reads this to
     # remove + persist.
     consumed_conditions: tuple[str, ...] = ()
+    # True when the caller's granted advantage survived to the roll: condition disadvantage
+    # (Hollowed's WIS) cancels it, and an auto-failed save never rolls.
+    advantage_applied: bool = False
 
 
 def resolve_saving_throw(
@@ -146,6 +149,7 @@ def resolve_saving_throw(
         dramatic=verdict.dramatic,
         context=verdict.context,
         consumed_conditions=consumed,
+        advantage_applied=advantage and not disadvantage,
     )
 
 

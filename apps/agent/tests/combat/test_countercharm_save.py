@@ -52,8 +52,12 @@ def _seeded_dice(seed: int):
     return roll
 
 
-async def _resolve_condition(*, answer: bool, enemy_id="hollow_rend_1", name="Hollow Shriek"):
-    ctx = _ctx_at_resolution(state=_condition_state(enemy_id, name))
+async def _resolve_condition(*, answer: bool, enemy_id="hollow_rend_1", name="Hollow Shriek", target_conditions=()):
+    state = _condition_state(enemy_id, name)
+    target = state.get_participant("player_2")
+    assert target is not None
+    target.conditions = [dict(condition) for condition in target_conditions]
+    ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps()
     packets: list[dict] = []
     with patch("check_resolution.dice_roll", side_effect=_seeded_dice(1)):
@@ -79,6 +83,16 @@ async def test_countercharm_turns_the_failing_hollow_shriek_save_into_a_success(
     assert _reaction_packet(packets)["mechanical_effect"] == "save_advantage"
     target = ctx.userdata.combat_state.get_participant("player_2")
     assert target is not None and target.conditions == []
+
+
+@pytest.mark.asyncio
+async def test_countercharm_cancelled_by_hollowed_wis_disadvantage_claims_no_advantage():
+    hollowed = {"type": "hollowed", "duration": 10, "source": "test", "stacks": 1, "stage": 1}
+    _, packets = await _resolve_condition(answer=True, target_conditions=[hollowed])
+
+    summary = next(packet for packet in packets if packet.get("condition_inflicted") == "frightened")
+    assert "save_advantage" not in summary
+    assert _reaction_packet(packets)["mechanical_effect"] is None
 
 
 @pytest.mark.asyncio

@@ -266,7 +266,7 @@ async def _resolve_enemy_condition_packet(
         "action": decl.action,
         "target": target.name,
     }
-    if reaction_save_advantage:
+    if result.advantage_applied:
         summary["save_advantage"] = True
     if result.success:
         summary["condition_resisted"] = cond_type
