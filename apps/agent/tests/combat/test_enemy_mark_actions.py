@@ -11,6 +11,7 @@ from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _resolve
 from sample_fixtures import make_context
 
 from combat_init import _start_combat_impl
+from combat_marks import attack_bonus, resolve_mark_action
 from combat_prompts import COMBAT_PROMPT
 from session_data import CombatParticipant, CombatState
 from tests.combat.test_start_combat import _THORNWATCH, SAMPLE_PLAYER
@@ -110,8 +111,6 @@ async def test_a_mark_does_not_help_an_attack_against_another_target():
 
 
 def test_a_mark_does_not_help_the_marker_or_the_opposite_band_or_a_fallen_attacker():
-    from combat_marks import attack_bonus, resolve_mark_action
-
     state = _mark_state([])
     marker = _participant("marker", actions=[_STRIKE])
     state.participants.append(marker)
@@ -131,8 +130,6 @@ def test_a_mark_does_not_help_the_marker_or_the_opposite_band_or_a_fallen_attack
 
 
 def test_corrupt_marks_and_non_mark_kinds_fail_loud():
-    from combat_marks import attack_bonus, resolve_mark_action
-
     state = _mark_state([])
     marker = _participant("marker")
     state.participants.append(marker)

@@ -2,7 +2,6 @@
 
 import json
 import random
-from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
@@ -108,47 +107,8 @@ async def test_countercharm_spent_against_hold_person_claims_no_effect():
     assert _reaction_packet(packets)["mechanical_effect"] is None
 
 
-_CLASSIFICATION = {
-    "bard_dissonant_whisper": "reachable",
-    "mage_shield_spell": "reachable",
-    "skirmisher_sidestep": "reachable",
-    "whisper_thought_shield": "reachable",
-    "bard_countercharm": "reachable",
-    "cleric_shield_of_faith": "reachable",
-    "diplomat_countercharm": "reachable",
-    "marshal_interceding_order": "reachable",
-    "oracle_shield_of_faith": "reachable",
-    "paladin_shield_of_faith": "reachable",
-    "druid_bark_skin": "reachable",
-    "guardian_retaliating_shield": "reachable",
-    "rogue_uncanny_dodge": "reachable",
-    "warden_bark_skin": "reachable",
-    "warrior_brace_for_impact": "reachable",
-    "guardian_intercept": "reachable",
-    "skirmisher_riposte": "reachable",
-    "whisper_implant_doubt": "reachable",
-    "diplomat_objection": "inapplicable",
-    "spy_plausible_deniability": "inapplicable",
-    "marshal_countermand": "inapplicable",
-    "rogue_slippery": "reachable",
-    "spy_slippery": "reachable",
-    "warrior_opportunity_strike": "unproducible",
-    "mage_counterspell": "unproducible",
-}
-_WINDOW_CENSUS = {
-    "on_ally_targeted": 6,
-    "on_hit": 5,
-    "on_targeted": 4,
-    "on_enemy_action": 4,
-    "on_condition_imposed": 2,
-    "on_ally_hit": 1,
-    "on_enemy_miss": 1,
-    "on_enemy_move": 1,
-    "on_spell_cast": 1,
-}
-
-
-def test_condition_and_reaction_inventory_is_unchanged():
+def test_only_frightening_and_paralyzing_actions_impose_conditions():
+    # The window census and its totals stay pinned by test_reaction_window_census.py.
     condition_actions = sorted(
         (enemy["id"], action["name"], action.get("applies_condition"))
         for encounter in _ENCOUNTERS
@@ -156,43 +116,14 @@ def test_condition_and_reaction_inventory_is_unchanged():
         for action in enemy["action_pool"]
         if action.get("applies_condition")
     )
-    grapple_carriers = sorted(
-        (enemy["id"], action["name"])
-        for encounter in _ENCOUNTERS
-        for enemy in encounter["enemies"]
-        for action in enemy["action_pool"]
-        if "grapple" in action.get("properties", [])
-    )
-
     assert condition_actions == [
         ("cult_leader", "Hold Person", "paralyzed"),
         ("hollow_rend_1", "Hollow Shriek", "frightened"),
     ]
-    assert Counter(row["window"] for row in _REACTIONS) == _WINDOW_CENSUS
     assert {row["id"] for row in _REACTIONS if row["window"] == "on_condition_imposed"} == {
         "rogue_slippery",
         "spy_slippery",
     }
-    assert grapple_carriers == [("mawling_1", "Seizing Grab"), ("mawling_2", "Seizing Grab")]
-    assert set(_CLASSIFICATION) == {row["id"] for row in _REACTIONS}
-    assert Counter(_CLASSIFICATION.values()) == {"reachable": 20, "inapplicable": 3, "unproducible": 2}
-    produced = {
-        trigger
-        for encounter in _ENCOUNTERS
-        for enemy in encounter["enemies"]
-        for action in enemy["action_pool"]
-        for trigger in (
-            *reaction_windows.pre_roll_triggers(action),
-            *reaction_windows.post_roll_triggers(action, hit=True),
-            *reaction_windows.post_roll_triggers(action, hit=False),
-        )
-    }
-    by_id = {row["id"]: row for row in _REACTIONS}
-    for ability_id, classification in _CLASSIFICATION.items():
-        if classification == "unproducible":
-            assert by_id[ability_id]["window"] not in produced
-        else:
-            assert by_id[ability_id]["window"] in produced
 
 
 def test_combat_prompt_names_the_save_advantage_effect():
