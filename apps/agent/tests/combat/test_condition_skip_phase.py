@@ -1,5 +1,3 @@
-import importlib
-import importlib.util
 import json
 from copy import deepcopy
 from unittest.mock import AsyncMock
@@ -20,6 +18,7 @@ from combat_init import _start_combat_impl
 from combat_prompts import COMBAT_PROMPT
 from combat_support import _participant_summary
 from combat_turn import _declare_phase_impl
+from condition_restrictions import cannot_act
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from tests.combat.test_start_combat import SAMPLE_PLAYER, _make_start_combat_mocks
@@ -27,13 +26,6 @@ from tests.combat.test_start_combat import SAMPLE_PLAYER, _make_start_combat_moc
 
 def _condition(name: str) -> dict:
     return {"type": name, "duration": 2, "source": "test", "stacks": 1}
-
-
-def _subject():
-    assert importlib.util.find_spec("condition_restrictions") is not None, (
-        "condition_restrictions must provide the one skip-phase predicate"
-    )
-    return importlib.import_module("condition_restrictions")
 
 
 def _blocked_roster() -> CombatState:
@@ -122,11 +114,8 @@ async def test_declaration_accepts_payload_that_omits_blocked_actors():
 
 
 def test_cannot_act_returns_blocking_conditions_in_bearer_order():
-    assert _subject().cannot_act([_condition("stunned"), _condition("paralyzed")]) == (
-        "stunned",
-        "paralyzed",
-    )
-    assert _subject().cannot_act([_condition("restrained")]) == ()
+    assert cannot_act([_condition("stunned"), _condition("paralyzed")]) == ("stunned", "paralyzed")
+    assert cannot_act([_condition("restrained")]) == ()
 
 
 def test_next_envelope_and_roster_surface_who_cannot_act():

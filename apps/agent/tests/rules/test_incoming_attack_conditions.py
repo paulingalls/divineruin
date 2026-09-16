@@ -36,13 +36,16 @@ class RealResolver:
         damage_mult=1.0,
         target_conditions=(),
     ):
-        kwargs = {
-            "rng": self.rng,
-            "attack_mod": attack_mod,
-            "damage_mult": damage_mult,
-        }
-        kwargs["target_conditions"] = target_conditions
-        return check_resolution_attack.resolve_attack(attacker_data, action, target_ac, target_hp, **kwargs)
+        return check_resolution_attack.resolve_attack(
+            attacker_data,
+            action,
+            target_ac,
+            target_hp,
+            rng=cast(Any, self.rng),
+            attack_mod=attack_mod,
+            damage_mult=damage_mult,
+            target_conditions=target_conditions,
+        )
 
 
 def _condition(name: str) -> dict:
@@ -132,6 +135,7 @@ def test_double_natural_one_still_misses_a_paralyzed_target():
     assert rng.calls.count((1, 20)) == 2
     assert result.hit is False
     assert result.damage == 0
+    assert result.critical_success is False
     assert result.critical_failure is True
 
 

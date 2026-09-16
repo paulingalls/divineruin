@@ -33,8 +33,8 @@ class AttackResult:
     # instant-death verdict (combat_support) compares it against the target's max HP. Defaulted
     # for direct constructors (tests); the resolver always sets it explicitly.
     overkill: int = 0
-    # A critical success is a natural 20 or an incoming melee autocrit; critical
-    # failure remains natural-1. Defaulted for direct constructors (tests).
+    # A critical success is a natural 20 or a melee hit on an autocrit target (Paralyzed);
+    # a critical failure is a natural 1. Defaulted for direct constructors (tests).
     critical_success: bool = False
     critical_failure: bool = False
     # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 or killing_blow. The

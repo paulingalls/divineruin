@@ -118,11 +118,11 @@ def _held_declaration(head: dict):
 
 
 def _is_wasted(state, head: dict) -> bool:
-    """A held action nobody can carry out: its actor fell to the ally band, or its target is gone.
+    """A held action nobody can carry out: its actor fell or cannot act, or its target is gone.
 
     Such an action never opens a window — pausing on a no-op is the same noise AC9 prevents. It
     still POPS through the normal resolver, which produces trunk's own "actor unavailable" /
-    "already fell" summary.
+    "already fell" / "loses the phase" summary.
     """
     actor = state.get_participant(head["actor_id"])
     if actor is None or actor.is_fallen or cannot_act(actor.conditions):

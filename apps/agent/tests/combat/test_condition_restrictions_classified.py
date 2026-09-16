@@ -1,17 +1,9 @@
-import importlib
-import importlib.util
 from dataclasses import replace
 
 import pytest
 
 import conditions
-
-
-def _subject():
-    assert importlib.util.find_spec("condition_restrictions") is not None, (
-        "condition_restrictions must classify every authored restriction"
-    )
-    return importlib.import_module("condition_restrictions")
+from condition_restrictions import ENFORCED, NOT_ENFORCED
 
 
 def _authored_restrictions() -> set[str]:
@@ -20,11 +12,10 @@ def _authored_restrictions() -> set[str]:
 
 
 def _assert_classified() -> None:
-    subject = _subject()
-    deferred = set(subject.NOT_ENFORCED)
-    assert subject.ENFORCED.isdisjoint(deferred)
-    assert _authored_restrictions() == subject.ENFORCED | deferred
-    assert all(reason.strip() for reason in subject.NOT_ENFORCED.values())
+    deferred = set(NOT_ENFORCED)
+    assert ENFORCED.isdisjoint(deferred)
+    assert _authored_restrictions() == ENFORCED | deferred
+    assert all(reason.strip() for reason in NOT_ENFORCED.values())
 
 
 def test_every_authored_restriction_is_enforced_or_reasoned_debt():
