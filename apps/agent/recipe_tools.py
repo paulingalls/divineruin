@@ -88,7 +88,8 @@ async def _learn_impl(
         )
     if kind == "spell":
         # Spell-domain impl (ADR 0007): no new tool, just a new kind. spell_tools
-        # validates the source ({discovery, npc_teaching}) and the level→tier gate.
+        # validates the source ({discovery, npc_teaching}), the archetype's magic source
+        # and the level→tier gate.
         return await spell_tools._learn_spell_impl(context, id, source)
     if kind == "variant":
         # Mentor-variant impl (ADR 0007, M9): unlike recipe/spell this INITIATES a
