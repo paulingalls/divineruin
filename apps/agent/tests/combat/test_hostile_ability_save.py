@@ -1,4 +1,5 @@
 import json
+from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -97,22 +98,14 @@ async def _resolve_charge(success, *, landing=True):
     context, deps = _deps(state)
     save = MagicMock(return_value=_save(success))
     update = AsyncMock()
-    patches = [
-        patch("check_resolution_save.roll_participant_save", save),
-        patch("ability_persistence.update_player_resources", update),
-    ]
-    if not landing:
-        patches.append(patch("combat_ability._land_condition_on_one", return_value=False))
-    with patches[0], patches[1]:
-        if len(patches) == 3:
-            patches[2].start()
-        try:
-            raw = await combat_turn._resolve_phase_impl(context, **deps)
-            assert isinstance(raw, str)
-            payload = json.loads(raw)
-        finally:
-            if len(patches) == 3:
-                patches[2].stop()
+    with ExitStack() as stack:
+        stack.enter_context(patch("check_resolution_save.roll_participant_save", save))
+        stack.enter_context(patch("ability_persistence.update_player_resources", update))
+        if not landing:
+            stack.enter_context(patch("combat_ability._land_condition_on_one", return_value=False))
+        raw = await combat_turn._resolve_phase_impl(context, **deps)
+    assert isinstance(raw, str)
+    payload = json.loads(raw)
     return context.userdata.combat_state, payload["packets"][0], save, update, deps
 
 

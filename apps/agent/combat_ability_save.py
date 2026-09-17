@@ -1,12 +1,20 @@
 """Hostile saving-throw mechanics for player condition abilities."""
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from livekit.agents.llm import ToolError
 
 import check_resolution_save
 import rules_engine
 
+if TYPE_CHECKING:
+    from abilities import Ability
+    from declarations import Declaration
+    from session_data import CombatParticipant, CombatState
 
-def gate_hostile_target(state, decl, ability) -> None:
+
+def gate_hostile_target(state: "CombatState", decl: "Declaration", ability: "Ability") -> None:
     if ability.save is None:
         return
     target = state.get_participant(decl.target_id) if decl.target_id is not None else None
@@ -14,7 +22,14 @@ def gate_hostile_target(state, decl, ability) -> None:
         raise ToolError(f"{ability.name} requires a standing foe.")
 
 
-def resolve_hostile_condition(state, attacker, target, decl, ability, land_condition) -> dict:
+def resolve_hostile_condition(
+    state: "CombatState",
+    attacker: "CombatParticipant",
+    target: "CombatParticipant",
+    decl: "Declaration",
+    ability: "Ability",
+    land_condition: Callable[..., bool],
+) -> dict:
     cond_type = ability.applies_condition
     assert cond_type is not None
     assert ability.save is not None
