@@ -117,6 +117,10 @@ async def seed_warrior_owning_base(
     mentor-variant capstones, which all train/activate a variant of an owned base.
     """
     await seed_player_with_pools(conn, player_id=player_id, class_="warrior", equipped_electives=(base_ability_id,))
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{level}', '4'::jsonb) WHERE player_id = $1",
+        player_id,
+    )
 
 
 async def seed_mentor_training_gates(

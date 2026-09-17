@@ -177,4 +177,7 @@ async def test_invalid_target_refuses_before_any_packet_write(target_id, extra):
     update.assert_not_awaited()
     deps["resolver"].resolve_attack.assert_not_called()
     deps["mutations"].update_player_hp.assert_not_awaited()
-    deps["mutations"].save_combat_state.assert_not_awaited()
+    deps["mutations"].save_combat_state.assert_awaited_once()
+    recovered = deps["mutations"].save_combat_state.await_args.args[1]
+    assert recovered["beat"] == "declaration"
+    assert recovered["pending_declarations"] == {}

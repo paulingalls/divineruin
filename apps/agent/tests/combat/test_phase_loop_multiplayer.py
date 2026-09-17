@@ -182,7 +182,10 @@ class TestMultiplayerPrevalidation:
         # No packet resolved, no writes, player_1 untouched (the loop never ran).
         cast_resolver._resolve_cast.assert_not_called()
         assert seen_casters == []
-        deps["mutations"].save_combat_state.assert_not_called()
+        deps["mutations"].save_combat_state.assert_awaited_once()
+        recovered = deps["mutations"].save_combat_state.await_args.args[1]
+        assert recovered["beat"] == "declaration"
+        assert recovered["pending_declarations"] == {}
         deps["mutations"].update_player_hp.assert_not_called()
         res["resonance_mutations"].update_player_resonance.assert_not_called()
 
