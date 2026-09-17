@@ -38,8 +38,7 @@ export function errandDestinationPrompt(companionName: string | null): string {
 }
 
 /** "2h 15m remaining" — the countdown on an in-flight activity. */
-export function formatTimeRemaining(resolveAt: string, isAwaitingDecision: boolean): string {
-  if (isAwaitingDecision) return "waiting on you";
+export function formatTimeRemaining(resolveAt: string): string {
   const remaining = new Date(resolveAt).getTime() - Date.now();
   if (remaining <= 0) return "completing...";
   const hours = Math.floor(remaining / 3_600_000);
@@ -49,7 +48,8 @@ export function formatTimeRemaining(resolveAt: string, isAwaitingDecision: boole
 }
 
 export function activeText(active: ActiveStatus): string {
-  return formatTimeRemaining(active.resolveAtEstimate, active.isAwaitingDecision);
+  if (active.isAwaitingDecision) return "waiting on you";
+  return formatTimeRemaining(active.resolveAtEstimate);
 }
 
 export function mode(active: ActiveStatus): string {

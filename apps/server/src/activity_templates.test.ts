@@ -158,13 +158,17 @@ test("an awaiting cycle agrees with catchup and keeps its past transition time",
     updated_at: pastTransition,
     transition_at: pastTransition,
   };
+  // Both handlers read training_activities in one test, so each stub names its own
+  // SELECT list: catchup's predicate also contains `state != 'complete'`, and the mock
+  // hands the first unconsumed match its rows.
   setQueryStubs([
     {
-      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      match:
+        /SELECT data, activity_type, state, created_at, transition_at[\s\S]*FROM training_activities/,
       result: [row],
     },
     {
-      match: /FROM training_activities[\s\S]*state IN/,
+      match: /SELECT id, activity_type, state, data, transition_at[\s\S]*FROM training_activities/,
       result: [row],
     },
   ]);

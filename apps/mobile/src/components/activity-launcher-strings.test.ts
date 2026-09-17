@@ -34,12 +34,9 @@ test("time remaining reads as a spoken countdown, and completes at zero", () => 
   // reads — a ~7%-per-run flake in the merge gate, not a formatter bug.
   const inHours = new Date(Date.now() + 2 * 3_600_000 + 15 * 60_000 + 30_000).toISOString();
   const past = new Date(Date.now() - 1000).toISOString();
-  expect(formatTimeRemaining(inHours, false)).toBe("2h 15m remaining");
-  expect(formatTimeRemaining(new Date(Date.now() + 90_000).toISOString(), false)).toBe(
-    "1m remaining",
-  );
-  expect(formatTimeRemaining(past, false)).toBe("completing...");
-  expect(formatTimeRemaining(past, true)).toBe("waiting on you");
+  expect(formatTimeRemaining(inHours)).toBe("2h 15m remaining");
+  expect(formatTimeRemaining(new Date(Date.now() + 90_000).toISOString())).toBe("1m remaining");
+  expect(formatTimeRemaining(past)).toBe("completing...");
 });
 
 test("active text and mode distinguish waiting from running", () => {
