@@ -11,19 +11,13 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents.voice.speech_handle import SpeechHandle
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 from session_data import CompanionState
-
-
-def _completed_handle():
-    handle = SpeechHandle.create()
-    handle._mark_done()
-    return handle
 
 
 class TestBackgroundProcessLifecycle:
@@ -397,7 +391,7 @@ class TestSpeechQueue:
     async def test_deliver_speech_delivers_highest_priority(self):
         """_deliver_speech should deliver highest priority speech."""
         mock_session = MagicMock()
-        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
+        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
         # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
         # tests are about which queued cue is chosen, and delivery now holds everything but a
@@ -421,7 +415,7 @@ class TestSpeechQueue:
     async def test_deliver_speech_clears_queue_after_delivery(self):
         """_deliver_speech should clear entire queue after delivering top speech."""
         mock_session = MagicMock()
-        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
+        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
         # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
         # tests are about which queued cue is chosen, and delivery now holds everything but a

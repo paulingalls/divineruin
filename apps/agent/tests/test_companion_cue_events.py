@@ -7,20 +7,14 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents.voice.speech_handle import SpeechHandle
 from livekit.rtc.participant import PublishDataError
+from speech_handles import completed_handle
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from onboarding_background import OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
 from system_prompts import build_companion_cue
-
-
-def _completed_handle():
-    handle = SpeechHandle.create()
-    handle._mark_done()
-    return handle
 
 
 def _session_data() -> SessionData:
@@ -39,7 +33,7 @@ def _session_data() -> SessionData:
 
 def _queued_background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     session = MagicMock()
-    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     background = BackgroundProcess(session, sd)
     background._speech_queue.append(
         PendingSpeech(

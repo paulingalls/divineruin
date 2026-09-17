@@ -7,7 +7,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents.voice.speech_handle import SpeechHandle
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -42,12 +42,6 @@ EVENT_CUES = (
 )
 
 GOD_WHISPER_PAYLOAD = {"event_id": "god_whisper:player_patron", "patron_id": "kaelen"}
-
-
-def _completed_handle():
-    handle = SpeechHandle.create()
-    handle._mark_done()
-    return handle
 
 
 def _companion(companion_id: str, **changes: object) -> CompanionState:
@@ -88,7 +82,7 @@ def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
     session.current_agent = agent
-    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     return BackgroundProcess(session, sd), session
 
 
@@ -205,7 +199,7 @@ async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -
 
     def reply(**_kwargs):
         order.append("reply")
-        return _completed_handle()
+        return completed_handle()
 
     session.generate_reply.side_effect = reply
     background._speech_queue.append(PendingSpeech(SpeechPriority.IMPORTANT, instructions))

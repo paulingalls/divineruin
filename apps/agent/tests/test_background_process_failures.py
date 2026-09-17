@@ -1,3 +1,5 @@
+"""Live-loop exception policy tests for BackgroundProcess."""
+
 import asyncio
 import logging
 from contextlib import ExitStack, contextmanager
@@ -9,7 +11,7 @@ import asyncpg
 import pytest
 from livekit.agents import Agent, AgentSession
 from livekit.agents.voice.agent_activity import AgentActivity
-from livekit.agents.voice.speech_handle import SpeechHandle
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -20,12 +22,6 @@ from session_data import SessionData
 TIMEOUT = 2
 BACKGROUND_LOGGER = "divineruin.background"
 REAL_SLEEP = asyncio.sleep
-
-
-def _completed_handle(error=None):
-    handle = SpeechHandle.create()
-    handle._mark_done(error)
-    return handle
 
 
 async def _skip_delay(_delay):
@@ -40,7 +36,7 @@ def _make_process(agent=None):
         target.update_instructions = AsyncMock()
     session = MagicMock()
     session.current_agent = target
-    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     return BackgroundProcess(session, sd), sd, target
 
 
@@ -269,7 +265,7 @@ async def test_failed_speech_handle_warns_and_loop_survives(caplog):
     process, sd, _ = _make_process()
     sd.companion = MagicMock(last_speech_time=0)
     failure = OSError("generation failed")
-    process._session.generate_reply.side_effect = lambda **_kwargs: _completed_handle(failure)  # type: ignore[attr-defined]
+    process._session.generate_reply.side_effect = lambda **_kwargs: completed_handle(failure)  # type: ignore[attr-defined]
     speech = PendingSpeech(SpeechPriority.CRITICAL, "failed cue", stinger_sound="stinger")
     with (
         _delivery_data(process),
@@ -497,4 +493,5 @@ async def test_session_cancellation_logs_no_error(caplog):
         await process.stop()
         await asyncio.sleep(0)
 
+    # Every logger, not just ours: a done-callback that raises is reported by asyncio's own logger.
     assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []

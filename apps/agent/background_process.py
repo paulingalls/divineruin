@@ -300,7 +300,7 @@ class BackgroundProcess:
             return
 
         await handle
-        if failure := handle.exception():
+        if (failure := handle.exception()) is not None:
             logger.warning("Proactive speech failed (priority=%s): %s", top.priority.name, failure)
             return
 
