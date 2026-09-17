@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  DISPOSITION_MULTIPLIER_CAP_RULE,
+  MAX_DISPOSITION_MULTIPLIER,
   dispositionMultiplier,
   type EconomyPricing,
   parsePricingRow,
@@ -19,6 +21,10 @@ const ECONOMY: EconomyPricing = {
 function parseUnknownJson(text: string): unknown {
   return JSON.parse(text) as unknown;
 }
+
+// A JSON integer literal past float range: JSON.parse gives Infinity here, while
+// Python keeps an unbounded int. Both parsers must still name the rule.
+const BEYOND_FLOAT_RANGE = `1${"0".repeat(400)}`;
 
 // parsePricingRow owns shape validation at the load boundary (fail-loud, mirrors
 // parseItemRow). Tested directly so we don't process-globally mock db.ts.
@@ -88,6 +94,16 @@ describe("parsePricingRow (fail-loud)", () => {
       "pricing[economy].disposition_multipliers.friendly must be >= 0",
     ],
     [
+      "multiplier exceeds conversion cap",
+      "1e305",
+      `pricing[economy].disposition_multipliers.friendly ${DISPOSITION_MULTIPLIER_CAP_RULE}`,
+    ],
+    [
+      "multiplier integer beyond float range",
+      BEYOND_FLOAT_RANGE,
+      "pricing[economy].disposition_multipliers.friendly must be finite",
+    ],
+    [
       "multiplier must have at most four places",
       "0.12345",
       "pricing[economy].disposition_multipliers.friendly must have at most 4 decimal places",
@@ -113,6 +129,11 @@ describe("parsePricingRow (fail-loud)", () => {
       "pricing[economy].repair_cost_sp.common must be an integer",
     ],
     [
+      "repair cost integer beyond float range",
+      BEYOND_FLOAT_RANGE,
+      "pricing[economy].repair_cost_sp.common must be an integer",
+    ],
+    [
       "repair cost must be non-negative",
       "-2",
       "pricing[economy].repair_cost_sp.common must be >= 0",
@@ -126,7 +147,11 @@ describe("parsePricingRow (fail-loud)", () => {
     expect(() => parsePricingRow(row)).toThrow(message);
   });
 
-  test.each(["0", "0.0001", "0.8", "1.25", "8e-1"])("accepts multiplier %s", (value) => {
+  test("the cap rule text names the cap it enforces", () => {
+    expect(DISPOSITION_MULTIPLIER_CAP_RULE).toBe(`must be <= ${MAX_DISPOSITION_MULTIPLIER}`);
+  });
+
+  test.each(["0", "0.0001", "0.8", "1.25", "8e-1", "1e304"])("accepts multiplier %s", (value) => {
     const row = parseUnknownJson(
       `{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":${value}},"silver_per_gold":10}`,
     );
