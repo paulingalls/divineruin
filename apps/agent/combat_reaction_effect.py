@@ -35,6 +35,7 @@ logger = logging.getLogger("divineruin.tools")
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
+ESCAPES_GRAPPLE = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
     "cleric_shield_of_faith": 2,
     "oracle_shield_of_faith": 2,
@@ -101,6 +102,14 @@ def shield_reaction(state, head: dict) -> str | None:
         return None
     target = _held_target(state, head)
     return spend["ability_id"] if target is not None and spend["actor_id"] == target.id else None
+
+
+def grapple_blocked(state, head: dict) -> bool:
+    spend = bound_spend(state, head, reaction_windows.POST_ROLL)
+    if spend is None or spend["ability_id"] not in ESCAPES_GRAPPLE:
+        return False
+    target = _held_target(state, head)
+    return target is not None and spend["actor_id"] == target.id
 
 
 def record_shield_wear(packet: dict | None, summary: dict) -> None:
@@ -198,6 +207,8 @@ def _apply(
         halve(head, target)
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
+    if grapple_blocked(state, head):
+        return "grapple_escaped"
     return None
 
 

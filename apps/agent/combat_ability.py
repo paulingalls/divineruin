@@ -13,6 +13,7 @@ import ability_persistence
 import check_resolution_save
 import combat_ability_save
 import combat_enhancers
+import combat_grapple
 import concentration_break
 import conditions
 import spell_casting
@@ -27,7 +28,12 @@ if TYPE_CHECKING:
 
 
 def _land_condition_on_one(
-    state, target_id: str | None, attacker: CombatParticipant, cond_type: str, source: str
+    state,
+    target_id: str | None,
+    attacker: CombatParticipant,
+    cond_type: str,
+    source: str,
+    released_from_grapple: list[str] | None = None,
 ) -> bool:
     """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
     adds the hostile caller). Self-target (``target_id`` None) falls back to the caster; a given id
@@ -38,17 +44,29 @@ def _land_condition_on_one(
     if cond_target is None or (cond_type == "prone" and cond_target.prone_immunity):
         return False
     cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
-    return conditions.has_condition(cond_target.conditions, cond_type)
+    landed = conditions.has_condition(cond_target.conditions, cond_type)
+    if landed and cannot_act(({"type": cond_type},)):
+        released = combat_grapple.release_from_grappler(state, cond_target.id)
+        if released_from_grapple is not None:
+            released_from_grapple.extend(released)
+    return landed
 
 
 def land_condition_on_participant(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+    state,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    cond_type: str,
+    source: str,
+    released_from_grapple: list[str] | None = None,
 ) -> bool:
     """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
     and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
     ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
     ``_land_condition_on_one`` (M4.8 story-012 extraction); back-compat for existing callers."""
-    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source)
+    return _land_condition_on_one(
+        state, decl.target_id, attacker, cond_type, source, released_from_grapple=released_from_grapple
+    )
 
 
 def land_condition_on_participants(
@@ -278,12 +296,22 @@ async def _resolve_enemy_condition_packet(
     }
     if result.advantage_applied:
         summary["save_advantage"] = True
+    released_from_grapple: list[str] = []
     if result.success:
         summary["condition_resisted"] = cond_type
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path
     # uses) so the target-id/self-fallback + immunity wiring lives in one place.
-    elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
+    elif land_condition_on_participant(
+        state,
+        attacker,
+        decl,
+        cond_type,
+        source=decl.action or "",
+        released_from_grapple=released_from_grapple,
+    ):
         summary["condition_inflicted"] = cond_type
+        if released_from_grapple:
+            summary["released_from_grapple"] = released_from_grapple
         if target.type == "player" and cannot_act(({"type": cond_type},)):
             broken = await concentration_break_mod.break_concentration_on_incapacitation(
                 session, target.id, combat_state=state, conn=conn

@@ -35,6 +35,8 @@ phase (use it when the player guards, takes cover, or braces). \
 maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
 consuming the whole phase; a maneuver on anyone else is a shove (contested Strength; a win knocks \
 the target prone). \
+A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
+whole phase; they cannot retreat. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") to learn which reaction windows the player's abilities answer. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
@@ -70,7 +72,10 @@ the buffed ally (a Blessed or Inspired glow), and when condition_targets lists s
 allies, name EACH so every buffed companion is heard, never left silent on the sheet. \
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
-will bent (Charmed), venom burning (Poisoned). condition_resisted means the target shook \
+will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
+The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
+grapple from landing, and released_from_grapple names combatants freed when their grappler fell \
+or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
 shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
 The engine decides what is dramatic: any packet whose "dramatic" \

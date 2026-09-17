@@ -20,7 +20,7 @@ from enum import StrEnum
 import conditions
 import reaction_spend
 from combat_ability import _find_action
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, speed_zero
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
@@ -137,6 +137,8 @@ def advance_combat_phase(
                 raise ValueError(
                     f"{actor.name} ({actor.id}) is {blocked[0]}; omit that actor and narrate the helplessness"
                 )
+            if declaration.type is DeclarationType.RETREAT and (blocked := speed_zero(actor.conditions)):
+                raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot retreat")
             if (
                 declaration.type is DeclarationType.MANEUVER
                 and declaration.target_id == actor.id

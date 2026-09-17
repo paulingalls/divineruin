@@ -5,6 +5,7 @@ Both pieces belong to the END of a round rather than to its orchestration:
 the DM does after whichever commit just landed.
 """
 
+import combat_grapple
 import combat_phase
 import conditions
 import event_types as E
@@ -83,6 +84,11 @@ def next_envelope(state) -> dict:
             {"actor_id": p.id, "name": p.name}
             for p in state.participants
             if not p.is_fallen and conditions.has_condition(p.conditions, "prone")
+        ],
+        "grappled": [
+            {"actor_id": p.id, "name": p.name, "grappler_id": grappler}
+            for p in state.participants
+            if not p.is_fallen and (grappler := combat_grapple.grappler_id(p.conditions)) is not None
         ],
     }
 

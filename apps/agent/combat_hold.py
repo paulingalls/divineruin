@@ -383,6 +383,7 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
             state, head, action.get("applies_condition") if action is not None else None
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         **deps,

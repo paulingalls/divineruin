@@ -68,7 +68,7 @@ class ManeuverDecl(BaseModel):
     kind: Literal["maneuver"]
     actor_id: str = Field(description="The participant declaring this action.")
     target_id: str = Field(
-        description="Shove a target (contested Strength; a win knocks them prone), or target yourself to stand up from prone."
+        description="Shove a target (contested Strength; a win knocks them prone), target yourself to stand up from prone, or target your grappler to break free."
     )
 
 

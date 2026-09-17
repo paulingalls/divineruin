@@ -2,6 +2,7 @@
 
 import random
 
+import combat_grapple
 import conditions
 from combat_ability import _land_condition_on_one
 from rules_engine import attribute_modifier
@@ -23,6 +24,24 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "resolved": False,
             "declaration_type": str(decl.type),
             "reason": f"{target.name} already fell",
+        }
+    if combat_grapple.grappler_id(attacker.conditions) == target.id:
+        total = roller.randint(1, 20) + max(
+            attribute_modifier(attacker.attributes.get("strength", 10)),
+            attribute_modifier(attacker.attributes.get("dexterity", 10)),
+        )
+        dc = combat_grapple.escape_dc(target)
+        escaped = total >= dc
+        if escaped:
+            attacker.conditions = conditions.remove_condition(attacker.conditions, "grappled")
+        return {
+            "actor_id": attacker.id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "target": target.name,
+            "escape_total": total,
+            "escape_dc": dc,
+            "escape": "escaped" if escaped else "failed",
         }
     if target.id == attacker.id:
         if not conditions.has_condition(attacker.conditions, "prone"):

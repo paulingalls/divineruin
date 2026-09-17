@@ -38,6 +38,7 @@ export interface EncounterAttackAction extends EncounterActionBase {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  escape_dc?: number;
 }
 
 export interface EncounterCommandAction extends EncounterActionBase {
