@@ -4,6 +4,8 @@ import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from livekit.agents.voice.speech_handle import SpeechHandle
+
 import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
@@ -36,6 +38,12 @@ def _make_session_data(**kwargs: object) -> SessionData:
     return sd
 
 
+def _completed_handle():
+    handle = SpeechHandle.create()
+    handle._mark_done()
+    return handle
+
+
 def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock]:
     sd = session_data or _make_session_data()
     agent = MagicMock()
@@ -45,7 +53,7 @@ def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock
     agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
     session.current_agent = agent
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
     bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
 
@@ -436,8 +444,9 @@ class TestGodWhisperFlow:
         async def mock_publish(*args, **kwargs):
             call_order.append("stinger")
 
-        async def mock_reply(**kwargs):
+        def mock_reply(**kwargs):
             call_order.append("reply")
+            return _completed_handle()
 
         session.generate_reply = mock_reply
         with (

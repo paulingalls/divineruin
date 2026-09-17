@@ -1,5 +1,3 @@
-"""Live-loop exception policy tests for BackgroundProcess."""
-
 import asyncio
 import logging
 from contextlib import ExitStack, contextmanager
@@ -9,15 +7,29 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
-from livekit.agents import Agent
+from livekit.agents import Agent, AgentSession
+from livekit.agents.voice.agent_activity import AgentActivity
+from livekit.agents.voice.speech_handle import SpeechHandle
 
 import event_types as E
 from background_process import BackgroundProcess
+from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 from session_data import SessionData
 
 TIMEOUT = 2
 BACKGROUND_LOGGER = "divineruin.background"
+REAL_SLEEP = asyncio.sleep
+
+
+def _completed_handle(error=None):
+    handle = SpeechHandle.create()
+    handle._mark_done(error)
+    return handle
+
+
+async def _skip_delay(_delay):
+    await REAL_SLEEP(0)
 
 
 def _make_process(agent=None):
@@ -28,7 +40,7 @@ def _make_process(agent=None):
         target.update_instructions = AsyncMock()
     session = MagicMock()
     session.current_agent = target
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
     return BackgroundProcess(session, sd), sd, target
 
 
@@ -74,6 +86,34 @@ def _publish_rebuild(sd):
     sd.event_bus.publish(GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Changed"}))
 
 
+def _delivery_data(process):
+    process._rebuild_warm_layer = AsyncMock()
+    return patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
+
+
+def _start_delivery(process, sd, speech):
+    waiting_for_next_event = asyncio.Event()
+    bus_get_calls = 0
+    real_get = sd.event_bus.get
+
+    async def get_event(timeout=30.0):
+        nonlocal bus_get_calls
+        bus_get_calls += 1
+        if bus_get_calls == 2:
+            waiting_for_next_event.set()
+        return await real_get(timeout)
+
+    sd.event_bus.get = get_event
+    process._speech_queue.append(speech)
+    sd.event_bus.publish(GameEvent(event_type=E.DICE_ROLL, payload={}))
+    process.start()
+    return waiting_for_next_event
+
+
+def _warning_records(caplog):
+    return [r for r in caplog.records if r.name == BACKGROUND_LOGGER and r.levelno == logging.WARNING]
+
+
 async def _wait(event):
     await asyncio.wait_for(event.wait(), timeout=TIMEOUT)
 
@@ -106,6 +146,183 @@ def _assert_failure_record(caplog, exception):
     assert records[0].message == "Background process failed"
     assert records[0].exc_info is not None
     assert records[0].exc_info[1] is exception
+
+
+@pytest.mark.asyncio
+async def test_stinger_publish_typeerror_ends_loop_and_logs(caplog):
+    process, sd, _ = _make_process()
+    failure = TypeError("stinger broke")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    with (
+        _delivery_data(process),
+        patch("game_events.publish_game_event", new_callable=AsyncMock, side_effect=failure) as publish,
+        caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER),
+    ):
+        _start_delivery(process, sd, speech)
+        try:
+            exception = await _failed(process._task, TypeError)
+            assert exception is failure
+            publish.assert_awaited_once()
+            process._session.generate_reply.assert_not_called()  # type: ignore[attr-defined]
+            _assert_failure_record(caplog, exception)
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.asyncio
+async def test_post_delivery_cue_keyerror_ends_loop_and_logs(caplog):
+    process, sd, _ = _make_process()
+    sd.companion = MagicMock(last_speech_time=0)
+    failure = KeyError("cue broke")
+    speech = PendingSpeech(SpeechPriority.IMPORTANT, "companion cue")
+    with (
+        _delivery_data(process),
+        patch("background_process.is_companion_cue", side_effect=[False, failure]) as cue_check,
+        caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER),
+    ):
+        _start_delivery(process, sd, speech)
+        try:
+            exception = await _failed(process._task, KeyError)
+            assert exception is failure
+            assert cue_check.call_count == 2
+            process._session.generate_reply.assert_called_once_with(instructions="companion cue")  # type: ignore[attr-defined]
+            _assert_failure_record(caplog, exception)
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.asyncio
+async def test_favor_mark_typeerror_ends_loop_and_logs(caplog):
+    process, sd, _ = _make_process()
+    failure = TypeError("mark broke")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    with (
+        _delivery_data(process),
+        patch("game_events.publish_game_event", new_callable=AsyncMock),
+        patch("background_process.asyncio.sleep", side_effect=_skip_delay),
+        patch(
+            "background_process.db_activity_queries.get_divine_favor",
+            new_callable=AsyncMock,
+            return_value={"level": 25},
+        ),
+        patch(
+            "background_process.db_mutations_divine.mark_favor_whisper_level",
+            new_callable=AsyncMock,
+            side_effect=failure,
+        ) as mark,
+        caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER),
+    ):
+        _start_delivery(process, sd, speech)
+        try:
+            exception = await _failed(process._task, TypeError)
+            assert exception is failure
+            mark.assert_awaited_once_with("player-1", 25)
+            _assert_failure_record(caplog, exception)
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.parametrize(
+    ("state", "message"),
+    [
+        ("not-running", "AgentSession isn't running"),
+        ("closing", "AgentSession is closing, cannot use generate_reply()"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_real_session_shutdown_state_is_tolerated(caplog, state, message):
+    session = AgentSession(max_tool_steps=5)
+    if state == "closing":
+        session._activity = AgentActivity(Agent(instructions="plain"), session)
+    sd = SessionData(player_id="player-1", location_id="accord_guild_hall")
+    process = BackgroundProcess(session, sd)
+    speech = PendingSpeech(SpeechPriority.ROUTINE, "shutdown cue")
+    with _delivery_data(process), caplog.at_level(logging.WARNING, logger=BACKGROUND_LOGGER):
+        waiting = _start_delivery(process, sd, speech)
+        try:
+            await _wait(waiting)
+            assert process._task is not None and not process._task.done()
+            warnings = _warning_records(caplog)
+            assert len(warnings) == 1 and message in warnings[0].getMessage()
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.asyncio
+async def test_other_generate_reply_runtimeerror_ends_loop_and_logs(caplog):
+    process, sd, _ = _make_process()
+    failure = RuntimeError("reply invariant broke")
+    process._session.generate_reply.side_effect = failure  # type: ignore[attr-defined]
+    speech = PendingSpeech(SpeechPriority.ROUTINE, "ordinary cue")
+    with _delivery_data(process), caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER):
+        _start_delivery(process, sd, speech)
+        try:
+            exception = await _failed(process._task, RuntimeError)
+            assert exception is failure
+            _assert_failure_record(caplog, exception)
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.asyncio
+async def test_failed_speech_handle_warns_and_loop_survives(caplog):
+    process, sd, _ = _make_process()
+    sd.companion = MagicMock(last_speech_time=0)
+    failure = OSError("generation failed")
+    process._session.generate_reply.side_effect = lambda **_kwargs: _completed_handle(failure)  # type: ignore[attr-defined]
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "failed cue", stinger_sound="stinger")
+    with (
+        _delivery_data(process),
+        patch("game_events.publish_game_event", new_callable=AsyncMock),
+        patch("background_process.asyncio.sleep", side_effect=_skip_delay),
+        patch("background_process.is_companion_cue", return_value=False) as cue_check,
+        patch(
+            "background_process.db_activity_queries.get_divine_favor", new_callable=AsyncMock, return_value=None
+        ) as get_favor,
+        caplog.at_level(logging.INFO, logger=BACKGROUND_LOGGER),
+    ):
+        waiting = _start_delivery(process, sd, speech)
+        try:
+            await _wait(waiting)
+            assert process._task is not None and not process._task.done()
+            warnings = _warning_records(caplog)
+            assert len(warnings) == 1
+            assert "generation failed" in warnings[0].getMessage()
+            assert "CRITICAL" in warnings[0].getMessage()
+            assert not any(record.message.startswith("Proactive speech delivered") for record in caplog.records)
+            get_favor.assert_not_awaited()
+            assert cue_check.call_count == 1
+        finally:
+            await _finish(process)
+
+
+@pytest.mark.asyncio
+async def test_transient_favor_read_failure_warns_and_loop_survives(caplog):
+    process, sd, _ = _make_process()
+    failure = asyncpg.PostgresError("favor unavailable")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    with (
+        _delivery_data(process),
+        patch("game_events.publish_game_event", new_callable=AsyncMock),
+        patch("background_process.asyncio.sleep", side_effect=_skip_delay),
+        patch(
+            "background_process.db_activity_queries.get_divine_favor",
+            new_callable=AsyncMock,
+            side_effect=failure,
+        ),
+        caplog.at_level(logging.WARNING, logger=BACKGROUND_LOGGER),
+    ):
+        waiting = _start_delivery(process, sd, speech)
+        try:
+            await _wait(waiting)
+            assert process._task is not None and not process._task.done()
+            warnings = _warning_records(caplog)
+            assert len(warnings) == 1
+            assert warnings[0].message == "Failed to mark favor whisper level"
+            assert warnings[0].exc_info is not None
+            assert warnings[0].exc_info[1] is failure
+        finally:
+            await _finish(process)
 
 
 @pytest.mark.asyncio
@@ -280,5 +497,4 @@ async def test_session_cancellation_logs_no_error(caplog):
         await process.stop()
         await asyncio.sleep(0)
 
-    # Every logger, not just ours: a done-callback that raises is reported by asyncio's own logger.
     assert [r for r in caplog.records if r.levelno >= logging.ERROR] == []

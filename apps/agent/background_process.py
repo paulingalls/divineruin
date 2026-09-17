@@ -35,6 +35,12 @@ logger = logging.getLogger("divineruin.background")
 
 TIMER_FALLBACK_SECS = 30.0
 TRANSIENT_IO_ERRORS = (OSError, TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
+GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS = frozenset(
+    {
+        ("AgentSession isn't running",),
+        ("AgentSession is closing, cannot use generate_reply()",),
+    }
+)
 
 
 class BackgroundProcess:
@@ -273,34 +279,43 @@ class BackgroundProcess:
         if companion and is_companion_cue(top.instructions, companion):
             await publish_companion_cue(self._sd, companion)
 
+        # Fire stinger SFX before god whisper speech
+        if top.stinger_sound is not None:
+            from game_events import publish_game_event
+
+            await publish_game_event(
+                self._sd.room,
+                E.PLAY_SOUND,
+                {"sound_name": top.stinger_sound},
+                event_bus=self._sd.event_bus,
+            )
+            await asyncio.sleep(2.0)
+
         try:
-            # Fire stinger SFX before god whisper speech
-            if top.stinger_sound is not None:
-                from game_events import publish_game_event
+            handle = self._session.generate_reply(instructions=top.instructions)
+        except RuntimeError as exc:
+            if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
+                raise
+            logger.warning("Proactive speech skipped (priority=%s): %s", top.priority.name, exc)
+            return
 
-                await publish_game_event(
-                    self._sd.room,
-                    E.PLAY_SOUND,
-                    {"sound_name": top.stinger_sound},
-                    event_bus=self._sd.event_bus,
-                )
-                await asyncio.sleep(2.0)
+        await handle
+        if failure := handle.exception():
+            logger.warning("Proactive speech failed (priority=%s): %s", top.priority.name, failure)
+            return
 
-            await self._session.generate_reply(instructions=top.instructions)
-            logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
+        logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
 
-            # Mark last_whisper_level after delivering (deferred from critical path)
-            if top.stinger_sound is not None:
-                try:
-                    favor = await db_activity_queries.get_divine_favor(self._sd.player_id)
-                    if favor:
-                        await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
-                except Exception:
-                    logger.warning("Failed to mark favor whisper level", exc_info=True)
-            if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
-                self._sd.companion.last_speech_time = time.time()
-        except Exception:
-            logger.warning("Failed to deliver proactive speech", exc_info=True)
+        # Mark last_whisper_level after delivering (deferred from critical path)
+        if top.stinger_sound is not None:
+            try:
+                favor = await db_activity_queries.get_divine_favor(self._sd.player_id)
+                if favor:
+                    await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+            except TRANSIENT_IO_ERRORS:
+                logger.warning("Failed to mark favor whisper level", exc_info=True)
+        if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
+            self._sd.companion.last_speech_time = time.time()
 
     async def _rebuild_warm_layer(self) -> None:
         try:

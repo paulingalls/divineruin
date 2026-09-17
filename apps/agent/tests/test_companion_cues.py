@@ -7,6 +7,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.voice.speech_handle import SpeechHandle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -41,6 +42,12 @@ EVENT_CUES = (
 )
 
 GOD_WHISPER_PAYLOAD = {"event_id": "god_whisper:player_patron", "patron_id": "kaelen"}
+
+
+def _completed_handle():
+    handle = SpeechHandle.create()
+    handle._mark_done()
+    return handle
 
 
 def _companion(companion_id: str, **changes: object) -> CompanionState:
@@ -81,7 +88,7 @@ def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
     session.current_agent = agent
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
     return BackgroundProcess(session, sd), session
 
 
@@ -195,7 +202,12 @@ async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -
     background, session = _background(sd)
     order: list[str] = []
     _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
-    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
+
+    def reply(**_kwargs):
+        order.append("reply")
+        return _completed_handle()
+
+    session.generate_reply.side_effect = reply
     background._speech_queue.append(PendingSpeech(SpeechPriority.IMPORTANT, instructions))
 
     await background._deliver_speech()
@@ -235,7 +247,14 @@ async def test_delivered_god_whisper_publishes_no_companion_cue(companion_id: st
     background, _ = _background(sd)
     background._handle_events([GameEvent(E.WORLD_EVENT, GOD_WHISPER_PAYLOAD)])
 
-    with patch("background_process.asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch("background_process.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "background_process.db_activity_queries.get_divine_favor",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+    ):
         await background._deliver_speech()
 
     assert [packet["type"] for packet in _published_packets(sd)] == [E.PLAY_SOUND]

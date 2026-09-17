@@ -7,6 +7,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.voice.speech_handle import SpeechHandle
 from livekit.rtc.participant import PublishDataError
 
 from background_process import BackgroundProcess
@@ -14,6 +15,12 @@ from bg_speech import PendingSpeech, SpeechPriority
 from onboarding_background import OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
 from system_prompts import build_companion_cue
+
+
+def _completed_handle():
+    handle = SpeechHandle.create()
+    handle._mark_done()
+    return handle
 
 
 def _session_data() -> SessionData:
@@ -32,7 +39,7 @@ def _session_data() -> SessionData:
 
 def _queued_background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: _completed_handle())
     background = BackgroundProcess(session, sd)
     background._speech_queue.append(
         PendingSpeech(
@@ -67,7 +74,7 @@ async def test_publish_data_error_keeps_background_voice_and_timestamp(
     with caplog.at_level(logging.ERROR, logger="divineruin.companion_cue_events"):
         await background._deliver_speech()
 
-    session.generate_reply.assert_awaited_once()
+    session.generate_reply.assert_called_once()
     assert cast(CompanionState, sd.companion).last_speech_time > 0
     records = _cue_error_records(caplog)
     assert len(records) == 1
@@ -86,7 +93,7 @@ async def test_runtime_error_escapes_background_before_voice() -> None:
         await background._deliver_speech()
 
     assert raised.value is failure
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
 
 
 @pytest.mark.asyncio
