@@ -104,6 +104,61 @@ async def test_two_bless_commands_on_one_target_still_add_only_two():
     assert (strike["hit"], strike["attack_total"]) == (True, 15)
 
 
+@pytest.mark.parametrize("second_kind", ["command", "accusation"])
+def test_the_first_same_band_marker_owns_the_target(second_kind):
+    state = _mark_state([])
+    first = _participant("first_marker")
+    second = _participant("second_marker")
+    state.participants.extend([first, second])
+    target = state.get_participant("player_1")
+    assert target is not None
+
+    resolve_mark_action(state, first, target, "command")
+    resolve_mark_action(state, second, target, second_kind)
+
+    assert (attack_bonus(state, first, target), attack_bonus(state, second, target)) == (0, 2)
+    assert state.focus_marks[target.id] == {"source_id": first.id, "kind": "command"}
+
+
+@pytest.mark.parametrize(
+    ("first_type", "second_type"),
+    [("enemy", "companion"), ("companion", "enemy")],
+)
+def test_an_opposing_band_cannot_replace_a_mark(first_type, second_type):
+    state = _mark_state([])
+    first = _participant("first_marker", kind=first_type)
+    second = _participant("second_marker", kind=second_type)
+    state.participants.extend([first, second])
+    target = state.get_participant("player_1")
+    assert target is not None
+    resolve_mark_action(state, first, target, "command")
+
+    with pytest.raises(ValueError) as error:
+        resolve_mark_action(state, second, target, "accusation")
+
+    assert first.id in str(error.value)
+    assert second.id in str(error.value)
+    assert state.focus_marks[target.id] == {"source_id": first.id, "kind": "command"}
+
+
+def test_a_cancelled_mark_does_not_inspect_or_replace_the_owner():
+    state = _mark_state([])
+    first = _participant("first_marker")
+    second = _participant("second_marker", kind="companion")
+    state.participants.extend([first, second])
+    target = state.get_participant("player_1")
+    assert target is not None
+    resolve_mark_action(state, first, target, "command")
+
+    resolve_mark_action(state, second, target, "accusation", cancelled=True)
+    assert state.focus_marks[target.id] == {"source_id": first.id, "kind": "command"}
+    with pytest.raises(ValueError, match="does not create"):
+        resolve_mark_action(state, second, target, "attack", cancelled=True)
+    state.focus_marks[target.id] = cast(dict[str, str], [])
+    resolve_mark_action(state, second, target, "accusation", cancelled=True)
+    assert state.focus_marks[target.id] == []
+
+
 @pytest.mark.asyncio
 async def test_a_mark_does_not_help_an_attack_against_another_target():
     _, _, strike = await _run(_mark_state([("marker", _action("ashmark_sergeant", "Rally"))], attack_target="player_2"))
@@ -140,6 +195,17 @@ def test_corrupt_marks_and_non_mark_kinds_fail_loud():
     with pytest.raises(ValueError, match="does not create"):
         resolve_mark_action(state, marker, target, "attack")
     state.focus_marks[target.id] = cast(dict[str, str], [])
+    with pytest.raises(ValueError, match="malformed"):
+        attack_bonus(state, bandmate, target)
+    with pytest.raises(ValueError, match="malformed"):
+        resolve_mark_action(state, marker, target, "command")
+    state.focus_marks[target.id] = cast(dict[str, str], ["source_id", "kind"])
+    with pytest.raises(ValueError, match="malformed"):
+        attack_bonus(state, bandmate, target)
+    state.focus_marks[target.id] = {"source_id": marker.id, "kind": "command", "extra": "field"}
+    with pytest.raises(ValueError, match="malformed"):
+        attack_bonus(state, bandmate, target)
+    state.focus_marks[target.id] = cast(dict[str, str], {"source_id": 7, "kind": "command"})
     with pytest.raises(ValueError, match="malformed"):
         attack_bonus(state, bandmate, target)
     state.focus_marks[target.id] = {"source_id": "missing", "kind": "command"}
