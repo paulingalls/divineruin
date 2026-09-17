@@ -3,11 +3,11 @@ import {
   errandBusyLabel,
   errandDestinationPrompt,
   formatTimeRemaining,
+  getActivityGroupState,
+  isStartVisible,
+  trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
-
-// These two strings live in a .ts, not in activity-launcher.tsx, because this lane's RN mock
-// omits View/Text — a .tsx is unimportable here, so a test against the component would close
-// the site on nothing (reference_mobile_bun_tsx_imports).
+import type { TemplateGroup } from "@divineruin/shared";
 
 test("errand strings name the assigned companion", () => {
   expect(errandBusyLabel("Sable", "Scouting Run")).toBe("Sable is on a Scouting Run");
@@ -34,4 +34,55 @@ test("time remaining reads as a spoken countdown, and completes at zero", () => 
   expect(formatTimeRemaining(inHours)).toBe("2h 15m remaining");
   expect(formatTimeRemaining(new Date(Date.now() + 90_000).toISOString())).toBe("1m remaining");
   expect(formatTimeRemaining(new Date(Date.now() - 1000).toISOString())).toBe("completing...");
+});
+
+const inactive = {
+  duration: "2-4h",
+  materials: null,
+  active: null,
+};
+const runningTrainingGroup: TemplateGroup = {
+  type: "training",
+  label: "Training",
+  items: [
+    {
+      ...inactive,
+      id: "combat_basics",
+      name: "Combat Fundamentals",
+      params: { program_id: "combat_basics" },
+    },
+    {
+      ...inactive,
+      id: "focused_practice",
+      name: "Focused Practice",
+      params: { program_id: "focused_practice" },
+    },
+    {
+      id: "arcane_study",
+      name: "Arcane Study",
+      duration: "2-4h",
+      params: { program_id: "arcane_study" },
+      materials: null,
+      active: {
+        startTime: "2026-09-17T14:00:00.000Z",
+        resolveAtEstimate: "2026-09-17T16:00:00.000Z",
+        percentEstimate: 50,
+      },
+    },
+  ],
+};
+
+test("a running training program locks the group and names the cycle", () => {
+  const state = getActivityGroupState(runningTrainingGroup);
+
+  expect(state.isGroupLocked).toBe(true);
+  expect(state.groupBusy).toBe(true);
+  expect(state.activeItem?.name).toBe("Arcane Study");
+  expect(trainingBusyLabel(state.activeItem!.name)).toBe("Currently training: Arcane Study");
+});
+
+test("a running training program hides every start action", () => {
+  const state = getActivityGroupState(runningTrainingGroup);
+
+  expect(runningTrainingGroup.items.every((item) => !isStartVisible(item, state))).toBe(true);
 });

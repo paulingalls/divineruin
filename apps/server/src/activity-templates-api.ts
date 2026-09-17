@@ -55,7 +55,17 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       LIMIT 50
     ` as Promise<{ data: unknown }[]>;
 
-    const [inventoryRows, activeRows] = await Promise.all([inventoryPromise, activePromise]);
+    const trainingPromise = sql`
+      SELECT data, state, created_at, transition_at FROM training_activities
+      WHERE player_id = ${playerId} AND state != 'complete'
+      LIMIT 5
+    ` as Promise<{ data: unknown; state: string; created_at: string; transition_at: string }[]>;
+
+    const [inventoryRows, activeRows, trainingRows] = await Promise.all([
+      inventoryPromise,
+      activePromise,
+      trainingPromise,
+    ]);
 
     // Build owned map
     const owned: Record<string, number> = {};
@@ -65,7 +75,18 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
 
     // Build active map: template key → ActiveStatus
     const activeMap = new Map<string, ActiveStatus>();
-    for (const row of activeRows) {
+    const allActiveRows = [
+      ...activeRows,
+      ...trainingRows.map((row) => ({
+        data: {
+          activity_type: "training",
+          parameters: parseJsonb(row.data),
+          start_time: row.created_at,
+          resolve_at: row.transition_at,
+        },
+      })),
+    ];
+    for (const row of allActiveRows) {
       const data = parseJsonb(row.data);
       const key = templateKeyFromActivity(data);
       if (key) {
@@ -108,7 +129,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
         type: "training",
         label: "Training",
         items: getAllTrainingPrograms()
-          .filter((p) => !p.training_activity_type.startsWith("spell_"))
+          .filter((p) => !p.training_activity_type.startsWith("spell_") || activeMap.has(p.id))
           .map((p) => {
             const activityType = getActivityTypeConfig(p.training_activity_type);
             if (!activityType) {

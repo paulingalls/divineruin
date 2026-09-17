@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { dbMockFactory, resetMockDb } from "./activities-test-mock.ts";
+import { dbMockFactory, resetMockDb, setQueryStubs } from "./activities-test-mock.ts";
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
 
@@ -14,21 +14,97 @@ beforeEach(() => {
   setupTrainingConfigFixture();
 });
 
-test("training templates exclude programs the app cannot launch", async () => {
+interface TrainingItem {
+  id: string;
+  name: string;
+  active: {
+    startTime: string;
+    resolveAtEstimate: string;
+  } | null;
+}
+
+async function getTrainingItems(): Promise<TrainingItem[]> {
   const response = await handleGetActivityTemplates("player_1");
   const payload = (await response.json()) as {
-    groups: { type: string; items: { id: string }[] }[];
+    groups: { type: string; items: TrainingItem[] }[];
   };
   const training = payload.groups.find((group) => group.type === "training");
+
+  expect(training).toBeDefined();
+  return training!.items;
+}
+
+test("training templates are inactive and exclude spell programs when no cycle runs", async () => {
+  const items = await getTrainingItems();
   const expectedIds = getAllTrainingPrograms()
     .filter((program) => !program.training_activity_type.startsWith("spell_"))
     .map((program) => program.id);
 
-  expect(training).toBeDefined();
-  expect(training!.items.length).toBeGreaterThan(0);
-  expect(training!.items.map((item) => item.id)).toEqual(expectedIds);
-  expect(training!.items.map((item) => item.id)).toContain("combat_basics");
-  expect(training!.items.map((item) => item.id)).not.toContain("arcane_study");
+  expect(items.length).toBeGreaterThan(0);
+  expect(items.map((item) => item.id)).toEqual(expectedIds);
+  expect(items.map((item) => item.id)).toContain("combat_basics");
+  expect(items.map((item) => item.id)).not.toContain("arcane_study");
+  expect(items.every((item) => item.active === null)).toBe(true);
+});
+
+test("a running technique cycle is active on its training program", async () => {
+  const startTime = "2026-09-17T10:00:00.000Z";
+  const resolveAt = "2026-09-17T12:00:00.000Z";
+  setQueryStubs([
+    {
+      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      result: [
+        {
+          data: { program_id: "combat_basics" },
+          state: "running_first_half",
+          created_at: startTime,
+          transition_at: resolveAt,
+        },
+      ],
+    },
+  ]);
+
+  const items = await getTrainingItems();
+  const activeItem = items.find((item) => item.active !== null);
+
+  expect(activeItem).toMatchObject({
+    id: "combat_basics",
+    name: "Combat Fundamentals",
+    active: { startTime, resolveAtEstimate: resolveAt },
+  });
+  expect(
+    items.filter((item) => item.id !== "combat_basics").every((item) => item.active === null),
+  ).toBe(true);
+});
+
+test("a running spell cycle is included as an active-only training program", async () => {
+  const startTime = "2026-09-17T14:00:00.000Z";
+  const resolveAt = "2026-09-17T16:00:00.000Z";
+  setQueryStubs([
+    {
+      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      result: [
+        {
+          data: JSON.stringify({ program_id: "arcane_study" }),
+          state: "running_second_half",
+          created_at: startTime,
+          transition_at: resolveAt,
+        },
+      ],
+    },
+  ]);
+
+  const items = await getTrainingItems();
+  const activeItem = items.find((item) => item.active !== null);
+
+  expect(activeItem).toMatchObject({
+    id: "arcane_study",
+    name: "Arcane Study",
+    active: { startTime, resolveAtEstimate: resolveAt },
+  });
+  expect(
+    items.filter((item) => item.id !== "arcane_study").every((item) => item.active === null),
+  ).toBe(true);
 });
 
 // Durations must match the spec's Errand Types table
