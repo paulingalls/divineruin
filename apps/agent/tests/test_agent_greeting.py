@@ -1,21 +1,14 @@
 """Failure reporting at the gameplay greeting boundary."""
 
-import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents import Agent, AgentSession
-from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.agent_activity import AgentActivity
+from speech_handles import in_flight_handle
 
 DM_LOGGER = "divineruin.dm"
-
-
-def _in_flight_handle(failure: BaseException) -> SpeechHandle:
-    handle = SpeechHandle.create()
-    asyncio.get_running_loop().call_soon(handle._mark_done, failure)
-    return handle
 
 
 def _delivery_records(caplog, level: int | None = None):
@@ -87,7 +80,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply):
 )
 @pytest.mark.asyncio
 async def test_failed_gameplay_greeting_logs_one_error(caplog, last_summary, failure, instruction_fragment):
-    generate_reply = MagicMock(side_effect=lambda **_kwargs: _in_flight_handle(failure))
+    generate_reply = MagicMock(side_effect=lambda **_kwargs: in_flight_handle(failure))
 
     with caplog.at_level(logging.WARNING, logger=DM_LOGGER):
         session = await _run_gameplay_greeting(last_summary, generate_reply)

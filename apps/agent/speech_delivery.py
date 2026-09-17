@@ -23,6 +23,13 @@ async def deliver_speech(
     description: str,
     failure_level: int = logging.WARNING,
 ) -> bool:
+    """Speak ``instructions`` through ``session``; False when the player heard nothing.
+
+    ``failure_level`` is WARNING for the background loops, which get another turn at their
+    next poll, and ERROR at the session entrypoint, where the lost speech was the session's
+    only opening and nothing will retry it. A session already shutting down stays a WARNING
+    either way: no speech was owed.
+    """
     try:
         handle = session.generate_reply(instructions=instructions)
     except RuntimeError as exc:

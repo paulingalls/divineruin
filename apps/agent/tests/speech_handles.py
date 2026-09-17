@@ -5,6 +5,8 @@ a generation failure surfaces only as ``handle.exception()`` — so a stub that 
 an ``AsyncMock`` certifies nothing about the code reading that handle (constraint 9).
 """
 
+import asyncio
+
 from livekit.agents.voice import SpeechHandle
 
 
@@ -12,4 +14,15 @@ def completed_handle(error: BaseException | None = None) -> SpeechHandle:
     """A handle already done, carrying ``error`` as the generation failure (None = success)."""
     handle = SpeechHandle.create()
     handle._mark_done(error)
+    return handle
+
+
+def in_flight_handle(error: BaseException) -> SpeechHandle:
+    """A handle still speaking: it finishes only on the next pass of the event loop.
+
+    Until then ``exception()`` raises InvalidStateError, so a delivery that reads the handle
+    without awaiting it blows up instead of reporting ``error``.
+    """
+    handle = SpeechHandle.create()
+    asyncio.get_running_loop().call_soon(handle._mark_done, error)
     return handle
