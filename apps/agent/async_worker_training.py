@@ -24,6 +24,7 @@ import db
 import db_mutations_skill_advancement
 import db_queries
 import db_training
+import leveling
 import mentor_variant_progress
 import mentor_variants
 import skill_persistence
@@ -236,6 +237,12 @@ async def advance_training_cycles() -> int:
                                 raise ValueError(f"unknown player {player_id} during spell promotion")
                             chassis = archetypes.get_archetype_chassis(player_data.get("class", ""))
                             spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
+                            level = player_data.get("level", 1)
+                            if not leveling.is_spell_tier_unlocked(chassis.id, spell.spell_tier, level):
+                                raise ValueError(
+                                    f"cannot promote {spell_id}: {spell.spell_tier} spells are locked "
+                                    f"for {chassis.id} at level {level}"
+                                )
                             # Carry the recorded midpoint decision onto the learned spell
                             # as its bonus_variant (AC3). Progress cleared after the cache write.
                             await character_spells.record_learned(

@@ -112,9 +112,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Non-spell training forbids spell_id" }, { status: 400 });
       }
       // The per-archetype tier-unlock floor (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER) is a
-      // Python-only table with no content backing, so the agent's start wall refuses a
-      // too-low-level caster and this route cannot (constraint 7: the rule only one side
-      // holds is stated). Every refusal below is decidable from shared content.
+      // Python-only table with no content backing, so the agent's start wall and worker
+      // promotion wall refuse a too-low-level caster and this route cannot (constraint 7:
+      // the rule only one side holds is stated). Every refusal below is decidable from shared content.
       if (isSpellProgram) {
         if (spellId === undefined) {
           return Response.json(

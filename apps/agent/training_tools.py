@@ -61,6 +61,7 @@ async def _query_training_programs_impl(
     archetype = player.get("class", "")
     level = player.get("level", 1)
     known_spell_ids = {row["spell_id"] for row in await character_spells_mod.get_known(player_id)}
+    learning_progress = await character_spells_mod.list_learning_progress(player_id)
     programs = await db_content_mod.list_training_programs()
     scoped_programs = []
     chassis = None
@@ -95,7 +96,7 @@ async def _query_training_programs_impl(
                     studiable_spell_ids.append(spell.id)
         scoped_programs.append({**program, "studiable_spell_ids": sorted(studiable_spell_ids)})
 
-    return json.dumps({"programs": scoped_programs})
+    return json.dumps({"programs": scoped_programs, "spell_learning_progress": learning_progress})
 
 
 async def _initiate_training_cycle_impl(

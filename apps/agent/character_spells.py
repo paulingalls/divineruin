@@ -176,6 +176,28 @@ async def get_learning_progress(
     }
 
 
+async def list_learning_progress(
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> list[dict]:
+    """Return every in-flight spell-study count for the player."""
+    _conn = conn or await db.get_pool()
+    rows = await _conn.fetch(
+        "SELECT spell_id, cycles_completed, cycles_required "
+        "FROM spell_learning_progress WHERE player_id = $1 ORDER BY spell_id",
+        player_id,
+    )
+    return [
+        {
+            "spell_id": row["spell_id"],
+            "cycles_completed": row["cycles_completed"],
+            "cycles_required": row["cycles_required"],
+        }
+        for row in rows
+    ]
+
+
 async def delete_learning_progress(
     player_id: str,
     spell_id: str,

@@ -22,7 +22,7 @@ from activity_tools import _begin_activity_impl
 from async_worker_training import advance_training_cycles
 from dialogue_parser import Segment
 
-SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric", "class": "mage"}
+SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 5}
 
 # A spell-training activity at the completion edge. spell_major carries
 # cycles_required=5 (content config, loaded by the autouse conftest fixture);
@@ -144,6 +144,35 @@ class TestSpellTrainingAccrual:
         patches, _, record_learned, _ = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             player={"player_id": "player_1", "name": "Celia", "class": "cleric"},
+            advance_return={
+                "cycles_completed": 5,
+                "cycles_required": 5,
+                "completed": True,
+                "midpoint_decision_id": "push",
+            },
+        )
+        with (
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patches[7],
+            patches[8],
+            patches[9],
+        ):
+            count = await advance_training_cycles()
+
+        assert count == 0
+        record_learned.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_completed_cycle_refuses_tier_locked_promotion(self):
+        patches, _, record_learned, _ = _completion_patches(
+            SAMPLE_SPELL_ACTIVITY,
+            player={"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 4},
             advance_return={
                 "cycles_completed": 5,
                 "cycles_required": 5,

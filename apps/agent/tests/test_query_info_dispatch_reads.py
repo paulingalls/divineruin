@@ -174,7 +174,10 @@ class TestQueryTrainingPrograms:
             side_effect=lambda program_id: next(row for row in programs if row["id"] == program_id)
         )
         queries = MagicMock(get_player=AsyncMock(return_value=player))
-        library = MagicMock(get_known=AsyncMock(return_value=known or []))
+        library = MagicMock(
+            get_known=AsyncMock(return_value=known or []),
+            list_learning_progress=AsyncMock(return_value=[]),
+        )
         return content, queries, library
 
     @pytest.mark.asyncio
@@ -187,6 +190,7 @@ class TestQueryTrainingPrograms:
         with (
             patch("training_tools.db_queries.get_player", queries.get_player),
             patch("training_tools.character_spells.get_known", library.get_known),
+            patch("training_tools.character_spells.list_learning_progress", library.list_learning_progress),
         ):
             result = json.loads(await _query_training_programs_impl(context, db_content_mod=content))
             rows = {row["id"]: row for row in result["programs"]}
@@ -236,6 +240,7 @@ class TestQueryTrainingPrograms:
         with (
             patch("training_tools.db_queries.get_player", queries.get_player),
             patch("training_tools.character_spells.get_known", library.get_known),
+            patch("training_tools.character_spells.list_learning_progress", library.list_learning_progress),
         ):
             result = json.loads(await _query_training_programs_impl(make_context(), db_content_mod=content))
 
@@ -244,6 +249,29 @@ class TestQueryTrainingPrograms:
         assert rows[ORDINARY_PROGRAM["id"]] == ORDINARY_PROGRAM
         for program in (SPELL_STANDARD_PROGRAM, SPELL_MAJOR_PROGRAM):
             assert rows[program["id"]] == {**program, "studiable_spell_ids": []}
+
+    @pytest.mark.asyncio
+    async def test_returns_persisted_spell_learning_progress(self):
+        content, queries, library = self._dependencies(player={"class": "mage", "level": 3})
+        library.list_learning_progress.return_value = [
+            {
+                "spell_id": "arcane_hold_person",
+                "cycles_completed": 1,
+                "cycles_required": 3,
+            }
+        ]
+
+        result = json.loads(
+            await _query_training_programs_impl(
+                make_context(),
+                db_content_mod=content,
+                queries_mod=queries,
+                character_spells_mod=library,
+            )
+        )
+
+        assert result["spell_learning_progress"] == library.list_learning_progress.return_value
+        library.list_learning_progress.assert_awaited_once_with("player_1")
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -255,6 +283,7 @@ class TestQueryTrainingPrograms:
         with (
             patch("training_tools.db_queries.get_player", queries.get_player),
             patch("training_tools.character_spells.get_known", library.get_known),
+            patch("training_tools.character_spells.list_learning_progress", library.list_learning_progress),
             pytest.raises(ToolError, match=message),
         ):
             await _query_training_programs_impl(make_context(), db_content_mod=content)
@@ -267,6 +296,7 @@ def test_training_prompt_names_spell_id_producer():
     assert "spell_id" in training
     assert "studiable_spell_ids" in training
     assert "from that row" in training
+    assert "spell_learning_progress" in training
     # A non-caster and an onboarding player get the spell row back with an EMPTY list rather
     # than a refusal (AC5), so the prompt has to say what an empty list means — otherwise the
     # DM offers Arcane Study to a warrior and begin_activity refuses (constraint 6).
