@@ -156,10 +156,6 @@ async def _prevalidate_ability_focus(
                 except ValueError as e:
                     raise ToolError(str(e)) from e
         else:
-            try:
-                spells.get_spell(action)
-            except ValueError as e:
-                raise ToolError(str(e)) from e
             known_spell_ids = known_spell_ids_by_player.get(actor_id)
             if known_spell_ids is None:
                 known_rows = await character_spells_mod.get_known(actor_id, conn=conn)

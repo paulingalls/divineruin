@@ -221,7 +221,8 @@ async def test_abilities_query_emits_exactly_the_real_gate_set(dev_db_pool):
     try:
         payload = json.loads(await _query_info_impl(ctx, kind="abilities"))
         emitted = {row["id"] for row in payload["spells"]}
-        known = spell_knowledge.castable_spell_ids("cleric", ["divine_revivify"])
+        library = await character_spells.get_known(player_id, conn=dev_db_pool)
+        known = spell_knowledge.castable_spell_ids("cleric", (row["spell_id"] for row in library))
         accepted = set()
         for source in ("arcane", "divine", "primal"):
             for spell in spells.get_spells_by_source(source):

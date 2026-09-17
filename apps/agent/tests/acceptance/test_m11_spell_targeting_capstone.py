@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from acceptance.seeds import seed_known_spells
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
@@ -55,13 +56,7 @@ async def _seed_player(pool, player_id: str, *, known_spells: tuple[str, ...] = 
         player_id,
         json.dumps(data),
     )
-    for spell_id in known_spells:
-        await pool.execute(
-            "INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared) "
-            "VALUES ($1, $2, 'discovery', FALSE) ON CONFLICT (player_id, spell_id) DO NOTHING",
-            player_id,
-            spell_id,
-        )
+    await seed_known_spells(pool, player_id, known_spells)
 
 
 # --- Scenario A: revival on a Hollow-killed target is refused, keyed on the TARGET (AC1) ---

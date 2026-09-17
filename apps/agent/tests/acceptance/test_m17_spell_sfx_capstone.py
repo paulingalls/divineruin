@@ -28,6 +28,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from acceptance.seeds import seed_known_spells
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
@@ -56,13 +57,7 @@ async def _seed_player(pool, player_id: str, *, known_spells: tuple[str, ...] = 
         player_id,
         json.dumps(data),
     )
-    for spell_id in known_spells:
-        await pool.execute(
-            "INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared) "
-            "VALUES ($1, $2, 'discovery', FALSE) ON CONFLICT (player_id, spell_id) DO NOTHING",
-            player_id,
-            spell_id,
-        )
+    await seed_known_spells(pool, player_id, known_spells)
 
 
 def _all_spells() -> list[spells.Spell]:

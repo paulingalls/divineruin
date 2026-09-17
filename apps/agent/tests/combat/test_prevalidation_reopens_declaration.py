@@ -150,6 +150,7 @@ async def test_recovery_write_failure_does_not_replace_session_state():
             mutations=mutations,
             db_mod=_fake_db_mod(),
             resolver=_damage_resolver(0),
+            character_spells_mod=MagicMock(get_known=AsyncMock(return_value=[])),
         )
 
     assert context.userdata.combat_state is state

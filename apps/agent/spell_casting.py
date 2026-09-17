@@ -299,10 +299,6 @@ async def _resolve_cast(
         )
         assert player is not None  # guaranteed by lock_ooc_caster_and_targets or it raises
 
-    try:
-        spells_mod.get_spell(spell_id)
-    except ValueError as e:
-        raise ToolError(str(e)) from e
     known_rows = await character_spells_mod.get_known(player_id, conn=conn)
     known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
     spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod)
