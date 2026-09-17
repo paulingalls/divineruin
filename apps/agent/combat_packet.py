@@ -78,10 +78,10 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
 
 
 async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver) -> dict[str, dict]:
-    """Pre-validate EVERY player ABILITY declaration's Focus BEFORE the resolution loop (AC2), one
-    per declaring member (M14 story-004).
+    """Pre-validate EVERY player ABILITY declaration's ownership, active variant and cost BEFORE the
+    resolution loop (AC2), one per declaring member (M14 story-004).
 
-    An unaffordable in-combat ability must fail loud (ToolError) with NO state writes — and crucially
+    An unowned or unaffordable in-combat ability must fail loud (ToolError) with NO state writes — and crucially
     before any OTHER actor's HP/durability write, so a bad ability never rolls back a phase that has
     already resolved attacks. For each player-ability packet, fetch THAT actor's OWN for_update row
     (pid == packet.actor_id == player_id, since combat_init builds player participants with id=mid),
