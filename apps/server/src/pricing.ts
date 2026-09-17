@@ -19,7 +19,7 @@ export interface EconomyPricing {
 }
 
 export const MAX_DISPOSITION_MULTIPLIER = 1e304;
-export const DISPOSITION_MULTIPLIER_CAP_RULE = "must be <= 1e304";
+export const DISPOSITION_MULTIPLIER_CAP_RULE = `must be <= ${MAX_DISPOSITION_MULTIPLIER}`;
 
 // Runtime-loaded singleton (populated by loadPricing at startup).
 let pricing: EconomyPricing | undefined;
