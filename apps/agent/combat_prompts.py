@@ -22,6 +22,8 @@ target_id is who they strike. Send rider as an empty string unless the actor has
 spends it on "dash", "disengage" or "hide". \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
+An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
+the Sergeant names for the patrol to focus. \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
@@ -101,7 +103,10 @@ When you close a window the player reacted at, that result carries a packet for 
 itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
 strike go wide, "shield_durability" for a shield that took the wear, "save_advantage" for help \
-resisting an effect. When it is null the reaction \
+resisting an effect, "command_countered" for a silenced order, "accusation_dismissed" for a charge \
+the patrol doubts, and "action_hesitated" when an Objection costs the enemy its action. A contested \
+social reaction also carries reactor_total and opposer_total: use them to understand the outcome, \
+but never voice their raw numbers. When mechanical_effect is null the reaction \
 was spent and changed nothing mechanical — voice the moment from its "narration_cue", the lunge, \
 the shouted warning, but never say it saved them.
 

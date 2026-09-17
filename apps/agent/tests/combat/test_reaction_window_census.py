@@ -4,12 +4,9 @@ LITERAL table, walked against every enemy action shape in content/encounter_temp
 The table below is WRITTEN OUT, never recomputed from the derivation under test — a classification
 derived from the thing it classifies agrees with itself and certifies nothing (constraint 1).
 
-The three classes, and why the third exists: `reachable` means some held enemy action opens a
-window this row's `window` names. `unproducible` means nothing in the combat engine can ever open
-it. `inapplicable` is the honest middle — the window OPENS, but the row's EFFECT TEXT has nothing
-to bite on, because all 68 action_pool entries are weapon-shaped. Counting those three as rescued
-would be the defect: story-018's AC3 narrates such a spend as "resolved with no mechanical effect"
-and the player burns the round's one reaction for nothing.
+The three classes: `reachable` means some held enemy action opens a window whose subject the row
+can affect. `unproducible` means nothing in the combat engine can ever open it. `inapplicable`
+means the window opens but no authored action has the subject its effect needs.
 """
 
 import json
@@ -45,11 +42,11 @@ EXPECTED: dict[str, str] = {
     # --- post-roll: on_ally_hit (1) / on_enemy_miss (1) ---
     "guardian_intercept": "reachable",
     "skirmisher_riposte": "reachable",
-    # --- catch-all on_enemy_action (4): ONE applicable, three not ---
+    # --- catch-all on_enemy_action (4), narrowed by held action subject ---
     "whisper_implant_doubt": "reachable",  # "when an enemy succeeds an attack or ability"
-    "diplomat_objection": "inapplicable",  # "when an NPC is about to act against your wishes"
-    "spy_plausible_deniability": "inapplicable",  # "when accused/confronted"
-    "marshal_countermand": "inapplicable",  # "when an enemy uses a command/leadership ability"
+    "diplomat_objection": "reachable",  # any non-Hollow action, before it rolls
+    "spy_plausible_deniability": "reachable",  # the Sergeant's accusation
+    "marshal_countermand": "reachable",  # five authored commands
     # --- on_condition_imposed (2), reached only via the `grapple` property branch ---
     "rogue_slippery": "reachable",
     "spy_slippery": "reachable",
@@ -58,7 +55,7 @@ EXPECTED: dict[str, str] = {
     "mage_counterspell": "unproducible",  # on_spell_cast: no enemy casts (combat_ability.py:300)
 }
 
-_TOTALS = {"reachable": 20, "inapplicable": 3, "unproducible": 2}
+_TOTALS = {"reachable": 23, "inapplicable": 0, "unproducible": 2}
 
 # The measured window census of the 25 rows. Pinned literally so a content edit that RE-LABELS a
 # row's window (rather than adding one) reds here instead of silently changing what is reachable.
@@ -78,6 +75,14 @@ _WINDOW_CENSUS = {
 # dropping Seizing Grab strands rogue_slippery and spy_slippery with nothing going red anywhere
 # else, so the carriers are pinned as a literal.
 _GRAPPLE_CARRIERS = [("mawling_1", "Seizing Grab"), ("mawling_2", "Seizing Grab")]
+_COMMAND_CARRIERS = [
+    ("ashmark_patrol", "ashmark_sergeant", "Rally"),
+    ("bandit_ambush", "bandit_captain", "Press the Attack"),
+    ("cult_cell", "cult_fanatic_1", "Bless"),
+    ("cult_cell", "cult_fanatic_2", "Bless"),
+    ("hollow_corrupted_settlement", "hollowed_knight", "Command Lesser"),
+]
+_ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
 
 _NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
 
@@ -104,6 +109,17 @@ def _grapple_carriers() -> list[tuple[str, str]]:
     ]
 
 
+def _kind_carriers(kind: str) -> list[tuple[str, str, str]]:
+    templates = json.loads((_CONTENT / "encounter_templates.json").read_text())
+    return sorted(
+        (template["id"], enemy["id"], action["name"])
+        for template in templates
+        for enemy in template.get("enemies", [])
+        for action in enemy.get("action_pool", [])
+        if action.get("kind") == kind
+    )
+
+
 def _produced_windows() -> set[str]:
     """Every window the derivation opens over the whole enemy action vocabulary, both stages."""
     produced: set[str] = set()
@@ -121,7 +137,8 @@ def test_the_table_covers_exactly_the_reaction_rows_that_exist():
 
 
 def test_the_totals_are_the_ones_the_card_settled():
-    assert Counter(EXPECTED.values()) == _TOTALS
+    counts = Counter(EXPECTED.values())
+    assert {classification: counts[classification] for classification in _TOTALS} == _TOTALS
     assert sum(_TOTALS.values()) == 25
 
 
@@ -130,9 +147,7 @@ def test_the_window_census_of_the_content_is_unchanged():
 
 
 def test_every_row_the_table_calls_producible_has_its_window_produced():
-    """The walk. `reachable` and `inapplicable` both require the window to OPEN — they differ
-    only in whether the row's effect text can bite on a weapon swing, which no code can decide.
-    `unproducible` requires the opposite: the window is never opened at all."""
+    """The window-vocabulary walk; subject reach is pinned by the literal carriers below."""
     produced = _produced_windows()
     by_id = {row["id"]: row for row in _reaction_rows()}
     for ability_id, classification in EXPECTED.items():
@@ -156,6 +171,11 @@ def test_the_grapple_branch_carriers_are_pinned():
         "the only content carriers of the `grapple` property have changed — rogue_slippery and "
         "spy_slippery reach on_condition_imposed through these entries and nothing else"
     )
+
+
+def test_social_subject_carriers_are_pinned():
+    assert _kind_carriers("command") == _COMMAND_CARRIERS
+    assert _kind_carriers("accusation") == _ACCUSATION_CARRIERS
 
 
 def test_every_produced_trigger_is_a_member_of_the_closed_vocabulary():

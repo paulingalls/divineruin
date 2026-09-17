@@ -336,11 +336,14 @@ def test_held_actions_and_open_window_round_trip_through_json() -> None:
 def test_a_legacy_window_derives_its_action_kind_from_the_held_head() -> None:
     serialized = _mid_window_state().to_dict()
     del serialized["open_window"]["action_kind"]
+    enemy = next(row for row in serialized["participants"] if row["id"] == "goblin_scout_1")
+    enemy["action_pool"] = [{"name": "Rally", "kind": "command", "properties": []}]
+    serialized["held_actions"][0]["declaration"]["action"] = "Rally"
 
     loaded = CombatState.from_dict(serialized)
 
     assert loaded.open_window is not None
-    assert loaded.open_window["action_kind"] == "attack"
+    assert loaded.open_window["action_kind"] == "command"
 
 
 def test_a_legacy_window_with_an_unresolvable_held_action_fails_loud() -> None:

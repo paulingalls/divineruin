@@ -14,7 +14,7 @@ import pytest
 import abilities
 import reaction_windows
 
-# The three action shapes the 68 action_pool entries reduce to, for window purposes.
+# The three attack shapes the action_pool reduces to for trigger derivation.
 _SWING = {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": []}
 _GRAB = {
     "name": "Seizing Grab",

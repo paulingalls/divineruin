@@ -11,6 +11,7 @@ import combat_hold
 import combat_reaction_effect
 import reaction_spend
 import reaction_windows
+from combat_prompts import COMBAT_PROMPT
 from encounter_actions import validate_encounter_actions
 from session_data import CombatParticipant, CombatState
 
@@ -275,3 +276,12 @@ async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, dam
         hesitation = next(row for row in packets if row.get("hesitated"))
         assert hesitation == {"actor_id": "enemy_1", "resolved": False, "hesitated": True}
         deps["resolver"].resolve_attack.assert_not_called()
+
+
+def test_combat_prompt_names_accusation_targets_and_social_reaction_results():
+    assert "kind `accusation`" in COMBAT_PROMPT
+    assert "target_id is the accused" in COMBAT_PROMPT
+    for effect in ("command_countered", "accusation_dismissed", "action_hesitated"):
+        assert effect in COMBAT_PROMPT
+    assert "reactor_total" in COMBAT_PROMPT and "opposer_total" in COMBAT_PROMPT
+    assert "never voice their raw numbers" in COMBAT_PROMPT
