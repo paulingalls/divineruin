@@ -12,6 +12,8 @@ import { validateErrandDispatch } from "./errand_risk.ts";
 import { accessibleWorkspaceTier } from "./workspace.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 import { resolveAssignedCompanion } from "./assigned_companion.ts";
+import { getSpell } from "./spells.ts";
+import { getArchetypeChassis } from "./archetypes.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
@@ -100,6 +102,59 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Unknown training program" }, { status: 400 });
       }
 
+      const rawSpellId = params.spell_id;
+      if (rawSpellId !== undefined && (typeof rawSpellId !== "string" || rawSpellId.length === 0)) {
+        return Response.json({ error: "spell_id must be a non-empty string" }, { status: 400 });
+      }
+      const spellId = rawSpellId;
+      const isSpellProgram = program.training_activity_type.startsWith("spell_");
+      if (!isSpellProgram && spellId !== undefined) {
+        return Response.json({ error: "Non-spell training forbids spell_id" }, { status: 400 });
+      }
+      if (isSpellProgram) {
+        if (spellId === undefined) {
+          return Response.json(
+            { error: "spell_id is required for spell training" },
+            { status: 400 },
+          );
+        }
+        let spell: ReturnType<typeof getSpell>;
+        try {
+          spell = getSpell(spellId);
+        } catch {
+          return Response.json({ error: `Unknown spell: ${spellId}` }, { status: 400 });
+        }
+        if (program.training_activity_type !== `spell_${spell.spell_tier}`) {
+          return Response.json(
+            { error: "Spell tier does not match the training program" },
+            { status: 400 },
+          );
+        }
+
+        const playerRows = await sql<{ class: string | null }[]>`
+          SELECT data->>'class' AS class FROM players WHERE player_id = ${playerId}
+        `;
+        const archetypeId = playerRows[0]?.class;
+        const chassis = archetypeId ? getArchetypeChassis(archetypeId) : undefined;
+        if (
+          !chassis ||
+          (chassis.magic_source !== "cross" && chassis.magic_source !== spell.source)
+        ) {
+          return Response.json(
+            { error: `${archetypeId ?? "Player"} cannot study ${spellId}` },
+            { status: 400 },
+          );
+        }
+
+        const knownRows = await sql<{ spell_id: string }[]>`
+          SELECT spell_id FROM character_spells
+          WHERE player_id = ${playerId} AND spell_id = ${spellId}
+        `;
+        if (knownRows.length > 0) {
+          return Response.json({ error: `Player already knows ${spellId}` }, { status: 400 });
+        }
+      }
+
       const txnResult = await sql.begin(async (tx) => {
         await lockPlayerSlotRows(playerId, tx);
         const slotCounts = await countActiveBySlot(playerId, tx);
@@ -122,6 +177,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
           skill: program.skill ?? null,
           dc: program.dc,
           mentor_id: program.mentor_id,
+          ...(isSpellProgram ? { spell_id: spellId } : {}),
         };
 
         await tx`

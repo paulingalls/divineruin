@@ -30,6 +30,16 @@ SAMPLE_PROGRAM_WITH_SKILL = {
     "mentor_id": "archivist_lyra",
 }
 
+SAMPLE_SPELL_PROGRAM = {
+    "id": "arcane_study",
+    "name": "Arcane Study",
+    "training_activity_type": "spell_standard",
+    "stat": "intelligence",
+    "skill": "arcana",
+    "dc": 14,
+    "mentor_id": "scholar_emris",
+}
+
 
 def _make_cycle(first_half_seconds: int = 6 * 3600) -> TrainingCycleInit:
     return TrainingCycleInit(
@@ -267,6 +277,131 @@ class TestInitiateTrainingCycle:
         kwargs = mock_training.create_training_activity.await_args.kwargs
         assert kwargs["transition_at"] is not None
         assert kwargs["transition_at"] == FIXED_NOW + timedelta(seconds=5 * 3600)
+
+
+class TestSpellTrainingStartWall:
+    @pytest.mark.parametrize(
+        ("program", "spell_id", "player", "known", "message"),
+        [
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM, None, {"class": "mage", "level": 3}, [], "requires spell_id", id="missing"
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "bad spell id!",
+                {"class": "mage", "level": 3},
+                [],
+                "spell_id",
+                id="malformed",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "unknown_spell",
+                {"class": "mage", "level": 3},
+                [],
+                "Unknown spell",
+                id="unknown",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_fireball",
+                {"class": "mage", "level": 5},
+                [],
+                "tier",
+                id="wrong-tier",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_hold_person",
+                None,
+                [],
+                "Unknown player",
+                id="unknown-player",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_hold_person",
+                {"class": "mage", "level": 2},
+                [],
+                "unlock at level 3",
+                id="locked",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_hold_person",
+                {"class": "cleric", "level": 3},
+                [],
+                "cannot study",
+                id="off-source",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_hold_person",
+                {"class": "mage", "level": 3},
+                [{"spell_id": "arcane_hold_person"}],
+                "already knows",
+                id="already-known",
+            ),
+            pytest.param(
+                SAMPLE_PROGRAM,
+                "arcane_hold_person",
+                {"class": "mage", "level": 3},
+                [],
+                "forbids spell_id",
+                id="non-spell",
+            ),
+        ],
+    )
+    async def test_refuses_before_opening_transaction(self, program, spell_id, player, known, message):
+        content = MagicMock(get_training_program=AsyncMock(return_value=program))
+        queries = MagicMock(get_player=AsyncMock(return_value=player))
+        library = MagicMock(get_known=AsyncMock(return_value=known))
+        training = MagicMock(create_training_activity=AsyncMock())
+        db_mod = MagicMock()
+        db_mod.transaction.side_effect = AssertionError("transaction opened before spell validation")
+
+        with pytest.raises(ToolError, match=message):
+            await _initiate_training_cycle_impl(
+                make_context(),
+                program["id"],
+                spell_id=spell_id,
+                db_mod=db_mod,
+                db_training_mod=training,
+                db_content_mod=content,
+                queries_mod=queries,
+                character_spells_mod=library,
+                now_fn=lambda: FIXED_NOW,
+            )
+
+        training.create_training_activity.assert_not_awaited()
+        db_mod.transaction.assert_not_called()
+
+    async def test_valid_spell_study_persists_spell_id(self):
+        mock_db, _ = make_db_mod()
+        content = MagicMock(get_training_program=AsyncMock(return_value=SAMPLE_SPELL_PROGRAM))
+        queries = MagicMock(get_player=AsyncMock(return_value={"class": "mage", "level": 3}))
+        library = MagicMock(get_known=AsyncMock(return_value=[]))
+        training = MagicMock(
+            get_player_training_activities=AsyncMock(return_value=[]),
+            create_training_activity=AsyncMock(return_value="train_spell"),
+        )
+
+        await _initiate_training_cycle_impl(
+            make_context(),
+            "arcane_study",
+            spell_id="arcane_hold_person",
+            db_mod=mock_db,
+            db_training_mod=training,
+            db_content_mod=content,
+            queries_mod=queries,
+            character_spells_mod=library,
+            now_fn=lambda: FIXED_NOW,
+        )
+
+        data = training.create_training_activity.await_args.kwargs["data"]
+        assert data["spell_id"] == "arcane_hold_person"
+        assert data["program_id"] == "arcane_study"
+        assert data["skill"] == "arcana"
 
 
 # Training-tool registration moved to DispatchAgent in story-011 (CityAgent

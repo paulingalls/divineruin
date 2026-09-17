@@ -6,8 +6,6 @@ what say the reshape preserved behaviour. That the mapped kwargs actually SATISF
 router lives in tests/test_activity_tools.py, next to the stub impls.
 """
 
-import pytest
-
 from activity_payloads import (
     ACTIVITY_VARIANTS,
     CompanionErrand,
@@ -23,7 +21,7 @@ from activity_payloads import (
 def test_training_variant_maps_to_the_training_impl_kwargs():
     assert to_impl_kwargs(Training(kind="training", program_id="combat_basics")) == (
         "training",
-        {"program_id": "combat_basics"},
+        {"program_id": "combat_basics", "spell_id": None},
     )
 
 
@@ -73,8 +71,15 @@ def test_experiment_variant_unzips_its_materials_into_the_positional_lists():
     )
 
 
-@pytest.mark.parametrize("variant", ACTIVITY_VARIANTS)
-def test_no_variant_field_is_optional(variant):
-    """ADR 0008 rule 2: an optional inside a variant is one union slot back, and the
-    walker in test_strict_tool_budget cannot see WHY the number moved."""
-    assert all(f.is_required() for f in variant.model_fields.values()), variant.__name__
+def test_variant_optional_fields_are_pinned():
+    optional = {
+        variant.__name__: {name for name, field in variant.model_fields.items() if not field.is_required()}
+        for variant in ACTIVITY_VARIANTS
+    }
+    assert optional == {
+        "Training": {"spell_id"},
+        "CompanionErrand": set(),
+        "Crafting": set(),
+        "WorkspaceRental": set(),
+        "Experiment": set(),
+    }

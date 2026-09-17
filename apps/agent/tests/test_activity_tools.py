@@ -101,7 +101,28 @@ class TestBeginTraining:
     async def test_routes_to_initiate_training_cycle_impl(self):
         ctx, result, fns = await _begin("training", program_id="combat_basics")
         assert result == "training-result"
-        fns["training"].assert_awaited_once_with(ctx, "combat_basics")
+        fns["training"].assert_awaited_once_with(ctx, "combat_basics", spell_id=None)
+
+    async def test_training_payload_routes_studied_spell(self):
+        payload = Training(
+            kind="training",
+            program_id="arcane_study",
+            spell_id="arcane_hold_person",
+        )
+
+        kind, kwargs = to_impl_kwargs(payload)
+        ctx, _, fns = await _begin(kind, **kwargs)
+
+        fns["training"].assert_awaited_once_with(
+            ctx,
+            "arcane_study",
+            spell_id="arcane_hold_person",
+        )
+
+    def test_training_schema_tells_dm_when_spell_id_is_required(self):
+        schema = Training.model_json_schema()
+        assert "spell_*" in schema["description"]
+        assert "required" in schema["properties"]["spell_id"]["description"]
 
     async def test_missing_program_id_fails_loud_before_dispatch(self):
         with pytest.raises(ToolError, match="program_id"):

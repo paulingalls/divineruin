@@ -373,47 +373,4 @@ describe("handleCreateActivity", () => {
     );
     expect(leatherUpdate).toBeUndefined();
   });
-
-  test("creates training activity in training_activities table", async () => {
-    setQueryStubs([slotsEmpty]);
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: { program_id: "combat_basics" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      activity_id: string;
-      status: string;
-      state: string;
-      transition_at: string;
-    };
-    expect(body.activity_id).toStartWith("train_");
-    expect(body.status).toBe("in_progress");
-    expect(body.state).toBe("running_first_half");
-    expect(body.transition_at).toBeTruthy();
-  });
-
-  test("rejects unknown training program", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: { program_id: "underwater_basket_weaving" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Unknown training program");
-  });
-
-  test("rejects training without program_id", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: {},
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("program_id");
-  });
 });

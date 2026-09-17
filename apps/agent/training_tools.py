@@ -14,9 +14,15 @@ from datetime import UTC, datetime
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import archetypes
+import character_spells
 import db
 import db_content_queries
+import db_queries
 import db_training
+import leveling
+import spell_knowledge
+import spells
 from session_data import SessionData
 from tool_support import _validate_id
 from training_rules import TrainingState, resolve_midpoint_decision, start_training_cycle
@@ -41,9 +47,14 @@ async def _initiate_training_cycle_impl(
     context: RunContext[SessionData],
     program_id: str,
     *,
+    spell_id: str | None = None,
     db_mod=db,
     db_training_mod=db_training,
     db_content_mod=db_content_queries,
+    queries_mod=db_queries,
+    spells_mod=spells,
+    character_spells_mod=character_spells,
+    leveling_mod=leveling,
     rules_mod=None,
     now_fn=None,
 ) -> str:
@@ -57,10 +68,53 @@ async def _initiate_training_cycle_impl(
     if program is None:
         raise ToolError(f"Unknown training program: {program_id}")
 
+    activity_type = program["training_activity_type"]
+    is_spell_program = activity_type.startswith("spell_")
+    if not is_spell_program:
+        if spell_id is not None:
+            raise ToolError(f"Training program {program_id} forbids spell_id.")
+    else:
+        if not spell_id:
+            raise ToolError(f"Training program {program_id} requires spell_id.")
+        _validate_id(spell_id, "spell_id")
+        try:
+            spell = spells_mod.get_spell(spell_id)
+        except ValueError as exc:
+            raise ToolError(f"Unknown spell: {spell_id}") from exc
+        if activity_type != f"spell_{spell.spell_tier}":
+            raise ToolError(
+                f"Training program {program_id} is for {activity_type.removeprefix('spell_')} tier spells, "
+                f"not {spell.spell_tier}."
+            )
+
+        player = await queries_mod.get_player(player_id)
+        if not player:
+            raise ToolError(f"Unknown player: {player_id}")
+        archetype = player.get("class", "")
+        chassis = archetypes.get_archetype_chassis(archetype)
+        try:
+            spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
+        except ValueError as exc:
+            raise ToolError(f"{archetype} cannot study {spell_id}: {exc}.") from exc
+
+        level = player.get("level", 1)
+        if not leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level):
+            floor = leveling_mod.min_level_for_tier(archetype, spell.spell_tier)
+            if floor is None:
+                raise ToolError(f"Cannot study {spell_id}: {spell.spell_tier} spells are not available to {archetype}.")
+            raise ToolError(
+                f"Cannot study {spell_id}: {spell.spell_tier} spells unlock at level {floor} for "
+                f"{archetype}, character is level {level}."
+            )
+
+        known = await character_spells_mod.get_known(player_id)
+        if any(row["spell_id"] == spell_id for row in known):
+            raise ToolError(f"Player already knows {spell_id}.")
+
     now = (now_fn or _default_now)()
     start_fn = rules_mod or start_training_cycle
     try:
-        cycle = start_fn(program["training_activity_type"], now)
+        cycle = start_fn(activity_type, now)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -78,9 +132,11 @@ async def _initiate_training_cycle_impl(
             "dc": program.get("dc"),
             "mentor_id": program.get("mentor_id"),
         }
+        if is_spell_program:
+            data["spell_id"] = spell_id
         activity_id = await db_training_mod.create_training_activity(
             player_id=player_id,
-            activity_type=program["training_activity_type"],
+            activity_type=activity_type,
             state=cycle.state,
             data=data,
             transition_at=cycle.decision_at,
