@@ -10,7 +10,8 @@ from session_data import CombatState
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("in_combat", "message"), [(False, "use it in a fight"), (True, "declare it in the combat phase")]
+    ("in_combat", "message"),
+    [(False, "use it in a fight"), (True, "declare warrior_unstoppable_charge in the combat phase")],
 )
 async def test_charge_refuses_before_transaction_or_lock(in_combat, message):
     context = make_context(party_member_ids=["player_1", "ally_1"])
