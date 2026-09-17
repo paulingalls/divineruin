@@ -260,16 +260,6 @@ def _normalize_segments_or_raise(segments: object) -> list[Segment]:
     return out
 
 
-def _segments_to_text(segments: object) -> str:
-    """Concatenate segment text into a single plain-text narration."""
-    return " ".join(seg.text for seg in _normalize_segments(segments))
-
-
-def _segments_to_segment_objects(segments: object) -> list[Segment]:
-    """Convert raw tool output to Segment dataclass instances."""
-    return _normalize_segments(segments)
-
-
 async def generate_activity_narration(
     outcome: dict,
     player_data: dict,
