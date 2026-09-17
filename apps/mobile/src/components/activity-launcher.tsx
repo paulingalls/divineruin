@@ -3,11 +3,12 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-nat
 import { useStore } from "zustand";
 
 import {
+  activeText,
   errandBusyLabel,
   errandDestinationPrompt,
-  formatTimeRemaining,
   getActivityGroupState,
   isStartVisible,
+  mode,
   trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
 import { ThemedText } from "@/components/themed-text";
@@ -133,7 +134,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
               </ThemedText>
               {isGroupLocked && activeItem?.active && expandedType !== group.type && (
                 <ThemedText style={styles.groupBusyHint}>
-                  {formatTimeRemaining(activeItem.active.resolveAtEstimate)}
+                  {activeText(activeItem.active)}
                 </ThemedText>
               )}
               <ThemedText style={styles.chevron}>
@@ -151,9 +152,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                         : trainingBusyLabel(activeItem.name)}
                     </ThemedText>
                     <View style={styles.activeStatus}>
-                      <ThemedText style={styles.activeLabel}>IN PROGRESS</ThemedText>
+                      <ThemedText style={styles.activeLabel}>{mode(activeItem.active)}</ThemedText>
                       <ThemedText style={styles.activeTime}>
-                        {formatTimeRemaining(activeItem.active.resolveAtEstimate)}
+                        {activeText(activeItem.active)}
                       </ThemedText>
                     </View>
                   </View>
@@ -181,9 +182,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
 
                         {isActive && !isGroupLocked ? (
                           <View style={styles.activeStatus}>
-                            <ThemedText style={styles.activeLabel}>IN PROGRESS</ThemedText>
+                            <ThemedText style={styles.activeLabel}>{mode(item.active!)}</ThemedText>
                             <ThemedText style={styles.activeTime}>
-                              {formatTimeRemaining(item.active!.resolveAtEstimate)}
+                              {activeText(item.active!)}
                             </ThemedText>
                           </View>
                         ) : showStart ? (

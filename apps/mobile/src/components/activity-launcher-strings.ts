@@ -1,4 +1,4 @@
-import type { TemplateGroup, TemplateItem } from "@divineruin/shared";
+import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
 
 // The Bun lane's React Native mock omits View/Text, so testable presentation policy must
 // stay outside activity-launcher.tsx.
@@ -45,4 +45,13 @@ export function formatTimeRemaining(resolveAt: string): string {
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   if (hours > 0) return `${hours}h ${minutes}m remaining`;
   return `${minutes}m remaining`;
+}
+
+export function activeText(active: ActiveStatus): string {
+  if (active.isAwaitingDecision) return "waiting on you";
+  return formatTimeRemaining(active.resolveAtEstimate);
+}
+
+export function mode(active: ActiveStatus): string {
+  return active.isAwaitingDecision ? "WAITING" : "IN PROGRESS";
 }
