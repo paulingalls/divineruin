@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 
+import reaction_spend
 import rules_engine
 
 EFFECTS = {
@@ -30,9 +31,11 @@ def _attribute(participant, name: str) -> int:
     return score
 
 
-def _validate_stored(raw: object, ability_id: str) -> dict:
+def _validate_stored(raw: object, ability_id: object) -> dict:
     if not isinstance(raw, dict) or set(raw) != _RESULT_KEYS:
         raise ValueError(f"stored reaction contest is malformed: {raw!r}")
+    if not isinstance(raw["ability_id"], str):
+        raise ValueError(f"stored reaction contest has non-string ability id: {raw!r}")
     if raw["ability_id"] != ability_id:
         raise ValueError(
             f"stored reaction contest belongs to {raw['ability_id']!r}, not closing reaction {ability_id!r}"
@@ -50,8 +53,9 @@ def resolve_or_reuse(state, head: dict, spend: dict, *, rng=None) -> dict | None
     ability_id = spend["ability_id"]
     if ability_id not in EFFECTS:
         return None
-    if "reaction_contest" in head:
-        return _validate_stored(head["reaction_contest"], ability_id)
+    contests = head.setdefault("reaction_contests", {})
+    if spend["actor_id"] in contests:
+        return _validate_stored(contests[spend["actor_id"]], ability_id)
 
     reactor = state.get_participant(spend["actor_id"])
     opposer = state.get_participant(head["actor_id"])
@@ -67,20 +71,62 @@ def resolve_or_reuse(state, head: dict, spend: dict, *, rng=None) -> dict | None
         "opposer_total": opposer_total,
         "success": reactor_total > opposer_total,
     }
-    head["reaction_contest"] = result
+    contests[spend["actor_id"]] = result
     return result
 
 
-def _won_effect(head: dict) -> str | None:
-    result = head.get("reaction_contest")
-    if not isinstance(result, dict) or result.get("success") is not True:
-        return None
-    return EFFECTS.get(str(result.get("ability_id")))
+def normalize_held_actions(held_actions: list[dict], reactions_available: dict[str, dict]) -> list[dict]:
+    normalized = []
+    for raw_head in held_actions:
+        head = dict(raw_head)
+        if "reaction_contest" in head and "reaction_contests" in head:
+            raise ValueError(f"held reaction contest {head['seq']!r} carries both singular and plural storage")
+        if "reaction_contest" in head:
+            result = head["reaction_contest"]
+            ability_id = result.get("ability_id") if isinstance(result, dict) else None
+            validated = _validate_stored(result, ability_id)
+            candidates = [
+                actor_id
+                for actor_id, spend in reactions_available.items()
+                if reaction_spend.is_spent(spend)
+                and spend["held_seq"] == head["seq"]
+                and spend["ability_id"] == ability_id
+            ]
+            if len(candidates) != 1:
+                raise ValueError(
+                    f"held reaction contest {head['seq']!r} has {len(candidates)} matching reactors; expected one"
+                )
+            head["reaction_contests"] = {candidates[0]: validated}
+            del head["reaction_contest"]
+        normalized.append(head)
+    return normalized
+
+
+def _won_effects(head: dict) -> list[tuple[str, str]]:
+    """(reactor id, effect) for every stored contest the reactor won."""
+    contests = head.get("reaction_contests", {})
+    if not isinstance(contests, dict):
+        raise ValueError(f"stored reaction contests are malformed: {contests!r}")
+    won = []
+    for actor_id, result in contests.items():
+        ability_id = result.get("ability_id") if isinstance(result, dict) else None
+        validated = _validate_stored(result, ability_id)
+        if validated["success"] and validated["ability_id"] in EFFECTS:
+            won.append((actor_id, EFFECTS[validated["ability_id"]]))
+    return won
 
 
 def mark_cancelled(head: dict) -> bool:
-    return _won_effect(head) in _CANCELS_MARK
+    return any(effect in _CANCELS_MARK for _, effect in _won_effects(head))
+
+
+def hesitation_reason(head: dict) -> str | None:
+    """Name the reactor whose winning Objection cost the held action, or None if none did."""
+    return next(
+        (f"Objection raised by {actor_id}" for actor_id, effect in _won_effects(head) if effect == "action_hesitated"),
+        None,
+    )
 
 
 def hesitated(head: dict) -> bool:
-    return _won_effect(head) == "action_hesitated"
+    return hesitation_reason(head) is not None
