@@ -17,10 +17,9 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-import conditions
 import reaction_spend
 from combat_ability import _find_action
-from condition_restrictions import cannot_act, speed_zero
+from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
@@ -149,7 +148,7 @@ def advance_combat_phase(
             if (
                 declaration.type is DeclarationType.MANEUVER
                 and declaration.target_id == actor.id
-                and not conditions.has_condition(actor.conditions, "prone")
+                and "prone" not in declaration_costs(actor.conditions)
             ):
                 raise ValueError(f"{actor.name} ({actor.id}) is not prone and cannot stand")
             if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:

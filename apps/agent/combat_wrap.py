@@ -5,6 +5,8 @@ Both pieces belong to the END of a round rather than to its orchestration:
 the DM does after whichever commit just landed.
 """
 
+from dataclasses import replace
+
 import combat_grapple
 import combat_phase
 import conditions
@@ -137,6 +139,9 @@ async def wrap_phase(
     # save_combat_state / end-combat write below in this same tx.
     if wrap is not None and wrap.tick_conditions_due:
         _resolve_tick_saves(state, wrap.tick_conditions_due, save_resolver)
+        if not wrap.combat_ended:
+            combat_phase._reset_legendary_actions(state)
+            wrap_adv = replace(wrap_adv, legendary_available=combat_phase._boss_legendaries(state))
 
     # Each in-combat ability GENERATES Resonance during resolution (beat 2); seed each caster's
     # pending value with the cast's post-generation total so the WRAP decay below sheds from it

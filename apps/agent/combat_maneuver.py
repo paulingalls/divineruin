@@ -5,6 +5,7 @@ import random
 import combat_grapple
 import conditions
 from combat_ability import _land_condition_on_one
+from condition_restrictions import declaration_costs
 from rules_engine import attribute_modifier
 
 
@@ -25,7 +26,8 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "declaration_type": str(decl.type),
             "reason": f"{target.name} already fell",
         }
-    if combat_grapple.grappler_id(attacker.conditions) == target.id:
+    costs = declaration_costs(attacker.conditions)
+    if "grappled" in costs and combat_grapple.grappler_id(attacker.conditions) == target.id:
         total = roller.randint(1, 20) + max(
             attribute_modifier(attacker.attributes.get("strength", 10)),
             attribute_modifier(attacker.attributes.get("dexterity", 10)),
@@ -44,7 +46,7 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "escape": "escaped" if escaped else "failed",
         }
     if target.id == attacker.id:
-        if not conditions.has_condition(attacker.conditions, "prone"):
+        if "prone" not in costs:
             raise ValueError(f"{attacker.name} ({attacker.id}) is not prone and cannot stand")
         attacker.conditions = conditions.remove_condition(attacker.conditions, "prone")
         return {

@@ -10,7 +10,7 @@ import random
 from dataclasses import dataclass
 
 from check_resolution import _roll_d20_check, roll_bonus_dice
-from condition_restrictions import incoming_attack_modes
+from condition_restrictions import incoming_advantage, incoming_attack_modes, incoming_melee_autocrit
 from conditions import get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -108,14 +108,11 @@ def resolve_attack(
     # to-hit bonus and a damage multiplier the role-derived attacker carries (Elite +1/x1.25,
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
-    target_effects = get_condition_effects(list(target_conditions))
-    incoming_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
+    incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
     attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
     attack_advantage = (
-        "attack" in effects.advantage_scopes
-        or "incoming_advantage" in target_effects.restrictions
-        or incoming_advantage
+        "attack" in effects.advantage_scopes or incoming_advantage(target_conditions) or incoming_mode_advantage
     )
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
@@ -132,9 +129,7 @@ def resolve_attack(
     d20 = core.roll
     attack_total = core.total
     hit = core.success
-    critical = core.critical_success or (
-        hit and "incoming_melee_autocrit" in target_effects.restrictions and not _is_ranged(weapon)
-    )
+    critical = core.critical_success or (hit and incoming_melee_autocrit(target_conditions) and not _is_ranged(weapon))
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
