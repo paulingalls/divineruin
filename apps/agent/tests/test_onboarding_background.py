@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents import Agent, AgentSession
+from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.agent_activity import AgentActivity
 from speech_handles import completed_handle
 
@@ -302,8 +303,35 @@ async def test_other_generate_reply_runtimeerror_escapes():
 
 
 class FalsyFailure(Exception):
+    """A failure that is falsy — the only shape that tells `is not None` apart from a truth test."""
+
     def __bool__(self):
         return False
+
+
+def _in_flight_handle(failure: BaseException) -> SpeechHandle:
+    """A handle still speaking: it finishes only on the next pass of the loop.
+
+    Until then `exception()` raises InvalidStateError, so a delivery that reads the handle
+    without awaiting it ends the loop instead of warning.
+    """
+    handle = SpeechHandle.create()
+    asyncio.get_running_loop().call_soon(handle._mark_done, failure)
+    return handle
+
+
+@pytest.mark.asyncio
+async def test_delivery_awaits_the_handle_before_reading_its_failure(caplog):
+    bg, _, session = _make_bg(last_player_speech=time.time() - 60)
+    session.generate_reply.side_effect = lambda **_kwargs: _in_flight_handle(OSError("late failure"))
+
+    with caplog.at_level(logging.WARNING, logger="divineruin.onboarding_background"):
+        await bg._check_nudge()
+
+    warnings = _delivery_records(caplog, logging.WARNING)
+    assert len(warnings) == 1
+    assert "late failure" in warnings[0].getMessage()
+    assert bg._hint_index == 0
 
 
 @pytest.mark.asyncio

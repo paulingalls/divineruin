@@ -170,8 +170,13 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
     session = MagicMock()
     session.generate_reply = MagicMock()
     order: list[str] = []
+
+    def reply(**_kwargs: object) -> Any:
+        order.append("reply")
+        return completed_handle()
+
     _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
-    session.generate_reply.side_effect = lambda **_kwargs: (order.append("reply"), completed_handle())[1]
+    session.generate_reply.side_effect = reply
     background = OnboardingBackgroundProcess(session, sd)
     background._last_active_beat = beat
     background._hint_index = index
