@@ -154,6 +154,9 @@ def test_a_cancelled_mark_does_not_inspect_or_replace_the_owner():
     assert state.focus_marks[target.id] == {"source_id": first.id, "kind": "command"}
     with pytest.raises(ValueError, match="does not create"):
         resolve_mark_action(state, second, target, "attack", cancelled=True)
+    state.focus_marks[target.id] = cast(dict[str, str], [])
+    resolve_mark_action(state, second, target, "accusation", cancelled=True)
+    assert state.focus_marks[target.id] == []
 
 
 @pytest.mark.asyncio
@@ -194,6 +197,8 @@ def test_corrupt_marks_and_non_mark_kinds_fail_loud():
     state.focus_marks[target.id] = cast(dict[str, str], [])
     with pytest.raises(ValueError, match="malformed"):
         attack_bonus(state, bandmate, target)
+    with pytest.raises(ValueError, match="malformed"):
+        resolve_mark_action(state, marker, target, "command")
     state.focus_marks[target.id] = cast(dict[str, str], ["source_id", "kind"])
     with pytest.raises(ValueError, match="malformed"):
         attack_bonus(state, bandmate, target)
