@@ -14,6 +14,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import check_resolution_save
 import combat_enhancers
+import combat_grapple
 import combat_resolution
 import conditions
 import db_content_queries
@@ -63,10 +64,11 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
     would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
+            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            combat_grapple.validate_grapple_action(action, label)
             cond = action.get("applies_condition")
             if cond is None:
                 continue
-            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
             conditions.assert_known_condition(cond, label)
             if not check_resolution_save.is_valid_save_key(action.get("save")):
                 raise ValueError(

@@ -87,6 +87,20 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
   });
 
+  test("the two Seizing Grabs author escape DC 13", () => {
+    const carriers = actions
+      .filter(({ action }) => action.properties.includes("grapple"))
+      .map(({ enemyId, action }) => [
+        enemyId,
+        action.name,
+        "escape_dc" in action ? action.escape_dc : undefined,
+      ]);
+    expect(carriers).toEqual([
+      ["mawling_1", "Seizing Grab", 13],
+      ["mawling_2", "Seizing Grab", 13],
+    ]);
+  });
+
   test("a mark action carries no damage, damage type or applied condition", () => {
     const marks = actions.filter(({ action }) => encounterActionKind(action) !== "attack");
     expect(marks.length).toBe(6);

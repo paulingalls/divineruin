@@ -8,11 +8,11 @@ ENFORCED = {
     "incoming_melee_advantage",
     "incoming_melee_autocrit",
     "incoming_ranged_disadvantage",
+    "costs_declaration",
+    "speed_0",
 }
 
 NOT_ENFORCED: dict[str, str] = {
-    "speed_0": "Phase combat has no positioning.",
-    "costs_declaration": "Prone standing is enforced; Grappled escape remains story-045.",
     "removed_from_combat": "No Petrified producer exists.",
     "damage_resistance_all": "Resistance needs a damage-type resistance model.",
     "immune_poison_disease": "No Petrified producer exists.",
@@ -44,4 +44,12 @@ def cannot_act(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, .
         condition["type"]
         for condition in active_conditions
         if "skip_phase" in get_condition_effects([condition]).restrictions
+    )
+
+
+def speed_zero(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, ...]:
+    return tuple(
+        condition["type"]
+        for condition in active_conditions
+        if "speed_0" in get_condition_effects([condition]).restrictions
     )

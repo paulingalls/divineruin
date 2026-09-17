@@ -138,6 +138,7 @@ class TestTheTwoWindows:
             "waiting_on": None,
             "cannot_act": [],
             "prone": [],
+            "grappled": [],
         }
         assert ctx.userdata.combat_state.held_actions == []
         assert ctx.userdata.combat_state.open_window is None

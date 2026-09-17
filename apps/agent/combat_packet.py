@@ -160,6 +160,7 @@ async def _resolve_one_packet(
     reaction_ac_bonus: int = 0,
     reaction_save_advantage: bool = False,
     shield_reaction: str | None = None,
+    grapple_blocked: bool = False,
     mark_cancelled: bool = False,
     publish_roll: bool = True,
 ) -> dict:
@@ -320,6 +321,7 @@ async def _resolve_one_packet(
             # rides the call instead of being written into that map.
             target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
             shield_reaction=shield_reaction,
+            grapple_blocked=grapple_blocked,
             enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=is_first_attack,
             mutations=mutations,

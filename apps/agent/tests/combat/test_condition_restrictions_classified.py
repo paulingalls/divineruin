@@ -41,6 +41,12 @@ def test_prone_incoming_modes_are_enforced_only_for_prone():
         assert carriers == {"prone"}
 
 
-def test_grappled_escape_keeps_declaration_cost_deferred_to_story_045():
-    assert "costs_declaration" in NOT_ENFORCED
-    assert "story-045" in NOT_ENFORCED["costs_declaration"]
+def test_grapple_and_speed_restriction_carriers_are_exactly_enforced():
+    expected = {
+        "costs_declaration": {"prone", "grappled"},
+        "speed_0": {"grappled", "restrained"},
+    }
+    for restriction, expected_carriers in expected.items():
+        carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
+        assert restriction in ENFORCED
+        assert carriers == expected_carriers

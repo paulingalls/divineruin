@@ -127,6 +127,7 @@
             "damage": "1d4",
             "damage_type": "bludgeoning",
             "properties": ["grapple"],
+            "escape_dc": 13,
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],
@@ -164,6 +165,7 @@
             "damage": "1d4",
             "damage_type": "bludgeoning",
             "properties": ["grapple"],
+            "escape_dc": 13,
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],

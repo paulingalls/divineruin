@@ -168,7 +168,8 @@ def test_prone_state_and_maneuver_vocabulary_reach_the_dm():
     assert next_envelope(state)["prone"] == [{"actor_id": player.id, "name": player.name}]
     description = ManeuverDecl.model_json_schema()["properties"]["target_id"]["description"]
     assert description == (
-        "Shove a target (contested Strength; a win knocks them prone), or target yourself to stand up from prone."
+        "Shove a target (contested Strength; a win knocks them prone), target yourself to stand up from prone, "
+        "or target your grappler to break free."
     )
     prompt = combat_prompts.COMBAT_PROMPT
     assert "stands by declaring maneuver" in prompt
