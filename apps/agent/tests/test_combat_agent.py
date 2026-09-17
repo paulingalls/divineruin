@@ -269,7 +269,7 @@ class TestCombatBeatContract:
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "mechanical_effect" in low
         effect = low.index("mechanical_effect")
-        teaching = low[effect : effect + 800]
+        teaching = low[effect : low.index("next.verbs", effect)]
         assert "damage_halved" in teaching
         assert "target_ac_bonus" in teaching
         assert "shield_durability" in teaching
