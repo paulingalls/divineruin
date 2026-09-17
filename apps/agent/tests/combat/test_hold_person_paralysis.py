@@ -54,6 +54,11 @@ async def test_declared_hold_person_resolves_through_the_save_never_an_attack(sa
         initiative=10,
     )
 
+    break_mod = MagicMock(
+        break_concentration_on_damage=AsyncMock(return_value=None),
+        break_concentration_on_incapacitation=AsyncMock(return_value=None),
+    )
+
     with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=save_face)):
         summary = await _resolve_one_packet(
             make_context().userdata,
@@ -62,13 +67,11 @@ async def test_declared_hold_person_resolves_through_the_save_never_an_attack(sa
             mutations=MagicMock(update_player_hp=AsyncMock()),
             queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
             resolver=check_resolution_attack,
-            concentration_break_mod=MagicMock(
-                break_concentration_on_damage=AsyncMock(return_value=None),
-                break_concentration_on_incapacitation=AsyncMock(return_value=None),
-            ),
+            concentration_break_mod=break_mod,
         )
 
     assert summary.get(outcome) == "paralyzed"
+    assert break_mod.break_concentration_on_incapacitation.await_count == (outcome == "condition_inflicted")
     assert "attacks" not in summary
     assert player.hp_current == hp_before
 
