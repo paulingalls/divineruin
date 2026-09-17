@@ -808,6 +808,12 @@
             "kind": "command",
             "properties": ["buff"],
             "description": "A sharp command steadies the line and sharpens their focus fire"
+          },
+          {
+            "name": "Accusation",
+            "kind": "accusation",
+            "properties": [],
+            "description": "Names the accused and directs the patrol's focus fire"
           }
         ],
         "xp_value": 250,

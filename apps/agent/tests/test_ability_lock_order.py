@@ -134,6 +134,7 @@ class TestAbilityLockOrder:
             stage=reaction_windows.POST_ROLL,
             actor_id="goblin_scout_2",
             target_id="player_1",
+            action_kind="attack",
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}

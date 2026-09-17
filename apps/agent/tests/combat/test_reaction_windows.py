@@ -7,12 +7,14 @@ derivation makes; test_reaction_window_census.py is the walk that proves the voc
 honestly covered.
 """
 
+import inspect
+
 import pytest
 
 import abilities
 import reaction_windows
 
-# The three action shapes the 68 action_pool entries reduce to, for window purposes.
+# The three attack shapes the action_pool reduces to for trigger derivation.
 _SWING = {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": []}
 _GRAB = {
     "name": "Seizing Grab",
@@ -115,6 +117,7 @@ class TestWindowDescriptor:
             stage="pre_roll",
             actor_id="goblin_scout_1",
             target_id="player_1",
+            action_kind="attack",
             triggers=("on_targeted", "on_ally_targeted", "on_enemy_action"),
         )
         assert window == {
@@ -122,13 +125,14 @@ class TestWindowDescriptor:
             "stage": "pre_roll",
             "actor_id": "goblin_scout_1",
             "target_id": "player_1",
+            "action_kind": "attack",
             "triggers": ["on_targeted", "on_ally_targeted", "on_enemy_action"],
         }
 
     def test_the_id_is_unique_per_round_action_and_stage(self):
         ids = {
             reaction_windows.open_window_for(
-                round_number=r, seq=s, stage=stage, actor_id="e", target_id=None, triggers=()
+                round_number=r, seq=s, stage=stage, actor_id="e", target_id=None, action_kind="attack", triggers=()
             )["id"]
             for r in (1, 2)
             for s in (0, 1)
@@ -140,5 +144,15 @@ class TestWindowDescriptor:
         """constraint 4: a typo'd stage must raise, not ship a window id nothing matches."""
         with pytest.raises(ValueError, match="stage"):
             reaction_windows.open_window_for(
-                round_number=1, seq=0, stage="mid_roll", actor_id="e", target_id=None, triggers=()
+                round_number=1,
+                seq=0,
+                stage="mid_roll",
+                actor_id="e",
+                target_id=None,
+                action_kind="attack",
+                triggers=(),
             )
+
+    def test_action_kind_is_required(self):
+        parameter = inspect.signature(reaction_windows.open_window_for).parameters["action_kind"]
+        assert parameter.default is inspect.Parameter.empty

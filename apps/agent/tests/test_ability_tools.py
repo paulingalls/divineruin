@@ -102,6 +102,7 @@ def _reaction_context(*, hit=True, window_open=True, target_id="player_1"):
             stage="post_roll",
             actor_id="goblin_scout_1",
             target_id=target_id,
+            action_kind="attack",
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
     state.reactions_available = {"player_1": reaction_spend.unspent()}

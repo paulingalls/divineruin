@@ -191,10 +191,11 @@ class TestTheTwoWindows:
         assert "resolve_phase" in r1["next"]["verbs"]
 
     @pytest.mark.asyncio
-    async def test_non_pool_interact_names_no_held_action(self):
+    @pytest.mark.parametrize("declaration_type", ["interact", "maneuver"])
+    async def test_non_pool_targeted_action_drains_without_a_window(self, declaration_type):
         ctx = _ctx_at_resolution()
         ctx.userdata.combat_state.pending_declarations["goblin_scout_1"] = {
-            "type": "interact",
+            "type": declaration_type,
             "action": "Taunt",
             "target_id": "player_1",
         }
@@ -203,7 +204,10 @@ class TestTheTwoWindows:
         await _call(ctx, deps)
         result = await _call(ctx, deps)
 
-        assert result["next"]["waiting_on"]["action"] is None
+        assert result["next"]["waiting_on"] is None
+        summary = next(packet for packet in result["packets"] if packet["actor_id"] == "goblin_scout_1")
+        assert summary["resolved"] is False
+        assert "not yet implemented" in summary["reason"]
 
 
 class TestTheReactionBudgetGate:

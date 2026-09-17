@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from livekit import rtc
 
 import reaction_spend
+import reaction_windows
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
@@ -248,7 +249,9 @@ class CombatState:
             # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
             held_actions=data.get("held_actions", []),
-            open_window=data.get("open_window"),
+            open_window=reaction_windows.upgrade_legacy_window(
+                data.get("open_window"), data.get("held_actions", []), data["participants"]
+            ),
         )
 
 

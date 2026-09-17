@@ -25,13 +25,13 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import combat_hold
-import combat_phase
 import condition_produce
 import conditions
 import db
 import db_mutations_conditions
 import db_queries
 import mentor_variants
+import reaction_gate
 import spells
 from resource_costs import gate_pool
 from session_data import SessionData
@@ -94,7 +94,7 @@ async def _request_ability_activation_impl(
     async with session.combat_end_lock:
         state = session.combat_state
         try:
-            combat_phase.validate_reaction_activation(state, session.player_id, ability_id)
+            reaction_gate.validate_reaction_activation(state, session.player_id, ability_id)
             spend = combat_hold.preflight_spend(state, session.player_id, ability_id)
         except ValueError as e:
             raise ToolError(str(e)) from e

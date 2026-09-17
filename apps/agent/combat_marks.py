@@ -1,13 +1,14 @@
 """Round-scoped focus marks created by enemy social actions."""
 
-MARK_KINDS = frozenset({"command"})
+MARK_KINDS = frozenset({"command", "accusation"})
 FOCUS_ATTACK_BONUS = 2
 
 
-def resolve_mark_action(state, source, target, kind: str) -> None:
+def resolve_mark_action(state, source, target, kind: str, *, cancelled: bool = False) -> None:
     if kind not in MARK_KINDS:
         raise ValueError(f"action kind {kind!r} does not create a focus mark")
-    state.focus_marks[target.id] = {"source_id": source.id, "kind": kind}
+    if not cancelled:
+        state.focus_marks[target.id] = {"source_id": source.id, "kind": kind}
 
 
 def attack_bonus(state, attacker, target) -> int:

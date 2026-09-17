@@ -21,6 +21,7 @@ import logging
 from dataclasses import replace
 
 import abilities
+import combat_reaction_contest
 import reaction_spend
 import reaction_windows
 from combat_support import deserialize_roll, serialize_roll
@@ -162,7 +163,9 @@ def halve(head: dict, target) -> None:
     head["roll"] = serialize_roll(replace(result, **fields), held_ac)
 
 
-def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | None) -> str | None:
+def _apply(
+    state, head: dict, window: dict, spend: dict, attack_action: dict | None, contest: dict | None
+) -> str | None:
     """Do what this reaction does to the held blow, and name it — or None if it did nothing.
 
     The label is what the close ACTUALLY did, never a lookup on the ability id: a shield of faith
@@ -172,6 +175,11 @@ def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | N
     """
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
+
+    if contest is not None:
+        if not contest["success"]:
+            return None
+        return combat_reaction_contest.EFFECTS[ability_id]
 
     if window["stage"] == reaction_windows.PRE_ROLL:
         if ability_id in AC_BONUS and attack_action is not None:
@@ -193,7 +201,7 @@ def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | N
     return None
 
 
-def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dict | None:
+def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> dict | None:
     """Apply what the reaction spent at ``window`` does to ``head``, and report it to the DM.
 
     Called by ``combat_hold.pump`` as it discards the window the DM has come back from — the one
@@ -213,9 +221,10 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dic
     if spend is None:
         return None
 
-    effect = _apply(state, head, window, spend, attack_action)
+    contest = combat_reaction_contest.resolve_or_reuse(state, head, spend, rng=contest_rng)
+    effect = _apply(state, head, window, spend, attack_action, contest)
     ability = abilities.get_ability(spend["ability_id"])
-    return {
+    packet = {
         "actor_id": spend["actor_id"],
         "resolved": True,
         "declaration_type": "reaction",
@@ -227,3 +236,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dic
         "against_actor_id": head["actor_id"],
         "mechanical_effect": effect,
     }
+    if contest is not None:
+        packet["reactor_total"] = contest["reactor_total"]
+        packet["opposer_total"] = contest["opposer_total"]
+    return packet

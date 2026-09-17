@@ -21,6 +21,7 @@ from dataclasses import replace
 
 import combat_enhancers
 import combat_marks
+import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
 import reaction_spend
@@ -146,15 +147,16 @@ def _opens_windows(state, head: dict) -> bool:
     ``target_id``, and a player burning the round's one reaction on a foe that merely braced
     (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
 
-    Nothing reachable today is lost by this: an untargeted enemy action could only ever reach the
-    ``on_enemy_action`` catch-all, whose four consumers the census already classifies as one
-    post-roll row (whisper_implant_doubt, "when an enemy SUCCEEDS an attack") plus three
-    inapplicable social rows. An enemy command (``encounter_actions`` kind "command") names the party
-    member it orders the attack on, so it pauses here too, at the pre-roll stage only: it never rolls.
+    A targeted action must also name a real action_pool row. Pausing on a declaration that later
+    resolves to nothing would offer reactions for no action and can strand a legacy reload.
     """
     if _is_wasted(state, head):
         return False
-    return _held_declaration(head).target_id is not None
+    declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    return (
+        declaration.target_id is not None and actor is not None and _find_action(actor, declaration.action) is not None
+    )
 
 
 def _attack_action(state, head: dict) -> dict | None:
@@ -163,15 +165,15 @@ def _attack_action(state, head: dict) -> dict | None:
     An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
     save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
     exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
-    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A command
-    (``encounter_actions`` kind "command") is an order, not a swing, so it never rolls either.
+    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A mark
+    action (any ``encounter_actions`` kind other than "attack") never rolls either.
     """
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
         return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or action.get("applies_condition") or action_kind(action) == "command":
+    if action is None or action.get("applies_condition") or action_kind(action) != "attack":
         return None
     return action
 
@@ -225,7 +227,7 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict) -> list[dict]:
+async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -242,10 +244,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     if closed is not None and state.held_actions:
         reacted = state.held_actions[0]
         reaction_packet = combat_reaction_effect.close(
-            state, reacted, closed, attack_action=_attack_action(state, reacted)
+            state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
         if reaction_packet is not None:
             summaries.append(reaction_packet)
+        if combat_reaction_contest.hesitated(reacted):
+            summaries.append({"actor_id": reacted["actor_id"], "resolved": False, "hesitated": True})
+            state.held_actions.pop(0)
 
     while state.held_actions:
         head = state.held_actions[0]
@@ -283,7 +288,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
-            summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+            summary = await _resolve_held(
+                session,
+                state,
+                head,
+                packet_deps=packet_deps,
+                mark_cancelled=combat_reaction_contest.mark_cancelled(head),
+            )
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
@@ -321,12 +332,17 @@ def _roll(state, head: dict, action: dict, resolver):
 
 def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is None:
+        raise ValueError(f"held action {declaration.action!r} for {head['actor_id']!r} is unavailable")
     state.open_window = reaction_windows.open_window_for(
         round_number=state.round_number,
         seq=head["seq"],
         stage=stage,
         actor_id=head["actor_id"],
         target_id=declaration.target_id,
+        action_kind=action_kind(action),
         triggers=triggers,
     )
     logger.info(
@@ -338,7 +354,7 @@ def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     )
 
 
-async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dict:
+async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False) -> dict:
     """Apply one held action through the ordinary packet resolver.
 
     A rolled attack replays its held roll (see ``_replay_resolver``); everything else — a wasted
@@ -367,6 +383,7 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
             state, head, action.get("applies_condition") if action is not None else None
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         **deps,
     )
