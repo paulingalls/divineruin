@@ -223,6 +223,7 @@ async def _resolve_one_packet(
             action,
             state=state,
             conn=conn,
+            concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
         )
 

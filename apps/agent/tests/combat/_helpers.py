@@ -179,6 +179,7 @@ def _resolve_deps(damage=3):
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    break_mod.break_concentration_on_incapacitation = AsyncMock(return_value=None)
     mutations = combat_end_mutations()
     mutations.save_combat_state = AsyncMock()
     mutations.update_player_hp = AsyncMock()
