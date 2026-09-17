@@ -203,6 +203,7 @@ async def _cast(*, caster: str, party: list[str], target_id: str | None):
     resonance_mut = MagicMock(update_player_resonance=AsyncMock())
     resonance_evt = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}]))
     # wraps=condition_produce so lock_ooc_caster_and_targets runs FOR REAL (it's what drives
     # queries.get_players_for_update, the very call these tests assert on) while produce_ooc_condition
     # itself stays mocked out (its own contract is covered by test_condition_produce.py).
@@ -219,6 +220,7 @@ async def _cast(*, caster: str, party: list[str], target_id: str | None):
         resonance_events_mod=resonance_evt,
         spells_mod=spells_mod,
         condition_produce_mod=produce,
+        character_spells_mod=library,
     )
     return queries
 

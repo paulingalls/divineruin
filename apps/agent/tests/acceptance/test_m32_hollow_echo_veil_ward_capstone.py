@@ -56,7 +56,7 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
     player_id = "cap_m32_overreach"
     # 20 Focus funds 4 casts at focus 5: per-round decay (story-010) makes each post-first cast
     # net +2, so the Veil tears at Overreach on cast 4, not cast 3.
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=20)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=20, known_spells=(_SPELL_ID,))
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
@@ -93,7 +93,7 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     persisted, versus the unwarded baseline (AC2)."""
     pool = await db.get_pool()
     player_id = "cap_m32_warded"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
     # Raise the ward the way activate_veil_ward leaves the world: persisted on the LOCATION SCOPE,
     # never on the player row. The cast path reads it back from the DB.
     scope = WardScope.location(_WARD_LOCATION)
@@ -132,7 +132,7 @@ async def test_expired_ward_does_not_halve_the_cast(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     player_id = "cap_m32_expired"
     location = "cap_m32_expired_hall"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
 
     scope = WardScope.location(location)
     past = datetime.now(UTC) - timedelta(hours=1)
@@ -161,7 +161,7 @@ async def test_walking_out_of_a_warded_location_stops_the_halving(reset_db_pool:
     pool = await db.get_pool()
     player_id = "cap_m32_walker"
     warded, plain = "cap_m32_walk_warded", "cap_m32_walk_plain"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
     await db_mutations_veil_ward.write_ward(WardScope.location(warded), "cleric", None, dismissible=True, conn=pool)
     await spells.load_spells()
 

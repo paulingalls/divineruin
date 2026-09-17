@@ -92,7 +92,12 @@ def _resolve_deps(*, focus_by_id=None):
     focus_by_id = focus_by_id or {}
 
     async def _get_player(pid, conn=None, for_update=False):
-        return {"player_id": pid, "focus": {"current": focus_by_id.get(pid, 10), "max": 10}}
+        return {
+            "player_id": pid,
+            "class": "mage",
+            "level": 1,
+            "focus": {"current": focus_by_id.get(pid, 10), "max": 10},
+        }
 
     queries = MagicMock()
     queries.get_player = AsyncMock(side_effect=_get_player)
@@ -103,12 +108,14 @@ def _resolve_deps(*, focus_by_id=None):
     mutations.save_combat_state = AsyncMock()
     mutations.update_player_hp = AsyncMock()
     mutations.delete_combat_state = AsyncMock()
+    character_spells_mod = MagicMock(get_known=AsyncMock(return_value=[]))
     return {
         "mutations": mutations,
         "queries": queries,
         "resolver": _damage_resolver(3),
         "concentration_break_mod": break_mod,
         "db_mod": _fake_db_mod(),
+        "character_spells_mod": character_spells_mod,
     }
 
 
@@ -170,7 +177,7 @@ class TestMultiplayerPrevalidation:
         cast_resolver, seen_casters = _cast_resolver_recording()
 
         # _gate_spell raises only for the starved player_2 row (real gate discipline).
-        def _gate(player, action, **kwargs):
+        def _gate(player, action, known_spell_ids, **kwargs):
             if (player.get("focus") or {}).get("current", 0) <= 0:
                 raise ToolError("Not enough Focus")
 

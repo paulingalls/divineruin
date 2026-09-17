@@ -51,7 +51,7 @@ async def _seed_capstone_player(pool, player_id: str) -> None:
     """Seed a player wielding the 1d12 greataxe with the extra_attack + cunning_action enhancer flags
     (combat_init reads players.data.flags), a Focus pool for the in-combat ability, and high HP so the
     player survives the multi-phase fight that cycles through every declaration category."""
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=10)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=10, known_spells=("arcane_shield_spell",))
     await pool.execute(
         "UPDATE players SET data = jsonb_set("
         "  jsonb_set("

@@ -74,12 +74,16 @@ async def _queried_reactions():
     persistence = MagicMock()
     persistence.get_character_abilities = AsyncMock(return_value=[])
     persistence.get_active_variant = AsyncMock(return_value=None)
+    library = MagicMock()
+    library.get_known = AsyncMock(return_value=[])
 
     catalog = load_fixture_config().values()
     rows = {}
     for player_class in sorted({ability.archetype_id for ability in catalog}):
         queries.get_player = AsyncMock(return_value={"class": player_class, "level": 6})
-        payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
+        payload = json.loads(
+            await _query_abilities_impl(context, queries=queries, persistence=persistence, character_spells_mod=library)
+        )
         for row in payload["abilities"]:
             if row["ability_type"] == "reaction":
                 rows[row["id"]] = row["window"]

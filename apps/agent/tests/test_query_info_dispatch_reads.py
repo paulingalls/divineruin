@@ -1,5 +1,3 @@
-"""Tests for query_info dispatch reads that do not belong to query_tools domains."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,7 +13,6 @@ from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 
 @pytest.fixture
 def mock_context():
-    """Create a mock RunContext with SessionData."""
     context = AsyncMock(spec=RunContext)
     session_data = AsyncMock(spec=SessionData)
     session_data.player_id = "test_player"
@@ -25,11 +22,8 @@ def mock_context():
 
 
 class TestQueryInfoRecipeRoute:
-    """AC1: query_info(kind='recipe', target_id=<recipe>) routes to _query_recipe_requirements_impl."""
-
     @pytest.mark.asyncio
     async def test_recipe_routes_to_impl(self, mock_context):
-        """Test that kind='recipe' with target_id routes to _query_recipe_requirements_impl."""
         mock_impl_result = json.dumps({"recipe_id": "rec123", "requirements": ["flour", "eggs"]})
 
         with patch("query_tools.recipe_tools") as mock_recipe_mod:
@@ -47,7 +41,6 @@ class TestQueryInfoRecipeRoute:
 
     @pytest.mark.asyncio
     async def test_recipe_returns_correct_json_shape(self, mock_context):
-        """Test that the returned JSON from recipe route has expected shape."""
         recipe_data = {"recipe_id": "rec456", "requirements": ["milk", "cheese"], "time": 120}
         mock_impl_result = json.dumps(recipe_data)
 
@@ -158,17 +151,25 @@ class TestQueryAbilities:
         persistence = MagicMock()
         persistence.get_character_abilities = AsyncMock(return_value=known or [])
         persistence.get_active_variant = AsyncMock(return_value=active_variant)
-        return queries, persistence
+        library = MagicMock()
+        library.get_known = AsyncMock(return_value=[])
+        return queries, persistence, library
+
+    async def _read(self, context, dependencies):
+        queries, persistence, library = dependencies
+        return await _query_abilities_impl(
+            context, queries=queries, persistence=persistence, character_spells_mod=library
+        )
 
     @pytest.mark.asyncio
     async def test_surfaces_class_catalog_owned_elective_and_active_variant(self, mock_context):
-        queries, persistence = self._dependencies(
+        queries, persistence, library = self._dependencies(
             player={"class": "warrior", "level": 8},
             known=[{"ability_id": "warrior_cleaving_blow", "equipped": True}],
             active_variant="warrior_cleaving_blow_drathian",
         )
 
-        payload = json.loads(await _query_abilities_impl(mock_context, queries=queries, persistence=persistence))
+        payload = json.loads(await self._read(mock_context, (queries, persistence, library)))
         rows = {row["id"]: row for row in payload["abilities"]}
         catalog = abilities.get_archetype_abilities("warrior")
         expected_ids = {
@@ -187,7 +188,7 @@ class TestQueryAbilities:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("player", [None, {}, {"class": None}])
     async def test_missing_player_or_class_fails_loud(self, mock_context, player):
-        queries, persistence = self._dependencies(player=player)
+        queries, persistence, _library = self._dependencies(player=player)
 
         with pytest.raises(ToolError, match="class"):
             await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
@@ -196,20 +197,20 @@ class TestQueryAbilities:
     async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
         # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
         # sounds like an answer, which is what this kind exists to remove.
-        queries, persistence = self._dependencies(player={"class": "not_an_archetype", "level": 1})
+        queries, persistence, library = self._dependencies(player={"class": "not_an_archetype", "level": 1})
 
         with pytest.raises(ToolError, match="not_an_archetype"):
-            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+            await self._read(mock_context, (queries, persistence, library))
 
     @pytest.mark.asyncio
     async def test_unknown_persisted_elective_is_a_tool_error(self, mock_context):
-        queries, persistence = self._dependencies(
+        queries, persistence, library = self._dependencies(
             player={"class": "warrior", "level": 8},
             known=[{"ability_id": "missing_catalog_ability", "equipped": True}],
         )
 
         with pytest.raises(ToolError, match="missing_catalog_ability"):
-            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+            await self._read(mock_context, (queries, persistence, library))
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -220,9 +221,9 @@ class TestQueryAbilities:
         ],
     )
     async def test_filters_catalog_abilities_by_player_level(self, mock_context, level, expected):
-        queries, persistence = self._dependencies(player={"class": "bard", "level": level})
+        queries, persistence, library = self._dependencies(player={"class": "bard", "level": level})
 
-        payload = json.loads(await _query_abilities_impl(mock_context, queries=queries, persistence=persistence))
+        payload = json.loads(await self._read(mock_context, (queries, persistence, library)))
         ids = {row["id"] for row in payload["abilities"]}
 
         assert expected <= ids
@@ -234,6 +235,7 @@ def test_prompts_name_ability_id_producer():
     for prompt in (exploration, COMBAT_SYSTEM_PROMPT):
         assert 'query_info(kind="abilities")' in prompt
         assert "window" in prompt
+        assert "spell id" in prompt.lower()
 
     # Surfacing the variant id is only half of constraint 6: the tool that consumes it has to
     # say so, or the DM holds an id it has no documented route for.

@@ -41,6 +41,7 @@ from livekit.agents.voice import RunContext
 
 import ability_persistence
 import cast_modifiers
+import character_spells
 import condition_produce
 import conditions
 import db
@@ -56,6 +57,7 @@ import leveling
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
+import spell_knowledge
 import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
@@ -106,17 +108,19 @@ class CastResult:
                 await result
 
 
-def _gate_spell(player: dict, spell_id: str, *, spells_mod=spells):
-    """Resolve a spell and assert the player can afford its Focus, or raise ToolError.
+def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *, spells_mod=spells):
+    """Resolve a spell and require both knowledge and affordable Focus, or raise ToolError.
 
     Shared by ``_resolve_cast`` and the in-combat Focus pre-validation (combat_packet, story-007) so
-    both reject an unknown spell or unaffordable cast IDENTICALLY — and, in combat, before any write
-    (AC2). Pure (no I/O): the caller supplies the already-fetched player row. Cantrips (focus_cost 0)
-    always pass. Returns the resolved Spell."""
+    both reject an unknown or unaffordable cast IDENTICALLY — and, in combat, before any write (AC2).
+    Pure (no I/O): the caller supplies the already-fetched player row and known ids. Returns the
+    resolved Spell."""
     try:
         spell = spells_mod.get_spell(spell_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
+    if spell.id not in known_spell_ids:
+        raise ToolError(f"{spell.id} isn't a spell you know")
     # Fail-loud Focus gate (pure); the deduct happens later in _resolve_cast after the
     # Resonance math, so the returned post-deduct value is unused here.
     gate_pool(player, "focus", spell.focus_cost, label=spell.name)
@@ -161,6 +165,7 @@ async def _cast_spell_impl(
     conditions_mod=conditions,
     conditions_mutations_mod=db_mutations_conditions,
     condition_produce_mod=condition_produce,
+    character_spells_mod=character_spells,
 ) -> str:
     """Out-of-combat cast entry. Opens its own transaction, delegates the cast to the shared
     ``_resolve_cast`` core, then syncs the in-memory SSOT and flushes the deferred events
@@ -197,6 +202,7 @@ async def _cast_spell_impl(
             conditions_mod=conditions_mod,
             conditions_mutations_mod=conditions_mutations_mod,
             condition_produce_mod=condition_produce_mod,
+            character_spells_mod=character_spells_mod,
         )
 
     # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
@@ -238,6 +244,7 @@ async def _resolve_cast(
     conditions_mod=conditions,
     conditions_mutations_mod=db_mutations_conditions,
     condition_produce_mod=condition_produce,
+    character_spells_mod=character_spells,
 ) -> CastResult:
     """Resolve ONE cast against the DB using the caller's ``conn`` (opens no transaction of its own),
     shared by ``cast_spell`` (out-of-combat) and the in-combat ABILITY packet (story-007).
@@ -292,6 +299,10 @@ async def _resolve_cast(
         )
         assert player is not None  # guaranteed by lock_ooc_caster_and_targets or it raises
 
+    known_rows = await character_spells_mod.get_known(player_id, conn=conn)
+    known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
+    spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod)
+
     # Revivify gate (M4.4 story-007, rerouted M11): a revival spell cannot reach a Hollow-killed
     # corpse. The refusal keys on the TARGET row — the resolved target_id when given, else the caster
     # (self-cast). Only a revival spell validates the target; a non-revival targeted cast is
@@ -310,10 +321,6 @@ async def _resolve_cast(
     # below). A player with no race set takes no racial branch.
     race = player.get("race")
 
-    # Resolve the spell + Focus gate FIRST — reject before any write so an unaffordable cast deducts
-    # nothing (AC1 out-of-combat; in combat the phase pre-validates this same gate before the loop so
-    # nothing else is clobbered). Cantrips (focus_cost 0) always pass.
-    spell = _gate_spell(player, spell_id, spells_mod=spells_mod)
     # Multi-target normalization + cap (M4.8 story-007): reject both-args / empty / over-cap and
     # dedup BEFORE any Focus/Resonance write, so an invalid cast deducts nothing (same gate-first rule
     # as affordability). normalize_target_list is the targeting SSOT; convert its ValueError to a

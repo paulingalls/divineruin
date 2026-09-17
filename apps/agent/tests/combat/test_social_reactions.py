@@ -146,6 +146,7 @@ def _close(state, rng):
 def _packet_deps(resolver):
     deps = _resolve_deps()
     deps.pop("db_mod")
+    deps.pop("character_spells_mod")
     deps["resolver"] = resolver
     return deps
 

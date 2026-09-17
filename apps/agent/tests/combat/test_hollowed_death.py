@@ -54,6 +54,7 @@ async def _cast(spell: Spell, *, player: dict):
     mutations = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}]))
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -63,6 +64,7 @@ async def _cast(spell: Spell, *, player: dict):
         resonance_mutations_mod=mutations,
         resonance_events_mod=events,
         spells_mod=spells_mod,
+        character_spells_mod=library,
     )
     return json.loads(raw)
 

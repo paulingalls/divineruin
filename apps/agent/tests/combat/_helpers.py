@@ -176,7 +176,11 @@ def _resolve_deps(damage=3):
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    queries.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "class": "mage", "level": 1, "focus": {"current": 10, "max": 10}}
+    )
+    character_spells_mod = MagicMock()
+    character_spells_mod.get_known = AsyncMock(return_value=[])
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     break_mod.break_concentration_on_incapacitation = AsyncMock(return_value=None)
@@ -189,6 +193,7 @@ def _resolve_deps(damage=3):
         "resolver": _damage_resolver(damage),
         "concentration_break_mod": break_mod,
         "db_mod": _fake_db_mod(),
+        "character_spells_mod": character_spells_mod,
     }
 
 
