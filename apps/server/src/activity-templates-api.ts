@@ -20,11 +20,16 @@ function formatDuration(minSec: number, maxSec: number): string {
   return `${minH}-${maxH}h`;
 }
 
-function activeStatus(startTime: string, resolveAt: string): ActiveStatus {
+function activeStatus(
+  startTime: string,
+  resolveAt: string,
+  isAwaitingDecision: boolean,
+): ActiveStatus {
   return {
     startTime,
     resolveAtEstimate: resolveAt,
     percentEstimate: computePercentComplete(startTime, resolveAt),
+    isAwaitingDecision,
   };
 }
 
@@ -108,7 +113,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     // Build active map: template key → ActiveStatus
     const activeMap = new Map<string, ActiveStatus>();
     const allActiveRows = [
-      ...activeRows,
+      ...activeRows.map((row) => ({ ...row, isAwaitingDecision: false })),
       ...trainingRows.map((row) => ({
         data: {
           activity_type: "training",
@@ -116,13 +121,21 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
           start_time: row.created_at,
           resolve_at: row.transition_at,
         },
+        isAwaitingDecision: row.state === "awaiting_decision",
       })),
     ];
     for (const row of allActiveRows) {
       const data = parseJsonb(row.data);
       const key = templateKeyFromActivity(data);
       if (key) {
-        activeMap.set(key, activeStatus(data.start_time as string, data.resolve_at as string));
+        activeMap.set(
+          key,
+          activeStatus(
+            data.start_time as string,
+            data.resolve_at as string,
+            row.isAwaitingDecision,
+          ),
+        );
       }
     }
 
@@ -157,7 +170,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
         duration: trainingDuration(row.activity_type, `Training activity ${row.activity_type}`),
         params: {},
         materials: null,
-        active: activeStatus(row.created_at, row.transition_at),
+        active: activeStatus(row.created_at, row.transition_at, row.state === "awaiting_decision"),
       });
     }
 

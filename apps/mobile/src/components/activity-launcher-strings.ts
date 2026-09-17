@@ -1,4 +1,4 @@
-import type { TemplateGroup, TemplateItem } from "@divineruin/shared";
+import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
 
 // The Bun lane's React Native mock omits View/Text, so testable presentation policy must
 // stay outside activity-launcher.tsx.
@@ -38,11 +38,20 @@ export function errandDestinationPrompt(companionName: string | null): string {
 }
 
 /** "2h 15m remaining" — the countdown on an in-flight activity. */
-export function formatTimeRemaining(resolveAt: string): string {
+export function formatTimeRemaining(resolveAt: string, isAwaitingDecision: boolean): string {
+  if (isAwaitingDecision) return "waiting on you";
   const remaining = new Date(resolveAt).getTime() - Date.now();
   if (remaining <= 0) return "completing...";
   const hours = Math.floor(remaining / 3_600_000);
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   if (hours > 0) return `${hours}h ${minutes}m remaining`;
   return `${minutes}m remaining`;
+}
+
+export function activeText(active: ActiveStatus): string {
+  return formatTimeRemaining(active.resolveAtEstimate, active.isAwaitingDecision);
+}
+
+export function mode(active: ActiveStatus): string {
+  return active.isAwaitingDecision ? "WAITING" : "IN PROGRESS";
 }

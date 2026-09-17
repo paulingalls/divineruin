@@ -6,6 +6,7 @@ import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
 void mock.module("./db.ts", dbMockFactory);
 
 const { handleGetActivityTemplates } = await import("./activity-templates-api.ts");
+const { handleGetCatchUpFeed } = await import("./catchup.ts");
 const { getAllTrainingPrograms, getErrandTemplate } = await import("./activity_templates.ts");
 
 beforeEach(() => {
@@ -20,6 +21,7 @@ interface TrainingItem {
   active: {
     startTime: string;
     resolveAtEstimate: string;
+    isAwaitingDecision: boolean;
   } | null;
 }
 
@@ -70,7 +72,7 @@ test("a running technique cycle is active on its training program", async () => 
   expect(activeItem).toMatchObject({
     id: "combat_basics",
     name: "Combat Fundamentals",
-    active: { startTime, resolveAtEstimate: resolveAt },
+    active: { startTime, resolveAtEstimate: resolveAt, isAwaitingDecision: false },
   });
   expect(
     items.filter((item) => item.id !== "combat_basics").every((item) => item.active === null),
@@ -100,7 +102,7 @@ test("a running spell cycle is included as an active-only training program", asy
   expect(activeItem).toMatchObject({
     id: "arcane_study",
     name: "Arcane Study",
-    active: { startTime, resolveAtEstimate: resolveAt },
+    active: { startTime, resolveAtEstimate: resolveAt, isAwaitingDecision: false },
   });
   expect(
     items.filter((item) => item.id !== "arcane_study").every((item) => item.active === null),
@@ -139,9 +141,75 @@ test("a running mentor-variant cycle is active on a row of its own", async () =>
     {
       id: "warrior_cleaving_blow_drathian",
       name: "Warrior Cleaving Blow Drathian",
-      active: { startTime, resolveAtEstimate: resolveAt },
+      active: { startTime, resolveAtEstimate: resolveAt, isAwaitingDecision: false },
     },
   ]);
+});
+
+test("an awaiting cycle agrees with catchup and keeps its past transition time", async () => {
+  const startTime = "2026-09-17T10:00:00.000Z";
+  const pastTransition = "2026-09-17T12:00:00.000Z";
+  const row = {
+    id: "training_waiting_1",
+    activity_type: "technique_base",
+    state: "awaiting_decision",
+    data: { program_id: "combat_basics", program_name: "Combat Fundamentals" },
+    created_at: startTime,
+    updated_at: pastTransition,
+    transition_at: pastTransition,
+  };
+  setQueryStubs([
+    {
+      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      result: [row],
+    },
+    {
+      match: /FROM training_activities[\s\S]*state IN/,
+      result: [row],
+    },
+  ]);
+
+  const items = await getTrainingItems();
+  const response = await handleGetCatchUpFeed(new Request("http://localhost"), "player_1");
+  const payload = (await response.json()) as { items: { id: string; type: string }[] };
+  const active = items.find((item) => item.id === "combat_basics")!.active;
+  const feedItem = payload.items.find((item) => item.id === row.id);
+
+  expect(active).toMatchObject({
+    startTime,
+    resolveAtEstimate: pastTransition,
+    isAwaitingDecision: true,
+  });
+  expect(feedItem?.type).toBe("pending_decision");
+  expect(active!.isAwaitingDecision).toBe(feedItem?.type === "pending_decision");
+  expect(active!.isAwaitingDecision).toBe(true);
+});
+
+test("an awaiting mentor-variant cycle preserves waiting state on its own row", async () => {
+  const startTime = "2026-09-17T09:00:00.000Z";
+  const pastTransition = "2026-09-17T14:00:00.000Z";
+  setQueryStubs([
+    {
+      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      result: [
+        {
+          data: { variant_id: "warrior_cleaving_blow_drathian" },
+          activity_type: "technique_mentor_variant",
+          state: "awaiting_decision",
+          created_at: startTime,
+          transition_at: pastTransition,
+        },
+      ],
+    },
+  ]);
+
+  const items = await getTrainingItems();
+
+  expect(items.find((item) => item.id === "warrior_cleaving_blow_drathian")?.active).toMatchObject({
+    startTime,
+    resolveAtEstimate: pastTransition,
+    isAwaitingDecision: true,
+  });
 });
 
 // Durations must match the spec's Errand Types table
