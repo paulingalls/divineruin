@@ -10,6 +10,7 @@ production code.
 import json
 import logging
 from datetime import UTC, datetime
+from typing import get_args
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -71,10 +72,17 @@ async def _query_training_programs_impl(
 
         tier = activity_type.removeprefix("spell_")
         studiable_spell_ids = []
-        for source in ("arcane", "divine", "primal"):
+        # spells.SpellSource is the catalog's closed source vocabulary (the loader
+        # fail-loud validates against it): enumerating it here rather than a literal
+        # triple keeps this list equal to what the start wall accepts when a source
+        # is added.
+        for source in get_args(spells_mod.SpellSource):
             for spell in spells_mod.get_spells_by_source(source):
                 if spell.spell_tier != tier:
                     continue
+                # Source before tier-unlock: leveling.is_spell_tier_unlocked RAISES on a
+                # non-caster archetype, so a martial must fall out on the source check
+                # first and get an empty list, never an exception.
                 try:
                     spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
                 except ValueError:
@@ -142,6 +150,8 @@ async def _initiate_training_cycle_impl(
         except ValueError as exc:
             raise ToolError(f"{archetype} cannot study {spell_id}: {exc}.") from exc
 
+        # Reached only past the source check above: is_spell_tier_unlocked RAISES on a
+        # non-caster archetype, which validate_spell_source has already refused.
         level = player.get("level", 1)
         if not leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level):
             floor = leveling_mod.min_level_for_tier(archetype, spell.spell_tier)

@@ -1,5 +1,6 @@
 import json
 import uuid
+from typing import get_args
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -192,7 +193,7 @@ class TestQueryTrainingPrograms:
 
             for program in (SPELL_STANDARD_PROGRAM, SPELL_MAJOR_PROGRAM):
                 accepted = set()
-                for source in ("arcane", "divine", "primal"):
+                for source in get_args(spells.SpellSource):
                     for spell in spells.get_spells_by_source(source):
                         training = MagicMock()
                         training.get_player_training_activities = AsyncMock(return_value=[])
@@ -218,6 +219,23 @@ class TestQueryTrainingPrograms:
         assert rows["major_study"]["studiable_spell_ids"] == []
         assert "studiable_spell_ids" not in rows["combat_basics"]
         content.list_training_programs.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_martial_gets_empty_choices_not_a_crash(self):
+        """leveling.is_spell_tier_unlocked RAISES on a non-caster, so the source check has
+        to refuse a martial first — reorder the two and this reds instead of a warrior's
+        whole program list dying on a bare ValueError."""
+        content, _, _ = self._dependencies(player={"class": "warrior", "level": 5})
+
+        with (
+            patch("training_tools.db_queries.get_player", AsyncMock(return_value={"class": "warrior", "level": 5})),
+            patch("training_tools.character_spells.get_known", AsyncMock(return_value=[])),
+        ):
+            result = json.loads(await _query_training_programs_impl(make_context(), db_content_mod=content))
+
+        rows = {row["id"]: row for row in result["programs"]}
+        assert rows["arcane_study"]["studiable_spell_ids"] == []
+        assert "studiable_spell_ids" not in rows["combat_basics"]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

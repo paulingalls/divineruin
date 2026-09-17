@@ -327,7 +327,7 @@ async def test_resolve_activity_companion_errand_resolves_the_outcome(reset_db_p
 # --- query_info: the three folded reads, against real PG -----------------------------
 
 
-async def test_query_info_training_programs_lists_seeded_content(reset_db_pool: str) -> None:
+async def test_query_info_training_programs_scopes_choices_to_the_player(reset_db_pool: str) -> None:
     """kind='training_programs' returns choices scoped to the current player."""
     pool = await db.get_pool()
     player_id = f"cap_m26_query_training_{uuid.uuid4().hex}"
