@@ -2,7 +2,8 @@
 
 Spells add ZERO new @function_tools (ADR 0007): the generic learn(kind, id, source)
 verb in recipe_tools dispatches kind="spell" here. `_learn_spell_impl` validates the
-immediate-acquisition source, enforces the per-archetype level→tier unlock gate
+immediate-acquisition source, refuses a spell whose magic source the archetype cannot
+hold (spell_knowledge.validate_spell_source), enforces the per-archetype level→tier unlock gate
 (leveling.is_spell_tier_unlocked, keyed by the caster's archetype), and records the
 learn via character_spells.record_learned. Errors raise LiveKit `ToolError` (ADR 0002);
 the `*_mod=` keyword seams are TEST-ONLY (production callers use the defaults).
@@ -14,9 +15,11 @@ import logging
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import archetypes
 import character_spells
 import db_queries
 import leveling
+import spell_knowledge
 import spells
 from session_data import SessionData
 from tool_support import _validate_id
@@ -56,11 +59,14 @@ async def _learn_spell_impl(
 
     level = player.get("level", 1)
     archetype = player.get("class", "")
+    # An unknown archetype is corrupt player data, not a refusal: let the ValueError raise.
+    chassis = archetypes.get_archetype_chassis(archetype)
     try:
-        unlocked = leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level)
+        spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
     except ValueError as exc:
-        # Non-caster archetype (no spell-tier table) — surface as a user-facing tool error.
-        raise ToolError(f"{archetype or 'This archetype'} cannot learn spells.") from exc
+        raise ToolError(f"{archetype} cannot learn {spell_id}: {exc}.") from exc
+
+    unlocked = leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level)
     if not unlocked:
         floor = leveling_mod.min_level_for_tier(archetype, spell.spell_tier)
         if floor is None:
