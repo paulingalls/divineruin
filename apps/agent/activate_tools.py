@@ -29,9 +29,9 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_tools
-import combat_phase
 import draethar_inner_fire
 import mentor_variants
+import reaction_gate
 import spell_casting
 import spells
 import veil_anchor_tools
@@ -137,7 +137,7 @@ async def _activate_impl(
         )
     except ToolError as unknown:
         session = context.userdata
-        offered = combat_phase.offered_reactions(session.combat_state) if session.combat_state is not None else []
+        offered = reaction_gate.offered_reactions(session.combat_state) if session.combat_state is not None else []
         # activate always spends as the session's player, so another member's id would only buy a second refusal.
         valid = [reaction["id"] for reaction in offered if reaction["actor_id"] == session.player_id]
         if not valid:

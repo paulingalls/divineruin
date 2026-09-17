@@ -26,8 +26,9 @@ from sample_fixtures import make_context
 
 import reaction_spend
 import reaction_windows
-from combat_phase import PhaseBeat, validate_reaction_activation
+from combat_phase import PhaseBeat
 from query_tools import _query_abilities_impl
+from reaction_gate import validate_reaction_activation
 
 # The windows the real producer can emit, one entry per held-action shape it distinguishes.
 # Built by calling reaction_windows, never transcribed: a trigger set copied into this file would

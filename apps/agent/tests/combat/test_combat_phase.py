@@ -18,9 +18,9 @@ from combat_phase import (
     PhaseBeat,
     ResolutionPacket,
     advance_combat_phase,
-    validate_reaction_activation,
 )
 from declarations import Declaration, DeclarationType
+from reaction_gate import validate_reaction_activation
 
 
 class TestDeclarationBeat:

@@ -8,6 +8,7 @@ from sample_fixtures import make_context
 
 import combat_phase
 import combat_turn
+import reaction_gate
 import reaction_spend
 from combat_init import _start_combat_impl
 from session_data import CombatParticipant, CombatState
@@ -238,9 +239,9 @@ async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
     assert downed is not None
     downed.is_fallen = True
 
-    assert combat_phase.offered_reactions(paused) == []
+    assert reaction_gate.offered_reactions(paused) == []
     with pytest.raises(ValueError, match="down"):
-        combat_phase.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
+        reaction_gate.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
 
 
 def test_a_stored_reaction_id_the_catalog_does_not_know_fails_loud():
@@ -250,7 +251,7 @@ def test_a_stored_reaction_id_the_catalog_does_not_know_fails_loud():
     player.reaction_ids = ["rogue_no_such_reaction"]
 
     with pytest.raises(ValueError, match="Unknown ability"):
-        combat_phase.offered_reactions(state)
+        reaction_gate.offered_reactions(state)
 
 
 @pytest.mark.asyncio

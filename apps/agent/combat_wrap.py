@@ -9,6 +9,7 @@ the DM does after whichever commit just landed.
 import combat_phase
 import event_types as E
 import fatigue_narration
+import reaction_gate
 from combat_ability import _find_action
 from combat_end import _end_combat_db
 from combat_events import emit_or_publish
@@ -64,7 +65,7 @@ def next_envelope(state) -> dict:
                 "target_id": window["target_id"],
                 "triggers": window["triggers"],
                 "action": _held_action_name(state),
-                "reactions": combat_phase.offered_reactions(state),
+                "reactions": reaction_gate.offered_reactions(state),
             },
         }
     if state.beat == combat_phase.PhaseBeat.NARRATION:

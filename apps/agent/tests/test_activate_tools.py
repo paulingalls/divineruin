@@ -18,8 +18,8 @@ from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import abilities
-import combat_phase
 import mentor_variants
+import reaction_gate
 import reaction_spend
 import reaction_windows
 import spells
@@ -233,7 +233,7 @@ class TestUnknownId:
         )
         state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))
         state.reactions_available = {"player_1": reaction_spend.unspent(), "player_2": reaction_spend.unspent()}
-        assert [reaction["id"] for reaction in combat_phase.offered_reactions(state)] == [
+        assert [reaction["id"] for reaction in reaction_gate.offered_reactions(state)] == [
             "rogue_uncanny_dodge",
             "guardian_intercept",
         ]

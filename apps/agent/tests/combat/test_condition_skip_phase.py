@@ -12,6 +12,7 @@ import check_resolution_attack
 import combat_hold
 import combat_phase
 import combat_wrap
+import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_init import _start_combat_impl
@@ -220,8 +221,8 @@ def _stunned_reaction_state() -> CombatState:
 def test_stunned_player_is_not_offered_and_cannot_hold_the_beat():
     state = _stunned_reaction_state()
     with pytest.raises(ValueError, match=r"Kael.*stunned.*cannot react"):
-        combat_phase.validate_reaction_activation(state, "player_1", "skirmisher_sidestep")
-    assert combat_phase.offered_reactions(state) == []
+        reaction_gate.validate_reaction_activation(state, "player_1", "skirmisher_sidestep")
+    assert reaction_gate.offered_reactions(state) == []
     assert combat_hold.pause_allowed(state) is False
 
 

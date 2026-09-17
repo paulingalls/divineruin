@@ -15,7 +15,7 @@ from combat._reaction_helpers import _guarded_ally_state
 
 import abilities
 import combat_hold
-import combat_phase
+import reaction_gate
 import reaction_spend
 import reaction_windows
 
@@ -42,7 +42,7 @@ def _ally_targeted_window(*, stage: str, triggers: tuple[str, ...]):
 class TestReactionTargetPolicy:
     def test_every_catalog_window_has_an_explicit_target_policy(self):
         assert frozenset({"on_hit", "on_targeted", "on_condition_imposed"}) == (
-            combat_phase.SELF_TARGETED_REACTION_WINDOWS
+            reaction_gate.SELF_TARGETED_REACTION_WINDOWS
         )
         assert (
             frozenset(
@@ -55,11 +55,11 @@ class TestReactionTargetPolicy:
                     "on_enemy_action",
                 }
             )
-            == combat_phase.UNBOUND_REACTION_WINDOWS
+            == reaction_gate.UNBOUND_REACTION_WINDOWS
         )
-        assert combat_phase.SELF_TARGETED_REACTION_WINDOWS.isdisjoint(combat_phase.UNBOUND_REACTION_WINDOWS)
+        assert reaction_gate.SELF_TARGETED_REACTION_WINDOWS.isdisjoint(reaction_gate.UNBOUND_REACTION_WINDOWS)
         assert (
-            combat_phase.SELF_TARGETED_REACTION_WINDOWS | combat_phase.UNBOUND_REACTION_WINDOWS
+            reaction_gate.SELF_TARGETED_REACTION_WINDOWS | reaction_gate.UNBOUND_REACTION_WINDOWS
         ) == abilities.REACTION_WINDOWS
 
     @pytest.mark.parametrize(
@@ -78,7 +78,7 @@ class TestReactionTargetPolicy:
         state = _ally_targeted_window(stage=stage, triggers=triggers)
 
         with pytest.raises(ValueError) as refused:
-            combat_phase.validate_reaction_activation(state, "player_1", ability_id)
+            reaction_gate.validate_reaction_activation(state, "player_1", ability_id)
 
         assert "player_2" in str(refused.value)
         assert "player_1" in str(refused.value)
@@ -89,13 +89,13 @@ class TestReactionTargetPolicy:
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
         monkeypatch.setattr(
-            combat_phase,
+            reaction_gate,
             "UNBOUND_REACTION_WINDOWS",
-            combat_phase.UNBOUND_REACTION_WINDOWS - {"on_ally_hit"},
+            reaction_gate.UNBOUND_REACTION_WINDOWS - {"on_ally_hit"},
         )
 
         with pytest.raises(ValueError, match=r"unclassified.*on_ally_hit"):
-            combat_phase.validate_reaction_activation(state, "player_1", "guardian_intercept")
+            reaction_gate.validate_reaction_activation(state, "player_1", "guardian_intercept")
 
 
 class TestTheInterruptLoop:
@@ -148,7 +148,7 @@ class TestTheInterruptLoop:
 
         assert "on_targeted" in r1["next"]["waiting_on"]["triggers"]
         cs = ctx.userdata.combat_state
-        assert combat_phase.validate_reaction_activation(cs, "player_1", PRE_ROLL_REACTION) is None
+        assert reaction_gate.validate_reaction_activation(cs, "player_1", PRE_ROLL_REACTION) is None
 
     @pytest.mark.asyncio
     async def test_a_reaction_for_the_other_stage_is_refused_at_this_window(self):
@@ -160,7 +160,7 @@ class TestTheInterruptLoop:
         await _call(ctx, deps)
 
         with pytest.raises(ValueError, match="on_hit"):
-            combat_phase.validate_reaction_activation(ctx.userdata.combat_state, "player_1", POST_ROLL_REACTION)
+            reaction_gate.validate_reaction_activation(ctx.userdata.combat_state, "player_1", POST_ROLL_REACTION)
 
     @pytest.mark.asyncio
     async def test_activate_is_still_not_the_advance_verb(self):
