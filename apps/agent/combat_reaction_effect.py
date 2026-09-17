@@ -207,7 +207,7 @@ def _apply(
         halve(head, target)
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
-    if ability_id in ESCAPES_GRAPPLE and target is not None and spend["actor_id"] == target.id:
+    if grapple_blocked(state, head):
         return "grapple_escaped"
     return None
 
