@@ -52,7 +52,6 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
     summary.update(actor_total=actor_total, target_total=target_total)
     if actor_total <= target_total:
         return {**summary, "shove": "resisted"}
-    if target.prone_immunity:
+    if not _land_condition_on_one(state, target.id, attacker, "prone", source="shove"):
         return {**summary, "shove": "resisted", "prone_immunity": target.prone_immunity}
-    _land_condition_on_one(state, target.id, attacker, "prone", source="shove")
     return {**summary, "shove": "knocked_prone"}

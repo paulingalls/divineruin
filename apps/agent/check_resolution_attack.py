@@ -112,8 +112,10 @@ def resolve_attack(
     incoming_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
     attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
-    attack_advantage = "attack" in effects.advantage_scopes or any(
-        ("incoming_advantage" in target_effects.restrictions, incoming_advantage)
+    attack_advantage = (
+        "attack" in effects.advantage_scopes
+        or "incoming_advantage" in target_effects.restrictions
+        or incoming_advantage
     )
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing

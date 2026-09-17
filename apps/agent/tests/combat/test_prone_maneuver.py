@@ -174,3 +174,11 @@ def test_prone_state_and_maneuver_vocabulary_reach_the_dm():
     assert "stands by declaring maneuver" in prompt
     assert "maneuver on anyone else is a shove" in prompt
     assert all(key in prompt for key in ("stood_up", "shove", "prone_immunity"))
+    assert "resisted a knockdown.\n\nnext.verbs" in prompt
+
+
+def test_a_fallen_prone_combatant_is_not_offered_a_stand():
+    state = _make_combat_state(enemy_fallen=True)
+    _participant(state, "goblin_scout_1").conditions = _prone()
+
+    assert next_envelope(state)["prone"] == []

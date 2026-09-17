@@ -218,8 +218,8 @@ class TestCombatBeatContract:
         every round — and, worse, believe the reaction was armed."""
         prompt = COMBAT_SYSTEM_PROMPT
         low = prompt.lower()
-        assert "Three kinds resolve in combat today" in prompt
-        assert "four kinds resolve in combat today" not in low
+        assert "Four kinds resolve in combat today" in prompt
+        assert "maneuver — target_id names who is moved" in prompt
         assert "reaction — action is the EXACT id" not in prompt
         assert "trigger is its catalog window" not in low
         assert "declare the reaction during beat 1" not in low

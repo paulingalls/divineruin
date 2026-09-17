@@ -32,7 +32,9 @@ self-cast. Send argument_type as an empty string for every ability but de_escala
 deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
-A prone combatant stands by declaring maneuver on itself, consuming the whole phase; a maneuver on anyone else is a shove. \
+maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
+consuming the whole phase; a maneuver on anyone else is a shove (contested Strength; a win knocks \
+the target prone). \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") to learn which reaction windows the player's abilities answer. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
@@ -116,7 +118,8 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
-For a maneuver packet, stood_up and shove are authoritative outcomes; prone_immunity names the capability that resisted a knockdown. \
+For a maneuver packet, stood_up and shove are authoritative outcomes; prone_immunity names the \
+capability that resisted a knockdown.
 
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
