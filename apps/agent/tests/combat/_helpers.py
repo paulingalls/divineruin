@@ -269,7 +269,7 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
-                "level": 5,
+                "level": 6,
                 "stamina": {"current": stamina, "max": 10},
                 "focus": {"current": focus, "max": 10},
             }

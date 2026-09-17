@@ -244,7 +244,10 @@ class TestResolvePhaseAbilityFocusGate:
         # AC2: nothing was written and the loop never ran — the ability is rejected pre-loop.
         cast_resolver._resolve_cast.assert_not_called()
         deps["mutations"].update_player_hp.assert_not_called()
-        deps["mutations"].save_combat_state.assert_not_called()
+        deps["mutations"].save_combat_state.assert_awaited_once()
+        recovered = deps["mutations"].save_combat_state.await_args.args[1]
+        assert recovered["beat"] == "declaration"
+        assert recovered["pending_declarations"] == {}
         res["resonance_mutations"].update_player_resonance.assert_not_called()
 
     @pytest.mark.asyncio

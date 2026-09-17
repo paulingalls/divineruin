@@ -163,7 +163,7 @@ class TestQueryAbilities:
     @pytest.mark.asyncio
     async def test_surfaces_class_catalog_owned_elective_and_active_variant(self, mock_context):
         queries, persistence = self._dependencies(
-            player={"class": "warrior"},
+            player={"class": "warrior", "level": 8},
             known=[{"ability_id": "warrior_cleaving_blow", "equipped": True}],
             active_variant="warrior_cleaving_blow_drathian",
         )
@@ -196,7 +196,7 @@ class TestQueryAbilities:
     async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
         # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
         # sounds like an answer, which is what this kind exists to remove.
-        queries, persistence = self._dependencies(player={"class": "not_an_archetype"})
+        queries, persistence = self._dependencies(player={"class": "not_an_archetype", "level": 1})
 
         with pytest.raises(ToolError, match="not_an_archetype"):
             await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
@@ -204,12 +204,29 @@ class TestQueryAbilities:
     @pytest.mark.asyncio
     async def test_unknown_persisted_elective_is_a_tool_error(self, mock_context):
         queries, persistence = self._dependencies(
-            player={"class": "warrior"},
+            player={"class": "warrior", "level": 8},
             known=[{"ability_id": "missing_catalog_ability", "equipped": True}],
         )
 
         with pytest.raises(ToolError, match="missing_catalog_ability"):
             await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("level", "expected"),
+        [
+            (1, {"bard_inspire"}),
+            (9, {"bard_inspire", "bard_mass_inspire"}),
+        ],
+    )
+    async def test_filters_catalog_abilities_by_player_level(self, mock_context, level, expected):
+        queries, persistence = self._dependencies(player={"class": "bard", "level": level})
+
+        payload = json.loads(await _query_abilities_impl(mock_context, queries=queries, persistence=persistence))
+        ids = {row["id"] for row in payload["abilities"]}
+
+        assert expected <= ids
+        assert ("bard_mass_inspire" in ids) is (level >= 9)
 
 
 def test_prompts_name_ability_id_producer():
@@ -224,12 +241,8 @@ def test_prompts_name_ability_id_producer():
     activate_bullet = next(line for line in exploration.split("- ") if line.startswith("activate:"))
     assert "active_variant_id" in activate_bullet
 
-    # ...and the COMBAT prompt must NOT, which is the other half of the same constraint (story-017,
-    # note 9724fb7c(a)). In combat an ability is a declare_phase declaration, and declare_phase
-    # resolves decl.action against the ability/spell catalog (combat_packet.py:110) — a variant id
-    # is not a catalog id, so it falls through to _gate_spell and raises "Unknown spell". Advising
-    # the DM to learn variant ids here produces a tool error and a lost round, not a capability.
-    assert "variant" not in COMBAT_SYSTEM_PROMPT.lower()
+    assert "variant" in COMBAT_SYSTEM_PROMPT.lower()
+    assert "active_variant_id" in COMBAT_SYSTEM_PROMPT
 
 
 class TestQueryInfoE2E:

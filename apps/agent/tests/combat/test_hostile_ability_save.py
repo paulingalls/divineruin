@@ -101,6 +101,7 @@ async def _resolve_charge(success, *, landing=True):
     with ExitStack() as stack:
         stack.enter_context(patch("check_resolution_save.roll_participant_save", save))
         stack.enter_context(patch("ability_persistence.update_player_resources", update))
+        stack.enter_context(patch("ability_persistence.owns_elective", AsyncMock(return_value=True)))
         if not landing:
             stack.enter_context(patch("combat_ability._land_condition_on_one", return_value=False))
         raw = await combat_turn._resolve_phase_impl(context, **deps)
@@ -167,6 +168,7 @@ async def test_invalid_target_refuses_before_any_packet_write(target_id, extra):
     with (
         patch("check_resolution_save.roll_participant_save") as save,
         patch("ability_persistence.update_player_resources", new_callable=AsyncMock) as update,
+        patch("ability_persistence.owns_elective", AsyncMock(return_value=True)),
         pytest.raises(ToolError, match="standing foe"),
     ):
         await combat_turn._resolve_phase_impl(context, **deps)
@@ -175,4 +177,7 @@ async def test_invalid_target_refuses_before_any_packet_write(target_id, extra):
     update.assert_not_awaited()
     deps["resolver"].resolve_attack.assert_not_called()
     deps["mutations"].update_player_hp.assert_not_awaited()
-    deps["mutations"].save_combat_state.assert_not_awaited()
+    deps["mutations"].save_combat_state.assert_awaited_once()
+    recovered = deps["mutations"].save_combat_state.await_args.args[1]
+    assert recovered["beat"] == "declaration"
+    assert recovered["pending_declarations"] == {}

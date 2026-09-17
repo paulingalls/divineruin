@@ -143,7 +143,10 @@ async def _request_ability_activation_unlocked(
     # path would spend the cost and produce the condition onto a party member instead.
     if ability.save is not None:
         if session.in_combat:
-            raise ToolError(f"{ability.name} needs a foe — declare it in the combat phase, aimed at an enemy.")
+            declared_id = variant_id or ability_id
+            raise ToolError(
+                f"{ability.name} needs a foe — declare {declared_id} in the combat phase, aimed at an enemy."
+            )
         raise ToolError(f"{ability.name} needs a foe — use it in a fight.")
 
     # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through
@@ -182,7 +185,7 @@ async def _request_ability_activation_unlocked(
             if ability.ability_type == "elective"
             else False
         )
-        if not abilities_mod.owns_ability(player.get("class"), ability, owns_elective=owned_elective):
+        if not abilities_mod.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
             raise ToolError(f"You haven't learned {ability.name}.")
 
         variant = None

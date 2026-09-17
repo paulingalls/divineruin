@@ -346,16 +346,16 @@ def _ability(ability_type, archetype_id="warrior"):
 
 def test_owns_ability_core_owned_when_class_matches_archetype():
     # Core abilities are always-known for the archetype — no character_abilities row.
-    assert owns_ability("warrior", _ability("core", "warrior"), owns_elective=False) is True
+    assert owns_ability("warrior", 1, _ability("core", "warrior"), owns_elective=False) is True
 
 
 def test_owns_ability_core_rejected_when_class_differs():
-    assert owns_ability("paladin", _ability("core", "warrior"), owns_elective=False) is False
+    assert owns_ability("paladin", 1, _ability("core", "warrior"), owns_elective=False) is False
 
 
 def test_owns_ability_reaction_follows_the_same_class_rule_as_core():
-    assert owns_ability("warrior", _ability("reaction", "warrior"), owns_elective=False) is True
-    assert owns_ability("mage", _ability("reaction", "warrior"), owns_elective=False) is False
+    assert owns_ability("warrior", 1, _ability("reaction", "warrior"), owns_elective=False) is True
+    assert owns_ability("mage", 1, _ability("reaction", "warrior"), owns_elective=False) is False
 
 
 def test_owns_ability_elective_returns_passed_flag_regardless_of_class():
@@ -363,10 +363,16 @@ def test_owns_ability_elective_returns_passed_flag_regardless_of_class():
     # (a player can equip an elective whose archetype_id is their own class only,
     # but ownership is the row, supplied here as owns_elective).
     elective = _ability("elective", "warrior")
-    assert owns_ability("warrior", elective, owns_elective=True) is True
-    assert owns_ability("warrior", elective, owns_elective=False) is False
+    assert owns_ability("warrior", 1, elective, owns_elective=True) is True
+    assert owns_ability("warrior", 1, elective, owns_elective=False) is False
     # Class never overrides the row result for electives.
-    assert owns_ability("mage", elective, owns_elective=True) is True
+    assert owns_ability("mage", 1, elective, owns_elective=True) is True
+
+
+def test_owns_ability_rejects_below_level_before_type_rule():
+    mass_inspire = get_ability("bard_mass_inspire")
+    assert owns_ability("bard", 8, mass_inspire, owns_elective=False) is False
+    assert owns_ability("bard", 9, mass_inspire, owns_elective=False) is True
 
 
 async def test_load_abilities_populates_from_pool(monkeypatch):

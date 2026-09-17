@@ -277,8 +277,10 @@ class TestActivation:
         """
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
+        player = _player(class_="warrior")
+        player["level"] = 6
 
-        result, _ = await _call("warrior_opportunity_strike", persistence=persistence)
+        result, _ = await _call("warrior_opportunity_strike", player=player, persistence=persistence)
 
         assert result["narration_cue"]
         persistence.update_player_resources.assert_awaited()
@@ -346,3 +348,14 @@ class TestOwnershipGate:
         result, persistence = await _call("warrior_cleaving_blow", owns_elective=True)
         assert result["deducted"]["stamina"] == 4  # base Cleaving Blow cost
         persistence.update_player_resources.assert_awaited_once()
+
+    async def test_core_ability_rejected_below_level_without_deducting(self):
+        player = _player(class_="bard")
+        player["level"] = 1
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="haven't learned Mass Inspire"):
+            await _call("bard_mass_inspire", player=player, persistence=persistence)
+
+        persistence.update_player_resources.assert_not_awaited()

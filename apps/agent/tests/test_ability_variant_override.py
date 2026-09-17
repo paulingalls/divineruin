@@ -65,9 +65,10 @@ async def _call(
     variant: MentorVariant | None = None,
     stamina: int = 10,
     focus: int = 10,
+    context=None,
 ):
     """Invoke the impl with mock mods. Returns (parsed_result, persistence, variants)."""
-    ctx = make_context()
+    ctx = context or make_context()
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     # story-008: the caster row now comes from the id-ordered get_players_for_update batch (self-cast
@@ -152,6 +153,17 @@ class TestExplicitVariantActivation:
                 variant_id=variant.id,
                 active_variant_id="warrior_cleaving_blow_keldaran",
                 variant=variant,
+            )
+
+    async def test_save_variant_in_combat_names_exact_id_to_declare(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = MagicMock()
+
+        with pytest.raises(ToolError, match="warrior_unstoppable_charge_keldaran"):
+            await _call(
+                "warrior_unstoppable_charge",
+                variant_id="warrior_unstoppable_charge_keldaran",
+                context=ctx,
             )
 
 

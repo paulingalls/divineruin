@@ -78,7 +78,7 @@ async def _queried_reactions():
     catalog = load_fixture_config().values()
     rows = {}
     for player_class in sorted({ability.archetype_id for ability in catalog}):
-        queries.get_player = AsyncMock(return_value={"class": player_class})
+        queries.get_player = AsyncMock(return_value={"class": player_class, "level": 6})
         payload = json.loads(await _query_abilities_impl(context, queries=queries, persistence=persistence))
         for row in payload["abilities"]:
             if row["ability_type"] == "reaction":

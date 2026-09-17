@@ -42,11 +42,14 @@ from tool_support import SOUND_COMBAT_START
 logger = logging.getLogger("divineruin.tools")
 
 
-def class_reaction_ids(player_class: str) -> list[str]:
+def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
     """A class's catalog reaction ids. The capstone harness hand-builds its combat and calls this too,
     so a harness player cannot silently lack the ids a real one is handed at a window."""
     return [
-        ability.id for ability in abilities.get_archetype_abilities(player_class) if ability.ability_type == "reaction"
+        ability.id
+        for ability in abilities.get_archetype_abilities(player_class)
+        if ability.ability_type == "reaction"
+        and abilities.owns_ability(player_class, player_level, ability, owns_elective=False)
     ]
 
 
@@ -287,7 +290,8 @@ async def _start_combat_locked(
             validated_conditions,
             rules_engine.exhaustion_stack_cap(row),
         )
-        reaction_ids = class_reaction_ids(player_class)
+        player_level = row["level"]
+        reaction_ids = class_reaction_ids(player_class, player_level)
         participants.append(
             CombatParticipant(
                 id=mid,
@@ -298,7 +302,7 @@ async def _start_combat_locked(
                 hp_max=row_hp.get("max", 1),
                 ac=row.get("ac", 10),
                 attributes=row.get("attributes", {}),
-                level=row.get("level", 1),
+                level=player_level,
                 action_pool=row_action_pool,
                 # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
                 # extra_attack is grantable today; the rest populate when their grants land.
