@@ -67,6 +67,17 @@ def test_same_band_target_is_refused_and_names_actor_and_target(actor_id, declar
         assert name in message
 
 
+def test_self_targeted_attack_is_refused():
+    """An ATTACK naming its own actor is a same-band target too: it would resolve as a real
+    swing against the actor's own AC. Only the stand MANEUVER may name its own actor."""
+    state = _target_band_state()
+
+    with pytest.raises(ValueError) as excinfo:
+        advance_combat_phase(state, {"player_1": {"type": "attack", "action": "Longsword", "target_id": "player_1"}})
+
+    assert "Kael (player_1) cannot target Kael (player_1)" in str(excinfo.value)
+
+
 def test_player_ability_can_target_an_ally():
     state = _target_band_state()
     declaration = {"type": "ability", "action": "divine_bless", "target_id": "companion_1"}
