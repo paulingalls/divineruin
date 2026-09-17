@@ -120,7 +120,7 @@ was spent and changed nothing mechanical — voice the moment from its "narratio
 the shouted warning, but never say it saved them.
 
 When an enemy packet has "hesitated": true, its "reason" names the Objection that stopped the \
-action; voice that cause.
+action and the player who raised it; voice that cause.
 
 The "narration_cue" is authored flavour for the ability at full strength, not a report of this \
 one. A cue that has the attacker grunting in pain, or the blade finding only air, is true only \

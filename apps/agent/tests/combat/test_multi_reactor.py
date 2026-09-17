@@ -174,6 +174,8 @@ async def test_winning_objection_leaves_other_spends_null(reverse):
 
     effects = {packet["ability_id"]: packet["mechanical_effect"] for packet in _reaction_packets(packets)}
     assert effects == {"diplomat_objection": "action_hesitated", "cleric_shield_of_faith": None}
+    hesitation = next(packet for packet in packets if packet.get("hesitated"))
+    assert hesitation["reason"] == "Objection raised by player_1"
     assert state.get_participant("player_2").hp_current == before
     deps["resolver"].resolve_attack.assert_not_called()
 

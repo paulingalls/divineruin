@@ -102,26 +102,31 @@ def normalize_held_actions(held_actions: list[dict], reactions_available: dict[s
     return normalized
 
 
-def _won_effects(head: dict):
+def _won_effects(head: dict) -> list[tuple[str, str]]:
+    """(reactor id, effect) for every stored contest the reactor won."""
     contests = head.get("reaction_contests", {})
     if not isinstance(contests, dict):
         raise ValueError(f"stored reaction contests are malformed: {contests!r}")
-    for result in contests.values():
+    won = []
+    for actor_id, result in contests.items():
         ability_id = result.get("ability_id") if isinstance(result, dict) else None
         validated = _validate_stored(result, ability_id)
-        if validated["success"]:
-            effect = EFFECTS.get(validated["ability_id"])
-            if effect is not None:
-                yield effect
+        if validated["success"] and validated["ability_id"] in EFFECTS:
+            won.append((actor_id, EFFECTS[validated["ability_id"]]))
+    return won
 
 
 def mark_cancelled(head: dict) -> bool:
-    return any(effect in _CANCELS_MARK for effect in _won_effects(head))
-
-
-def hesitated(head: dict) -> bool:
-    return "action_hesitated" in _won_effects(head)
+    return any(effect in _CANCELS_MARK for _, effect in _won_effects(head))
 
 
 def hesitation_reason(head: dict) -> str | None:
-    return "Objection caused this action to hesitate" if hesitated(head) else None
+    """Name the reactor whose winning Objection cost the held action, or None if none did."""
+    return next(
+        (f"Objection raised by {actor_id}" for actor_id, effect in _won_effects(head) if effect == "action_hesitated"),
+        None,
+    )
+
+
+def hesitated(head: dict) -> bool:
+    return hesitation_reason(head) is not None

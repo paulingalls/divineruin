@@ -1,3 +1,5 @@
+"""Contested social reactions change the held enemy action exactly once."""
+
 import json
 from pathlib import Path
 
@@ -158,13 +160,13 @@ def _packet_deps(resolver):
             "marshal_countermand",
             {"name": "Rally", "kind": "command", "properties": []},
             "command_countered",
-            9,
+            9,  # commander CHA 12
         ),
         (
             "spy_plausible_deniability",
             {"name": "Accusation", "kind": "accusation", "properties": []},
             "accusation_dismissed",
-            11,
+            11,  # accuser WIS 16
         ),
     ],
 )
@@ -177,7 +179,14 @@ def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, 
     assert rng.calls == [(1, 20), (1, 20)]
     assert packet["mechanical_effect"] == effect
     assert (packet["reactor_total"], packet["opposer_total"]) == (13, opposer_total)
-    assert "player_1" in state.held_actions[0]["reaction_contests"]
+    assert state.held_actions[0]["reaction_contests"] == {
+        "player_1": {
+            "ability_id": ability_id,
+            "reactor_total": 13,
+            "opposer_total": opposer_total,
+            "success": True,
+        }
+    }
 
     reloaded = CombatState.from_dict(json.loads(json.dumps(state.to_dict())))
     repeated = _close(reloaded, RefusingRng())
@@ -255,7 +264,7 @@ async def test_mark_contests_change_the_bandmates_ac_minus_one_attack(ability_id
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("won", "effect", "damage", "totals"),
-    [(True, "action_hesitated", 0, (13, 11)), (False, None, 4, (8, 13))],
+    [(True, "action_hesitated", 0, (13, 11)), (False, None, 4, (8, 13))],  # diplomat CHA 16 vs actor WIS 16
 )
 async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, damage, totals):
     action = {"name": "Mace", "damage": "1d6", "damage_type": "bludgeoning", "properties": []}
@@ -284,7 +293,7 @@ async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, dam
             "actor_id": "enemy_1",
             "resolved": False,
             "hesitated": True,
-            "reason": "Objection caused this action to hesitate",
+            "reason": "Objection raised by player_1",
         }
         deps["resolver"].resolve_attack.assert_not_called()
 

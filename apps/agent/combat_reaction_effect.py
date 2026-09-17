@@ -204,7 +204,6 @@ def _apply(
     attack_action: dict | None,
     contest: dict | None,
     ac_spend: dict | None = None,
-    claimed: set[str] | None = None,
     hesitated: bool = False,
 ) -> str | None:
     """Do what this reaction does to the held blow, and name it — or None if it did nothing.
@@ -216,7 +215,6 @@ def _apply(
     """
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
-    claimed = claimed if claimed is not None else set()
 
     if contest is not None:
         if not contest["success"]:
@@ -239,25 +237,20 @@ def _apply(
         and head["roll"] is not None
         and target is not None
         and spend["actor_id"] == target.id
-        and "damage_halved" not in claimed
     ):
         halve(head, target)
-        claimed.add("damage_halved")
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
-    if (
-        ability_id in ESCAPES_GRAPPLE
-        and target is not None
-        and spend["actor_id"] == target.id
-        and "grapple_escaped" not in claimed
-    ):
-        claimed.add("grapple_escaped")
+    if ability_id in ESCAPES_GRAPPLE and target is not None and spend["actor_id"] == target.id:
         return "grapple_escaped"
     return None
 
 
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
-    """Apply what the reaction spent at ``window`` does to ``head``, and report it to the DM.
+    """Apply what every reaction spent at ``window`` does to ``head``: one packet per spend.
+
+    Two AC bonuses do not stack, so only the first spend carrying the largest one reports
+    ``target_ac_bonus``; a winning Objection leaves every other spend at the window null.
 
     Called by ``combat_hold.pump`` as it discards the window the DM has come back from — the one
     moment where the spend is known and the blow has not yet been applied.
@@ -274,21 +267,13 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     """
     spends = bound_spends(state, head, window["stage"])
     contests = [combat_reaction_contest.resolve_or_reuse(state, head, spend, rng=contest_rng) for spend in spends]
-    hesitated = any(
-        contest is not None
-        and contest["success"]
-        and combat_reaction_contest.EFFECTS[spend["ability_id"]] == "action_hesitated"
-        for spend, contest in zip(spends, contests, strict=True)
-    )
-    max_bonus = max((AC_BONUS.get(spend["ability_id"], 0) for spend in spends), default=0)
-    ac_spend = next(
-        (spend for spend in spends if max_bonus > 0 and AC_BONUS.get(spend["ability_id"], 0) == max_bonus),
-        None,
-    )
+    hesitated = combat_reaction_contest.hesitated(head)
+    ac_spend = max(spends, key=lambda spend: AC_BONUS.get(spend["ability_id"], 0), default=None)
+    if ac_spend is not None and ac_spend["ability_id"] not in AC_BONUS:
+        ac_spend = None
     packets = []
-    claimed: set[str] = set()
     for spend, contest in zip(spends, contests, strict=True):
-        effect = _apply(state, head, window, spend, attack_action, contest, ac_spend, claimed, hesitated)
+        effect = _apply(state, head, window, spend, attack_action, contest, ac_spend, hesitated)
         ability = abilities.get_ability(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],
