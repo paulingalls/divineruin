@@ -179,11 +179,7 @@ def _apply(
     if contest is not None:
         if not contest["success"]:
             return None
-        return {
-            "marshal_countermand": "command_countered",
-            "spy_plausible_deniability": "accusation_dismissed",
-            "diplomat_objection": "action_hesitated",
-        }[ability_id]
+        return combat_reaction_contest.EFFECTS[ability_id]
 
     if window["stage"] == reaction_windows.PRE_ROLL:
         if ability_id in AC_BONUS and attack_action is not None:

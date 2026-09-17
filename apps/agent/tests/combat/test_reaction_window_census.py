@@ -137,8 +137,7 @@ def test_the_table_covers_exactly_the_reaction_rows_that_exist():
 
 
 def test_the_totals_are_the_ones_the_card_settled():
-    counts = Counter(EXPECTED.values())
-    assert {classification: counts[classification] for classification in _TOTALS} == _TOTALS
+    assert Counter(EXPECTED.values()) == Counter(_TOTALS)
     assert sum(_TOTALS.values()) == 25
 
 

@@ -11,8 +11,8 @@ combines ``CombatParticipant.has_reaction_ability`` with ``CombatState.reactions
 game_mechanics_combat.md:131 ("if the player has no reaction abilities, the DM doesn't pause").
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-content/encounter_templates.json's action_pool entries — ranged 6, buff actions, knockback 4,
-grapple 2, control 2, aoe 2, healing 1, 46 bare — and only `grapple` has a reaction consumer
+content/encounter_templates.json's action_pool entries — ranged, buff, knockback, grapple,
+control, aoe, healing, or none — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
 its two carriers are Hollow Shriek (`frightened`) and Hold Person (`paralyzed`), and neither
@@ -22,6 +22,8 @@ which the pre-roll window already reaches.
 """
 
 from __future__ import annotations
+
+from encounter_actions import action_kind as classify_action
 
 # The one property with a reaction consumer today. Named rather than inlined because the census
 # test pins its two content carriers (Seizing Grab on mawling_1/mawling_2) — a content edit that
@@ -117,6 +119,4 @@ def upgrade_legacy_window(window: dict | None, held_actions: list[dict], partici
     )
     if action is None:
         raise ValueError(f"legacy reaction window's held action {action_name!r} is unavailable")
-    from encounter_actions import action_kind as classify_action
-
     return {**window, "action_kind": classify_action(action)}

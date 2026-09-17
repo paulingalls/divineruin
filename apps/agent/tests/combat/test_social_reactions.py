@@ -77,7 +77,7 @@ def _participant(pid, *, kind, initiative=10, actions=(), charisma=12, wisdom=12
 
 def _social_state(ability_id, action, *, target_id="player_1", with_striker=False):
     player = _participant("player_1", kind="player", initiative=20, charisma=16, wisdom=14)
-    enemy = _participant("enemy_1", kind="enemy", initiative=15, actions=[action], charisma=12, wisdom=12)
+    enemy = _participant("enemy_1", kind="enemy", initiative=15, actions=[action], charisma=12, wisdom=16)
     participants = [player, enemy]
     held = [
         {
@@ -144,21 +144,23 @@ def _packet_deps(resolver):
 
 
 @pytest.mark.parametrize(
-    ("ability_id", "action", "effect"),
+    ("ability_id", "action", "effect", "opposer_total"),
     [
         (
             "marshal_countermand",
             {"name": "Rally", "kind": "command", "properties": []},
             "command_countered",
+            9,  # commander CHA 12
         ),
         (
             "spy_plausible_deniability",
             {"name": "Accusation", "kind": "accusation", "properties": []},
             "accusation_dismissed",
+            11,  # accuser WIS 16
         ),
     ],
 )
-def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, effect):
+def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, effect, opposer_total):
     state = _social_state(ability_id, action)
     rng = SequenceRng([10, 8])
 
@@ -167,12 +169,12 @@ def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, 
     assert rng.calls == [(1, 20), (1, 20)]
     assert packet is not None
     assert packet["mechanical_effect"] == effect
-    assert (packet["reactor_total"], packet["opposer_total"]) == (13, 9)
+    assert (packet["reactor_total"], packet["opposer_total"]) == (13, opposer_total)
     stored = state.held_actions[0]["reaction_contest"]
     assert stored == {
         "ability_id": ability_id,
         "reactor_total": 13,
-        "opposer_total": 9,
+        "opposer_total": opposer_total,
         "success": True,
     }
 
@@ -251,8 +253,11 @@ async def test_mark_contests_change_the_bandmates_ac_minus_one_attack(ability_id
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("won", "effect", "damage"), [(True, "action_hesitated", 0), (False, None, 4)])
-async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, damage):
+@pytest.mark.parametrize(
+    ("won", "effect", "damage", "totals"),
+    [(True, "action_hesitated", 0, (13, 11)), (False, None, 4, (8, 13))],  # diplomat CHA 16 vs actor WIS 16
+)
+async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, damage, totals):
     action = {"name": "Mace", "damage": "1d6", "damage_type": "bludgeoning", "properties": []}
     state = _social_state("diplomat_objection", {**action, "kind": "attack"})
     session = make_context().userdata
@@ -271,6 +276,7 @@ async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, dam
 
     reaction = next(row for row in packets if row.get("declaration_type") == "reaction")
     assert reaction["mechanical_effect"] == effect
+    assert (reaction["reactor_total"], reaction["opposer_total"]) == totals
     assert before - player.hp_current == damage
     if won:
         hesitation = next(row for row in packets if row.get("hesitated"))

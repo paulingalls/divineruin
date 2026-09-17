@@ -6,7 +6,12 @@ import random
 
 import rules_engine
 
-SOCIAL_REACTIONS = frozenset({"marshal_countermand", "spy_plausible_deniability", "diplomat_objection"})
+EFFECTS = {
+    "marshal_countermand": "command_countered",
+    "spy_plausible_deniability": "accusation_dismissed",
+    "diplomat_objection": "action_hesitated",
+}
+_CANCELS_MARK = frozenset({"command_countered", "accusation_dismissed"})
 _ATTRIBUTES = {
     "marshal_countermand": ("charisma", "charisma"),
     "spy_plausible_deniability": ("charisma", "wisdom"),
@@ -43,7 +48,7 @@ def _validate_stored(raw: object, ability_id: str) -> dict:
 
 def resolve_or_reuse(state, head: dict, spend: dict, *, rng=None) -> dict | None:
     ability_id = spend["ability_id"]
-    if ability_id not in SOCIAL_REACTIONS:
+    if ability_id not in EFFECTS:
         return None
     if "reaction_contest" in head:
         return _validate_stored(head["reaction_contest"], ability_id)
@@ -66,17 +71,16 @@ def resolve_or_reuse(state, head: dict, spend: dict, *, rng=None) -> dict | None
     return result
 
 
-def mark_cancelled(head: dict) -> bool:
+def _won_effect(head: dict) -> str | None:
     result = head.get("reaction_contest")
-    return bool(
-        isinstance(result, dict)
-        and result.get("success") is True
-        and result.get("ability_id") in {"marshal_countermand", "spy_plausible_deniability"}
-    )
+    if not isinstance(result, dict) or result.get("success") is not True:
+        return None
+    return EFFECTS.get(str(result.get("ability_id")))
+
+
+def mark_cancelled(head: dict) -> bool:
+    return _won_effect(head) in _CANCELS_MARK
 
 
 def hesitated(head: dict) -> bool:
-    result = head.get("reaction_contest")
-    return bool(
-        isinstance(result, dict) and result.get("success") is True and result.get("ability_id") == "diplomat_objection"
-    )
+    return _won_effect(head) == "action_hesitated"

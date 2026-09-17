@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abilities
 import reaction_spend
+import reaction_windows
 from condition_restrictions import cannot_act
 from session_data import CombatState
 
@@ -35,9 +36,10 @@ def _validate_social_subject(state: CombatState, actor_id: str, ability_id: str,
             f"but the accusation targets {window['target_id']!r}"
         )
     if ability_id == "diplomat_objection":
-        if window["stage"] != "pre_roll":
+        if window["stage"] != reaction_windows.PRE_ROLL:
             raise ValueError(
-                f"reaction {ability_id!r} requires stage 'pre_roll', but the open stage is {window['stage']!r}"
+                f"reaction {ability_id!r} requires stage {reaction_windows.PRE_ROLL!r}, "
+                f"but the open stage is {window['stage']!r}"
             )
         acting_enemy = state.get_participant(window["actor_id"])
         if acting_enemy is None:
