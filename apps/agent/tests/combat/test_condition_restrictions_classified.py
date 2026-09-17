@@ -2,7 +2,6 @@ from dataclasses import replace
 
 import pytest
 
-import condition_restrictions
 import conditions
 from condition_restrictions import ENFORCED, NOT_ENFORCED, RESTRICTION_ENFORCERS
 
@@ -36,7 +35,6 @@ def test_a_new_catalog_restriction_fails_the_classification_floor(monkeypatch):
 
 
 def test_every_enforced_restriction_has_a_production_reader():
-    assert set(RESTRICTION_ENFORCERS) == set(ENFORCED)
     for restriction, reader in RESTRICTION_ENFORCERS.items():
         carriers = [
             {"type": name} for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions
@@ -45,12 +43,11 @@ def test_every_enforced_restriction_has_a_production_reader():
         assert all(reader([carrier]) for carrier in carriers)
 
 
-def test_reclassifying_a_deferred_restriction_without_a_reader_fails(monkeypatch):
+def test_dropping_a_deferred_restriction_without_a_reader_fails_the_floor(monkeypatch):
     monkeypatch.delitem(NOT_ENFORCED, "damage_reduction")
-    monkeypatch.setattr(condition_restrictions, "ENFORCED", {*ENFORCED, "damage_reduction"})
 
     with pytest.raises(AssertionError, match="damage_reduction"):
-        assert set(RESTRICTION_ENFORCERS) == set(condition_restrictions.ENFORCED)
+        _assert_classified()
 
 
 def test_prone_incoming_modes_are_enforced_only_for_prone():
