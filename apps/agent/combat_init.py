@@ -63,7 +63,7 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
     accepts (check_resolution_save.is_valid_save_key, one SSOT so the load-gate and runtime agree);
     (3) ``dc`` is an int; (4) ``damage`` is absent or "0" — M13 condition actions are save-based, and
     the resolver does not apply damage, so a damage-bearing condition action would silently deal none
-    (debt 5b18023ef5a5) until the combined to-hit+save+damage model lands. Validating HERE turns a
+    (debt 69132c5d) until the combined to-hit+save+damage model lands. Validating HERE turns a
     would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
@@ -82,7 +82,7 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
             if action.get("damage") not in (None, "", "0", 0):
                 raise ValueError(
                     f"{label} condition action must be save-based (damage absent or '0') until the "
-                    f"combined damage+condition model lands (debt 5b18023ef5a5), got damage {action.get('damage')!r}"
+                    f"combined damage+condition model lands (debt 69132c5d), got damage {action.get('damage')!r}"
                 )
 
 

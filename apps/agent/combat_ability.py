@@ -277,7 +277,7 @@ async def _resolve_enemy_condition_packet(
 
     Save-based, no to-hit: M13 condition actions are save-gated (Hollow Shriek is a fear shriek,
     damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
-    (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
+    (to-hit + save + damage combined) is a follow-up (debt 69132c5d)."""
     cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
     # allow_self=False: a hostile inflict must never self-target (an ABILITY-declared enemy condition
     # action can arrive with target_id=None, which the helper would otherwise fall back to the caster).
