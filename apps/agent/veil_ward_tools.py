@@ -27,7 +27,7 @@ never by reading the one scope it is about to write. Dismissal drops the innermo
 then reads the LOCATION — the only scope that can still cover the party once the inner one is
 gone — so that single read IS the resolved state, no separate resolve call needed.
 
-Both paths take session.combat_end_lock BEFORE db.transaction(), the order every combat writer uses:
+Both paths take session.combat_state_lock BEFORE db.transaction(), the order every combat writer uses:
 taken inside, the ward's row locks could block a resolver that already holds the session lock.
 
 Mirrors the ability_tools seam: module-injection keyword args (db_mod/queries_mod/
@@ -73,7 +73,7 @@ async def _activate_veil_ward_impl(
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _activate_veil_ward_locked(
             context,
             active,

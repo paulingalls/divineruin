@@ -429,7 +429,7 @@ async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
 
 async def test_inner_fire_serialises_against_the_phase_loop():
     """Inner Fire writes the LIVE participant, and resolve_phase ADOPTS a deep copy — so the two
-    have to serialise on ``session.combat_end_lock`` or the burn is silently undone.
+    have to serialise on ``session.combat_state_lock`` or the burn is silently undone.
 
     resolve_phase copies ``combat_state``, works the copy through its transaction, and rebinds
     ``session.combat_state`` to it post-commit. An unlocked writer that lands in that gap has

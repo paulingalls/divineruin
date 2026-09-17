@@ -78,7 +78,7 @@ async def _request_death_save_impl(
     mutations=db_mutations,
     db_mod=db,
 ) -> str:
-    """Serialise the death save on the session's combat-end lock, like resolve_phase and the
+    """Serialise the death save on the session's combat-state lock, like resolve_phase and the
     reaction spend.
 
     This call snapshots the whole CombatState, awaits a transaction, then REBINDS
@@ -89,7 +89,7 @@ async def _request_death_save_impl(
     reaction, and story-018 loses the binding that says which blow it answered.
     Not reentrant, and safe: no lock holder reaches this tool (only combat_agent's toolset does)."""
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _request_death_save_locked(context, player_id, mutations=mutations, db_mod=db_mod)
 
 

@@ -338,7 +338,7 @@ class TestSerialisedAgainstConcurrentWriters:
         record = reaction_spend.spend("rogue_uncanny_dodge", {"id": "r1-0-post_roll", "stage": "post_roll"}, held_seq=0)
 
         async def spend_reaction():
-            async with ctx.userdata.combat_end_lock:
+            async with ctx.userdata.combat_state_lock:
                 ctx.userdata.combat_state.reactions_available["player_1"] = record
 
         await asyncio.gather(
@@ -355,7 +355,7 @@ class TestSerialisedAgainstConcurrentWriters:
         mock_mutations = _make_death_save_mocks()
         held: list[bool] = []
         mock_mutations.save_combat_state = AsyncMock(
-            side_effect=lambda *a, **k: held.append(ctx.userdata.combat_end_lock.locked())
+            side_effect=lambda *a, **k: held.append(ctx.userdata.combat_state_lock.locked())
         )
         mock_db, _conn = make_db_mod()
         ctx = make_context()

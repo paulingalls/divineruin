@@ -64,10 +64,10 @@ async def _end_combat_impl(context: RunContext[SessionData], outcome: str, **di)
     (an earlier release would let a retried end pay the party twice), so two overlapping ends would
     both pass `_require_combat` and both run grant_victory_rewards — the encounter paid out twice,
     level-ups and milestone grants included. Under the lock the waiter re-reads `combat_state` after
-    the holder cleared it and raises "Not in combat". See SessionData.combat_end_lock.
+    the holder cleared it and raises "Not in combat". See SessionData.combat_state_lock.
     """
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _end_combat_locked(context, outcome, **di)
 
 
@@ -88,7 +88,7 @@ async def _end_combat_locked(
     session: SessionData = context.userdata
     cs = _require_combat(session)
 
-    # A round is TWO commits (M29, story-016), and combat_end_lock cannot cover the GAP between
+    # A round is TWO commits (M29, story-016), and combat_state_lock cannot cover the GAP between
     # them: after the ally commit the enemy actions sit persisted as pending, and ending here would
     # pay the party and delete the combat row with an enemy's turn still queued. Refuse loud and
     # name the next action rather than force-end into a silent data loss (constraint 4). The cost,

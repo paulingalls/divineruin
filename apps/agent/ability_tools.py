@@ -91,7 +91,7 @@ async def _request_ability_activation_impl(
     if session.combat_state is None:
         return await activate_unlocked()
 
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         state = session.combat_state
         try:
             reaction_gate.validate_reaction_activation(state, session.player_id, ability_id)
@@ -101,7 +101,7 @@ async def _request_ability_activation_impl(
 
         result = await activate_unlocked()
         # The live state, not `state`: a reference taken before an await cannot see a replacement made
-        # during it. combat_end_lock orders this process's writers; it is not a substitute for that rule.
+        # during it. combat_state_lock orders this process's writers; it is not a substitute for that rule.
         combat_hold.record_spend(session.combat_state, session.player_id, spend)
         return result
 

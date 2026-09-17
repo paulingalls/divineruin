@@ -117,7 +117,7 @@ async def _start_combat_impl(
     content=db_content_queries,
 ) -> str | tuple:
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _start_combat_locked(
             context,
             encounter_id,

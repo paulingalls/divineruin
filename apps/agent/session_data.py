@@ -344,7 +344,7 @@ class SessionData:
     # commit lets a retried end pay the party twice, and a writer that took it inside a transaction
     # could hold a row a lock-holding resolver is waiting on. Combat is session-scoped and lives in
     # one process; a combat resumed by a second agent process would still need a DB-level token.
-    combat_end_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
+    combat_state_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):
     # a weapon takes 1 hit per encounter (2 on a crit vs a heavily-armored target), armed on the
