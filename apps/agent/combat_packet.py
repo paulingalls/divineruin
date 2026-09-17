@@ -159,6 +159,7 @@ async def _resolve_one_packet(
     reaction_ac_bonus: int = 0,
     reaction_save_advantage: bool = False,
     shield_reaction: str | None = None,
+    mark_cancelled: bool = False,
     publish_roll: bool = True,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
@@ -282,7 +283,7 @@ async def _resolve_one_packet(
     # A hostile mark action resolves without a roll (encounter_actions).
     if not attacker.is_ally and action_kind(action) in combat_marks.MARK_KINDS:
         kind = action_kind(action)
-        combat_marks.resolve_mark_action(state, attacker, target, kind)
+        combat_marks.resolve_mark_action(state, attacker, target, kind, cancelled=mark_cancelled)
         return {
             "actor_id": packet.actor_id,
             "resolved": True,

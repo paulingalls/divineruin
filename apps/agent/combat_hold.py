@@ -21,6 +21,7 @@ from dataclasses import replace
 
 import combat_enhancers
 import combat_marks
+import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
 import reaction_spend
@@ -226,7 +227,7 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict) -> list[dict]:
+async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -243,10 +244,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     if closed is not None and state.held_actions:
         reacted = state.held_actions[0]
         reaction_packet = combat_reaction_effect.close(
-            state, reacted, closed, attack_action=_attack_action(state, reacted)
+            state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
         if reaction_packet is not None:
             summaries.append(reaction_packet)
+        if combat_reaction_contest.hesitated(reacted):
+            summaries.append({"actor_id": reacted["actor_id"], "resolved": False, "hesitated": True})
+            state.held_actions.pop(0)
 
     while state.held_actions:
         head = state.held_actions[0]
@@ -284,7 +288,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
-            summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+            summary = await _resolve_held(
+                session,
+                state,
+                head,
+                packet_deps=packet_deps,
+                mark_cancelled=combat_reaction_contest.mark_cancelled(head),
+            )
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
@@ -344,7 +354,7 @@ def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     )
 
 
-async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dict:
+async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False) -> dict:
     """Apply one held action through the ordinary packet resolver.
 
     A rolled attack replays its held roll (see ``_replay_resolver``); everything else — a wasted
@@ -373,6 +383,7 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
             state, head, action.get("applies_condition") if action is not None else None
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         **deps,
     )
