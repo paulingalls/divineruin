@@ -132,6 +132,7 @@ async def _query_abilities_impl(
         for ability in catalog
         if ability_catalog.owns_ability(
             player_class,
+            player["level"],
             ability,
             owns_elective=ability.id in known_ids,
         )
@@ -142,7 +143,7 @@ async def _query_abilities_impl(
             ability = ability_catalog.get_ability(ability_id)
         except ValueError as error:
             raise ToolError(str(error)) from error
-        if ability_catalog.owns_ability(player_class, ability, owns_elective=True):
+        if ability_catalog.owns_ability(player_class, player["level"], ability, owns_elective=True):
             owned.append(ability)
 
     results = []

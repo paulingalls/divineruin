@@ -136,7 +136,7 @@ def test_declaration_refresh_seeds_only_owners_and_legacy_unknowns():
     assert set(refreshed.reactions_available) == {"player_1", "player_3"}
 
 
-def _start_mocks(player_class):
+def _start_mocks(player_class, player_level=6):
     mutations = MagicMock(save_combat_state=AsyncMock())
     queries = MagicMock(
         get_player=AsyncMock(
@@ -144,6 +144,7 @@ def _start_mocks(player_class):
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
+                "level": player_level,
                 "hp": {"current": 25, "max": 25},
                 "attributes": {"dexterity": 12},
                 "equipment": {},

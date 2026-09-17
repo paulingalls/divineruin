@@ -11,6 +11,8 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from livekit.agents.llm import ToolError
 
+import abilities
+import ability_persistence
 import combat_ability_save
 import combat_enhancers
 import combat_maneuver
@@ -29,6 +31,7 @@ from combat_ability import (
     _resolve_enemy_condition_packet,
     condition_ability,
 )
+from combat_ability_gate import declared_ability
 from combat_deescalation import (
     _gate_deescalation,
     _resolve_deescalation_packet,
@@ -109,6 +112,18 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
                 raise ToolError(f"Unknown player: {actor_id}")
             players_by_id[actor_id] = player
         action = decl.action
+        resolved_ability = declared_ability(action)
+        if resolved_ability is not None:
+            ability, _variant = resolved_ability
+            owned_elective = (
+                await ability_persistence.owns_elective(actor_id, ability.id, conn=conn)
+                if ability.ability_type == "elective"
+                else False
+            )
+            if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
+                actor = state.get_participant(actor_id)
+                actor_name = actor.name if actor is not None else actor_id
+                raise ToolError(f"{actor_name} hasn't learned {ability.name}.")
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
@@ -119,15 +134,16 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
             # fails loud before ANY packet resolves — never rolling back a phase that already wrote
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
-        elif (cond_ability := condition_ability(action)) is not None:
-            combat_ability_save.gate_hostile_target(state, decl, cond_ability)
-            _gate_ability_condition(player, cond_ability)
+        elif (cond_ability := condition_ability(resolved_ability)) is not None:
+            ability, _variant = cond_ability
+            combat_ability_save.gate_hostile_target(state, decl, ability)
+            _gate_ability_condition(player, ability)
             # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
             # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting
             # SSOT the spell branch uses (normalize_target_list accepts Spell | Ability).
             if decl.target_ids:
                 try:
-                    spells.normalize_target_list(cond_ability, decl.target_id, decl.target_ids)
+                    spells.normalize_target_list(ability, decl.target_id, decl.target_ids)
                 except ValueError as e:
                     raise ToolError(str(e)) from e
         else:
@@ -246,10 +262,11 @@ async def _resolve_one_packet(
         # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
         # ability-condition path — deduct its cost and land the condition on the target participant —
         # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
-        cond_ability = condition_ability(decl.action)
+        cond_ability = condition_ability(declared_ability(decl.action))
         if cond_ability is not None:
+            ability, _variant = cond_ability
             return await _resolve_ability_condition_packet(
-                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
+                session, attacker, decl, ability, state=state, conn=conn, player=player
             )
         return await _resolve_ability_packet(
             session,

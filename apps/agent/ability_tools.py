@@ -182,7 +182,7 @@ async def _request_ability_activation_unlocked(
             if ability.ability_type == "elective"
             else False
         )
-        if not abilities_mod.owns_ability(player.get("class"), ability, owns_elective=owned_elective):
+        if not abilities_mod.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
             raise ToolError(f"You haven't learned {ability.name}.")
 
         variant = None

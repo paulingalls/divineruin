@@ -102,7 +102,7 @@ async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player
     if player_class is not None:
         player = state.get_participant(player_id)
         assert player is not None, f"{player_id!r} is not in the hand-built combat"
-        player.reaction_ids = class_reaction_ids(player_class)
+        player.reaction_ids = class_reaction_ids(player_class, player.level)
         player.has_reaction_ability = bool(player.reaction_ids)
         await seed_player_with_pools(pool, player_id=player_id, class_=player_class)
     else:

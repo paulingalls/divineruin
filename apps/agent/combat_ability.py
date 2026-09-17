@@ -17,6 +17,7 @@ import combat_grapple
 import concentration_break
 import conditions
 import spell_casting
+from combat_ability_gate import DeclaredAbility
 from condition_produce import resolve_effective_targets
 from condition_restrictions import cannot_act
 from resource_costs import gate_pool
@@ -87,8 +88,8 @@ def land_condition_on_participants(
     return voiced
 
 
-def condition_ability(action: str | None) -> "abilities.Ability | None":
-    """The non-spell, condition-applying ABILITY for ``action``, or None.
+def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | None:
+    """The non-spell, condition-applying declared ability, or None.
 
     The in-combat ABILITY path resolves spells by default (via _gate_spell / _resolve_cast); a
     non-spell ability that PRODUCES a condition (M4.8 story-005, e.g. bard_inspire) takes the
@@ -96,14 +97,11 @@ def condition_ability(action: str | None) -> "abilities.Ability | None":
     ``applies_condition`` AND has no ``spell_id`` — a spell-backed condition ability keeps the
     spell path, where story-004's producer block already applies it (assumption 07d1a208794b).
     Returns None for an unknown action or any spell/non-condition ability."""
-    if action is None:
+    if resolved is None:
         return None
-    try:
-        ability = abilities.get_ability(action)
-    except ValueError:
-        return None
+    ability, _variant = resolved
     if ability.applies_condition is not None and ability.spell_id is None:
-        return ability
+        return resolved
     return None
 
 

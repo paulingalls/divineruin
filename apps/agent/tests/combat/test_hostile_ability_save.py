@@ -101,6 +101,7 @@ async def _resolve_charge(success, *, landing=True):
     with ExitStack() as stack:
         stack.enter_context(patch("check_resolution_save.roll_participant_save", save))
         stack.enter_context(patch("ability_persistence.update_player_resources", update))
+        stack.enter_context(patch("ability_persistence.owns_elective", AsyncMock(return_value=True)))
         if not landing:
             stack.enter_context(patch("combat_ability._land_condition_on_one", return_value=False))
         raw = await combat_turn._resolve_phase_impl(context, **deps)
