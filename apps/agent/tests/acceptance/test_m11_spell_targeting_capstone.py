@@ -40,7 +40,7 @@ _REVIVAL_FOCUS_COST = 5
 _NON_REVIVAL = "arcane_bolt"  # real catalog cantrip, focus_cost 0, not in REVIVAL_SPELL_IDS
 
 
-async def _seed_player(pool, player_id: str, **overrides) -> None:
+async def _seed_player(pool, player_id: str, *, known_spells: tuple[str, ...] = (), **overrides) -> None:
     """Upsert a living players.data row with a full Focus pool (so an allowed cast can spend it)."""
     data = {
         "player_id": player_id,
@@ -55,6 +55,13 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
         player_id,
         json.dumps(data),
     )
+    for spell_id in known_spells:
+        await pool.execute(
+            "INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared) "
+            "VALUES ($1, $2, 'discovery', FALSE) ON CONFLICT (player_id, spell_id) DO NOTHING",
+            player_id,
+            spell_id,
+        )
 
 
 # --- Scenario A: revival on a Hollow-killed target is refused, keyed on the TARGET (AC1) ---
@@ -63,7 +70,7 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
 async def test_revival_on_hollow_killed_target_refused_caster_untouched(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     caster_id, corpse_id = "cap_m11_a_caster", "cap_m11_a_corpse"
-    await _seed_player(pool, caster_id)  # living caster, full Focus
+    await _seed_player(pool, caster_id, known_spells=(_REVIVAL,))  # living caster, full Focus
     await _seed_player(pool, corpse_id)
     await dmr.set_hollow_killed(corpse_id, conn=pool)  # persist the corpse's flag (story-007 producer)
     assert await dmr.read_hollow_killed(corpse_id, conn=pool) is True
@@ -86,7 +93,7 @@ async def test_revival_on_hollow_killed_target_refused_caster_untouched(reset_db
 async def test_revival_on_living_target_resolves_and_spends_focus(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     caster_id, ally_id = "cap_m11_b_caster", "cap_m11_b_ally"
-    await _seed_player(pool, caster_id)
+    await _seed_player(pool, caster_id, known_spells=(_REVIVAL,))
     await _seed_player(pool, ally_id)  # living ally, not Hollow-killed
     ctx = make_context(player_id=caster_id, room=make_mock_room())
 
@@ -106,7 +113,7 @@ async def test_revival_on_living_target_resolves_and_spends_focus(reset_db_pool:
 async def test_non_revival_targeted_cast_resolves_with_target_id(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     caster_id = "cap_m11_c_caster"
-    await _seed_player(pool, caster_id)
+    await _seed_player(pool, caster_id, known_spells=(_NON_REVIVAL,))
     ctx = make_context(player_id=caster_id, room=make_mock_room())
 
     # A non-revival spell skips the revival gate entirely — the target need not be a player row

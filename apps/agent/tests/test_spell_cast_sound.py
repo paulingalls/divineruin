@@ -58,6 +58,8 @@ async def _cast(spell: Spell):
     events.publish_resonance_changed = AsyncMock()
     spells_mod = MagicMock()
     spells_mod.get_spell = MagicMock(return_value=spell)
+    library = MagicMock()
+    library.get_known = AsyncMock(return_value=[{"spell_id": spell.id}])
     with patch("spell_casting.publish_game_event", new=AsyncMock()) as publish_mock:
         raw = await _cast_spell_impl(
             ctx,
@@ -68,6 +70,7 @@ async def _cast(spell: Spell):
             resonance_mutations_mod=mutations,
             resonance_events_mod=events,
             spells_mod=spells_mod,
+            character_spells_mod=library,
         )
     return json.loads(raw), ctx, publish_mock
 
@@ -104,6 +107,8 @@ class TestCastSpellPlaySound:
         events.publish_resonance_changed = AsyncMock()
         spells_mod = MagicMock()
         spells_mod.get_spell = MagicMock(return_value=spell)
+        library = MagicMock()
+        library.get_known = AsyncMock(return_value=[{"spell_id": spell.id}])
         with (
             patch("spell_casting.publish_game_event", new=AsyncMock()) as publish_mock,
             patch("spell_casting.CastResult.flush_events", new=AsyncMock()),
@@ -117,5 +122,6 @@ class TestCastSpellPlaySound:
                 resonance_mutations_mod=mutations,
                 resonance_events_mod=events,
                 spells_mod=spells_mod,
+                character_spells_mod=library,
             )
         publish_mock.assert_not_awaited()

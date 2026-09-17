@@ -50,6 +50,7 @@ async def _cast_bless(*, caster: str, party: list[str], target_id: str):
     res_evt = MagicMock(publish_resonance_changed=AsyncMock())
     concentration_mut = MagicMock(update_player_concentration=AsyncMock())
     cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "divine_bless"}]))
     raw = await spell_casting._cast_spell_impl(
         ctx,
         "divine_bless",
@@ -61,6 +62,7 @@ async def _cast_bless(*, caster: str, party: list[str], target_id: str):
         resonance_events_mod=res_evt,
         concentration_mutations_mod=concentration_mut,
         conditions_mutations_mod=cond_mut,
+        character_spells_mod=library,
     )
     return json.loads(raw), queries, cond_mut
 

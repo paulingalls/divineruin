@@ -17,6 +17,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
+import character_spells
 import spell_casting
 from combat_ability import AbilityCastOutcome, _resolve_ability_packet
 from declarations import Declaration, DeclarationType
@@ -103,6 +104,7 @@ class TestInCombatRevivalGateE2E:
         pool = dev_db_pool
         caster_id, hollow_ally, living_ally = "s003_caster", "s003_hollow_ally", "s003_living_ally"
         await self._seed(pool, caster_id)  # living caster, full Focus
+        await character_spells.record_learned(caster_id, "divine_revivify", "discovery", conn=pool)
         await self._seed(pool, hollow_ally, hollow_killed=True)
         await self._seed(pool, living_ally)
         session = make_context(player_id=caster_id, room=make_mock_room()).userdata

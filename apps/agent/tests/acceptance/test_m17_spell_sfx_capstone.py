@@ -46,7 +46,7 @@ _MOBILE_DIR = _APPS_DIR / "mobile"
 _CANTRIPS_BY_SOURCE = ("arcane_frost_touch", "divine_sacred_flame", "primal_thorn_whip")
 
 
-async def _seed_player(pool, player_id: str, **overrides) -> None:
+async def _seed_player(pool, player_id: str, *, known_spells: tuple[str, ...] = (), **overrides) -> None:
     """Upsert a living players.data row with a full Focus pool (mirrors the M11 capstone)."""
     data = {"player_id": player_id, "class": "cleric", "level": 5, "focus": {"current": 10, "max": 10}}
     data.update(overrides)
@@ -56,6 +56,13 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
         player_id,
         json.dumps(data),
     )
+    for spell_id in known_spells:
+        await pool.execute(
+            "INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared) "
+            "VALUES ($1, $2, 'discovery', FALSE) ON CONFLICT (player_id, spell_id) DO NOTHING",
+            player_id,
+            spell_id,
+        )
 
 
 def _all_spells() -> list[spells.Spell]:
@@ -107,7 +114,7 @@ def test_registry_resolves_every_catalog_sound_id_via_bun() -> None:
 async def test_real_cast_emits_deterministic_play_sound(reset_db_pool: str, spell_id: str) -> None:
     pool = await db.get_pool()
     caster_id = f"cap_m17_{spell_id}"
-    await _seed_player(pool, caster_id)
+    await _seed_player(pool, caster_id, known_spells=(spell_id,))
     await spells.load_spells()
     spell = spells.get_spell(spell_id)
 

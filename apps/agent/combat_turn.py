@@ -12,6 +12,7 @@ from typing import Any
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import character_spells
 import check_resolution_attack
 import check_resolution_save
 import combat_hold
@@ -150,6 +151,7 @@ async def _resolve_phase_locked(
     resonance_events_mod=resonance_events,
     db_mod=db,
     cast_resolver=spell_casting,
+    character_spells_mod=character_spells,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session: SessionData = context.userdata
@@ -231,7 +233,13 @@ async def _resolve_phase_locked(
             # forever. Returns {player_id: for_update row} (the cast reuses it; each lock is taken once).
             try:
                 players_by_id = await _prevalidate_ability_focus(
-                    session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
+                    session,
+                    state,
+                    adv,
+                    conn=conn,
+                    queries=queries,
+                    cast_resolver=cast_resolver,
+                    character_spells_mod=character_spells_mod,
                 )
             except ToolError as error:
                 raise PrevalidationRefusal(error) from error

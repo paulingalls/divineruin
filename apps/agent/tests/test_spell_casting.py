@@ -64,6 +64,12 @@ def _spell(
     )
 
 
+def _known(*spell_ids: str):
+    module = MagicMock()
+    module.get_known = AsyncMock(return_value=[{"spell_id": spell_id} for spell_id in spell_ids])
+    return module
+
+
 async def _cast(
     spell: Spell,
     *,
@@ -109,6 +115,7 @@ async def _cast(
         resonance_mutations_mod=mutations,
         resonance_events_mod=events,
         spells_mod=spells_mod,
+        character_spells_mod=_known(spell.id),
     )
     return json.loads(raw), ctx, persistence, mutations, events
 
@@ -142,6 +149,7 @@ class TestCastSpellFocusGate:
                 persistence_mod=persistence,
                 resonance_mutations_mod=mutations,
                 spells_mod=spells_mod,
+                character_spells_mod=_known(spell.id),
             )
         persistence.update_player_resources.assert_not_called()
         mutations.update_player_resonance.assert_not_called()
@@ -205,6 +213,7 @@ class TestCastSpellFocusGate:
                 persistence_mod=persistence,
                 resonance_mutations_mod=mutations,
                 spells_mod=spells_mod,
+                character_spells_mod=_known(spell.id),
             )
         # Deducts nothing — the terrain failure precedes the Focus write.
         persistence.update_player_resources.assert_not_called()
@@ -386,6 +395,7 @@ async def _cast_echo(
         spells_mod=spells_mod,
         dice_mod=_dice_mod(d20),
         echo_events_mod=echo_events,
+        character_spells_mod=_known(spell.id),
         # A combat_state test wants the real resolver to read it; injecting a stub would mask it.
         **({} if combat_state is not None else {"ward_resolution_mod": ward_res}),
     )
@@ -588,6 +598,7 @@ class TestPartyWideWardedEncounter:
             resonance_mutations_mod=mutations,
             resonance_events_mod=events,
             spells_mod=spells_mod,
+            character_spells_mod=_known(spell.id),
         )
         return json.loads(raw)
 
@@ -752,6 +763,7 @@ async def _cast_racial(
         racial_mod=_racial_mod(),
         vaelti_warning_mod=vaelti_warning or MagicMock(),
         concentration_mutations_mod=concentration,
+        character_spells_mod=_known(spell.id),
     )
     return json.loads(raw), ctx, mutations, concentration, echo_events
 
@@ -975,6 +987,7 @@ class TestResolveCast:
             persistence_mod=persistence,
             resonance_mutations_mod=mutations,
             spells_mod=spells_mod,
+            character_spells_mod=_known(spell.id),
         )
 
         assert isinstance(result, CastResult)
@@ -1019,6 +1032,7 @@ class TestResolveCast:
             resonance_mutations_mod=mutations,
             concentration_mutations_mod=concentration,
             spells_mod=spells_mod,
+            character_spells_mod=_known(spell.id),
         )
 
         # concentration persisted via conn, returned for the caller to sync — NOT synced in-memory.
@@ -1057,6 +1071,7 @@ class TestResolveCast:
             resonance_mutations_mod=mutations,
             concentration_mutations_mod=concentration,
             spells_mod=spells_mod,
+            character_spells_mod=_known(spell.id),
         )
 
         # A non-concentration cast must be distinguishable from "clear concentration" (None).
@@ -1098,6 +1113,7 @@ class TestResolveCast:
             persistence_mod=persistence,
             resonance_mutations_mod=mutations,
             spells_mod=spells_mod,
+            character_spells_mod=_known(spell.id),
         )
 
         # The caster row was locked by player_2's id (its own pool), via the story-008 id-ordered

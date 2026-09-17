@@ -108,8 +108,8 @@ or re-examining a scene; kind="npc" (by id) for personality, speech style, and \
 relationship-filtered knowledge; kind="lore" (by topic) for history, gods, the Hollow, \
 races, cultures; kind="inventory" (no id) for the player's carried items; \
 kind="workspaces" (NPC id) for that NPC's per-day rental quote; \
-query_info(kind="abilities") (no id) for owned ability ids, reaction windows, and \
-active variant ids.
+query_info(kind="abilities") (no id) for owned ability ids, castable spell ids, reaction \
+windows, and active variant ids.
 
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.

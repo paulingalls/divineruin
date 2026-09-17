@@ -85,6 +85,7 @@ async def _cast_ooc_multi(
         normalize_target_list=spells.normalize_target_list,
     )
     cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}]))
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -98,6 +99,7 @@ async def _cast_ooc_multi(
         spells_mod=spells_mod,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
+        character_spells_mod=library,
     )
     return json.loads(raw), cond_mut, queries.get_player
 
@@ -402,8 +404,15 @@ async def test_declare_gate_rejects_over_cap_multitarget():
     session = make_context(player_id="caster").userdata
     queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "caster", "focus": {"current": 10, "max": 10}}))
     cast_resolver = MagicMock(_gate_spell=MagicMock(return_value=_bless3()))
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "divine_bless"}]))
 
     with pytest.raises(ToolError, match="at most 3"):
         await combat_packet._prevalidate_ability_focus(
-            session, state, adv, conn=object(), queries=queries, cast_resolver=cast_resolver
+            session,
+            state,
+            adv,
+            conn=object(),
+            queries=queries,
+            cast_resolver=cast_resolver,
+            character_spells_mod=library,
         )

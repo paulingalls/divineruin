@@ -13,6 +13,7 @@ from livekit.agents.llm import ToolError
 
 import abilities
 import ability_persistence
+import character_spells
 import combat_ability_save
 import combat_enhancers
 import combat_maneuver
@@ -20,6 +21,7 @@ import combat_marks
 import combat_resolution
 import conditions
 import spell_casting
+import spell_knowledge
 import spells
 from combat_ability import (
     AbilityCastOutcome,
@@ -77,7 +79,9 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
 
-async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver) -> dict[str, dict]:
+async def _prevalidate_ability_focus(
+    session, state, adv, *, conn, queries, cast_resolver, character_spells_mod=character_spells
+) -> dict[str, dict]:
     """Pre-validate EVERY player ABILITY declaration's ownership, active variant and cost BEFORE the
     resolution loop (AC2), one per declaring member (M14 story-004).
 
@@ -103,6 +107,7 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
     if not player_ability_packets:
         return {}
     players_by_id: dict[str, dict] = {}
+    known_spell_ids_by_player: dict[str, frozenset[str]] = {}
     for actor_id, decl in player_ability_packets:
         player = players_by_id.get(actor_id)
         if player is None:
@@ -151,7 +156,18 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
                 except ValueError as e:
                     raise ToolError(str(e)) from e
         else:
-            spell = cast_resolver._gate_spell(player, action)
+            try:
+                spells.get_spell(action)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
+            known_spell_ids = known_spell_ids_by_player.get(actor_id)
+            if known_spell_ids is None:
+                known_rows = await character_spells_mod.get_known(actor_id, conn=conn)
+                known_spell_ids = spell_knowledge.castable_spell_ids(
+                    player.get("class"), (row["spell_id"] for row in known_rows)
+                )
+                known_spell_ids_by_player[actor_id] = known_spell_ids
+            spell = cast_resolver._gate_spell(player, action, known_spell_ids)
             # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell
             # declaration HERE, before the resolution loop writes anything — reusing the targeting
             # SSOT. Spell-aware, so it belongs with the Focus gate, not in pure resolve_declaration.

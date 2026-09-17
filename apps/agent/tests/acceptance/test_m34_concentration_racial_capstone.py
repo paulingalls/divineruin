@@ -50,7 +50,7 @@ async def test_korath_primal_reduction_persists(reset_db_pool: str) -> None:
     value (not the unreduced baseline) is what persists into players.data (AC1)."""
     pool = await db.get_pool()
     player_id = "cap_m34_korath_primal"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("primal_ice_storm",))
     await _set_race(pool, player_id, "korath")
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()  # racial table FROM THE DB, not the JSON fixture
@@ -73,7 +73,12 @@ async def test_second_concentration_cast_replaces_the_first(reset_db_pool: str) 
     concentration in players.data — the first ended (single-slot overwrite, persisted) (AC2)."""
     pool = await db.get_pool()
     player_id = "cap_m34_concentration"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(
+        pool,
+        player_id=player_id,
+        focus_current=18,
+        known_spells=("arcane_fly", "arcane_invisibility"),
+    )
     await spells.load_spells()
 
     ctx = make_context(player_id)  # one session -> concentration carried across casts
@@ -109,7 +114,7 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
     Resonance drops by 3 and composes with the persisted concentration without error (AC4 E2E)."""
     pool = await db.get_pool()
     player_id = "cap_m34_draethar"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_invisibility",))
     await _set_race(pool, player_id, "draethar")
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()

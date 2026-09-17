@@ -21,6 +21,7 @@ from combat._helpers import _damage_resolver
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import character_spells
 import combat_turn
 import conditions
 import db_mutations
@@ -135,6 +136,7 @@ async def _cast_ooc(
     events = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
     cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}]))
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -147,6 +149,7 @@ async def _cast_ooc(
         spells_mod=spells_mod,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
+        character_spells_mod=library,
     )
     return json.loads(raw), cond_mut, queries.get_players_for_update
 
@@ -226,9 +229,16 @@ async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
         "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
         player_id,
         json.dumps(
-            {"player_id": player_id, "hp": {"current": 25, "max": 25}, "focus": {"current": focus, "max": focus}}
+            {
+                "player_id": player_id,
+                "class": "cleric",
+                "level": 5,
+                "hp": {"current": 25, "max": 25},
+                "focus": {"current": focus, "max": focus},
+            }
         ),
     )
+    await character_spells.record_learned(player_id, "divine_bless", "discovery", conn=pool)
 
 
 def _bless_combat_state(combat_id, caster_id, ally_id, enemy_id, *, target_id) -> CombatState:

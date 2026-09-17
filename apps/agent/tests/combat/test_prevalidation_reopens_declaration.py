@@ -6,6 +6,7 @@ from combat._helpers import _damage_resolver, _fake_db_mod
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
+import character_spells
 import combat_phase
 import combat_turn
 import db_mutations
@@ -76,6 +77,8 @@ async def test_prevalidation_refusal_reopens_persisted_phase_and_allows_retry(de
     combat_id = f"combat_s051_reset_{suffix}"
     try:
         await _seed(pool, player_id)
+        if action == "arcane_shield_spell":
+            await character_spells.record_learned(player_id, action, "discovery", conn=pool)
         state = _state(combat_id, player_id, action)
         await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
         context = make_context(player_id=player_id)
