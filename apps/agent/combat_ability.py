@@ -12,9 +12,11 @@ import abilities
 import ability_persistence
 import check_resolution_save
 import combat_enhancers
+import concentration_break
 import conditions
 import spell_casting
 from condition_produce import resolve_effective_targets
+from condition_restrictions import cannot_act
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -220,6 +222,7 @@ async def _resolve_enemy_condition_packet(
     state,
     conn,
     save_resolver=check_resolution_save,
+    concentration_break_mod=concentration_break,
     reaction_save_advantage: bool = False,
 ) -> dict:
     """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
@@ -274,6 +277,12 @@ async def _resolve_enemy_condition_packet(
     # uses) so the target-id/self-fallback + immunity wiring lives in one place.
     elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
         summary["condition_inflicted"] = cond_type
+        if target.type == "player" and cannot_act(({"type": cond_type},)):
+            broken = await concentration_break_mod.break_concentration_on_incapacitation(
+                session, target.id, combat_state=state, conn=conn
+            )
+            if broken is not None:
+                summary["concentration_broken"] = broken
     else:
         summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
     return summary

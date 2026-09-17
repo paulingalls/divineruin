@@ -15,6 +15,7 @@ from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
 import check_resolution_attack
+import concentration_break
 from combat_packet import _resolve_one_packet, _resolve_tick_saves
 from combat_phase import ResolutionPacket
 from conditions import apply_condition, tick_conditions
@@ -53,6 +54,11 @@ async def test_declared_hold_person_resolves_through_the_save_never_an_attack(sa
         initiative=10,
     )
 
+    break_mod = MagicMock(
+        break_concentration_on_damage=AsyncMock(return_value=None),
+        break_concentration_on_incapacitation=AsyncMock(return_value=None),
+    )
+
     with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=save_face)):
         summary = await _resolve_one_packet(
             make_context().userdata,
@@ -61,12 +67,50 @@ async def test_declared_hold_person_resolves_through_the_save_never_an_attack(sa
             mutations=MagicMock(update_player_hp=AsyncMock()),
             queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
             resolver=check_resolution_attack,
-            concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
+            concentration_break_mod=break_mod,
         )
 
     assert summary.get(outcome) == "paralyzed"
+    assert break_mod.break_concentration_on_incapacitation.await_count == (outcome == "condition_inflicted")
     assert "attacks" not in summary
     assert player.hp_current == hp_before
+
+
+@pytest.mark.asyncio
+async def test_hold_person_breaks_a_concentrating_players_spell():
+    state = _make_combat_state()
+    enemy = state.get_participant("goblin_scout_1")
+    player = state.get_participant("player_1")
+    assert enemy is not None and player is not None
+    enemy.action_pool = [_hold_person()]
+    session = make_context().userdata
+    session.concentration.spell_id = "divine_bless"
+    persist = AsyncMock()
+    packet = ResolutionPacket(
+        actor_id=enemy.id,
+        declaration=Declaration(type=DeclarationType.ATTACK, action="Hold Person", target_id=player.id),
+        initiative=10,
+    )
+
+    with (
+        patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)),
+        patch.object(concentration_break.db_mutations_concentration, "update_player_concentration", persist),
+    ):
+        summary = await _resolve_one_packet(
+            session,
+            state,
+            packet,
+            mutations=MagicMock(update_player_hp=AsyncMock()),
+            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            resolver=check_resolution_attack,
+            concentration_break_mod=concentration_break,
+            conn="phase-conn",
+        )
+
+    assert summary["condition_inflicted"] == "paralyzed"
+    assert summary["concentration_broken"] == "divine_bless"
+    assert session.concentration.spell_id is None
+    persist.assert_awaited_once_with("player_1", None, conn="phase-conn")
 
 
 def test_paralysis_surfaces_a_wisdom_re_save_at_each_wrap():

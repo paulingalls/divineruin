@@ -1,18 +1,4 @@
-"""Concentration break-on-damage consumer (story-008, M3.4).
-
-The single production consumer of the pure concentration engine (concentration.py): when a
-concentrating player takes damage, roll a CON save (DC scales with the damage) and end
-concentration on a failed save — or automatically when the damage leaves them incapacitated.
-Called from every combat damage site (enemy attacks in combat_turn, the Draethar inner_fire
-self-damage), so the break logic lives here ONCE rather than duplicated at each.
-
-The pure engine stays content-/IO-agnostic in concentration.py (check_concentration computes the
-DC, concentration_holds owns the keep/break decision incl. the incapacitation auto-fail); this
-module does the I/O the engine can't — the player fetch, the canonical CON save roll
-(check_resolution_save.resolve_saving_throw, proficiency-aware), and the persisted end. There is no
-concentration HUD element, so the break is returned for the caller to surface in its DM-facing
-response rather than pushed as a (consumer-less) client event.
-"""
+"""Persist and surface concentration ending from damage or incapacitating conditions."""
 
 import check_resolution_save
 import concentration
@@ -81,8 +67,8 @@ async def break_concentration_on_damage(
             # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
             return None
         # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
-        # lowers it, Stunned/Paralyzed auto-fail it. Conditions live on the in-memory
-        # CombatParticipant, not the DB player row; out of combat there are none ([]).
+        # lowers it. Conditions live on the in-memory CombatParticipant, not the DB player row;
+        # out of combat there are none ([]).
         participant = cstate.get_participant(damaged_player_id) if cstate else None
         player["conditions"] = participant.conditions if participant is not None else []
         # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
@@ -94,10 +80,54 @@ async def break_concentration_on_damage(
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None
 
+    return await _end_concentration(
+        session,
+        damaged_player_id,
+        combat_state=combat_state,
+        conn=conn,
+        concentration_mutations=concentration_mutations,
+        spells_mod=spells_mod,
+    )
+
+
+async def break_concentration_on_incapacitation(
+    session: SessionData,
+    player_id: str,
+    *,
+    combat_state,
+    conn,
+    concentration_mutations=db_mutations_concentration,
+    spells_mod=spells,
+) -> str | None:
+    return await _end_concentration(
+        session,
+        player_id,
+        combat_state=combat_state,
+        conn=conn,
+        concentration_mutations=concentration_mutations,
+        spells_mod=spells_mod,
+    )
+
+
+async def _end_concentration(
+    session: SessionData,
+    player_id: str,
+    *,
+    combat_state,
+    conn,
+    concentration_mutations,
+    spells_mod,
+) -> str | None:
+    member = session.member_state(player_id)
+    spell_id = member.concentration.spell_id
+    if spell_id is None:
+        return None
+    cstate = combat_state if combat_state is not None else session.combat_state
+
     # Persist the end BEFORE clearing the in-memory SSOT (mirrors cast_spell's commit-then-sync):
     # a failed write leaves the member's concentration intact rather than diverging from the DB,
     # which would otherwise re-populate the old spell on the next session reload.
-    await concentration_mutations.update_player_concentration(damaged_player_id, None, conn=conn)
+    await concentration_mutations.update_player_concentration(player_id, None, conn=conn)
     member.concentration.spell_id = None
 
     # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
@@ -111,7 +141,7 @@ async def break_concentration_on_damage(
     # indistinguishable `blessed` instance: stripping on the first break silently negated the
     # second caster's live spell. The buff outlives this break because someone is still holding it up.
     applied = spells_mod.get_spell(spell_id).applies_condition
-    still_held = _another_member_sustains(session, damaged_player_id, applied, spells_mod) if applied else False
+    still_held = _another_member_sustains(session, player_id, applied, spells_mod) if applied else False
     if applied is not None and cstate is not None and not still_held:
         for participant in cstate.participants:
             participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
