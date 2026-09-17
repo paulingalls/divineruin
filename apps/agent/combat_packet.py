@@ -11,6 +11,7 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from livekit.agents.llm import ToolError
 
+import combat_ability_save
 import combat_enhancers
 import combat_marks
 import combat_resolution
@@ -118,6 +119,7 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
         elif (cond_ability := condition_ability(action)) is not None:
+            combat_ability_save.gate_hostile_target(state, decl, cond_ability)
             _gate_ability_condition(player, cond_ability)
             # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
             # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting

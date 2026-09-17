@@ -13,6 +13,15 @@ import { getSpell } from "./spells.ts";
 // variable/pool costs (Lay on Hands, Divine Smite) carry their rule in scaling free-text.
 
 const ABILITY_TYPES = new Set<AbilityType>(["core", "reaction", "elective"]);
+const ATTRIBUTE_KEYS = new Set([
+  "strength",
+  "dexterity",
+  "constitution",
+  "intelligence",
+  "wisdom",
+  "charisma",
+]);
+const SAVE_KEYS = new Set([...ATTRIBUTE_KEYS, "str", "dex", "con", "int", "wis", "cha"]);
 
 // Closed vocabulary for a reaction ability's trigger window (story-001), parity with
 // abilities.py's _REACTION_WINDOWS.
@@ -98,6 +107,27 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
   }
   const spellId = data.spell_id;
 
+  const hasSave = "save" in data;
+  const hasDcAttribute = "dc_attribute" in data;
+  if (hasSave !== hasDcAttribute) {
+    const missing = hasSave ? "dc_attribute" : "save";
+    throw new Error(`${ctx}.${missing} is required with its save field partner`);
+  }
+  if (hasSave && typeof data.applies_condition !== "string") {
+    throw new Error(`${ctx}.applies_condition is required with save fields`);
+  }
+  if (hasSave && (typeof data.save !== "string" || !SAVE_KEYS.has(data.save.toLowerCase()))) {
+    throw new Error(`${ctx}.save ${JSON.stringify(data.save)} is invalid`);
+  }
+  if (
+    hasDcAttribute &&
+    (typeof data.dc_attribute !== "string" || !ATTRIBUTE_KEYS.has(data.dc_attribute))
+  ) {
+    throw new Error(`${ctx}.dc_attribute ${JSON.stringify(data.dc_attribute)} is invalid`);
+  }
+  const appliesCondition =
+    typeof data.applies_condition === "string" ? data.applies_condition : undefined;
+
   // story-001: window is required iff reaction, forbidden otherwise — a stray/typo'd
   // key on a non-reaction row must fail loud rather than be silently ignored.
   let window: ReactionWindow | undefined;
@@ -120,6 +150,9 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
     effect: data.effect,
     narration_cue: data.narration_cue,
     spell_id: spellId,
+    applies_condition: appliesCondition,
+    save: hasSave ? (data.save as string) : undefined,
+    dc_attribute: hasDcAttribute ? (data.dc_attribute as string) : undefined,
     window,
   };
 }

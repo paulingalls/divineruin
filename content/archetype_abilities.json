@@ -119,7 +119,10 @@
     "level_requirement": 8,
     "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Double-speed move in a straight line + attack. Target STR save or knocked prone.",
-    "narration_cue": "A thundering rush that bowls the enemy off their feet."
+    "narration_cue": "A thundering rush that bowls the enemy off their feet.",
+    "applies_condition": "prone",
+    "save": "strength",
+    "dc_attribute": "strength"
   },
   {
     "id": "warrior_whirlwind",

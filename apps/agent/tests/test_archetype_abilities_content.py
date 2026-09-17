@@ -89,12 +89,7 @@ SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
 # trigger event. Reaction rows are never spell-backed (spell-backed rows are always core).
 REACTION_KEYS = REQUIRED_KEYS | {"window"}
 
-# Optional producer fields (Python-agent-only — the TS server loader ignores them): a row that
-# grants a beneficial condition carries applies_condition (M4.8 story-005), and a multi-target
-# condition ability also carries max_targets (M4.8 story-016, e.g. bard_mass_inspire). Allowed on
-# top of the required set; the "no typo'd key" guarantee still holds (only these known optionals are
-# permitted extra). parse_ability_row fail-louds bad values separately.
-OPTIONAL_KEYS = {"applies_condition", "max_targets"}
+OPTIONAL_KEYS = {"applies_condition", "max_targets", "save", "dc_attribute"}
 
 SPELLS_JSON = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 

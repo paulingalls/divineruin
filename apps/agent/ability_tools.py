@@ -139,6 +139,9 @@ async def _request_ability_activation_unlocked(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    if ability.save is not None:
+        raise ToolError("A charge needs a foe — use it in a fight.")
+
     # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through
     # the SAME normalize_target_list SSOT the spell + in-combat-ability paths use (rejects both-args /
     # over-cap / empty / a single-target ability mass-targeted). BEFORE any resource write.
