@@ -33,6 +33,15 @@ _TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
 
 
+def _player_chassis(archetype: str) -> archetypes.Chassis:
+    """ADR 0002: a player row carrying no known archetype surfaces to the LLM as a
+    ToolError, the way the TS route answers the same row with a 400."""
+    try:
+        return archetypes.get_archetype_chassis(archetype)
+    except ValueError as exc:
+        raise ToolError(f"Unknown archetype: {archetype!r}") from exc
+
+
 async def _query_training_programs_impl(
     context: RunContext[SessionData],
     *,
@@ -91,7 +100,7 @@ async def _initiate_training_cycle_impl(
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
         archetype = player.get("class", "")
-        chassis = archetypes.get_archetype_chassis(archetype)
+        chassis = _player_chassis(archetype)
         try:
             spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
         except ValueError as exc:

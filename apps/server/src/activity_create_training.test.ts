@@ -95,6 +95,9 @@ describe("handleCreateActivity training", () => {
     expect(((await res.json()) as { error: string }).error).toContain("program_id");
   });
 
+  // Both refusals below assert their MESSAGE, not just the 400: an absent spell_id and a
+  // non-string one both reach getSpell() and 400 as "Unknown spell", so a status-only
+  // assertion passes with the guard deleted (constraint 1).
   test("rejects spell training without spell_id before insert", async () => {
     const res = await handleCreateActivity(
       makeRequest("POST", "/api/activities", {
@@ -105,6 +108,7 @@ describe("handleCreateActivity training", () => {
     );
 
     expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("spell_id is required");
     expect(trainingInserts()).toHaveLength(0);
   });
 
@@ -119,6 +123,7 @@ describe("handleCreateActivity training", () => {
     );
 
     expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("non-empty string");
     expect(trainingInserts()).toHaveLength(0);
   });
 

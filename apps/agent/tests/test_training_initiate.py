@@ -337,6 +337,14 @@ class TestSpellTrainingStartWall:
             pytest.param(
                 SAMPLE_SPELL_PROGRAM,
                 "arcane_hold_person",
+                {"class": "not_an_archetype", "level": 3},
+                [],
+                "Unknown archetype",
+                id="unknown-archetype",
+            ),
+            pytest.param(
+                SAMPLE_SPELL_PROGRAM,
+                "arcane_hold_person",
                 {"class": "mage", "level": 3},
                 [{"spell_id": "arcane_hold_person"}],
                 "already knows",

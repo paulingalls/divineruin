@@ -72,6 +72,11 @@ def test_experiment_variant_unzips_its_materials_into_the_positional_lists():
 
 
 def test_variant_optional_fields_are_pinned():
+    """ADR 0008 decision 1 says variants carry only REQUIRED fields; Training.spell_id is
+    the one sanctioned exception (story-065 card: one union slot, pinned in
+    test_strict_tool_budget). An optional is a slot the budget walker cannot explain, so
+    this inventory replaces the old blanket ban — adding another needs the same sanction.
+    """
     optional = {
         variant.__name__: {name for name, field in variant.model_fields.items() if not field.is_required()}
         for variant in ACTIVITY_VARIANTS
