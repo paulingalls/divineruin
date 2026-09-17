@@ -107,6 +107,43 @@ test("a running spell cycle is included as an active-only training program", asy
   ).toBe(true);
 });
 
+// learn(kind="variant") writes variant_id and no program_id, and no training program carries
+// technique_mentor_variant — so this row has no program row of its own to sit on, and it holds
+// the training slot all the same.
+test("a running mentor-variant cycle is active on a row of its own", async () => {
+  const startTime = "2026-09-17T09:00:00.000Z";
+  const resolveAt = "2026-09-17T14:00:00.000Z";
+  setQueryStubs([
+    {
+      match: /FROM training_activities[\s\S]*state != 'complete'/,
+      result: [
+        {
+          data: {
+            variant_id: "warrior_cleaving_blow_drathian",
+            ability_id: "warrior_cleaving_blow",
+            first_half_seconds: 18000,
+          },
+          activity_type: "technique_mentor_variant",
+          state: "running_first_half",
+          created_at: startTime,
+          transition_at: resolveAt,
+        },
+      ],
+    },
+  ]);
+
+  const items = await getTrainingItems();
+  const activeItems = items.filter((item) => item.active !== null);
+
+  expect(activeItems).toMatchObject([
+    {
+      id: "warrior_cleaving_blow_drathian",
+      name: "Warrior Cleaving Blow Drathian",
+      active: { startTime, resolveAtEstimate: resolveAt },
+    },
+  ]);
+});
+
 // Durations must match the spec's Errand Types table
 // (docs/game_mechanics/game_mechanics_core.md L824-829), expressed in seconds.
 // Templates are now DB-loaded from content/errand_templates.json; the fixture
