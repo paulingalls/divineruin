@@ -108,8 +108,8 @@ or re-examining a scene; kind="npc" (by id) for personality, speech style, and \
 relationship-filtered knowledge; kind="lore" (by topic) for history, gods, the Hollow, \
 races, cultures; kind="inventory" (no id) for the player's carried items; \
 kind="workspaces" (NPC id) for that NPC's per-day rental quote; \
-query_info(kind="abilities") (no id) for owned ability ids, reaction windows, and \
-active variant ids.
+query_info(kind="abilities") (no id) for owned ability ids, castable spell ids, reaction \
+windows, and active variant ids.
 
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.
@@ -384,8 +384,9 @@ the player returns.
 
 For training: when the player asks what they can learn, call query_info(kind=\
 "training_programs") to see what this mentor offers — don't guess at program names. \
-To begin, call begin_activity with kind="training" and a program id from that list. A \
-cycle has a midpoint where the player chooses how to focus; when they decide, call \
+To begin, call begin_activity with kind="training" and a program id from that list, but \
+only once the player says to start: interest or a question gets the mentor's offer and a \
+question back, never a started cycle. A cycle has a midpoint where the player chooses how to focus; when they decide, call \
 resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
 and the feel of the work — never read out program ids or raw mechanics. The resolve \
 call returns state="running_second_half" and narration_cue. Speak the returned \

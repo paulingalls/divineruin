@@ -8,6 +8,7 @@ from sample_fixtures import make_context
 
 import combat_phase
 import combat_turn
+import reaction_gate
 import reaction_spend
 from combat_init import _start_combat_impl
 from session_data import CombatParticipant, CombatState
@@ -135,7 +136,7 @@ def test_declaration_refresh_seeds_only_owners_and_legacy_unknowns():
     assert set(refreshed.reactions_available) == {"player_1", "player_3"}
 
 
-def _start_mocks(player_class):
+def _start_mocks(player_class, player_level=6):
     mutations = MagicMock(save_combat_state=AsyncMock())
     queries = MagicMock(
         get_player=AsyncMock(
@@ -143,6 +144,7 @@ def _start_mocks(player_class):
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
+                "level": player_level,
                 "hp": {"current": 25, "max": 25},
                 "attributes": {"dexterity": 12},
                 "equipment": {},
@@ -238,9 +240,9 @@ async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
     assert downed is not None
     downed.is_fallen = True
 
-    assert combat_phase.offered_reactions(paused) == []
+    assert reaction_gate.offered_reactions(paused) == []
     with pytest.raises(ValueError, match="down"):
-        combat_phase.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
+        reaction_gate.validate_reaction_activation(paused, "player_1", "rogue_uncanny_dodge")
 
 
 def test_a_stored_reaction_id_the_catalog_does_not_know_fails_loud():
@@ -250,7 +252,7 @@ def test_a_stored_reaction_id_the_catalog_does_not_know_fails_loud():
     player.reaction_ids = ["rogue_no_such_reaction"]
 
     with pytest.raises(ValueError, match="Unknown ability"):
-        combat_phase.offered_reactions(state)
+        reaction_gate.offered_reactions(state)
 
 
 @pytest.mark.asyncio

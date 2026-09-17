@@ -6,15 +6,20 @@ from dataclasses import asdict, replace
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
+import combat_ability
+import combat_grapple
 import combat_resolution
 import concentration_break
 import conditions
 import db_mutations
 import db_queries
 import event_types as E
+import reaction_windows
 from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
+from condition_restrictions import cannot_act
 from dramatic import DramaticContext, evaluate_dramatic_context
+from encounter_actions import action_kind
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -38,7 +43,15 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "hp_status": combat_resolution.hp_threshold_status(p.hp_current, p.hp_max),
         "ac": p.ac,
         "is_fallen": p.is_fallen,
+        "cannot_act": list(cannot_act(p.conditions)),
+        "prone": conditions.has_condition(p.conditions, "prone"),
+        "grappled_by": combat_grapple.grappler_id(p.conditions),
         "actions": [action["name"] for action in p.action_pool],
+        "mark_actions": [
+            {"name": action["name"], "kind": action_kind(action)}
+            for action in p.action_pool
+            if action_kind(action) != "attack"
+        ],
     }
 
 
@@ -68,13 +81,14 @@ async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: Even
 
 def _handle_hp_zero(
     session: SessionData,
+    combat_state: CombatState | None,
     target: CombatParticipant,
     *,
     overkill: int,
     was_fallen: bool,
     hp_status: str,
     sounds: list[str],
-) -> tuple[str, bool]:
+) -> tuple[str, bool, list[str]]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
     The ONE door for every zero-HP transition, whether the damage came from a blow or from the
@@ -84,10 +98,8 @@ def _handle_hp_zero(
 
     ``overkill`` is the excess damage past 0. Mutates ``target`` in place
     (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
-    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
-    ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
-    HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
-    the DM to narrate the corpse rising instead of the target falling."""
+    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns the HP
+    status, whether a Hollowed rose, and ids released from this target's grapples."""
     if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
         # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
         # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
@@ -103,9 +115,10 @@ def _handle_hp_zero(
         target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
         hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
         sounds.append(SOUND_HOLLOW_RISE)
-        return hp_status, True
+        return hp_status, True, []
 
     target.is_fallen = True
+    released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
     # _wrap reads it to end combat without a death-save beat. This is the one site with both
@@ -115,11 +128,10 @@ def _handle_hp_zero(
     if not was_fallen and overkill >= target.hp_max:
         target.is_dead = True
     sounds.append(SOUND_PLAYER_FALLEN)
-    # Handle companion KO
     if target.type == "companion" and session.companion and target.id == session.companion.id:
         session.companion.is_conscious = False
         session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
-    return hp_status, False
+    return hp_status, False, released
 
 
 async def _resolve_attack_packet(
@@ -130,6 +142,7 @@ async def _resolve_attack_packet(
     *,
     target_ac_bonus: int = 0,
     shield_reaction: str | None = None,
+    grapple_blocked: bool = False,
     enemies_remaining: int | None = None,
     is_first_attack_of_combat: bool = False,
     mutations=db_mutations,
@@ -165,7 +178,7 @@ async def _resolve_attack_packet(
         is_first_attack_of_combat=is_first_attack_of_combat,
         resolver=resolver,
     )
-    return await apply_attack_result(
+    summary = await apply_attack_result(
         session,
         attacker,
         action,
@@ -181,6 +194,15 @@ async def _resolve_attack_packet(
         sink=sink,
         publish_roll=publish_roll,
     )
+    if (
+        attack_result.hit
+        and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])
+        and not grapple_blocked
+        and combat_state is not None
+        and combat_ability._land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id)
+    ):
+        summary["condition_inflicted"] = "grappled"
+    return summary
 
 
 def roll_attack(
@@ -218,6 +240,7 @@ def roll_attack(
         action,
         effective_ac,
         target.hp_current,
+        target_conditions=target.conditions,
         # Encounter-role overlay (M4.7, story-001): a role-derived attacker carries a flat to-hit
         # bonus and a damage multiplier (Elite/Boss boost, Minion soften). Players carry identity
         # defaults, so the player attack path is unchanged.
@@ -322,7 +345,6 @@ async def apply_attack_result(
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
 
-    # Determine sounds
     sounds: list[str] = []
     if attack_result.critical_success:
         sounds.append(SOUND_ATTACK_CRITICAL)
@@ -334,9 +356,11 @@ async def apply_attack_result(
     # Check HP thresholds
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
+    released_from_grapple: list[str] = []
     if target.hp_current <= 0:
-        hp_status, rose_hollowed = _handle_hp_zero(
+        hp_status, rose_hollowed, released_from_grapple = _handle_hp_zero(
             session,
+            combat_state,
             target,
             overkill=overkill,
             was_fallen=was_fallen,
@@ -432,6 +456,8 @@ async def apply_attack_result(
         # instead of felling them — the DM narrates the corpse rising.
         "target_rose_hollowed": rose_hollowed,
     }
+    if released_from_grapple:
+        response["released_from_grapple"] = released_from_grapple
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
         attacker.name,

@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 
 from livekit import rtc
 
+import combat_reaction_contest
 import reaction_spend
+import reaction_windows
 from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
@@ -115,6 +117,7 @@ class CombatParticipant:
     # The class catalog's reaction ids: a participant carries no class, and the DM must be handed
     # an exact id at a window.
     reaction_ids: list[str] = field(default_factory=list)
+    prone_immunity: str | None = None
 
     @property
     def is_ally(self) -> bool:
@@ -171,6 +174,7 @@ class CombatState:
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
+    focus_marks: dict[str, dict[str, str]] = field(default_factory=dict)
     # Combat-scoped (NOT phase-scoped): flips True after the first attack of the whole
     # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
     # signal so the opening strike earns the dice (story-004).
@@ -222,6 +226,8 @@ class CombatState:
         rows written before they existed fall back to the dataclass defaults via data.get(...).
         ``beat`` stays a plain str — combat_phase is NOT imported here, to avoid the
         session_data <-> combat_phase cycle the class docstring notes."""
+        reactions_available = reaction_spend.normalize(data.get("reactions_available", {}))
+        held_actions = combat_reaction_contest.normalize_held_actions(data.get("held_actions", []), reactions_available)
         return cls(
             combat_id=data["combat_id"],
             participants=[CombatParticipant(**p) for p in data["participants"]],
@@ -236,8 +242,9 @@ class CombatState:
             pending_declarations=reaction_spend.drop_pre_declared_reactions(data.get("pending_declarations", {})),
             # Normalized, not passed through: rows written before story-017 carry dict[str, bool]
             # on the field story-018 reads for the reaction binding (see reaction_spend.normalize).
-            reactions_available=reaction_spend.normalize(data.get("reactions_available", {})),
+            reactions_available=reactions_available,
             ac_modifiers=data.get("ac_modifiers", {}),
+            focus_marks=data.get("focus_marks", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
@@ -245,8 +252,10 @@ class CombatState:
             veil_ward=data.get("veil_ward"),
             # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
-            held_actions=data.get("held_actions", []),
-            open_window=data.get("open_window"),
+            held_actions=held_actions,
+            open_window=reaction_windows.upgrade_legacy_window(
+                data.get("open_window"), data.get("held_actions", []), data["participants"]
+            ),
         )
 
 

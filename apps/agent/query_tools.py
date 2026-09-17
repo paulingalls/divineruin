@@ -10,10 +10,13 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import character_spells
 import crafting_tools
 import db_content_queries
 import db_queries
 import recipe_tools
+import spell_knowledge
+import spells
 import training_tools
 from db_errors import db_tool
 from session_data import SessionData
@@ -67,7 +70,7 @@ async def query_info(
     - kind="training_programs": available training programs (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
-    - kind="abilities": the current player's owned ability ids, reaction windows,
+    - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed)."""
     return await _query_info_impl(context, kind, target_id)
 
@@ -110,6 +113,9 @@ async def _query_abilities_impl(
     queries=db_queries,
     persistence=ability_persistence,
     ability_catalog=abilities,
+    character_spells_mod=character_spells,
+    spell_knowledge_mod=spell_knowledge,
+    spell_catalog=spells,
 ) -> str:
     session: SessionData = context.userdata
     player = await queries.get_player(session.player_id)
@@ -119,6 +125,8 @@ async def _query_abilities_impl(
 
     known_rows = await persistence.get_character_abilities(session.player_id)
     known_ids = {row["ability_id"] for row in known_rows}
+    library_rows = await character_spells_mod.get_known(session.player_id)
+    castable_ids = spell_knowledge_mod.castable_spell_ids(player_class, (row["spell_id"] for row in library_rows))
 
     # An archetype with no catalog rows means an unknown class or an unloaded catalog, never a
     # classed character who owns nothing — returning [] would tell the DM the player has no
@@ -132,6 +140,7 @@ async def _query_abilities_impl(
         for ability in catalog
         if ability_catalog.owns_ability(
             player_class,
+            player["level"],
             ability,
             owns_elective=ability.id in known_ids,
         )
@@ -142,7 +151,7 @@ async def _query_abilities_impl(
             ability = ability_catalog.get_ability(ability_id)
         except ValueError as error:
             raise ToolError(str(error)) from error
-        if ability_catalog.owns_ability(player_class, ability, owns_elective=True):
+        if ability_catalog.owns_ability(player_class, player["level"], ability, owns_elective=True):
             owned.append(ability)
 
     results = []
@@ -155,7 +164,16 @@ async def _query_abilities_impl(
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id
         results.append(row)
-    return json.dumps({"abilities": results})
+    spell_rows = []
+    for spell_id in sorted(castable_ids):
+        try:
+            spell = spell_catalog.get_spell(spell_id)
+        except ValueError as error:
+            raise ToolError(str(error)) from error
+        spell_rows.append(
+            {"id": spell.id, "name": spell.name, "tier": spell.spell_tier, "focus_cost": spell.focus_cost}
+        )
+    return json.dumps({"abilities": results, "spells": spell_rows})
 
 
 async def _query_location_impl(

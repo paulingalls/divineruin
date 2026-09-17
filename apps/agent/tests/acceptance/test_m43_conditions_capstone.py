@@ -24,6 +24,7 @@ from unittest.mock import patch
 from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _resolve_round, _start_combat
 from sample_fixtures import make_context, make_mock_room
 
+import combat_turn
 import conditions
 import db
 import db_mutations
@@ -98,7 +99,9 @@ async def test_beat4_wrap_expires_and_clears_then_persists(reset_db_pool: str) -
     ctx = make_context(player_id, room=make_mock_room())
     try:
         await _start_combat(pool, player_id, state, ctx)
-        await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
+        await combat_turn._declare_phase_impl(
+            ctx, {"goblin_a": {"type": "attack", "action": "Scimitar", "target_id": player_id}}
+        )
         with patch("check_resolution.dice_roll", return_value=_d20(20)):  # WIS save succeeds (>= DC 10)
             await _resolve_round(ctx)
 
@@ -130,7 +133,9 @@ async def test_beat4_failed_save_keeps_frightened(reset_db_pool: str) -> None:
     ctx = make_context(player_id, room=make_mock_room())
     try:
         await _start_combat(pool, player_id, state, ctx)
-        await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
+        await combat_turn._declare_phase_impl(
+            ctx, {"goblin_a": {"type": "attack", "action": "Scimitar", "target_id": player_id}}
+        )
         with patch("check_resolution.dice_roll", return_value=_d20(1)):  # WIS save fails (< DC 10)
             await _resolve_round(ctx)
 

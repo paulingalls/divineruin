@@ -90,7 +90,7 @@ async def test_activate_routes_a_spell_id_and_accrues_resonance(reset_db_pool: s
     pool = await db.get_pool()
     player_id = "cap_m25_activate_spell"
     try:
-        await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+        await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_fireball",))
         await spells.load_spells()
         spell = spells.get_spell("arcane_fireball")
         expected_gen = spell.resonance_by_source[spell.source]

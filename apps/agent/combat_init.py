@@ -14,6 +14,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import check_resolution_save
 import combat_enhancers
+import combat_grapple
 import combat_resolution
 import conditions
 import db_content_queries
@@ -41,11 +42,14 @@ from tool_support import SOUND_COMBAT_START
 logger = logging.getLogger("divineruin.tools")
 
 
-def class_reaction_ids(player_class: str) -> list[str]:
+def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
     """A class's catalog reaction ids. The capstone harness hand-builds its combat and calls this too,
     so a harness player cannot silently lack the ids a real one is handed at a window."""
     return [
-        ability.id for ability in abilities.get_archetype_abilities(player_class) if ability.ability_type == "reaction"
+        ability.id
+        for ability in abilities.get_archetype_abilities(player_class)
+        if ability.ability_type == "reaction"
+        and abilities.owns_ability(player_class, player_level, ability, owns_elective=False)
     ]
 
 
@@ -59,14 +63,15 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
     accepts (check_resolution_save.is_valid_save_key, one SSOT so the load-gate and runtime agree);
     (3) ``dc`` is an int; (4) ``damage`` is absent or "0" — M13 condition actions are save-based, and
     the resolver does not apply damage, so a damage-bearing condition action would silently deal none
-    (debt 5b18023ef5a5) until the combined to-hit+save+damage model lands. Validating HERE turns a
+    (debt 69132c5d) until the combined to-hit+save+damage model lands. Validating HERE turns a
     would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
+            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            combat_grapple.validate_grapple_action(action, label)
             cond = action.get("applies_condition")
             if cond is None:
                 continue
-            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
             conditions.assert_known_condition(cond, label)
             if not check_resolution_save.is_valid_save_key(action.get("save")):
                 raise ValueError(
@@ -77,7 +82,7 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
             if action.get("damage") not in (None, "", "0", 0):
                 raise ValueError(
                     f"{label} condition action must be save-based (damage absent or '0') until the "
-                    f"combined damage+condition model lands (debt 5b18023ef5a5), got damage {action.get('damage')!r}"
+                    f"combined damage+condition model lands (debt 69132c5d), got damage {action.get('damage')!r}"
                 )
 
 
@@ -285,7 +290,8 @@ async def _start_combat_locked(
             validated_conditions,
             rules_engine.exhaustion_stack_cap(row),
         )
-        reaction_ids = class_reaction_ids(player_class)
+        player_level = row["level"]
+        reaction_ids = class_reaction_ids(player_class, player_level)
         participants.append(
             CombatParticipant(
                 id=mid,
@@ -296,7 +302,7 @@ async def _start_combat_locked(
                 hp_max=row_hp.get("max", 1),
                 ac=row.get("ac", 10),
                 attributes=row.get("attributes", {}),
-                level=row.get("level", 1),
+                level=player_level,
                 action_pool=row_action_pool,
                 # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
                 # extra_attack is grantable today; the rest populate when their grants land.
@@ -304,6 +310,7 @@ async def _start_combat_locked(
                 conditions=row_conditions,
                 has_reaction_ability=bool(reaction_ids),
                 reaction_ids=reaction_ids,
+                prone_immunity=rules_engine.prone_immunity(row),
                 # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
                 # the participant so resolve_saving_throw adds the bonus when an enemy imposes
                 # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).

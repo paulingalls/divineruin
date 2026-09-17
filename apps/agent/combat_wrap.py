@@ -1,19 +1,24 @@
 """Beat 4 — the phase wrap, and the ``next`` envelope the DM reads (M29, story-016).
 
-Split out of combat_turn.py, which took the two-commit Beat-3 hold and the 500-line ceiling in the
-same change. Both pieces belong to the END of a round rather than to its orchestration:
+Both pieces belong to the END of a round rather than to its orchestration:
 ``_wrap_phase`` runs exactly once per round, in the LAST commit, and ``next_envelope`` says what
 the DM does after whichever commit just landed.
 """
 
+from dataclasses import replace
+
+import combat_grapple
 import combat_phase
+import conditions
 import event_types as E
 import fatigue_narration
+import reaction_gate
 from combat_ability import _find_action
 from combat_end import _end_combat_db
 from combat_events import emit_or_publish
 from combat_packet import _resolve_tick_saves
 from combat_ui_update import build_combat_ui_update
+from condition_restrictions import cannot_act
 from declarations import DeclarationType, resolve_declaration
 from session_data import SessionData
 
@@ -33,9 +38,9 @@ def _held_action_name(state) -> str | None:
 def next_envelope(state) -> dict:
     """What the DM does next: the phase, the verb that ADVANCES it, and the open window (ADR 0008 d4).
 
-    This is the window PRODUCER (constraint 6). Sprint 45 shipped a gate keyed on a reaction
-    ``window`` the DM had to guess among nine members of abilities.REACTION_WINDOWS; here the
-    engine names the window it is paused on, and the DM passes back an id it minted.
+    This is the window PRODUCER (constraint 6): rather than the DM guessing among the nine
+    abilities.REACTION_WINDOWS, the engine names the window it is paused on, and the DM passes back
+    an id it minted.
 
     ``verbs`` is the ADVANCE set, not a whitelist of everything legal right now, and the prompt
     says so: the same result payload carries ``death_saves_due`` and ``legendary_available``, whose
@@ -63,12 +68,31 @@ def next_envelope(state) -> dict:
                 "target_id": window["target_id"],
                 "triggers": window["triggers"],
                 "action": _held_action_name(state),
-                "reactions": combat_phase.offered_reactions(state),
+                "reactions": reaction_gate.offered_reactions(state),
             },
         }
     if state.beat == combat_phase.PhaseBeat.NARRATION:
         return {"phase": "narration", "verbs": ["resolve_phase"], "waiting_on": None}
-    return {"phase": "declaration", "verbs": ["declare_phase"], "waiting_on": None}
+    return {
+        "phase": "declaration",
+        "verbs": ["declare_phase"],
+        "waiting_on": None,
+        "cannot_act": [
+            {"actor_id": p.id, "name": p.name, "conditions": list(blocked)}
+            for p in state.participants
+            if (blocked := cannot_act(p.conditions))
+        ],
+        "prone": [
+            {"actor_id": p.id, "name": p.name}
+            for p in state.participants
+            if not p.is_fallen and conditions.has_condition(p.conditions, "prone")
+        ],
+        "grappled": [
+            {"actor_id": p.id, "name": p.name, "grappler_id": grappler}
+            for p in state.participants
+            if not p.is_fallen and (grappler := combat_grapple.grappler_id(p.conditions)) is not None
+        ],
+    }
 
 
 async def wrap_phase(
@@ -115,6 +139,9 @@ async def wrap_phase(
     # save_combat_state / end-combat write below in this same tx.
     if wrap is not None and wrap.tick_conditions_due:
         _resolve_tick_saves(state, wrap.tick_conditions_due, save_resolver)
+        if not wrap.combat_ended:
+            combat_phase._reset_legendary_actions(state)
+            wrap_adv = replace(wrap_adv, legendary_available=combat_phase._boss_legendaries(state))
 
     # Each in-combat ability GENERATES Resonance during resolution (beat 2); seed each caster's
     # pending value with the cast's post-generation total so the WRAP decay below sheds from it

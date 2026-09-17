@@ -5,9 +5,9 @@ story-017 made a reaction an interrupt and recorded WHICH ability answered WHICH
 blow landed unaltered — note 0f3945fa(f). game_mechanics_combat.md:187 names the outcomes that
 were missing ("Uncanny Dodge halves damage, Shield of Faith causes a miss"); this module is them.
 
-It owns ONE hook: ``close``, called by ``combat_hold.pump`` at the moment it discards the window
-the DM just came back from. Everything it needs it derives from the spend record and the held
-entry — it adds no state of its own.
+Its hook is ``close``, called by ``combat_hold.pump`` at the moment it discards the window the DM
+just came back from; ``combat_hold`` reads the rest as the held action resolves. Everything it
+needs it derives from the spend record and the held entry — it adds no state of its own.
 
 Counterspell, the third outcome the spec names, is NOT here and is not faked: its window is
 ``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
@@ -21,6 +21,7 @@ import logging
 from dataclasses import replace
 
 import abilities
+import combat_reaction_contest
 import reaction_spend
 import reaction_windows
 from combat_support import deserialize_roll, serialize_roll
@@ -34,16 +35,21 @@ logger = logging.getLogger("divineruin.tools")
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
+ESCAPES_GRAPPLE = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
     "cleric_shield_of_faith": 2,
     "oracle_shield_of_faith": 2,
     "paladin_shield_of_faith": 2,
     "marshal_interceding_order": 2,
 }
+SAVE_ADVANTAGE = {
+    "bard_countercharm": frozenset({"frightened", "charmed"}),
+    "diplomat_countercharm": frozenset({"frightened", "charmed"}),
+}
 
 
-def bound_spend(state, head: dict, stage: str) -> dict | None:
-    """The spend record answering THIS held action at THIS stage, with its reactor's id.
+def bound_spends(state, head: dict, stage: str) -> list[dict]:
+    """Every spend answering this held action at this stage, with each reactor's id.
 
     ``held_seq`` is what makes a reaction change only the blow it was spent against; ``stage``
     is what stops a pre-roll spend from firing a second time when the post-roll window closes.
@@ -53,12 +59,11 @@ def bound_spend(state, head: dict, stage: str) -> dict | None:
     A legacy bool upgraded by ``reaction_spend.normalize`` carries ``stage: None`` and so matches
     nothing — "spent, no binding" applies no modifier, exactly as that upgrade documents.
     """
-    for actor_id, entry in state.reactions_available.items():
-        if not reaction_spend.is_spent(entry):
-            continue
-        if entry["stage"] == stage and entry["held_seq"] == head["seq"]:
-            return {"actor_id": actor_id, **entry}
-    return None
+    return [
+        {"actor_id": actor_id, **entry}
+        for actor_id, entry in state.reactions_available.items()
+        if reaction_spend.is_spent(entry) and entry["stage"] == stage and entry["held_seq"] == head["seq"]
+    ]
 
 
 def ac_bonus(state, head: dict) -> int:
@@ -73,10 +78,17 @@ def ac_bonus(state, head: dict) -> int:
     Applied to the blow's TARGET, whoever reacted. That is the person the open window named, and
     the +2 is a property of the attack being answered, not of the reactor.
     """
-    spend = bound_spend(state, head, reaction_windows.PRE_ROLL)
-    if spend is None:
-        return 0
-    return AC_BONUS.get(spend["ability_id"], 0)
+    return max(
+        (AC_BONUS.get(spend["ability_id"], 0) for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)),
+        default=0,
+    )
+
+
+def save_advantage(state, head: dict, condition: str | None) -> bool:
+    return any(
+        condition in SAVE_ADVANTAGE.get(spend["ability_id"], ())
+        for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)
+    )
 
 
 def shield_reaction(state, head: dict) -> str | None:
@@ -86,14 +98,28 @@ def shield_reaction(state, head: dict) -> str | None:
     ``get_player_inventory(target.id)``), so a reactor who is not the target has no gear in that
     call — reporting one would wear the wrong player's shield.
     """
-    spend = bound_spend(state, head, reaction_windows.POST_ROLL)
-    if spend is None or spend["ability_id"] not in SHIELD_BEARING:
-        return None
     target = _held_target(state, head)
-    return spend["ability_id"] if target is not None and spend["actor_id"] == target.id else None
+    if target is None:
+        return None
+    return next(
+        (
+            spend["ability_id"]
+            for spend in bound_spends(state, head, reaction_windows.POST_ROLL)
+            if spend["ability_id"] in SHIELD_BEARING and spend["actor_id"] == target.id
+        ),
+        None,
+    )
 
 
-def record_shield_wear(packet: dict | None, summary: dict) -> None:
+def grapple_blocked(state, head: dict) -> bool:
+    target = _held_target(state, head)
+    return target is not None and any(
+        spend["ability_id"] in ESCAPES_GRAPPLE and spend["actor_id"] == target.id
+        for spend in bound_spends(state, head, reaction_windows.POST_ROLL)
+    )
+
+
+def record_shield_wear(packets: list[dict], state, head: dict, summary: dict) -> None:
     """Name the shield's wear on the reaction packet, once the resolved blow reports it happened.
 
     Not decided at window close: the accrual needs the player's INVENTORY, which only
@@ -102,8 +128,31 @@ def record_shield_wear(packet: dict | None, summary: dict) -> None:
     the resolved summary keeps ``mechanical_effect`` a statement of what happened rather than of
     what was attempted.
     """
-    if packet is not None and packet["mechanical_effect"] is None and "shield" in (summary.get("durability") or {}):
+    target = _held_target(state, head)
+    if target is None or "shield" not in (summary.get("durability") or {}):
+        return
+    packet = next(
+        (
+            row
+            for row in packets
+            if row["actor_id"] == target.id and row["ability_id"] in SHIELD_BEARING and row["mechanical_effect"] is None
+        ),
+        None,
+    )
+    if packet is not None:
         packet["mechanical_effect"] = "shield_durability"
+
+
+def record_save_advantage(packets: list[dict], summary: dict) -> None:
+    """Label the reaction from the resolved save: ``close`` runs before the save is rolled."""
+    if not summary.get("save_advantage"):
+        return
+    packet = next(
+        (row for row in packets if row["ability_id"] in SAVE_ADVANTAGE and row["mechanical_effect"] is None),
+        None,
+    )
+    if packet is not None:
+        packet["mechanical_effect"] = "save_advantage"
 
 
 def _held_target(state, head: dict):
@@ -147,7 +196,16 @@ def halve(head: dict, target) -> None:
     head["roll"] = serialize_roll(replace(result, **fields), held_ac)
 
 
-def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | None) -> str | None:
+def _apply(
+    state,
+    head: dict,
+    window: dict,
+    spend: dict,
+    attack_action: dict | None,
+    contest: dict | None,
+    ac_spend: dict | None = None,
+    hesitated: bool = False,
+) -> str | None:
     """Do what this reaction does to the held blow, and name it — or None if it did nothing.
 
     The label is what the close ACTUALLY did, never a lookup on the ability id: a shield of faith
@@ -158,8 +216,16 @@ def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | N
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
 
+    if contest is not None:
+        if not contest["success"]:
+            return None
+        return combat_reaction_contest.EFFECTS[ability_id]
+
+    if hesitated:
+        return None
+
     if window["stage"] == reaction_windows.PRE_ROLL:
-        if ability_id in AC_BONUS and attack_action is not None:
+        if spend is ac_spend and attack_action is not None:
             return "target_ac_bonus"
         return None
 
@@ -175,11 +241,16 @@ def _apply(state, head: dict, window: dict, spend: dict, attack_action: dict | N
         halve(head, target)
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
+    if ability_id in ESCAPES_GRAPPLE and target is not None and spend["actor_id"] == target.id:
+        return "grapple_escaped"
     return None
 
 
-def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dict | None:
-    """Apply what the reaction spent at ``window`` does to ``head``, and report it to the DM.
+def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
+    """Apply what every reaction spent at ``window`` does to ``head``: one packet per spend.
+
+    Two AC bonuses do not stack, so only the first spend carrying the largest one reports
+    ``target_ac_bonus``; a winning Objection leaves every other spend at the window null.
 
     Called by ``combat_hold.pump`` as it discards the window the DM has come back from — the one
     moment where the spend is known and the blow has not yet been applied.
@@ -194,21 +265,30 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None) -> dic
     passed in rather than re-derived: the predicate belongs to combat_hold, which imports this
     module.
     """
-    spend = bound_spend(state, head, window["stage"])
-    if spend is None:
-        return None
-
-    effect = _apply(state, head, window, spend, attack_action)
-    ability = abilities.get_ability(spend["ability_id"])
-    return {
-        "actor_id": spend["actor_id"],
-        "resolved": True,
-        "declaration_type": "reaction",
-        "ability_id": ability.id,
-        "ability_name": ability.name,
-        "narration_cue": ability.narration_cue,
-        "window_id": spend["window_id"],
-        "stage": window["stage"],
-        "against_actor_id": head["actor_id"],
-        "mechanical_effect": effect,
-    }
+    spends = bound_spends(state, head, window["stage"])
+    contests = [combat_reaction_contest.resolve_or_reuse(state, head, spend, rng=contest_rng) for spend in spends]
+    hesitated = combat_reaction_contest.hesitated(head)
+    ac_spend = max(spends, key=lambda spend: AC_BONUS.get(spend["ability_id"], 0), default=None)
+    if ac_spend is not None and ac_spend["ability_id"] not in AC_BONUS:
+        ac_spend = None
+    packets = []
+    for spend, contest in zip(spends, contests, strict=True):
+        effect = _apply(state, head, window, spend, attack_action, contest, ac_spend, hesitated)
+        ability = abilities.get_ability(spend["ability_id"])
+        packet = {
+            "actor_id": spend["actor_id"],
+            "resolved": True,
+            "declaration_type": "reaction",
+            "ability_id": ability.id,
+            "ability_name": ability.name,
+            "narration_cue": ability.narration_cue,
+            "window_id": spend["window_id"],
+            "stage": window["stage"],
+            "against_actor_id": head["actor_id"],
+            "mechanical_effect": effect,
+        }
+        if contest is not None:
+            packet["reactor_total"] = contest["reactor_total"]
+            packet["opposer_total"] = contest["opposer_total"]
+        packets.append(packet)
+    return packets

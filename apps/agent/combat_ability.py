@@ -11,10 +11,16 @@ from typing import TYPE_CHECKING, cast
 import abilities
 import ability_persistence
 import check_resolution_save
+import combat_ability_save
 import combat_enhancers
+import combat_grapple
+import concentration_break
 import conditions
 import spell_casting
+from combat_ability_gate import DeclaredAbility
 from condition_produce import resolve_effective_targets
+from condition_restrictions import cannot_act
+from mentor_variants import MentorVariant
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -24,7 +30,12 @@ if TYPE_CHECKING:
 
 
 def _land_condition_on_one(
-    state, target_id: str | None, attacker: CombatParticipant, cond_type: str, source: str
+    state,
+    target_id: str | None,
+    attacker: CombatParticipant,
+    cond_type: str,
+    source: str,
+    released_from_grapple: list[str] | None = None,
 ) -> bool:
     """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
     adds the hostile caller). Self-target (``target_id`` None) falls back to the caster; a given id
@@ -32,20 +43,32 @@ def _land_condition_on_one(
     a target not on the state, or an immunity no-op, returns False so the caller drops the signal.
     The mutation rides save_combat_state."""
     cond_target = attacker if target_id is None else state.get_participant(target_id)
-    if cond_target is None:
+    if cond_target is None or (cond_type == "prone" and cond_target.prone_immunity):
         return False
     cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
-    return conditions.has_condition(cond_target.conditions, cond_type)
+    landed = conditions.has_condition(cond_target.conditions, cond_type)
+    if landed and cannot_act(({"type": cond_type},)):
+        released = combat_grapple.release_from_grappler(state, cond_target.id)
+        if released_from_grapple is not None:
+            released_from_grapple.extend(released)
+    return landed
 
 
 def land_condition_on_participant(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+    state,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    cond_type: str,
+    source: str,
+    released_from_grapple: list[str] | None = None,
 ) -> bool:
     """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
     and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
     ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
     ``_land_condition_on_one`` (M4.8 story-012 extraction); back-compat for existing callers."""
-    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source)
+    return _land_condition_on_one(
+        state, decl.target_id, attacker, cond_type, source, released_from_grapple=released_from_grapple
+    )
 
 
 def land_condition_on_participants(
@@ -66,8 +89,8 @@ def land_condition_on_participants(
     return voiced
 
 
-def condition_ability(action: str | None) -> "abilities.Ability | None":
-    """The non-spell, condition-applying ABILITY for ``action``, or None.
+def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | None:
+    """The non-spell, condition-applying declared ability, or None.
 
     The in-combat ABILITY path resolves spells by default (via _gate_spell / _resolve_cast); a
     non-spell ability that PRODUCES a condition (M4.8 story-005, e.g. bard_inspire) takes the
@@ -75,33 +98,36 @@ def condition_ability(action: str | None) -> "abilities.Ability | None":
     ``applies_condition`` AND has no ``spell_id`` — a spell-backed condition ability keeps the
     spell path, where story-004's producer block already applies it (assumption 07d1a208794b).
     Returns None for an unknown action or any spell/non-condition ability."""
-    if action is None:
+    if resolved is None:
         return None
-    try:
-        ability = abilities.get_ability(action)
-    except ValueError:
-        return None
+    ability, _variant = resolved
     if ability.applies_condition is not None and ability.spell_id is None:
-        return ability
+        return resolved
     return None
 
 
-def _gate_ability_condition(player: dict, ability: "abilities.Ability") -> None:
+def _gate_ability_condition(
+    player: dict,
+    ability: "abilities.Ability",
+    variant: MentorVariant | None = None,
+) -> None:
     """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
     ability's Stamina/Focus with NO writes, mirroring _gate_deescalation / _gate_spell so a bad
     declaration never rolls back a phase that already resolved other actors. resource_costs.gate_pool
     is the sole Focus/Stamina gate; the deduct happens in _resolve_ability_condition_packet."""
-    gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
-    gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    cost = variant.cost if variant is not None else ability.cost
+    gate_pool(player, "stamina", cost.stamina, label=ability.name)
+    gate_pool(player, "focus", cost.focus, label=ability.name)
 
 
-async def _deduct_ability_cost(player_id, player, ability, *, persistence, conn) -> None:
+async def _deduct_ability_cost(player_id, player, ability, variant, *, persistence, conn) -> None:
     """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist against
     ``player_id`` (the declaring member — M14 story-004, was the session primary). Shared by the
     single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if the
     cost can't be paid (already pre-gated at declare time)."""
-    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
-    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    cost = variant.cost if variant is not None else ability.cost
+    new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
+    new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
     if new_stamina is not None or new_focus is not None:
         await persistence.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
@@ -110,7 +136,7 @@ async def _resolve_ability_condition_packet(
     session: SessionData,
     attacker: CombatParticipant,
     decl: "Declaration",
-    ability: "abilities.Ability",
+    resolved: DeclaredAbility,
     *,
     state,
     conn,
@@ -130,8 +156,10 @@ async def _resolve_ability_condition_packet(
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
-    # applies_condition is non-None on this path (condition_ability selected it); the resolved
-    # ability id is the source (== decl.action by the lookup invariant).
+    ability, variant = resolved
+
+    # applies_condition is non-None on this path (condition_ability selected it). The source is the
+    # base ability id, which differs from decl.action when a mentor variant was declared.
     cond_type = ability.applies_condition
 
     # Multi-target (M4.8 story-016, e.g. bard_mass_inspire): the cap was validated at the
@@ -140,7 +168,7 @@ async def _resolve_ability_condition_packet(
     # resolve time is dropped (partial landing); an all-off-state list lands nothing but still
     # spends the cost (the spell-path convention — the declaration committed to the action).
     if decl.target_ids:
-        await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
+        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
         summary = {
             "actor_id": attacker.id,
             "resolved": True,
@@ -152,16 +180,23 @@ async def _resolve_ability_condition_packet(
             if voiced:
                 summary["condition_applied"] = cond_type
                 summary["condition_targets"] = voiced
-        return summary
+        return _with_variant(summary, variant)
 
     # Single-target (story-005): a given target_id that's not on the working state, or already
     # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
     # that left or a corpse, and a wasted declaration must never burn the cost.
-    _, waste = _resolve_condition_target(state, attacker, decl)
+    target, waste = _resolve_condition_target(state, attacker, decl)
     if waste is not None:
         return waste
+    assert target is not None
 
-    await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
+    await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+
+    if ability.save is not None:
+        summary = combat_ability_save.resolve_hostile_condition(
+            state, attacker, target, decl, ability, _land_condition_on_one
+        )
+        return _with_variant(summary, variant)
 
     summary = {
         "actor_id": attacker.id,
@@ -171,6 +206,13 @@ async def _resolve_ability_condition_packet(
     }
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
+    return _with_variant(summary, variant)
+
+
+def _with_variant(summary: dict, variant: MentorVariant | None) -> dict:
+    if variant is not None:
+        summary["variant_id"] = variant.id
+        summary["cultural_attribution"] = variant.cultural_attribution
     return summary
 
 
@@ -220,6 +262,8 @@ async def _resolve_enemy_condition_packet(
     state,
     conn,
     save_resolver=check_resolution_save,
+    concentration_break_mod=concentration_break,
+    reaction_save_advantage: bool = False,
 ) -> dict:
     """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
     carries applies_condition/save/dc; the dispatch (combat_packet._resolve_one_packet) routes here
@@ -233,7 +277,7 @@ async def _resolve_enemy_condition_packet(
 
     Save-based, no to-hit: M13 condition actions are save-gated (Hollow Shriek is a fear shriek,
     damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
-    (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
+    (to-hit + save + damage combined) is a follow-up (debt 69132c5d)."""
     cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
     # allow_self=False: a hostile inflict must never self-target (an ABILITY-declared enemy condition
     # action can arrive with target_id=None, which the helper would otherwise fall back to the caster).
@@ -246,7 +290,13 @@ async def _resolve_enemy_condition_packet(
     # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
     # consumed_conditions plumbing the attack path has; deferred, not what bfe4bac441d0 prescribes.
     result = save_resolver.roll_participant_save(
-        target, action["save"], action["dc"], cond_type, dc_mod=attacker.dc_mod, bonus_dice_eligible=False
+        target,
+        action["save"],
+        action["dc"],
+        cond_type,
+        dc_mod=attacker.dc_mod,
+        bonus_dice_eligible=False,
+        advantage=reaction_save_advantage,
     )
     # The HOSTILE inflict uses its OWN summary keys (condition_inflicted / condition_resisted /
     # condition_immune) + the target's name — NOT the beneficial `condition_applied`, which the DM
@@ -259,14 +309,34 @@ async def _resolve_enemy_condition_packet(
         "action": decl.action,
         "target": target.name,
     }
+    if result.advantage_applied:
+        summary["save_advantage"] = True
+    released_from_grapple: list[str] = []
     if result.success:
         summary["condition_resisted"] = cond_type
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path
     # uses) so the target-id/self-fallback + immunity wiring lives in one place.
-    elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
+    elif land_condition_on_participant(
+        state,
+        attacker,
+        decl,
+        cond_type,
+        source=decl.action or "",
+        released_from_grapple=released_from_grapple,
+    ):
         summary["condition_inflicted"] = cond_type
+        if released_from_grapple:
+            summary["released_from_grapple"] = released_from_grapple
+        if target.type == "player" and cannot_act(({"type": cond_type},)):
+            broken = await concentration_break_mod.break_concentration_on_incapacitation(
+                session, target.id, combat_state=state, conn=conn
+            )
+            if broken is not None:
+                summary["concentration_broken"] = broken
     else:
-        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
+        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed, a prone master) or off-state
+        if cond_type == "prone" and target.prone_immunity:
+            summary["prone_immunity"] = target.prone_immunity
     return summary
 
 

@@ -116,8 +116,9 @@ async def _inner_fire_locked(
         sounds: list[str] = []
         rose_hollowed = False
         if new_hp <= 0:
-            _, rose_hollowed = _handle_hp_zero(
+            _, rose_hollowed, _ = _handle_hp_zero(
                 session,
+                session.combat_state,
                 participant,
                 overkill=overkill,
                 was_fallen=was_fallen,

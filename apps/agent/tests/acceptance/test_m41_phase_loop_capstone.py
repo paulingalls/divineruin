@@ -119,7 +119,7 @@ def _crit_resolver():
     """A resolve_attack mock that lands a non-lethal critical (damage 1 so the enemy survives and the
     phase loops, exposing the packet summaries) with critical_success=True."""
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         return AttackResult(
             hit=True,
             roll=20,

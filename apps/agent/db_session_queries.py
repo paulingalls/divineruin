@@ -13,6 +13,7 @@ import db
 import db_activity_queries
 import db_content_queries
 import db_queries
+import spell_knowledge
 import spells
 from companion_profiles import get_companion_profile
 
@@ -73,14 +74,13 @@ async def _build_player_spells(player_id: str, player: dict | None) -> dict:
     """
     archetype_id = player.get("class") if player else None
     core: list[dict] = []
-    core_ids: set[str] = set()
+    core_ids = spell_knowledge.castable_spell_ids(archetype_id, ())
     if archetype_id:
         for ability in abilities.get_archetype_abilities(archetype_id):
-            if ability.ability_type == "core" and ability.spell_id:
+            if ability.spell_id in core_ids:
                 row = _enrich_spell_row(ability.spell_id, is_prepared=True)
                 if row:
                     core.append(row)
-                    core_ids.add(ability.spell_id)
 
     learned: list[dict] = []
     for known in await character_spells.get_known(player_id):

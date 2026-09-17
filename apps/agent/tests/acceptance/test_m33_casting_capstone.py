@@ -68,7 +68,7 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
     """One cast on real PG: Focus deducts by focus_cost; generated Resonance persists; state derives."""
     pool = await db.get_pool()
     player_id = "cap_cast_single"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
@@ -94,7 +94,7 @@ async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
     player_id = "cap_cast_bands"
     # 20 Focus funds 4 casts at focus 5: under per-round (cast-paced) decay (story-010) each
     # post-first cast nets +2, so reaching Overreach takes 4 casts, not 3.
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=20)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=20, known_spells=(_SPELL_ID,))
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)

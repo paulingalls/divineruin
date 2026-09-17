@@ -12,6 +12,7 @@ from typing import Any
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import character_spells
 import check_resolution_attack
 import check_resolution_save
 import combat_hold
@@ -30,8 +31,9 @@ import veil_ward_events
 import ward_resolution
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_finish
-from combat_events import EventSink, emit_or_publish, isolated_publish, scratch_guard
+from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
+from combat_phase_recovery import PrevalidationRefusal, phase_transaction_with_recovery
 from combat_support import _require_combat
 from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
@@ -149,6 +151,7 @@ async def _resolve_phase_locked(
     resonance_events_mod=resonance_events,
     db_mod=db,
     cast_resolver=spell_casting,
+    character_spells_mod=character_spells,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session: SessionData = context.userdata
@@ -200,7 +203,7 @@ async def _resolve_phase_locked(
     # empty when no ability was declared, which is always true of the Beat-3 held pass.
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
-    async with scratch_guard(session), db_mod.transaction() as conn:
+    async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
         if resolving_allies:
             # Beat 2 (resolution): the engine orders the pending declarations into initiative
             # packets (no math of its own). Orchestration applies each attack against
@@ -224,13 +227,22 @@ async def _resolve_phase_locked(
                 if defender is not None and not defender.is_fallen:
                     state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
-            # Pre-validate Focus for every player ABILITY BEFORE resolving anything (AC2): an unaffordable
-            # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
-            # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
-            # player row (the cast reuses it; the lock is taken once) or None when no player ability.
-            players_by_id = await _prevalidate_ability_focus(
-                session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
-            )
+            # Pre-validate ownership and cost for every player ABILITY BEFORE resolving anything (AC2): a
+            # refused ability fails loud before any actor's HP write. The phase tx rolls back and the
+            # recovery reopens DECLARATION, since RESOLUTION with the refused declarations would refuse
+            # forever. Returns {player_id: for_update row} (the cast reuses it; each lock is taken once).
+            try:
+                players_by_id = await _prevalidate_ability_focus(
+                    session,
+                    state,
+                    adv,
+                    conn=conn,
+                    queries=queries,
+                    cast_resolver=cast_resolver,
+                    character_spells_mod=character_spells_mod,
+                )
+            except ToolError as error:
+                raise PrevalidationRefusal(error) from error
 
             # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
             # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
@@ -307,8 +319,8 @@ async def _resolve_phase_locked(
             )
 
     # Sync the looped in-memory state ONLY after the transaction commits, and do it FIRST — before
-    # any fallible publish (story-010). On rollback the exception skips all of this, so
-    # session.combat_state stays the pristine pre-phase `cs` — consistent with the rolled-back DB
+    # any fallible publish (story-010). On rollback the exception skips all of this, so (bar the
+    # prevalidation reopen) session.combat_state stays the pre-phase `cs` — consistent with the DB
     # SSOT — and a retried turn proceeds from committed HP (engine deep-copies, so `cs` was never
     # mutated). On the ENDING wrap the commit is what made the party's XP/loot/coin durable, so the
     # guard against a second end (session.combat_state, which _require_combat reads) has to be

@@ -163,6 +163,7 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
         combat_reaction_effect.HALVES_DAMAGE
         | combat_reaction_effect.SHIELD_BEARING
         | set(combat_reaction_effect.AC_BONUS)
+        | set(combat_reaction_effect.SAVE_ADVANTAGE)
     )
     for ability_id in wired:
         assert catalog[ability_id].ability_type == "reaction", ability_id
@@ -170,9 +171,12 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     assert {catalog[i].window for i in combat_reaction_effect.HALVES_DAMAGE} == {"on_hit"}
     assert {catalog[i].window for i in combat_reaction_effect.SHIELD_BEARING} == {"on_hit"}
     assert {catalog[i].window for i in combat_reaction_effect.AC_BONUS} == {"on_ally_targeted"}
+    assert {catalog[i].window for i in combat_reaction_effect.SAVE_ADVANTAGE} == {"on_ally_targeted"}
+    assert set(combat_reaction_effect.SAVE_ADVANTAGE) == COUNTERCHARMS
+    assert set(combat_reaction_effect.SAVE_ADVANTAGE.values()) == {frozenset({"frightened", "charmed"})}
 
     guarding = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_ally_targeted"}
-    assert guarding - COUNTERCHARMS == set(combat_reaction_effect.AC_BONUS)
+    assert guarding == set(combat_reaction_effect.AC_BONUS) | set(combat_reaction_effect.SAVE_ADVANTAGE)
 
     on_hit = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_hit"}
     wired_on_hit = combat_reaction_effect.HALVES_DAMAGE | combat_reaction_effect.SHIELD_BEARING

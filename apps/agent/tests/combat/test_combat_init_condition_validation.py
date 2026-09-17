@@ -79,7 +79,7 @@ class TestValidateEnemyActionConditions:
 
     def test_damage_bearing_condition_action_raises_at_load(self):
         # M13 condition actions are save-based; the resolver does not apply damage, so a non-zero
-        # damage on a condition action must fail loud at load (debt 5b18023ef5a5) rather than silently
+        # damage on a condition action must fail loud at load (debt 69132c5d) rather than silently
         # deal none.
         enemies = [
             {

@@ -218,8 +218,8 @@ class TestCombatBeatContract:
         every round — and, worse, believe the reaction was armed."""
         prompt = COMBAT_SYSTEM_PROMPT
         low = prompt.lower()
-        assert "Three kinds resolve in combat today" in prompt
-        assert "four kinds resolve in combat today" not in low
+        assert "Four kinds resolve in combat today" in prompt
+        assert "maneuver — target_id names who is moved" in prompt
         assert "reaction — action is the EXACT id" not in prompt
         assert "trigger is its catalog window" not in low
         assert "declare the reaction during beat 1" not in low
@@ -239,11 +239,12 @@ class TestCombatBeatContract:
         assert "one reaction per round" in teaching
         assert "no pre-declaration" in teaching
 
-    def test_the_prompt_advertises_no_variant_ids_in_combat(self):
-        """note 9724fb7c(a): a variant id in declare_phase's ability path raises "Unknown spell",
-        so advising the DM to learn "active variant ids" in combat produces a tool error and a
-        lost round. Uncovered until story-017 — nothing asserted on that line."""
-        assert "variant id" not in COMBAT_SYSTEM_PROMPT.lower()
+    def test_the_prompt_says_to_declare_the_active_variant_id(self):
+        """story-051 made a declared variant id resolve in combat, so the prompt now names the id
+        query_info hands the DM (active_variant_id) as the one to declare."""
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "active_variant_id" in low
+        assert "declare that exact variant id" in low
 
     def test_no_reaction_packet_narration_advice_survives(self):
         """The Beat-3 narration line described combat_packet's REACTION branch, which is deleted:
@@ -269,7 +270,7 @@ class TestCombatBeatContract:
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "mechanical_effect" in low
         effect = low.index("mechanical_effect")
-        teaching = low[effect : effect + 800]
+        teaching = low[effect : low.index("next.verbs", effect)]
         assert "damage_halved" in teaching
         assert "target_ac_bonus" in teaching
         assert "shield_durability" in teaching

@@ -126,7 +126,7 @@ async def test_hydrated_thessyn_cast_and_reads_all_agree_flickering(reset_db_poo
     persisted/hydrated source, no divergence (AC4)."""
     pool = await db.get_pool()
     player_id = "cap_m35_e2e_thessyn"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_invisibility",))
     await _set_race(pool, player_id, "thessyn")
     await _set_session_count(pool, player_id, 9)  # hydrate -> 10 (gate met)
     await spells.load_spells()

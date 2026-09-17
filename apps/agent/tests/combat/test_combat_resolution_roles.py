@@ -20,6 +20,7 @@ from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
+import conditions
 from combat_phase import (
     PhaseBeat,
     advance_combat_phase,
@@ -279,6 +280,26 @@ class TestResolvePhaseSurfacesLegendary:
         surfaced = result["legendary_available"]
         assert [s["actor_id"] for s in surfaced] == ["warlord_1"]
         assert surfaced[0]["legendary_actions"] == 1  # refreshed at the wrap loop-back
+
+    @pytest.mark.asyncio
+    async def test_tick_save_that_clears_paralysis_refreshes_and_surfaces_boss_legendary(self):
+        ctx = make_context()
+        state = _boss_resolution_state(boss_hp=40)
+        boss = state.get_participant("warlord_1")
+        assert boss is not None
+        boss.legendary_actions = 0
+        boss.conditions = conditions.apply_condition([], "paralyzed", source="hold_person")
+        ctx.userdata.combat_state = state
+        save_resolver = MagicMock()
+        save_resolver.roll_participant_save.return_value = MagicMock(success=True)
+
+        result = await _resolve_round(ctx, **_resolve_deps(damage=3), save_resolver=save_resolver)
+
+        boss = ctx.userdata.combat_state.get_participant("warlord_1")
+        assert boss is not None
+        assert boss.conditions == []
+        assert boss.legendary_actions == 1
+        assert [entry["actor_id"] for entry in result["legendary_available"]] == ["warlord_1"]
 
 
 class TestConsumeLegendaryActionTool:

@@ -75,9 +75,9 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
     pool = await db.get_pool()
     a, b = "cap_m24_ac1_cleric", "cap_m24_ac1_mage"
     location = "cap_m24_ac1_hall"
-    await seed_player_with_pools(pool, player_id=a, class_="cleric", focus_current=20)
+    await seed_player_with_pools(pool, player_id=a, class_="cleric", focus_current=20, known_spells=(_SPELL_ID,))
     await _bump_level(pool, a, 7)
-    await seed_player_with_pools(pool, player_id=b, class_="mage", focus_current=20)
+    await seed_player_with_pools(pool, player_id=b, class_="mage", focus_current=20, known_spells=(_SPELL_ID,))
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
@@ -139,7 +139,9 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
     pool = await db.get_pool()
     player_id = "cap_m24_ac2_cleric"
     location = "cap_m24_ac2_hall"
-    await seed_player_with_pools(pool, player_id=player_id, class_="cleric", focus_current=20)
+    await seed_player_with_pools(
+        pool, player_id=player_id, class_="cleric", focus_current=20, known_spells=(_SPELL_ID,)
+    )
     await _bump_level(pool, player_id, 7)
     await _equip_weapon(pool, player_id)
     await spells.load_spells()
@@ -275,7 +277,7 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_anchor"
     location = "cap_m24_ac4_anchor_hall"
-    await seed_player_with_pools(pool, player_id=player_id, class_="mage", focus_current=20)
+    await seed_player_with_pools(pool, player_id=player_id, class_="mage", focus_current=20, known_spells=(_SPELL_ID,))
     await _equip_weapon(pool, player_id)
     await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, conn=pool)
     await spells.load_spells()

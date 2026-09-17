@@ -25,13 +25,13 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import combat_hold
-import combat_phase
 import condition_produce
 import conditions
 import db
 import db_mutations_conditions
 import db_queries
 import mentor_variants
+import reaction_gate
 import spells
 from resource_costs import gate_pool
 from session_data import SessionData
@@ -94,7 +94,7 @@ async def _request_ability_activation_impl(
     async with session.combat_end_lock:
         state = session.combat_state
         try:
-            combat_phase.validate_reaction_activation(state, session.player_id, ability_id)
+            reaction_gate.validate_reaction_activation(state, session.player_id, ability_id)
             spend = combat_hold.preflight_spend(state, session.player_id, ability_id)
         except ValueError as e:
             raise ToolError(str(e)) from e
@@ -139,6 +139,16 @@ async def _request_ability_activation_unlocked(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    # A save-gated ability lands its condition only through a combat declaration on a foe; this
+    # path would spend the cost and produce the condition onto a party member instead.
+    if ability.save is not None:
+        if session.in_combat:
+            declared_id = variant_id or ability_id
+            raise ToolError(
+                f"{ability.name} needs a foe — declare {declared_id} in the combat phase, aimed at an enemy."
+            )
+        raise ToolError(f"{ability.name} needs a foe — use it in a fight.")
+
     # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through
     # the SAME normalize_target_list SSOT the spell + in-combat-ability paths use (rejects both-args /
     # over-cap / empty / a single-target ability mass-targeted). BEFORE any resource write.
@@ -175,7 +185,7 @@ async def _request_ability_activation_unlocked(
             if ability.ability_type == "elective"
             else False
         )
-        if not abilities_mod.owns_ability(player.get("class"), ability, owns_elective=owned_elective):
+        if not abilities_mod.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
             raise ToolError(f"You haven't learned {ability.name}.")
 
         variant = None

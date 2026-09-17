@@ -102,6 +102,7 @@ def _reaction_context(*, hit=True, window_open=True, target_id="player_1"):
             stage="post_roll",
             actor_id="goblin_scout_1",
             target_id=target_id,
+            action_kind="attack",
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
     state.reactions_available = {"player_1": reaction_spend.unspent()}
@@ -276,8 +277,10 @@ class TestActivation:
         """
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
+        player = _player(class_="warrior")
+        player["level"] = 6
 
-        result, _ = await _call("warrior_opportunity_strike", persistence=persistence)
+        result, _ = await _call("warrior_opportunity_strike", player=player, persistence=persistence)
 
         assert result["narration_cue"]
         persistence.update_player_resources.assert_awaited()
@@ -345,3 +348,14 @@ class TestOwnershipGate:
         result, persistence = await _call("warrior_cleaving_blow", owns_elective=True)
         assert result["deducted"]["stamina"] == 4  # base Cleaving Blow cost
         persistence.update_player_resources.assert_awaited_once()
+
+    async def test_core_ability_rejected_below_level_without_deducting(self):
+        player = _player(class_="bard")
+        player["level"] = 1
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+
+        with pytest.raises(ToolError, match="haven't learned Mass Inspire"):
+            await _call("bard_mass_inspire", player=player, persistence=persistence)
+
+        persistence.update_player_resources.assert_not_awaited()

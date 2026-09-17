@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from combat._helpers import _damage_resolver, _resolve_round
 
+import character_spells
 import db_mutations
 import db_queries
 import spell_casting
@@ -84,6 +85,7 @@ class TestInCombatAbilityResolution:
         start_focus = 10
         standing_res = 5
         await _seed_player(pool, player_id, focus=start_focus, resonance=standing_res)
+        await character_spells.record_learned(player_id, spell_id, "discovery", conn=pool)
 
         session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
         session.resonance.current = standing_res  # the cast's in-memory base
@@ -131,6 +133,7 @@ class TestOutOfCombatCastUnaffected:
         generated = spell.resonance_by_source[spell.source]
 
         await _seed_player(pool, player_id, focus=10, resonance=0)
+        await character_spells.record_learned(player_id, spell_id, "discovery", conn=pool)
 
         session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
         ctx = MagicMock()

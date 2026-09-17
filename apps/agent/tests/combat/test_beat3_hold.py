@@ -8,7 +8,7 @@ DM said a word. These are the guards for the restored model.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
@@ -132,7 +132,14 @@ class TestTheTwoWindows:
         assert _p(ctx).hp_current == 22
         assert r3["beat"] == "declaration"
         assert r3["round"] == 2
-        assert r3["next"] == {"phase": "declaration", "verbs": ["declare_phase"], "waiting_on": None}
+        assert r3["next"] == {
+            "phase": "declaration",
+            "verbs": ["declare_phase"],
+            "waiting_on": None,
+            "cannot_act": [],
+            "prone": [],
+            "grappled": [],
+        }
         assert ctx.userdata.combat_state.held_actions == []
         assert ctx.userdata.combat_state.open_window is None
 
@@ -191,19 +198,28 @@ class TestTheTwoWindows:
         assert "resolve_phase" in r1["next"]["verbs"]
 
     @pytest.mark.asyncio
-    async def test_non_pool_interact_names_no_held_action(self):
+    @pytest.mark.parametrize("declaration_type", ["interact", "maneuver"])
+    async def test_non_pool_targeted_action_drains_without_a_window(self, declaration_type):
         ctx = _ctx_at_resolution()
         ctx.userdata.combat_state.pending_declarations["goblin_scout_1"] = {
-            "type": "interact",
+            "type": declaration_type,
             "action": "Taunt",
             "target_id": "player_1",
         }
         deps = _resolve_deps()
 
         await _call(ctx, deps)
-        result = await _call(ctx, deps)
+        with patch("random.randint", side_effect=[18, 3]):
+            result = await _call(ctx, deps)
 
-        assert result["next"]["waiting_on"]["action"] is None
+        assert result["next"]["waiting_on"] is None
+        summary = next(packet for packet in result["packets"] if packet["actor_id"] == "goblin_scout_1")
+        if declaration_type == "maneuver":
+            assert summary["resolved"] is True
+            assert summary["shove"] == "knocked_prone"
+        else:
+            assert summary["resolved"] is False
+            assert "not yet implemented" in summary["reason"]
 
 
 class TestTheReactionBudgetGate:

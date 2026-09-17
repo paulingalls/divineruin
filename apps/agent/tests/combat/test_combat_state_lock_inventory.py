@@ -133,6 +133,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("veil_ward_tools.py", "_dismiss_impl", "call"): 1,
             ("combat_turn.py", "_declare_phase_locked", "call"): 1,
             ("combat_turn.py", "_resolve_phase_locked", "call"): 1,
+            ("combat_phase_recovery.py", "phase_transaction_with_recovery", "call"): 1,
             ("combat_turn.py", "_consume_legendary_action_locked", "call"): 1,
             ("combat_wrap.py", "wrap_phase", "call"): 1,
             ("combat_death_save.py", "_request_death_save_locked", "call"): 1,

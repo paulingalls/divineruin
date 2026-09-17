@@ -5,10 +5,9 @@ Zero IO, zero async — the deterministic heart of phase-based combat, mirroring
 per call: declaration -> resolution -> narration -> wrap -> (loop to declaration |
 combat_end).
 
-Mechanical attack resolution (``check_resolution_attack.resolve_attack``) and side-effect
-application (Resonance decay, death-save rolls, DB persistence) live in orchestration
-(story-003); this module only computes beat transitions, ordered resolution packets,
-and the wrap beat's effect signals.
+Mechanical attack resolution (``check_resolution_attack.resolve_attack``) and side-effects
+(Resonance decay, death-save rolls, DB persistence) live in orchestration; this module only
+computes beat transitions, ordered resolution packets, and the wrap beat's effect signals.
 """
 
 from __future__ import annotations
@@ -18,9 +17,9 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-import abilities
 import reaction_spend
 from combat_ability import _find_action
+from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_roles import EncounterRole
@@ -43,13 +42,6 @@ _STABILIZE_LIMIT = 3
 # this table additionally orders WITHIN the ally band (player before companion).
 # A Temporary Hollowed echo (M4.4 story-008) acts in the enemy band — it's a hostile combatant.
 _TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2, "temporary_hollowed": 2}
-
-# Ally windows name somebody other than the reactor by definition; enemy event windows describe
-# the acting enemy rather than the player affected by the reaction.
-SELF_TARGETED_REACTION_WINDOWS = frozenset({"on_hit", "on_targeted", "on_condition_imposed"})
-UNBOUND_REACTION_WINDOWS = frozenset(
-    {"on_ally_hit", "on_ally_targeted", "on_enemy_miss", "on_enemy_move", "on_spell_cast", "on_enemy_action"}
-)
 
 
 class PhaseBeat(StrEnum):
@@ -116,6 +108,13 @@ class PhaseAdvance:
     legendary_available: list[dict] = field(default_factory=list)
 
 
+def reopen_declaration(state: CombatState) -> CombatState:
+    reopened = copy.deepcopy(state)
+    reopened.beat = PhaseBeat.DECLARATION
+    reopened.pending_declarations = {}
+    return reopened
+
+
 def advance_combat_phase(
     state: CombatState,
     declarations: dict[str, dict] | None = None,
@@ -123,9 +122,8 @@ def advance_combat_phase(
 ) -> tuple[CombatState, PhaseAdvance]:
     """Advance the combat phase machine by exactly one beat.
 
-    Pure: returns a new ``CombatState`` (deep-copied) and never mutates the input.
-    ``rng`` is an unused forward seam for M4.2 resolution rolls; M4.1 has no
-    randomness, so the engine is trivially deterministic.
+    Pure: returns a new ``CombatState`` (deep-copied) and never mutates the input. The engine
+    draws no randomness, so ``rng`` is unused.
     """
     next_state = copy.deepcopy(state)
 
@@ -141,6 +139,18 @@ def advance_combat_phase(
             if actor is None:
                 participant_ids = [participant.id for participant in next_state.participants]
                 raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+            if blocked := cannot_act(actor.conditions):
+                raise ValueError(
+                    f"{actor.name} ({actor.id}) is {blocked[0]}; omit that actor and narrate the helplessness"
+                )
+            if declaration.type is DeclarationType.RETREAT and (blocked := speed_zero(actor.conditions)):
+                raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot retreat")
+            if (
+                declaration.type is DeclarationType.MANEUVER
+                and declaration.target_id == actor.id
+                and "prone" not in declaration_costs(actor.conditions)
+            ):
+                raise ValueError(f"{actor.name} ({actor.id}) is not prone and cannot stand")
             if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:
                 available = [action["name"] for action in actor.action_pool]
                 raise ValueError(
@@ -184,6 +194,7 @@ def advance_combat_phase(
             next_state.pending_declarations = {}
             next_state.reactions_available = {}
             next_state.ac_modifiers = {}  # phase-scoped Defend bonuses expire here
+            next_state.focus_marks = {}
             # Refresh each living Boss's 1/round legendary budget for the round just entered,
             # then surface what's available so the DM can narrate the extra Boss beat.
             _reset_legendary_actions(next_state)
@@ -205,7 +216,7 @@ def _reset_legendary_actions(state: CombatState) -> None:
     (they stay at the dataclass default of 0). A fallen Boss is skipped — a downed creature
     takes no legendary actions."""
     for p in state.participants:
-        if p.role == EncounterRole.BOSS and not p.is_fallen:
+        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions):
             p.legendary_actions = 1
 
 
@@ -223,7 +234,7 @@ def _boss_legendaries(state: CombatState) -> list[dict]:
             "signature_ability": p.signature_ability,
         }
         for p in state.participants
-        if p.role == EncounterRole.BOSS and not p.is_fallen and p.legendary_actions > 0
+        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions) and p.legendary_actions > 0
     ]
 
 
@@ -241,81 +252,12 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
         raise ValueError(f"unknown participant {boss_id!r}")
     if boss.role != EncounterRole.BOSS:
         raise ValueError(f"{boss_id!r} is not a Boss (role={boss.role!r}); only Bosses have legendary actions")
+    if blocked := cannot_act(boss.conditions):
+        raise ValueError(f"{boss.name} ({boss.id}) is {blocked[0]} and cannot take a legendary action")
     if boss.legendary_actions <= 0:
         raise ValueError(f"Boss {boss_id!r} has no legendary action remaining this round")
     boss.legendary_actions -= 1
     return next_state
-
-
-def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
-    """Raise unless ``actor_id`` may spend a reaction on ``ability_id`` right now.
-
-    The permission is an OPEN WINDOW (story-017, decision 46), not a pre-declaration: the player
-    shouts "I block!" in conversational time, against a held enemy blow the DM has just narrated.
-    Beat 1 could not know whether that blow would hit, miss, or land at all, so the declared
-    trigger was an unmakeable judgement; the window the Beat-3 pump is paused on knows.
-
-    The open-window check is deliberately not a beat comparison. A beat gate has to track the
-    pause it guards and cannot fail loud when it drifts: the RESOLUTION gate this replaced was
-    left behind by story-016's move of the pause to NARRATION, and silently refused every held
-    window it existed to protect.
-
-    Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
-    ``state`` here and the caller assigned the copy back after its await, which erased anything
-    another in-place writer committed meanwhile (draethar_inner_fire mutates participants
-    directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
-    it). The caller records the spend as one field write instead."""
-    actor = state.get_participant(actor_id)
-    if actor is None or actor.type != "player":
-        raise ValueError("only players can activate reactions")
-    if actor.is_fallen:
-        raise ValueError(f"player {actor_id!r} is down and cannot react")
-
-    # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
-    # so "no window is open" would send the DM waiting for one that cannot come.
-    if actor.has_reaction_ability is False:
-        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
-
-    window = state.open_window
-    if window is None:
-        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
-
-    catalog_window = abilities.get_ability(ability_id).window
-    if catalog_window not in window["triggers"]:
-        raise ValueError(
-            f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
-            f"{window['id']!r} offers {window['triggers']}"
-        )
-
-    if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
-        if window["target_id"] != actor_id:
-            raise ValueError(
-                f"reaction {ability_id!r} requires a window targeting reactor {actor_id!r}, "
-                f"but the open window targets {window['target_id']!r}"
-            )
-    elif catalog_window not in UNBOUND_REACTION_WINDOWS:
-        raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
-
-    if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
-        raise ValueError(f"player {actor_id!r} already spent their reaction this round")
-
-
-def offered_reactions(state: CombatState) -> list[dict]:
-    """The reaction ids the DM may pass to activate at the open window (constraint 6).
-
-    Every player's catalog ids go through validate_reaction_activation itself, not a copy of its
-    rule, so the ids the DM is handed are exactly the ones activation will accept."""
-    offered = []
-    for participant in state.participants:
-        for ability_id in participant.reaction_ids:
-            # Outside the try: a stored id the catalog no longer knows is a defect, not an ineligible reaction.
-            ability = abilities.get_ability(ability_id)
-            try:
-                validate_reaction_activation(state, participant.id, ability_id)
-            except ValueError:
-                continue
-            offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})
-    return offered
 
 
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:

@@ -17,8 +17,8 @@ export const ENCOUNTER_ROLE_VALUES = ["minion", "standard", "elite", "boss", "na
 export type EncounterRole = (typeof ENCOUNTER_ROLE_VALUES)[number];
 
 // The kinds an enemy action resolves as, mirrored from apps/agent/encounter_actions.py (constraint 7).
-// An absent `kind` is "attack"; a "command" is an order that never rolls, so it carries no strike fields.
-export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command"] as const;
+// An absent `kind` is "attack"; social mark actions never roll or carry strike fields.
+export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command", "accusation"] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 
 // One entry in an enemy's action_pool, as stored in encounter_templates.json. Matches the shape
@@ -38,13 +38,21 @@ export interface EncounterAttackAction extends EncounterActionBase {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  escape_dc?: number;
 }
 
 export interface EncounterCommandAction extends EncounterActionBase {
   kind: "command";
 }
 
-export type EncounterAction = EncounterAttackAction | EncounterCommandAction;
+export interface EncounterAccusationAction extends EncounterActionBase {
+  kind: "accusation";
+}
+
+export type EncounterAction =
+  | EncounterAttackAction
+  | EncounterCommandAction
+  | EncounterAccusationAction;
 
 export function encounterActionKind(action: { name: string; kind?: string }): EncounterActionKind {
   const kind = action.kind ?? "attack";

@@ -16,6 +16,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import character_spells
 import spell_casting
 from spells import Spell, SpellSource
 
@@ -74,6 +75,7 @@ async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, row
     mutations = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}]))
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -84,6 +86,7 @@ async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, row
         resonance_mutations_mod=mutations,
         resonance_events_mod=events,
         spells_mod=spells_mod,
+        character_spells_mod=library,
     )
     return json.loads(raw), queries
 
@@ -209,6 +212,7 @@ class TestRevivifyTargetRerouteE2E:
         for pid, data in rows.items():
             await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
             await pool.execute("INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)", pid, json.dumps(data))
+        await character_spells.record_learned(caster_id, "divine_revivify", "discovery", conn=pool)
         spells_mod = MagicMock(get_spell=MagicMock(return_value=_revival()))
         session = SessionData(player_id=caster_id, location_id="accord_guild_hall", room=None)
         try:

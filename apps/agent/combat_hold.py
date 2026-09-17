@@ -17,8 +17,11 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 """
 
 import logging
+from dataclasses import replace
 
 import combat_enhancers
+import combat_marks
+import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
 import reaction_spend
@@ -26,6 +29,7 @@ import reaction_windows
 from combat_ability import _find_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
+from condition_restrictions import cannot_act
 from declarations import DeclarationType, resolve_declaration
 from encounter_actions import action_kind
 from reaction_windows import POST_ROLL, PRE_ROLL
@@ -76,7 +80,10 @@ def pause_allowed(state) -> bool:
     return any(
         not reaction_spend.is_spent(state.reactions_available.get(p.id))
         for p in state.participants
-        if p.type == "player" and not p.is_fallen and p.has_reaction_ability is not False
+        if p.type == "player"
+        and not p.is_fallen
+        and not cannot_act(p.conditions)
+        and p.has_reaction_ability is not False
     )
 
 
@@ -114,14 +121,14 @@ def _held_declaration(head: dict):
 
 
 def _is_wasted(state, head: dict) -> bool:
-    """A held action nobody can carry out: its actor fell to the ally band, or its target is gone.
+    """A held action nobody can carry out: its actor fell or cannot act, or its target is gone.
 
     Such an action never opens a window — pausing on a no-op is the same noise AC9 prevents. It
     still POPS through the normal resolver, which produces trunk's own "actor unavailable" /
-    "already fell" summary.
+    "already fell" / "loses the phase" summary.
     """
     actor = state.get_participant(head["actor_id"])
-    if actor is None or actor.is_fallen:
+    if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
@@ -140,15 +147,16 @@ def _opens_windows(state, head: dict) -> bool:
     ``target_id``, and a player burning the round's one reaction on a foe that merely braced
     (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
 
-    Nothing reachable today is lost by this: an untargeted enemy action could only ever reach the
-    ``on_enemy_action`` catch-all, whose four consumers the census already classifies as one
-    post-roll row (whisper_implant_doubt, "when an enemy SUCCEEDS an attack") plus three
-    inapplicable social rows. An enemy command (``encounter_actions`` kind "command") names the party
-    member it orders the attack on, so it pauses here too, at the pre-roll stage only: it never rolls.
+    A targeted action must also name a real action_pool row. Pausing on a declaration that later
+    resolves to nothing would offer reactions for no action and can strand a legacy reload.
     """
     if _is_wasted(state, head):
         return False
-    return _held_declaration(head).target_id is not None
+    declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    return (
+        declaration.target_id is not None and actor is not None and _find_action(actor, declaration.action) is not None
+    )
 
 
 def _attack_action(state, head: dict) -> dict | None:
@@ -157,15 +165,15 @@ def _attack_action(state, head: dict) -> dict | None:
     An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
     save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
     exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
-    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A command
-    (``encounter_actions`` kind "command") is an order, not a swing, so it never rolls either.
+    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A mark
+    action (any ``encounter_actions`` kind other than "attack") never rolls either.
     """
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:
         return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or action.get("applies_condition") or action_kind(action) == "command":
+    if action is None or action.get("applies_condition") or action_kind(action) != "attack":
         return None
     return action
 
@@ -183,7 +191,7 @@ def _replay_resolver(head: dict):
     """
     attack_result, held_ac = deserialize_roll(head["roll"])
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         if target_ac != held_ac:
             raise HeldActionUnresolvable(
                 f"held roll for {head['actor_id']!r} was made against AC {held_ac}, but the target's "
@@ -219,7 +227,7 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict) -> list[dict]:
+async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -232,14 +240,24 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
     # the spend exists and the blow has not been applied yet (story-018).
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
-    reacted, reaction_packet = None, None
+    reacted, reaction_packets = None, []
     if closed is not None and state.held_actions:
         reacted = state.held_actions[0]
-        reaction_packet = combat_reaction_effect.close(
-            state, reacted, closed, attack_action=_attack_action(state, reacted)
+        reaction_packets = combat_reaction_effect.close(
+            state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
-        if reaction_packet is not None:
-            summaries.append(reaction_packet)
+        summaries.extend(reaction_packets)
+        hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
+        if hesitation_reason is not None:
+            summaries.append(
+                {
+                    "actor_id": reacted["actor_id"],
+                    "resolved": False,
+                    "hesitated": True,
+                    "reason": hesitation_reason,
+                }
+            )
+            state.held_actions.pop(0)
 
     while state.held_actions:
         head = state.held_actions[0]
@@ -277,7 +295,13 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
-            summary = await _resolve_held(session, state, head, packet_deps=packet_deps)
+            summary = await _resolve_held(
+                session,
+                state,
+                head,
+                packet_deps=packet_deps,
+                mark_cancelled=combat_reaction_contest.mark_cancelled(head),
+            )
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
@@ -287,7 +311,8 @@ async def pump(session, state, *, packet_deps: dict) -> list[dict]:
             continue
 
         if head is reacted:
-            combat_reaction_effect.record_shield_wear(reaction_packet, summary)
+            combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
+            combat_reaction_effect.record_save_advantage(reaction_packets, summary)
         summaries.append(summary)
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
@@ -300,6 +325,7 @@ def _roll(state, head: dict, action: dict, resolver):
     declaration = _held_declaration(head)
     attacker = state.get_participant(head["actor_id"])
     target = state.get_participant(declaration.target_id)
+    attacker = replace(attacker, attack_mod=attacker.attack_mod + combat_marks.attack_bonus(state, attacker, target))
     return roll_attack(
         attacker,
         action,
@@ -313,12 +339,17 @@ def _roll(state, head: dict, action: dict, resolver):
 
 def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is None:
+        raise ValueError(f"held action {declaration.action!r} for {head['actor_id']!r} is unavailable")
     state.open_window = reaction_windows.open_window_for(
         round_number=state.round_number,
         seq=head["seq"],
         stage=stage,
         actor_id=head["actor_id"],
         target_id=declaration.target_id,
+        action_kind=action_kind(action),
         triggers=triggers,
     )
     logger.info(
@@ -330,7 +361,7 @@ def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     )
 
 
-async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dict:
+async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False) -> dict:
     """Apply one held action through the ordinary packet resolver.
 
     A rolled attack replays its held roll (see ``_replay_resolver``); everything else — a wasted
@@ -339,11 +370,14 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
     """
     from combat_phase import ResolutionPacket
 
+    declaration = _held_declaration(head)
     packet = ResolutionPacket(
         actor_id=head["actor_id"],
-        declaration=_held_declaration(head),
+        declaration=declaration,
         initiative=head["initiative"],
     )
+    attacker = state.get_participant(head["actor_id"])
+    action = _find_action(attacker, declaration.action) if attacker is not None else None
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
@@ -352,7 +386,12 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict) -> dic
         state,
         packet,
         reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        reaction_save_advantage=combat_reaction_effect.save_advantage(
+            state, head, action.get("applies_condition") if action is not None else None
+        ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
+        mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         **deps,
     )

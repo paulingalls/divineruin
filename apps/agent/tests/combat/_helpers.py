@@ -143,7 +143,7 @@ def _damage_resolver(damage):
     """A resolve_attack mock that always hits for a fixed damage, computing the target's
     remaining HP from the call args so multiple packets resolve coherently."""
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         # attack_mod/damage_mult are the M4.7 role-overlay params (story-001). This stub always
         # hits; it scales the fixed damage by damage_mult so role-modified packets stay coherent.
         scaled = max(0, int(damage * damage_mult))
@@ -176,9 +176,14 @@ def _resolve_deps(damage=3):
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    queries.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "class": "mage", "level": 1, "focus": {"current": 10, "max": 10}}
+    )
+    character_spells_mod = MagicMock()
+    character_spells_mod.get_known = AsyncMock(return_value=[])
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    break_mod.break_concentration_on_incapacitation = AsyncMock(return_value=None)
     mutations = combat_end_mutations()
     mutations.save_combat_state = AsyncMock()
     mutations.update_player_hp = AsyncMock()
@@ -188,6 +193,7 @@ def _resolve_deps(damage=3):
         "resolver": _damage_resolver(damage),
         "concentration_break_mod": break_mod,
         "db_mod": _fake_db_mod(),
+        "character_spells_mod": character_spells_mod,
     }
 
 
@@ -268,7 +274,7 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
-                "level": 5,
+                "level": 6,
                 "stamina": {"current": stamina, "max": 10},
                 "focus": {"current": focus, "max": 10},
             }
@@ -291,7 +297,7 @@ def _ac_sensitive_resolver(attack_total, damage):
     can be shown to be what turned the blow aside.
     """
 
-    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
         hit = attack_total + attack_mod >= target_ac
         dealt = max(0, int(damage * damage_mult)) if hit else 0
         remaining = max(0, target_hp - dealt)

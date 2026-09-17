@@ -45,12 +45,14 @@ async def seed_player(
     player_id: str = "player_1",
     class_: str = "skirmisher",
     location_id: str = "accord_guild_hall",
+    known_spells: tuple[str, ...] = (),
 ) -> str:
     """Upsert a player row with a valid archetype and starting location.
 
     `class_` picks the companion too: every companion surface derives the assigned
     companion from the archetype's `complements` (companion_profiles.select_companion_for_archetype),
     so a scenario about Kael must seed a class Kael complements.
+    `known_spells` seeds the castable spell library (seed_known_spells).
     """
     data = {**_DEFAULT_PLAYER, "player_id": player_id, "class": class_, "location_id": location_id}
     await conn.execute(
@@ -61,7 +63,21 @@ async def seed_player(
         player_id,
         json.dumps(data),
     )
+    await seed_known_spells(conn, player_id, known_spells)
     return player_id
+
+
+async def seed_known_spells(
+    conn: asyncpg.Connection | asyncpg.Pool, player_id: str, spell_ids: tuple[str, ...]
+) -> None:
+    """Add unprepared discovery rows to the character's castable spell library."""
+    for spell_id in spell_ids:
+        await conn.execute(
+            "INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared) "
+            "VALUES ($1, $2, 'discovery', FALSE) ON CONFLICT (player_id, spell_id) DO NOTHING",
+            player_id,
+            spell_id,
+        )
 
 
 async def seed_player_with_pools(
@@ -72,6 +88,7 @@ async def seed_player_with_pools(
     stamina_current: int = 10,
     focus_current: int = 10,
     equipped_electives: tuple[str, ...] = (),
+    known_spells: tuple[str, ...] = (),
 ) -> str:
     """seed_player + add the Stamina/Focus pools the ability-activation tool reads.
 
@@ -83,7 +100,7 @@ async def seed_player_with_pools(
     techniques (a character_abilities row each) — the own-the-base gate (story-006)
     rejects activating/training a variant of an elective with no row.
     """
-    await seed_player(conn, player_id=player_id, class_=class_)
+    await seed_player(conn, player_id=player_id, class_=class_, known_spells=known_spells)
     await conn.execute(
         "UPDATE players SET data = jsonb_set(jsonb_set(data, '{stamina}', $2::jsonb), '{focus}', $3::jsonb) "
         "WHERE player_id = $1",
@@ -117,6 +134,10 @@ async def seed_warrior_owning_base(
     mentor-variant capstones, which all train/activate a variant of an owned base.
     """
     await seed_player_with_pools(conn, player_id=player_id, class_="warrior", equipped_electives=(base_ability_id,))
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{level}', '4'::jsonb) WHERE player_id = $1",
+        player_id,
+    )
 
 
 async def seed_mentor_training_gates(
