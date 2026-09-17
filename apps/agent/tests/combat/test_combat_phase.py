@@ -147,6 +147,7 @@ class TestValidateReactionActivation:
             stage="post_roll",
             actor_id="goblin_scout_1",
             target_id="player_1",
+            action_kind="attack",
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}

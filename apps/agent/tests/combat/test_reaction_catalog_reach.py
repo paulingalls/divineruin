@@ -34,26 +34,33 @@ from reaction_gate import validate_reaction_activation
 # Built by calling reaction_windows, never transcribed: a trigger set copied into this file would
 # certify the copy (constraint 9).
 _PRODUCIBLE = {
-    "pre_roll": reaction_windows.pre_roll_triggers({}),
-    "post_roll_hit": reaction_windows.post_roll_triggers({}, hit=True),
-    "post_roll_miss": reaction_windows.post_roll_triggers({}, hit=False),
-    "post_roll_grapple": reaction_windows.post_roll_triggers(
-        {"properties": [reaction_windows.GRAPPLE_PROPERTY]}, hit=True
+    "pre_roll_attack": ("pre_roll", "attack", "player_1", reaction_windows.pre_roll_triggers({})),
+    "pre_roll_command": ("pre_roll", "command", "player_1", reaction_windows.pre_roll_triggers({})),
+    "pre_roll_accusation": ("pre_roll", "accusation", "player_1", reaction_windows.pre_roll_triggers({})),
+    "post_roll_hit": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=True)),
+    "post_roll_miss": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=False)),
+    "post_roll_grapple": (
+        "post_roll",
+        "attack",
+        "player_1",
+        reaction_windows.post_roll_triggers({"properties": [reaction_windows.GRAPPLE_PROPERTY]}, hit=True),
     ),
 }
 
 NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
 
 
-def _paused_state(triggers):
+def _paused_state(shape):
+    stage, kind, target_id, triggers = shape
     state = _make_combat_state()
     state.beat = PhaseBeat.NARRATION
     state.open_window = reaction_windows.open_window_for(
         round_number=1,
         seq=0,
-        stage="pre_roll",
+        stage=stage,
         actor_id="goblin_scout_1",
-        target_id="player_1",
+        target_id=target_id,
+        action_kind=kind,
         triggers=triggers,
     )
     state.reactions_available = {"player_1": reaction_spend.unspent()}
@@ -91,11 +98,17 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
     for ability_id, window in (await _queried_reactions()).items():
         if window in NO_PRODUCER:
             continue
-        answered = [name for name, triggers in _PRODUCIBLE.items() if window in triggers]
+        answered = [name for name, shape in _PRODUCIBLE.items() if window in shape[3]]
         assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
         for name in answered:
             state = _paused_state(_PRODUCIBLE[name])
-            assert validate_reaction_activation(state, "player_1", ability_id) is None, (ability_id, name)
+            try:
+                validate_reaction_activation(state, "player_1", ability_id)
+            except ValueError:
+                continue
+            break
+        else:
+            raise AssertionError(f"{ability_id} fits none of {answered}")
         reachable[ability_id] = window
 
     assert reachable, "the sweep walked no reactions — the query producer went silent"
@@ -109,8 +122,8 @@ async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_windo
     assert unreachable.keys() == {"warrior_opportunity_strike", "mage_counterspell"}
 
     for ability_id, window in unreachable.items():
-        for triggers in _PRODUCIBLE.values():
-            state = _paused_state(triggers)
+        for shape in _PRODUCIBLE.values():
+            state = _paused_state(shape)
             with pytest.raises(ValueError, match=window):
                 validate_reaction_activation(state, "player_1", ability_id)
 
@@ -122,7 +135,7 @@ async def test_the_two_window_vocabularies_are_one():
     side cannot read — the exact shape of the guess-among-nine defect constraint 6 names."""
     import abilities
 
-    produced = {trigger for triggers in _PRODUCIBLE.values() for trigger in triggers}
+    produced = {trigger for shape in _PRODUCIBLE.values() for trigger in shape[3]}
     consumed = set((await _queried_reactions()).values())
 
     assert produced <= abilities.REACTION_WINDOWS

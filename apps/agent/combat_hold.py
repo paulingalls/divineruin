@@ -146,15 +146,16 @@ def _opens_windows(state, head: dict) -> bool:
     ``target_id``, and a player burning the round's one reaction on a foe that merely braced
     (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
 
-    Nothing reachable today is lost by this: an untargeted enemy action could only ever reach the
-    ``on_enemy_action`` catch-all, whose four consumers the census already classifies as one
-    post-roll row (whisper_implant_doubt, "when an enemy SUCCEEDS an attack") plus three
-    inapplicable social rows. An enemy command (``encounter_actions`` kind "command") names the party
-    member it orders the attack on, so it pauses here too, at the pre-roll stage only: it never rolls.
+    A targeted action must also name a real action_pool row. Pausing on a declaration that later
+    resolves to nothing would offer reactions for no action and can strand a legacy reload.
     """
     if _is_wasted(state, head):
         return False
-    return _held_declaration(head).target_id is not None
+    declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    return (
+        declaration.target_id is not None and actor is not None and _find_action(actor, declaration.action) is not None
+    )
 
 
 def _attack_action(state, head: dict) -> dict | None:
@@ -171,7 +172,7 @@ def _attack_action(state, head: dict) -> dict | None:
         return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or action.get("applies_condition") or action_kind(action) == "command":
+    if action is None or action.get("applies_condition") or action_kind(action) != "attack":
         return None
     return action
 
@@ -321,12 +322,17 @@ def _roll(state, head: dict, action: dict, resolver):
 
 def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
     declaration = _held_declaration(head)
+    actor = state.get_participant(head["actor_id"])
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is None:
+        raise ValueError(f"held action {declaration.action!r} for {head['actor_id']!r} is unavailable")
     state.open_window = reaction_windows.open_window_for(
         round_number=state.round_number,
         seq=head["seq"],
         stage=stage,
         actor_id=head["actor_id"],
         target_id=declaration.target_id,
+        action_kind=action_kind(action),
         triggers=triggers,
     )
     logger.info(

@@ -306,6 +306,7 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
         stage="post_roll",
         actor_id=enemy.id,
         target_id=player.id,
+        action_kind="attack",
         triggers=reaction_windows.post_roll_triggers(enemy.action_pool[0], hit=attack_result.hit),
     )
     return state
@@ -324,11 +325,35 @@ def test_held_actions_and_open_window_round_trip_through_json() -> None:
     assert [h["actor_id"] for h in reloaded.held_actions] == ["goblin_scout_1"]
     assert reloaded.open_window is not None
     assert reloaded.open_window["stage"] == "post_roll"
+    assert reloaded.open_window["action_kind"] == "attack"
     assert reloaded.open_window["id"] == state.open_window["id"]
     # The held roll rehydrates into a real AttackResult, not the dict it was stored as.
     restored, restored_ac = deserialize_roll(reloaded.held_actions[0]["roll"])
     original, original_ac = deserialize_roll(state.held_actions[0]["roll"])
     assert (restored, restored_ac) == (original, original_ac)
+
+
+def test_a_legacy_window_derives_its_action_kind_from_the_held_head() -> None:
+    serialized = _mid_window_state().to_dict()
+    del serialized["open_window"]["action_kind"]
+
+    loaded = CombatState.from_dict(serialized)
+
+    assert loaded.open_window is not None
+    assert loaded.open_window["action_kind"] == "attack"
+
+
+def test_a_legacy_window_with_an_unresolvable_held_action_fails_loud() -> None:
+    serialized = _mid_window_state().to_dict()
+    del serialized["open_window"]["action_kind"]
+    serialized["held_actions"][0]["declaration"] = {
+        "type": "maneuver",
+        "action": "Invented",
+        "target_id": "player_1",
+    }
+
+    with pytest.raises(ValueError, match=r"legacy reaction window.*action"):
+        CombatState.from_dict(serialized)
 
 
 def test_a_row_written_before_the_hold_rehydrates_as_not_mid_pause() -> None:

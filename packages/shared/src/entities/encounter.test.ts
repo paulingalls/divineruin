@@ -108,4 +108,11 @@ describe("encounter_templates.json — enemy action kinds", () => {
       "hollow_corrupted_settlement/hollowed_knight/Command Lesser",
     ]);
   });
+
+  test("the Ashmark Sergeant is the one accusation carrier", () => {
+    const carriers = actions
+      .filter(({ action }) => encounterActionKind(action) === "accusation")
+      .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
+    expect(carriers).toEqual(["ashmark_patrol/ashmark_sergeant/Accusation"]);
+  });
 });

@@ -1,6 +1,6 @@
 """Round-scoped focus marks created by enemy social actions."""
 
-MARK_KINDS = frozenset({"command"})
+MARK_KINDS = frozenset({"command", "accusation"})
 FOCUS_ATTACK_BONUS = 2
 
 

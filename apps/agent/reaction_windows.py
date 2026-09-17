@@ -11,7 +11,7 @@ combines ``CombatParticipant.has_reaction_ability`` with ``CombatState.reactions
 game_mechanics_combat.md:131 ("if the player has no reaction abilities, the DM doesn't pause").
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-content/encounter_templates.json's 68 action_pool entries — ranged 6, buff 5, knockback 4,
+content/encounter_templates.json's action_pool entries — ranged 6, buff actions, knockback 4,
 grapple 2, control 2, aoe 2, healing 1, 46 bare — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
@@ -28,10 +28,8 @@ from __future__ import annotations
 # drops them strands rogue_slippery and spy_slippery, and the census is what says so.
 GRAPPLE_PROPERTY = "grapple"
 
-# on_enemy_action is the catch-all: it opens for EVERY held enemy action, at both stages. Its one
-# applicable consumer (whisper_implant_doubt, "when an enemy SUCCEEDS an attack or ability") needs
-# the post-roll outcome to exist; its other three consumers are socially triggered and have
-# nothing to bite on in a weapon-only action_pool — recorded inapplicable, not rescued.
+# on_enemy_action is the catch-all for held enemy actions. The reaction gate narrows social
+# consumers by the held action's kind and stage.
 CATCH_ALL = "on_enemy_action"
 
 # The stages a held action passes through, in order. Recorded on the held entry (``opened``) so a
@@ -76,6 +74,7 @@ def open_window_for(
     stage: str,
     actor_id: str,
     target_id: str | None,
+    action_kind: str,
     triggers: tuple[str, ...],
 ) -> dict:
     """The window descriptor the DM reads out of ``resolve_phase``'s ``next.waiting_on``.
@@ -91,5 +90,33 @@ def open_window_for(
         "stage": stage,
         "actor_id": actor_id,
         "target_id": target_id,
+        "action_kind": action_kind,
         "triggers": list(triggers),
     }
+
+
+def upgrade_legacy_window(window: dict | None, held_actions: list[dict], participants: list[dict]) -> dict | None:
+    """Add the held action's kind to a pre-deploy open window, or fail loud."""
+    if window is None or "action_kind" in window:
+        return window
+    if not held_actions:
+        raise ValueError("legacy reaction window has no held action from which to derive action_kind")
+    head = held_actions[0]
+    actor = next((row for row in participants if row.get("id") == head.get("actor_id")), None)
+    declaration = head.get("declaration")
+    action_name = declaration.get("action") if isinstance(declaration, dict) else None
+    if actor is None or not isinstance(action_name, str):
+        raise ValueError("legacy reaction window's held action cannot identify its actor or action")
+    action = next(
+        (
+            row
+            for row in actor.get("action_pool", [])
+            if isinstance(row.get("name"), str) and row["name"].lower() == action_name.lower()
+        ),
+        None,
+    )
+    if action is None:
+        raise ValueError(f"legacy reaction window's held action {action_name!r} is unavailable")
+    from encounter_actions import action_kind as classify_action
+
+    return {**window, "action_kind": classify_action(action)}

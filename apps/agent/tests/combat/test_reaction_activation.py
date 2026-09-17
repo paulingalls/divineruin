@@ -33,6 +33,7 @@ def _ally_targeted_window(*, stage: str, triggers: tuple[str, ...]):
         stage=stage,
         actor_id="goblin_scout_1",
         target_id="player_2",
+        action_kind="attack",
         triggers=triggers,
     )
     state.reactions_available = {"player_1": reaction_spend.unspent()}

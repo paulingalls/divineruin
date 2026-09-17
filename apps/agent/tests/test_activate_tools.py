@@ -229,6 +229,7 @@ class TestUnknownId:
             stage=reaction_windows.POST_ROLL,
             actor_id="goblin_scout_1",
             target_id="player_1",
+            action_kind="attack",
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
         state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))

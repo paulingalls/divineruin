@@ -13,6 +13,37 @@ SELF_TARGETED_REACTION_WINDOWS = frozenset({"on_hit", "on_targeted", "on_conditi
 UNBOUND_REACTION_WINDOWS = frozenset(
     {"on_ally_hit", "on_ally_targeted", "on_enemy_miss", "on_enemy_move", "on_spell_cast", "on_enemy_action"}
 )
+HOLLOW_CATEGORIES = frozenset({"hollow_drift", "hollow_rend"})
+_SOCIAL_SUBJECTS = {
+    "marshal_countermand": "command",
+    "spy_plausible_deniability": "accusation",
+}
+
+
+def is_hollow(actor) -> bool:
+    return actor.category in HOLLOW_CATEGORIES or actor.type == "temporary_hollowed"
+
+
+def _validate_social_subject(state: CombatState, actor_id: str, ability_id: str, window: dict) -> None:
+    actual = window["action_kind"]
+    required = _SOCIAL_SUBJECTS.get(ability_id)
+    if required is not None and actual != required:
+        raise ValueError(f"reaction {ability_id!r} requires subject {required!r}, but held subject is {actual!r}")
+    if ability_id == "spy_plausible_deniability" and window["target_id"] != actor_id:
+        raise ValueError(
+            f"reaction {ability_id!r} belongs to accused reactor {actor_id!r}, "
+            f"but the accusation targets {window['target_id']!r}"
+        )
+    if ability_id == "diplomat_objection":
+        if window["stage"] != "pre_roll":
+            raise ValueError(
+                f"reaction {ability_id!r} requires stage 'pre_roll', but the open stage is {window['stage']!r}"
+            )
+        acting_enemy = state.get_participant(window["actor_id"])
+        if acting_enemy is None:
+            raise ValueError(f"reaction window names missing actor {window['actor_id']!r}")
+        if is_hollow(acting_enemy):
+            raise ValueError(f"reaction {ability_id!r} has no effect on Hollow actor {acting_enemy.id!r}")
 
 
 def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
@@ -56,6 +87,8 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    _validate_social_subject(state, actor_id, ability_id, window)
 
     if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
         if window["target_id"] != actor_id:

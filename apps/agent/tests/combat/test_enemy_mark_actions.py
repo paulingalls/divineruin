@@ -184,7 +184,15 @@ def _encounter(encounter_id: str) -> dict:
     ("encounter_id", "expected"),
     [
         ("bandit_ambush", {"bandit_captain": [{"name": "Press the Attack", "kind": "command"}]}),
-        ("ashmark_patrol", {"ashmark_sergeant": [{"name": "Rally", "kind": "command"}]}),
+        (
+            "ashmark_patrol",
+            {
+                "ashmark_sergeant": [
+                    {"name": "Rally", "kind": "command"},
+                    {"name": "Accusation", "kind": "accusation"},
+                ]
+            },
+        ),
         (
             "cult_cell",
             {

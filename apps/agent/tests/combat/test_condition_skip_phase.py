@@ -212,6 +212,7 @@ def _stunned_reaction_state() -> CombatState:
         stage="pre_roll",
         actor_id="goblin_scout_1",
         target_id="player_1",
+        action_kind="attack",
         triggers=reaction_windows.pre_roll_triggers({}),
     )
     state.held_actions = [{"seq": 0, "actor_id": "goblin_scout_1"}]

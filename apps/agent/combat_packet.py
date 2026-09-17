@@ -279,14 +279,15 @@ async def _resolve_one_packet(
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 
-    # A hostile command is an order, not a swing: it resolves without a roll (encounter_actions).
-    if not attacker.is_ally and action_kind(action) == "command":
-        combat_marks.resolve_mark_action(state, attacker, target, "command")
+    # A hostile mark action resolves without a roll (encounter_actions).
+    if not attacker.is_ally and action_kind(action) in combat_marks.MARK_KINDS:
+        kind = action_kind(action)
+        combat_marks.resolve_mark_action(state, attacker, target, kind)
         return {
             "actor_id": packet.actor_id,
             "resolved": True,
             "declaration_type": str(decl.type),
-            "kind": "command",
+            "kind": kind,
             "action": decl.action,
             "target": target.name,
         }
