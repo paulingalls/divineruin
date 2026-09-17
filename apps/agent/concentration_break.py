@@ -1,4 +1,8 @@
-"""Persist and surface concentration ending from damage or incapacitating conditions."""
+"""Persist and surface concentration ending from damage or incapacitating conditions.
+
+There is no concentration HUD element, so a break is returned for the caller to surface in its
+DM-facing response rather than pushed as a client event nothing would consume.
+"""
 
 import check_resolution_save
 import concentration
