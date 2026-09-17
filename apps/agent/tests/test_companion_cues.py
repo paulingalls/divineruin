@@ -168,17 +168,17 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
     sd.onboarding_beat = beat
     sd.last_player_speech_time = time.time() - NUDGE_DELAY_SECONDS - 5
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     order: list[str] = []
     _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
-    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
+    session.generate_reply.side_effect = lambda **_kwargs: (order.append("reply"), completed_handle())[1]
     background = OnboardingBackgroundProcess(session, sd)
     background._last_active_beat = beat
     background._hint_index = index
 
     await background._check_nudge()
 
-    instructions = session.generate_reply.await_args.kwargs["instructions"]
+    instructions = session.generate_reply.call_args.kwargs["instructions"]
     _assert_assigned_cue(instructions, companion_id)
     assert order == ["publish", "reply"]
     assert _published_packets(sd) == [
@@ -288,11 +288,11 @@ async def test_onboarding_nudge_without_companion_logs_and_keeps_polling(caplog:
     sd.onboarding_beat = 4
     sd.last_player_speech_time = time.time() - NUDGE_DELAY_SECONDS - 5
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     background = OnboardingBackgroundProcess(session, sd)
 
     with caplog.at_level("ERROR", logger="divineruin.onboarding_background"):
         await background._check_nudge()
 
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
     assert "without a companion" in caplog.text
