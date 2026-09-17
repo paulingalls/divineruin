@@ -41,6 +41,7 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "ac": p.ac,
         "is_fallen": p.is_fallen,
         "cannot_act": list(cannot_act(p.conditions)),
+        "prone": conditions.has_condition(p.conditions, "prone"),
         "actions": [action["name"] for action in p.action_pool],
         "mark_actions": [
             {"name": action["name"], "kind": action_kind(action)}

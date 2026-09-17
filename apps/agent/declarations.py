@@ -15,8 +15,8 @@ Resolution of each category lives downstream in orchestration: Attack resolves v
 ``check_resolution_attack.resolve_attack``; Defend's ``ac_bonus`` is applied as a phase-scoped
 ``CombatState.ac_modifiers`` entry. ABILITY is modelled here as a first-class category
 (unified-declaration-path decision, supersedes cea4ff06ea31) but its in-combat
-resolution lands in story-007; INTERACT/MANEUVER/RETREAT are modelled now and resolved
-in later M4.x work.
+resolution lands in story-007; MANEUVER resolves as stand or shove, while INTERACT/RETREAT remain
+modelled for later work.
 """
 
 from __future__ import annotations

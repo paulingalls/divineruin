@@ -13,6 +13,7 @@ from livekit.agents.llm import ToolError
 
 import combat_ability_save
 import combat_enhancers
+import combat_maneuver
 import combat_marks
 import combat_resolution
 import conditions
@@ -171,8 +172,8 @@ async def _resolve_one_packet(
     weapon-durability flags. Ability resolves through the shared cast logic (story-007,
     via _resolve_ability_packet), its CastResult stashed on ``cast_outcome`` for the
     phase loop to commit. Defend resolves as a no-op (its +2 AC was applied to
-    state.ac_modifiers in the resolve_phase pre-pass). Interact/Maneuver/Retreat are
-    modelled + initiative-ordered but their mechanical resolution lands in later M4.x.
+    state.ac_modifiers in the resolve_phase pre-pass). Maneuver resolves as stand or shove;
+    Interact and Retreat remain initiative-ordered but unresolved.
 
     ``reaction_ac_bonus`` is the Beat-3 hold's channel for a pre-roll reaction's +2 AC against the
     ONE held blow it was spent against (story-018), and ``shield_reaction`` the same channel for a
@@ -259,6 +260,9 @@ async def _resolve_one_packet(
             player=player,
             cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
         )
+
+    if decl.type is DeclarationType.MANEUVER:
+        return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
     if decl.type is not DeclarationType.ATTACK:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider

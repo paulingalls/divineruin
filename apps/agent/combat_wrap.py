@@ -1,12 +1,12 @@
 """Beat 4 — the phase wrap, and the ``next`` envelope the DM reads (M29, story-016).
 
-Split out of combat_turn.py, which took the two-commit Beat-3 hold and the 500-line ceiling in the
-same change. Both pieces belong to the END of a round rather than to its orchestration:
+Both pieces belong to the END of a round rather than to its orchestration:
 ``_wrap_phase`` runs exactly once per round, in the LAST commit, and ``next_envelope`` says what
 the DM does after whichever commit just landed.
 """
 
 import combat_phase
+import conditions
 import event_types as E
 import fatigue_narration
 import reaction_gate
@@ -35,9 +35,9 @@ def _held_action_name(state) -> str | None:
 def next_envelope(state) -> dict:
     """What the DM does next: the phase, the verb that ADVANCES it, and the open window (ADR 0008 d4).
 
-    This is the window PRODUCER (constraint 6). Sprint 45 shipped a gate keyed on a reaction
-    ``window`` the DM had to guess among nine members of abilities.REACTION_WINDOWS; here the
-    engine names the window it is paused on, and the DM passes back an id it minted.
+    This is the window PRODUCER (constraint 6): rather than the DM guessing among the nine
+    abilities.REACTION_WINDOWS, the engine names the window it is paused on, and the DM passes back
+    an id it minted.
 
     ``verbs`` is the ADVANCE set, not a whitelist of everything legal right now, and the prompt
     says so: the same result payload carries ``death_saves_due`` and ``legendary_available``, whose
@@ -78,6 +78,11 @@ def next_envelope(state) -> dict:
             {"actor_id": p.id, "name": p.name, "conditions": list(blocked)}
             for p in state.participants
             if (blocked := cannot_act(p.conditions))
+        ],
+        "prone": [
+            {"actor_id": p.id, "name": p.name}
+            for p in state.participants
+            if not p.is_fallen and conditions.has_condition(p.conditions, "prone")
         ],
     }
 

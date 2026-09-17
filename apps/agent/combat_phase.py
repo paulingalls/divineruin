@@ -5,10 +5,9 @@ Zero IO, zero async — the deterministic heart of phase-based combat, mirroring
 per call: declaration -> resolution -> narration -> wrap -> (loop to declaration |
 combat_end).
 
-Mechanical attack resolution (``check_resolution_attack.resolve_attack``) and side-effect
-application (Resonance decay, death-save rolls, DB persistence) live in orchestration
-(story-003); this module only computes beat transitions, ordered resolution packets,
-and the wrap beat's effect signals.
+Mechanical attack resolution (``check_resolution_attack.resolve_attack``) and side-effects
+(Resonance decay, death-save rolls, DB persistence) live in orchestration; this module only
+computes beat transitions, ordered resolution packets, and the wrap beat's effect signals.
 """
 
 from __future__ import annotations
@@ -18,6 +17,7 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import conditions
 import reaction_spend
 from combat_ability import _find_action
 from condition_restrictions import cannot_act
@@ -116,9 +116,8 @@ def advance_combat_phase(
 ) -> tuple[CombatState, PhaseAdvance]:
     """Advance the combat phase machine by exactly one beat.
 
-    Pure: returns a new ``CombatState`` (deep-copied) and never mutates the input.
-    ``rng`` is an unused forward seam for M4.2 resolution rolls; M4.1 has no
-    randomness, so the engine is trivially deterministic.
+    Pure: returns a new ``CombatState`` (deep-copied) and never mutates the input. The engine
+    draws no randomness, so ``rng`` is unused.
     """
     next_state = copy.deepcopy(state)
 
@@ -138,6 +137,12 @@ def advance_combat_phase(
                 raise ValueError(
                     f"{actor.name} ({actor.id}) is {blocked[0]}; omit that actor and narrate the helplessness"
                 )
+            if (
+                declaration.type is DeclarationType.MANEUVER
+                and declaration.target_id == actor.id
+                and not conditions.has_condition(actor.conditions, "prone")
+            ):
+                raise ValueError(f"{actor.name} ({actor.id}) is not prone and cannot stand")
             if declaration.type is DeclarationType.ATTACK and _find_action(actor, declaration.action) is None:
                 available = [action["name"] for action in actor.action_pool]
                 raise ValueError(

@@ -35,7 +35,7 @@ def _land_condition_on_one(
     a target not on the state, or an immunity no-op, returns False so the caller drops the signal.
     The mutation rides save_combat_state."""
     cond_target = attacker if target_id is None else state.get_participant(target_id)
-    if cond_target is None:
+    if cond_target is None or (cond_type == "prone" and cond_target.prone_immunity):
         return False
     cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
     return conditions.has_condition(cond_target.conditions, cond_type)
@@ -291,7 +291,9 @@ async def _resolve_enemy_condition_packet(
             if broken is not None:
                 summary["concentration_broken"] = broken
     else:
-        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
+        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed, a prone master) or off-state
+        if cond_type == "prone" and target.prone_immunity:
+            summary["prone_immunity"] = target.prone_immunity
     return summary
 
 

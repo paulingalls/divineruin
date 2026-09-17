@@ -8,7 +8,7 @@ DM said a word. These are the guards for the restored model.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
@@ -132,7 +132,13 @@ class TestTheTwoWindows:
         assert _p(ctx).hp_current == 22
         assert r3["beat"] == "declaration"
         assert r3["round"] == 2
-        assert r3["next"] == {"phase": "declaration", "verbs": ["declare_phase"], "waiting_on": None, "cannot_act": []}
+        assert r3["next"] == {
+            "phase": "declaration",
+            "verbs": ["declare_phase"],
+            "waiting_on": None,
+            "cannot_act": [],
+            "prone": [],
+        }
         assert ctx.userdata.combat_state.held_actions == []
         assert ctx.userdata.combat_state.open_window is None
 
@@ -202,12 +208,17 @@ class TestTheTwoWindows:
         deps = _resolve_deps()
 
         await _call(ctx, deps)
-        result = await _call(ctx, deps)
+        with patch("random.randint", side_effect=[18, 3]):
+            result = await _call(ctx, deps)
 
         assert result["next"]["waiting_on"] is None
         summary = next(packet for packet in result["packets"] if packet["actor_id"] == "goblin_scout_1")
-        assert summary["resolved"] is False
-        assert "not yet implemented" in summary["reason"]
+        if declaration_type == "maneuver":
+            assert summary["resolved"] is True
+            assert summary["shove"] == "knocked_prone"
+        else:
+            assert summary["resolved"] is False
+            assert "not yet implemented" in summary["reason"]
 
 
 class TestTheReactionBudgetGate:

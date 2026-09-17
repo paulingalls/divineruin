@@ -296,6 +296,14 @@ def has_iron_constitution(player_data: dict) -> bool:
     return _get_skill_tier(player_data, "endurance") == "master"
 
 
+def prone_immunity(player_data: dict) -> str | None:
+    if _get_skill_tier(player_data, "athletics") == "master":
+        return "Immovable Anchor"
+    if _get_skill_tier(player_data, "acrobatics") == "master":
+        return "Perfect Balance"
+    return None
+
+
 def exhaustion_stack_cap(player_data: dict) -> int:
     """The character's Exhausted stack cap: 3 with Iron Constitution (Endurance master), else 5
     (M4.4 story-005). The named production wiring for has_iron_constitution — consumed at the

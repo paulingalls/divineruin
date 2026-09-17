@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import random
+from unittest.mock import patch
 
 from acceptance._capstone_helpers import _resolve_round
 from acceptance.seeds import seed_player_with_pools
@@ -124,15 +125,20 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
         )
         assert hp_row["hp"] == live_player.hp_current
 
-        # INTERACT / MANEUVER / RETREAT — modelled + initiative-ordered, narrated-only today (wasted
-        # but typed: resolved=False carries the declaration_type so the DM re-prompts, never crashes).
+        # INTERACT / RETREAT remain narrated-only.
         for decl, dtype in (
             ({"type": "interact", "action": "torch"}, "interact"),
-            ({"type": "maneuver", "target_id": enemy.id}, "maneuver"),
             ({"type": "retreat"}, "retreat"),
         ):
             pkt = _player_packet(await _run_phase(decl), player_id)
             assert pkt["resolved"] is False and pkt["declaration_type"] == dtype
+
+        with patch("random.randint", side_effect=[18, 3]):
+            maneuver_pkt = _player_packet(await _run_phase({"type": "maneuver", "target_id": enemy.id}), player_id)
+        assert maneuver_pkt["resolved"] is True
+        assert maneuver_pkt["shove"] == "knocked_prone"
+        live_enemy = ctx.userdata.combat_state.get_participant(enemy.id)
+        assert any(condition["type"] == "prone" for condition in live_enemy.conditions)
 
         # ABILITY — mechanical (story-007): the real cast resolves in the phase tx, deducting Focus.
         ability_pkt = _player_packet(await _run_phase({"type": "ability", "action": _ABILITY_SPELL}), player_id)

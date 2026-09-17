@@ -116,6 +116,7 @@ class CombatParticipant:
     # The class catalog's reaction ids: a participant carries no class, and the DM must be handed
     # an exact id at a window.
     reaction_ids: list[str] = field(default_factory=list)
+    prone_immunity: str | None = None
 
     @property
     def is_ally(self) -> bool:
