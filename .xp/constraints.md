@@ -28,9 +28,9 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
 7. **A cross-language AC names both sides.** Content and contracts are mirrored
    in Python and TypeScript; a guard living on one side certifies nothing about
    the other. Verify names both files, or the DIRECTORY — never one file whose
-   tests a later split can silently narrow. But `test:all` DOES NOT BELONG IN A
-   VERIFY LINE (human decision 2026-09-06): the `story` tier already runs it on the
-   merged tree at every close, so a card repeating it only slows the executor.
+   tests a later split can silently narrow. `test:all` stays OUT of Verify (human
+   2026-09-06), BUT THE EXECUTOR RUNS `bun run test:python` BEFORE FINISHING:
+   sprint-051 lost three land rounds to pins outside a card's directories.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
@@ -39,10 +39,9 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
 9. **A guard that models someone else's contract certifies the model, not the
    contract.** Where the real thing can be executed — a vendor type, a live
    endpoint, a schema the provider compiles — the test constructs or calls it.
-   Twice in sprint-047: a schema walk went green on all three ceilings while the
-   live API refused three agents ("compiled grammar is too large"); and a
-   `MagicMock` invented whichever attribute production named, so token counters
-   read 0 for months. Sprint-048 added the PARSING side — we read the model's
+   Sprint-047: a schema walk went green while the live API refused three agents,
+   and a `MagicMock` invented every attribute production read (again in
+   sprint-051). Sprint-048 added the PARSING side — we read the model's
    narration `segments` assuming dicts, and it sent a bare string. Mock our own
    seams; never the other side's shape, in or out. A VENDOR LIMIT IS PER REQUEST,
    NOT PER PROJECT: ADR 0004's strict ceilings are the gameplay agents' toolsets,
