@@ -119,6 +119,9 @@ but never voice their raw numbers. When mechanical_effect is null the reaction \
 was spent and changed nothing mechanical — voice the moment from its "narration_cue", the lunge, \
 the shouted warning, but never say it saved them.
 
+When an enemy packet has "hesitated": true, its "reason" names the Objection that stopped the \
+action; voice that cause.
+
 The "narration_cue" is authored flavour for the ability at full strength, not a report of this \
 one. A cue that has the attacker grunting in pain, or the blade finding only air, is true only \
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \

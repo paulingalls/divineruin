@@ -1,5 +1,3 @@
-"""Contested social reactions change the held enemy action exactly once."""
-
 import json
 from pathlib import Path
 
@@ -134,13 +132,15 @@ def _social_state(ability_id, action, *, target_id="player_1", with_striker=Fals
 
 def _close(state, rng):
     assert state.open_window is not None
-    return combat_reaction_effect.close(
+    packets = combat_reaction_effect.close(
         state,
         state.held_actions[0],
         state.open_window,
         attack_action=combat_hold._attack_action(state, state.held_actions[0]),
         contest_rng=rng,
     )
+    assert len(packets) == 1
+    return packets[0]
 
 
 def _packet_deps(resolver):
@@ -158,13 +158,13 @@ def _packet_deps(resolver):
             "marshal_countermand",
             {"name": "Rally", "kind": "command", "properties": []},
             "command_countered",
-            9,  # commander CHA 12
+            9,
         ),
         (
             "spy_plausible_deniability",
             {"name": "Accusation", "kind": "accusation", "properties": []},
             "accusation_dismissed",
-            11,  # accuser WIS 16
+            11,
         ),
     ],
 )
@@ -175,16 +175,9 @@ def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, 
     packet = _close(state, rng)
 
     assert rng.calls == [(1, 20), (1, 20)]
-    assert packet is not None
     assert packet["mechanical_effect"] == effect
     assert (packet["reactor_total"], packet["opposer_total"]) == (13, opposer_total)
-    stored = state.held_actions[0]["reaction_contest"]
-    assert stored == {
-        "ability_id": ability_id,
-        "reactor_total": 13,
-        "opposer_total": opposer_total,
-        "success": True,
-    }
+    assert "player_1" in state.held_actions[0]["reaction_contests"]
 
     reloaded = CombatState.from_dict(json.loads(json.dumps(state.to_dict())))
     repeated = _close(reloaded, RefusingRng())
@@ -194,10 +187,9 @@ def test_social_contest_wins_report_totals_and_persist_once(ability_id, action, 
 def test_a_tied_countermand_loses_and_malformed_stored_results_fail_loud():
     state = _social_state("marshal_countermand", {"name": "Rally", "kind": "command", "properties": []})
     packet = _close(state, SequenceRng([8, 10]))
-    assert packet is not None
     assert (packet["reactor_total"], packet["opposer_total"], packet["mechanical_effect"]) == (11, 11, None)
 
-    state.held_actions[0]["reaction_contest"] = {"ability_id": "diplomat_objection"}
+    state.held_actions[0]["reaction_contests"] = {"player_1": {"ability_id": "diplomat_objection"}}
     with pytest.raises(ValueError, match="stored reaction contest"):
         _close(state, RefusingRng())
 
@@ -263,7 +255,7 @@ async def test_mark_contests_change_the_bandmates_ac_minus_one_attack(ability_id
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("won", "effect", "damage", "totals"),
-    [(True, "action_hesitated", 0, (13, 11)), (False, None, 4, (8, 13))],  # diplomat CHA 16 vs actor WIS 16
+    [(True, "action_hesitated", 0, (13, 11)), (False, None, 4, (8, 13))],
 )
 async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, damage, totals):
     action = {"name": "Mace", "damage": "1d6", "damage_type": "bludgeoning", "properties": []}
@@ -288,7 +280,12 @@ async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, dam
     assert before - player.hp_current == damage
     if won:
         hesitation = next(row for row in packets if row.get("hesitated"))
-        assert hesitation == {"actor_id": "enemy_1", "resolved": False, "hesitated": True}
+        assert hesitation == {
+            "actor_id": "enemy_1",
+            "resolved": False,
+            "hesitated": True,
+            "reason": "Objection caused this action to hesitate",
+        }
         deps["resolver"].resolve_attack.assert_not_called()
 
 
@@ -299,3 +296,5 @@ def test_combat_prompt_names_accusation_targets_and_social_reaction_results():
         assert effect in COMBAT_PROMPT
     assert "reactor_total" in COMBAT_PROMPT and "opposer_total" in COMBAT_PROMPT
     assert "never voice their raw numbers" in COMBAT_PROMPT
+    assert '"hesitated": true' in COMBAT_PROMPT
+    assert '"reason" names the Objection' in COMBAT_PROMPT

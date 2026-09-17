@@ -240,16 +240,23 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
     # the spend exists and the blow has not been applied yet (story-018).
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
-    reacted, reaction_packet = None, None
+    reacted, reaction_packets = None, []
     if closed is not None and state.held_actions:
         reacted = state.held_actions[0]
-        reaction_packet = combat_reaction_effect.close(
+        reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
-        if reaction_packet is not None:
-            summaries.append(reaction_packet)
-        if combat_reaction_contest.hesitated(reacted):
-            summaries.append({"actor_id": reacted["actor_id"], "resolved": False, "hesitated": True})
+        summaries.extend(reaction_packets)
+        hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
+        if hesitation_reason is not None:
+            summaries.append(
+                {
+                    "actor_id": reacted["actor_id"],
+                    "resolved": False,
+                    "hesitated": True,
+                    "reason": hesitation_reason,
+                }
+            )
             state.held_actions.pop(0)
 
     while state.held_actions:
@@ -304,8 +311,8 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             continue
 
         if head is reacted:
-            combat_reaction_effect.record_shield_wear(reaction_packet, summary)
-            combat_reaction_effect.record_save_advantage(reaction_packet, summary)
+            combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
+            combat_reaction_effect.record_save_advantage(reaction_packets, summary)
         summaries.append(summary)
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
