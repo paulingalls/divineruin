@@ -21,6 +21,7 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
+from speech_delivery import deliver_speech
 from system_prompts import build_companion_cue, is_companion_cue
 from task_logging import log_task_failure
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
@@ -35,12 +36,6 @@ logger = logging.getLogger("divineruin.background")
 
 TIMER_FALLBACK_SECS = 30.0
 TRANSIENT_IO_ERRORS = (OSError, TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
-GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS = frozenset(
-    {
-        ("AgentSession isn't running",),
-        ("AgentSession is closing, cannot use generate_reply()",),
-    }
-)
 
 
 class BackgroundProcess:
@@ -291,17 +286,13 @@ class BackgroundProcess:
             )
             await asyncio.sleep(2.0)
 
-        try:
-            handle = self._session.generate_reply(instructions=top.instructions)
-        except RuntimeError as exc:
-            if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
-                raise
-            logger.warning("Proactive speech skipped (priority=%s): %s", top.priority.name, exc)
-            return
-
-        await handle
-        if (failure := handle.exception()) is not None:
-            logger.warning("Proactive speech failed (priority=%s): %s", top.priority.name, failure)
+        delivered = await deliver_speech(
+            self._session,
+            top.instructions,
+            logger,
+            f"Proactive speech (priority={top.priority.name})",
+        )
+        if not delivered:
             return
 
         logger.info("Proactive speech delivered (priority=%s)", top.priority.name)

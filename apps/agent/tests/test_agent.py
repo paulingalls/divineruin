@@ -5,6 +5,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from speech_handles import completed_handle
 
 from agent import _extract_player_id
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
@@ -227,7 +228,7 @@ class TestDMSession:
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
+                mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
@@ -278,7 +279,7 @@ class TestDMSession:
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
+                mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
@@ -328,7 +329,7 @@ class TestDMSession:
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
+                mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
@@ -376,7 +377,7 @@ class TestDMSession:
             with patch("agent.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
-                mock_session_instance.generate_reply = AsyncMock()
+                mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
@@ -406,7 +407,7 @@ class TestDMSession:
 
                                                     await dm_session(mock_ctx)
 
-                mock_session_instance.generate_reply.assert_awaited_once()
+                mock_session_instance.generate_reply.assert_called_once()
                 call_kwargs = mock_session_instance.generate_reply.call_args[1]
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
