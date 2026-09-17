@@ -129,7 +129,7 @@ class TestEndCombat:
         queued. Only the lock closes that: the waiter re-reads the state the phase adopted.
 
         The sibling of the guard above — same two-callers-one-payout shape, the other pair of
-        callers. Deleting ``async with session.combat_end_lock`` from ``_resolve_phase_impl``
+        callers. Deleting ``async with session.combat_state_lock`` from ``_resolve_phase_impl``
         leaves the whole combat suite green without it.
         """
         import asyncio

@@ -4,24 +4,25 @@ A completed spell-training activity = one cycle toward that spell's
 spell_learning_progress. When the tier's cycle count is reached, the worker
 promotes the spell into the known library (record_learned + clear progress).
 
-Unit tests mock the persistence layer (AsyncMock) and drive the worker's
-completion branch. TestSpellTrainingThreeCycleStandard exercises the full
-3-cycles-to-known orchestration (AC4's behavior) with a stateful fake.
-
-The literal real-Postgres single-DB assertion for AC4 rides the M8 story-007
-capstone in tests/acceptance/ (ADR 0003: real-DB testcontainer fixtures live in
-tests/acceptance/conftest.py, unreachable from tests/ — story-002/003 deferred
-the same way; decision retro-try-ac4-capstone-placement).
+Unit tests isolate worker retry and promotion seams. The three-cycle diagnostic
+uses the real begin_activity producer, Postgres rows, progress, and known library.
 """
 
+import json
+import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sample_fixtures import make_context
 
+import character_spells
+import db_training
+from activity_payloads import Training, to_impl_kwargs
+from activity_tools import _begin_activity_impl
 from async_worker_training import advance_training_cycles
 from dialogue_parser import Segment
 
-SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric"}
+SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 5}
 
 # A spell-training activity at the completion edge. spell_major carries
 # cycles_required=5 (content config, loaded by the autouse conftest fixture);
@@ -40,7 +41,7 @@ SAMPLE_SPELL_ACTIVITY = {
 }
 
 
-def _completion_patches(activity, *, advance_return):
+def _completion_patches(activity, *, advance_return, player=SAMPLE_PLAYER):
     """Patch the worker's persistence + narration/TTS/push collaborators.
 
     Returns the patch context managers as a tuple plus the three character_spells
@@ -57,7 +58,7 @@ def _completion_patches(activity, *, advance_return):
             return_value=[activity],
         ),
         patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock),
-        patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+        patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=player),
         patch("async_worker_training.character_spells.advance_learning_cycle", advance),
         patch("async_worker_training.character_spells.record_learned", record_learned),
         patch("async_worker_training.character_spells.delete_learning_progress", delete_progress),
@@ -137,6 +138,64 @@ class TestSpellTrainingAccrual:
         advance.assert_awaited_once()
         record_learned.assert_not_awaited()
         delete_progress.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_completed_cycle_refuses_off_source_promotion(self):
+        patches, _, record_learned, _ = _completion_patches(
+            SAMPLE_SPELL_ACTIVITY,
+            player={"player_id": "player_1", "name": "Celia", "class": "cleric"},
+            advance_return={
+                "cycles_completed": 5,
+                "cycles_required": 5,
+                "completed": True,
+                "midpoint_decision_id": "push",
+            },
+        )
+        with (
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patches[7],
+            patches[8],
+            patches[9],
+        ):
+            count = await advance_training_cycles()
+
+        assert count == 0
+        record_learned.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_completed_cycle_refuses_tier_locked_promotion(self):
+        patches, _, record_learned, _ = _completion_patches(
+            SAMPLE_SPELL_ACTIVITY,
+            player={"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 4},
+            advance_return={
+                "cycles_completed": 5,
+                "cycles_required": 5,
+                "completed": True,
+                "midpoint_decision_id": "push",
+            },
+        )
+        with (
+            patches[0],
+            patches[1],
+            patches[2],
+            patches[3],
+            patches[4],
+            patches[5],
+            patches[6],
+            patches[7],
+            patches[8],
+            patches[9],
+        ):
+            count = await advance_training_cycles()
+
+        assert count == 0
+        record_learned.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_midpoint_decision_threaded_to_progress(self):
@@ -278,94 +337,69 @@ class TestSpellTrainingAccrual:
         record_learned.assert_awaited_once()
 
 
-class _FakeSpellStore:
-    """Stateful stand-in for character_spells' progress + known tables.
-
-    Lets a test drive the worker across multiple real completion cycles without a
-    DB — the 3-cycles-to-known orchestration (AC4's behavior). The literal
-    real-Postgres assertion rides the M8 story-007 capstone (see module docstring).
-    """
-
-    def __init__(self) -> None:
-        self.progress: dict[tuple[str, str], int] = {}
-        self.decisions: dict[tuple[str, str], str] = {}  # first non-null decision (COALESCE)
-        self.known: dict[tuple[str, str], dict] = {}
-
-    async def advance_learning_cycle(
-        self, player_id, spell_id, cycles_required, *, activity_id=None, midpoint_decision_id=None
-    ):
-        key = (player_id, spell_id)
-        self.progress[key] = self.progress.get(key, 0) + 1
-        if midpoint_decision_id is not None and key not in self.decisions:
-            self.decisions[key] = midpoint_decision_id
-        completed = self.progress[key] >= cycles_required
-        return {
-            "cycles_completed": self.progress[key],
-            "cycles_required": cycles_required,
-            "completed": completed,
-            "midpoint_decision_id": self.decisions.get(key),
-        }
-
-    async def record_learned(self, player_id, spell_id, acquisition_track, *, bonus_variant=None):
-        self.known[(player_id, spell_id)] = {"track": acquisition_track, "bonus_variant": bonus_variant}
-
-    async def delete_learning_progress(self, player_id, spell_id):
-        self.progress.pop((player_id, spell_id), None)
-
-
-# A Standard-tier spell carries cycles_required=3 (content config via conftest);
-# spell_standard midpoint decision ids are power/control.
-SAMPLE_STANDARD_ACTIVITY = {
-    "id": "train_std1",
-    "player_id": "player_1",
-    "activity_type": "spell_standard",
-    "state": "running_second_half",
-    "data": {"spell_id": "arcane_frost_touch", "program_name": "Frost Study", "decision_id": "power"},
-    "transition_at": "2026-01-01T00:00:00Z",
-}
-
-
 class TestSpellTrainingThreeCycleStandard:
     @pytest.mark.asyncio
-    async def test_standard_spell_known_after_three_cycles_not_before(self):
-        """A Standard spell (3 cycles): three completed training activities make it
-        known with acquisition_track='training', and it is NOT known after only two.
-        Exercises the worker's full accrual→promotion orchestration end to end."""
-        store = _FakeSpellStore()
-        key = ("player_1", "arcane_frost_touch")
-        mock_segments = [Segment("NARRATOR", "calm", "Frost settles.")]
+    async def test_real_producer_spell_known_after_three_cycles_not_before(self, dev_db_pool):
+        player_id = f"test_player_{uuid.uuid4().hex}"
+        spell_id = "arcane_hold_person"
+        await dev_db_pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)",
+            player_id,
+            json.dumps({"player_id": player_id, "name": "Mira", "class": "mage", "level": 3}),
+        )
+        real_due = db_training.get_due_training_transitions
 
-        for cycle in (1, 2, 3):
-            with (
-                patch(
-                    "async_worker_training.db_training.get_due_training_transitions",
-                    new_callable=AsyncMock,
-                    return_value=[SAMPLE_STANDARD_ACTIVITY],
-                ),
-                patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock),
-                patch(
-                    "async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER
-                ),
-                patch("async_worker_training.character_spells.advance_learning_cycle", store.advance_learning_cycle),
-                patch("async_worker_training.character_spells.record_learned", store.record_learned),
-                patch(
-                    "async_worker_training.character_spells.delete_learning_progress", store.delete_learning_progress
-                ),
-                patch(
-                    "async_worker_training.generate_activity_narration",
-                    new_callable=AsyncMock,
-                    return_value=(mock_segments, "Frost settles.", "Spell study complete."),
-                ),
-                patch("async_worker_training.synthesize_segments", new_callable=AsyncMock, return_value="x.mp3"),
-                patch("async_worker_training.generate_notification_hook", new_callable=AsyncMock, return_value="Done."),
-                patch("async_worker_training.send_push_notification", new_callable=AsyncMock),
-            ):
-                await advance_training_cycles()
+        async def due_for_test_player():
+            return [row for row in await real_due() if row["player_id"] == player_id]
 
-            if cycle < 3:
-                assert key not in store.known, f"spell known too early (after cycle {cycle})"
-            else:
-                # Known with track='training' and the midpoint decision as bonus_variant (AC3).
-                assert store.known[key] == {"track": "training", "bonus_variant": "power"}
-                # Promotion clears the in-flight progress row.
-                assert key not in store.progress
+        try:
+            for cycle in (1, 2, 3):
+                payload = Training(kind="training", program_id="arcane_study", spell_id=spell_id)
+                kind, kwargs = to_impl_kwargs(payload)
+                created = json.loads(await _begin_activity_impl(make_context(player_id=player_id), kind, **kwargs))
+                activity_id = created["activity_id"]
+                row = await db_training.get_training_activity(activity_id, conn=dev_db_pool)
+                assert row is not None
+                assert row["data"]["spell_id"] == spell_id
+
+                await dev_db_pool.execute(
+                    """
+                    UPDATE training_activities
+                    SET state = 'running_second_half',
+                        data = data || '{"decision_id":"power"}'::jsonb,
+                        transition_at = NOW() - INTERVAL '1 second'
+                    WHERE id = $1
+                    """,
+                    activity_id,
+                )
+                segments = [Segment("NARRATOR", "calm", "The bindings settle.")]
+                with (
+                    patch(
+                        "async_worker_training.db_training.get_due_training_transitions",
+                        side_effect=due_for_test_player,
+                    ),
+                    patch(
+                        "async_worker_training.generate_activity_narration",
+                        new_callable=AsyncMock,
+                        return_value=(segments, "The bindings settle.", "Spell study complete."),
+                    ),
+                    patch("async_worker_training.synthesize_segments", new_callable=AsyncMock),
+                    patch(
+                        "async_worker_training.generate_notification_hook",
+                        new_callable=AsyncMock,
+                        return_value="Done.",
+                    ),
+                    patch("async_worker_training.send_push_notification", new_callable=AsyncMock),
+                ):
+                    assert await advance_training_cycles() == 1
+
+                known = {row["spell_id"]: row for row in await character_spells.get_known(player_id, conn=dev_db_pool)}
+                if cycle < 3:
+                    assert spell_id not in known
+                else:
+                    assert known[spell_id]["acquisition_track"] == "training"
+                    assert known[spell_id]["bonus_variant"] == "power"
+                    assert await character_spells.get_learning_progress(player_id, spell_id, conn=dev_db_pool) is None
+        finally:
+            await dev_db_pool.execute("DELETE FROM training_activities WHERE player_id = $1", player_id)
+            await dev_db_pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

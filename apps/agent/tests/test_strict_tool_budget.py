@@ -107,7 +107,7 @@ def test_agent_within_strict_schema_budget(name, tools):
 EXPECTED_UNION_SPEND = {
     "exploration": 9,  # check 1, travel 2, activate 2, enter_mode 2, query_info 1, transact 1
     "combat": 6,  # declare_phase 1, check 1, activate 2, request_death_save 1, query_info 1
-    "training": 5,  # begin_activity 1, check 1, resolve_activity 1, learn 1, query_info 1
+    "training": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1
     "blacksmith": 1,  # query_info 1

@@ -374,7 +374,7 @@ def test_a_row_written_before_the_hold_rehydrates_as_not_mid_pause() -> None:
 
 async def test_load_combat_state_round_trips_a_mid_window_pause(dev_db_pool) -> None:
     """The same round-trip through real Postgres JSONB — the fast lane's pure test proves the
-    dataclass, this proves the column (constraint 5: validate at the boundary)."""
+    dataclass, this proves the column — validation at the real boundary."""
     pool = dev_db_pool
     combat_id = "combat_persist_mid_window_story016"
     original = _mid_window_state(combat_id)

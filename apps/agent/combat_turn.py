@@ -71,7 +71,7 @@ async def _declare_phase_impl(
     mutations=db_mutations,
 ) -> str:
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _declare_phase_locked(context, declarations, mutations=mutations)
 
 
@@ -130,12 +130,12 @@ async def _resolve_phase_impl(context: RunContext[SessionData], **di) -> str | t
 
     Both take `combat_state` as their only re-entry guard and can only release it after their
     transaction commits, so overlapping calls would otherwise both pass `_require_combat` and grant
-    the encounter's rewards twice. Holding the session's combat-end lock across the whole call means
+    the encounter's rewards twice. Holding the session's combat-state lock across the whole call means
     a waiter re-reads `combat_state` after the holder cleared it and gets "Not in combat" — the
-    truth — instead of a second payout. See SessionData.combat_end_lock.
+    truth — instead of a second payout. See SessionData.combat_state_lock.
     """
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _resolve_phase_locked(context, **di)
 
 
@@ -448,7 +448,7 @@ async def _consume_legendary_action_impl(
     mutations=db_mutations,
 ) -> str:
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _consume_legendary_action_locked(context, boss_id, mutations=mutations)
 
 

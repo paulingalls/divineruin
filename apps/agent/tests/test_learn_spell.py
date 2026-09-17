@@ -119,10 +119,10 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_non_caster_archetype_cannot_learn_spells(self):
-        # A non-caster (no spell-tier table) is rejected with a clear tool error.
+        # A non-caster (no magic source) is rejected with a clear tool error.
         cs = MagicMock()
         cs.record_learned = AsyncMock()
-        with pytest.raises(ToolError, match="cannot learn spells"):
+        with pytest.raises(ToolError, match="no magic source"):
             await spell_tools._learn_spell_impl(
                 make_context(player_id="player_1"),
                 "arcane_fireball",

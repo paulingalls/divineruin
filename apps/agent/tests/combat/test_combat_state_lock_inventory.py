@@ -2,6 +2,7 @@
 
 import ast
 import asyncio
+import subprocess
 from collections import Counter
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -19,7 +20,52 @@ from combat_turn import _consume_legendary_action_impl, _declare_phase_impl
 from session_data import CombatState
 
 _AGENT_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = _AGENT_ROOT.parents[1]
 EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset()
+
+
+def _repository_files() -> tuple[Path, ...]:
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            "apps",
+            "packages",
+            "scripts",
+            "docs",
+        ],
+        cwd=_REPO_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return tuple(Path(path.decode()) for path in result.stdout.split(b"\0") if path)
+
+
+def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
+    # ls-files --cached still lists a tracked file deleted from the worktree but not yet staged.
+    files = (_REPO_ROOT / path for path in paths)
+    return [str(file) for file in files if file.is_file() and needle in file.read_bytes()]
+
+
+def test_old_lock_name_is_absent_from_repository():
+    paths = _repository_files()
+    this_test = Path("apps/agent/tests/combat/test_combat_state_lock_inventory.py")
+    assert paths and this_test in paths
+
+    old_name = "_".join(("combat", "end", "lock")).encode()
+    assert _files_containing(old_name, paths) == []
+
+
+def test_session_data_exposes_only_combat_state_lock():
+    old_name = "_".join(("combat", "end", "lock"))
+    session = make_context().userdata
+    assert hasattr(session, "combat_state_lock")
+    assert not hasattr(session, old_name)
 
 
 class _ObservedLock:
@@ -85,14 +131,14 @@ def _save_references() -> Counter:
 
 def _is_session_lock(node: ast.AST) -> bool:
     return isinstance(node, ast.AsyncWith) and any(
-        isinstance(item.context_expr, ast.Attribute) and item.context_expr.attr == "combat_end_lock"
+        isinstance(item.context_expr, ast.Attribute) and item.context_expr.attr == "combat_state_lock"
         for item in node.items
     )
 
 
 def _name_references() -> dict[str, set[tuple[tuple[str, str], bool]]]:
     """Map each loaded name to the production functions that load it, each flagged with whether the
-    load sits lexically inside an ``async with ....combat_end_lock`` body.
+    load sits lexically inside an ``async with ....combat_state_lock`` body.
 
     Names match by bare identifier, so a collision only ADDS referrers: it can red spuriously, never
     certify an unlocked route. A load, not just a call, counts, so a function handed off as a
@@ -157,7 +203,7 @@ async def _run_writer(name, observations):
         combat.veil_ward = {"source": "cleric", "rounds_remaining": None} if name == "veil_dismiss" else None
         mutations = _combat_mod()
         mutations.save_combat_state = AsyncMock(
-            side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_end_lock.locked())
+            side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_state_lock.locked())
         )
         await _invoke(
             ctx,
@@ -174,7 +220,7 @@ async def _run_writer(name, observations):
         ctx.userdata.combat_state = _make_combat_state()
         mutations = MagicMock(
             save_combat_state=AsyncMock(
-                side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_end_lock.locked())
+                side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_state_lock.locked())
             )
         )
         await _declare_phase_impl(ctx, _declarations(), mutations=mutations)
@@ -184,7 +230,7 @@ async def _run_writer(name, observations):
         ctx.userdata.combat_state = _boss_combat_state()
         mutations = MagicMock(
             save_combat_state=AsyncMock(
-                side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_end_lock.locked())
+                side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_state_lock.locked())
             )
         )
         await _consume_legendary_action_impl(ctx, "warlord_1", mutations=mutations)
@@ -193,7 +239,7 @@ async def _run_writer(name, observations):
     ctx = make_context()
     mutations, queries, content = _make_start_combat_mocks()
     mutations.save_combat_state = AsyncMock(
-        side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_end_lock.locked())
+        side_effect=lambda *_args, **_kwargs: observations.append(ctx.userdata.combat_state_lock.locked())
     )
     await _start_combat_impl(ctx, "goblin_patrol", "Ambush!", mutations=mutations, queries=queries, content=content)
 
@@ -214,7 +260,7 @@ class _OrderTransaction:
         self.conn = object()
 
     async def __aenter__(self):
-        self.observations.append(self.session.combat_end_lock.locked())
+        self.observations.append(self.session.combat_state_lock.locked())
         return self.conn
 
     async def __aexit__(self, *_exc):
@@ -282,7 +328,7 @@ async def test_concurrent_holder_change_survives_real_full_state_mutator(writer)
             await _consume_legendary_action_impl(ctx, "warlord_1", mutations=mutations)
 
     lock = _ObservedLock()
-    ctx.userdata.combat_end_lock = lock
+    ctx.userdata.combat_state_lock = lock
     await lock.acquire()
     lock.attempted.clear()
     holder_state = CombatState.from_dict(ctx.userdata.combat_state.to_dict())
@@ -318,7 +364,7 @@ async def test_concurrent_holder_change_survives_real_full_state_mutator(writer)
 async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_combat_agent_factory):
     ctx = make_context()
     lock = _ObservedLock()
-    ctx.userdata.combat_end_lock = lock
+    ctx.userdata.combat_state_lock = lock
     mutations, queries, content = _make_start_combat_mocks()
     first_save = asyncio.Event()
     release_first = asyncio.Event()

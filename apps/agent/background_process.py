@@ -21,6 +21,7 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
+from speech_delivery import deliver_speech
 from system_prompts import build_companion_cue, is_companion_cue
 from task_logging import log_task_failure
 from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
@@ -273,34 +274,39 @@ class BackgroundProcess:
         if companion and is_companion_cue(top.instructions, companion):
             await publish_companion_cue(self._sd, companion)
 
-        try:
-            # Fire stinger SFX before god whisper speech
-            if top.stinger_sound is not None:
-                from game_events import publish_game_event
+        # Fire stinger SFX before god whisper speech
+        if top.stinger_sound is not None:
+            from game_events import publish_game_event
 
-                await publish_game_event(
-                    self._sd.room,
-                    E.PLAY_SOUND,
-                    {"sound_name": top.stinger_sound},
-                    event_bus=self._sd.event_bus,
-                )
-                await asyncio.sleep(2.0)
+            await publish_game_event(
+                self._sd.room,
+                E.PLAY_SOUND,
+                {"sound_name": top.stinger_sound},
+                event_bus=self._sd.event_bus,
+            )
+            await asyncio.sleep(2.0)
 
-            await self._session.generate_reply(instructions=top.instructions)
-            logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
+        delivered = await deliver_speech(
+            self._session,
+            top.instructions,
+            logger,
+            f"Proactive speech (priority={top.priority.name})",
+        )
+        if not delivered:
+            return
 
-            # Mark last_whisper_level after delivering (deferred from critical path)
-            if top.stinger_sound is not None:
-                try:
-                    favor = await db_activity_queries.get_divine_favor(self._sd.player_id)
-                    if favor:
-                        await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
-                except Exception:
-                    logger.warning("Failed to mark favor whisper level", exc_info=True)
-            if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
-                self._sd.companion.last_speech_time = time.time()
-        except Exception:
-            logger.warning("Failed to deliver proactive speech", exc_info=True)
+        logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
+
+        # Mark last_whisper_level after delivering (deferred from critical path)
+        if top.stinger_sound is not None:
+            try:
+                favor = await db_activity_queries.get_divine_favor(self._sd.player_id)
+                if favor:
+                    await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+            except TRANSIENT_IO_ERRORS:
+                logger.warning("Failed to mark favor whisper level", exc_info=True)
+        if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
+            self._sd.companion.last_speech_time = time.time()
 
     async def _rebuild_warm_layer(self) -> None:
         try:

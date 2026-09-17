@@ -4,6 +4,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -28,7 +29,7 @@ def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock
     agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
     session.current_agent = agent
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
 
@@ -281,7 +282,7 @@ class TestProactiveSpeechDoesNotInterruptAFight:
 
         await bg._deliver_speech()
 
-        session.generate_reply.assert_not_awaited()
+        session.generate_reply.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_it_is_held_rather_than_dropped_and_speaks_once_the_fight_ends(self):
@@ -301,8 +302,8 @@ class TestProactiveSpeechDoesNotInterruptAFight:
         sd.combat_state = None  # end_combat clears this BEFORE COMBAT_ENDED reaches the bus
         await bg._deliver_speech()
 
-        session.generate_reply.assert_awaited_once()
-        assert "The Rider" in session.generate_reply.await_args.kwargs["instructions"]
+        session.generate_reply.assert_called_once()
+        assert "The Rider" in session.generate_reply.call_args.kwargs["instructions"]
 
     @pytest.mark.asyncio
     async def test_the_vaelti_advance_warning_still_speaks_mid_fight(self):
@@ -316,8 +317,8 @@ class TestProactiveSpeechDoesNotInterruptAFight:
 
         await bg._deliver_speech()
 
-        session.generate_reply.assert_awaited_once()
-        assert "through the Veil" in session.generate_reply.await_args.kwargs["instructions"]
+        session.generate_reply.assert_called_once()
+        assert "through the Veil" in session.generate_reply.call_args.kwargs["instructions"]
         assert bg._speech_queue == []
 
     @pytest.mark.asyncio
@@ -339,4 +340,4 @@ class TestProactiveSpeechDoesNotInterruptAFight:
         bg._handle_events([GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})])
         await bg._deliver_speech()
 
-        assert "Combat has ended in victory" in session.generate_reply.await_args.kwargs["instructions"]
+        assert "Combat has ended in victory" in session.generate_reply.call_args.kwargs["instructions"]

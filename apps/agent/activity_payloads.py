@@ -30,10 +30,14 @@ class MaterialQuantity(BaseModel):
 
 
 class Training(BaseModel):
-    """Begin a training cycle with a mentor."""
+    """Begin a training cycle; spell_* programs require spell_id, others forbid it."""
 
     kind: Literal["training"]
     program_id: str = Field(description='A program id from query_info(kind="training_programs").')
+    spell_id: str | None = Field(
+        default=None,
+        description="The studied spell id; required for a spell_* program and forbidden otherwise.",
+    )
 
 
 class CompanionErrand(BaseModel):
@@ -83,7 +87,7 @@ ACTIVITY_VARIANTS: tuple[type[BaseModel], ...] = (Training, CompanionErrand, Cra
 def to_impl_kwargs(activity: ActivityVariant) -> tuple[str, dict]:
     """Map one variant onto the (kind, kwargs) `_begin_activity_impl` has always taken."""
     if isinstance(activity, Training):
-        return "training", {"program_id": activity.program_id}
+        return "training", {"program_id": activity.program_id, "spell_id": activity.spell_id}
     if isinstance(activity, CompanionErrand):
         return "companion_errand", {
             "companion_id": activity.companion_id,

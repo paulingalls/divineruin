@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
+from speech_handles import completed_handle
 
 from companion_profiles import get_companion_profile
 from exploration_agent import ExplorationAgent
@@ -24,7 +25,7 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
     ctx.room = MagicMock()
     session = MagicMock()
     session.start = AsyncMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
 
     with (
         patch("agent.AgentSession", return_value=session) as session_factory,

@@ -18,7 +18,7 @@ Mirrors the veil_ward_tools seam: module-injection keyword args (db_mod/queries_
 hp_mutations_mod/resonance_mutations_mod/resonance_events_mod/racial_mod/dice_mod) for test
 mocking, a single db.transaction() block (the participant's HP and its zero-HP transition are
 written inside it), and a post-commit in-memory sync + RESONANCE_CHANGED push (mirroring the
-spell cast path). The whole call runs under session.combat_end_lock: it mutates the live
+spell cast path). The whole call runs under session.combat_state_lock: it mutates the live
 CombatState, and the paths that adopt a copy of it would otherwise erase the burn.
 """
 
@@ -62,7 +62,7 @@ async def _inner_fire_impl(context: RunContext[SessionData], **di) -> str:
     """
     context.disallow_interruptions()
     session: SessionData = context.userdata
-    async with session.combat_end_lock:
+    async with session.combat_state_lock:
         return await _inner_fire_locked(context, **di)
 
 

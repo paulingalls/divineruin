@@ -7,14 +7,21 @@ FOCUS_ATTACK_BONUS = 2
 def resolve_mark_action(state, source, target, kind: str, *, cancelled: bool = False) -> None:
     if kind not in MARK_KINDS:
         raise ValueError(f"action kind {kind!r} does not create a focus mark")
-    if not cancelled:
+    if cancelled:
+        return
+    current_source = _mark_source(state, target)
+    if current_source is None:
         state.focus_marks[target.id] = {"source_id": source.id, "kind": kind}
+        return
+    if current_source.is_ally == source.is_ally:
+        return
+    raise ValueError(f"focus mark for {target.id!r} belongs to {current_source.id!r}, not {source.id!r}")
 
 
-def attack_bonus(state, attacker, target) -> int:
+def _mark_source(state, target):
     mark = state.focus_marks.get(target.id)
     if mark is None:
-        return 0
+        return None
     if not isinstance(mark, dict) or set(mark) != {"source_id", "kind"}:
         raise ValueError(f"malformed focus mark for {target.id!r}: {mark!r}")
     source_id, kind = mark["source_id"], mark["kind"]
@@ -23,6 +30,13 @@ def attack_bonus(state, attacker, target) -> int:
     source = state.get_participant(source_id)
     if source is None:
         raise ValueError(f"focus mark for {target.id!r} names missing source {source_id!r}")
+    return source
+
+
+def attack_bonus(state, attacker, target) -> int:
+    source = _mark_source(state, target)
+    if source is None:
+        return 0
     if attacker.is_fallen or attacker.is_dead or attacker.id == source.id or attacker.is_ally != source.is_ally:
         return 0
     return FOCUS_ATTACK_BONUS

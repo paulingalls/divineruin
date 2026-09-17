@@ -285,6 +285,25 @@ class TestGenerateActivityNarration:
         assert "warrior" in call_kwargs["system"]
 
     @pytest.mark.asyncio
+    async def test_segments_join_into_narration_text_separated(self):
+        """`narration_text` is what the resolved activity stores and speaks, and every other case
+        here sends ONE segment — so nothing caught the separator going away and two sentences
+        running together. Sprint 52: dropping the space from the join left the whole lane green."""
+        mock_response = _mock_tool_use_response(
+            segments=[
+                {"character": "DM_NARRATOR", "emotion": "neutral", "text": "The forge cools."},
+                {"character": "GRIMJAW_BLACKSMITH", "emotion": "stern", "text": "It will hold."},
+            ],
+        )
+
+        with _patch_client(mock_response):
+            _, narration_text, _ = await generate_activity_narration(
+                CRAFTING_OUTCOME, SAMPLE_PLAYER, {"activity_type": "crafting"}
+            )
+
+        assert narration_text == "The forge cools. It will hold."
+
+    @pytest.mark.asyncio
     async def test_training_narration(self):
         activity_data = {"activity_type": "training"}
         mock_response = _mock_tool_use_response(

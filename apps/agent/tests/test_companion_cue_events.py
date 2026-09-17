@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.rtc.participant import PublishDataError
+from speech_handles import completed_handle
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
@@ -32,7 +33,7 @@ def _session_data() -> SessionData:
 
 def _queued_background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     background = BackgroundProcess(session, sd)
     background._speech_queue.append(
         PendingSpeech(
@@ -67,7 +68,7 @@ async def test_publish_data_error_keeps_background_voice_and_timestamp(
     with caplog.at_level(logging.ERROR, logger="divineruin.companion_cue_events"):
         await background._deliver_speech()
 
-    session.generate_reply.assert_awaited_once()
+    session.generate_reply.assert_called_once()
     assert cast(CompanionState, sd.companion).last_speech_time > 0
     records = _cue_error_records(caplog)
     assert len(records) == 1
@@ -86,7 +87,7 @@ async def test_runtime_error_escapes_background_before_voice() -> None:
         await background._deliver_speech()
 
     assert raised.value is failure
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -107,13 +108,14 @@ async def test_publish_data_error_keeps_onboarding_loop_alive(
 
     second_reply = asyncio.Event()
 
-    async def reply(**_kwargs: object) -> None:
-        if session.generate_reply.await_count >= 2:
+    def reply(**_kwargs: object):
+        if session.generate_reply.call_count >= 2:
             second_reply.set()
+        return completed_handle()
 
     _publisher(sd).side_effect = publish
     session = MagicMock()
-    session.generate_reply = AsyncMock(side_effect=reply)
+    session.generate_reply = MagicMock(side_effect=reply)
     background = OnboardingBackgroundProcess(session, sd)
 
     try:
@@ -129,7 +131,7 @@ async def test_publish_data_error_keeps_onboarding_loop_alive(
     finally:
         await background.stop()
 
-    assert session.generate_reply.await_count >= 2
+    assert session.generate_reply.call_count >= 2
     records = _cue_error_records(caplog)
     assert len(records) == 1
     assert records[0].exc_info is not None
@@ -144,7 +146,7 @@ async def test_runtime_error_ends_onboarding_loop_before_voice() -> None:
     failure = RuntimeError("publish defect")
     _publisher(sd).side_effect = failure
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     background = OnboardingBackgroundProcess(session, sd)
 
     with patch("onboarding_background.POLL_INTERVAL_SECONDS", 0):
@@ -154,4 +156,4 @@ async def test_runtime_error_ends_onboarding_loop_before_voice() -> None:
             await asyncio.wait_for(background._task, timeout=2)
 
     assert raised.value is failure
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()

@@ -7,6 +7,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -81,7 +82,7 @@ def _background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     agent.static_prompt = MagicMock(return_value="STATIC")
     session = MagicMock()
     session.current_agent = agent
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     return BackgroundProcess(session, sd), session
 
 
@@ -167,17 +168,22 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
     sd.onboarding_beat = beat
     sd.last_player_speech_time = time.time() - NUDGE_DELAY_SECONDS - 5
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     order: list[str] = []
+
+    def reply(**_kwargs: object) -> Any:
+        order.append("reply")
+        return completed_handle()
+
     _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
-    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
+    session.generate_reply.side_effect = reply
     background = OnboardingBackgroundProcess(session, sd)
     background._last_active_beat = beat
     background._hint_index = index
 
     await background._check_nudge()
 
-    instructions = session.generate_reply.await_args.kwargs["instructions"]
+    instructions = session.generate_reply.call_args.kwargs["instructions"]
     _assert_assigned_cue(instructions, companion_id)
     assert order == ["publish", "reply"]
     assert _published_packets(sd) == [
@@ -195,7 +201,12 @@ async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -
     background, session = _background(sd)
     order: list[str] = []
     _publisher(sd).side_effect = lambda *_args, **_kwargs: order.append("publish")
-    session.generate_reply.side_effect = lambda **_kwargs: order.append("reply")
+
+    def reply(**_kwargs):
+        order.append("reply")
+        return completed_handle()
+
+    session.generate_reply.side_effect = reply
     background._speech_queue.append(PendingSpeech(SpeechPriority.IMPORTANT, instructions))
 
     await background._deliver_speech()
@@ -235,7 +246,14 @@ async def test_delivered_god_whisper_publishes_no_companion_cue(companion_id: st
     background, _ = _background(sd)
     background._handle_events([GameEvent(E.WORLD_EVENT, GOD_WHISPER_PAYLOAD)])
 
-    with patch("background_process.asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch("background_process.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "background_process.db_activity_queries.get_divine_favor",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+    ):
         await background._deliver_speech()
 
     assert [packet["type"] for packet in _published_packets(sd)] == [E.PLAY_SOUND]
@@ -275,11 +293,11 @@ async def test_onboarding_nudge_without_companion_logs_and_keeps_polling(caplog:
     sd.onboarding_beat = 4
     sd.last_player_speech_time = time.time() - NUDGE_DELAY_SECONDS - 5
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     background = OnboardingBackgroundProcess(session, sd)
 
     with caplog.at_level("ERROR", logger="divineruin.onboarding_background"):
         await background._check_nudge()
 
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
     assert "without a companion" in caplog.text

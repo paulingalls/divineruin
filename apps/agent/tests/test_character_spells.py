@@ -170,6 +170,31 @@ class TestAdvanceLearningCycle:
 
 
 class TestLearningProgressHelpers:
+    async def test_list_learning_progress_returns_player_rows(self):
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "spell_id": "arcane_hold_person",
+                    "cycles_completed": 1,
+                    "cycles_required": 3,
+                }
+            ]
+        )
+
+        rows = await character_spells.list_learning_progress("p1", conn=conn)
+
+        sql, *params = conn.fetch.call_args.args
+        assert "FROM spell_learning_progress WHERE player_id = $1" in sql
+        assert params == ["p1"]
+        assert rows == [
+            {
+                "spell_id": "arcane_hold_person",
+                "cycles_completed": 1,
+                "cycles_required": 3,
+            }
+        ]
+
     async def test_get_learning_progress_returns_row(self):
         conn = AsyncMock()
         conn.fetchrow = AsyncMock(

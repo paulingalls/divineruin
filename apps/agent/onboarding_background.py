@@ -9,6 +9,7 @@ from livekit.agents import AgentSession
 
 from companion_cue_events import publish_companion_cue
 from session_data import SessionData
+from speech_delivery import deliver_speech
 from system_prompts import build_companion_cue
 from task_logging import log_task_failure
 
@@ -122,7 +123,15 @@ class OnboardingBackgroundProcess:
             beat,
             self._sd.player_id,
         )
-        await self._session.generate_reply(instructions=instruction)
+        delivered = await deliver_speech(
+            self._session,
+            instruction,
+            logger,
+            f"Onboarding nudge for player {self._sd.player_id} at beat {beat}",
+        )
+        if not delivered:
+            return
+
         self._hint_index += 1
         self._last_hint_time = now
 

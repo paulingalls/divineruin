@@ -19,8 +19,9 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    normalizer coerced the shapes I had seen and let its `else` absorb every shape I
    had not, so an errand "resolved" in silence. A tolerant parser needs a floor
    that still fails — here, "produced nothing usable".
-5. **Test at boundaries** — validate at system edges (input, APIs, I/O); trust
-   internal logic.
+5. **A falsifier is a behaviour command, not a grep of the fix.** Four red at
+   the sprint-052 close: three grepped a name the fix put elsewhere or in
+   camelCase, one debt's polarity inverted. Name the test that reds on it.
 6. **Name the producer.** A capability the DM invokes by id is not shipped
    until something surfaces that id — a tool response, a prompt, or an event
    payload. Twice in sprint-045 we shipped a gate keyed on a token nothing

@@ -142,7 +142,7 @@ class TestActivation:
         persistence = MagicMock()
 
         async def assert_locked(*args, **kwargs):
-            assert ctx.userdata.combat_end_lock.locked()
+            assert ctx.userdata.combat_state_lock.locked()
 
         persistence.update_player_resources = AsyncMock(side_effect=assert_locked)
         save_combat_state = AsyncMock()

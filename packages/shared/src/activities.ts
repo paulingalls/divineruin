@@ -32,6 +32,7 @@ export interface ActiveStatus {
   startTime: string;
   resolveAtEstimate: string;
   percentEstimate: number;
+  isAwaitingDecision: boolean;
 }
 
 export interface TemplateItem {

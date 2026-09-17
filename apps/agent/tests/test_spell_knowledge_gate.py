@@ -35,6 +35,33 @@ def test_castable_spell_ids_unites_core_and_library_without_level_or_preparation
     assert spell_knowledge.castable_spell_ids(None, ["divine_revivify"]) == {"divine_revivify"}
 
 
+@pytest.mark.parametrize(
+    "magic_source,spell_source",
+    [
+        ("arcane", "arcane"),
+        ("divine", "divine"),
+        ("primal", "primal"),
+        ("cross", "arcane"),
+        ("cross", "divine"),
+        ("cross", "primal"),
+    ],
+)
+def test_validate_spell_source_accepts_exact_and_cross_sources(magic_source, spell_source):
+    spell_knowledge.validate_spell_source(magic_source, spell_source)
+
+
+@pytest.mark.parametrize(
+    "magic_source,spell_source,holder_name",
+    [("divine", "arcane", "divine"), (None, "arcane", "no magic source")],
+)
+def test_validate_spell_source_refuses_with_both_sources(magic_source, spell_source, holder_name):
+    with pytest.raises(ValueError) as exc_info:
+        spell_knowledge.validate_spell_source(magic_source, spell_source)
+
+    assert holder_name in str(exc_info.value)
+    assert spell_source in str(exc_info.value)
+
+
 async def _cast(spell_id: str, player: dict, library: list[dict]):
     ctx = make_context()
     ctx.userdata.resonance.current = 4

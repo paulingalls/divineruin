@@ -18,6 +18,10 @@ import pricing_queries
 import workspace as ws
 
 _CONTENT = Path(__file__).parents[3] / "content" / "pricing.json"
+_TS_PRICING = Path(__file__).parents[3] / "apps" / "server" / "src" / "pricing.ts"
+# A JSON integer literal past float range: Python keeps it as an unbounded int,
+# TS's JSON.parse gives Infinity. Both parsers must still name the rule.
+_BEYOND_FLOAT_RANGE = "1" + "0" * 400
 
 
 def _economy_row() -> dict:
@@ -80,9 +84,21 @@ class TestGetEconomyPricing:
                 id="multiplier_must_be_finite",
             ),
             pytest.param(
+                '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":'
+                + _BEYOND_FLOAT_RANGE
+                + '},"silver_per_gold":10}',
+                "pricing[economy].disposition_multipliers.friendly must be finite",
+                id="multiplier_integer_beyond_float_range",
+            ),
+            pytest.param(
                 '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":-0.8},"silver_per_gold":10}',
                 "pricing[economy].disposition_multipliers.friendly must be >= 0",
                 id="multiplier_must_be_non_negative",
+            ),
+            pytest.param(
+                '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":1e305},"silver_per_gold":10}',
+                "pricing[economy].disposition_multipliers.friendly " + pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE,
+                id="multiplier_exceeds_conversion_cap",
             ),
             pytest.param(
                 '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":0.12345},"silver_per_gold":10}',
@@ -98,6 +114,13 @@ class TestGetEconomyPricing:
                 '{"repair_cost_sp":{"common":2.5},"disposition_multipliers":{},"silver_per_gold":10}',
                 "pricing[economy].repair_cost_sp.common must be an integer",
                 id="repair_cost_must_be_integer",
+            ),
+            pytest.param(
+                '{"repair_cost_sp":{"common":'
+                + _BEYOND_FLOAT_RANGE
+                + '},"disposition_multipliers":{},"silver_per_gold":10}',
+                "pricing[economy].repair_cost_sp.common must be an integer",
+                id="repair_cost_integer_beyond_float_range",
             ),
             pytest.param(
                 '{"repair_cost_sp":{"common":-2},"disposition_multipliers":{},"silver_per_gold":10}',
@@ -122,7 +145,7 @@ class TestGetEconomyPricing:
             if lane == "cache":
                 get_pool.assert_not_awaited()
 
-    @pytest.mark.parametrize("multiplier_text", ["0", "0.0001", "0.8", "1.25", "8e-1"])
+    @pytest.mark.parametrize("multiplier_text", ["0", "0.0001", "0.8", "1.25", "8e-1", "1e304"])
     @pytest.mark.asyncio
     async def test_accepts_pricing_multiplier_domain(self, multiplier_text):
         row_text = (
@@ -162,3 +185,21 @@ class TestCrossLanguageParity:
         assert charge_sp("uncommon", "friendly") == 8
         assert charge_sp("common", "trusted") == 1
         assert eco["silver_per_gold"] == 10
+
+    def test_multiplier_cap_and_rule_match_typescript(self):
+        source = _TS_PRICING.read_text()
+        cap_match = re.search(r"export const MAX_DISPOSITION_MULTIPLIER\s*=\s*([0-9eE+.-]+)\s*;", source)
+        derived = re.search(
+            r"export const DISPOSITION_MULTIPLIER_CAP_RULE\s*=\s*"
+            r"`must be <= \$\{MAX_DISPOSITION_MULTIPLIER\}`\s*;",
+            source,
+        )
+
+        assert cap_match is not None
+        assert derived is not None, "TS rule text must interpolate the cap, not retype it"
+        ts_cap = float(cap_match.group(1))
+        assert ts_cap == pricing_queries.MAX_DISPOSITION_MULTIPLIER
+        # Python and JS both render this magnitude as "1e+304", so the TS template and
+        # this f-string produce the same sentence.
+        expected_rule = f"must be <= {ts_cap}"
+        assert expected_rule == pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE

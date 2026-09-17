@@ -67,7 +67,8 @@ async def query_info(
       unnamed townsfolk (a guard, an innkeeper) instead of inventing one, speaking them with
       the [voice_id, emotion]: "..." tag.
     - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
-    - kind="training_programs": available training programs (no target_id needed).
+    - kind="training_programs": player-scoped training programs; spell rows include
+      studiable_spell_ids (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
     - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
