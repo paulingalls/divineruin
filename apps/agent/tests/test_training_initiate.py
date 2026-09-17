@@ -9,7 +9,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
 from training_rules import TrainingCycleInit
-from training_tools import _initiate_training_cycle_impl, _query_training_programs_impl
+from training_tools import _initiate_training_cycle_impl
 
 SAMPLE_PROGRAM = {
     "id": "combat_basics",
@@ -61,17 +61,6 @@ def _stub_rules_raises():
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
 
     return _stub
-
-
-class TestQueryTrainingPrograms:
-    @pytest.mark.asyncio
-    async def test_returns_program_list(self):
-        ctx = make_context()
-        mock_content = MagicMock()
-        mock_content.list_training_programs = AsyncMock(return_value=[SAMPLE_PROGRAM, SAMPLE_PROGRAM_WITH_SKILL])
-        result = json.loads(await _query_training_programs_impl(ctx, db_content_mod=mock_content))
-        assert result == {"programs": [SAMPLE_PROGRAM, SAMPLE_PROGRAM_WITH_SKILL]}
-        mock_content.list_training_programs.assert_awaited_once()
 
 
 class TestInitiateTrainingCycle:

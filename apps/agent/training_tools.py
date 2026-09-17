@@ -46,10 +46,46 @@ async def _query_training_programs_impl(
     context: RunContext[SessionData],
     *,
     db_content_mod=db_content_queries,
+    queries_mod=db_queries,
+    character_spells_mod=character_spells,
+    spells_mod=spells,
+    leveling_mod=leveling,
 ) -> str:
     logger.info("query_training_programs called")
+    player_id = context.userdata.player_id
+    player = await queries_mod.get_player(player_id)
+    if not player:
+        raise ToolError(f"Unknown player: {player_id}")
+
+    archetype = player.get("class", "")
+    chassis = _player_chassis(archetype)
+    level = player.get("level", 1)
+    known_spell_ids = {row["spell_id"] for row in await character_spells_mod.get_known(player_id)}
     programs = await db_content_mod.list_training_programs()
-    return json.dumps({"programs": programs})
+    scoped_programs = []
+    for program in programs:
+        activity_type = program["training_activity_type"]
+        if not activity_type.startswith("spell_"):
+            scoped_programs.append(program)
+            continue
+
+        tier = activity_type.removeprefix("spell_")
+        studiable_spell_ids = []
+        for source in ("arcane", "divine", "primal"):
+            for spell in spells_mod.get_spells_by_source(source):
+                if spell.spell_tier != tier:
+                    continue
+                try:
+                    spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
+                except ValueError:
+                    continue
+                if not leveling_mod.is_spell_tier_unlocked(archetype, tier, level):
+                    continue
+                if spell.id not in known_spell_ids:
+                    studiable_spell_ids.append(spell.id)
+        scoped_programs.append({**program, "studiable_spell_ids": sorted(studiable_spell_ids)})
+
+    return json.dumps({"programs": scoped_programs})
 
 
 async def _initiate_training_cycle_impl(

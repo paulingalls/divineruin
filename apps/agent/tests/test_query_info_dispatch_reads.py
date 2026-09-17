@@ -1,14 +1,34 @@
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
+from sample_fixtures import make_context, make_db_mod
 
 import abilities
+import spells
 from query_tools import _query_abilities_impl, _query_info_impl
 from session_data import SessionData
-from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
+from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_MODE_PROMPT, build_system_prompt
+from training_tools import _initiate_training_cycle_impl, _query_training_programs_impl
+
+SPELL_STANDARD_PROGRAM = {
+    "id": "arcane_study",
+    "name": "Arcane Study",
+    "training_activity_type": "spell_standard",
+}
+SPELL_MAJOR_PROGRAM = {
+    "id": "major_study",
+    "name": "Major Study",
+    "training_activity_type": "spell_major",
+}
+ORDINARY_PROGRAM = {
+    "id": "combat_basics",
+    "name": "Combat Fundamentals",
+    "training_activity_type": "technique_base",
+}
 
 
 @pytest.fixture
@@ -144,6 +164,85 @@ class TestQueryInfoNoTargetIdKinds:
             )
 
 
+class TestQueryTrainingPrograms:
+    def _dependencies(self, *, player=None, known=None):
+        programs = [SPELL_STANDARD_PROGRAM, SPELL_MAJOR_PROGRAM, ORDINARY_PROGRAM]
+        content = MagicMock()
+        content.list_training_programs = AsyncMock(return_value=programs)
+        content.get_training_program = AsyncMock(
+            side_effect=lambda program_id: next(row for row in programs if row["id"] == program_id)
+        )
+        queries = MagicMock(get_player=AsyncMock(return_value=player))
+        library = MagicMock(get_known=AsyncMock(return_value=known or []))
+        return content, queries, library
+
+    @pytest.mark.asyncio
+    async def test_spell_choices_equal_ids_the_start_wall_accepts(self):
+        player = {"class": "mage", "level": 3}
+        known = [{"spell_id": "arcane_hold_person"}]
+        content, queries, library = self._dependencies(player=player, known=known)
+        context = make_context()
+
+        with (
+            patch("training_tools.db_queries.get_player", queries.get_player),
+            patch("training_tools.character_spells.get_known", library.get_known),
+        ):
+            result = json.loads(await _query_training_programs_impl(context, db_content_mod=content))
+            rows = {row["id"]: row for row in result["programs"]}
+
+            for program in (SPELL_STANDARD_PROGRAM, SPELL_MAJOR_PROGRAM):
+                accepted = set()
+                for source in ("arcane", "divine", "primal"):
+                    for spell in spells.get_spells_by_source(source):
+                        training = MagicMock()
+                        training.get_player_training_activities = AsyncMock(return_value=[])
+                        training.create_training_activity = AsyncMock(return_value="training_id")
+                        db_mod, _ = make_db_mod()
+                        try:
+                            await _initiate_training_cycle_impl(
+                                context,
+                                program["id"],
+                                spell_id=spell.id,
+                                db_mod=db_mod,
+                                db_training_mod=training,
+                                db_content_mod=content,
+                            )
+                        except ToolError:
+                            pass
+                        if training.create_training_activity.await_count:
+                            accepted.add(spell.id)
+
+                assert rows[program["id"]]["studiable_spell_ids"] == sorted(accepted)
+
+        assert "arcane_hold_person" not in rows["arcane_study"]["studiable_spell_ids"]
+        assert rows["major_study"]["studiable_spell_ids"] == []
+        assert "studiable_spell_ids" not in rows["combat_basics"]
+        content.list_training_programs.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("player", "message"),
+        [(None, "Unknown player"), ({"class": "not_an_archetype", "level": 3}, "Unknown archetype")],
+    )
+    async def test_missing_player_or_unknown_class_fails_loud(self, player, message):
+        content, queries, library = self._dependencies(player=player)
+        with (
+            patch("training_tools.db_queries.get_player", queries.get_player),
+            patch("training_tools.character_spells.get_known", library.get_known),
+            pytest.raises(ToolError, match=message),
+        ):
+            await _query_training_programs_impl(make_context(), db_content_mod=content)
+
+
+def test_training_prompt_names_spell_id_producer():
+    training = DISPATCH_MODE_PROMPT[
+        DISPATCH_MODE_PROMPT.index("For training:") : DISPATCH_MODE_PROMPT.index("For companion errands:")
+    ]
+    assert "spell_id" in training
+    assert "studiable_spell_ids" in training
+    assert "from that row" in training
+
+
 class TestQueryAbilities:
     def _dependencies(self, *, player=None, known=None, active_variant=None):
         queries = MagicMock()
@@ -276,13 +375,20 @@ class TestQueryInfoE2E:
     @pytest.mark.asyncio
     async def test_training_programs_route_returns_valid_json(self, mock_context, dev_db_pool):
         """AC4: query_info(kind='training_programs') returns JSON with programs list."""
-        # Call query_info with real _impl (no mocks)
-        result = await _query_info_impl(mock_context, kind="training_programs")
-
-        # Verify JSON shape
-        parsed = json.loads(result)
-        assert "programs" in parsed
-        assert isinstance(parsed["programs"], list)
+        player_id = f"query_training_{uuid.uuid4().hex}"
+        mock_context.userdata.player_id = player_id
+        await dev_db_pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)",
+            player_id,
+            json.dumps({"player_id": player_id, "name": "Mira", "class": "mage", "level": 3}),
+        )
+        try:
+            parsed = json.loads(await _query_info_impl(mock_context, kind="training_programs"))
+            assert isinstance(parsed["programs"], list)
+            arcane_study = next(row for row in parsed["programs"] if row["id"] == "arcane_study")
+            assert arcane_study["studiable_spell_ids"]
+        finally:
+            await dev_db_pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
     @pytest.mark.asyncio
     async def test_workspaces_route_returns_valid_json(self, mock_context, dev_db_pool):

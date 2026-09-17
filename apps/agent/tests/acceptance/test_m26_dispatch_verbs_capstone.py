@@ -16,6 +16,7 @@ No production code changes — every symbol here is owned by the merged M26 stor
 from __future__ import annotations
 
 import json
+import uuid
 
 from acceptance.seeds import seed_async_activity, seed_player, seed_training_activity
 from sample_fixtures import make_context
@@ -327,11 +328,28 @@ async def test_resolve_activity_companion_errand_resolves_the_outcome(reset_db_p
 
 
 async def test_query_info_training_programs_lists_seeded_content(reset_db_pool: str) -> None:
-    """kind='training_programs' (no target_id) routes to _query_training_programs_impl."""
-    raw = await _query_info_impl(make_context(), "training_programs")
-    result = json.loads(raw)
-    program_ids = {p["id"] for p in result["programs"]}
-    assert "combat_basics" in program_ids
+    """kind='training_programs' returns choices scoped to the current player."""
+    pool = await db.get_pool()
+    player_id = f"cap_m26_query_training_{uuid.uuid4().hex}"
+    known_spell = "arcane_hold_person"
+    try:
+        await seed_player(pool, player_id=player_id, class_="mage", known_spells=(known_spell,))
+        await pool.execute(
+            "UPDATE players SET data = jsonb_set(data, '{level}', '3'::jsonb) WHERE player_id = $1",
+            player_id,
+        )
+
+        result = json.loads(await _query_info_impl(make_context(player_id), "training_programs"))
+        programs = {row["id"]: row for row in result["programs"]}
+        choices = programs["arcane_study"]["studiable_spell_ids"]
+        assert "arcane_elemental_burst" in choices
+        assert known_spell not in choices
+        assert "divine_spiritual_weapon" not in choices
+        assert "arcane_fireball" not in choices
+        assert "studiable_spell_ids" not in programs["combat_basics"]
+    finally:
+        await pool.execute("DELETE FROM character_spells WHERE player_id = $1", player_id)
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
 
 async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db_pool: str) -> None:
