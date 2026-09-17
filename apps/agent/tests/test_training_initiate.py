@@ -331,8 +331,6 @@ class TestSpellTrainingStartWall:
                 "Unknown archetype",
                 id="unknown-archetype",
             ),
-            # A martial has to fall out on the SOURCE check: leveling.is_spell_tier_unlocked
-            # raises on a non-caster archetype, so the two checks cannot be reordered.
             pytest.param(
                 SAMPLE_SPELL_PROGRAM,
                 "arcane_hold_person",

@@ -221,21 +221,25 @@ class TestQueryTrainingPrograms:
         content.list_training_programs.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_martial_gets_empty_choices_not_a_crash(self):
-        """leveling.is_spell_tier_unlocked RAISES on a non-caster, so the source check has
-        to refuse a martial first — reorder the two and this reds instead of a warrior's
-        whole program list dying on a bare ValueError."""
-        content, _, _ = self._dependencies(player={"class": "warrior", "level": 5})
+    @pytest.mark.parametrize(
+        "player",
+        [{}, {"class": "warrior", "level": 5}],
+        ids=["onboarding", "martial"],
+    )
+    async def test_non_caster_gets_every_program_with_empty_spell_choices(self, player):
+        content, queries, library = self._dependencies(player=player)
 
         with (
-            patch("training_tools.db_queries.get_player", AsyncMock(return_value={"class": "warrior", "level": 5})),
-            patch("training_tools.character_spells.get_known", AsyncMock(return_value=[])),
+            patch("training_tools.db_queries.get_player", queries.get_player),
+            patch("training_tools.character_spells.get_known", library.get_known),
         ):
             result = json.loads(await _query_training_programs_impl(make_context(), db_content_mod=content))
 
         rows = {row["id"]: row for row in result["programs"]}
-        assert rows["arcane_study"]["studiable_spell_ids"] == []
-        assert "studiable_spell_ids" not in rows["combat_basics"]
+        assert set(rows) == {SPELL_STANDARD_PROGRAM["id"], SPELL_MAJOR_PROGRAM["id"], ORDINARY_PROGRAM["id"]}
+        assert rows[ORDINARY_PROGRAM["id"]] == ORDINARY_PROGRAM
+        for program in (SPELL_STANDARD_PROGRAM, SPELL_MAJOR_PROGRAM):
+            assert rows[program["id"]] == {**program, "studiable_spell_ids": []}
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

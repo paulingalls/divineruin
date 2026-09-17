@@ -55,21 +55,26 @@ async def _query_training_programs_impl(
     logger.info("query_training_programs called")
     player_id = context.userdata.player_id
     player = await queries_mod.get_player(player_id)
-    if not player:
+    if player is None:
         raise ToolError(f"Unknown player: {player_id}")
 
     archetype = player.get("class", "")
-    chassis = _player_chassis(archetype)
     level = player.get("level", 1)
     known_spell_ids = {row["spell_id"] for row in await character_spells_mod.get_known(player_id)}
     programs = await db_content_mod.list_training_programs()
     scoped_programs = []
+    chassis = None
     for program in programs:
         activity_type = program["training_activity_type"]
         if not activity_type.startswith("spell_"):
             scoped_programs.append(program)
             continue
 
+        if not archetype:
+            scoped_programs.append({**program, "studiable_spell_ids": []})
+            continue
+        if chassis is None:
+            chassis = _player_chassis(archetype)
         tier = activity_type.removeprefix("spell_")
         studiable_spell_ids = []
         # spells.SpellSource is the catalog's closed source vocabulary (the loader
@@ -80,9 +85,6 @@ async def _query_training_programs_impl(
             for spell in spells_mod.get_spells_by_source(source):
                 if spell.spell_tier != tier:
                     continue
-                # Source before tier-unlock: leveling.is_spell_tier_unlocked RAISES on a
-                # non-caster archetype, so a martial must fall out on the source check
-                # first and get an empty list, never an exception.
                 try:
                     spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
                 except ValueError:
@@ -150,8 +152,6 @@ async def _initiate_training_cycle_impl(
         except ValueError as exc:
             raise ToolError(f"{archetype} cannot study {spell_id}: {exc}.") from exc
 
-        # Reached only past the source check above: is_spell_tier_unlocked RAISES on a
-        # non-caster archetype, which validate_spell_source has already refused.
         level = player.get("level", 1)
         if not leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level):
             floor = leveling_mod.min_level_for_tier(archetype, spell.spell_tier)
