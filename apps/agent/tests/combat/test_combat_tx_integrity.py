@@ -195,7 +195,7 @@ class TestEndCombatAcrossTheTwoCommits:
     """AC10. Replaces TestEndCombatInPhaseTx. The invariant changed SHAPE when the single phase
     transaction became two commits (M29, story-016) — it did not stop being pinned.
 
-    combat_end_lock still serialises each commit against end_combat. What is new is the GAP
+    combat_state_lock still serialises each commit against end_combat. What is new is the GAP
     BETWEEN them, which no lock can cover: between the ally commit and the wrap commit the enemy
     actions sit persisted as pending, and an end_combat arriving there would pay the party and
     delete the combat row with an enemy's turn still queued. So end_combat REFUSES while actions

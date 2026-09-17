@@ -64,7 +64,7 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     Validation ONLY -- it deliberately does not return a new state. An earlier shape deep-copied
     ``state`` here and the caller assigned the copy back after its await, which erased anything
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
-    directly; it holds combat_end_lock now, but a snapshot still cannot see a write taken after
+    directly; it holds combat_state_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
