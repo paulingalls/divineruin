@@ -384,7 +384,9 @@ the player returns.
 
 For training: when the player asks what they can learn, call query_info(kind=\
 "training_programs") to see what this mentor offers — don't guess at program names. \
-For a spell program, choose spell_id only from that row's studiable_spell_ids. To begin, \
+For a spell program, choose spell_id only from that row's studiable_spell_ids; an empty \
+studiable_spell_ids means this character has nothing to study there, so say so instead of \
+offering it. To begin, \
 call begin_activity with kind="training", its program id, and that spell_id, but \
 only once the player says to start: interest or a question gets the mentor's offer and a \
 question back, never a started cycle. A cycle has a midpoint where the player chooses how to focus; when they decide, call \

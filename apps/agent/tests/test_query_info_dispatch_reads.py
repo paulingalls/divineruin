@@ -227,6 +227,10 @@ class TestQueryTrainingPrograms:
         ids=["onboarding", "martial"],
     )
     async def test_non_caster_gets_every_program_with_empty_spell_choices(self, player):
+        """Two orderings are load-bearing here. The onboarding row (auth.ts writes data={} at
+        first login) has no archetype, so the chassis lookup must stay INSIDE the spell branch
+        or the whole listing dies on a ToolError; and leveling.is_spell_tier_unlocked raises a
+        bare ValueError on a non-caster, so the source check must refuse a martial first."""
         content, queries, library = self._dependencies(player=player)
 
         with (
@@ -263,6 +267,10 @@ def test_training_prompt_names_spell_id_producer():
     assert "spell_id" in training
     assert "studiable_spell_ids" in training
     assert "from that row" in training
+    # A non-caster and an onboarding player get the spell row back with an EMPTY list rather
+    # than a refusal (AC5), so the prompt has to say what an empty list means — otherwise the
+    # DM offers Arcane Study to a warrior and begin_activity refuses (constraint 6).
+    assert "empty studiable_spell_ids" in training
 
 
 class TestQueryAbilities:
