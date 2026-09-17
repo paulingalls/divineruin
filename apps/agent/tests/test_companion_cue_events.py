@@ -108,13 +108,14 @@ async def test_publish_data_error_keeps_onboarding_loop_alive(
 
     second_reply = asyncio.Event()
 
-    async def reply(**_kwargs: object) -> None:
-        if session.generate_reply.await_count >= 2:
+    def reply(**_kwargs: object):
+        if session.generate_reply.call_count >= 2:
             second_reply.set()
+        return completed_handle()
 
     _publisher(sd).side_effect = publish
     session = MagicMock()
-    session.generate_reply = AsyncMock(side_effect=reply)
+    session.generate_reply = MagicMock(side_effect=reply)
     background = OnboardingBackgroundProcess(session, sd)
 
     try:
@@ -130,7 +131,7 @@ async def test_publish_data_error_keeps_onboarding_loop_alive(
     finally:
         await background.stop()
 
-    assert session.generate_reply.await_count >= 2
+    assert session.generate_reply.call_count >= 2
     records = _cue_error_records(caplog)
     assert len(records) == 1
     assert records[0].exc_info is not None
@@ -145,7 +146,7 @@ async def test_runtime_error_ends_onboarding_loop_before_voice() -> None:
     failure = RuntimeError("publish defect")
     _publisher(sd).side_effect = failure
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     background = OnboardingBackgroundProcess(session, sd)
 
     with patch("onboarding_background.POLL_INTERVAL_SECONDS", 0):
@@ -155,4 +156,4 @@ async def test_runtime_error_ends_onboarding_loop_before_voice() -> None:
             await asyncio.wait_for(background._task, timeout=2)
 
     assert raised.value is failure
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
