@@ -16,6 +16,7 @@ import copy
 import random
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import cast
 
 import reaction_spend
 from combat_ability import _find_action
@@ -145,6 +146,15 @@ def advance_combat_phase(
                 )
             if declaration.type is DeclarationType.RETREAT and (blocked := speed_zero(actor.conditions)):
                 raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot retreat")
+            if declaration.type in (DeclarationType.ATTACK, DeclarationType.MANEUVER):
+                target_id = cast(str, declaration.target_id)
+                target = next_state.get_participant(target_id)
+                if target is None:
+                    raise ValueError(f"Unknown target {target_id!r} for {actor.name} ({actor.id})")
+                if target.id != actor.id and target.is_ally == actor.is_ally:
+                    raise ValueError(
+                        f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
+                    )
             if (
                 declaration.type is DeclarationType.MANEUVER
                 and declaration.target_id == actor.id
