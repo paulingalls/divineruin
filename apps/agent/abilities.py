@@ -224,10 +224,10 @@ def owns_ability(
     *,
     owns_elective: bool,
 ) -> bool:
-    """Whether a player owns a base ability — the predicate the activation and
-    learn(variant) gates share (story-006).
+    """Whether a player owns a base ability — the predicate activate, the combat
+    declaration gate, the reaction offer and query_info share.
 
-    Two ownership rules, keyed on ability_type (migration 030): core and reaction
+    Nothing is owned below its level_requirement. Past that, two ownership rules, keyed on ability_type (migration 030): core and reaction
     abilities are always-known, derived from the archetype, with NO
     character_abilities row — so they are owned iff the player's class is the
     ability's archetype. Elective techniques DO get a row when chosen, so their

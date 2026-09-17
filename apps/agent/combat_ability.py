@@ -20,6 +20,7 @@ import spell_casting
 from combat_ability_gate import DeclaredAbility
 from condition_produce import resolve_effective_targets
 from condition_restrictions import cannot_act
+from mentor_variants import MentorVariant
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -108,7 +109,7 @@ def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | Non
 def _gate_ability_condition(
     player: dict,
     ability: "abilities.Ability",
-    variant=None,
+    variant: MentorVariant | None = None,
 ) -> None:
     """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
     ability's Stamina/Focus with NO writes, mirroring _gate_deescalation / _gate_spell so a bad
@@ -157,8 +158,8 @@ async def _resolve_ability_condition_packet(
 
     ability, variant = resolved
 
-    # applies_condition is non-None on this path (condition_ability selected it); the resolved
-    # ability id is the source (== decl.action by the lookup invariant).
+    # applies_condition is non-None on this path (condition_ability selected it). The source is the
+    # base ability id, which differs from decl.action when a mentor variant was declared.
     cond_type = ability.applies_condition
 
     # Multi-target (M4.8 story-016, e.g. bard_mass_inspire): the cap was validated at the
@@ -179,10 +180,7 @@ async def _resolve_ability_condition_packet(
             if voiced:
                 summary["condition_applied"] = cond_type
                 summary["condition_targets"] = voiced
-        if variant is not None:
-            summary["variant_id"] = variant.id
-            summary["cultural_attribution"] = variant.cultural_attribution
-        return summary
+        return _with_variant(summary, variant)
 
     # Single-target (story-005): a given target_id that's not on the working state, or already
     # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
@@ -198,10 +196,7 @@ async def _resolve_ability_condition_packet(
         summary = combat_ability_save.resolve_hostile_condition(
             state, attacker, target, decl, ability, _land_condition_on_one
         )
-        if variant is not None:
-            summary["variant_id"] = variant.id
-            summary["cultural_attribution"] = variant.cultural_attribution
-        return summary
+        return _with_variant(summary, variant)
 
     summary = {
         "actor_id": attacker.id,
@@ -211,6 +206,10 @@ async def _resolve_ability_condition_packet(
     }
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
+    return _with_variant(summary, variant)
+
+
+def _with_variant(summary: dict, variant: MentorVariant | None) -> dict:
     if variant is not None:
         summary["variant_id"] = variant.id
         summary["cultural_attribution"] = variant.cultural_attribution
