@@ -165,8 +165,8 @@ def _attack_action(state, head: dict) -> dict | None:
     An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
     save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
     exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
-    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A command
-    (``encounter_actions`` kind "command") is an order, not a swing, so it never rolls either.
+    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A mark
+    action (any ``encounter_actions`` kind other than "attack") never rolls either.
     """
     declaration = _held_declaration(head)
     if declaration.type is not DeclarationType.ATTACK:

@@ -46,6 +46,13 @@ def test_the_sergeant_is_the_single_valid_accusation_producer():
     validate_encounter_actions(_ashmark_patrol()["enemies"])
 
 
+@pytest.mark.parametrize("field", ["damage", "damage_type", "applies_condition"])
+def test_an_accusation_carrying_a_strike_field_is_refused(field):
+    accusation = {"name": "Accusation", "kind": "accusation", field: "x"}
+    with pytest.raises(ValueError, match=field):
+        validate_encounter_actions([{"id": "e1", "action_pool": [accusation]}])
+
+
 class SequenceRng:
     def __init__(self, values):
         self.values = iter(values)

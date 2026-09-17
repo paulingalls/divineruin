@@ -21,7 +21,7 @@ def validate_encounter_actions(enemies: list[dict]) -> None:
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             kind = action_kind(action)
-            if kind not in ("command", "accusation"):
+            if kind == "attack":
                 continue
             carried = [field for field in _MARK_FORBIDDEN_FIELDS if field in action]
             if carried:

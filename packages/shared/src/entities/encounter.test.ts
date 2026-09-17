@@ -69,7 +69,7 @@ describe("encounter_templates.json — encounter-role overlay", () => {
 });
 
 // The action `kind` is mirrored from apps/agent/encounter_actions.py (constraint 7): absent means
-// "attack", and a "command" is an order that never rolls, so it carries no strike fields.
+// "attack", and every other kind is a mark action that never rolls, so it carries no strike fields.
 describe("encounter_templates.json — enemy action kinds", () => {
   const actions = encounters.flatMap((enc) =>
     enc.enemies.flatMap((enemy) =>
@@ -87,9 +87,10 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
   });
 
-  test("a command carries no damage, damage type or applied condition", () => {
-    const commands = actions.filter(({ action }) => encounterActionKind(action) === "command");
-    for (const { action } of commands) {
+  test("a mark action carries no damage, damage type or applied condition", () => {
+    const marks = actions.filter(({ action }) => encounterActionKind(action) !== "attack");
+    expect(marks.length).toBe(6);
+    for (const { action } of marks) {
       expect(Object.keys(action)).not.toContain("damage");
       expect(Object.keys(action)).not.toContain("damage_type");
       expect(Object.keys(action)).not.toContain("applies_condition");
