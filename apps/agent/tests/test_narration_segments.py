@@ -50,6 +50,9 @@ def test_dead_narration_helper_attributes_are_absent():
 
 
 def test_dead_narration_helper_names_are_absent_from_repository():
+    """A deletion stays deleted only while something reds when it comes back, and `hasattr` misses
+    a copy pasted into another module. The names are assembled from fragments and this file is
+    dropped from the scan, so the pin cannot match its own source."""
     paths = _repository_files()
     this_test = Path("apps/agent/tests/test_narration_segments.py")
     assert paths and this_test in paths
