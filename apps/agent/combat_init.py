@@ -304,6 +304,7 @@ async def _start_combat_locked(
                 conditions=row_conditions,
                 has_reaction_ability=bool(reaction_ids),
                 reaction_ids=reaction_ids,
+                prone_immunity=rules_engine.prone_immunity(row),
                 # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
                 # the participant so resolve_saving_throw adds the bonus when an enemy imposes
                 # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).

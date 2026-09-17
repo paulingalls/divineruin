@@ -661,10 +661,13 @@
           },
           {
             "name": "Shield Bash",
-            "damage": "1d4+2",
-            "damage_type": "bludgeoning",
-            "properties": ["knockback"],
-            "description": "A braced shove to break the enemy's footing"
+            "damage": "0",
+            "damage_type": "none",
+            "properties": [],
+            "description": "A braced shove to break the enemy's footing",
+            "applies_condition": "prone",
+            "save": "strength",
+            "dc": 12
           }
         ],
         "xp_value": 150,
@@ -697,10 +700,13 @@
           },
           {
             "name": "Shield Bash",
-            "damage": "1d4+2",
-            "damage_type": "bludgeoning",
-            "properties": ["knockback"],
-            "description": "A braced shove to break the enemy's footing"
+            "damage": "0",
+            "damage_type": "none",
+            "properties": [],
+            "description": "A braced shove to break the enemy's footing",
+            "applies_condition": "prone",
+            "save": "strength",
+            "dc": 12
           }
         ],
         "xp_value": 150,
@@ -733,10 +739,13 @@
           },
           {
             "name": "Shield Bash",
-            "damage": "1d4+2",
-            "damage_type": "bludgeoning",
-            "properties": ["knockback"],
-            "description": "A braced shove to break the enemy's footing"
+            "damage": "0",
+            "damage_type": "none",
+            "properties": [],
+            "description": "A braced shove to break the enemy's footing",
+            "applies_condition": "prone",
+            "save": "strength",
+            "dc": 12
           }
         ],
         "xp_value": 150,
@@ -769,10 +778,13 @@
           },
           {
             "name": "Shield Bash",
-            "damage": "1d4+2",
-            "damage_type": "bludgeoning",
-            "properties": ["knockback"],
-            "description": "A braced shove to break the enemy's footing"
+            "damage": "0",
+            "damage_type": "none",
+            "properties": [],
+            "description": "A braced shove to break the enemy's footing",
+            "applies_condition": "prone",
+            "save": "strength",
+            "dc": 12
           }
         ],
         "xp_value": 150,

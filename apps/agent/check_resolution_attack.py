@@ -10,6 +10,7 @@ import random
 from dataclasses import dataclass
 
 from check_resolution import _roll_d20_check, roll_bonus_dice
+from condition_restrictions import incoming_attack_modes
 from conditions import get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -108,9 +109,12 @@ def resolve_attack(
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
     target_effects = get_condition_effects(list(target_conditions))
+    incoming_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
-    attack_disadvantage = "attack" in effects.disadvantage_scopes
-    attack_advantage = "attack" in effects.advantage_scopes or "incoming_advantage" in target_effects.restrictions
+    attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
+    attack_advantage = "attack" in effects.advantage_scopes or any(
+        ("incoming_advantage" in target_effects.restrictions, incoming_advantage)
+    )
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).

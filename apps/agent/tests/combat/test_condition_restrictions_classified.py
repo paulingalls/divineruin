@@ -32,3 +32,15 @@ def test_a_new_catalog_restriction_fails_the_classification_floor(monkeypatch):
 
     with pytest.raises(AssertionError, match="new_restriction"):
         _assert_classified()
+
+
+def test_prone_incoming_modes_are_enforced_only_for_prone():
+    for restriction in ("incoming_melee_advantage", "incoming_ranged_disadvantage"):
+        carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
+        assert restriction in ENFORCED
+        assert carriers == {"prone"}
+
+
+def test_grappled_escape_keeps_declaration_cost_deferred_to_story_045():
+    assert "costs_declaration" in NOT_ENFORCED
+    assert "story-045" in NOT_ENFORCED["costs_declaration"]

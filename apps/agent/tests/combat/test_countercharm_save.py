@@ -130,7 +130,7 @@ async def test_countercharm_spent_against_hold_person_claims_no_effect():
     assert _reaction_packet(packets)["mechanical_effect"] is None
 
 
-def test_only_frightening_and_paralyzing_actions_impose_conditions():
+def test_condition_action_inventory_stays_explicit():
     # The window census and its totals stay pinned by test_reaction_window_census.py.
     condition_actions = sorted(
         (enemy["id"], action["name"], action.get("applies_condition"))
@@ -140,6 +140,10 @@ def test_only_frightening_and_paralyzing_actions_impose_conditions():
         if action.get("applies_condition")
     )
     assert condition_actions == [
+        ("ashmark_soldier_1", "Shield Bash", "prone"),
+        ("ashmark_soldier_2", "Shield Bash", "prone"),
+        ("ashmark_soldier_3", "Shield Bash", "prone"),
+        ("ashmark_soldier_4", "Shield Bash", "prone"),
         ("cult_leader", "Hold Person", "paralyzed"),
         ("hollow_rend_1", "Hollow Shriek", "frightened"),
     ]

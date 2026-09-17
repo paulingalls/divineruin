@@ -84,6 +84,10 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
     ]
     assert inventory == [
         ("hollow_patrol_greyvale", "hollow_rend_1", "Hollow Shriek", "frightened"),
+        ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone"),
+        ("ashmark_patrol", "ashmark_soldier_2", "Shield Bash", "prone"),
+        ("ashmark_patrol", "ashmark_soldier_3", "Shield Bash", "prone"),
+        ("ashmark_patrol", "ashmark_soldier_4", "Shield Bash", "prone"),
         ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
     ]
 

@@ -280,6 +280,9 @@ async def _resolve_enemy_condition_packet(
         summary["save_advantage"] = True
     if result.success:
         summary["condition_resisted"] = cond_type
+    elif cond_type == "prone" and target.prone_immunity:
+        summary["condition_immune"] = cond_type
+        summary["prone_immunity"] = target.prone_immunity
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path
     # uses) so the target-id/self-fallback + immunity wiring lives in one place.
     elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):

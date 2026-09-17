@@ -11,12 +11,12 @@ combines ``CombatParticipant.has_reaction_ability`` with ``CombatState.reactions
 game_mechanics_combat.md:131 ("if the player has no reaction abilities, the DM doesn't pause").
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-content/encounter_templates.json's action_pool entries — ranged, buff, knockback, grapple,
+content/encounter_templates.json's action_pool entries — ranged, buff, grapple,
 control, aoe, healing, or none — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
-its two carriers are Hollow Shriek (`frightened`) and Hold Person (`paralyzed`), and neither
-on_condition_imposed consumer reads fear or paralysis — both read grapple/restrain — so deriving off it would open a window nothing
+its carriers are Hollow Shriek (`frightened`), Hold Person (`paralyzed`), and four Shield Bashes
+(`prone`), and no on_condition_imposed consumer reads those conditions — both read grapple/restrain — so deriving off it would open a window nothing
 can use. Fear IS consumed, by bard_countercharm and diplomat_countercharm on `on_ally_targeted`,
 which the pre-roll window already reaches.
 """
