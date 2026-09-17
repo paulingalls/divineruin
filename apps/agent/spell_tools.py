@@ -14,9 +14,11 @@ import logging
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import archetypes
 import character_spells
 import db_queries
 import leveling
+import spell_knowledge
 import spells
 from session_data import SessionData
 from tool_support import _validate_id
@@ -56,6 +58,15 @@ async def _learn_spell_impl(
 
     level = player.get("level", 1)
     archetype = player.get("class", "")
+    try:
+        chassis = archetypes.get_archetype_chassis(archetype)
+    except ValueError as exc:
+        raise ToolError(f"{archetype or 'This archetype'} cannot learn spells.") from exc
+    try:
+        spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
+    except ValueError as exc:
+        raise ToolError(f"{archetype or 'This archetype'} cannot learn spells: {exc}") from exc
+
     try:
         unlocked = leveling_mod.is_spell_tier_unlocked(archetype, spell.spell_tier, level)
     except ValueError as exc:

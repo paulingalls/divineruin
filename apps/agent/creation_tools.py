@@ -20,6 +20,8 @@ import db_mutations
 import db_mutations_companion
 import db_session_queries
 import event_types as E
+import spell_knowledge
+import spells
 from archetypes import get_archetype_chassis
 from asset_utils import slug_asset_url
 from companion_profiles import select_companion_for_archetype
@@ -297,6 +299,8 @@ async def finalize_character(context: RunContext) -> str | tuple:
     try:
         chassis = get_archetype_chassis(cs.class_choice)
         for spell_id in select_starting_spells(cs.class_choice, chassis.magic_source):
+            spell = spells.get_spell(spell_id)
+            spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
             await character_spells.record_learned(sd.player_id, spell_id, "training", is_prepared=True)
     except Exception:
         logger.exception("Failed to grant starting spells for %s", sd.player_id)

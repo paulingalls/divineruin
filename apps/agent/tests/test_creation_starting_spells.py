@@ -15,10 +15,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from archetypes import parse_archetype_row
+import spell_knowledge
+from archetypes import get_archetype_chassis, parse_archetype_row
 from creation_rules import select_starting_spells
 from creation_tools import finalize_character
 from session_data import CreationState, SessionData
+from spells import get_spell
 
 _finalize: Any = finalize_character._func
 
@@ -96,11 +98,11 @@ class TestSelectStartingSpells:
 # --- finalize_character grant hook --------------------------------------------
 
 
-def _caster_state() -> CreationState:
+def _caster_state(archetype_id: str = "mage") -> CreationState:
     return CreationState(
         phase="identity",
         race="elari",
-        class_choice="mage",
+        class_choice=archetype_id,
         deity=None,
         name="Aric",
         backstory="Seeker of truth.",
@@ -155,6 +157,40 @@ class TestFinalizeGrantsStartingSpells:
     async def test_martial_creation_records_no_spells(self, _create, mock_payload, mock_record):
         mock_payload.return_value = _PAYLOAD
         await _finalize(_ctx(_martial_state()))
+        mock_record.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "archetype_id",
+        ["mage", "artificer", "seeker", "cleric", "paladin", "oracle", "druid", "beastcaller", "warden"],
+    )
+    @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_every_starting_spell_passes_source_guard(self, _create, mock_payload, mock_record, archetype_id):
+        mock_payload.return_value = _PAYLOAD
+        with patch(
+            "creation_tools.spell_knowledge.validate_spell_source",
+            wraps=spell_knowledge.validate_spell_source,
+        ) as source_guard:
+            await _finalize(_ctx(_caster_state(archetype_id)))
+
+        assert source_guard.call_count == 2
+        assert mock_record.await_count == 2
+        chassis = get_archetype_chassis(archetype_id)
+        for guard_call, write_call in zip(source_guard.call_args_list, mock_record.await_args_list, strict=True):
+            spell = get_spell(write_call.args[1])
+            assert guard_call.args == (chassis.magic_source, spell.source)
+
+    @patch("creation_tools.select_starting_spells", return_value=["arcane_fireball"])
+    @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_off_source_starting_spell_is_not_written(self, _create, mock_payload, mock_record, mock_select):
+        mock_payload.return_value = _PAYLOAD
+
+        await _finalize(_ctx(_caster_state("cleric")))
+
+        mock_select.assert_called_once_with("cleric", "divine")
         mock_record.assert_not_awaited()
 
 
