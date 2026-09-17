@@ -47,7 +47,9 @@ def _repository_files() -> tuple[Path, ...]:
 
 
 def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
-    return [str(path) for path in paths if needle in (_REPO_ROOT / path).read_bytes()]
+    # ls-files --cached still lists a tracked file deleted from the worktree but not yet staged.
+    files = (_REPO_ROOT / path for path in paths)
+    return [str(file) for file in files if file.is_file() and needle in file.read_bytes()]
 
 
 def test_old_lock_name_is_absent_from_repository():
