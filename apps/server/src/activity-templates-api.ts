@@ -107,28 +107,32 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       {
         type: "training",
         label: "Training",
-        items: getAllTrainingPrograms().map((p) => {
-          const activityType = getActivityTypeConfig(p.training_activity_type);
-          if (!activityType) {
-            throw new Error(
-              `Training program ${p.id} references unknown activity type ${p.training_activity_type}`,
-            );
-          }
-          const minSec = activityType.first_half_min_seconds + activityType.second_half_min_seconds;
-          const maxSec = activityType.first_half_max_seconds + activityType.second_half_max_seconds;
-          return {
-            id: p.id,
-            name: p.name,
-            duration: formatDuration(minSec, maxSec),
-            params: {
-              program_id: p.id,
-              stat: p.stat,
-              skill: p.skill,
-            },
-            materials: null,
-            active: activeMap.get(p.id) ?? null,
-          };
-        }),
+        items: getAllTrainingPrograms()
+          .filter((p) => !p.training_activity_type.startsWith("spell_"))
+          .map((p) => {
+            const activityType = getActivityTypeConfig(p.training_activity_type);
+            if (!activityType) {
+              throw new Error(
+                `Training program ${p.id} references unknown activity type ${p.training_activity_type}`,
+              );
+            }
+            const minSec =
+              activityType.first_half_min_seconds + activityType.second_half_min_seconds;
+            const maxSec =
+              activityType.first_half_max_seconds + activityType.second_half_max_seconds;
+            return {
+              id: p.id,
+              name: p.name,
+              duration: formatDuration(minSec, maxSec),
+              params: {
+                program_id: p.id,
+                stat: p.stat,
+                skill: p.skill,
+              },
+              materials: null,
+              active: activeMap.get(p.id) ?? null,
+            };
+          }),
       },
       {
         type: "companion_errand",

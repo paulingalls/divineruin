@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from training_rules import CompletionResult
 
 import ability_persistence
+import archetypes
 import character_spells
 import db
 import db_mutations_skill_advancement
@@ -26,6 +27,8 @@ import db_training
 import mentor_variant_progress
 import mentor_variants
 import skill_persistence
+import spell_knowledge
+import spells
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook
@@ -189,6 +192,7 @@ async def advance_training_cycles() -> int:
                         adv_info = {"advanced": data["skill_advanced"], "new_tier": data.get("new_tier")}
                 else:
                     adv_info: dict | None = None
+                    player_data: dict | None = None
                     # Deferred progress-row cleanup for completed spell/variant promotions.
                     # advance + record_* run BEFORE narration (both idempotent: advance via
                     # last_activity_id on the still-present row, record via ON CONFLICT), but
@@ -226,6 +230,12 @@ async def advance_training_cycles() -> int:
                             midpoint_decision_id=data.get("decision_id"),
                         )
                         if progress["completed"]:
+                            spell = spells.get_spell(spell_id)
+                            player_data = await db_queries.get_player(player_id)
+                            if not player_data:
+                                raise ValueError(f"unknown player {player_id} during spell promotion")
+                            chassis = archetypes.get_archetype_chassis(player_data.get("class", ""))
+                            spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
                             # Carry the recorded midpoint decision onto the learned spell
                             # as its bonus_variant (AC3). Progress cleared after the cache write.
                             await character_spells.record_learned(
@@ -286,7 +296,8 @@ async def advance_training_cycles() -> int:
                             completed_promotion = (mentor_variant_progress, variant_id)
 
                     # Generate narration via LLM
-                    player_data = await db_queries.get_player(player_id) or {}
+                    if player_data is None:
+                        player_data = await db_queries.get_player(player_id) or {}
                     outcome = build_training_completion_outcome(completion, data, adv_info)
                     segments, narration_text, narration_summary = await generate_activity_narration(
                         outcome, player_data, {"activity_type": "training_completion"}

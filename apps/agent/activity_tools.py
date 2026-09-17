@@ -55,7 +55,8 @@ async def begin_activity(
     or experimenting with materials.
 
     Pass one activity object, picked by its kind: "training", "companion_errand", "crafting",
-    "workspace", or "experiment". Each kind's fields describe themselves and are all required.
+    "workspace", or "experiment". A spell_* training program requires spell_id; other training
+    programs forbid it.
 
     Returns an error if the activity's own preconditions refuse — a training cycle already in
     progress, an invalid errand destination, a full crafting slot, an NPC below Neutral
@@ -70,6 +71,7 @@ async def _begin_activity_impl(
     kind: str,
     *,
     program_id: str | None = None,
+    spell_id: str | None = None,
     companion_id: str | None = None,
     errand_type: str | None = None,
     destination: str | None = None,
@@ -90,7 +92,7 @@ async def _begin_activity_impl(
     if kind == "training":
         if not program_id:
             raise ToolError("kind='training' requires program_id.")
-        return await training_mod._initiate_training_cycle_impl(context, program_id)
+        return await training_mod._initiate_training_cycle_impl(context, program_id, spell_id=spell_id)
 
     if kind == "companion_errand":
         if not (companion_id and errand_type and destination):

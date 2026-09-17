@@ -1,9 +1,34 @@
-import { describe, expect, test, beforeEach } from "bun:test";
-import { getErrandTemplate } from "./activity_templates.ts";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { dbMockFactory, resetMockDb } from "./activities-test-mock.ts";
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
+import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
+
+void mock.module("./db.ts", dbMockFactory);
+
+const { handleGetActivityTemplates } = await import("./activity-templates-api.ts");
+const { getAllTrainingPrograms, getErrandTemplate } = await import("./activity_templates.ts");
 
 beforeEach(() => {
+  resetMockDb();
   setupErrandTemplatesFixture();
+  setupTrainingConfigFixture();
+});
+
+test("training templates exclude programs the app cannot launch", async () => {
+  const response = await handleGetActivityTemplates("player_1");
+  const payload = (await response.json()) as {
+    groups: { type: string; items: { id: string }[] }[];
+  };
+  const training = payload.groups.find((group) => group.type === "training");
+  const expectedIds = getAllTrainingPrograms()
+    .filter((program) => !program.training_activity_type.startsWith("spell_"))
+    .map((program) => program.id);
+
+  expect(training).toBeDefined();
+  expect(training!.items.length).toBeGreaterThan(0);
+  expect(training!.items.map((item) => item.id)).toEqual(expectedIds);
+  expect(training!.items.map((item) => item.id)).toContain("combat_basics");
+  expect(training!.items.map((item) => item.id)).not.toContain("arcane_study");
 });
 
 // Durations must match the spec's Errand Types table
