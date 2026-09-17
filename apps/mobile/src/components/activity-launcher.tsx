@@ -6,6 +6,9 @@ import {
   errandBusyLabel,
   errandDestinationPrompt,
   formatTimeRemaining,
+  getActivityGroupState,
+  isStartVisible,
+  trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
@@ -116,10 +119,8 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
         Start an Activity
       </ThemedText>
       {groups.map((group) => {
-        // Training and errands are group-locked: only one at a time
-        const isGroupLocked = group.type === "training" || group.type === "companion_errand";
-        const activeItem = group.items.find((i) => i.active !== null);
-        const groupBusy = isGroupLocked && activeItem !== undefined;
+        const groupState = getActivityGroupState(group);
+        const { isGroupLocked, activeItem, groupBusy } = groupState;
 
         return (
           <View key={group.type} style={styles.groupCard}>
@@ -147,7 +148,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                     <ThemedText style={styles.groupBusyText}>
                       {group.type === "companion_errand"
                         ? errandBusyLabel(companionName, activeItem.name)
-                        : `Currently training: ${activeItem.name}`}
+                        : trainingBusyLabel(activeItem.name)}
                     </ThemedText>
                     <View style={styles.activeStatus}>
                       <ThemedText style={styles.activeLabel}>IN PROGRESS</ThemedText>
@@ -160,8 +161,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                 {group.items.map((item, idx) => {
                   const canStart = hasSufficientMaterials(item.materials);
                   const isActive = item.active !== null;
-                  // For crafting: per-item active check. For others: group-level lock.
-                  const showStart = !isActive && (!groupBusy || !isGroupLocked);
+                  const showStart = isStartVisible(item, groupState);
                   return (
                     <View key={item.id}>
                       {idx > 0 && <View style={styles.divider} />}

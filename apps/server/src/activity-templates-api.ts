@@ -10,6 +10,7 @@ import {
   type ActiveStatus,
   type MaterialRequirement,
   type TemplateGroup,
+  type TemplateItem,
 } from "@divineruin/shared";
 
 function formatDuration(minSec: number, maxSec: number): string {
@@ -17,6 +18,26 @@ function formatDuration(minSec: number, maxSec: number): string {
   const maxH = Math.round(maxSec / 3600);
   if (minH === maxH) return `${minH}h`;
   return `${minH}-${maxH}h`;
+}
+
+function activeStatus(startTime: string, resolveAt: string): ActiveStatus {
+  return {
+    startTime,
+    resolveAtEstimate: resolveAt,
+    percentEstimate: computePercentComplete(startTime, resolveAt),
+  };
+}
+
+/** "6-10h" — a training cycle's both-halves duration range, from its activity type config. */
+function trainingDuration(activityTypeId: string, context: string): string {
+  const activityType = getActivityTypeConfig(activityTypeId);
+  if (!activityType) {
+    throw new Error(`${context} references unknown activity type ${activityTypeId}`);
+  }
+  return formatDuration(
+    activityType.first_half_min_seconds + activityType.second_half_min_seconds,
+    activityType.first_half_max_seconds + activityType.second_half_max_seconds,
+  );
 }
 
 /** Map template key (recipe_id, program_id, errand_type) from in-progress activity data. */
@@ -55,7 +76,28 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       LIMIT 50
     ` as Promise<{ data: unknown }[]>;
 
-    const [inventoryRows, activeRows] = await Promise.all([inventoryPromise, activePromise]);
+    // `state != 'complete'` is countActiveBySlot's training predicate verbatim
+    // (activity_create.ts): the rows that lock the launcher must be exactly the rows that
+    // make a START 400, or the lock fires when the slot is free — or, worse, not when it isn't.
+    const trainingPromise = sql`
+      SELECT data, activity_type, state, created_at, transition_at FROM training_activities
+      WHERE player_id = ${playerId} AND state != 'complete'
+      LIMIT 5
+    ` as Promise<
+      {
+        data: unknown;
+        activity_type: string;
+        state: string;
+        created_at: string;
+        transition_at: string;
+      }[]
+    >;
+
+    const [inventoryRows, activeRows, trainingRows] = await Promise.all([
+      inventoryPromise,
+      activePromise,
+      trainingPromise,
+    ]);
 
     // Build owned map
     const owned: Record<string, number> = {};
@@ -65,18 +107,58 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
 
     // Build active map: template key → ActiveStatus
     const activeMap = new Map<string, ActiveStatus>();
-    for (const row of activeRows) {
+    const allActiveRows = [
+      ...activeRows,
+      ...trainingRows.map((row) => ({
+        data: {
+          activity_type: "training",
+          parameters: parseJsonb(row.data),
+          start_time: row.created_at,
+          resolve_at: row.transition_at,
+        },
+      })),
+    ];
+    for (const row of allActiveRows) {
       const data = parseJsonb(row.data);
       const key = templateKeyFromActivity(data);
       if (key) {
-        const startTime = data.start_time as string;
-        const resolveAt = data.resolve_at as string;
-        activeMap.set(key, {
-          startTime,
-          resolveAtEstimate: resolveAt,
-          percentEstimate: computePercentComplete(startTime, resolveAt),
-        });
+        activeMap.set(key, activeStatus(data.start_time as string, data.resolve_at as string));
       }
+    }
+
+    const trainingItems: TemplateItem[] = getAllTrainingPrograms()
+      .filter((p) => !p.training_activity_type.startsWith("spell_") || activeMap.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        duration: trainingDuration(p.training_activity_type, `Training program ${p.id}`),
+        params: {
+          program_id: p.id,
+          stat: p.stat,
+          skill: p.skill,
+        },
+        materials: null,
+        active: activeMap.get(p.id) ?? null,
+      }));
+
+    // Every non-terminal training row holds the training slot, but only one naming a listed
+    // program has a row to carry its `active`: learn(kind="variant") writes variant_id and no
+    // program_id (mentor_variant_tools.py), and no training program carries
+    // technique_mentor_variant. Surface the leftovers as active-only rows — without one the
+    // launcher's group lock cannot fire and every START 400s on the slot check.
+    for (const row of trainingRows) {
+      const data = parseJsonb(row.data);
+      const key = templateKeyFromActivity({ activity_type: "training", parameters: data });
+      const id = key ?? (data.variant_id as string | undefined) ?? row.activity_type;
+      if (trainingItems.some((item) => item.id === id)) continue;
+      trainingItems.push({
+        id,
+        name: typeof data.program_name === "string" ? data.program_name : displayName(id),
+        duration: trainingDuration(row.activity_type, `Training activity ${row.activity_type}`),
+        params: {},
+        materials: null,
+        active: activeStatus(row.created_at, row.transition_at),
+      });
     }
 
     const groups: TemplateGroup[] = [
@@ -107,32 +189,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       {
         type: "training",
         label: "Training",
-        items: getAllTrainingPrograms()
-          .filter((p) => !p.training_activity_type.startsWith("spell_"))
-          .map((p) => {
-            const activityType = getActivityTypeConfig(p.training_activity_type);
-            if (!activityType) {
-              throw new Error(
-                `Training program ${p.id} references unknown activity type ${p.training_activity_type}`,
-              );
-            }
-            const minSec =
-              activityType.first_half_min_seconds + activityType.second_half_min_seconds;
-            const maxSec =
-              activityType.first_half_max_seconds + activityType.second_half_max_seconds;
-            return {
-              id: p.id,
-              name: p.name,
-              duration: formatDuration(minSec, maxSec),
-              params: {
-                program_id: p.id,
-                stat: p.stat,
-                skill: p.skill,
-              },
-              materials: null,
-              active: activeMap.get(p.id) ?? null,
-            };
-          }),
+        items: trainingItems,
       },
       {
         type: "companion_errand",
