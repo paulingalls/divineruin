@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, cast
 import abilities
 import ability_persistence
 import check_resolution_save
+import combat_ability_save
 import combat_enhancers
 import concentration_break
 import conditions
@@ -159,11 +160,17 @@ async def _resolve_ability_condition_packet(
     # Single-target (story-005): a given target_id that's not on the working state, or already
     # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
     # that left or a corpse, and a wasted declaration must never burn the cost.
-    _, waste = _resolve_condition_target(state, attacker, decl)
+    target, waste = _resolve_condition_target(state, attacker, decl)
     if waste is not None:
         return waste
+    assert target is not None
 
     await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
+
+    if ability.save is not None:
+        return combat_ability_save.resolve_hostile_condition(
+            state, attacker, target, decl, ability, _land_condition_on_one
+        )
 
     summary = {
         "actor_id": attacker.id,

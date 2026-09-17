@@ -20,6 +20,8 @@ import logging
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+import catalog_parse
+import check_resolution_save
 import conditions
 import spells
 
@@ -76,6 +78,8 @@ class Ability:
     # or None for an ability that applies no condition. Optional + forward-compatible: existing rows
     # omit it. When present, parse_ability_row fail-louds an unknown type against CONDITION_CATALOG.
     applies_condition: str | None = None
+    save: str | None = None
+    dc_attribute: str | None = None
     # M4.8 story-016: max ally count for a multi-target condition ability (e.g. bard_mass_inspire).
     # None = single-target only (the same contract as spells.Spell.max_targets, shared via the
     # normalize_target_list targeting SSOT). A positive int caps the party-wide buff.
@@ -121,11 +125,20 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         # bool is a subclass of int — exclude it explicitly, mirroring _parse_cost.
         if not isinstance(level_requirement, int) or isinstance(level_requirement, bool):
             raise ValueError(f"ability {ability_id!r} level_requirement is not an int")
-        # Optional producer field (M4.8 story-005): when present it must name a real condition type,
-        # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
         applies_condition = data.get("applies_condition")
         if applies_condition is not None:
             conditions.assert_known_condition(applies_condition, f"ability {ability_id!r}")
+        has_save, has_dc = "save" in data, "dc_attribute" in data
+        if has_save != has_dc:
+            missing = "dc_attribute" if has_save else "save"
+            raise ValueError(f"ability {ability_id!r} {missing} is required with its save field partner")
+        save, dc_attribute = data.get("save"), data.get("dc_attribute")
+        if has_save and applies_condition is None:
+            raise ValueError(f"ability {ability_id!r} applies_condition is required with save fields")
+        if has_save and not check_resolution_save.is_valid_save_key(save):
+            raise ValueError(f"ability {ability_id!r} save {save!r} is invalid")
+        if has_dc and dc_attribute not in catalog_parse.ATTRIBUTE_KEYS:
+            raise ValueError(f"ability {ability_id!r} dc_attribute {dc_attribute!r} is invalid")
         # Multi-target cap (M4.8 story-016): same validation as spells.parse_spell_row — a positive
         # int or None (single-target). Rejects 0/negative/bool so a bad cap fails at load.
         max_targets = data.get("max_targets")
@@ -154,6 +167,8 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             narration_cue=data["narration_cue"],
             spell_id=data.get("spell_id"),
             applies_condition=applies_condition,
+            save=save,
+            dc_attribute=dc_attribute,
             max_targets=max_targets,
             window=window,
         )

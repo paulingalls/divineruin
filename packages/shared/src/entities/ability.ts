@@ -46,6 +46,9 @@ export interface Ability {
   // id (kept single-sourced, no drift). effect/narration/level stay per-archetype. Absent on
   // non-spell rows.
   spell_id?: string;
+  applies_condition?: string;
+  save?: string;
+  dc_attribute?: string;
   // story-001: the trigger event a REACTION ability fires on. Required iff
   // ability_type === "reaction", forbidden otherwise — the loader enforces both
   // directions at runtime (same division of labor as spell_id above). Absent on
