@@ -7,9 +7,9 @@ from functools import partial
 
 from livekit.agents import AgentSession
 
-from background_process import GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS
 from companion_cue_events import publish_companion_cue
 from session_data import SessionData
+from speech_delivery import deliver_speech
 from system_prompts import build_companion_cue
 from task_logging import log_task_failure
 
@@ -123,28 +123,13 @@ class OnboardingBackgroundProcess:
             beat,
             self._sd.player_id,
         )
-        try:
-            handle = self._session.generate_reply(instructions=instruction)
-        except RuntimeError as exc:
-            if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
-                raise
-            logger.warning(
-                "Onboarding nudge skipped for player %s at beat %d: %s",
-                self._sd.player_id,
-                beat,
-                exc,
-            )
-            return
-
-        await handle
-        failure = handle.exception()
-        if failure is not None:
-            logger.warning(
-                "Onboarding nudge failed for player %s at beat %d: %s",
-                self._sd.player_id,
-                beat,
-                failure,
-            )
+        delivered = await deliver_speech(
+            self._session,
+            instruction,
+            logger,
+            f"Onboarding nudge for player {self._sd.player_id} at beat {beat}",
+        )
+        if not delivered:
             return
 
         self._hint_index += 1

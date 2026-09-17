@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import time
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -351,16 +350,3 @@ async def test_failed_handle_warns_and_loop_survives(caplog):
     assert bg._hint_index == 0
     assert bg._last_hint_time == 0
     assert companion is not None and companion.last_speech_time == 0
-
-
-def test_onboarding_imports_the_single_session_unavailable_policy():
-    agent_dir = Path(__file__).parents[1]
-    sources = {path.name: path.read_text() for path in agent_dir.glob("*.py")}
-    assert (
-        "from background_process import GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS" in sources["onboarding_background.py"]
-    )
-    for message in (
-        "AgentSession isn't running",
-        "AgentSession is closing, cannot use generate_reply()",
-    ):
-        assert sum(source.count(message) for source in sources.values()) == 1

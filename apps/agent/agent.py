@@ -20,6 +20,7 @@ from base_agent import _make_tts
 from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
+from speech_delivery import deliver_speech
 from voices import ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
@@ -418,7 +419,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         # --- Initial greeting ---
         if is_first_session:
-            await session.generate_reply(
+            await deliver_speech(
+                session,
                 instructions=(
                     f"Call enter_location with '{location_id}' to get the full scene context. "
                     "Do NOT tell the player you are looking anything up or setting a scene. "
@@ -429,10 +431,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
                     "Describe the atmosphere with one vivid sensory detail. "
                     "End with something that invites the player to look around or explore."
                 ),
+                logger=logger,
+                description=f"First-session greeting for player {player_id}",
+                failure_level=logging.ERROR,
             )
         else:
             recap = _build_recap_instruction(last_summary)
-            await session.generate_reply(
+            await deliver_speech(
+                session,
                 instructions=(
                     f"Call enter_location with '{location_id}' to get the full scene context. "
                     "Do NOT tell the player you are looking anything up or setting a scene. "
@@ -442,6 +448,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
                     "Remind them of their current situation through narration, not summary. "
                     "End with something that invites action."
                 ),
+                logger=logger,
+                description=f"Returning-session greeting for player {player_id}",
+                failure_level=logging.ERROR,
             )
 
 
