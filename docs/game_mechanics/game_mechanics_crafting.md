@@ -550,7 +550,7 @@ A battered, scarred tower shield recovered from the ruins of Greyhaven's watchto
 | Rare | 50 sp | 3 days |
 | Legendary | 200+ sp or quest | 1 week |
 
-Repair quotes use the same whole-silver rule as rentals: apply the disposition multiplier, then round half up once at the quote. Pricing content accepts finite numeric disposition multipliers greater than or equal to zero with at most four decimal places, including surcharges above 1.0. A repair cost must be a non-boolean integer greater than or equal to zero.
+Repair quotes use the same whole-silver rule as rentals: apply the disposition multiplier, then round half up once at the quote. Pricing content accepts finite numeric disposition multipliers greater than or equal to zero and at most `1e304`, with at most four decimal places, including surcharges above 1.0. A repair cost must be a non-boolean integer greater than or equal to zero.
 
 ---
 

@@ -19,6 +19,8 @@ import db
 logger = logging.getLogger("divineruin.db")
 
 _ECONOMY_ID = "economy"
+MAX_DISPOSITION_MULTIPLIER = 1e304
+DISPOSITION_MULTIPLIER_CAP_RULE = "must be <= 1e304"
 
 
 def _validate_economy_pricing(data: dict) -> dict:
@@ -30,6 +32,8 @@ def _validate_economy_pricing(data: dict) -> dict:
             raise ValueError(f"{ctx} must be finite")
         if value < 0:
             raise ValueError(f"{ctx} must be >= 0")
+        if value > MAX_DISPOSITION_MULTIPLIER:
+            raise ValueError(f"{ctx} {DISPOSITION_MULTIPLIER_CAP_RULE}")
         if abs(value * 10_000 - round(value * 10_000)) >= 1e-9:
             raise ValueError(f"{ctx} must have at most 4 decimal places")
 

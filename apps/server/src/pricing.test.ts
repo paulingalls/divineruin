@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  DISPOSITION_MULTIPLIER_CAP_RULE,
   dispositionMultiplier,
   type EconomyPricing,
   parsePricingRow,
@@ -88,6 +89,11 @@ describe("parsePricingRow (fail-loud)", () => {
       "pricing[economy].disposition_multipliers.friendly must be >= 0",
     ],
     [
+      "multiplier exceeds conversion cap",
+      "1e305",
+      `pricing[economy].disposition_multipliers.friendly ${DISPOSITION_MULTIPLIER_CAP_RULE}`,
+    ],
+    [
       "multiplier must have at most four places",
       "0.12345",
       "pricing[economy].disposition_multipliers.friendly must have at most 4 decimal places",
@@ -126,7 +132,7 @@ describe("parsePricingRow (fail-loud)", () => {
     expect(() => parsePricingRow(row)).toThrow(message);
   });
 
-  test.each(["0", "0.0001", "0.8", "1.25", "8e-1"])("accepts multiplier %s", (value) => {
+  test.each(["0", "0.0001", "0.8", "1.25", "8e-1", "1e304"])("accepts multiplier %s", (value) => {
     const row = parseUnknownJson(
       `{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":${value}},"silver_per_gold":10}`,
     );

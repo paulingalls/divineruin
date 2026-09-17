@@ -18,6 +18,7 @@ import pricing_queries
 import workspace as ws
 
 _CONTENT = Path(__file__).parents[3] / "content" / "pricing.json"
+_TS_PRICING = Path(__file__).parents[3] / "apps" / "server" / "src" / "pricing.ts"
 
 
 def _economy_row() -> dict:
@@ -85,6 +86,11 @@ class TestGetEconomyPricing:
                 id="multiplier_must_be_non_negative",
             ),
             pytest.param(
+                '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":1e305},"silver_per_gold":10}',
+                "pricing[economy].disposition_multipliers.friendly " + pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE,
+                id="multiplier_exceeds_conversion_cap",
+            ),
+            pytest.param(
                 '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":0.12345},"silver_per_gold":10}',
                 "pricing[economy].disposition_multipliers.friendly must have at most 4 decimal places",
                 id="multiplier_must_have_at_most_four_places",
@@ -122,7 +128,7 @@ class TestGetEconomyPricing:
             if lane == "cache":
                 get_pool.assert_not_awaited()
 
-    @pytest.mark.parametrize("multiplier_text", ["0", "0.0001", "0.8", "1.25", "8e-1"])
+    @pytest.mark.parametrize("multiplier_text", ["0", "0.0001", "0.8", "1.25", "8e-1", "1e304"])
     @pytest.mark.asyncio
     async def test_accepts_pricing_multiplier_domain(self, multiplier_text):
         row_text = (
@@ -162,3 +168,13 @@ class TestCrossLanguageParity:
         assert charge_sp("uncommon", "friendly") == 8
         assert charge_sp("common", "trusted") == 1
         assert eco["silver_per_gold"] == 10
+
+    def test_multiplier_cap_and_rule_match_typescript(self):
+        source = _TS_PRICING.read_text()
+        cap_match = re.search(r"export const MAX_DISPOSITION_MULTIPLIER\s*=\s*([0-9eE+.-]+)\s*;", source)
+        rule_match = re.search(r'export const DISPOSITION_MULTIPLIER_CAP_RULE\s*=\s*"([^"]+)"\s*;', source)
+
+        assert cap_match is not None
+        assert rule_match is not None
+        assert float(cap_match.group(1)) == pricing_queries.MAX_DISPOSITION_MULTIPLIER
+        assert rule_match.group(1) == pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE

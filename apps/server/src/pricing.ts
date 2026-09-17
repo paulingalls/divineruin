@@ -18,6 +18,9 @@ export interface EconomyPricing {
   silverPerGold: number;
 }
 
+export const MAX_DISPOSITION_MULTIPLIER = 1e304;
+export const DISPOSITION_MULTIPLIER_CAP_RULE = "must be <= 1e304";
+
 // Runtime-loaded singleton (populated by loadPricing at startup).
 let pricing: EconomyPricing | undefined;
 
@@ -64,6 +67,9 @@ function multiplierRecord(raw: unknown, ctx: string): Record<string, number> {
     if (typeof v !== "number") throw new Error(`${ctx}.${k} must be a number`);
     if (!Number.isFinite(v)) throw new Error(`${ctx}.${k} must be finite`);
     if (v < 0) throw new Error(`${ctx}.${k} must be >= 0`);
+    if (v > MAX_DISPOSITION_MULTIPLIER) {
+      throw new Error(`${ctx}.${k} ${DISPOSITION_MULTIPLIER_CAP_RULE}`);
+    }
     if (Math.abs(v * 10_000 - Math.round(v * 10_000)) >= 1e-9) {
       throw new Error(`${ctx}.${k} must have at most 4 decimal places`);
     }
