@@ -168,6 +168,7 @@ async def test_invalid_target_refuses_before_any_packet_write(target_id, extra):
     with (
         patch("check_resolution_save.roll_participant_save") as save,
         patch("ability_persistence.update_player_resources", new_callable=AsyncMock) as update,
+        patch("ability_persistence.owns_elective", AsyncMock(return_value=True)),
         pytest.raises(ToolError, match="standing foe"),
     ):
         await combat_turn._resolve_phase_impl(context, **deps)

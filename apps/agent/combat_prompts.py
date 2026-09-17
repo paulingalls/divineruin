@@ -39,6 +39,7 @@ A grappled combatant breaks free by declaring maneuver on their grappler, which 
 whole phase; they cannot retreat. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") to learn which reaction windows the player's abilities answer. \
+When an ability row carries active_variant_id, declare that exact variant id when the player uses that technique. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
 In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \

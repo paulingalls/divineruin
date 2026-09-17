@@ -241,12 +241,8 @@ def test_prompts_name_ability_id_producer():
     activate_bullet = next(line for line in exploration.split("- ") if line.startswith("activate:"))
     assert "active_variant_id" in activate_bullet
 
-    # ...and the COMBAT prompt must NOT, which is the other half of the same constraint (story-017,
-    # note 9724fb7c(a)). In combat an ability is a declare_phase declaration, and declare_phase
-    # resolves decl.action against the ability/spell catalog (combat_packet.py:110) — a variant id
-    # is not a catalog id, so it falls through to _gate_spell and raises "Unknown spell". Advising
-    # the DM to learn variant ids here produces a tool error and a lost round, not a capability.
-    assert "variant" not in COMBAT_SYSTEM_PROMPT.lower()
+    assert "variant" in COMBAT_SYSTEM_PROMPT.lower()
+    assert "active_variant_id" in COMBAT_SYSTEM_PROMPT
 
 
 class TestQueryInfoE2E:

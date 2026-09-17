@@ -114,7 +114,7 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
         action = decl.action
         resolved_ability = declared_ability(action)
         if resolved_ability is not None:
-            ability, _variant = resolved_ability
+            ability, variant = resolved_ability
             owned_elective = (
                 await ability_persistence.owns_elective(actor_id, ability.id, conn=conn)
                 if ability.ability_type == "elective"
@@ -124,6 +124,10 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
                 actor = state.get_participant(actor_id)
                 actor_name = actor.name if actor is not None else actor_id
                 raise ToolError(f"{actor_name} hasn't learned {ability.name}.")
+            if variant is not None:
+                active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
+                if active_variant_id != variant.id:
+                    raise ToolError(f"{variant.id} is not your active variant for {ability.name}.")
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
@@ -135,9 +139,9 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
         elif (cond_ability := condition_ability(resolved_ability)) is not None:
-            ability, _variant = cond_ability
+            ability, variant = cond_ability
             combat_ability_save.gate_hostile_target(state, decl, ability)
-            _gate_ability_condition(player, ability)
+            _gate_ability_condition(player, ability, variant)
             # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
             # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting
             # SSOT the spell branch uses (normalize_target_list accepts Spell | Ability).
@@ -264,9 +268,8 @@ async def _resolve_one_packet(
         # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
         cond_ability = condition_ability(declared_ability(decl.action))
         if cond_ability is not None:
-            ability, _variant = cond_ability
             return await _resolve_ability_condition_packet(
-                session, attacker, decl, ability, state=state, conn=conn, player=player
+                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
             )
         return await _resolve_ability_packet(
             session,

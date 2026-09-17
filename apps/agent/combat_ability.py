@@ -105,22 +105,28 @@ def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | Non
     return None
 
 
-def _gate_ability_condition(player: dict, ability: "abilities.Ability") -> None:
+def _gate_ability_condition(
+    player: dict,
+    ability: "abilities.Ability",
+    variant=None,
+) -> None:
     """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
     ability's Stamina/Focus with NO writes, mirroring _gate_deescalation / _gate_spell so a bad
     declaration never rolls back a phase that already resolved other actors. resource_costs.gate_pool
     is the sole Focus/Stamina gate; the deduct happens in _resolve_ability_condition_packet."""
-    gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
-    gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    cost = variant.cost if variant is not None else ability.cost
+    gate_pool(player, "stamina", cost.stamina, label=ability.name)
+    gate_pool(player, "focus", cost.focus, label=ability.name)
 
 
-async def _deduct_ability_cost(player_id, player, ability, *, persistence, conn) -> None:
+async def _deduct_ability_cost(player_id, player, ability, variant, *, persistence, conn) -> None:
     """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist against
     ``player_id`` (the declaring member — M14 story-004, was the session primary). Shared by the
     single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if the
     cost can't be paid (already pre-gated at declare time)."""
-    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
-    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    cost = variant.cost if variant is not None else ability.cost
+    new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
+    new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
     if new_stamina is not None or new_focus is not None:
         await persistence.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
@@ -129,7 +135,7 @@ async def _resolve_ability_condition_packet(
     session: SessionData,
     attacker: CombatParticipant,
     decl: "Declaration",
-    ability: "abilities.Ability",
+    resolved: DeclaredAbility,
     *,
     state,
     conn,
@@ -149,6 +155,8 @@ async def _resolve_ability_condition_packet(
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
+    ability, variant = resolved
+
     # applies_condition is non-None on this path (condition_ability selected it); the resolved
     # ability id is the source (== decl.action by the lookup invariant).
     cond_type = ability.applies_condition
@@ -159,7 +167,7 @@ async def _resolve_ability_condition_packet(
     # resolve time is dropped (partial landing); an all-off-state list lands nothing but still
     # spends the cost (the spell-path convention — the declaration committed to the action).
     if decl.target_ids:
-        await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
+        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
         summary = {
             "actor_id": attacker.id,
             "resolved": True,
@@ -171,6 +179,9 @@ async def _resolve_ability_condition_packet(
             if voiced:
                 summary["condition_applied"] = cond_type
                 summary["condition_targets"] = voiced
+        if variant is not None:
+            summary["variant_id"] = variant.id
+            summary["cultural_attribution"] = variant.cultural_attribution
         return summary
 
     # Single-target (story-005): a given target_id that's not on the working state, or already
@@ -181,12 +192,16 @@ async def _resolve_ability_condition_packet(
         return waste
     assert target is not None
 
-    await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
+    await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
 
     if ability.save is not None:
-        return combat_ability_save.resolve_hostile_condition(
+        summary = combat_ability_save.resolve_hostile_condition(
             state, attacker, target, decl, ability, _land_condition_on_one
         )
+        if variant is not None:
+            summary["variant_id"] = variant.id
+            summary["cultural_attribution"] = variant.cultural_attribution
+        return summary
 
     summary = {
         "actor_id": attacker.id,
@@ -196,6 +211,9 @@ async def _resolve_ability_condition_packet(
     }
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
+    if variant is not None:
+        summary["variant_id"] = variant.id
+        summary["cultural_attribution"] = variant.cultural_attribution
     return summary
 
 
