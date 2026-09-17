@@ -109,6 +109,13 @@ class PhaseAdvance:
     legendary_available: list[dict] = field(default_factory=list)
 
 
+def reopen_declaration(state: CombatState) -> CombatState:
+    reopened = copy.deepcopy(state)
+    reopened.beat = PhaseBeat.DECLARATION
+    reopened.pending_declarations = {}
+    return reopened
+
+
 def advance_combat_phase(
     state: CombatState,
     declarations: dict[str, dict] | None = None,

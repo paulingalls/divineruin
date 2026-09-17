@@ -30,8 +30,9 @@ import veil_ward_events
 import ward_resolution
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_finish
-from combat_events import EventSink, emit_or_publish, isolated_publish, scratch_guard
+from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
+from combat_phase_recovery import PrevalidationRefusal, phase_transaction_with_recovery
 from combat_support import _require_combat
 from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
@@ -200,7 +201,7 @@ async def _resolve_phase_locked(
     # empty when no ability was declared, which is always true of the Beat-3 held pass.
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
-    async with scratch_guard(session), db_mod.transaction() as conn:
+    async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
         if resolving_allies:
             # Beat 2 (resolution): the engine orders the pending declarations into initiative
             # packets (no math of its own). Orchestration applies each attack against
@@ -228,9 +229,12 @@ async def _resolve_phase_locked(
             # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
             # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
             # player row (the cast reuses it; the lock is taken once) or None when no player ability.
-            players_by_id = await _prevalidate_ability_focus(
-                session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
-            )
+            try:
+                players_by_id = await _prevalidate_ability_focus(
+                    session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
+                )
+            except ToolError as error:
+                raise PrevalidationRefusal(error) from error
 
             # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
             # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
