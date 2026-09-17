@@ -298,10 +298,11 @@ async def finalize_character(context: RunContext) -> str | tuple:
     # strand a created character, so it is logged rather than raised.
     try:
         chassis = get_archetype_chassis(cs.class_choice)
-        for spell_id in select_starting_spells(cs.class_choice, chassis.magic_source):
-            spell = spells.get_spell(spell_id)
+        starting_spells = [spells.get_spell(i) for i in select_starting_spells(cs.class_choice, chassis.magic_source)]
+        for spell in starting_spells:
             spell_knowledge.validate_spell_source(chassis.magic_source, spell.source)
-            await character_spells.record_learned(sd.player_id, spell_id, "training", is_prepared=True)
+        for spell in starting_spells:
+            await character_spells.record_learned(sd.player_id, spell.id, "training", is_prepared=True)
     except Exception:
         logger.exception("Failed to grant starting spells for %s", sd.player_id)
 

@@ -181,11 +181,11 @@ class TestFinalizeGrantsStartingSpells:
             spell = get_spell(write_call.args[1])
             assert guard_call.args == (chassis.magic_source, spell.source)
 
-    @patch("creation_tools.select_starting_spells", return_value=["arcane_fireball"])
+    @patch("creation_tools.select_starting_spells", return_value=["divine_sacred_flame", "arcane_fireball"])
     @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_off_source_starting_spell_is_not_written(self, _create, mock_payload, mock_record, mock_select):
+    async def test_off_source_starting_spell_blocks_every_grant(self, _create, mock_payload, mock_record, mock_select):
         mock_payload.return_value = _PAYLOAD
 
         await _finalize(_ctx(_caster_state("cleric")))

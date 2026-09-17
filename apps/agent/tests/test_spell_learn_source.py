@@ -4,6 +4,8 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
+import archetypes
+import leveling
 import spell_tools
 
 
@@ -61,3 +63,9 @@ async def test_martial_refuses_spell_with_both_sources_named():
     assert "no magic source" in str(exc_info.value)
     assert "arcane" in str(exc_info.value)
     records.assert_not_awaited()
+
+
+def test_every_archetype_with_a_magic_source_has_a_tier_table():
+    # learn lets the tier gate's ValueError raise, so a source-holding archetype must never lack a table.
+    holders = {a.id for a in archetypes._archetypes.values() if a.magic_source is not None}
+    assert holders == set(leveling.MIN_LEVEL_BY_ARCHETYPE_TIER)
