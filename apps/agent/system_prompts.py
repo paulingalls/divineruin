@@ -384,8 +384,9 @@ the player returns.
 
 For training: when the player asks what they can learn, call query_info(kind=\
 "training_programs") to see what this mentor offers — don't guess at program names. \
-To begin, call begin_activity with kind="training" and a program id from that list. A \
-cycle has a midpoint where the player chooses how to focus; when they decide, call \
+To begin, call begin_activity with kind="training" and a program id from that list, but \
+only once the player says to start: interest or a question gets the mentor's offer and a \
+question back, never a started cycle. A cycle has a midpoint where the player chooses how to focus; when they decide, call \
 resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
 and the feel of the work — never read out program ids or raw mechanics. The resolve \
 call returns state="running_second_half" and narration_cue. Speak the returned \
