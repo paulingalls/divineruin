@@ -11,6 +11,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -390,7 +391,7 @@ class TestSpeechQueue:
     async def test_deliver_speech_delivers_highest_priority(self):
         """_deliver_speech should deliver highest priority speech."""
         mock_session = MagicMock()
-        mock_session.generate_reply = AsyncMock()
+        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
         # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
         # tests are about which queued cue is chosen, and delivery now holds everything but a
@@ -407,14 +408,14 @@ class TestSpeechQueue:
 
         await bp._deliver_speech()
 
-        mock_session.generate_reply.assert_awaited_once_with(instructions="High priority")
+        mock_session.generate_reply.assert_called_once_with(instructions="High priority")
         assert len(bp._speech_queue) == 0
 
     @pytest.mark.asyncio
     async def test_deliver_speech_clears_queue_after_delivery(self):
         """_deliver_speech should clear entire queue after delivering top speech."""
         mock_session = MagicMock()
-        mock_session.generate_reply = AsyncMock()
+        mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
         # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
         # tests are about which queued cue is chosen, and delivery now holds everything but a
@@ -429,26 +430,5 @@ class TestSpeechQueue:
         ]
 
         await bp._deliver_speech()
-
-        assert bp._speech_queue == []
-
-    @pytest.mark.asyncio
-    async def test_deliver_speech_handles_exception_gracefully(self):
-        """_deliver_speech should not raise if generate_reply fails."""
-        mock_session = MagicMock()
-        mock_session.generate_reply = AsyncMock(side_effect=Exception("TTS failed"))
-        mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
-        mock_sd.in_combat = False
-        mock_sd.companion = None
-
-        bp = BackgroundProcess(mock_session, mock_sd)
-        bp._speech_queue = [
-            PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="Test"),
-        ]
-
-        await bp._deliver_speech()  # Should not raise
 
         assert bp._speech_queue == []

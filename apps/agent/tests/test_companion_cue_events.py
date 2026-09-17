@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.rtc.participant import PublishDataError
+from speech_handles import completed_handle
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
@@ -32,7 +33,7 @@ def _session_data() -> SessionData:
 
 def _queued_background(sd: SessionData) -> tuple[BackgroundProcess, MagicMock]:
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
     background = BackgroundProcess(session, sd)
     background._speech_queue.append(
         PendingSpeech(
@@ -67,7 +68,7 @@ async def test_publish_data_error_keeps_background_voice_and_timestamp(
     with caplog.at_level(logging.ERROR, logger="divineruin.companion_cue_events"):
         await background._deliver_speech()
 
-    session.generate_reply.assert_awaited_once()
+    session.generate_reply.assert_called_once()
     assert cast(CompanionState, sd.companion).last_speech_time > 0
     records = _cue_error_records(caplog)
     assert len(records) == 1
@@ -86,7 +87,7 @@ async def test_runtime_error_escapes_background_before_voice() -> None:
         await background._deliver_speech()
 
     assert raised.value is failure
-    session.generate_reply.assert_not_awaited()
+    session.generate_reply.assert_not_called()
 
 
 @pytest.mark.asyncio
