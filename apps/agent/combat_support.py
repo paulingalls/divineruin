@@ -448,9 +448,7 @@ async def apply_attack_result(
         # adds, for the DM to voice. 0/None on a normal hit.
         "bonus_damage": attack_result.bonus_damage,
         "bonus_damage_type": attack_result.bonus_damage_type,
-        # Beneficial conditions whose +1d4 this swing rolled into the to-hit (M4.8 story-003). The
-        # caller (_resolve_one_packet) removes these from the attacker so a multi-swing sequence
-        # consumes the single-use die exactly once.
+        # Conditions spent by this attack; the caller removes them before another swing.
         "consumed_conditions": attack_result.consumed_conditions,
         # Set when this hit raised a Stage-2+ Hollowed target as a Temporary Hollowed echo
         # instead of felling them — the DM narrates the corpse rising.
