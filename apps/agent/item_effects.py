@@ -8,6 +8,14 @@ from dataclasses import dataclass, field
 
 from check_resolution_save import VALID_SAVE_NAMES
 
+# What an item may declare condition_immunities AGAINST: the doc's 21 §Status Effects minus the four
+# BENEFICIAL ones (blessed, shielded, enraged, inspired) and the engine-internal temporary_hollowed.
+# _land_condition_on_one consults this dict on EVERY landing, ally buffs included, so a beneficial
+# token here would let an item block its bearer from being HELPED — silently, since a False landing
+# carries no packet signal to narrate. temporary_hollowed is not a status an item can ward: its one
+# producer (combat_support's Hollowed rise) calls apply_condition directly, past that chokepoint.
+# Listed rather than derived from CONDITION_CATALOG so a NEW catalog entry reds
+# test_blockable_conditions_partition_the_condition_catalog until someone classifies it.
 BLOCKABLE_CONDITIONS = frozenset(
     {
         "wounded",

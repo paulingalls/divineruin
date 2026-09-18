@@ -179,7 +179,7 @@ async def test_description_only_effects_reach_dm_verbatim():
 # apps/server/src/items.ts, because no code crosses the language split. Without this guard a
 # token dropped on one side only stays silent at the TS load boundary and surfaces as a mid-fight
 # ToolError at combat init — the worst possible moment to learn about it.
-_TS_SET_RE = re.compile(r"const (CONDITION_NAMES|SAVE_NAMES|ADVANTAGE_VS) = new Set\(\[(.*?)\]\)", re.DOTALL)
+_TS_SET_RE = re.compile(r"const (BLOCKABLE_CONDITIONS|SAVE_NAMES|ADVANTAGE_VS) = new Set\(\[(.*?)\]\)", re.DOTALL)
 _TS_TOKEN_RE = re.compile(r'"([a-z_]+)"')
 
 
@@ -188,13 +188,15 @@ def _ts_token_sets() -> dict[str, frozenset[str]]:
         name: frozenset(_TS_TOKEN_RE.findall(body)) for name, body in _TS_SET_RE.findall(ITEMS_TS_PATH.read_text())
     }
     # Fail loud on a parse miss rather than passing vacuously against an empty dict.
-    assert set(found) == {"CONDITION_NAMES", "SAVE_NAMES", "ADVANTAGE_VS"}, f"parser drift in {ITEMS_TS_PATH}: {found}"
+    assert set(found) == {"BLOCKABLE_CONDITIONS", "SAVE_NAMES", "ADVANTAGE_VS"}, (
+        f"parser drift in {ITEMS_TS_PATH}: {found}"
+    )
     assert all(found.values()), f"extracted an empty token set from {ITEMS_TS_PATH}: {found}"
     return found
 
 
 def test_structured_effect_token_sets_match_across_languages():
     ts = _ts_token_sets()
-    assert ts["CONDITION_NAMES"] == BLOCKABLE_CONDITIONS
+    assert ts["BLOCKABLE_CONDITIONS"] == BLOCKABLE_CONDITIONS
     assert ts["SAVE_NAMES"] == frozenset(VALID_SAVE_NAMES)
     assert ts["ADVANTAGE_VS"] == frozenset(_ADVANTAGE_VS)
