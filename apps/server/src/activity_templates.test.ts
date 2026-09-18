@@ -3,12 +3,15 @@ import { dbMockFactory, resetMockDb, setQueryStubs } from "./activities-test-moc
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
 import type { TemplateItem } from "@divineruin/shared";
+import type { TrainingProgramConfig } from "./activity_templates.ts";
 
 void mock.module("./db.ts", dbMockFactory);
 
 const { handleGetActivityTemplates } = await import("./activity-templates-api.ts");
 const { handleGetCatchUpFeed } = await import("./catchup.ts");
-const { getErrandTemplate, parseProgramRows } = await import("./activity_templates.ts");
+const { getErrandTemplate, parseProgramRows, setTrainingPrograms } =
+  await import("./activity_templates.ts");
+const { parseActivityTypeRows } = await import("./training_state_machine.ts");
 
 beforeEach(() => {
   resetMockDb();
@@ -28,40 +31,87 @@ async function getTrainingItems(): Promise<TemplateItem[]> {
 }
 
 describe("training program catalog", () => {
-  const rows = async () =>
+  const programRows = async () =>
     (
       (await Bun.file(
         new URL("../../../content/training_programs.json", import.meta.url),
       ).json()) as Record<string, unknown>[]
     ).map(({ id, ...data }) => ({ id: id as string, data }));
 
-  test("the real authored catalog is non-empty and every row parses", async () => {
-    const authored = await rows();
-    expect(authored.length).toBeGreaterThan(0);
-    expect(parseProgramRows(authored).size).toBe(authored.length);
+  const activityTypeRows = async () =>
+    (
+      (await Bun.file(
+        new URL("../../../content/training_activity_types.json", import.meta.url),
+      ).json()) as Record<string, unknown>[]
+    ).map(({ id, ...data }) => ({ id: id as string, data }));
+
+  test("the real authored catalogs are non-empty and every program names an activity type", async () => {
+    const programs = await programRows();
+    const types = await activityTypeRows();
+    expect(programs.length).toBeGreaterThan(0);
+    expect(types.length).toBeGreaterThan(0);
+
+    const activityTypes = parseActivityTypeRows(types);
+    expect(parseProgramRows(programs, activityTypes).size).toBe(programs.length);
   });
 
-  test("rejects a program whose spell tier is not one of the five", async () => {
-    const authored = await rows();
-    const spellProgram = authored.find((row) =>
-      String((row.data as Record<string, unknown>).training_activity_type).startsWith("spell_"),
-    );
-    expect(spellProgram).toBeDefined();
+  test("rejects a bogus non-spell activity type where the program is authored", async () => {
+    const programs = await programRows();
+    const activityTypes = parseActivityTypeRows(await activityTypeRows());
+    const [program] = programs;
+    expect(program).toBeDefined();
     const bad = {
-      id: spellProgram!.id,
-      data: { ...(spellProgram!.data as object), training_activity_type: "spell_legendary" },
+      id: program!.id,
+      data: { ...(program!.data as object), training_activity_type: "recipe_unpublished" },
     };
-    expect(() => parseProgramRows([bad])).toThrow(/training_activity_type.*legendary/);
+    expect(() => parseProgramRows([bad], activityTypes)).toThrow(
+      /training_activity_type.*recipe_unpublished/,
+    );
+  });
+
+  test("an empty activity type catalog fails loud", async () => {
+    const programs = await programRows();
+    expect(() => parseProgramRows(programs, new Map())).toThrow(
+      /training_activity_types produced no rows/,
+    );
   });
 
   test("an empty authored catalog fails loud", () => {
-    expect(() => parseProgramRows([])).toThrow(/produced no rows/);
+    expect(() => parseProgramRows([], new Map([["technique_base", {} as never]]))).toThrow(
+      /training_programs produced no rows/,
+    );
   });
 
   test("a duplicate row id fails loud", async () => {
-    const [first] = await rows();
-    expect(() => parseProgramRows([first!, first!])).toThrow(/duplicate/);
+    const [first] = await programRows();
+    const activityTypes = parseActivityTypeRows(await activityTypeRows());
+    expect(() => parseProgramRows([first!, first!], activityTypes)).toThrow(/duplicate/);
   });
+});
+
+test("a render failure is a 500, never a successful empty HUD", async () => {
+  setTrainingPrograms(
+    new Map([
+      [
+        "broken_program",
+        {
+          id: "broken_program",
+          name: "Broken Program",
+          training_activity_type: "recipe_unpublished",
+          stat: "intelligence",
+          dc: 10,
+          mentor_id: "mentor_missing",
+        } as unknown as TrainingProgramConfig,
+      ],
+    ]),
+  );
+
+  const response = await handleGetActivityTemplates("player_1");
+  const payload = (await response.json()) as Record<string, unknown>;
+
+  expect(response.status).toBe(500);
+  expect(payload).toEqual({ error: "Internal server error" });
+  expect(payload).not.toHaveProperty("groups");
 });
 
 test("a running technique cycle is active on its training program", async () => {

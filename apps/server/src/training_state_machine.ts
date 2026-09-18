@@ -128,13 +128,16 @@ export function parseActivityTypeRows(
   return map;
 }
 
-export async function loadTrainingActivityTypes(): Promise<void> {
+export async function loadTrainingActivityTypes(): Promise<
+  ReadonlyMap<string, ActivityTypeConfig>
+> {
   const rows = await sql<{ id: string; data: unknown }[]>`
     SELECT id, data FROM training_activity_types
   `;
   const map = parseActivityTypeRows(rows);
   activityTypes = map;
   console.log(`Loaded ${map.size} training activity types`);
+  return map;
 }
 
 export function getMidpointDecision(activityType: string): MidpointDecision {

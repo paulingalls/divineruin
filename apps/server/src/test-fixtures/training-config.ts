@@ -37,6 +37,7 @@ async function loadFixtureData(): Promise<void> {
   const rawPrograms = (await Bun.file(PROGRAMS_PATH).json()) as Record<string, unknown>[];
   cachedPrograms = parseProgramRows(
     rawPrograms.map(({ id, ...data }) => ({ id: id as string, data })),
+    cachedActivityTypes,
   );
 }
 
