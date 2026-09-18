@@ -4,17 +4,18 @@ MARK_KINDS = frozenset({"command", "accusation"})
 FOCUS_ATTACK_BONUS = 2
 
 
-def resolve_mark_action(state, source, target, kind: str, *, cancelled: bool = False) -> None:
+def resolve_mark_action(state, source, target, kind: str, *, cancelled: bool = False) -> dict:
     if kind not in MARK_KINDS:
         raise ValueError(f"action kind {kind!r} does not create a focus mark")
+    resolved = {"resolved": True, "kind": kind}
     if cancelled:
-        return
+        return resolved
     current_source = _mark_source(state, target)
     if current_source is None:
         state.focus_marks[target.id] = {"source_id": source.id, "kind": kind}
-        return
+        return resolved
     if current_source.is_ally == source.is_ally:
-        return
+        return {"resolved": False, "reason": f"{target.name}'s focus mark is held by {current_source.name}"}
     raise ValueError(f"focus mark for {target.id!r} belongs to {current_source.id!r}, not {source.id!r}")
 
 
@@ -37,6 +38,13 @@ def attack_bonus(state, attacker, target) -> int:
     source = _mark_source(state, target)
     if source is None:
         return 0
-    if attacker.is_fallen or attacker.is_dead or attacker.id == source.id or attacker.is_ally != source.is_ally:
+    if (
+        attacker.is_fallen
+        or attacker.is_dead
+        or source.is_fallen
+        or source.is_dead
+        or attacker.id == source.id
+        or attacker.is_ally != source.is_ally
+    ):
         return 0
     return FOCUS_ATTACK_BONUS

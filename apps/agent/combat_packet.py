@@ -376,14 +376,13 @@ async def _resolve_one_packet(
     # A hostile mark action resolves without a roll (encounter_actions).
     if not attacker.is_ally and action_kind(action) in combat_marks.MARK_KINDS:
         kind = action_kind(action)
-        combat_marks.resolve_mark_action(state, attacker, target, kind, cancelled=mark_cancelled)
+        outcome = combat_marks.resolve_mark_action(state, attacker, target, kind, cancelled=mark_cancelled)
         return {
             "actor_id": packet.actor_id,
-            "resolved": True,
             "declaration_type": str(decl.type),
-            "kind": kind,
             "action": decl.action,
             "target": target.name,
+            **outcome,
         }
 
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
