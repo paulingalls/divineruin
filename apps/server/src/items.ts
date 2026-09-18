@@ -17,7 +17,12 @@ const ALLOWED_DURABILITY_TIERS = new Set<NonNullable<Item["durability_tier"]>>([
   "masterwork",
 ]);
 const ATTUNEMENT_KINDS = new Set(["none", "required", "class"]);
-const CONDITION_NAMES = new Set([
+// What an item may declare condition_immunities AGAINST — the hostile, item-wardable subset of the
+// condition catalog, NOT a mirror of it. Pinned to apps/agent/item_effects.BLOCKABLE_CONDITIONS by
+// test_item_effects_content.test_structured_effect_token_sets_match_across_languages, which carries
+// the reasoning for each omission. Adding the beneficial conditions back here would let an item
+// block its own bearer's buffs.
+const BLOCKABLE_CONDITIONS = new Set([
   "wounded",
   "stunned",
   "prone",
@@ -26,9 +31,6 @@ const CONDITION_NAMES = new Set([
   "incapacitated",
   "paralyzed",
   "poisoned",
-  "blessed",
-  "shielded",
-  "enraged",
   "exhausted",
   "blinded",
   "frightened",
@@ -37,9 +39,7 @@ const CONDITION_NAMES = new Set([
   "shaken",
   "petrified",
   "cursed",
-  "inspired",
   "hollowed",
-  "temporary_hollowed",
 ]);
 const SAVE_NAMES = new Set([
   "strength",
@@ -84,7 +84,7 @@ function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   if (e.description !== undefined && typeof e.description !== "string") {
     throw new Error(`${ctx}.description is not a string`);
   }
-  validateEffectTokens(e, "condition_immunities", CONDITION_NAMES, ctx);
+  validateEffectTokens(e, "condition_immunities", BLOCKABLE_CONDITIONS, ctx);
   validateEffectTokens(e, "save_advantages", SAVE_NAMES, ctx);
   validateEffectTokens(e, "advantage_vs", ADVANTAGE_VS, ctx);
   return e as unknown as ItemEffect;

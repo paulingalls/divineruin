@@ -224,6 +224,18 @@ describe("parseItemRow — fail-loud validation", () => {
     ).toThrow(new RegExp(`effects\\[0\\]\\.${field}.*${token}`));
   });
 
+  test.each(["blessed", "temporary_hollowed"])(
+    "rejects non-blockable condition immunity %s",
+    (token) => {
+      expect(() =>
+        parseItemRow("x", {
+          ...base,
+          effects: [{ type: "utility", condition_immunities: [token] }],
+        }),
+      ).toThrow(new RegExp(`effects\\[0\\]\\.condition_immunities.*${token}`));
+    },
+  );
+
   test.each([
     ["condition_immunities", "charmed"],
     ["save_advantages", "wisdom"],
