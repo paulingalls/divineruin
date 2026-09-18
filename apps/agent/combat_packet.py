@@ -366,11 +366,9 @@ async def _resolve_one_packet(
             publish_roll=publish_roll,
         )
         attack_summaries.append(sub)
-        # Consume the single-use beneficial die ONCE per declaration (M4.8 story-003): the swing
-        # that rolled it signals consumed_conditions; remove them from the attacker so the next
-        # swing of an expanded sequence sees a clean attacker and rolls no die. The first
-        # consuming swing's removal makes every later swing's consumed_conditions empty, so this
-        # fires at most once. Rides the phase's save_combat_state (no extra persist).
+        # Remove attack-spent conditions before the next swing in an expanded declaration. The
+        # first consuming swing leaves later consumed_conditions empty. Persistence rides the
+        # phase's save_combat_state.
         if sub.get("consumed_conditions"):
             attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the

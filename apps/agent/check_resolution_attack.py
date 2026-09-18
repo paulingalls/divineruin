@@ -10,7 +10,12 @@ import random
 from dataclasses import dataclass
 
 from check_resolution import _roll_d20_check, roll_bonus_dice
-from condition_restrictions import incoming_advantage, incoming_attack_modes, incoming_melee_autocrit
+from condition_restrictions import (
+    attack_consumed_conditions,
+    incoming_advantage,
+    incoming_attack_modes,
+    incoming_melee_autocrit,
+)
 from conditions import get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -49,10 +54,8 @@ class AttackResult:
     # the necrotic bite. 0/None when the attacker grants no rider or the attack missed.
     bonus_damage: int = 0
     bonus_damage_type: str | None = None
-    # Beneficial conditions whose +1d4 was rolled into the TO-HIT total and must now be consumed
-    # (M4.8 story-002): Blessed/Inspired add +1d4 to the attack roll (content/spells.json: "+1d4 on
-    # attack rolls"), folded into attack_modifier/attack_total. Additive + defaulted. Consumed even
-    # on a miss (the die was spent on the roll). story-003 reads this to remove + persist.
+    # Conditions spent by this attack. Downstream removes them even on a miss because the roll
+    # consumed their benefit.
     consumed_conditions: tuple[str, ...] = ()
 
 
@@ -118,6 +121,7 @@ def resolve_attack(
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
     bonus, consumed = roll_bonus_dice(effects, "attack", rng=rng)
+    consumed = tuple(dict.fromkeys((*attack_consumed_conditions(attacker_data.get("conditions") or []), *consumed)))
     atk_mod += bonus
     # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
     # always hits, nat-1 always misses, else total >= AC. Route through the shared
