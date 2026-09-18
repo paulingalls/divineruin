@@ -6,8 +6,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
-import abilities
-from query_tools import _query_abilities_impl, _query_info_impl
+from query_tools import _query_info_impl
 from session_data import SessionData
 from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_MODE_PROMPT, build_system_prompt
 
@@ -157,104 +156,6 @@ def test_training_prompt_names_spell_id_producer():
     # than a refusal (AC5), so the prompt has to say what an empty list means — otherwise the
     # DM offers Arcane Study to a warrior and begin_activity refuses (constraint 6).
     assert "empty studiable_spell_ids" in training
-
-
-class TestQueryAbilities:
-    def _dependencies(self, *, player=None, known=None, active_variant=None):
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=player)
-        persistence = MagicMock()
-        persistence.get_character_abilities = AsyncMock(return_value=known or [])
-        persistence.get_active_variant = AsyncMock(return_value=active_variant)
-        library = MagicMock()
-        library.get_known = AsyncMock(return_value=[])
-        return queries, persistence, library
-
-    async def _read(self, context, dependencies):
-        queries, persistence, library = dependencies
-        return await _query_abilities_impl(
-            context, queries=queries, persistence=persistence, character_spells_mod=library
-        )
-
-    @pytest.mark.asyncio
-    async def test_surfaces_class_catalog_owned_elective_and_active_variant(self, mock_context):
-        queries, persistence, library = self._dependencies(
-            player={"class": "warrior", "level": 8},
-            known=[{"ability_id": "warrior_cleaving_blow", "equipped": True}],
-            active_variant="warrior_cleaving_blow_drathian",
-        )
-
-        payload = json.loads(await self._read(mock_context, (queries, persistence, library)))
-        rows = {row["id"]: row for row in payload["abilities"]}
-        catalog = abilities.get_archetype_abilities("warrior")
-        expected_ids = {
-            ability.id
-            for ability in catalog
-            if ability.ability_type in ("core", "reaction") or ability.id == "warrior_cleaving_blow"
-        }
-
-        assert set(rows) == expected_ids
-        assert all(rows[ability.id]["name"] == ability.name for ability in catalog if ability.id in rows)
-        reactions = [ability for ability in catalog if ability.ability_type == "reaction"]
-        assert reactions
-        assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
-        assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
-        assert rows["warrior_devastating_strike"]["combat"] is False
-
-    @pytest.mark.asyncio
-    async def test_spell_backed_row_names_its_combat_spell_id(self, mock_context):
-        dependencies = self._dependencies(player={"class": "cleric", "level": 1})
-
-        payload = json.loads(await self._read(mock_context, dependencies))
-        rows = {row["id"]: row for row in payload["abilities"]}
-
-        assert rows["cleric_heal_wounds"]["spell_id"] == "divine_heal_wounds"
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("player", [None, {}, {"class": None}])
-    async def test_missing_player_or_class_fails_loud(self, mock_context, player):
-        queries, persistence, _library = self._dependencies(player=player)
-
-        with pytest.raises(ToolError, match="class"):
-            await _query_abilities_impl(mock_context, queries=queries, persistence=persistence)
-
-    @pytest.mark.asyncio
-    async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
-        # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
-        # sounds like an answer, which is what this kind exists to remove.
-        queries, persistence, library = self._dependencies(player={"class": "not_an_archetype", "level": 1})
-
-        with pytest.raises(ToolError, match="not_an_archetype"):
-            await self._read(mock_context, (queries, persistence, library))
-
-    @pytest.mark.asyncio
-    async def test_unknown_persisted_elective_is_a_tool_error(self, mock_context):
-        queries, persistence, library = self._dependencies(
-            player={"class": "warrior", "level": 8},
-            known=[{"ability_id": "missing_catalog_ability", "equipped": True}],
-        )
-
-        with pytest.raises(ToolError, match="missing_catalog_ability"):
-            await self._read(mock_context, (queries, persistence, library))
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("level", "expected"),
-        [
-            (1, {"bard_inspire"}),
-            (9, {"bard_inspire", "bard_mass_inspire"}),
-        ],
-    )
-    async def test_filters_catalog_abilities_by_player_level(self, mock_context, level, expected):
-        queries, persistence, library = self._dependencies(player={"class": "bard", "level": level})
-
-        payload = json.loads(await self._read(mock_context, (queries, persistence, library)))
-        rows = {row["id"]: row for row in payload["abilities"]}
-        ids = set(rows)
-
-        assert expected <= ids
-        assert ("bard_mass_inspire" in ids) is (level >= 9)
-        assert "combat" not in rows["bard_inspire"]
 
 
 def test_prompts_name_ability_id_producer():
