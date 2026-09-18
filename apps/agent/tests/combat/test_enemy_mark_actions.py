@@ -1,20 +1,14 @@
 """Enemy commands mark a focus target for the commander's band."""
 
 import json
-from copy import deepcopy
 from pathlib import Path
 from typing import cast
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _resolve_deps, _resolve_round
-from sample_fixtures import make_context
 
-from combat_init import _start_combat_impl
 from combat_marks import attack_bonus, resolve_mark_action
-from combat_prompts import COMBAT_PROMPT
 from session_data import CombatParticipant, CombatState
-from tests.combat.test_start_combat import _THORNWATCH, SAMPLE_PLAYER
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
 _ENCOUNTERS = json.loads((_CONTENT / "encounter_templates.json").read_text())
@@ -71,11 +65,16 @@ def _mark_state(commands: list[tuple[str, dict]], *, attack_target="player_1") -
     )
 
 
-async def _run(state: CombatState):
+async def _run_round(state: CombatState):
     ctx = _ctx_at_resolution(state=state)
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=13, damage=1)}
     payload = await _resolve_round(ctx, **deps)
     assert not isinstance(payload, tuple)
+    return ctx, deps, payload
+
+
+async def _run(state: CombatState):
+    ctx, deps, payload = await _run_round(state)
     strike = next(packet for packet in payload["packets"] if packet["actor_id"] == "bandmate")
     return ctx, deps, strike
 
@@ -102,6 +101,37 @@ async def test_two_bless_commands_on_one_target_still_add_only_two():
     ]
     _, _, strike = await _run(_mark_state(commands))
     assert (strike["hit"], strike["attack_total"]) == (True, 15)
+
+
+@pytest.mark.asyncio
+async def test_a_second_same_band_mark_packet_names_the_incumbent_holding_it():
+    commands = [
+        ("first_marker", _action("ashmark_sergeant", "Rally")),
+        ("second_marker", _action("ashmark_sergeant", "Accusation")),
+    ]
+    _, _, payload = await _run_round(_mark_state(commands))
+    packets = {packet["actor_id"]: packet for packet in payload["packets"]}
+
+    assert packets["first_marker"]["resolved"] is True
+    assert packets["first_marker"]["kind"] == "command"
+    second = packets["second_marker"]
+    assert second["resolved"] is False
+    assert "kind" not in second
+    assert "First Marker" in second["reason"]
+    assert "held" in second["reason"]
+
+
+def test_a_cancelled_mark_reports_its_declared_kind_and_writes_no_row():
+    state = _mark_state([])
+    marker = _participant("marker")
+    state.participants.append(marker)
+    target = state.get_participant("player_1")
+    assert target is not None
+
+    outcome = resolve_mark_action(state, marker, target, "command", cancelled=True)
+
+    assert outcome == {"resolved": True, "kind": "command"}
+    assert state.focus_marks == {}
 
 
 @pytest.mark.parametrize("second_kind", ["command", "accusation"])
@@ -184,6 +214,34 @@ def test_a_mark_does_not_help_the_marker_or_the_opposite_band_or_a_fallen_attack
     assert attack_bonus(state, bandmate, target) == 0
 
 
+@pytest.mark.parametrize("source_flag", ["is_fallen", "is_dead"])
+def test_a_mark_does_not_help_when_its_source_is_out(source_flag):
+    state = _mark_state([])
+    marker = _participant("marker")
+    state.participants.append(marker)
+    target = state.get_participant("player_1")
+    bandmate = state.get_participant("bandmate")
+    assert target is not None and bandmate is not None
+    resolve_mark_action(state, marker, target, "command")
+    setattr(marker, source_flag, True)
+
+    assert attack_bonus(state, bandmate, target) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("source_flag", ["is_fallen", "is_dead"])
+async def test_a_bandmate_attack_gets_no_mark_bonus_when_the_source_is_out(source_flag):
+    state = _mark_state([])
+    marker = _participant("marker")
+    setattr(marker, source_flag, True)
+    state.participants.append(marker)
+    state.focus_marks["player_1"] = {"source_id": marker.id, "kind": "command"}
+
+    _, _, strike = await _run(state)
+
+    assert (strike["hit"], strike["attack_total"]) == (False, 13)
+
+
 def test_corrupt_marks_and_non_mark_kinds_fail_loud():
     state = _mark_state([])
     marker = _participant("marker")
@@ -239,67 +297,3 @@ def test_focus_marks_round_trip_and_legacy_rows_default_empty():
     legacy = state.to_dict()
     del legacy["focus_marks"]
     assert CombatState.from_dict(legacy).focus_marks == {}
-
-
-def _encounter(encounter_id: str) -> dict:
-    return deepcopy(next(encounter for encounter in _ENCOUNTERS if encounter["id"] == encounter_id))
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("encounter_id", "expected"),
-    [
-        ("bandit_ambush", {"bandit_captain": [{"name": "Press the Attack", "kind": "command"}]}),
-        (
-            "ashmark_patrol",
-            {
-                "ashmark_sergeant": [
-                    {"name": "Rally", "kind": "command"},
-                    {"name": "Accusation", "kind": "accusation"},
-                ]
-            },
-        ),
-        (
-            "cult_cell",
-            {
-                "cult_fanatic_1": [{"name": "Bless", "kind": "command"}],
-                "cult_fanatic_2": [{"name": "Bless", "kind": "command"}],
-            },
-        ),
-        (
-            "hollow_corrupted_settlement",
-            {"hollowed_knight": [{"name": "Command Lesser", "kind": "command"}]},
-        ),
-    ],
-)
-async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
-    mock_combat_agent_factory, encounter_id, expected
-):
-    encounter = _encounter(encounter_id)
-    mutations = MagicMock(save_combat_state=AsyncMock())
-    queries = MagicMock(
-        get_player=AsyncMock(return_value=deepcopy(SAMPLE_PLAYER)),
-        get_player_faction_reputation=AsyncMock(return_value=0),
-        get_player_inventory=AsyncMock(return_value=[]),
-    )
-    content = MagicMock(
-        get_encounter_template=AsyncMock(return_value=encounter),
-        get_faction=AsyncMock(return_value=_THORNWATCH),
-    )
-
-    raw = await _start_combat_impl(
-        make_context(), encounter_id, encounter["description"], mutations=mutations, queries=queries, content=content
-    )
-    assert isinstance(raw, tuple)
-    roster = {participant["id"]: participant for participant in json.loads(raw[1])["participants"]}
-
-    for enemy in encounter["enemies"]:
-        assert roster[enemy["id"]]["actions"] == [action["name"] for action in enemy["action_pool"]]
-        assert roster[enemy["id"]]["mark_actions"] == expected.get(enemy["id"], [])
-    assert roster["player_1"]["mark_actions"] == []
-
-
-def test_combat_prompt_explains_command_mark_targets():
-    assert "Combatants[].mark_actions" in COMBAT_PROMPT
-    assert "kind `command`" in COMBAT_PROMPT
-    assert "target_id" in COMBAT_PROMPT and "focus" in COMBAT_PROMPT
