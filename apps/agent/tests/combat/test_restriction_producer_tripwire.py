@@ -1,11 +1,14 @@
 import ast
+import inspect
 import json
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import cast
 
 import pytest
 
+import combat_condition_landing
+import conditions
 from condition_restrictions import NOT_ENFORCED
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -15,9 +18,23 @@ SOURCE_PATHS = tuple(
     for path in sorted((REPO_ROOT / "apps" / "agent").rglob("*.py"))
     if not {"tests", ".venv"}.intersection(path.relative_to(REPO_ROOT / "apps" / "agent").parts)
 )
+
+
+def _condition_argument(callee: Callable, keyword: str) -> tuple[int, str]:
+    """Where the condition type sits in ``callee``, read off the real signature.
+
+    Taken from the live function rather than written down, so a reordered or renamed parameter
+    fails here instead of leaving the walk reading the wrong argument and passing every producer.
+    """
+    parameters = list(inspect.signature(callee).parameters)
+    if keyword not in parameters:
+        raise AssertionError(f"{callee.__qualname__} no longer takes {keyword!r}: {parameters}")
+    return parameters.index(keyword), keyword
+
+
 CONDITION_ARGUMENTS = {
-    "apply_condition": (1, "condition_type"),
-    "_land_condition_on_one": (3, "cond_type"),
+    "apply_condition": _condition_argument(conditions.apply_condition, "condition_type"),
+    "_land_condition_on_one": _condition_argument(combat_condition_landing._land_condition_on_one, "cond_type"),
 }
 
 

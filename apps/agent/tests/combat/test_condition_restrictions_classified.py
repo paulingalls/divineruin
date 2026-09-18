@@ -18,13 +18,6 @@ def _authored_carriers(restriction: str) -> set[str]:
     return carriers
 
 
-def _outstanding_producer_carriers(restriction: str) -> set[str]:
-    carriers = _authored_carriers(restriction)
-    if restriction == "consumed_on_use":
-        carriers = {name for name in carriers if conditions.CONDITION_CATALOG[name].bonus_die is None}
-    return carriers
-
-
 def _assert_classified() -> None:
     deferred = set(NOT_ENFORCED)
     assert ENFORCED.isdisjoint(deferred)
@@ -40,7 +33,7 @@ def _assert_wait_metadata() -> None:
             carriers = metadata["carriers"]
             assert isinstance(carriers, set) and carriers, restriction
             assert all(isinstance(carrier, str) and carrier for carrier in carriers), restriction
-            assert carriers == _outstanding_producer_carriers(restriction), restriction
+            assert carriers == _authored_carriers(restriction), restriction
         elif waits_on == "model":
             assert set(metadata) == {"waits_on", "model"}, restriction
             assert isinstance(metadata["model"], str) and metadata["model"].strip(), restriction
