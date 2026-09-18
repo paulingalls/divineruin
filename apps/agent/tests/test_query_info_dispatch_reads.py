@@ -343,6 +343,16 @@ class TestQueryAbilities:
         assert reactions
         assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
         assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
+        assert rows["warrior_devastating_strike"]["combat"] is False
+
+    @pytest.mark.asyncio
+    async def test_spell_backed_row_names_its_combat_spell_id(self, mock_context):
+        dependencies = self._dependencies(player={"class": "cleric", "level": 1})
+
+        payload = json.loads(await self._read(mock_context, dependencies))
+        rows = {row["id"]: row for row in payload["abilities"]}
+
+        assert rows["cleric_heal_wounds"]["spell_id"] == "divine_heal_wounds"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("player", [None, {}, {"class": None}])
@@ -383,10 +393,12 @@ class TestQueryAbilities:
         queries, persistence, library = self._dependencies(player={"class": "bard", "level": level})
 
         payload = json.loads(await self._read(mock_context, (queries, persistence, library)))
-        ids = {row["id"] for row in payload["abilities"]}
+        rows = {row["id"]: row for row in payload["abilities"]}
+        ids = set(rows)
 
         assert expected <= ids
         assert ("bard_mass_inspire" in ids) is (level >= 9)
+        assert "combat" not in rows["bard_inspire"]
 
 
 def test_prompts_name_ability_id_producer():
@@ -404,6 +416,8 @@ def test_prompts_name_ability_id_producer():
 
     assert "variant" in COMBAT_SYSTEM_PROMPT.lower()
     assert "active_variant_id" in COMBAT_SYSTEM_PROMPT
+    assert "spell_id" in COMBAT_SYSTEM_PROMPT
+    assert "combat: false" in COMBAT_SYSTEM_PROMPT
 
 
 class TestQueryInfoE2E:

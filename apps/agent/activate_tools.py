@@ -163,4 +163,9 @@ async def _activate_impl(
             target_id=target_id,
             target_ids=target_ids,
         )
+    ability = abilities_mod.get_ability(id)
+    if ability.spell_id is not None and not context.userdata.in_combat:
+        return await cast_spell_mod._cast_spell_impl(
+            context, ability.spell_id, target_id=target_id, target_ids=target_ids
+        )
     return await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)

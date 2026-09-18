@@ -62,6 +62,11 @@ async def _request_ability_activation_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    session: SessionData = context.userdata
+    if session.in_combat and ability.ability_type != "reaction":
+        declared_id = ability.spell_id or variant_id or ability_id
+        raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
+
     async def activate_unlocked() -> str:
         return await _request_ability_activation_unlocked(
             context,
@@ -82,7 +87,6 @@ async def _request_ability_activation_impl(
     if ability.ability_type != "reaction":
         return await activate_unlocked()
 
-    session: SessionData = context.userdata
     # OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01). Four shipped
     # reactions fire outside a fight by their own effect text -- spy_plausible_deniability
     # ("when accused/confronted"), diplomat_objection ("when an NPC is about to act against your

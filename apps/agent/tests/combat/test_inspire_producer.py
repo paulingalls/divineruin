@@ -236,16 +236,6 @@ async def test_ooc_ability_no_applies_condition_does_not_persist():
     cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
-@pytest.mark.asyncio
-async def test_ooc_producer_does_not_persist_in_combat():
-    # In combat the participant is the SSOT and declare_phase owns the apply; an in-combat call to the
-    # OOC tool must NOT write Inspired to players.data (mirrors the spell producer's not-in-combat gate).
-    response, cond_mut, _gp = await _activate(_inspire_ability(), caster=_bard(), in_combat=True)
-
-    assert "condition_applied" not in response
-    cond_mut.save_many_player_conditions.assert_not_awaited()
-
-
 # --- Group C: in-combat non-spell ability-condition path ---
 
 

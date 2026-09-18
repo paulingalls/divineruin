@@ -158,6 +158,10 @@ async def _query_abilities_impl(
     results = []
     for ability in owned:
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
+        if ability.spell_id is not None:
+            row["spell_id"] = ability.spell_id
+        elif ability.ability_type != "reaction" and ability.applies_condition is None:
+            row["combat"] = False
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":

@@ -127,6 +127,51 @@ class TestVariableCost:
 
 
 class TestActivation:
+    @pytest.mark.parametrize(
+        ("ability_id", "declaration_id"),
+        [
+            ("bard_inspire", "bard_inspire"),
+            ("cleric_heal_wounds", "divine_heal_wounds"),
+            ("warrior_unstoppable_charge", "warrior_unstoppable_charge"),
+        ],
+    )
+    async def test_non_reaction_in_combat_refuses_before_any_write(self, ability_id, declaration_id):
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+        row = _player(class_=ability_id.split("_")[0])
+        mock_db, _conn = make_db_mod()
+        transaction = mock_db.transaction
+        mock_db.transaction = MagicMock(side_effect=transaction)
+        queries = MagicMock()
+        queries.get_players_for_update = AsyncMock(return_value={"player_1": row})
+        persistence = MagicMock(update_player_resources=AsyncMock())
+        persistence.get_active_variant = AsyncMock(return_value=None)
+        persistence.owns_elective = AsyncMock(return_value=True)
+        condition_mutations = MagicMock(save_many_player_conditions=AsyncMock())
+
+        with pytest.raises(ToolError, match=rf"declare {declaration_id} in the combat phase"):
+            await _request_ability_activation_impl(
+                ctx,
+                ability_id,
+                db_mod=mock_db,
+                queries_mod=queries,
+                persistence_mod=persistence,
+                conditions_mutations_mod=condition_mutations,
+            )
+
+        assert row["stamina"] == {"current": 10, "max": 10}
+        assert row["focus"] == {"current": 10, "max": 10}
+        mock_db.transaction.assert_not_called()
+        persistence.update_player_resources.assert_not_awaited()
+        condition_mutations.save_many_player_conditions.assert_not_awaited()
+
+    async def test_spell_backed_cantrip_refusal_names_its_spell_id(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        with pytest.raises(ToolError, match="declare arcane_bolt in the combat phase"):
+            await _call("mage_arcane_bolt", context=ctx)
+
     async def test_stamina_core_ability_deducts_and_returns_cue(self):
         # warrior_devastating_strike: stamina 3, focus 0.
         result, persistence = await _call("warrior_devastating_strike", stamina=10)

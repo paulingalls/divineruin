@@ -18,7 +18,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import reaction_spend
-from combat_ability import _find_action
+from combat_ability import _find_action, condition_ability
+from combat_ability_gate import declared_ability
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, resolve_declaration
@@ -168,6 +169,15 @@ def advance_combat_phase(
                     f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
                     f"available actions: {available}"
                 )
+            if declaration.type is DeclarationType.ABILITY and actor.type == "player":
+                resolved_ability = declared_ability(declaration.action)
+                if resolved_ability is not None and condition_ability(resolved_ability) is None:
+                    ability, _variant = resolved_ability
+                    if ability.spell_id is not None:
+                        raise ValueError(
+                            f"{declaration.action} is an ability alias; declare {ability.spell_id} in combat"
+                        )
+                    raise ValueError(f"{declaration.action} is not declarable in combat")
             if declaration.type is DeclarationType.ABILITY and actor.type != "player":
                 # Resolution wastes every other non-player ABILITY (combat_ability._resolve_ability_packet).
                 pool_action = _find_action(actor, declaration.action)

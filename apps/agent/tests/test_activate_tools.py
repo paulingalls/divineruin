@@ -64,6 +64,7 @@ class SimpleImpl:
 async def _call(
     id_,
     *,
+    context=None,
     target_id=None,
     target_ids=None,
     spells_mod=spells,
@@ -71,7 +72,7 @@ async def _call(
     variants_mod=mentor_variants,
     **mods,
 ):
-    ctx = make_context()
+    ctx = context or make_context()
     result = await _activate_impl(
         ctx,
         id_,
@@ -108,7 +109,7 @@ class TestAbilityRouting:
         spells_mod = MagicMock()
         spells_mod.get_spell = MagicMock(side_effect=ValueError("unknown spell"))
         abilities_mod = MagicMock()
-        abilities_mod.get_ability = MagicMock(return_value=object())
+        abilities_mod.get_ability = MagicMock(return_value=MagicMock(spell_id=None))
         ctx, result = await _call(
             "warrior_devastating_strike", target_id="orc_1", spells_mod=spells_mod, abilities_mod=abilities_mod, **mods
         )
@@ -116,6 +117,25 @@ class TestAbilityRouting:
         fns["request_ability"].assert_awaited_once_with(
             ctx, "warrior_devastating_strike", target_id="orc_1", target_ids=None
         )
+
+    async def test_spell_backed_ability_casts_its_spell_outside_combat(self):
+        mods, fns = _mocks()
+        ctx, result = await _call("mage_arcane_bolt", target_ids=["goblin_1"], **mods)
+
+        assert result == "spell-result"
+        fns["cast_spell"].assert_awaited_once_with(ctx, "arcane_bolt", target_id=None, target_ids=["goblin_1"])
+        fns["request_ability"].assert_not_awaited()
+
+    async def test_spell_backed_ability_does_not_cast_via_activate_in_combat(self):
+        mods, fns = _mocks()
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        _, result = await _call("mage_arcane_bolt", context=ctx, **mods)
+
+        assert result == "ability-result"
+        fns["cast_spell"].assert_not_awaited()
+        fns["request_ability"].assert_awaited_once_with(ctx, "mage_arcane_bolt", target_id=None, target_ids=None)
 
 
 class TestVariantRouting:
