@@ -3,7 +3,7 @@
 _resolve_cast defers a PLAY_SOUND(sound_id) event alongside the existing
 RESONANCE_CHANGED/echo events (rollback-safe: only fires when the caller flushes
 post-commit). This mirrors the resonance_changed capture pattern in
-test_spell_casting.py, but asserts on game_events.publish_game_event directly
+test_spell_cast_resonance.py, but asserts on game_events.publish_game_event directly
 since PLAY_SOUND is not routed through resonance_events_mod.
 """
 
