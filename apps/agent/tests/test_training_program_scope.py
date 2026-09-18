@@ -1,9 +1,9 @@
 import json
-from pathlib import Path
 from typing import get_args
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from archetypes_config_fixture import load_archetype_rows
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
@@ -45,14 +45,6 @@ def _dependencies(*, programs=None, player=None, known=None):
     return content, queries, library
 
 
-def _archetype_rows() -> list[dict]:
-    rows = json.loads((Path(__file__).parents[3] / "content/archetypes.json").read_text())
-    assert rows, "content/archetypes.json is empty"
-    assert all(isinstance(row.get("id"), str) for row in rows)
-    assert len({row["id"] for row in rows}) == len(rows)
-    return rows
-
-
 def _all_spells():
     return [spell for source in get_args(spells.SpellSource) for spell in spells.get_spells_by_source(source)]
 
@@ -64,8 +56,13 @@ class TestQueryTrainingPrograms:
         catalog = _all_spells()
         checked = set()
         mismatches = []
+        # Constraint 12's floor: content/spells.json is a corpus this walk reads, so an
+        # emptied catalog -- or one tier/source bucket of it -- would agree at [] on both
+        # sides and pass vacuously. Every caster row that reaches its floor must offer choices.
+        offered_choices = set()
+        expect_studiable = set()
 
-        for raw in _archetype_rows():
+        for raw in load_archetype_rows():
             archetype = archetypes.parse_archetype_row(raw["id"], raw)
             for tier in SPELL_TIERS:
                 floor = None if archetype.magic_source is None else min_level_for_tier(archetype.id, tier)
@@ -123,13 +120,20 @@ class TestQueryTrainingPrograms:
 
                     if listed["studiable_spell_ids"] != sorted(accepted):
                         mismatches.append((archetype.id, tier, level))
+                    if listed["studiable_spell_ids"]:
+                        offered_choices.add((archetype.id, tier))
+                    if floor is not None and level == floor:
+                        expect_studiable.add((archetype.id, tier))
                     if eligible is not None:
                         assert eligible.id not in listed["studiable_spell_ids"]
                         assert eligible.id not in accepted
                 checked.add((archetype.id, tier))
 
-        rows = _archetype_rows()
+        rows = load_archetype_rows()
+        assert catalog, "content/spells.json is empty"
         assert mismatches == []
+        assert expect_studiable
+        assert offered_choices == expect_studiable
         assert len(checked) == len(rows) * len(SPELL_TIERS)
         assert checked == {(row["id"], tier) for row in rows for tier in SPELL_TIERS}
 

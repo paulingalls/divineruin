@@ -1,7 +1,5 @@
-import json
-from pathlib import Path
-
 import pytest
+from archetypes_config_fixture import load_archetype_rows
 
 from archetypes import parse_archetype_row
 from leveling import SPELL_TIERS, is_spell_tier_unlocked, min_level_for_tier
@@ -30,17 +28,9 @@ EXPECTED_TIER_FLOORS: dict[str, dict[str, int | None]] = {
 }
 
 
-def _rows() -> list[dict]:
-    rows = json.loads((Path(__file__).parents[3] / "content/archetypes.json").read_text())
-    assert rows, "content/archetypes.json is empty"
-    assert all(isinstance(row.get("id"), str) for row in rows)
-    assert len({row["id"] for row in rows}) == len(rows)
-    return rows
-
-
 class TestSpellTierGate:
     def test_every_authored_archetype_and_tier_matches_spec(self) -> None:
-        rows = _rows()
+        rows = load_archetype_rows()
         parsed = {row["id"]: parse_archetype_row(row["id"], row) for row in rows}
         assert len(parsed) == len(rows)
         assert {row.id for row in parsed.values() if row.magic_source is not None} == set(EXPECTED_TIER_FLOORS)
@@ -90,13 +80,13 @@ class TestSpellTierGate:
         ],
     )
     def test_caster_tier_map_is_required_and_strict(self, mutate) -> None:
-        mage = next(dict(row) for row in _rows() if row["id"] == "mage")
+        mage = next(dict(row) for row in load_archetype_rows() if row["id"] == "mage")
         mutate(mage)
         with pytest.raises(ValueError, match="spell_tier_min_levels"):
             parse_archetype_row("mage", mage)
 
     def test_martial_tier_map_must_be_empty(self) -> None:
-        warrior = next(dict(row) for row in _rows() if row["id"] == "warrior")
+        warrior = next(dict(row) for row in load_archetype_rows() if row["id"] == "warrior")
         warrior["spell_tier_min_levels"] = {"minor": 1}
         with pytest.raises(ValueError, match="spell_tier_min_levels"):
             parse_archetype_row("warrior", warrior)

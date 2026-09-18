@@ -8,7 +8,7 @@ void mock.module("./db.ts", dbMockFactory);
 
 const { handleGetActivityTemplates } = await import("./activity-templates-api.ts");
 const { handleGetCatchUpFeed } = await import("./catchup.ts");
-const { getErrandTemplate } = await import("./activity_templates.ts");
+const { getErrandTemplate, parseProgramRows } = await import("./activity_templates.ts");
 
 beforeEach(() => {
   resetMockDb();
@@ -26,6 +26,43 @@ async function getTrainingItems(): Promise<TemplateItem[]> {
   expect(training).toBeDefined();
   return training!.items;
 }
+
+describe("training program catalog", () => {
+  const rows = async () =>
+    (
+      (await Bun.file(
+        new URL("../../../content/training_programs.json", import.meta.url),
+      ).json()) as Record<string, unknown>[]
+    ).map(({ id, ...data }) => ({ id: id as string, data }));
+
+  test("the real authored catalog is non-empty and every row parses", async () => {
+    const authored = await rows();
+    expect(authored.length).toBeGreaterThan(0);
+    expect(parseProgramRows(authored).size).toBe(authored.length);
+  });
+
+  test("rejects a program whose spell tier is not one of the five", async () => {
+    const authored = await rows();
+    const spellProgram = authored.find((row) =>
+      String((row.data as Record<string, unknown>).training_activity_type).startsWith("spell_"),
+    );
+    expect(spellProgram).toBeDefined();
+    const bad = {
+      id: spellProgram!.id,
+      data: { ...(spellProgram!.data as object), training_activity_type: "spell_legendary" },
+    };
+    expect(() => parseProgramRows([bad])).toThrow(/training_activity_type.*legendary/);
+  });
+
+  test("an empty authored catalog fails loud", () => {
+    expect(() => parseProgramRows([])).toThrow(/produced no rows/);
+  });
+
+  test("a duplicate row id fails loud", async () => {
+    const [first] = await rows();
+    expect(() => parseProgramRows([first!, first!])).toThrow(/duplicate/);
+  });
+});
 
 test("a running technique cycle is active on its training program", async () => {
   const startTime = "2026-09-17T10:00:00.000Z";

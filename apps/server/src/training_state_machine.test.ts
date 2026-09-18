@@ -104,6 +104,15 @@ describe("training config seam", () => {
     expect(() => parseActivityTypeRows([])).toThrow(/produced no rows/);
   });
 
+  test("a duplicate row id fails loud", async () => {
+    const rows = (await Bun.file(
+      new URL("../../../content/training_activity_types.json", import.meta.url),
+    ).json()) as Record<string, unknown>[];
+    const [{ id, ...data }] = rows as [Record<string, unknown>];
+    const row = { id: id as string, data };
+    expect(() => parseActivityTypeRows([row, row])).toThrow(/duplicate/);
+  });
+
   test("setTrainingActivityTypes populates the runtime map", () => {
     const fixture: ActivityTypeConfig = {
       id: "technique_base",

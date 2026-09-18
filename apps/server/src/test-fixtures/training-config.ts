@@ -11,7 +11,11 @@ import {
   setTrainingActivityTypes,
   type ActivityTypeConfig,
 } from "../training_state_machine.ts";
-import { setTrainingPrograms, type TrainingProgramConfig } from "../activity_templates.ts";
+import {
+  parseProgramRows,
+  setTrainingPrograms,
+  type TrainingProgramConfig,
+} from "../activity_templates.ts";
 
 const ACTIVITY_TYPES_PATH = new URL(
   "../../../../content/training_activity_types.json",
@@ -19,29 +23,21 @@ const ACTIVITY_TYPES_PATH = new URL(
 );
 const PROGRAMS_PATH = new URL("../../../../content/training_programs.json", import.meta.url);
 
-interface RawProgram {
-  id: string;
-  name: string;
-  training_activity_type: TrainingProgramConfig["training_activity_type"];
-  stat: string;
-  skill?: string;
-  dc: number;
-  mentor_id: string;
-}
-
-let cachedActivityTypes: Map<string, ActivityTypeConfig> | null = null;
-let cachedPrograms: Map<string, TrainingProgramConfig> | null = null;
+let cachedActivityTypes: ReadonlyMap<string, ActivityTypeConfig> | null = null;
+let cachedPrograms: ReadonlyMap<string, TrainingProgramConfig> | null = null;
 
 async function loadFixtureData(): Promise<void> {
   if (cachedActivityTypes && cachedPrograms) return;
 
   const rawTypes = (await Bun.file(ACTIVITY_TYPES_PATH).json()) as Record<string, unknown>[];
-  cachedActivityTypes = new Map(
-    parseActivityTypeRows(rawTypes.map(({ id, ...data }) => ({ id: id as string, data }))),
+  cachedActivityTypes = parseActivityTypeRows(
+    rawTypes.map(({ id, ...data }) => ({ id: id as string, data })),
   );
 
-  const rawPrograms = (await Bun.file(PROGRAMS_PATH).json()) as RawProgram[];
-  cachedPrograms = new Map(rawPrograms.map((p) => [p.id, p]));
+  const rawPrograms = (await Bun.file(PROGRAMS_PATH).json()) as Record<string, unknown>[];
+  cachedPrograms = parseProgramRows(
+    rawPrograms.map(({ id, ...data }) => ({ id: id as string, data })),
+  );
 }
 
 // Preload at module import so setupTrainingConfigFixture can stay sync

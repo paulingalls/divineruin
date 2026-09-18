@@ -1,11 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  isSpellTierUnlocked,
-  minLevelForSpellTier,
-  type Archetype,
-  type SpellTier,
-} from "@divineruin/shared";
-import { parseArchetypeRow } from "./archetypes.ts";
+import { isSpellTierUnlocked, minLevelForSpellTier, type SpellTier } from "@divineruin/shared";
+import { archetypeRows, parseArchetypeCorpus } from "./test-fixtures/archetype-corpus.ts";
 
 const EXPECTED = {
   mage: { cantrip: 1, minor: 1, standard: 3, major: 5, supreme: 9 },
@@ -23,25 +18,10 @@ const EXPECTED = {
   whisper: { cantrip: null, minor: 1, standard: 4, major: 7, supreme: 13 },
 } as const;
 const SPELL_TIERS: SpellTier[] = ["cantrip", "minor", "standard", "major", "supreme"];
-const PATH = new URL("../../../content/archetypes.json", import.meta.url);
-
-async function load(): Promise<{ rawCount: number; archetypes: Map<string, Archetype> }> {
-  const raw: unknown = await Bun.file(PATH).json();
-  if (!Array.isArray(raw) || raw.length === 0) throw new Error("expected non-empty archetype rows");
-  const rows = raw as Record<string, unknown>[];
-  const archetypes = new Map(
-    rows.map((row) => {
-      if (typeof row.id !== "string") throw new Error("archetype row id is not a string");
-      return [row.id, parseArchetypeRow(row.id, row)];
-    }),
-  );
-  if (archetypes.size !== rows.length) throw new Error("archetype ids are not unique");
-  return { rawCount: rows.length, archetypes };
-}
 
 describe("content-backed spell tier floors", () => {
-  test("matches every authored archetype and tier boundary", async () => {
-    const { rawCount, archetypes } = await load();
+  test("matches every authored archetype and tier boundary", () => {
+    const archetypes = parseArchetypeCorpus();
     const casterIds = new Set(
       [...archetypes.values()]
         .filter((archetype) => archetype.magic_source !== null)
@@ -75,15 +55,15 @@ describe("content-backed spell tier floors", () => {
       }
     }
 
-    expect(archetypes.size).toBe(rawCount);
-    expect(checked.size).toBe(rawCount * SPELL_TIERS.length);
+    expect(archetypes.size).toBe(archetypeRows.length);
+    expect(checked.size).toBe(archetypeRows.length * SPELL_TIERS.length);
     expect(checked).toEqual(
       new Set([...archetypes.keys()].flatMap((id) => SPELL_TIERS.map((tier) => `${id}:${tier}`))),
     );
   });
 
-  test("fails loud for an unknown tier", async () => {
-    const { archetypes } = await load();
+  test("fails loud for an unknown tier", () => {
+    const archetypes = parseArchetypeCorpus();
     expect(() => minLevelForSpellTier(archetypes.get("mage")!, "legendary")).toThrow(/spell tier/);
   });
 });

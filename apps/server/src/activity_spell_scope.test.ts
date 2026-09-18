@@ -1,15 +1,18 @@
 import { beforeEach, expect, mock, test } from "bun:test";
-import type { Archetype, SpellTier, TemplateItem } from "@divineruin/shared";
+import type { SpellTier, TemplateItem } from "@divineruin/shared";
 import { minLevelForSpellTier } from "@divineruin/shared";
 import { dbMockFactory, makeRequest, resetMockDb, setQueryStubs } from "./activities-test-mock.ts";
-import { parseArchetypeRow, setArchetypes } from "./archetypes.ts";
+import { setArchetypes } from "./archetypes.ts";
 import {
   getAllTrainingPrograms,
   setTrainingPrograms,
   type TrainingProgramConfig,
 } from "./activity_templates.ts";
 import { listSpells, parseSpellRow, setSpells } from "./spells.ts";
+import { archetypeRows, parseArchetypeCorpus } from "./test-fixtures/archetype-corpus.ts";
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
+// The launcher's payload builder itself, not a copy of its shape: this is the only place
+// the HUD half and the start route meet in one process, so a rename on either side reds here.
 import { getLaunchIntent } from "../../mobile/src/components/activity-launcher-strings.ts";
 
 void mock.module("./db.ts", dbMockFactory);
@@ -21,22 +24,6 @@ const SPELL_TIERS: SpellTier[] = ["cantrip", "minor", "standard", "major", "supr
 const spellRows = (await Bun.file(
   new URL("../../../content/spells.json", import.meta.url),
 ).json()) as Record<string, unknown>[];
-const archetypeRows = (await Bun.file(
-  new URL("../../../content/archetypes.json", import.meta.url),
-).json()) as Record<string, unknown>[];
-
-function parseArchetypes(): Map<string, Archetype> {
-  if (archetypeRows.length === 0) throw new Error("content/archetypes.json is empty");
-  const entries = archetypeRows.map((row) => {
-    if (typeof row.id !== "string") throw new Error("archetype row id is not a string");
-    return [row.id, parseArchetypeRow(row.id, row)] as const;
-  });
-  const parsed = new Map(entries);
-  if (parsed.size !== archetypeRows.length)
-    throw new Error("content/archetypes.json has duplicate ids");
-  return parsed;
-}
-
 function spellPrograms(): TrainingProgramConfig[] {
   return SPELL_TIERS.map((tier) => ({
     id: `${tier}_study`,
@@ -54,7 +41,7 @@ beforeEach(() => {
   setSpells(
     new Map(spellRows.map((row) => [row.id as string, parseSpellRow(row.id as string, row)])),
   );
-  setArchetypes(parseArchetypes());
+  setArchetypes(parseArchetypeCorpus());
 });
 
 async function getTrainingItems(): Promise<TemplateItem[]> {
@@ -141,11 +128,16 @@ test("a martial's spell row is disabled with a reason, so the launcher never pos
 });
 
 test("template ids equal the real start route acceptance set for every archetype and tier", async () => {
-  const archetypes = parseArchetypes();
+  const archetypes = parseArchetypeCorpus();
   const programs = spellPrograms();
   setTrainingPrograms(new Map(programs.map((program) => [program.id, program])));
   const checked = new Set<string>();
   const mismatches: string[] = [];
+  // Constraint 12's floor: the spell catalog is a corpus this walk reads, so an emptied
+  // content/spells.json (or one tier/source bucket of it) would agree at [] on both sides
+  // and pass vacuously. Every caster row that reaches its floor must have produced choices.
+  const offeredChoices = new Set<string>();
+  const expectStudiable = new Set<string>();
 
   for (const archetype of archetypes.values()) {
     for (const tier of SPELL_TIERS) {
@@ -190,6 +182,8 @@ test("template ids equal the real start route acceptance set for every archetype
         }
         const listed = (item.params.studiable_spell_ids as string[]).slice().sort();
         accepted.sort();
+        if (listed.length > 0) offeredChoices.add(`${archetype.id}:${tier}`);
+        if (floor !== null && level === floor) expectStudiable.add(`${archetype.id}:${tier}`);
         if (JSON.stringify(listed) !== JSON.stringify(accepted)) {
           mismatches.push(`${archetype.id}:${tier}:level-${level}`);
         }
@@ -203,7 +197,10 @@ test("template ids equal the real start route acceptance set for every archetype
   }
 
   expect(archetypeRows.length).toBeGreaterThan(0);
+  expect(listSpells().length).toBeGreaterThan(0);
   expect(mismatches).toEqual([]);
+  expect(expectStudiable.size).toBeGreaterThan(0);
+  expect(offeredChoices).toEqual(expectStudiable);
   expect(archetypes.size).toBe(archetypeRows.length);
   expect(checked.size).toBe(archetypeRows.length * SPELL_TIERS.length);
   expect(checked).toEqual(
