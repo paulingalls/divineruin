@@ -59,7 +59,7 @@ async def _resolve_condition(*, answer: bool, enemy_id="hollow_rend_1", name="Ho
     target = state.get_participant("player_2")
     assert target is not None
     target.conditions = [dict(condition) for condition in target_conditions]
-    ctx = _ctx_at_resolution(state=state)
+    ctx = _ctx_at_resolution(state=state, reaction_ids=(_COUNTERCHARM,))
     deps = _resolve_deps()
     packets: list[dict] = []
     with patch("check_resolution.dice_roll", side_effect=_seeded_dice(1)):
@@ -113,7 +113,7 @@ async def test_the_same_first_die_unanswered_inflicts_frightened():
 
 @pytest.mark.asyncio
 async def test_countercharm_spent_against_a_command_claims_no_effect():
-    ctx = _ctx_at_resolution(state=_condition_state("ashmark_sergeant", "Rally"))
+    ctx = _ctx_at_resolution(state=_condition_state("ashmark_sergeant", "Rally"), reaction_ids=(_COUNTERCHARM,))
     deps = _resolve_deps()
     packets: list[dict] = []
 

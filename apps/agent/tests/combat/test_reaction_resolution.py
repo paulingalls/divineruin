@@ -53,7 +53,7 @@ async def test_uncanny_dodge_halves_the_damage_of_the_blow_it_answers():
     event line pin the reaction's halving without publishing a second, corrected roll.
     """
     room = make_mock_room()
-    ctx = _ctx_at_resolution(room=room)
+    ctx = _ctx_at_resolution(room=room, reaction_ids=(UNCANNY_DODGE,))
     deps = _resolve_deps(damage=6)
     await _to_post_roll_pause(ctx, deps)
     await _activate(ctx, UNCANNY_DODGE, player_class="rogue")
@@ -98,7 +98,7 @@ async def test_shield_of_faith_turns_a_hit_into_a_miss_on_the_ally_it_guards():
     """AC2. A seeded roll that HITS at the ally's base AC and MISSES at +2, so the reaction is
     provably what caused the miss — a resolver that always hits would report the same landed blow
     at either AC and certify nothing."""
-    ctx = _ctx_at_resolution(state=_guarded_ally_state())
+    ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=(SHIELD_OF_FAITH,))
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
     packets: list[dict] = []
 
@@ -135,7 +135,10 @@ async def test_the_reaction_changes_only_the_blow_it_was_spent_against():
     shape, and what ``state.ac_modifiers`` would give since it is per-participant and phase-scoped
     — reds here on the second goblin missing a blow it must land.
     """
-    ctx = _ctx_at_resolution(state=_guarded_ally_state(enemy_ids=("goblin_scout_1", "goblin_scout_2")))
+    ctx = _ctx_at_resolution(
+        state=_guarded_ally_state(enemy_ids=("goblin_scout_1", "goblin_scout_2")),
+        reaction_ids=(SHIELD_OF_FAITH,),
+    )
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
     packets: list[dict] = []
 
@@ -195,7 +198,7 @@ async def test_an_unwired_reaction_returns_a_packet_that_claims_no_effect():
     This is note 0f3945fa(f) answered. ``resolved: true`` used to mean only that the resource was
     spent; the load-bearing field is now what the close actually DID.
     """
-    ctx = _ctx_at_resolution()
+    ctx = _ctx_at_resolution(reaction_ids=(INERT_REACTION,))
     deps = _resolve_deps(damage=6)
     packets: list[dict] = []
 
@@ -216,7 +219,7 @@ async def test_an_unwired_reaction_returns_a_packet_that_claims_no_effect():
 async def test_a_wired_reaction_names_the_effect_it_had():
     """The discriminating half: mechanical_effect is not constantly null, so the assertion above
     is a claim about this reaction rather than about the field always being absent."""
-    ctx = _ctx_at_resolution()
+    ctx = _ctx_at_resolution(reaction_ids=(UNCANNY_DODGE,))
     deps = _resolve_deps(damage=6)
     packets: list[dict] = []
 
@@ -226,7 +229,7 @@ async def test_a_wired_reaction_names_the_effect_it_had():
 
     assert _reaction_packet(packets)["mechanical_effect"] == "damage_halved"
 
-    ctx = _ctx_at_resolution(state=_guarded_ally_state())
+    ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=(SHIELD_OF_FAITH,))
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
     packets = []
     await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
@@ -260,7 +263,7 @@ async def test_a_wired_ability_against_an_action_with_no_roll_claims_nothing():
         }
     ]
     state.pending_declarations["goblin_scout_1"]["action"] = "Hollow Shriek"
-    ctx = _ctx_at_resolution(state=state)
+    ctx = _ctx_at_resolution(state=state, reaction_ids=(SHIELD_OF_FAITH,))
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=14, damage=4)}
     packets: list[dict] = []
 
@@ -283,7 +286,7 @@ async def test_a_shield_bearing_reaction_accrues_a_shield_hit_through_the_pump()
     The retaliation damage (1d6 + STR) is NOT wired and is not claimed: what ships is the wear the
     shield takes for being interposed.
     """
-    ctx = _ctx_at_resolution()
+    ctx = _ctx_at_resolution(reaction_ids=(RETALIATING_SHIELD,))
     deps = _shield_bearing_deps()
     packets: list[dict] = []
 

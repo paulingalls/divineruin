@@ -59,10 +59,24 @@ def _guarded_ally_state(*, enemy_ids=("goblin_scout_1",), target_id="player_2"):
         combat_id="combat_guard",
         participants=[
             CombatParticipant(
-                id="player_1", name="Kael", type="player", initiative=20, hp_current=25, hp_max=25, ac=14
+                id="player_1",
+                name="Kael",
+                type="player",
+                initiative=20,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                has_reaction_ability=True,
             ),
             CombatParticipant(
-                id="player_2", name="Bram", type="player", initiative=18, hp_current=20, hp_max=20, ac=14
+                id="player_2",
+                name="Bram",
+                type="player",
+                initiative=18,
+                hp_current=20,
+                hp_max=20,
+                ac=14,
+                has_reaction_ability=True,
             ),
             *[
                 CombatParticipant(

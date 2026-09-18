@@ -40,6 +40,10 @@ class TestDeclarationBeat:
     def test_refreshes_reaction_for_players_only(self):
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
+        for participant in state.participants:
+            # The enemy owns a reaction too, so TYPE is the only thing that can exclude it —
+            # with the ownership gate alone, every enemy is skipped for carrying None.
+            participant.has_reaction_ability = True
 
         next_state, _ = advance_combat_phase(state, _declarations())
 
