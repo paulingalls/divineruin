@@ -26,9 +26,6 @@ const CONDITION_NAMES = new Set([
   "incapacitated",
   "paralyzed",
   "poisoned",
-  "blessed",
-  "shielded",
-  "enraged",
   "exhausted",
   "blinded",
   "frightened",
@@ -37,9 +34,7 @@ const CONDITION_NAMES = new Set([
   "shaken",
   "petrified",
   "cursed",
-  "inspired",
   "hollowed",
-  "temporary_hollowed",
 ]);
 const SAVE_NAMES = new Set([
   "strength",

@@ -8,7 +8,7 @@ from sample_fixtures import make_context
 
 from check_resolution_save import VALID_SAVE_NAMES
 from conditions import CONDITION_CATALOG
-from item_effects import _ADVANTAGE_VS, CombatItemTraits, combat_traits
+from item_effects import _ADVANTAGE_VS, BLOCKABLE_CONDITIONS, CombatItemTraits, combat_traits
 from query_tools import _query_inventory_impl
 
 ITEMS_PATH = Path(__file__).parents[3] / "content" / "items.json"
@@ -124,6 +124,31 @@ def test_python_fold_rejects_malformed_structured_effects_with_context(effect, m
         combat_traits([{"name": "Bad Charm", "effects": [{"type": "utility", **effect}]}])
 
 
+@pytest.mark.parametrize("token", ["blessed", "temporary_hollowed"])
+def test_python_fold_rejects_non_blockable_condition_immunities(token):
+    with pytest.raises(ValueError, match=rf"Bad Charm.*condition_immunities.*{token}"):
+        combat_traits(
+            [
+                {
+                    "name": "Bad Charm",
+                    "effects": [{"type": "utility", "condition_immunities": [token]}],
+                }
+            ]
+        )
+
+
+def test_blockable_conditions_partition_the_condition_catalog():
+    catalog = frozenset(CONDITION_CATALOG)
+    assert catalog >= BLOCKABLE_CONDITIONS
+    assert catalog - BLOCKABLE_CONDITIONS == {
+        "blessed",
+        "shielded",
+        "enraged",
+        "inspired",
+        "temporary_hollowed",
+    }
+
+
 def test_fold_joins_duplicate_sources_deterministically():
     inventory = [
         {"name": "Zeta", "effects": [{"condition_immunities": ["charmed"]}]},
@@ -170,6 +195,6 @@ def _ts_token_sets() -> dict[str, frozenset[str]]:
 
 def test_structured_effect_token_sets_match_across_languages():
     ts = _ts_token_sets()
-    assert ts["CONDITION_NAMES"] == frozenset(CONDITION_CATALOG)
+    assert ts["CONDITION_NAMES"] == BLOCKABLE_CONDITIONS
     assert ts["SAVE_NAMES"] == frozenset(VALID_SAVE_NAMES)
     assert ts["ADVANTAGE_VS"] == frozenset(_ADVANTAGE_VS)

@@ -7,8 +7,28 @@ for every effect in this slice because neither has a production state producer.
 from dataclasses import dataclass, field
 
 from check_resolution_save import VALID_SAVE_NAMES
-from conditions import CONDITION_CATALOG
 
+BLOCKABLE_CONDITIONS = frozenset(
+    {
+        "wounded",
+        "stunned",
+        "prone",
+        "grappled",
+        "restrained",
+        "incapacitated",
+        "paralyzed",
+        "poisoned",
+        "exhausted",
+        "blinded",
+        "frightened",
+        "charmed",
+        "deafened",
+        "shaken",
+        "petrified",
+        "cursed",
+        "hollowed",
+    }
+)
 _ADVANTAGE_VS = frozenset({"prone", "push"})
 
 
@@ -42,7 +62,7 @@ def combat_traits(inventory: list[dict]) -> CombatItemTraits:
         "advantage_vs": {},
     }
     allowed = {
-        "condition_immunities": frozenset(CONDITION_CATALOG),
+        "condition_immunities": BLOCKABLE_CONDITIONS,
         "save_advantages": VALID_SAVE_NAMES,
         "advantage_vs": _ADVANTAGE_VS,
     }
