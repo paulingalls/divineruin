@@ -4,7 +4,7 @@ import random
 
 import combat_grapple
 import conditions
-from combat_ability import _land_condition_on_one
+from combat_condition_landing import _land_condition_on_one
 from condition_restrictions import declaration_costs
 from rules_engine import attribute_modifier
 
@@ -66,11 +66,17 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
         return {**summary, "shove": "already_prone"}
 
     actor_total = roller.randint(1, 20) + attribute_modifier(attacker.attributes.get("strength", 10))
-    target_total = roller.randint(1, 20) + max(
+    advantage_sources = {target.advantage_vs[token] for token in ("prone", "push") if token in target.advantage_vs}
+    target_roll = roller.randint(1, 20)
+    if advantage_sources:
+        target_roll = max(target_roll, roller.randint(1, 20))
+    target_total = target_roll + max(
         attribute_modifier(target.attributes.get("strength", 10)),
         attribute_modifier(target.attributes.get("dexterity", 10)),
     )
     summary.update(actor_total=actor_total, target_total=target_total)
+    if advantage_sources:
+        summary["advantage_vs"] = ", ".join(sorted(advantage_sources))
     if actor_total <= target_total:
         return {**summary, "shove": "resisted"}
     if not _land_condition_on_one(state, target.id, attacker, "prone", source="shove"):

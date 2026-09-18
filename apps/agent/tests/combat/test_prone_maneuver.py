@@ -175,7 +175,7 @@ def test_prone_state_and_maneuver_vocabulary_reach_the_dm():
     assert "stands by declaring maneuver" in prompt
     assert "maneuver on anyone else is a shove" in prompt
     assert all(key in prompt for key in ("stood_up", "shove", "prone_immunity"))
-    assert "resisted a knockdown.\n\nnext.verbs" in prompt
+    assert "shove defence.\n\nnext.verbs" in prompt
 
 
 def test_a_fallen_prone_combatant_is_not_offered_a_stand():
