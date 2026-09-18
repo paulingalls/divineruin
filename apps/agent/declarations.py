@@ -15,7 +15,7 @@ Resolution of each category lives downstream in orchestration: Attack resolves v
 ``check_resolution_attack.resolve_attack``; Defend's ``ac_bonus`` is applied as a phase-scoped
 ``CombatState.ac_modifiers`` entry. ABILITY is modelled here as a first-class category
 (unified-declaration-path decision, supersedes cea4ff06ea31) but its in-combat
-resolution lands in story-007; MANEUVER resolves as stand or shove, while INTERACT/RETREAT remain
+resolution lands in story-007; MANEUVER resolves as stand, shove, or escape, while INTERACT/RETREAT remain
 modelled for later work.
 """
 
@@ -38,6 +38,10 @@ class DeclarationType(StrEnum):
     MANEUVER = "maneuver"
     DEFEND = "defend"
     RETREAT = "retreat"
+
+
+class ManeuverIntent(StrEnum):
+    ESCAPE = "escape"
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,7 @@ class Declaration:
     # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
     # not in this pure classifier. None for every non-de_escalate declaration.
     argument_type: str | None = None
+    maneuver_intent: ManeuverIntent | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -98,6 +103,8 @@ def resolve_declaration(raw: dict) -> Declaration:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
+    raw_maneuver_intent = raw.get("maneuver_intent")
+    maneuver_intent = ManeuverIntent(raw_maneuver_intent) if raw_maneuver_intent is not None else None
     return Declaration(
         type=decl_type,
         action=action,
@@ -106,4 +113,5 @@ def resolve_declaration(raw: dict) -> Declaration:
         ac_bonus=ac_bonus,
         rider=raw.get("rider"),
         argument_type=raw.get("argument_type"),
+        maneuver_intent=maneuver_intent,
     )

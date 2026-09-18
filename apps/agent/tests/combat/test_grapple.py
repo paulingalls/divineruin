@@ -16,6 +16,7 @@ from check_resolution_attack import AttackResult
 from combat_init import _start_combat_impl, _validate_enemy_action_shapes
 from combat_support import _participant_summary
 from declaration_payloads import ManeuverDecl
+from declarations import ManeuverIntent
 from tests.combat.test_start_combat import _make_start_combat_mocks
 
 _CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
@@ -238,7 +239,15 @@ def test_grapple_vocabulary_reaches_schema_and_combat_prompt():
     assert "breaks free by declaring maneuver on their grappler" in prompt
     assert "cannot retreat" in prompt
     assert all(
-        token in prompt for token in ("grappled", "escape", "grapple_escaped", "grapple_held", "released_from_grapple")
+        token in prompt
+        for token in (
+            "grappled",
+            "escape",
+            "grapple_escaped",
+            "grapple_held",
+            "grapple_already_released",
+            "released_from_grapple",
+        )
     )
 
 
@@ -250,8 +259,11 @@ def _escape_round_state(*, dc=13, target_id="mawling_1"):
     player.attributes = {"strength": 8, "dexterity": 16}
     player.conditions = conditions.apply_condition([], "grappled", source=grappler.id)
     grappler.action_pool[0]["escape_dc"] = dc
+    maneuver = {"type": "maneuver", "target_id": target_id}
+    if target_id == grappler.id:
+        maneuver["maneuver_intent"] = ManeuverIntent.ESCAPE
     state.pending_declarations = {
-        player.id: {"type": "maneuver", "target_id": target_id},
+        player.id: maneuver,
         grappler.id: {"type": "defend"},
     }
     return state

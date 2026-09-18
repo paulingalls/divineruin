@@ -13,7 +13,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
 from combat_turn import _declare_phase_impl
-from declarations import DEFEND_AC_BONUS, Declaration, DeclarationType, resolve_declaration
+from declarations import DEFEND_AC_BONUS, Declaration, DeclarationType, ManeuverIntent, resolve_declaration
 
 
 class TestResolveDeclarationValid:
@@ -40,6 +40,15 @@ class TestResolveDeclarationValid:
         d = resolve_declaration({"type": "maneuver", "target_id": "goblin_1"})
         assert d.type is DeclarationType.MANEUVER
         assert d.target_id == "goblin_1"
+        assert d.maneuver_intent is None
+
+    def test_maneuver_escape_intent_round_trips_as_enum(self):
+        d = resolve_declaration({"type": "maneuver", "target_id": "goblin_1", "maneuver_intent": "escape"})
+        assert d.maneuver_intent is ManeuverIntent.ESCAPE
+
+    def test_unknown_maneuver_intent_fails_loud(self):
+        with pytest.raises(ValueError, match="not a valid ManeuverIntent"):
+            resolve_declaration({"type": "maneuver", "target_id": "goblin_1", "maneuver_intent": "shove"})
 
     def test_defend_yields_ac_bonus_and_no_attack(self):
         d = resolve_declaration({"type": "defend"})
