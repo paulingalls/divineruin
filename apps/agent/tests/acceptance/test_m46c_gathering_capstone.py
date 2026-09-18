@@ -38,11 +38,15 @@ _AMBIENT = "greyvale_south_road"
 _NODE_STAGE = "greyvale_ruins_inner"
 
 
-async def _set_skill_tiers(pool, player_id: str, tiers: dict) -> None:
+async def _set_skill_tier(pool, player_id: str, skill: str, tier: str) -> None:
     await pool.execute(
-        "UPDATE players SET data = jsonb_set(data, '{skill_tiers}', $2::jsonb) WHERE player_id = $1",
+        "INSERT INTO skill_advancement "
+        "(player_id, skill_id, tier, use_counter, narrative_moment_ready) "
+        "VALUES ($1, $2, $3, 0, FALSE) "
+        "ON CONFLICT (player_id, skill_id) DO UPDATE SET tier = EXCLUDED.tier",
         player_id,
-        json.dumps(tiers),
+        skill,
+        tier,
     )
 
 
@@ -68,7 +72,7 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(reset_db
     pool = await db.get_pool()
     player_id = "cap_m46c_ambient"
     await seed_player(pool, player_id=player_id, location_id=_AMBIENT)
-    await _set_skill_tiers(pool, player_id, {"survival": "expert"})
+    await _set_skill_tier(pool, player_id, "survival", "expert")
 
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
     result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20)))
@@ -95,7 +99,7 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
     player_id = "cap_m46c_node"
     node_id = "cap_m46c_node_salvage"
     await seed_player(pool, player_id=player_id, location_id=_NODE_STAGE)
-    await _set_skill_tiers(pool, player_id, {"survival": "expert"})
+    await _set_skill_tier(pool, player_id, "survival", "expert")
     await _insert_node(pool, node_id, location_id=_NODE_STAGE, resource_type="iron_ore", quantity=2)
     try:
         ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
@@ -120,7 +124,7 @@ async def test_m46c_depleted_node_is_no_longer_forageable(reset_db_pool: str) ->
     player_id = "cap_m46c_deplete"
     node_id = "cap_m46c_deplete_salvage"
     await seed_player(pool, player_id=player_id, location_id=_NODE_STAGE)
-    await _set_skill_tiers(pool, player_id, {"survival": "expert"})
+    await _set_skill_tier(pool, player_id, "survival", "expert")
     await _insert_node(pool, node_id, location_id=_NODE_STAGE, resource_type="iron_ore", quantity=1)
     try:
         ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
