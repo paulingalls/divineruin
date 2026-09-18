@@ -15,11 +15,14 @@ from skill_persistence import apply_skill_use_with_persistence
 def _store_backed_mocks():
     store: dict[tuple[str, str], dict] = {}
 
-    async def fake_get(player_id: str, skill: str, *, conn=None) -> dict:
+    async def fake_get(player_id: str, skill: str, *, conn=None, default_tier="untrained") -> dict:
         key = (player_id, skill)
-        if key not in store:
-            store[key] = {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
-        return dict(store[key])
+        return dict(
+            store.get(
+                key,
+                {"tier": default_tier, "use_counter": 0, "narrative_moment_ready": False},
+            )
+        )
 
     async def fake_update(player_id: str, skill: str, new_tier: str, new_use_count: int, *, conn=None) -> None:
         store[(player_id, skill)] = {
@@ -43,6 +46,32 @@ def _store_backed_mocks():
 
 
 class TestApplySkillUseWithPersistence:
+    @pytest.mark.asyncio
+    async def test_initial_tier_applies_only_when_row_is_absent(self) -> None:
+        store, queries, mutations = _store_backed_mocks()
+
+        await apply_skill_use_with_persistence(
+            "player_1",
+            "athletics",
+            initial_tier="trained",
+            queries=queries,
+            mutations=mutations,
+        )
+
+        assert store[("player_1", "athletics")] == {
+            "tier": "trained",
+            "use_counter": 1,
+            "narrative_moment_ready": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_default_initial_tier_is_untrained(self) -> None:
+        store, queries, mutations = _store_backed_mocks()
+
+        await apply_skill_use_with_persistence("player_1", "athletics", queries=queries, mutations=mutations)
+
+        assert store[("player_1", "athletics")]["tier"] == "untrained"
+
     @pytest.mark.asyncio
     async def test_single_increment_persists_one_row(self) -> None:
         store, queries, mutations = _store_backed_mocks()

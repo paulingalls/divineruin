@@ -203,8 +203,12 @@ async def test_real_echo_destroyed_while_ally_stands_defers_defeat(reset_db_pool
     assert not isinstance(r_a, tuple)  # combat continues
     assert _participants(ctx)[pc_a].type == "temporary_hollowed"  # echo rose
 
-    # Phase B: the enemy destroys the echo while pc_b still stands -> combat does NOT end (M20 gate).
-    await combat_turn._declare_phase_impl(ctx, {pc_b: _DEFEND, enemy.id: _attack(enemy.action_pool[0]["name"], pc_a)})
+    # Phase B: the echo is destroyed while pc_b still stands -> combat does NOT end (M20 gate).
+    # pc_b lands the blow, not the enemy: the risen echo reads is_ally False (session_data.is_ally),
+    # so it shares the enemy band and an enemy striking it is the same-band blow story-057 refuses.
+    # The party killing its own turned member is the cross-band declaration, and the one the fiction
+    # wants. Which side deals the damage is incidental to this gate — that the echo falls is not.
+    await combat_turn._declare_phase_impl(ctx, {pc_b: _attack("Longsword", pc_a), enemy.id: _DEFEND})
     r_b = await _resolve_round(ctx, resolver=_lethal_resolver())
     assert not isinstance(r_b, tuple)  # the destroyed echo did NOT end combat — the ally keeps it alive
     assert ctx.userdata.combat_state is not None

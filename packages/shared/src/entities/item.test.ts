@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import type { Item } from "./item";
+import type { Item, ItemEffect } from "./item";
 
 // Tests for the M5.0 Item interface widening: tier accepts 1|2|3|4 plus 10
 // optional crafting-system fields. All new fields MUST be optional so the
@@ -7,6 +7,17 @@ import type { Item } from "./item";
 // continues to validate as-is.
 
 describe("Item interface — M5.0 widening", () => {
+  test("item effects carry structured combat protections", () => {
+    const effect: ItemEffect = {
+      type: "utility",
+      condition_immunities: ["charmed"],
+      save_advantages: ["wisdom"],
+      advantage_vs: ["prone", "push"],
+    };
+    expect(effect.condition_immunities).toEqual(["charmed"]);
+    expect(effect.save_advantages).toEqual(["wisdom"]);
+    expect(effect.advantage_vs).toEqual(["prone", "push"]);
+  });
   test("accepts tier 1 and tier 2 (original support)", () => {
     const tier1: Item = {
       id: "wood_club",

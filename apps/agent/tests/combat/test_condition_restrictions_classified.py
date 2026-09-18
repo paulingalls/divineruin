@@ -11,15 +11,48 @@ def _authored_restrictions() -> set[str]:
     return catalog | conditions._hollowed_effects(3)[1]
 
 
+def _authored_carriers(restriction: str) -> set[str]:
+    carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
+    if restriction in conditions._hollowed_effects(3)[1]:
+        carriers.add("hollowed")
+    return carriers
+
+
 def _assert_classified() -> None:
     deferred = set(NOT_ENFORCED)
     assert ENFORCED.isdisjoint(deferred)
     assert _authored_restrictions() == ENFORCED | deferred
-    assert all(reason.strip() for reason in NOT_ENFORCED.values())
+
+
+def _assert_wait_metadata() -> None:
+    for restriction, metadata in NOT_ENFORCED.items():
+        assert isinstance(metadata, dict), restriction
+        waits_on = metadata.get("waits_on")
+        if waits_on == "producer":
+            assert set(metadata) == {"waits_on", "carriers"}, restriction
+            carriers = metadata["carriers"]
+            assert isinstance(carriers, set) and carriers, restriction
+            assert all(isinstance(carrier, str) and carrier for carrier in carriers), restriction
+            assert carriers == _authored_carriers(restriction), restriction
+        elif waits_on == "model":
+            assert set(metadata) == {"waits_on", "model"}, restriction
+            assert isinstance(metadata["model"], str) and metadata["model"].strip(), restriction
+        else:
+            raise AssertionError(restriction)
 
 
 def test_every_authored_restriction_is_enforced_or_reasoned_debt():
     _assert_classified()
+
+
+def test_every_deferred_restriction_names_what_it_waits_on():
+    _assert_wait_metadata()
+
+
+def test_only_positioning_may_wait_on_a_model():
+    model_waiting = {restriction for restriction, metadata in NOT_ENFORCED.items() if metadata["waits_on"] == "model"}
+
+    assert model_waiting == {"no_approach_source"}
 
 
 def test_a_new_catalog_restriction_fails_the_classification_floor(monkeypatch):

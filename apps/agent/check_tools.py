@@ -156,14 +156,25 @@ async def _check_skill_impl(
     if result.consumed_conditions:
         async with db_mod.transaction() as conn:
             adv = await skill_persistence.apply_skill_use_with_persistence(
-                session.player_id, skill, counter_increment=1, conn=conn, queries=queries, mutations=mutations
+                session.player_id,
+                skill,
+                counter_increment=1,
+                initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
+                conn=conn,
+                queries=queries,
+                mutations=mutations,
             )
             await consume_beneficial_conditions(
                 session.player_id, result.consumed_conditions, conditions_mutations, conn=conn
             )
     else:
         adv = await skill_persistence.apply_skill_use_with_persistence(
-            session.player_id, skill, counter_increment=1, queries=queries, mutations=mutations
+            session.player_id,
+            skill,
+            counter_increment=1,
+            initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
+            queries=queries,
+            mutations=mutations,
         )
 
     if adv is not None and adv.advanced:

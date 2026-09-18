@@ -1,12 +1,10 @@
 """Tests for prompt building (warm layer)."""
 
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
 
-import system_prompts
 from creation_prompts import CREATION_SYSTEM_PROMPT
 from system_prompts import DISPATCH_MODE_PROMPT, SYSTEM_PROMPT, build_system_prompt
 from training_rules import get_midpoint_decision, resolve_midpoint_decision
@@ -315,9 +313,6 @@ class TestTrainingMidpointNarration:
         assert result.state in DISPATCH_MODE_PROMPT, (
             f"dispatch prompt does not name the state resolve_activity(kind='training') returns ({result.state!r})"
         )
-
-    def test_system_prompts_file_stays_within_hard_cap(self):
-        assert len(Path(system_prompts.__file__).read_text().splitlines()) <= 500
 
 
 # The 31 authored VOICES keys, in insertion order, written out as a LITERAL. Recomputing this

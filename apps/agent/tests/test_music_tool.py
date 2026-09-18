@@ -53,6 +53,7 @@ class TestStartCombatDifficulty:
                 "level": 3,
             }
         )
+        mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
 
@@ -111,6 +112,7 @@ class TestStartCombatDifficulty:
                 "level": 3,
             }
         )
+        mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
 

@@ -331,7 +331,10 @@ async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mo
     Resolves concern 4045481bfc3e — initial state push so icons/chips render
     from frame one, not after the first wrap."""
     mutations = MagicMock(save_combat_state=AsyncMock())
-    queries = MagicMock(get_player=AsyncMock(return_value=_start_combat_player()))
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=_start_combat_player()),
+        get_player_inventory=AsyncMock(return_value=[]),
+    )
     content = MagicMock(
         get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
@@ -367,7 +370,10 @@ async def test_start_combat_ui_update_fires_after_combat_started(_mock_sounds, m
     COMBAT_UI_UPDATE so the mobile session.setCombat(true) gate latches before
     the tracker tries to render."""
     mutations = MagicMock(save_combat_state=AsyncMock())
-    queries = MagicMock(get_player=AsyncMock(return_value=_start_combat_player()))
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=_start_combat_player()),
+        get_player_inventory=AsyncMock(return_value=[]),
+    )
     content = MagicMock(
         get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),

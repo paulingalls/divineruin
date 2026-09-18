@@ -40,11 +40,13 @@ def _item(
 def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=15.0, npc_present=True):
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "gold": gold})
+    player = {"player_id": "player_1", "gold": gold}
+    if crafting_tier != "untrained":
+        player["skill_tiers"] = {"crafting": crafting_tier}
+    queries.get_player = AsyncMock(return_value=player)
     queries.get_player_inventory = AsyncMock(return_value=[item] if item else [])
     queries.get_npcs_at_location = AsyncMock(return_value=[{"id": "grimjaw"}] if npc_present else [])
     queries.get_npc_disposition = AsyncMock(return_value=disposition)
-    queries.get_single_skill_advancement = AsyncMock(return_value={"tier": crafting_tier})
     mutations = MagicMock()
     mutations.update_player_gold = AsyncMock()
     inv_mutations = MagicMock()

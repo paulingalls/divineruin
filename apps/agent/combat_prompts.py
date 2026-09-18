@@ -75,10 +75,20 @@ When a packet carries condition_inflicted, a HOSTILE condition took hold on "tar
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
-grapple from landing, and released_from_grapple names combatants freed when their grappler fell \
+grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
+"grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \
+could take and the reaction changed nothing; "grappler_id" names the \
+prior grappler who still holds the reactor. Voice the grab closing on someone already pinned, and the \
+reaction's flourish if you like, but never say the reactor escaped that holder or that the reaction \
+stopped this grab. \
+When that packet carries no "grappler_id" the hold is real but its holder is unrecorded — say something still \
+has them, and name nobody. \
+released_from_grapple names combatants freed when their grappler fell \
 or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
 shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
+condition_immunity_source names the carried item that stopped the affliction. \
+save_advantage_source names the carried item that granted the better of two saving-throw dice. \
 The engine decides what is dramatic: any packet whose "dramatic" \
 flag is true (a critical hit, a killing blow, the opening strike, the last enemy \
 falling, or a death save) earns the dice — build tension, pause for the dramatic \
@@ -128,7 +138,8 @@ where "mechanical_effect" and the enemy's own packet say it is — read the outc
 and let the cue give you the picture, never the result.
 
 For a maneuver packet, stood_up and shove are authoritative outcomes; prone_immunity names the \
-capability that resisted a knockdown.
+skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
+the shove defence.
 
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \

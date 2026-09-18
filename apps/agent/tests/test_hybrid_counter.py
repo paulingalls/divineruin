@@ -70,11 +70,16 @@ def _shared_skill_advancement_store():
     """Build mock queries+mutations backed by a single in-memory dict keyed by (player_id, skill)."""
     store: dict[tuple[str, str], dict] = {}
 
-    async def fake_get_single_skill_advancement(player_id: str, skill: str, *, conn=None) -> dict:
+    async def fake_get_single_skill_advancement(
+        player_id: str, skill: str, *, conn=None, default_tier="untrained"
+    ) -> dict:
         key = (player_id, skill)
-        if key not in store:
-            store[key] = {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
-        return dict(store[key])
+        return dict(
+            store.get(
+                key,
+                {"tier": default_tier, "use_counter": 0, "narrative_moment_ready": False},
+            )
+        )
 
     async def fake_update_skill_advancement(
         player_id: str, skill: str, new_tier: str, new_use_count: int, *, conn=None
@@ -143,6 +148,23 @@ class TestHybridCounterSharedRow:
         # Both paths read from and wrote to (player_id, skill) — exactly one row in the store.
         assert len(store) == 1
         assert (player_id, skill) in store
+
+    @pytest.mark.asyncio
+    async def test_training_starts_proficient_skill_at_trained(self) -> None:
+        store, queries, mutations = _shared_skill_advancement_store()
+
+        await apply_skill_practice_advancement(
+            "player_1",
+            "athletics",
+            counter_increment=1,
+            activity_id="train_proficient",
+            queries=queries,
+            mutations=mutations,
+            db_mod=_txn_db(),
+            training=_fake_training(),
+        )
+
+        assert store[("player_1", "athletics")]["tier"] == "trained"
 
     @pytest.mark.asyncio
     async def test_training_then_session_use_crosses_tier_threshold(self) -> None:

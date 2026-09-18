@@ -15,7 +15,7 @@ system edge and trusts the internal logic, per CLAUDE.md.
 The predecessor stubbed ``resolve_scope_ward`` itself, which answered every ward gate "unwarded"
 forever — a consumer whose gate IS that call could never be tested honestly (concern
 ec9d730b899d, debt bc5730af663c). story-005 had to inject the real resolver to work around it.
-TestCastSpellWardThroughRealResolver in test_spell_casting.py is the non-vacuity proof: it fails
+TestCastSpellWardThroughRealResolver in test_spell_cast_ward.py is the non-vacuity proof: it fails
 against the old fixture and passes against this one.
 
 Suites that exercise ``read_active_ward`` itself shadow this fixture with a no-op, the way

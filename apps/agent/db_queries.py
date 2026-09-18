@@ -110,6 +110,23 @@ async def get_npc_dispositions(
     return {row["npc_id"]: json.loads(row["data"]).get("disposition", "neutral") for row in rows}
 
 
+async def _hydrate_skill_tiers(players: dict[str, dict], conn: asyncpg.Connection | asyncpg.Pool) -> None:
+    if not players:
+        return
+    for player in players.values():
+        player.pop("skill_tiers", None)
+    # `untrained` is the tier column's DEFAULT, so mark_narrative_moment's tier-less INSERT leaves a
+    # row that claims no tier. Hydrating it would shadow _get_skill_tier's proficiency fallback and
+    # read a proficient character back as untrained; dropping it is lossless, because untrained IS
+    # that fallback's floor.
+    rows = await conn.fetch(
+        "SELECT player_id, skill_id, tier FROM skill_advancement WHERE player_id = ANY($1) AND tier <> 'untrained'",
+        list(players),
+    )
+    for row in rows:
+        players[row["player_id"]].setdefault("skill_tiers", {})[row["skill_id"]] = row["tier"]
+
+
 async def get_player(
     player_id: str,
     *,
@@ -131,6 +148,7 @@ async def get_player(
     if not isinstance(data, dict):
         logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
         return None
+    await _hydrate_skill_tiers({player_id: data}, _conn)
     return data
 
 
@@ -162,6 +180,7 @@ async def get_players_for_update(
             logger.warning("Player %s has non-dict data: %s", row["player_id"], type(data).__name__)
             continue
         result[row["player_id"]] = data
+    await _hydrate_skill_tiers(result, _conn)
     return result
 
 
@@ -239,9 +258,17 @@ async def get_skill_advancement(
 
 
 async def get_single_skill_advancement(
-    player_id: str, skill: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    skill: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    default_tier: str = "untrained",
 ) -> dict:
-    """Fetch advancement data for a single skill. Returns {tier, use_counter, narrative_moment_ready} or defaults."""
+    """Fetch one skill's advancement counters with the effective starting tier.
+
+    The column default ``untrained`` also represents a tier-less narrative-moment row. In that
+    case the caller's proficiency-derived default remains authoritative, matching player hydration.
+    """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         "SELECT tier, use_counter, narrative_moment_ready FROM skill_advancement WHERE player_id = $1 AND skill_id = $2",
@@ -249,9 +276,9 @@ async def get_single_skill_advancement(
         skill,
     )
     if row is None:
-        return {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
+        return {"tier": default_tier, "use_counter": 0, "narrative_moment_ready": False}
     return {
-        "tier": row["tier"],
+        "tier": default_tier if row["tier"] == "untrained" else row["tier"],
         "use_counter": row["use_counter"],
         "narrative_moment_ready": row["narrative_moment_ready"],
     }

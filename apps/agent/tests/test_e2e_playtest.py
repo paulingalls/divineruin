@@ -218,6 +218,7 @@ class TestCombatRoundTrip:
         mock_mutations.delete_combat_state = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 

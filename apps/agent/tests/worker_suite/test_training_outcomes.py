@@ -1,39 +1,19 @@
 """Tests for training completion: outcome building, narration cycles, push notifications."""
 
 import copy
-from contextlib import asynccontextmanager
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from worker_suite._helpers import txn_db as _txn_db
 from worker_suite._samples import SAMPLE_PLAYER
 
 from async_worker_training import (
     advance_training_cycles,
-    apply_skill_practice_advancement,
     build_training_completion_outcome,
 )
 from dialogue_parser import Segment
 from training_rules import CompletionResult
-
-
-def _txn_db():
-    """A db-module stand-in whose transaction() yields a mock conn (no real DB).
-
-    apply_skill_practice_advancement now runs the ledger claim + counter update in
-    one db.transaction() (atomicity, debt b20815f92023); skill-path tests inject
-    this so they stay hermetic.
-    """
-    conn = AsyncMock()
-
-    @asynccontextmanager
-    async def _transaction():
-        yield conn
-
-    module = MagicMock()
-    module.transaction = _transaction
-    return module
-
 
 SAMPLE_TRAINING_DATA = {
     "mentor_id": "guildmaster_torin",
@@ -510,37 +490,3 @@ class TestMentorVariantCompletion:
         assert count == 1
         outcome = mock_narration.call_args[0][0]
         assert outcome["narrative_context"]["replaced_cultural_attribution"] == "Keldaran Holds technique"
-
-
-class TestSkillAccrualIdempotency:
-    @pytest.mark.asyncio
-    async def test_skips_increment_when_already_claimed(self):
-        """A retry whose accrual ledger claim fails must NOT re-increment the counter."""
-        training = AsyncMock()
-        training.claim_training_accrual = AsyncMock(return_value=False)
-        with patch("async_worker_training.skill_persistence.apply_skill_use_with_persistence") as mock_apply:
-            result = await apply_skill_practice_advancement(
-                "player_1", "perception", 2, "train_x", db_mod=_txn_db(), training=training
-            )
-        assert result is None
-        # claim runs inside the transaction with the shared conn.
-        training.claim_training_accrual.assert_awaited_once()
-        assert training.claim_training_accrual.await_args.args[0] == "train_x"
-        mock_apply.assert_not_called()  # the shared counter is never touched on a retry
-
-    @pytest.mark.asyncio
-    async def test_applies_increment_on_fresh_claim(self):
-        """A fresh claim applies the increment via the shared skill-use path."""
-        training = AsyncMock()
-        training.claim_training_accrual = AsyncMock(return_value=True)
-        adv = MagicMock(advanced=True, new_tier="journeyman")
-        with patch(
-            "async_worker_training.skill_persistence.apply_skill_use_with_persistence",
-            new_callable=AsyncMock,
-            return_value=adv,
-        ) as mock_apply:
-            result = await apply_skill_practice_advancement(
-                "player_1", "perception", 2, "train_y", db_mod=_txn_db(), training=training
-            )
-        assert result == {"advanced": True, "new_tier": "journeyman"}
-        mock_apply.assert_awaited_once()

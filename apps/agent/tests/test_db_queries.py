@@ -149,3 +149,44 @@ class TestGetPlayerFactionReputation:
         conn = _pool_with_fetchrow({"data": json.dumps({"value": -3})})
         assert await db_queries.get_player_faction_reputation("p1", "thornwatch", conn=conn) == -3
         conn.fetchrow.assert_awaited_once()
+
+
+class TestSkillAdvancementReads:
+    async def test_missing_single_row_uses_requested_default_tier(self):
+        conn = _pool_with_fetchrow(None)
+
+        result = await db_queries.get_single_skill_advancement("p1", "athletics", conn=conn, default_tier="trained")
+
+        assert result == {
+            "tier": "trained",
+            "use_counter": 0,
+            "narrative_moment_ready": False,
+        }
+
+    async def test_stored_single_row_wins_over_requested_default(self):
+        conn = _pool_with_fetchrow({"tier": "master", "use_counter": 32, "narrative_moment_ready": True})
+
+        result = await db_queries.get_single_skill_advancement("p1", "athletics", conn=conn, default_tier="trained")
+
+        assert result["tier"] == "master"
+        assert result["use_counter"] == 32
+
+    async def test_column_default_tier_yields_to_requested_proficiency_fallback(self):
+        conn = _pool_with_fetchrow({"tier": "untrained", "use_counter": 0, "narrative_moment_ready": True})
+
+        result = await db_queries.get_single_skill_advancement("p1", "athletics", conn=conn, default_tier="trained")
+
+        assert result == {
+            "tier": "trained",
+            "use_counter": 0,
+            "narrative_moment_ready": True,
+        }
+
+    async def test_public_player_read_replaces_stale_json_with_table_rows(self):
+        conn = AsyncMock()
+        conn.fetchrow.return_value = {"data": json.dumps({"player_id": "p1", "skill_tiers": {"stealth": "master"}})}
+        conn.fetch.return_value = [{"player_id": "p1", "skill_id": "athletics", "tier": "expert"}]
+
+        player = await db_queries.get_player("p1", conn=conn)
+
+        assert player == {"player_id": "p1", "skill_tiers": {"athletics": "expert"}}

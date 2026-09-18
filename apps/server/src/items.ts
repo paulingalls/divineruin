@@ -17,6 +17,63 @@ const ALLOWED_DURABILITY_TIERS = new Set<NonNullable<Item["durability_tier"]>>([
   "masterwork",
 ]);
 const ATTUNEMENT_KINDS = new Set(["none", "required", "class"]);
+// What an item may declare condition_immunities AGAINST — the hostile, item-wardable subset of the
+// condition catalog, NOT a mirror of it. Pinned to apps/agent/item_effects.BLOCKABLE_CONDITIONS by
+// test_item_effects_content.test_structured_effect_token_sets_match_across_languages, which carries
+// the reasoning for each omission. Adding the beneficial conditions back here would let an item
+// block its own bearer's buffs.
+const BLOCKABLE_CONDITIONS = new Set([
+  "wounded",
+  "stunned",
+  "prone",
+  "grappled",
+  "restrained",
+  "incapacitated",
+  "paralyzed",
+  "poisoned",
+  "exhausted",
+  "blinded",
+  "frightened",
+  "charmed",
+  "deafened",
+  "shaken",
+  "petrified",
+  "cursed",
+  "hollowed",
+]);
+const SAVE_NAMES = new Set([
+  "strength",
+  "dexterity",
+  "constitution",
+  "intelligence",
+  "wisdom",
+  "charisma",
+]);
+const ADVANTAGE_VS = new Set(["prone", "push"]);
+const EFFECT_KEYS = new Set([
+  "advantage_vs",
+  "amount",
+  "bonus",
+  "bonus_condition",
+  "bonus_damage",
+  "bonus_damage_type",
+  "condition_immunities",
+  "damage",
+  "damage_type",
+  "description",
+  "duration_minutes",
+  "properties",
+  "quantity",
+  "range",
+  "save",
+  "save_advantages",
+  "skill",
+  "target",
+  "trigger",
+  "type",
+  "value",
+  "versatile_damage",
+]);
 // Item types that degrade in combat/use — must carry durability_tier (spec
 // §Durability). Weapons additionally need damage_dice, armor/shield need ac.
 const EQUIPPABLE_TYPES = new Set(["weapon", "armor", "shield", "tool"]);
@@ -38,6 +95,9 @@ export function setItems(map: ReadonlyMap<string, Item>): void {
 
 function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   const e = asRecord(raw, ctx);
+  const unknownKey = Object.keys(e).find((key) => !EFFECT_KEYS.has(key));
+  if (unknownKey !== undefined)
+    throw new Error(`${ctx} has unknown key ${JSON.stringify(unknownKey)}`);
   if (typeof e.type !== "string") throw new Error(`${ctx}.type is not a string`);
   if (e.target !== undefined && typeof e.target !== "string") {
     throw new Error(`${ctx}.target is not a string`);
@@ -51,7 +111,24 @@ function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   if (e.description !== undefined && typeof e.description !== "string") {
     throw new Error(`${ctx}.description is not a string`);
   }
+  validateEffectTokens(e, "condition_immunities", BLOCKABLE_CONDITIONS, ctx);
+  validateEffectTokens(e, "save_advantages", SAVE_NAMES, ctx);
+  validateEffectTokens(e, "advantage_vs", ADVANTAGE_VS, ctx);
   return e as unknown as ItemEffect;
+}
+
+function validateEffectTokens(
+  effect: Record<string, unknown>,
+  field: string,
+  allowed: ReadonlySet<string>,
+  ctx: string,
+): void {
+  if (effect[field] === undefined) return;
+  const values = parseStringArray(effect[field], `${ctx}.${field}`);
+  for (const value of values) {
+    if (!allowed.has(value))
+      throw new Error(`${ctx}.${field} has unknown token ${JSON.stringify(value)}`);
+  }
 }
 
 function parseAttunement(raw: unknown, ctx: string): ItemAttunement {

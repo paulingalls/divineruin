@@ -199,9 +199,17 @@ async def _resolve_attack_packet(
         and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])
         and not grapple_blocked
         and combat_state is not None
-        and combat_ability._land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id)
+        and not target.is_fallen
     ):
-        summary["condition_inflicted"] = "grappled"
+        if conditions.has_condition(target.conditions, "grappled"):
+            summary["grapple_held"] = True
+        elif combat_ability._land_condition_on_one(
+            combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
+        ):
+            summary["condition_inflicted"] = "grappled"
+        else:
+            summary["condition_immune"] = "grappled"
+            summary["condition_immunity_source"] = target.condition_immunities["grappled"]
     return summary
 
 
@@ -448,9 +456,7 @@ async def apply_attack_result(
         # adds, for the DM to voice. 0/None on a normal hit.
         "bonus_damage": attack_result.bonus_damage,
         "bonus_damage_type": attack_result.bonus_damage_type,
-        # Beneficial conditions whose +1d4 this swing rolled into the to-hit (M4.8 story-003). The
-        # caller (_resolve_one_packet) removes these from the attacker so a multi-swing sequence
-        # consumes the single-use die exactly once.
+        # Conditions spent by this attack; the caller removes them before another swing.
         "consumed_conditions": attack_result.consumed_conditions,
         # Set when this hit raised a Stage-2+ Hollowed target as a Temporary Hollowed echo
         # instead of felling them — the DM narrates the corpse rising.

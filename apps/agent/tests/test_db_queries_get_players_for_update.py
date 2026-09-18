@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, patch
 import db_queries
 
 
-def _pool_with_fetch(rows):
+def _pool_with_fetch(*results):
     pool = AsyncMock()
-    pool.fetch = AsyncMock(return_value=rows)
+    pool.fetch = AsyncMock(side_effect=results)
     return pool
 
 
@@ -29,10 +29,10 @@ class TestGetPlayersForUpdateSql:
 
     @patch("db_queries.db")
     async def test_query_uses_any_order_by_and_for_update(self, mock_db):
-        pool = _pool_with_fetch([])
+        pool = _pool_with_fetch([], [])
         mock_db.get_pool = AsyncMock(return_value=pool)
         await db_queries.get_players_for_update(["a1", "a2"])
-        sql, ids = pool.fetch.call_args.args
+        sql, ids = pool.fetch.call_args_list[0].args
         assert "= ANY($1)" in sql
         assert "ORDER BY player_id" in sql
         assert "FOR UPDATE" in sql
@@ -44,17 +44,26 @@ class TestGetPlayersForUpdateSql:
             {"player_id": "a1", "data": json.dumps({"player_id": "a1", "level": 3})},
             {"player_id": "a2", "data": json.dumps({"player_id": "a2", "level": 5})},
         ]
-        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetch(rows))
+        advancement = [
+            {"player_id": "a1", "skill_id": "athletics", "tier": "master"},
+            {"player_id": "a2", "skill_id": "survival", "tier": "expert"},
+        ]
+        pool = _pool_with_fetch(rows, advancement)
+        mock_db.get_pool = AsyncMock(return_value=pool)
         result = await db_queries.get_players_for_update(["a1", "a2"])
         assert result == {
-            "a1": {"player_id": "a1", "level": 3},
-            "a2": {"player_id": "a2", "level": 5},
+            "a1": {"player_id": "a1", "level": 3, "skill_tiers": {"athletics": "master"}},
+            "a2": {"player_id": "a2", "level": 5, "skill_tiers": {"survival": "expert"}},
         }
+        assert pool.fetch.await_count == 2
+        skill_sql, skill_ids = pool.fetch.call_args_list[1].args
+        assert "skill_advancement" in skill_sql
+        assert skill_ids == ["a1", "a2"]
 
     @patch("db_queries.db")
     async def test_id_absent_from_rows_is_absent_from_map(self, mock_db):
         rows = [{"player_id": "a1", "data": json.dumps({"player_id": "a1"})}]
-        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetch(rows))
+        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetch(rows, []))
         result = await db_queries.get_players_for_update(["a1", "ghost"])
         assert set(result.keys()) == {"a1"}
 

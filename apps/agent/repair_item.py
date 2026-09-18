@@ -27,6 +27,7 @@ import db_mutations_inventory
 import db_queries
 import durability
 import pricing_queries
+import rules_engine
 import workspace
 from disposition import resolve_disposition
 from rules_engine import SKILL_TIER_ORDER, SkillTier
@@ -128,7 +129,7 @@ async def _repair_item_impl(
             raise ToolError(quote.reason)
 
         # skill-tier gate (player Crafting tier >= the item's repair tier)
-        crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
+        crafting_tier = rules_engine._get_skill_tier(player, "crafting")
         required_tier = durability_mod.repair_skill_tier(durability_tier)
         if not _can_repair_tier(crafting_tier, required_tier):
             raise ToolError(f"Repairing {name} needs Crafting {required_tier}; you are {crafting_tier}.")

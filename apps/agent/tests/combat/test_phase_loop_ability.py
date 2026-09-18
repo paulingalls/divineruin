@@ -6,6 +6,7 @@ moved.
 """
 
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -14,11 +15,13 @@ from combat.test_phase_loop import _resonance_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
+_CONDITION_FREE_SPELL = SimpleNamespace(name="Arcane Bolt", applies_condition=None)
+
 
 class TestResolvePhaseAbility:
     """story-007: an in-combat ABILITY declaration resolves via the shared cast resolver and appears
     as a resolved packet in initiative order alongside attacks. The cast itself is mocked here — the
-    wiring/ordering is under test, not the spell internals (covered by test_spell_casting)."""
+    wiring/ordering is under test, not the spell internals (covered by the test_spell_cast_* modules)."""
 
     def _ability_state(self):
         state = _resolution_state()
@@ -28,6 +31,7 @@ class TestResolvePhaseAbility:
 
     def _cast_resolver(self, result):
         mod = MagicMock()
+        mod._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
         mod._resolve_cast = AsyncMock(return_value=result)
         return mod
 
@@ -82,6 +86,7 @@ class TestResolvePhaseAbilityResonance:
             events=events or [],
         )
         mod = MagicMock()
+        mod._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
         mod._resolve_cast = AsyncMock(return_value=result)
         return mod
 
@@ -263,7 +268,7 @@ class TestResolvePhaseAbilityFocusGate:
         deps["queries"].get_player = AsyncMock(return_value=player_row)
         res = _resonance_deps()
         cast_resolver = MagicMock()
-        cast_resolver._gate_spell = MagicMock()  # affordable -> no raise
+        cast_resolver._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
         cast_resolver._resolve_cast = AsyncMock(
             return_value=CastResult(
                 packet={"effect": "ward"}, new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]

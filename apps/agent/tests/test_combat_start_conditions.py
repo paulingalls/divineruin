@@ -53,7 +53,10 @@ def _player(*, stored_conditions=None, skill_tiers=None):
 
 async def _run_start(player):
     mutations = MagicMock(save_combat_state=AsyncMock())
-    queries = MagicMock(get_player=AsyncMock(return_value=player))
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=player),
+        get_player_inventory=AsyncMock(return_value=[]),
+    )
     content = MagicMock(
         get_encounter_template=AsyncMock(return_value=_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
