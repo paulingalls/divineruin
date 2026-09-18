@@ -11,6 +11,23 @@ if [ -n "$staged_env" ]; then
   exit 1
 fi
 
+# The constraints wall. SessionStart renders the lead's regions into a 9500-byte
+# budget and clips constraints.md's tail, so a file over the cap is not "a bit long" —
+# it is rules the lead never reads. Before the node_modules early-exit: this needs
+# python3 and two files, so it holds in a fresh teammate worktree too.
+cap="$(sed -n 's/^constraints_chars_cap:[[:space:]]*//p' .xp/config.yml | head -1 | sed 's/[^0-9].*$//')"
+if [ -z "$cap" ]; then
+  echo "ERROR: constraints_chars_cap missing from .xp/config.yml — refusing to pass a commit nothing measured." >&2
+  exit 1
+fi
+size=$(python3 -c "import pathlib,sys; sys.stdout.write(str(len(pathlib.Path('.xp/constraints.md').read_bytes())))")
+if [ "$size" -gt "$cap" ]; then
+  echo "ERROR: .xp/constraints.md is $size bytes, over its $cap-byte cap." >&2
+  echo "  SessionStart clips the tail at its 9500-byte budget. Shorten a rule or retire one;" >&2
+  echo "  the evidence behind a rule belongs in .xp/system.md (Constraint case law)." >&2
+  exit 1
+fi
+
 # The lint suite below (bun/tsc/eslint/prettier + the uv-driven ruff script) needs installed deps.
 # A fresh git worktree — a teammate checkout — has no node_modules, which previously forced
 # `git commit --no-verify`. Skip the suite there with a clear notice instead: the main-checkout hook

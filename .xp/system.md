@@ -107,6 +107,44 @@ reds the moment a correct fix moves the code: `b8b869ae` went red when story-029
 put the payload in a builder. When a change MOVES or RENAMES a test file or
 class, grep `work.md` for the old name and re-resolve every record pointing at it.
 
+**Constraint case law** — the incident each `.xp/constraints.md` item was
+written against. The rule is the wall; this is why it is where it is. Cite the
+item number, not this section.
+
+- **2 — file cap.** Two reviewers spent a round arguing about `content/*.json`
+  before the human ruled authored data exempt (2026-09-04).
+- **4 — tolerance.** Sprint-048's narration normalizer coerced the shapes I had
+  seen and let its `else` absorb every shape I had not, so an errand "resolved"
+  in silence.
+- **5 — falsifiers.** Four red at the sprint-052 close: three grepped a name the
+  fix had put elsewhere or in camelCase, one debt's polarity was inverted.
+- **6 — producers.** Twice in sprint-045 we shipped a gate keyed on a token
+  nothing produced: a reaction `window` the DM had to guess among 9.
+- **7 — both sides.** Sprint-051 lost three land rounds to pins outside a card's
+  directories. The acceptance clause is sprint-053's: a combat declaration or
+  band card whose only lane is `test:all` ships untested against the harness.
+- **8 — inventories.** Sprint-046 story-008 excluded four `companion_kael` sites
+  without grepping; the reviewer found sixteen more on the session path.
+- **9 — someone else's contract.** Sprint-047: a schema walk went green while
+  the live API refused three agents, and a `MagicMock` invented every attribute
+  production read (again in sprint-051). Sprint-048 added the PARSING side — we
+  read the model's narration `segments` assuming dicts, and it sent a bare
+  string. ADR 0004's strict ceilings are the gameplay agents' toolsets;
+  narration's one tool was accepted strict the day we finally asked (sprint-050).
+- **10 — code claims.** Sprint-048: four lead assertions taken from a
+  DESCRIPTION were wrong, one stating `reactions_available`'s polarity backwards
+  from its name. Sprint-053: five CARD claims were, including a `Verify:` naming
+  a test file that does not exist — pytest exits 4 and nothing reds.
+- **11 — recurrence.** The training midpoint judge red in sprints 48, 49 and 50,
+  about 40% of pushes, each run shrugged off alone; the cause was the DM
+  paraphrasing the resolved state away, one prompt line.
+- **12 — absence and floors.** Sprint-053's review: story-078's producer
+  tripwire walked `archetype_abilities.json` only, so `content/spells.json` was
+  walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
+  (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
+  against its own relocation, because `os.walk` over a missing directory yields
+  nothing.
+
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

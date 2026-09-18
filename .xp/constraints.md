@@ -1,62 +1,52 @@
 # Constraints
 
-Reversing one of these makes it a different project. Cap: 15 items; adding over
-the cap requires retiring one. Reviewers enforce these — cite the item.
+Reversing one of these makes it a different project. Cap: 15 items and 4000
+chars — over that, SessionStart's 9500-byte budget CLIPS the tail and the lead
+never sees it. Reviewers enforce these — cite the item. The incident behind each
+one is `.xp/system.md` → Constraint case law.
 
 1. **Fault-inject every guard.** A check that cannot red against its target
    defect is vacuous and worse than no check — it certifies.
 2. **Small files: target 300 lines, hard cap 500 — tests included, because
    tests ARE production code**: same review bar, never skipped for tests.
-   Large files eat agent context; over-cap means extract, not scroll.
-   CODE ONLY (human decision 2026-09-04): authored data — `content/*.json`,
-   fixtures, generated files — is exempt; two reviewers have spent a round on it.
-3. **Comments exist only for what neither a test nor a name can carry** — the
-   why, an external constraint, a rejected design. Restates the code → delete.
-   Narrates history → delete (git holds it). Checkable claim → make it a test.
+   Over-cap means extract, not scroll. CODE ONLY (human 2026-09-04): authored
+   data — `content/*.json`, fixtures, generated files — is exempt.
+3. **Comments carry only what neither a test nor a name can** — the why, an
+   external constraint, a rejected design. Restates the code → delete. Narrates
+   history → delete (git holds it). Checkable claim → make it a test.
 4. **Fail fast, fail loud** — raise instead of returning None/empty when
-   something is wrong; no fallback that masks a defect. WHEN YOU REPLACE A CRASH
-   WITH TOLERANCE, ENUMERATE WHAT YOU ARE NOW TOLERATING: sprint-048's narration
-   normalizer coerced the shapes I had seen and let its `else` absorb every shape I
-   had not, so an errand "resolved" in silence. A tolerant parser needs a floor
-   that still fails — here, "produced nothing usable".
-5. **A falsifier is a behaviour command, not a grep of the fix.** Four red at
-   the sprint-052 close: three grepped a name the fix put elsewhere or in
-   camelCase, one debt's polarity inverted. Name the test that reds on it.
+   something is wrong; no fallback that masks a defect. REPLACING A CRASH WITH
+   TOLERANCE MEANS ENUMERATING WHAT YOU NOW TOLERATE, and leaving a floor that
+   still fails: "produced nothing usable".
+5. **A falsifier is a behaviour command, not a grep of the fix.** Name the test
+   that reds on it.
 6. **Name the producer.** A capability the DM invokes by id is not shipped
    until something surfaces that id — a tool response, a prompt, or an event
-   payload. Twice in sprint-045 we shipped a gate keyed on a token nothing
-   produced: a reaction `window` the DM had to guess among 9.
+   payload.
 7. **A cross-language AC names both sides.** Content and contracts are mirrored
-   in Python and TypeScript; a guard living on one side certifies nothing about
-   the other. Verify names both files, or the DIRECTORY — never one file whose
-   tests a later split can silently narrow. `test:all` stays OUT of Verify (human
-   2026-09-06), BUT THE EXECUTOR RUNS `bun run test:python` BEFORE FINISHING:
-   sprint-051 lost three land rounds to pins outside a card's directories.
+   in Python and TypeScript; a guard on one side certifies nothing about the
+   other. Verify names both files, or the DIRECTORY — never one file whose tests
+   a later split can silently narrow. `test:all` stays OUT of Verify (human
+   2026-09-06), BUT THE EXECUTOR RUNS `bun run test:python` BEFORE FINISHING,
+   and a card that edits an acceptance harness, a combat declaration or a band
+   also runs `bun run test:acceptance:nollm`.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
-   why. Sprint-046 story-008 excluded four `companion_kael` sites without
-   grepping; the reviewer found sixteen more on the session path.
+   why.
 9. **A guard that models someone else's contract certifies the model, not the
    contract.** Where the real thing can be executed — a vendor type, a live
    endpoint, a schema the provider compiles — the test constructs or calls it.
-   Sprint-047: a schema walk went green while the live API refused three agents,
-   and a `MagicMock` invented every attribute production read (again in
-   sprint-051). Sprint-048 added the PARSING side — we read the model's
-   narration `segments` assuming dicts, and it sent a bare string. Mock our own
-   seams; never the other side's shape, in or out. A VENDOR LIMIT IS PER REQUEST,
-   NOT PER PROJECT: ADR 0004's strict ceilings are the gameplay agents' toolsets,
-   and narration's one tool was accepted strict the day we finally asked
-   (sprint-050).
-10. **A claim about code is a code claim — RUN it, don't read it.** Sprint-048:
-   four lead assertions from a DESCRIPTION were wrong, one stating
-   `reactions_available`'s polarity backwards from its name. Sprint-053: five CARD
-   claims were, including a `Verify:` naming a test file that does not exist —
-   pytest exits 4 and nothing reds. Caught by a refresh or reviewer, never the
-   author. BEFORE MINTING run the Verify, grep every `file:NNN`, re-run every
-   measurement. An AC naming VALUES or an ABSENCE is this rule.
+   Mock our own seams; never the other side's shape, in or out. A VENDOR LIMIT
+   IS PER REQUEST, NOT PER PROJECT.
+10. **A claim about code is a code claim — RUN it, don't read it.** BEFORE
+   MINTING run the Verify, grep every `file:NNN`, re-run every measurement. An
+   AC naming VALUES or an ABSENCE is this rule. Caught by a refresh or a
+   reviewer, never the author.
 11. **A failure that RECURS is a defect, not variance.** Fix what produces it,
-   never the guard that caught it. The training midpoint judge red in sprints 48,
-   49 and 50 — about 40% of pushes — each run shrugged off alone; the cause was
-   the DM paraphrasing the resolved state away, one prompt line. A note naming an
-   owner is not a schedule: if it must be fixed, it is a card.
+   never the guard that caught it. A note naming an owner is not a schedule: if
+   it must be fixed, it is a card.
+12. **An absence AC is only as wide as the walk under it, and a walk needs a
+   non-empty floor.** A guard proving "nothing does X" names every corpus it
+   walks and reds when that corpus comes back empty: a missing directory, a
+   hand-maintained tuple and a moved file all read as green.

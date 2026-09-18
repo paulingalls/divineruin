@@ -12,7 +12,12 @@ codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-a
 #                    # receives sprint-open/story-close/sprint-close and the id
 sprint_cap: 6        # max stories per sprint
 debt_budget: 0.2     # max share of sprint stories that are scheduled debt
-constraints_chars_cap: 4500  # hard character ceiling; retire or shorten a rule
+constraints_chars_cap: 4000  # hard character ceiling; retire or shorten a rule.
+#                    # 4000, not 4500: SessionStart renders the lead's regions into a
+#                    # 9500-byte budget and CLIPS constraints.md's tail. Measured
+#                    # 2026-09-18 against a worst-case banner + environment notice, the
+#                    # constraints budget is 4411 bytes — 4496 was already over, silently.
+#                    # Detail belongs in .xp/system.md (reviewers get it in full), not here.
 version_files: package.json  # comma-separated JSON manifests
 # teardown_timeout: 60  # seconds before close kills worktree teardown
 # review:
