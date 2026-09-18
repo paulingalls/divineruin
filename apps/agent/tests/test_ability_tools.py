@@ -22,6 +22,7 @@ from sample_fixtures import make_context, make_db_mod
 import abilities
 import reaction_spend
 import reaction_windows
+import spells
 from ability_tools import _request_ability_activation_impl
 from combat_phase import PhaseBeat, advance_combat_phase
 
@@ -189,6 +190,7 @@ class TestActivation:
         """
         catalog = [ability for ability in abilities._abilities.values() if ability.ability_type != "reaction"]
         assert len(catalog) >= 100, f"catalog walk went thin ({len(catalog)}) — abilities did not load"
+        compared = 0
 
         for ability in catalog:
             ctx = make_context()
@@ -199,10 +201,15 @@ class TestActivation:
             match = re.search(r"declare (\S+) in the combat phase", message)
             if match is None:
                 continue
+            compared += 1
+            if ability.spell_id is not None:
+                spells.get_spell(match.group(1))
             state = _make_combat_state()
             state.beat = PhaseBeat.DECLARATION
             declaration = {"player_1": {"type": "ability", "action": match.group(1), "target_id": "goblin_scout_1"}}
             advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree
+
+        assert compared >= 15, f"declare-phase comparison set went thin ({compared})"
 
     async def test_stamina_core_ability_deducts_and_returns_cue(self):
         # warrior_devastating_strike: stamina 3, focus 0.
