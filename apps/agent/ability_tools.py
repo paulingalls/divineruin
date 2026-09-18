@@ -153,11 +153,6 @@ async def _request_ability_activation_unlocked(
     # A save-gated ability lands its condition only through a combat declaration on a foe; this
     # path would spend the cost and produce the condition onto a party member instead.
     if ability.save is not None:
-        if session.in_combat:
-            declared_id = variant_id or ability_id
-            raise ToolError(
-                f"{ability.name} needs a foe — declare {declared_id} in the combat phase, aimed at an enemy."
-            )
         raise ToolError(f"{ability.name} needs a foe — use it in a fight.")
 
     # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through
