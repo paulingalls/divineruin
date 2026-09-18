@@ -75,8 +75,15 @@ When a packet carries condition_inflicted, a HOSTILE condition took hold on "tar
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
-grapple from landing, grapple_held means an existing grapple held and this grab only dealt damage, \
-and released_from_grapple names combatants freed when their grappler fell \
+grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
+"grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \
+could take and the reaction changed nothing; "grappler_id" names the \
+prior grappler who still holds the reactor. Voice the grab closing on someone already pinned, and the \
+reaction's flourish if you like, but never say the reactor escaped that holder or that the reaction \
+stopped this grab. \
+When that packet carries no "grappler_id" the hold is real but its holder is unrecorded — say something still \
+has them, and name nobody. \
+released_from_grapple names combatants freed when their grappler fell \
 or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
 shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
