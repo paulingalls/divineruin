@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -126,7 +127,13 @@ async def test_slippery_reports_surviving_grappler_when_second_grab_is_blocked()
 
 
 @pytest.mark.asyncio
-async def test_slippery_fails_loud_when_existing_grapple_has_no_source():
+async def test_slippery_on_a_sourceless_grapple_is_loud_but_does_not_wedge_combat(caplog):
+    """`validate_condition_dict` PERMITS a grappled row with no source, so this shape reaches here
+    through the read boundary rather than being corruption. The label must still tell the truth
+    (the reactor is held), the missing holder must be LOUD in the log, and the phase must keep
+    resolving: raising here escapes pump() past its HeldActionUnresolvable catch (a ValueError
+    SUBCLASS), rolls the phase back, and re-raises on the persisted row on every retry — a wedged
+    combat, which is worse than the wrong label this card set out to fix."""
     state = _state(enemy_id="mawling_2")
     player = state.get_participant("player_1")
     assert player is not None
@@ -137,9 +144,14 @@ async def test_slippery_fails_loud_when_existing_grapple_has_no_source():
 
     await _pause_at(ctx, deps, actor_id="mawling_2", stage=reaction_windows.POST_ROLL, packets=packets)
     await _activate(ctx, "rogue_slippery", player_class="rogue")
-
-    with pytest.raises(ValueError, match="player_1 is grappled without a source"):
+    with caplog.at_level(logging.ERROR, logger="divineruin.tools"):
         await _drain(ctx, deps, packets)
+
+    packet = _reaction_packet(packets)
+    assert packet["mechanical_effect"] == "grapple_blocked_still_held"  # still held, truthfully
+    assert "grappler_id" not in packet  # no holder to name, and none invented
+    assert "grappled with no source" in caplog.text
+    assert ctx.userdata.combat_state is not None  # the phase resolved; combat is not wedged
 
 
 def test_combat_prompt_explains_slippery_still_held_packet():
@@ -147,6 +159,9 @@ def test_combat_prompt_explains_slippery_still_held_packet():
     assert '"grapple_blocked_still_held"' in prompt
     assert '"grappler_id" names the ' in prompt and "prior grappler who still holds the reactor" in prompt
     assert "never say the reactor escaped that holder" in prompt
+    # the holder can legitimately be absent (a sourceless grappled row the validator permits), so
+    # the prompt must not leave the DM hunting a key that is not there
+    assert 'no "grappler_id"' in prompt and "name nobody" in prompt
 
 
 def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():

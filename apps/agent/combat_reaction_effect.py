@@ -291,7 +291,16 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
             target = cast(CombatParticipant, _held_target(state, head))
             grappler_id = combat_grapple.grappler_id(target.conditions)
             if grappler_id is None:
-                raise ValueError(f"{target.id} is grappled without a source")
-            packet["grappler_id"] = grappler_id
+                # validate_condition_dict PERMITS a grappled row with no source ("absent fields are
+                # fine"), so this is a shape the read boundary accepts, not corruption — and raising
+                # here would escape pump() past its HeldActionUnresolvable catch (a ValueError
+                # SUBCLASS), roll the phase back, and re-raise on the persisted row every retry:
+                # a wedged combat where the label alone was wrong. The label already tells the truth
+                # (still held); only the holder's name is missing, so the DM says "something still
+                # has you". HeldActionUnresolvable is not importable here - combat_hold imports this
+                # module.
+                logger.error("reaction %s: %s is grappled with no source; holder unnamed", ability.id, target.id)
+            else:
+                packet["grappler_id"] = grappler_id
         packets.append(packet)
     return packets

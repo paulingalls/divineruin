@@ -78,6 +78,8 @@ The escape outcome names a break-free attempt; grapple_escaped means Slippery pr
 grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
 "grapple_blocked_still_held" means Slippery stopped the incoming grapple, but "grappler_id" names the \
 prior grappler who still holds the reactor; voice both halves and never say the reactor escaped that holder. \
+When that packet carries no "grappler_id" the hold is real but its holder is unrecorded — say something still \
+has them, and name nobody. \
 released_from_grapple names combatants freed when their grappler fell \
 or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
