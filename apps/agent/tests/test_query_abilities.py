@@ -8,9 +8,31 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import combat_ability
+import spells
 from combat_phase import advance_combat_phase
 from query_tools import _query_abilities_impl
 from session_data import CombatParticipant, CombatState, SessionData
+
+
+def _solo_player_state() -> CombatState:
+    """A one-player combat at the declaration beat — enough for the declare gate, which validates an
+    ABILITY action without reading targets. advance_combat_phase is pure, so one state serves the
+    whole walk."""
+    return CombatState(
+        combat_id="query-declarability",
+        participants=[
+            CombatParticipant(
+                id="test_player",
+                name="Test Player",
+                type="player",
+                initiative=10,
+                hp_current=10,
+                hp_max=10,
+                ac=10,
+            )
+        ],
+        initiative_order=["test_player"],
+    )
 
 
 @pytest.fixture
@@ -93,6 +115,7 @@ class TestQueryAbilities:
         catalog = load_fixture_config()
         assert catalog, "ability catalog walk produced no rows"
         emitted_ids = set()
+        state = _solo_player_state()
 
         archetype_ids = {ability.archetype_id for ability in catalog.values()}
         for archetype_id in sorted(archetype_ids):
@@ -110,21 +133,12 @@ class TestQueryAbilities:
                     emitted_ids.add(row["id"])
                     published_declarable = row["ability_type"] != "reaction" and row.get("combat") is not False
                     action = row.get("spell_id", row["id"])
-                    state = CombatState(
-                        combat_id="query-declarability",
-                        participants=[
-                            CombatParticipant(
-                                id="test_player",
-                                name="Test Player",
-                                type="player",
-                                initiative=10,
-                                hp_current=10,
-                                hp_max=10,
-                                ac=10,
-                            )
-                        ],
-                        initiative_order=["test_player"],
-                    )
+                    # The gate resolves an ACTION, and accepts every id it cannot resolve — so for a
+                    # spell-backed row (the prompt tells the DM to declare its spell_id) acceptance
+                    # alone certifies nothing: a row naming no real spell would pass here and blow up
+                    # at resolution instead. Pin the id on the spell catalog the cast path reads.
+                    if "spell_id" in row:
+                        spells.get_spell(row["spell_id"])
                     try:
                         advance_combat_phase(
                             state,
