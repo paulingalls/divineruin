@@ -49,6 +49,12 @@ def test_every_deferred_restriction_names_what_it_waits_on():
     _assert_wait_metadata()
 
 
+def test_only_positioning_may_wait_on_a_model():
+    model_waiting = {restriction for restriction, metadata in NOT_ENFORCED.items() if metadata["waits_on"] == "model"}
+
+    assert model_waiting == {"no_approach_source"}
+
+
 def test_a_new_catalog_restriction_fails_the_classification_floor(monkeypatch):
     stunned = conditions.CONDITION_CATALOG["stunned"]
     monkeypatch.setitem(
