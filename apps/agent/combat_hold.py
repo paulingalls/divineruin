@@ -27,6 +27,7 @@ import event_types as E
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
+from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from condition_restrictions import cannot_act
@@ -162,18 +163,21 @@ def _opens_windows(state, head: dict) -> bool:
 def _attack_action(state, head: dict) -> dict | None:
     """The action_pool entry this held action swings, or None when it is not a plain attack.
 
-    An enemy action carrying ``applies_condition`` (Hollow Shriek) resolves through the
-    save-gated condition path, not an attack roll, so it gets the PRE-ROLL window only — which is
-    exactly how bard_countercharm / diplomat_countercharm (on_ally_targeted) reach it. It still
-    names a target, so ``_opens_windows`` lets it pause; an untargeted declaration does not. A mark
-    action (any ``encounter_actions`` kind other than "attack") never rolls either.
+    A save-only condition action (Hollow Shriek) gets the PRE-ROLL window only, which is how the
+    countercharms reach it. A combined damaging condition action still rolls to hit and gets both
+    windows. A mark action (any ``encounter_actions`` kind other than "attack") never rolls.
     """
     declaration = _held_declaration(head)
-    if declaration.type is not DeclarationType.ATTACK:
+    if declaration.type not in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or action.get("applies_condition") or action_kind(action) != "attack":
+    if (
+        action is None
+        or is_save_damage_action(action)
+        or (action.get("applies_condition") and not is_combined_attack_action(action))
+        or action_kind(action) != "attack"
+    ):
         return None
     return action
 

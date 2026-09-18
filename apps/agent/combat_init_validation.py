@@ -4,44 +4,33 @@ import conditions
 from social_resolution import RESISTANCE_TAGS
 
 
-def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
-    """Fail loud if any enemy condition action is malformed — the load-boundary strict guard.
-
-    Encounter templates have no strict loader (unlike spells.json / archetype_abilities.json,
-    whose loaders fail-loud on applies_condition), so this closes that gap at combat start. For any
-    action that declares ``applies_condition`` it requires: (1) the condition is in CONDITION_CATALOG;
-    (2) ``save`` is a valid save key — full name OR 3-letter abbrev, matching what the resolver
-    accepts (check_resolution_save.is_valid_save_key, one SSOT so the load-gate and runtime agree);
-    (3) ``dc`` is an int; (4) ``damage`` is absent or "0" — M13 condition actions are save-based, and
-    the resolver does not apply damage, so a damage-bearing condition action would silently deal none
-    (debt 69132c5d) until the combined to-hit+save+damage model lands. Validating HERE turns a
-    would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
+def _validate_enemy_action_shapes(enemies: list[dict]) -> None:
+    """Fail loud when an enemy condition or save-damage action cannot resolve."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
             combat_grapple.validate_grapple_action(action, label)
             cond = action.get("applies_condition")
-            if cond is None:
-                continue
-            conditions.assert_known_condition(cond, label)
-            if not check_resolution_save.is_valid_save_key(action.get("save")):
+            half_on_success = action.get("half_on_success") is True
+            if cond is not None:
+                conditions.assert_known_condition(cond, label)
+            if (cond is not None or half_on_success) and not check_resolution_save.is_valid_save_key(
+                action.get("save")
+            ):
                 raise ValueError(
-                    f"{label} applies_condition needs a valid 'save' attribute, got {action.get('save')!r}"
+                    f"{label} condition/save damage needs a valid 'save' attribute, got {action.get('save')!r}"
                 )
-            if not isinstance(action.get("dc"), int):
-                raise ValueError(f"{label} applies_condition needs an int 'dc', got {action.get('dc')!r}")
-            if action.get("damage") not in (None, "", "0", 0):
-                raise ValueError(
-                    f"{label} condition action must be save-based (damage absent or '0') until the "
-                    f"combined damage+condition model lands (debt 69132c5d), got damage {action.get('damage')!r}"
-                )
+            if (cond is not None or half_on_success) and type(action.get("dc")) is not int:
+                raise ValueError(f"{label} condition/save damage needs an int 'dc', got {action.get('dc')!r}")
+            if half_on_success and action.get("damage") in (None, "", "0", 0):
+                raise ValueError(f"{label} half_on_success needs non-zero 'damage'")
 
 
 def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
     """Fail loud if any enemy's Tier-3 ``resistance_tags`` are malformed — the load-boundary guard.
 
     Encounter templates have no strict loader, so this closes the gap for the M15 de-escalation
-    resistance profile the same way ``_validate_enemy_action_conditions`` does for condition actions
+    resistance profile the same way ``_validate_enemy_action_shapes`` does for condition actions
     (and mirroring npcs.py's default_disposition/resistance_tags guard). ``resistance_tags`` is
     optional (an enemy without it simply can't be de-escalated); when present it must be a list of
     canonical ``social_resolution.RESISTANCE_TAGS`` — an unknown tag would silently no-op the

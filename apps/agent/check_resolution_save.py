@@ -15,7 +15,7 @@ from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
 # The six attribute save names (full form) — the SSOT for save-name validation across the resolver
-# (resolve_saving_throw) and the content load-guard (combat_init._validate_enemy_action_conditions),
+# (resolve_saving_throw) and the content load-guard (combat_init._validate_enemy_action_shapes),
 # so the two can't disagree on the valid format.
 VALID_SAVE_NAMES = frozenset(_ATTR_FULL.values())
 
@@ -80,7 +80,7 @@ def resolve_saving_throw(
     # Encounter-role overlay (M4.7, story-001): a role-boosted SOURCE (e.g. a Boss ability) makes
     # its target's save harder via dc_mod (Boss +2, Elite +1, Minion -1). Defaults to identity. The
     # effective DC is reported on the packet so narration/UI see the real threshold. The live caller
-    # is the M13 enemy-condition resolver (combat_ability._resolve_enemy_condition_packet), which
+    # is the M13 enemy-condition resolver (combat_enemy_action._resolve_enemy_condition_packet), which
     # threads dc_mod=attacker.dc_mod so an enemy's role scaling reaches the target's save DC.
     dc = dc + dc_mod
 
@@ -172,7 +172,7 @@ def roll_participant_save(
     ("wisdom"). Duck-typed on the participant (no session_data import) to keep this module IO/type-free.
 
     The single SSOT for a CombatParticipant save: the Beat-4 tick-clear (combat_packet) and the
-    enemy condition-infliction resolver (combat_ability) both call it so their save math can't
+    enemy condition-infliction resolver (combat_enemy_action) both call it so their save math can't
     diverge. ``bonus_dice_eligible`` defaults False (the engine-adjacent callers do not spend the
     target's single-use +1d4). ``include_proficiency`` gates the save-proficiency bonus: the
     enemy-inflicted save (an active save the target makes) honors it (default True), while the

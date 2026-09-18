@@ -30,7 +30,6 @@ from combat_ability import (
     _gate_ability_condition,
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
-    _resolve_enemy_condition_packet,
     condition_ability,
 )
 from combat_ability_gate import declared_ability
@@ -38,6 +37,13 @@ from combat_deescalation import (
     _gate_deescalation,
     _resolve_deescalation_packet,
     _validate_argument_type,
+)
+from combat_enemy_action import (
+    _resolve_enemy_condition_packet,
+    is_combined_attack_action,
+    is_save_damage_action,
+    resolve_combined_attack_action,
+    resolve_save_damage_action,
 )
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
@@ -245,9 +251,57 @@ async def _resolve_one_packet(
         else None
     )
 
-    # Enemy condition-infliction (M13): a HOSTILE actor (is_ally False — enemy or temporary_hollowed,
-    # never a player/companion ally) whose action_pool entry carries applies_condition inflicts a
-    # save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
+    if not attacker.is_ally and action is not None and is_save_damage_action(action):
+        return await resolve_save_damage_action(
+            session,
+            attacker,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+
+    if not attacker.is_ally and action is not None and is_combined_attack_action(action):
+        target = state.get_participant(decl.target_id) if decl.target_id else None
+        if target is None:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
+        if target.is_fallen:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+        summary = await resolve_combined_attack_action(
+            session,
+            attacker,
+            target,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+            shield_reaction=shield_reaction,
+            enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
+            is_first_attack_of_combat=not state.first_attack_resolved,
+            reaction_save_advantage=reaction_save_advantage,
+            publish_roll=publish_roll,
+        )
+        if summary.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, summary["consumed_conditions"])
+        state.first_attack_resolved = True
+        summary["actor_id"] = packet.actor_id
+        summary["resolved"] = True
+        return _attach_riders(summary, attacker, decl)
+
+    # Remaining save-only enemy condition actions (M13): a HOSTILE actor (is_ally False — enemy or
+    # temporary_hollowed, never a player/companion ally) whose action_pool entry carries
+    # applies_condition inflicts a save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
     # enemy pool actions as ATTACK (system_prompts.py:235 — "Ability" is a spell/ability id the
     # caster knows, which pool actions are not), so gating this on ABILITY alone made the whole
     # feature a no-op in real play. Deterministic mechanics: the engine, not the LLM's type choice,

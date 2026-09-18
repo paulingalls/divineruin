@@ -74,6 +74,8 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
+When a damage packet carries save_success, the save has already resolved: damage_halved means \
+the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \
 The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
 grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
 "grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \

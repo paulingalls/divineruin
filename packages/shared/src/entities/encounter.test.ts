@@ -3,8 +3,13 @@ import {
   ENCOUNTER_ACTION_KIND_VALUES,
   ENCOUNTER_ROLE_VALUES,
   encounterActionKind,
+  validateEncounterActionShape,
   type Encounter,
 } from "./encounter";
+
+const actionShapes = (await Bun.file(
+  new URL("../../fixtures/enemy_action_shapes.json", import.meta.url),
+).json()) as Record<string, Record<string, unknown>>;
 
 // Conformance test for content/encounter_templates.json (Phase 4 M4.7 / story-001). The JSON row
 // IS the cross-language contract apps/agent/combat_init.py parses to build CombatParticipants; this
@@ -80,6 +85,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
   test("every action's kind is a known value", () => {
     for (const { action } of actions) {
       expect([...ENCOUNTER_ACTION_KIND_VALUES]).toContain(encounterActionKind(action));
+      expect(() => validateEncounterActionShape(action)).not.toThrow();
     }
   });
 
@@ -129,5 +135,20 @@ describe("encounter_templates.json — enemy action kinds", () => {
       .filter(({ action }) => encounterActionKind(action) === "accusation")
       .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
     expect(carriers).toEqual(["ashmark_patrol/ashmark_sergeant/Accusation"]);
+  });
+});
+
+describe("enemy action resolution shapes", () => {
+  test.each(["valid_combined_bite", "valid_half_on_success", "corruption_wave"])(
+    "%s is accepted",
+    (fixtureName) => {
+      expect(() => validateEncounterActionShape(actionShapes[fixtureName]!)).not.toThrow();
+    },
+  );
+
+  test("half_on_success without save is refused", () => {
+    expect(() => validateEncounterActionShape(actionShapes.invalid_half_without_save!)).toThrow(
+      "save",
+    );
   });
 });
