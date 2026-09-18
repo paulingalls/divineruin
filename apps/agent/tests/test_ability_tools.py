@@ -11,6 +11,7 @@ free activation — its scaling rule is surfaced as variable_cost for the DM.
 
 import copy
 import json
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,10 +19,11 @@ from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import abilities
 import reaction_spend
 import reaction_windows
 from ability_tools import _request_ability_activation_impl
-from combat_phase import PhaseBeat
+from combat_phase import PhaseBeat, advance_combat_phase
 
 
 def _player(stamina: int = 10, focus: int = 10, class_: str = "paladin") -> dict:
@@ -127,6 +129,76 @@ class TestVariableCost:
 
 
 class TestActivation:
+    @pytest.mark.parametrize(
+        ("ability_id", "declaration_id"),
+        [
+            ("bard_inspire", "bard_inspire"),
+            ("cleric_heal_wounds", "divine_heal_wounds"),
+            ("warrior_unstoppable_charge", "warrior_unstoppable_charge"),
+        ],
+    )
+    async def test_non_reaction_in_combat_refuses_before_any_write(self, ability_id, declaration_id):
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+        row = _player(class_=ability_id.split("_")[0])
+        mock_db, _conn = make_db_mod()
+        transaction = mock_db.transaction
+        mock_db.transaction = MagicMock(side_effect=transaction)
+        queries = MagicMock()
+        queries.get_players_for_update = AsyncMock(return_value={"player_1": row})
+        persistence = MagicMock(update_player_resources=AsyncMock())
+        persistence.get_active_variant = AsyncMock(return_value=None)
+        persistence.owns_elective = AsyncMock(return_value=True)
+        condition_mutations = MagicMock(save_many_player_conditions=AsyncMock())
+
+        with pytest.raises(ToolError, match=rf"declare {declaration_id} in the combat phase"):
+            await _request_ability_activation_impl(
+                ctx,
+                ability_id,
+                db_mod=mock_db,
+                queries_mod=queries,
+                persistence_mod=persistence,
+                conditions_mutations_mod=condition_mutations,
+            )
+
+        assert row["stamina"] == {"current": 10, "max": 10}
+        assert row["focus"] == {"current": 10, "max": 10}
+        mock_db.transaction.assert_not_called()
+        persistence.update_player_resources.assert_not_awaited()
+        condition_mutations.save_many_player_conditions.assert_not_awaited()
+
+    async def test_spell_backed_cantrip_refusal_names_its_spell_id(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        with pytest.raises(ToolError, match="declare arcane_bolt in the combat phase"):
+            await _call("mage_arcane_bolt", context=ctx)
+
+    async def test_every_in_combat_refusal_that_names_declare_phase_is_one_declare_phase_takes(self):
+        """The two story-055 gates are ONE contract: whenever activate refuses with "declare X in the
+        combat phase", advance_combat_phase must ACCEPT X — otherwise the DM bounces between two
+        refusals and the player's turn is spent on nothing.
+
+        Walks the whole loaded ability catalog (the seed_abilities fixture's
+        content/archetype_abilities.json), so a new row that neither gate agrees on reds here.
+        """
+        catalog = [ability for ability in abilities._abilities.values() if ability.ability_type != "reaction"]
+        assert len(catalog) >= 100, f"catalog walk went thin ({len(catalog)}) — abilities did not load"
+
+        for ability in catalog:
+            ctx = make_context()
+            ctx.userdata.combat_state = _make_combat_state()
+            with pytest.raises(ToolError) as refusal:
+                await _request_ability_activation_impl(ctx, ability.id)
+            message = str(refusal.value)
+            match = re.search(r"declare (\S+) in the combat phase", message)
+            if match is None:
+                continue
+            state = _make_combat_state()
+            state.beat = PhaseBeat.DECLARATION
+            declaration = {"player_1": {"type": "ability", "action": match.group(1), "target_id": "goblin_scout_1"}}
+            advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree
+
     async def test_stamina_core_ability_deducts_and_returns_cue(self):
         # warrior_devastating_strike: stamina 3, focus 0.
         result, persistence = await _call("warrior_devastating_strike", stamina=10)
