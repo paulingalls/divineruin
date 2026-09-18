@@ -48,13 +48,13 @@ the cap requires retiring one. Reviewers enforce these — cite the item.
    NOT PER PROJECT: ADR 0004's strict ceilings are the gameplay agents' toolsets,
    and narration's one tool was accepted strict the day we finally asked
    (sprint-050).
-10. **A claim about code is a code claim — open the file.** Four times in
-   sprint-048 the lead asserted what code does from a DESCRIPTION and was wrong:
-   `reactions_available`'s polarity stated backwards from its name, and "no
-   distinctness guard exists" after stopping at line 138 of a 171-line test file.
-   Every one was caught by a reviewer or a refresh, none by the author. An AC that
-   names a field's VALUES — polarity, sentinel, shape — or an ABSENCE ("nothing
-   checks X") is the code claim this rule is about.
+10. **A claim about code is a code claim — RUN it, don't read it.** Sprint-048:
+   four lead assertions from a DESCRIPTION were wrong, one stating
+   `reactions_available`'s polarity backwards from its name. Sprint-053: five CARD
+   claims were, including a `Verify:` naming a test file that does not exist —
+   pytest exits 4 and nothing reds. Caught by a refresh or reviewer, never the
+   author. BEFORE MINTING run the Verify, grep every `file:NNN`, re-run every
+   measurement. An AC naming VALUES or an ABSENCE is this rule.
 11. **A failure that RECURS is a defect, not variance.** Fix what produces it,
    never the guard that caught it. The training midpoint judge red in sprints 48,
    49 and 50 — about 40% of pushes — each run shrugged off alone; the cause was
