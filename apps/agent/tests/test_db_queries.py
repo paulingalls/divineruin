@@ -171,6 +171,17 @@ class TestSkillAdvancementReads:
         assert result["tier"] == "master"
         assert result["use_counter"] == 32
 
+    async def test_column_default_tier_yields_to_requested_proficiency_fallback(self):
+        conn = _pool_with_fetchrow({"tier": "untrained", "use_counter": 0, "narrative_moment_ready": True})
+
+        result = await db_queries.get_single_skill_advancement("p1", "athletics", conn=conn, default_tier="trained")
+
+        assert result == {
+            "tier": "trained",
+            "use_counter": 0,
+            "narrative_moment_ready": True,
+        }
+
     async def test_public_player_read_replaces_stale_json_with_table_rows(self):
         conn = AsyncMock()
         conn.fetchrow.return_value = {"data": json.dumps({"player_id": "p1", "skill_tiers": {"stealth": "master"}})}

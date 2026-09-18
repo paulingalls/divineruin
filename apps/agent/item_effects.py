@@ -38,6 +38,32 @@ BLOCKABLE_CONDITIONS = frozenset(
     }
 )
 _ADVANTAGE_VS = frozenset({"prone", "push"})
+EFFECT_KEYS = frozenset(
+    {
+        "advantage_vs",
+        "amount",
+        "bonus",
+        "bonus_condition",
+        "bonus_damage",
+        "bonus_damage_type",
+        "condition_immunities",
+        "damage",
+        "damage_type",
+        "description",
+        "duration_minutes",
+        "properties",
+        "quantity",
+        "range",
+        "save",
+        "save_advantages",
+        "skill",
+        "target",
+        "trigger",
+        "type",
+        "value",
+        "versatile_damage",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -87,6 +113,8 @@ def combat_traits(inventory: list[dict]) -> CombatItemTraits:
             context = f"inventory item {name!r}.effects[{effect_index}]"
             if not isinstance(effect, dict):
                 raise ValueError(f"{context} must be an object")
+            if unknown := set(effect) - EFFECT_KEYS:
+                raise ValueError(f"{context} has unknown key {sorted(unknown)[0]!r}")
             for field_name, valid_tokens in allowed.items():
                 for token in _tokens(effect, field_name, valid_tokens, context):
                     collected[field_name].setdefault(token, set()).add(name)

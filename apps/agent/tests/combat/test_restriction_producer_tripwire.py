@@ -87,6 +87,10 @@ def _python_producers(paths: Iterable[Path]) -> list[str]:
 
 
 def _produced_conditions(content_paths: Iterable[Path], source_paths: Iterable[Path]) -> set[str]:
+    content_paths = tuple(content_paths)
+    source_paths = tuple(source_paths)
+    assert content_paths, "condition producer content walk inspected no files"
+    assert source_paths, "condition producer source walk inspected no files"
     return set(_content_producers(content_paths)) | set(_python_producers(source_paths))
 
 
@@ -130,3 +134,9 @@ _land_condition_on_one(state, target, attacker, cond_type="charmed", source=sour
     assert _python_producers((scratch,)) == ["charmed"] * 4
     with pytest.raises(AssertionError, match="no_hostile_source"):
         _assert_no_deferred_carrier_is_produced(_produced_conditions(CONTENT_PATHS, (*SOURCE_PATHS, scratch)))
+
+
+@pytest.mark.parametrize(("content_paths", "source_paths"), [((Path("content.json"),), ()), ((), (Path("source.py"),))])
+def test_empty_walk_input_reds(content_paths, source_paths):
+    with pytest.raises(AssertionError, match="inspected no files"):
+        _produced_conditions(content_paths, source_paths)

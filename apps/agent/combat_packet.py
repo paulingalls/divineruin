@@ -164,6 +164,8 @@ async def _prevalidate_ability_focus(
                 )
                 known_spell_ids_by_player[actor_id] = known_spell_ids
             spell = cast_resolver._gate_spell(player, action, known_spell_ids)
+            if spell.applies_condition is not None:
+                combat_ability_save.gate_hostile_condition_targets(state, decl, spell.applies_condition, spell.name)
             # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell
             # declaration HERE, before the resolution loop writes anything — reusing the targeting
             # SSOT. Spell-aware, so it belongs with the Focus gate, not in pure resolve_declaration.

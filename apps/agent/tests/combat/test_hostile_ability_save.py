@@ -1,5 +1,6 @@
 import json
 from contextlib import ExitStack
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -7,9 +8,12 @@ from combat._helpers import _damage_resolver, _fake_db_mod
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
+import combat_ability_save
+import combat_packet
 import combat_turn
 import conditions
 from check_resolution_save import SavingThrowResult
+from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant, CombatState
 
 
@@ -181,3 +185,37 @@ async def test_invalid_target_refuses_before_any_packet_write(target_id, extra):
     recovered = deps["mutations"].save_combat_state.await_args.args[1]
     assert recovered["beat"] == "declaration"
     assert recovered["pending_declarations"] == {}
+
+
+def test_hostile_no_save_ability_still_refuses_an_ally_target():
+    ally = _participant("ally", "Scout", "companion", 20)
+    state = _state("ally", extra=[ally])
+    decl = MagicMock(target_id="ally", target_ids=None)
+    ability = MagicMock(name="Beguiling Call", applies_condition="charmed", save=None)
+
+    with pytest.raises(ToolError, match="standing foe"):
+        combat_ability_save.gate_hostile_target(state, decl, ability)
+
+
+@pytest.mark.asyncio
+async def test_hostile_condition_spell_refuses_an_ally_before_resolution():
+    ally = _participant("ally", "Scout", "companion", 20)
+    state = _state("ally", extra=[ally])
+    decl = Declaration(type=DeclarationType.ABILITY, action="scratch_spell", target_id="ally")
+    adv = SimpleNamespace(packets=[SimpleNamespace(declaration=decl, actor_id="player_1")])
+    queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "player_1", "class": "warrior", "level": 8}))
+    cast_resolver = MagicMock(
+        _gate_spell=MagicMock(return_value=SimpleNamespace(name="Beguiling Call", applies_condition="charmed"))
+    )
+    library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "scratch_spell"}]))
+
+    with pytest.raises(ToolError, match="standing foe"):
+        await combat_packet._prevalidate_ability_focus(
+            make_context().userdata,
+            state,
+            adv,
+            conn=object(),
+            queries=queries,
+            cast_resolver=cast_resolver,
+            character_spells_mod=library,
+        )

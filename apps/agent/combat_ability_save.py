@@ -14,12 +14,22 @@ if TYPE_CHECKING:
     from session_data import CombatParticipant, CombatState
 
 
-def gate_hostile_target(state: "CombatState", decl: "Declaration", ability: "Ability") -> None:
-    if ability.save is None:
+BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired"})
+
+
+def gate_hostile_condition_targets(state: "CombatState", decl: "Declaration", condition: str, action_name: str) -> None:
+    if condition in BENEFICIAL_CONDITIONS:
         return
-    target = state.get_participant(decl.target_id) if decl.target_id is not None else None
-    if target is None or target.is_ally or target.is_fallen:
-        raise ToolError(f"{ability.name} requires a standing foe.")
+    target_ids = decl.target_ids or [decl.target_id]
+    for target_id in target_ids:
+        target = state.get_participant(target_id) if target_id is not None else None
+        if target is None or target.is_ally or target.is_fallen:
+            raise ToolError(f"{action_name} requires a standing foe.")
+
+
+def gate_hostile_target(state: "CombatState", decl: "Declaration", ability: "Ability") -> None:
+    assert ability.applies_condition is not None
+    gate_hostile_condition_targets(state, decl, ability.applies_condition, ability.name)
 
 
 def resolve_hostile_condition(

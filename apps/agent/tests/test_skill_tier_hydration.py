@@ -11,6 +11,7 @@ import conditions
 import db_mutations_skill_advancement
 import db_queries
 import rules_engine
+import skill_persistence
 from check_tools import _check_skill_impl, _mark_skill_breakthrough_impl
 from combat_init import _start_combat_impl
 from tests.combat.test_shield_bash_prone import _ashmark_patrol
@@ -212,6 +213,17 @@ async def test_tierless_breakthrough_row_does_not_shadow_proficiency(dev_db_pool
         player = await db_queries.get_player(player_id, conn=pool)
         assert player is not None
         assert rules_engine._get_skill_tier(player, "athletics") == "trained"
+        await skill_persistence.apply_skill_use_with_persistence(
+            player_id,
+            "athletics",
+            initial_tier=rules_engine._get_skill_tier(player, "athletics"),
+            conn=pool,
+        )
+        row = await pool.fetchrow(
+            "SELECT tier, use_counter FROM skill_advancement WHERE player_id = $1 AND skill_id = 'athletics'",
+            player_id,
+        )
+        assert dict(row) == {"tier": "trained", "use_counter": 1}
     finally:
         await _cleanup(pool, player_id)
 

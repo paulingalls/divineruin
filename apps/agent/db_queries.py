@@ -264,7 +264,11 @@ async def get_single_skill_advancement(
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     default_tier: str = "untrained",
 ) -> dict:
-    """Fetch advancement data for a single skill. Returns {tier, use_counter, narrative_moment_ready} or defaults."""
+    """Fetch one skill's advancement counters with the effective starting tier.
+
+    The column default ``untrained`` also represents a tier-less narrative-moment row. In that
+    case the caller's proficiency-derived default remains authoritative, matching player hydration.
+    """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         "SELECT tier, use_counter, narrative_moment_ready FROM skill_advancement WHERE player_id = $1 AND skill_id = $2",
@@ -274,7 +278,7 @@ async def get_single_skill_advancement(
     if row is None:
         return {"tier": default_tier, "use_counter": 0, "narrative_moment_ready": False}
     return {
-        "tier": row["tier"],
+        "tier": default_tier if row["tier"] == "untrained" else row["tier"],
         "use_counter": row["use_counter"],
         "narrative_moment_ready": row["narrative_moment_ready"],
     }

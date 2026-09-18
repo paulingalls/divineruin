@@ -126,6 +126,22 @@ async def test_seizing_grab_hit_lands_sourced_grapple_and_surfaces_it_to_dm():
 
 
 @pytest.mark.asyncio
+async def test_seizing_grab_blocked_by_item_names_the_immunity_source():
+    state = _grapple_round_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.condition_immunities = {"grappled": "Anchor Ring"}
+    ctx = _ctx_at_resolution(state=state)
+
+    result = await _resolve_round(ctx, **_resolve_deps(damage=2))
+
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    assert packet["condition_immune"] == "grappled"
+    assert packet["condition_immunity_source"] == "Anchor Ring"
+    assert not conditions.has_condition(player.conditions, "grappled")
+
+
+@pytest.mark.asyncio
 async def test_a_later_seizing_grab_keeps_the_prior_source_and_reports_grapple_held():
     state = _grapple_round_state()
     enemy = state.get_participant("mawling_1")

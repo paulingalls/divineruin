@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sample_fixtures import make_context
 
+import item_effects
 from check_resolution_save import VALID_SAVE_NAMES
 from conditions import CONDITION_CATALOG
 from item_effects import _ADVANTAGE_VS, BLOCKABLE_CONDITIONS, CombatItemTraits, combat_traits
@@ -124,6 +125,12 @@ def test_python_fold_rejects_malformed_structured_effects_with_context(effect, m
         combat_traits([{"name": "Bad Charm", "effects": [{"type": "utility", **effect}]}])
 
 
+@pytest.mark.parametrize("key", ["condition_immunity", "save_advantage", "conditionImmunities"])
+def test_python_fold_rejects_unknown_effect_keys(key):
+    with pytest.raises(ValueError, match=rf"Bad Charm.*unknown key.*{key}"):
+        combat_traits([{"name": "Bad Charm", "effects": [{"type": "weapon", key: ["charmed"]}]}])
+
+
 @pytest.mark.parametrize("token", ["blessed", "temporary_hollowed"])
 def test_python_fold_rejects_non_blockable_condition_immunities(token):
     with pytest.raises(ValueError, match=rf"Bad Charm.*condition_immunities.*{token}"):
@@ -179,7 +186,9 @@ async def test_description_only_effects_reach_dm_verbatim():
 # apps/server/src/items.ts, because no code crosses the language split. Without this guard a
 # token dropped on one side only stays silent at the TS load boundary and surfaces as a mid-fight
 # ToolError at combat init — the worst possible moment to learn about it.
-_TS_SET_RE = re.compile(r"const (BLOCKABLE_CONDITIONS|SAVE_NAMES|ADVANTAGE_VS) = new Set\(\[(.*?)\]\)", re.DOTALL)
+_TS_SET_RE = re.compile(
+    r"const (BLOCKABLE_CONDITIONS|SAVE_NAMES|ADVANTAGE_VS|EFFECT_KEYS) = new Set\(\[(.*?)\]\)", re.DOTALL
+)
 _TS_TOKEN_RE = re.compile(r'"([a-z_]+)"')
 
 
@@ -188,7 +197,7 @@ def _ts_token_sets() -> dict[str, frozenset[str]]:
         name: frozenset(_TS_TOKEN_RE.findall(body)) for name, body in _TS_SET_RE.findall(ITEMS_TS_PATH.read_text())
     }
     # Fail loud on a parse miss rather than passing vacuously against an empty dict.
-    assert set(found) == {"BLOCKABLE_CONDITIONS", "SAVE_NAMES", "ADVANTAGE_VS"}, (
+    assert set(found) == {"BLOCKABLE_CONDITIONS", "SAVE_NAMES", "ADVANTAGE_VS", "EFFECT_KEYS"}, (
         f"parser drift in {ITEMS_TS_PATH}: {found}"
     )
     assert all(found.values()), f"extracted an empty token set from {ITEMS_TS_PATH}: {found}"
@@ -200,3 +209,4 @@ def test_structured_effect_token_sets_match_across_languages():
     assert ts["BLOCKABLE_CONDITIONS"] == BLOCKABLE_CONDITIONS
     assert ts["SAVE_NAMES"] == frozenset(VALID_SAVE_NAMES)
     assert ts["ADVANTAGE_VS"] == frozenset(_ADVANTAGE_VS)
+    assert ts["EFFECT_KEYS"] == item_effects.EFFECT_KEYS

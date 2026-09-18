@@ -50,6 +50,30 @@ const SAVE_NAMES = new Set([
   "charisma",
 ]);
 const ADVANTAGE_VS = new Set(["prone", "push"]);
+const EFFECT_KEYS = new Set([
+  "advantage_vs",
+  "amount",
+  "bonus",
+  "bonus_condition",
+  "bonus_damage",
+  "bonus_damage_type",
+  "condition_immunities",
+  "damage",
+  "damage_type",
+  "description",
+  "duration_minutes",
+  "properties",
+  "quantity",
+  "range",
+  "save",
+  "save_advantages",
+  "skill",
+  "target",
+  "trigger",
+  "type",
+  "value",
+  "versatile_damage",
+]);
 // Item types that degrade in combat/use — must carry durability_tier (spec
 // §Durability). Weapons additionally need damage_dice, armor/shield need ac.
 const EQUIPPABLE_TYPES = new Set(["weapon", "armor", "shield", "tool"]);
@@ -71,6 +95,9 @@ export function setItems(map: ReadonlyMap<string, Item>): void {
 
 function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   const e = asRecord(raw, ctx);
+  const unknownKey = Object.keys(e).find((key) => !EFFECT_KEYS.has(key));
+  if (unknownKey !== undefined)
+    throw new Error(`${ctx} has unknown key ${JSON.stringify(unknownKey)}`);
   if (typeof e.type !== "string") throw new Error(`${ctx}.type is not a string`);
   if (e.target !== undefined && typeof e.target !== "string") {
     throw new Error(`${ctx}.target is not a string`);

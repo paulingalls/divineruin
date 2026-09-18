@@ -207,6 +207,9 @@ async def _resolve_attack_packet(
             combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
         ):
             summary["condition_inflicted"] = "grappled"
+        else:
+            summary["condition_immune"] = "grappled"
+            summary["condition_immunity_source"] = target.condition_immunities["grappled"]
     return summary
 
 
