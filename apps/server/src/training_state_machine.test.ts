@@ -4,6 +4,8 @@ import {
   getActivityTypeConfig,
   getMidpointDecision,
   setTrainingActivityTypes,
+  parseActivityTypeRow,
+  parseActivityTypeRows,
   type ActivityTypeConfig,
 } from "./training_state_machine.ts";
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
@@ -77,6 +79,31 @@ describe("startTrainingCycle", () => {
 });
 
 describe("training config seam", () => {
+  test("rejects an unknown spell tier by authored row id", async () => {
+    const rows = (await Bun.file(
+      new URL("../../../content/training_activity_types.json", import.meta.url),
+    ).json()) as Record<string, unknown>[];
+    const standard = rows.find((row) => row.id === "spell_standard")!;
+    expect(() => parseActivityTypeRow("spell_legendary", standard)).toThrow(
+      /spell_legendary.*legendary/,
+    );
+  });
+
+  test("the real authored catalog is non-empty and every row parses", async () => {
+    const rows = (await Bun.file(
+      new URL("../../../content/training_activity_types.json", import.meta.url),
+    ).json()) as Record<string, unknown>[];
+    const parsed = parseActivityTypeRows(
+      rows.map(({ id, ...data }) => ({ id: id as string, data })),
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    expect(parsed.size).toBe(rows.length);
+  });
+
+  test("an empty authored catalog fails loud", () => {
+    expect(() => parseActivityTypeRows([])).toThrow(/produced no rows/);
+  });
+
   test("setTrainingActivityTypes populates the runtime map", () => {
     const fixture: ActivityTypeConfig = {
       id: "technique_base",

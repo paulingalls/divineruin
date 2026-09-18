@@ -10,13 +10,10 @@
  */
 
 import { sql } from "./db.ts";
+import { isSpellTier, type SpellTier } from "@divineruin/shared";
 
 export type TrainingActivityType =
-  | "spell_cantrip"
-  | "spell_minor"
-  | "spell_standard"
-  | "spell_major"
-  | "spell_supreme"
+  | `spell_${SpellTier}`
   | "recipe_study"
   | "technique_base"
   | "technique_mentor"
@@ -76,7 +73,15 @@ function requireString(obj: Record<string, unknown>, key: string, context: strin
 }
 
 /** Parse a raw JSONB row from training_activity_types.data into the typed config. */
-function parseActivityTypeRow(id: string, raw: unknown): ActivityTypeConfig {
+export function parseActivityTypeRow(id: string, raw: unknown): ActivityTypeConfig {
+  if (id.startsWith("spell_")) {
+    const tier = id.slice("spell_".length);
+    if (!isSpellTier(tier)) {
+      throw new Error(
+        `training_activity_types[${id}] has unknown spell tier ${JSON.stringify(tier)}`,
+      );
+    }
+  }
   if (!raw || typeof raw !== "object") {
     throw new Error(`training_activity_types[${id}].data is not an object`);
   }
@@ -111,14 +116,23 @@ function parseActivityTypeRow(id: string, raw: unknown): ActivityTypeConfig {
   };
 }
 
+export function parseActivityTypeRows(
+  rows: readonly { id: string; data: unknown }[],
+): ReadonlyMap<string, ActivityTypeConfig> {
+  if (rows.length === 0) throw new Error("training_activity_types produced no rows");
+  const map = new Map<string, ActivityTypeConfig>();
+  for (const row of rows) {
+    if (map.has(row.id)) throw new Error(`duplicate training_activity_types row ${row.id}`);
+    map.set(row.id, parseActivityTypeRow(row.id, row.data));
+  }
+  return map;
+}
+
 export async function loadTrainingActivityTypes(): Promise<void> {
   const rows = await sql<{ id: string; data: unknown }[]>`
     SELECT id, data FROM training_activity_types
   `;
-  const map = new Map<string, ActivityTypeConfig>();
-  for (const row of rows) {
-    map.set(row.id, parseActivityTypeRow(row.id, row.data));
-  }
+  const map = parseActivityTypeRows(rows);
   activityTypes = map;
   console.log(`Loaded ${map.size} training activity types`);
 }
