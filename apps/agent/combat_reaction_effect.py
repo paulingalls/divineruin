@@ -1,13 +1,4 @@
-"""What a spent reaction DOES to the held blow it answered (M29, story-018).
-
-story-017 made a reaction an interrupt and recorded WHICH ability answered WHICH held action
-(``reaction_spend``). It changed nothing else: the player paid the round's one reaction and the
-blow landed unaltered — note 0f3945fa(f). game_mechanics_combat.md:187 names the outcomes that
-were missing ("Uncanny Dodge halves damage, Shield of Faith causes a miss"); this module is them.
-
-Its hook is ``close``, called by ``combat_hold.pump`` at the moment it discards the window the DM
-just came back from; ``combat_hold`` reads the rest as the held action resolves. Everything it
-needs it derives from the spend record and the held entry — it adds no state of its own.
+"""What a spent reaction does to the held blow it answered.
 
 Counterspell, the third outcome the spec names, is NOT here and is not faked: its window is
 ``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
@@ -19,13 +10,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from typing import cast
 
 import abilities
+import combat_grapple
 import combat_reaction_contest
+import conditions
 import reaction_spend
 import reaction_windows
 from combat_support import deserialize_roll, serialize_roll
 from declarations import resolve_declaration
+from session_data import CombatParticipant
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -242,6 +237,8 @@ def _apply(
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
     if ability_id in ESCAPES_GRAPPLE and target is not None and spend["actor_id"] == target.id:
+        if conditions.has_condition(target.conditions, "grappled"):
+            return "grapple_blocked_still_held"
         return "grapple_escaped"
     return None
 
@@ -290,5 +287,11 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
         if contest is not None:
             packet["reactor_total"] = contest["reactor_total"]
             packet["opposer_total"] = contest["opposer_total"]
+        if effect == "grapple_blocked_still_held":
+            target = cast(CombatParticipant, _held_target(state, head))
+            grappler_id = combat_grapple.grappler_id(target.conditions)
+            if grappler_id is None:
+                raise ValueError(f"{target.id} is grappled without a source")
+            packet["grappler_id"] = grappler_id
         packets.append(packet)
     return packets

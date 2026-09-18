@@ -7,6 +7,7 @@ from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _pause_at, _reaction_packet
 
+import combat_prompts
 import combat_reaction_effect
 import conditions
 import reaction_spend
@@ -26,12 +27,12 @@ def _grab() -> dict:
     )
 
 
-def _state():
+def _state(enemy_id="mawling_1"):
     state = _ctx_at_resolution(player_hp=25, enemy_hp=18).userdata.combat_state
     enemy = state.get_participant("goblin_scout_1")
     player = state.get_participant("player_1")
     assert enemy is not None and player is not None
-    enemy.id = "mawling_1"
+    enemy.id = enemy_id
     enemy.name = "Mawling"
     enemy.action_pool = [_grab()]
     state.initiative_order = ["player_1", enemy.id]
@@ -91,6 +92,61 @@ async def test_slippery_blocks_a_second_grab_without_removing_the_existing_one()
     player = ctx.userdata.combat_state.get_participant("player_1")
     assert (
         next(condition for condition in player.conditions if condition["type"] == "grappled")["source"] == "mawling_0"
+    )
+
+
+@pytest.mark.asyncio
+async def test_slippery_reports_surviving_grappler_when_second_grab_is_blocked():
+    state = _state(enemy_id="mawling_2")
+    state.participants.append(
+        CombatParticipant(
+            id="mawling_1", name="Mawling One", type="enemy", initiative=8, hp_current=18, hp_max=18, ac=12
+        )
+    )
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.conditions = conditions.apply_condition([], "grappled", source="mawling_1")
+    ctx = _ctx_at_resolution(state=state)
+    deps = _resolve_deps(damage=2)
+    packets: list[dict] = []
+
+    await _pause_at(ctx, deps, actor_id="mawling_2", stage=reaction_windows.POST_ROLL, packets=packets)
+    await _activate(ctx, "rogue_slippery", player_class="rogue")
+    await _drain(ctx, deps, packets)
+
+    player = ctx.userdata.combat_state.get_participant("player_1")
+    assert player is not None
+    assert player.hp_current == 23
+    grapples = [condition for condition in player.conditions if condition["type"] == "grappled"]
+    assert len(grapples) == 1
+    assert grapples[0]["source"] == "mawling_1"
+    packet = _reaction_packet(packets)
+    assert packet["mechanical_effect"] == "grapple_blocked_still_held"
+    assert packet["grappler_id"] == "mawling_1"
+
+
+@pytest.mark.asyncio
+async def test_slippery_fails_loud_when_existing_grapple_has_no_source():
+    state = _state(enemy_id="mawling_2")
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.conditions = conditions.apply_condition([], "grappled")
+    ctx = _ctx_at_resolution(state=state)
+    deps = _resolve_deps(damage=2)
+    packets: list[dict] = []
+
+    await _pause_at(ctx, deps, actor_id="mawling_2", stage=reaction_windows.POST_ROLL, packets=packets)
+    await _activate(ctx, "rogue_slippery", player_class="rogue")
+
+    with pytest.raises(ValueError, match="player_1"):
+        await _drain(ctx, deps, packets)
+
+
+def test_combat_prompt_explains_slippery_still_held_packet():
+    assert (
+        '"grapple_blocked_still_held" means Slippery stopped the incoming grapple, but "grappler_id" names the '
+        "prior grappler who still holds the reactor; voice both halves and never say the reactor escaped that holder."
+        in combat_prompts.COMBAT_PROMPT
     )
 
 
