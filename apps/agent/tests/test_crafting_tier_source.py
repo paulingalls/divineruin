@@ -198,6 +198,22 @@ async def test_nonproficient_no_row_is_refused_at_each_crafting_gate(site):
         write.assert_not_awaited()
 
 
+# Both skill_advancement read accessors, because the split this story closes is the TABLE,
+# not one function: a fourth gate reintroduces it through either.
+ACCESSORS = {"get_single_skill_advancement", "get_skill_advancement"}
+
+# skill_persistence is not a split source: it seeds the row read with the hydrated tier
+# (default_tier=rules_engine._get_skill_tier, story-056), so a proficient player with no row
+# advances from `trained`. mentor_requirements IS one and is NOT fixed here — an Athletics-
+# proficient character with no advancement row is refused "Athletics: Trained" mentor training
+# (content/npcs.json:816) the rules engine would open. Listed so it stays visible and so a
+# FIFTH reader still reds; drop the entry when that bug is fixed.
+KNOWN_READERS = {
+    ("skill_persistence.py", "apply_skill_use_with_persistence", "get_single_skill_advancement"),
+    ("mentor_requirements.py", "_evaluate_skill", "get_skill_advancement"),
+}
+
+
 class _AccessorCallVisitor(ast.NodeVisitor):
     def __init__(self, path: Path):
         self.path = path
@@ -216,12 +232,17 @@ class _AccessorCallVisitor(ast.NodeVisitor):
         self._visit_function(node)
 
     def visit_Call(self, node):
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "get_single_skill_advancement":
-            self.calls.append((self.path.as_posix(), self.functions[-1] if self.functions else None))
+        # `db_queries.get_x(...)` AND a bare `get_x(...)` off `from db_queries import get_x` —
+        # a live import style here (companion_relationship_queries.py:19), so an attribute-only
+        # walk would wave the next gate through.
+        func = node.func
+        called = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else None
+        if called in ACCESSORS:
+            self.calls.append((self.path.as_posix(), self.functions[-1] if self.functions else None, called))
         self.generic_visit(node)
 
 
-def test_only_persistence_reads_single_skill_advancement():
+def test_only_known_readers_call_the_skill_advancement_accessors():
     agent_root = Path(__file__).parents[1]
     calls = []
     for path in agent_root.rglob("*.py"):
@@ -232,4 +253,5 @@ def test_only_persistence_reads_single_skill_advancement():
         visitor.visit(ast.parse(path.read_text(), filename=str(path)))
         calls.extend(visitor.calls)
 
-    assert calls == [("skill_persistence.py", "apply_skill_use_with_persistence")]
+    assert set(calls) == KNOWN_READERS
+    assert len(calls) == len(KNOWN_READERS)
