@@ -56,9 +56,11 @@ def _held_deps(resolver) -> dict:
     }
 
 
-async def _resolve(action, *, hit=True, save_success=False, declaration_type=DeclarationType.ATTACK):
+async def _resolve(action, *, hit=True, save_success=False, declaration_type=DeclarationType.ATTACK, damage_mult=1.0):
     state = _make_combat_state(player_hp=25)
-    _participant(state, "goblin_scout_1").action_pool = [action]
+    enemy = _participant(state, "goblin_scout_1")
+    enemy.action_pool = [action]
+    enemy.damage_mult = damage_mult
     declaration = Declaration(type=declaration_type, action=action["name"], target_id="player_1")
     packet = SimpleNamespace(actor_id="goblin_scout_1", declaration=declaration)
     resolver = MagicMock()
@@ -128,6 +130,9 @@ async def test_save_damage_is_full_on_failure_and_floor_half_on_success(save_suc
     assert _participant(state, "player_1").hp_current == 25 - expected_damage
     assert summary["damage"] == expected_damage
     assert summary["damage_halved"] is save_success
+    # No attack was rolled, so the packet must not speak attack vocabulary: roll/attack_total/
+    # target_ac would carry the TARGET's save and DC under the attacker's swing.
+    assert {"roll", "attack_total", "target_ac"}.isdisjoint(summary)
     resolver.resolve_attack.assert_not_called()
     save.assert_called_once()
 
@@ -235,3 +240,13 @@ async def test_only_a_combined_action_rolls_when_the_dm_declares_an_enemy_abilit
     assert post_roll is rolls
     assert (resolver.resolve_attack.call_count > 0) is rolls
     assert any(call.args[1] == E.DICE_ROLL for call in deps["sink"].emit.call_args_list) is rolls
+
+
+@pytest.mark.parametrize(("damage_mult", "expected_damage"), [(1.0, 7), (1.5, 10)])
+async def test_save_damage_carries_the_attacker_role_multiplier(damage_mult, expected_damage):
+    # dc_mod already rides the save; damage must scale with the same role overlay a weapon hit gets.
+    action = {**ACTIONS["valid_half_on_success"], "damage": "1d1+6"}
+    state, summary, _, _ = await _resolve(action, damage_mult=damage_mult)
+
+    assert summary["damage"] == expected_damage
+    assert _participant(state, "player_1").hp_current == 25 - expected_damage

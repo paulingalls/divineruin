@@ -211,7 +211,10 @@ async def resolve_save_damage_action(
         bonus_dice_eligible=False,
         advantage=reaction_save_advantage,
     )
-    rolled_damage = dice_roll(action["damage"]).total
+    # The encounter-role overlay scales this the way it scales a weapon hit (check_resolution_attack
+    # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
+    # rides the save above, so dropping the multiplier here would role-scale half the action.
+    rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
     damage = rolled_damage // 2 if result.success else rolled_damage
     damage_result = AttackResult(
         hit=True,
@@ -244,9 +247,13 @@ async def resolve_save_damage_action(
         publish_roll=False,
     )
     summary.update(_save_fields(result))
-    summary["damage_rolled"] = rolled_damage
     summary["half_on_success"] = True
     summary["damage_halved"] = result.success
+    # apply_attack_result fills the attack vocabulary from the AttackResult synthesized above, where
+    # roll/attack_total/target_ac are really the TARGET's save and its DC. Drop them: the save rides
+    # its own keys, and left in place the DM would voice the victim's save as the enemy's swing.
+    for attack_roll_key in ("roll", "attack_total", "target_ac"):
+        summary.pop(attack_roll_key, None)
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
