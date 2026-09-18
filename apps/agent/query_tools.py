@@ -138,14 +138,12 @@ async def _query_patron_impl(
 
     next_tier = None
     favor_needed = None
-    if tier != "Exalted":
-        for level in range(favor["level"] + 1, favor["max"] + 1):
-            candidate = {**favor, "level": level}
-            candidate_tier = get_patron_tier(candidate)
-            if candidate_tier != tier:
-                next_tier = candidate_tier
-                favor_needed = level - favor["level"]
-                break
+    for level in range(favor["level"] + 1, favor["max"] + 1):
+        candidate_tier = get_patron_tier({**favor, "level": level})
+        if candidate_tier != tier:
+            next_tier = candidate_tier
+            favor_needed = level - favor["level"]
+            break
 
     return json.dumps(
         {
