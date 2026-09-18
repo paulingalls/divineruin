@@ -111,12 +111,16 @@ async def get_npc_dispositions(
 
 
 async def _hydrate_skill_tiers(players: dict[str, dict], conn: asyncpg.Connection | asyncpg.Pool) -> None:
-    for player in players.values():
-        player.pop("skill_tiers", None)
     if not players:
         return
+    for player in players.values():
+        player.pop("skill_tiers", None)
+    # `untrained` is the tier column's DEFAULT, so mark_narrative_moment's tier-less INSERT leaves a
+    # row that claims no tier. Hydrating it would shadow _get_skill_tier's proficiency fallback and
+    # read a proficient character back as untrained; dropping it is lossless, because untrained IS
+    # that fallback's floor.
     rows = await conn.fetch(
-        "SELECT player_id, skill_id, tier FROM skill_advancement WHERE player_id = ANY($1)",
+        "SELECT player_id, skill_id, tier FROM skill_advancement WHERE player_id = ANY($1) AND tier <> 'untrained'",
         list(players),
     )
     for row in rows:

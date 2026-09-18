@@ -11,7 +11,7 @@ import conditions
 import db_mutations_skill_advancement
 import db_queries
 import rules_engine
-from check_tools import _check_skill_impl
+from check_tools import _check_skill_impl, _mark_skill_breakthrough_impl
 from combat_init import _start_combat_impl
 from tests.combat.test_shield_bash_prone import _ashmark_patrol
 from tests.combat.test_start_combat import SAMPLE_PLAYER
@@ -184,6 +184,34 @@ async def test_nonproficient_first_use_stays_untrained(dev_db_pool):
         reread = await db_queries.get_player(player_id, conn=pool)
         assert reread is not None
         assert rules_engine._get_skill_tier(reread, "athletics") == "untrained"
+    finally:
+        await _cleanup(pool, player_id)
+
+
+async def test_tierless_breakthrough_row_does_not_shadow_proficiency(dev_db_pool):
+    """mark_skill_breakthrough inserts a row carrying only the narrative flag, so its tier is the
+    column DEFAULT `untrained` — a value that claims nothing. A proficient character must still
+    read `trained` after the DM flags one."""
+    pool = dev_db_pool
+    player_id = "s056_breakthrough_no_row"
+    await _seed_player(pool, _player(player_id))
+    try:
+        await _mark_skill_breakthrough_impl(
+            make_context(player_id, room=make_mock_room()),
+            "athletics",
+            mutations=db_mutations_skill_advancement,
+        )
+
+        assert (
+            await pool.fetchval(
+                "SELECT tier FROM skill_advancement WHERE player_id = $1 AND skill_id = 'athletics'",
+                player_id,
+            )
+            == "untrained"
+        )
+        player = await db_queries.get_player(player_id, conn=pool)
+        assert player is not None
+        assert rules_engine._get_skill_tier(player, "athletics") == "trained"
     finally:
         await _cleanup(pool, player_id)
 
