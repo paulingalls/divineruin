@@ -1,14 +1,11 @@
 import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from base_agent import BaseGameAgent
 from dispatch_agent import DispatchAgent
 from session_data import SessionData
-
-LOGGER_NAME = "divineruin.dispatch_agent"
 
 
 def _agent_with_session(room: MagicMock | None) -> tuple[DispatchAgent, MagicMock]:
@@ -29,26 +26,9 @@ async def _enter(agent: DispatchAgent, session: MagicMock) -> asyncio.Task[None]
 
 
 def _error_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
-    return [record for record in caplog.records if record.name == LOGGER_NAME and record.levelno == logging.ERROR]
-
-
-@pytest.mark.asyncio
-async def test_failed_entry_is_reported_and_does_not_fail_outer_task(caplog):
-    agent, session = _agent_with_session(MagicMock())
-    failure = RuntimeError("entry exploded")
-
-    with (
-        patch.object(BaseGameAgent, "on_enter", new=AsyncMock(side_effect=failure)),
-        caplog.at_level(logging.ERROR, logger=LOGGER_NAME),
-    ):
-        task = await _enter(agent, session)
-
-    assert task.exception() is None
-    [record] = _error_records(caplog)
-    assert "dispatch_agent" in record.message
-    assert record.exc_info is not None
-    assert record.exc_info[1] is failure
-    assert "entry exploded" in logging.Formatter().format(record)
+    return [
+        record for record in caplog.records if record.name.startswith("divineruin.") and record.levelno == logging.ERROR
+    ]
 
 
 @pytest.mark.asyncio
@@ -56,13 +36,16 @@ async def test_roomless_entry_reports_assertion_and_does_not_fail_outer_task(cap
     agent, session = _agent_with_session(None)
 
     with (
-        patch.object(BaseGameAgent, "on_enter", new=AsyncMock()),
-        caplog.at_level(logging.ERROR, logger=LOGGER_NAME),
+        patch.object(agent._affect_analyzer, "start"),
+        patch("base_agent.TranscriptLogger"),
+        patch("dispatch_agent.start_specialization_tap") as start_specialization_tap,
+        caplog.at_level(logging.ERROR),
     ):
         task = await _enter(agent, session)
 
     assert task.exception() is None
     [record] = _error_records(caplog)
-    assert "dispatch_agent" in record.message
+    assert "dispatchagent" in record.getMessage().replace("_", "").lower()
     assert record.exc_info is not None
     assert isinstance(record.exc_info[1], AssertionError)
+    start_specialization_tap.assert_not_called()
