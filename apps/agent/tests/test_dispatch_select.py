@@ -35,7 +35,7 @@ class TestDispatchSpecializationTapWiring:
         agent, mock_session, sd = _agent_with_session()
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-            patch.object(BaseGameAgent, "on_enter", new_callable=AsyncMock),
+            patch.object(BaseGameAgent, "_enter", new_callable=AsyncMock),
             patch("dispatch_agent.start_specialization_tap") as mock_start,
         ):
             mock_handler = MagicMock()

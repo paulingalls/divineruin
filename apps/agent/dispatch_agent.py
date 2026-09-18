@@ -61,11 +61,8 @@ class DispatchAgent(BaseGameAgent):
         )
         self._spec_tap: SpecializationTapHandler | None = None
 
-    async def on_enter(self) -> None:
-        await self._run_owned_entry(self._enter(), logger, "dispatch_agent entry failed")
-
     async def _enter(self) -> None:
-        await super().on_enter()
+        await super()._enter()
         # Host the L5 specialization-tap consumer: training-driven level-ups can surface
         # the fork here, so a tap (or DM voice) resolves it via select without a handoff.
         sd = self.session.userdata
