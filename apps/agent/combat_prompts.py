@@ -79,7 +79,8 @@ voice the affliction on that target, never as a boon: fear gripping them (Fright
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 When a damage packet carries save_success, the save has already resolved: damage_halved means \
 the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \
-The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
+The escape outcome names a break-free attempt; grapple_already_released means the declared escape \
+found that the hold had already ended, so no shove occurred. grapple_escaped means Slippery prevented this \
 grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
 "grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \
 could take and the reaction changed nothing; "grappler_id" names the \

@@ -17,12 +17,13 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import combat_grapple
 import reaction_spend
 from combat_ability import _find_action, condition_ability
 from combat_ability_gate import declared_ability
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from conditions import tick_conditions
-from declarations import Declaration, DeclarationType, resolve_declaration
+from declarations import Declaration, DeclarationType, ManeuverIntent, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -135,6 +136,7 @@ def advance_combat_phase(
         # rather than let it waste a turn at the later resolution beat. Raw dicts are still
         # what's stored/persisted.
         resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
+        persisted_declarations = copy.deepcopy(declarations)
         for actor_id, declaration in resolved.items():
             actor = next_state.get_participant(actor_id)
             if actor is None:
@@ -157,6 +159,11 @@ def advance_combat_phase(
                     raise ValueError(
                         f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
                     )
+                if (
+                    declaration.type is DeclarationType.MANEUVER
+                    and combat_grapple.grappler_id(actor.conditions) == target.id
+                ):
+                    persisted_declarations[actor_id]["maneuver_intent"] = ManeuverIntent.ESCAPE
             if (
                 declaration.type is DeclarationType.MANEUVER
                 and declaration.target_id == actor.id
@@ -187,7 +194,7 @@ def advance_combat_phase(
                         f"{actor.name} ({actor.id}) cannot declare ability {declaration.action!r}: only players "
                         f"cast abilities, and an enemy only its condition actions; declare an attack from {available}"
                     )
-        next_state.pending_declarations = dict(declarations)
+        next_state.pending_declarations = persisted_declarations
         next_state.reactions_available = {
             p.id: reaction_spend.unspent()
             for p in next_state.participants
