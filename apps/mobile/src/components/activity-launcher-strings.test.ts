@@ -5,12 +5,62 @@ import {
   errandDestinationPrompt,
   formatTimeRemaining,
   getActivityGroupState,
+  getActivityTemplatesState,
   getLaunchIntent,
   isStartVisible,
   mode,
   trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
 import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
+
+const templateResponse = (groups: TemplateGroup[], status = 200) =>
+  new Response(JSON.stringify({ groups }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+test("a successful empty template response has a visible empty state", async () => {
+  expect(await getActivityTemplatesState(Promise.resolve(templateResponse([])))).toEqual({
+    kind: "empty",
+    message: "No activities are available right now.",
+  });
+});
+
+test("a failed or rejected template request has a distinct visible error state", async () => {
+  const failed = await getActivityTemplatesState(Promise.resolve(templateResponse([], 500)));
+  const rejected = await getActivityTemplatesState(Promise.reject(new Error("offline")));
+
+  expect(failed).toEqual({
+    kind: "error",
+    message: "Activities are unavailable right now.",
+  });
+  expect(rejected).toEqual(failed);
+  expect(rejected).not.toEqual({
+    kind: "empty",
+    message: "No activities are available right now.",
+  });
+});
+
+test("a populated template response preserves its groups", async () => {
+  const groups: TemplateGroup[] = [{ type: "training", label: "Training", items: [] }];
+
+  expect(await getActivityTemplatesState(Promise.resolve(templateResponse(groups)))).toEqual({
+    kind: "ready",
+    groups,
+  });
+});
+
+test("a malformed successful template response is an error", async () => {
+  const response = new Response(JSON.stringify({ groups: "not-an-array" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  expect(await getActivityTemplatesState(Promise.resolve(response))).toEqual({
+    kind: "error",
+    message: "Activities are unavailable right now.",
+  });
+});
 
 test("errand strings name the assigned companion", () => {
   expect(errandBusyLabel("Sable", "Scouting Run")).toBe("Sable is on a Scouting Run");

@@ -96,8 +96,7 @@ async def test_http_templates_lists_seeded_recipe(capstone_server: dict[str, str
         timeout=10.0,
     )
     assert r.status_code == 200, r.text
-    # handleGetActivityTemplates swallows all errors -> 200 {groups:[]}; assert the
-    # crafting group is present before next() so a seam break reads clearly instead
+    # Assert the crafting group before next() so a seam break reads clearly instead
     # of a bare StopIteration traceback.
     groups = r.json()["groups"]
     crafting = next((g for g in groups if g["type"] == "crafting"), None)

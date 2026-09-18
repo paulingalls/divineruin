@@ -262,6 +262,6 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     return Response.json({ groups });
   } catch (err) {
     logError("[activity-templates] failed:", err);
-    return Response.json({ groups: [] });
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

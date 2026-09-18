@@ -7,17 +7,19 @@ import {
   errandBusyLabel,
   errandDestinationPrompt,
   getActivityGroupState,
+  getActivityTemplatesState,
   getLaunchIntent,
   isStartVisible,
   mode,
   trainingBusyLabel,
+  type ActivityTemplatesState,
 } from "@/components/activity-launcher-strings";
 import { styles } from "@/components/activity-launcher-styles";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors } from "@/constants/theme";
 import { portraitStore } from "@/stores/portrait-store";
 import { API_BASE, authHeaders } from "@/utils/api";
-import type { MaterialRequirement, TemplateItem, TemplateGroup } from "@divineruin/shared";
+import type { MaterialRequirement, TemplateItem } from "@divineruin/shared";
 
 interface ActivityLauncherProps {
   onStartActivity: (type: string, parameters: Record<string, unknown>) => Promise<void>;
@@ -39,7 +41,7 @@ interface SpellPickerState {
 }
 
 export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
-  const [groups, setGroups] = useState<TemplateGroup[]>([]);
+  const [templatesState, setTemplatesState] = useState<ActivityTemplatesState>({ kind: "loading" });
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [startingItemId, setStartingItemId] = useState<string | null>(null);
   const [error, setError] = useState<{ itemId: string; message: string } | null>(null);
@@ -50,16 +52,13 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   const mountedRef = useRef(true);
 
   const fetchTemplates = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/activity-templates`, {
+    const nextState = await getActivityTemplatesState(
+      fetch(`${API_BASE}/api/activity-templates`, {
         headers: authHeaders(),
-      });
-      if (res.ok && mountedRef.current) {
-        const data = (await res.json()) as { groups: TemplateGroup[] };
-        setGroups(data.groups);
-      }
-    } catch {
-      // Templates will be empty — launcher just won't show
+      }),
+    );
+    if (mountedRef.current) {
+      setTemplatesState(nextState);
     }
   }, []);
 
@@ -130,7 +129,25 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
     void executeStart("training", intent.params, spellPicker.item.id);
   }, [spellPicker, pickerSelection, executeStart]);
 
-  if (groups.length === 0) return null;
+  if (templatesState.kind === "loading") return null;
+  if (templatesState.kind === "empty") {
+    return (
+      <View style={styles.container}>
+        <ThemedText>{templatesState.message}</ThemedText>
+      </View>
+    );
+  }
+  if (templatesState.kind === "error") {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorBanner}>
+          <ThemedText style={styles.errorText}>{templatesState.message}</ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  const groups = templatesState.groups;
 
   return (
     <View style={styles.container}>

@@ -1,5 +1,33 @@
 import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
 
+export type ActivityTemplatesState =
+  | { kind: "loading" }
+  | { kind: "ready"; groups: TemplateGroup[] }
+  | { kind: "empty"; message: string }
+  | { kind: "error"; message: string };
+
+export async function getActivityTemplatesState(
+  request: Promise<Response>,
+): Promise<ActivityTemplatesState> {
+  try {
+    const response = await request;
+    if (!response.ok) {
+      return { kind: "error", message: "Activities are unavailable right now." };
+    }
+    const data = (await response.json()) as { groups?: unknown };
+    if (!Array.isArray(data.groups)) {
+      return { kind: "error", message: "Activities are unavailable right now." };
+    }
+    const groups = data.groups as TemplateGroup[];
+    if (groups.length === 0) {
+      return { kind: "empty", message: "No activities are available right now." };
+    }
+    return { kind: "ready", groups };
+  } catch {
+    return { kind: "error", message: "Activities are unavailable right now." };
+  }
+}
+
 export type LaunchIntent =
   | { kind: "ready"; params: Record<string, unknown> }
   | { kind: "choose-spell"; spellIds: string[] }
