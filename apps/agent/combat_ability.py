@@ -34,19 +34,18 @@ def land_condition_on_participant(
     decl: "Declaration",
     cond_type: str,
     source: str,
-    released_from_grapple: list[str] | None = None,
+    *,
+    packet: dict,
 ) -> bool:
     """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
     and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
     ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
-    ``_land_condition_on_one`` (M4.8 story-012 extraction); back-compat for existing callers."""
-    return _land_condition_on_one(
-        state, decl.target_id, attacker, cond_type, source, released_from_grapple=released_from_grapple
-    )
+    ``_land_condition_on_one``; ``packet`` receives any release caused by the condition."""
+    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source, packet=packet)
 
 
 def land_condition_on_participants(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str, *, packet: dict
 ) -> list[str]:
     """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
 
@@ -58,7 +57,7 @@ def land_condition_on_participants(
     targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
     voiced: list[str] = []
     for target_id in targets:
-        if _land_condition_on_one(state, target_id, attacker, cond_type, source):
+        if _land_condition_on_one(state, target_id, attacker, cond_type, source, packet=packet):
             voiced.append(target_id if target_id is not None else attacker.id)
     return voiced
 
@@ -150,7 +149,7 @@ async def _resolve_ability_condition_packet(
             "action": ability.id,
         }
         if cond_type is not None:
-            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=ability.id)
+            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=ability.id, packet=summary)
             if voiced:
                 summary["condition_applied"] = cond_type
                 summary["condition_targets"] = voiced
@@ -178,7 +177,9 @@ async def _resolve_ability_condition_packet(
         "declaration_type": str(decl.type),
         "action": ability.id,
     }
-    if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
+    if cond_type is not None and land_condition_on_participant(
+        state, attacker, decl, cond_type, source=ability.id, packet=summary
+    ):
         summary["condition_applied"] = cond_type
     return _with_variant(summary, variant)
 
@@ -288,7 +289,6 @@ async def _resolve_enemy_condition_packet(
     item_save_source = target.save_advantages.get(result.save_type)
     if item_save_source and result.advantage_applied:
         summary["save_advantage_source"] = item_save_source
-    released_from_grapple: list[str] = []
     if result.success:
         summary["condition_resisted"] = cond_type
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path
@@ -299,11 +299,9 @@ async def _resolve_enemy_condition_packet(
         decl,
         cond_type,
         source=decl.action or "",
-        released_from_grapple=released_from_grapple,
+        packet=summary,
     ):
         summary["condition_inflicted"] = cond_type
-        if released_from_grapple:
-            summary["released_from_grapple"] = released_from_grapple
         if target.type == "player" and cannot_act(({"type": cond_type},)):
             broken = await concentration_break_mod.break_concentration_on_incapacitation(
                 session, target.id, combat_state=state, conn=conn
@@ -407,12 +405,16 @@ async def _resolve_ability_packet(
             # Multi-target (M4.8 story-012): land on EACH ally participant (cap already enforced at
             # the declare-gate). Surface the voiced ids so the DM names each blessed companion; drop
             # the signal entirely if NONE landed (all off-state / immune).
-            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=decl.action)
+            voiced = land_condition_on_participants(
+                state, attacker, decl, cond_type, source=decl.action, packet=result.packet
+            )
             if voiced:
                 result.packet["condition_targets"] = voiced
             else:
                 result.packet.pop("condition_applied", None)
-        elif not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
+        elif not land_condition_on_participant(
+            state, attacker, decl, cond_type, source=decl.action, packet=result.packet
+        ):
             # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
             result.packet.pop("condition_applied", None)
     summary = {

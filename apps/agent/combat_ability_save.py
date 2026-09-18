@@ -49,7 +49,7 @@ def resolve_hostile_condition(
     }
     if result.success:
         summary["condition_resisted"] = cond_type
-    elif land_condition(state, target.id, attacker, cond_type, ability.id):
+    elif land_condition(state, target.id, attacker, cond_type, ability.id, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type
