@@ -64,17 +64,20 @@
         {
           "action": "destroyed_knowledge",
           "amount": -5,
-          "description": "Destroying books, scrolls, or artifacts"
+          "description": "Destroying books, scrolls, or artifacts",
+          "opposed_value": "book_burning"
         },
         {
           "action": "ignored_mystery",
           "amount": -2,
-          "description": "Ignoring an obvious mystery or clue"
+          "description": "Ignoring an obvious mystery or clue",
+          "opposed_value": "ignorance"
         },
         {
           "action": "acted_recklessly",
           "amount": -3,
-          "description": "Acting without thought or planning"
+          "description": "Acting without thought or planning",
+          "opposed_value": "recklessness"
         }
       ]
     },
@@ -174,17 +177,20 @@
         {
           "action": "fled_combat",
           "amount": -3,
-          "description": "Running from a fight that could be won"
+          "description": "Running from a fight that could be won",
+          "opposed_value": "cowardice"
         },
         {
           "action": "cruelty_in_victory",
           "amount": -5,
-          "description": "Unnecessary cruelty toward a defeated foe"
+          "description": "Unnecessary cruelty toward a defeated foe",
+          "opposed_value": "cruelty"
         },
         {
           "action": "abandoned_ally",
           "amount": -4,
-          "description": "Leaving an ally to fight alone"
+          "description": "Leaving an ally to fight alone",
+          "opposed_value": "betrayal_of_allies"
         }
       ]
     },
@@ -283,17 +289,20 @@
         {
           "action": "destroyed_infrastructure",
           "amount": -4,
-          "description": "Destroying buildings or civic works"
+          "description": "Destroying buildings or civic works",
+          "opposed_value": "destruction_without_purpose"
         },
         {
           "action": "cheated_merchant",
           "amount": -2,
-          "description": "Cheating or stealing in commerce"
+          "description": "Cheating or stealing in commerce",
+          "opposed_value": "greed"
         },
         {
           "action": "abandoned_community",
           "amount": -3,
-          "description": "Abandoning people who depended on you"
+          "description": "Abandoning people who depended on you",
+          "opposed_value": "breaking_bonds"
         }
       ]
     },
@@ -392,17 +401,20 @@
         {
           "action": "revealed_secret",
           "amount": -3,
-          "description": "Carelessly revealing sensitive information"
+          "description": "Carelessly revealing sensitive information",
+          "opposed_value": "carelessness_with_secrets"
         },
         {
           "action": "obvious_approach",
           "amount": -1,
-          "description": "Taking a blunt approach where subtlety was available"
+          "description": "Taking a blunt approach where subtlety was available",
+          "opposed_value": "public_exposure"
         },
         {
           "action": "trusted_blindly",
           "amount": -2,
-          "description": "Trusting someone without verification"
+          "description": "Trusting someone without verification",
+          "opposed_value": "blind_trust"
         }
       ]
     },
@@ -456,11 +468,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "acceptance",
+      "dignity",
+      "remembrance",
+      "transition",
+      "balance"
+    ],
+    "opposed_values": [
+      "denial_of_death",
+      "desecration_of_dead",
+      "undeath",
+      "soul_binding"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "honored_dead",
+          "amount": 3,
+          "description": "Honoring the dead with a dignified rite"
+        },
+        {
+          "action": "comforted_grieving",
+          "amount": 2,
+          "description": "Comforting someone who mourns a loss"
+        },
+        {
+          "action": "accepted_loss",
+          "amount": 4,
+          "description": "Accepting a death without denying its finality"
+        },
+        {
+          "action": "released_spirit",
+          "amount": 5,
+          "description": "Releasing a spirit held from the afterlife"
+        },
+        {
+          "action": "guided_transition",
+          "amount": 3,
+          "description": "Guiding someone through death or a life transition"
+        }
+      ],
+      "negative": [
+        {
+          "action": "desecrated_grave",
+          "amount": -5,
+          "description": "Desecrating a grave or corpse",
+          "opposed_value": "desecration_of_dead"
+        },
+        {
+          "action": "raised_undead",
+          "amount": -5,
+          "description": "Raising the dead into undeath",
+          "opposed_value": "undeath"
+        },
+        {
+          "action": "bound_soul",
+          "amount": -4,
+          "description": "Binding a soul against its passage",
+          "opposed_value": "soul_binding"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
@@ -496,11 +564,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "growth",
+      "adaptation",
+      "natural_balance",
+      "wilderness",
+      "renewal"
+    ],
+    "opposed_values": [
+      "wanton_destruction",
+      "exploitation_of_nature",
+      "stagnation",
+      "domination_of_wild"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "restored_habitat",
+          "amount": 4,
+          "description": "Restoring a damaged natural habitat"
+        },
+        {
+          "action": "protected_wildlife",
+          "amount": 3,
+          "description": "Protecting wild creatures from harm"
+        },
+        {
+          "action": "nurtured_growth",
+          "amount": 2,
+          "description": "Nurturing new natural growth"
+        },
+        {
+          "action": "respected_seasons",
+          "amount": 2,
+          "description": "Working with the natural turn of the seasons"
+        },
+        {
+          "action": "survived_wilderness",
+          "amount": 3,
+          "description": "Surviving the wilderness through adaptation"
+        }
+      ],
+      "negative": [
+        {
+          "action": "poisoned_land",
+          "amount": -5,
+          "description": "Poisoning land for personal gain",
+          "opposed_value": "exploitation_of_nature"
+        },
+        {
+          "action": "killed_wastefully",
+          "amount": -4,
+          "description": "Killing wild creatures without need",
+          "opposed_value": "wanton_destruction"
+        },
+        {
+          "action": "caged_wild_spirit",
+          "amount": -3,
+          "description": "Caging a wild spirit to control it",
+          "opposed_value": "domination_of_wild"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
@@ -536,11 +660,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "justice",
+      "truth",
+      "accountability",
+      "mercy",
+      "due_process"
+    ],
+    "opposed_values": [
+      "corruption",
+      "perjury",
+      "tyranny",
+      "vigilantism"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "exposed_corruption",
+          "amount": 5,
+          "description": "Exposing corruption despite personal risk"
+        },
+        {
+          "action": "kept_oath",
+          "amount": 3,
+          "description": "Keeping a sworn oath when breaking it was easier"
+        },
+        {
+          "action": "judged_fairly",
+          "amount": 4,
+          "description": "Judging a dispute fairly and with context"
+        },
+        {
+          "action": "accepted_accountability",
+          "amount": 3,
+          "description": "Accepting responsibility for wrongdoing"
+        },
+        {
+          "action": "defended_due_process",
+          "amount": 2,
+          "description": "Defending a fair hearing for the accused"
+        }
+      ],
+      "negative": [
+        {
+          "action": "accepted_bribe",
+          "amount": -5,
+          "description": "Accepting a bribe to alter a judgment",
+          "opposed_value": "corruption"
+        },
+        {
+          "action": "gave_false_testimony",
+          "amount": -4,
+          "description": "Giving false testimony in a proceeding",
+          "opposed_value": "perjury"
+        },
+        {
+          "action": "imposed_arbitrary_rule",
+          "amount": -4,
+          "description": "Imposing a rule through unchecked power",
+          "opposed_value": "tyranny"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
@@ -576,11 +756,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "exploration",
+      "freedom",
+      "adaptability",
+      "hospitality",
+      "respect_for_boundaries"
+    ],
+    "opposed_values": [
+      "confinement",
+      "fear_of_unknown",
+      "recklessness_at_sea",
+      "violation_of_sanctuary"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "charted_unknown_waters",
+          "amount": 5,
+          "description": "Charting waters unknown to other travelers"
+        },
+        {
+          "action": "aided_traveler",
+          "amount": 2,
+          "description": "Helping a traveler continue their journey"
+        },
+        {
+          "action": "crossed_new_horizon",
+          "amount": 3,
+          "description": "Venturing beyond a familiar horizon"
+        },
+        {
+          "action": "navigated_storm",
+          "amount": 4,
+          "description": "Navigating a storm with skill and respect"
+        },
+        {
+          "action": "respected_safe_harbor",
+          "amount": 2,
+          "description": "Respecting the peace of a safe harbor"
+        }
+      ],
+      "negative": [
+        {
+          "action": "imprisoned_traveler",
+          "amount": -4,
+          "description": "Confining a traveler who sought passage",
+          "opposed_value": "confinement"
+        },
+        {
+          "action": "refused_unknown_path",
+          "amount": -2,
+          "description": "Refusing a safe path solely because it was unknown",
+          "opposed_value": "fear_of_unknown"
+        },
+        {
+          "action": "violated_safe_harbor",
+          "amount": -5,
+          "description": "Bringing violence into a safe harbor",
+          "opposed_value": "violation_of_sanctuary"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
@@ -616,11 +852,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "compassion",
+      "healing",
+      "hope",
+      "renewal",
+      "protection_of_life"
+    ],
+    "opposed_values": [
+      "cruelty",
+      "despair",
+      "needless_suffering",
+      "abandonment_of_vulnerable"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "healed_wounded",
+          "amount": 4,
+          "description": "Healing someone who was wounded"
+        },
+        {
+          "action": "restored_hope",
+          "amount": 3,
+          "description": "Giving hope to someone in despair"
+        },
+        {
+          "action": "sheltered_vulnerable",
+          "amount": 5,
+          "description": "Sheltering people vulnerable to harm"
+        },
+        {
+          "action": "offered_mercy",
+          "amount": 2,
+          "description": "Offering mercy to a defeated foe"
+        },
+        {
+          "action": "rekindled_light",
+          "amount": 3,
+          "description": "Restoring light in a place overcome by darkness"
+        }
+      ],
+      "negative": [
+        {
+          "action": "denied_aid",
+          "amount": -5,
+          "description": "Denying aid to someone vulnerable",
+          "opposed_value": "abandonment_of_vulnerable"
+        },
+        {
+          "action": "inflicted_needless_pain",
+          "amount": -5,
+          "description": "Inflicting pain without necessity",
+          "opposed_value": "needless_suffering"
+        },
+        {
+          "action": "spread_despair",
+          "amount": -3,
+          "description": "Destroying hope among people in crisis",
+          "opposed_value": "despair"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
@@ -656,11 +948,67 @@
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Zhael, the Fatespinner \u2014 god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry."
     },
-    "values": [],
-    "opposed_values": [],
+    "values": [
+      "foresight",
+      "acceptance_of_change",
+      "patience",
+      "humility_before_fate",
+      "wise_risk"
+    ],
+    "opposed_values": [
+      "temporal_interference",
+      "hubris",
+      "fatalism",
+      "reckless_gambling"
+    ],
     "favor_actions": {
-      "positive": [],
-      "negative": []
+      "positive": [
+        {
+          "action": "heeded_omen",
+          "amount": 3,
+          "description": "Heeding an omen before acting"
+        },
+        {
+          "action": "prepared_for_future",
+          "amount": 2,
+          "description": "Preparing for a likely future hardship"
+        },
+        {
+          "action": "accepted_turning_point",
+          "amount": 4,
+          "description": "Accepting an irreversible turning point"
+        },
+        {
+          "action": "embraced_uncertainty",
+          "amount": 2,
+          "description": "Moving forward without certainty of the outcome"
+        },
+        {
+          "action": "unraveled_pattern",
+          "amount": 5,
+          "description": "Recognizing and unraveling a hidden pattern"
+        }
+      ],
+      "negative": [
+        {
+          "action": "altered_timeline",
+          "amount": -5,
+          "description": "Interfering with the natural course of time",
+          "opposed_value": "temporal_interference"
+        },
+        {
+          "action": "defied_prophecy_from_pride",
+          "amount": -4,
+          "description": "Defying a prophecy solely from pride",
+          "opposed_value": "hubris"
+        },
+        {
+          "action": "surrendered_to_fate",
+          "amount": -3,
+          "description": "Refusing to act because fate seemed fixed",
+          "opposed_value": "fatalism"
+        }
+      ]
     },
     "whisper_themes": [],
     "temple_locations": [],
