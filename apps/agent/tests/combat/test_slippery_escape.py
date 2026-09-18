@@ -151,7 +151,8 @@ async def test_slippery_on_a_sourceless_grapple_is_loud_but_does_not_wedge_comba
     assert packet["mechanical_effect"] == "grapple_blocked_still_held"  # still held, truthfully
     assert "grappler_id" not in packet  # no holder to name, and none invented
     assert "grappled with no source" in caplog.text
-    assert ctx.userdata.combat_state is not None  # the phase resolved; combat is not wedged
+    player = ctx.userdata.combat_state.get_participant("player_1")
+    assert player is not None and player.hp_current == 23  # the held blow resolved; combat is not wedged
 
 
 def test_combat_prompt_explains_slippery_still_held_packet():
@@ -162,6 +163,10 @@ def test_combat_prompt_explains_slippery_still_held_packet():
     # the holder can legitimately be absent (a sourceless grappled row the validator permits), so
     # the prompt must not leave the DM hunting a key that is not there
     assert 'no "grappler_id"' in prompt and "name nobody" in prompt
+    # the reaction is mechanically INERT here — an already-held target takes no second hold either
+    # way (combat_support only reports grapple_held) — so the prompt must not credit it with a stop
+    assert "ALREADY held when this grab hit" in prompt
+    assert "that the reaction stopped this grab" in prompt
 
 
 def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():

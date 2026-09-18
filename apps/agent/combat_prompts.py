@@ -76,8 +76,11 @@ voice the affliction on that target, never as a boon: fear gripping them (Fright
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
 grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
-"grapple_blocked_still_held" means Slippery stopped the incoming grapple, but "grappler_id" names the \
-prior grappler who still holds the reactor; voice both halves and never say the reactor escaped that holder. \
+"grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \
+could take and the reaction changed nothing; "grappler_id" names the \
+prior grappler who still holds the reactor. Voice the grab closing on someone already pinned, and the \
+reaction's flourish if you like, but never say the reactor escaped that holder or that the reaction \
+stopped this grab. \
 When that packet carries no "grappler_id" the hold is real but its holder is unrecorded — say something still \
 has them, and name nobody. \
 released_from_grapple names combatants freed when their grappler fell \
