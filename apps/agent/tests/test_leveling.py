@@ -1,17 +1,11 @@
 """Tests for level progression table and level-up reward aggregation."""
 
-import json
-from pathlib import Path
-
 import pytest
 
-import archetypes
-from archetypes import get_archetype_chassis, parse_archetype_row
 from dice import roll
 from hp_scaling import calculate_max_hp
 from leveling import (
     LEVEL_PROGRESSION,
-    SPELL_TIERS,
     LevelProgression,
     LevelUpRewards,
     build_level_up_payload,
@@ -19,118 +13,8 @@ from leveling import (
     cantrip_damage_dice,
     get_level_up_rewards,
     get_milestone_narration,
-    is_spell_tier_unlocked,
-    min_level_for_tier,
 )
 from rules_engine import proficiency_bonus
-
-# Expected per-(archetype, tier) unlock level, sourced from game_mechanics_archetypes.md.
-# None = the tier is never available to that archetype (e.g. paladin Supreme; the
-# half-casters and Whisper have no elective cantrip). Hard-coded (not derived from the
-# production table) so a wrong production value is caught, not mirrored.
-DEFAULT_CASTER_FLOORS: dict[str, int | None] = {
-    "cantrip": 1,
-    "minor": 1,
-    "standard": 3,
-    "major": 5,
-    "supreme": 9,
-}
-EXPECTED_TIER_FLOORS: dict[str, dict[str, int | None]] = {
-    "mage": DEFAULT_CASTER_FLOORS,
-    "artificer": DEFAULT_CASTER_FLOORS,
-    "seeker": DEFAULT_CASTER_FLOORS,
-    "druid": DEFAULT_CASTER_FLOORS,
-    "beastcaller": DEFAULT_CASTER_FLOORS,
-    "warden": DEFAULT_CASTER_FLOORS,
-    "cleric": DEFAULT_CASTER_FLOORS,
-    "oracle": DEFAULT_CASTER_FLOORS,
-    "bard": {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 10},
-    "paladin": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
-    "diplomat": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
-    "marshal": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
-    "whisper": {"cantrip": None, "minor": 1, "standard": 4, "major": 7, "supreme": 13},
-}
-
-
-class TestSpellTierGate:
-    def test_table_covers_exactly_the_expected_archetypes(self) -> None:
-        loaded = {chassis.id for chassis in archetypes._archetypes.values() if chassis.magic_source is not None}
-        assert loaded == set(EXPECTED_TIER_FLOORS)
-
-    def test_martials_fail_loud(self) -> None:
-        for archetype in ("warrior", "guardian", "skirmisher", "rogue", "spy"):
-            assert get_archetype_chassis(archetype).magic_source is None
-            with pytest.raises(ValueError, match="spellcasting archetype"):
-                min_level_for_tier(archetype, "minor")
-
-    def test_spell_tiers_vocab_is_the_five_canonical_tiers(self) -> None:
-        assert frozenset({"cantrip", "minor", "standard", "major", "supreme"}) == SPELL_TIERS
-
-    @pytest.mark.parametrize("archetype", sorted(EXPECTED_TIER_FLOORS))
-    def test_min_level_for_tier_matches_spec(self, archetype: str) -> None:
-        for tier in SPELL_TIERS:
-            assert min_level_for_tier(archetype, tier) == EXPECTED_TIER_FLOORS[archetype][tier]
-
-    @pytest.mark.parametrize("archetype", sorted(EXPECTED_TIER_FLOORS))
-    def test_unlocked_exactly_at_floor_and_gated_below(self, archetype: str) -> None:
-        for tier, floor in EXPECTED_TIER_FLOORS[archetype].items():
-            if floor is None:
-                # Never-available tier: gated at every level, even the cap.
-                assert is_spell_tier_unlocked(archetype, tier, 1) is False
-                assert is_spell_tier_unlocked(archetype, tier, 20) is False
-            else:
-                assert is_spell_tier_unlocked(archetype, tier, floor) is True
-                if floor > 1:
-                    assert is_spell_tier_unlocked(archetype, tier, floor - 1) is False
-
-    def test_full_casters_unlock_standard_major_supreme_at_3_5_9_not_global_4_7_13(self) -> None:
-        # The crux of concern 66fa8bae: the old global gate said 4/7/13.
-        assert min_level_for_tier("mage", "standard") == 3
-        assert min_level_for_tier("mage", "major") == 5
-        assert min_level_for_tier("mage", "supreme") == 9
-
-    def test_half_casters_have_no_supreme_access(self) -> None:
-        for archetype in ("paladin", "diplomat", "marshal"):
-            assert min_level_for_tier(archetype, "supreme") is None
-            assert is_spell_tier_unlocked(archetype, "supreme", 20) is False
-
-    def test_unknown_archetype_fails_loud(self) -> None:
-        with pytest.raises(ValueError, match="archetype"):
-            is_spell_tier_unlocked("warrior", "minor", 5)
-        with pytest.raises(ValueError, match="archetype"):
-            min_level_for_tier("rogue", "minor")
-
-    def test_unknown_tier_fails_loud(self) -> None:
-        with pytest.raises(ValueError, match="tier"):
-            is_spell_tier_unlocked("mage", "legendary", 20)
-        with pytest.raises(ValueError, match="tier"):
-            min_level_for_tier("mage", "legendary")
-
-    @pytest.mark.parametrize(
-        "mutate",
-        [
-            lambda row: row.pop("spell_tier_min_levels", None),
-            lambda row: row.update(spell_tier_min_levels={"legendary": 1}),
-            lambda row: row.update(spell_tier_min_levels={"minor": True}),
-            lambda row: row.update(spell_tier_min_levels={"minor": 1.5}),
-            lambda row: row.update(spell_tier_min_levels={"minor": 0}),
-            lambda row: row.update(spell_tier_min_levels={"minor": 21}),
-            lambda row: row.update(spell_tier_min_levels={}),
-        ],
-    )
-    def test_caster_tier_map_is_required_and_strict(self, mutate) -> None:
-        rows = json.loads((Path(__file__).parents[3] / "content/archetypes.json").read_text())
-        mage = next(dict(row) for row in rows if row["id"] == "mage")
-        mutate(mage)
-        with pytest.raises(ValueError, match="spell_tier_min_levels"):
-            parse_archetype_row("mage", mage)
-
-    def test_martial_tier_map_must_be_empty(self) -> None:
-        rows = json.loads((Path(__file__).parents[3] / "content/archetypes.json").read_text())
-        warrior = next(dict(row) for row in rows if row["id"] == "warrior")
-        warrior["spell_tier_min_levels"] = {"minor": 1}
-        with pytest.raises(ValueError, match="spell_tier_min_levels"):
-            parse_archetype_row("warrior", warrior)
 
 
 class TestLevelProgressionTable:

@@ -13,10 +13,20 @@ from archetypes import parse_archetype_row, set_archetypes
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
 
 
+def load_archetype_rows() -> list[dict]:
+    """Read content/archetypes.json with the floor constraint 12 demands of a corpus
+    walk: a file that came back empty, or one with duplicate ids, must not read as a
+    clean sweep. Every walk over the authored archetypes goes through here."""
+    rows = json.loads(_CONTENT_PATH.read_text())
+    assert rows, "content/archetypes.json came back empty"
+    assert all(isinstance(row.get("id"), str) for row in rows)
+    assert len({row["id"] for row in rows}) == len(rows), "content/archetypes.json has duplicate ids"
+    return rows
+
+
 def load_fixture_config() -> dict:
     """Read content/archetypes.json and return the typed chassis dict."""
-    raw = json.loads(_CONTENT_PATH.read_text())
-    return {entry["id"]: parse_archetype_row(entry["id"], entry) for entry in raw}
+    return {entry["id"]: parse_archetype_row(entry["id"], entry) for entry in load_archetype_rows()}
 
 
 def setup_archetypes_config_fixture() -> None:
