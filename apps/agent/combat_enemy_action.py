@@ -181,7 +181,12 @@ async def resolve_combined_attack_action(
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
         )
-        summary.update({key: value for key, value in condition.items() if key != "resolved"})
+        summary.update({key: value for key, value in condition.items() if key not in {"resolved", "reason"}})
+        # A bare `reason` means "this packet did nothing" everywhere else in the resolver, so the
+        # condition half's own waste rides a namespaced key: the damage landed, and the DM must not
+        # read the condition's refusal as the whole blow's.
+        if (condition_reason := condition.get("reason")) is not None:
+            summary["condition_reason"] = condition_reason
     return summary
 
 
@@ -233,6 +238,8 @@ async def resolve_save_damage_action(
         dramatic=result.dramatic,
         context=result.context,
     )
+    # Announced here, and publish_roll stays False below: apply_attack_result's payload would voice
+    # the victim's save as the attacker's swing (the same reason its attack keys are popped after it).
     await emit_or_publish(
         sink,
         session.room,

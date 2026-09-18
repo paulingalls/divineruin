@@ -179,13 +179,17 @@ async def test_held_combined_ability_wastes_before_windows_when_target_fell():
 
 
 async def test_combined_damage_preserves_a_wasted_condition_reason():
+    # The reachable waste: the DM declares an enemy's combined action at the enemy ITSELF, which
+    # _resolve_condition_target refuses (a hostile inflict never self-targets) after the damage has
+    # already landed. Driven through the real refusal, not a stand-in for it — a test that mocked
+    # the condition packet would stay green if that half stopped saying "reason".
     state = _make_combat_state(player_hp=25)
     enemy = _participant(state, "goblin_scout_1")
     action = ACTIONS["valid_combined_bite"]
     enemy.action_pool = [action]
     packet = SimpleNamespace(
         actor_id=enemy.id,
-        declaration=Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id="player_1"),
+        declaration=Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id=enemy.id),
     )
     resolver = MagicMock()
     resolver.resolve_attack.return_value = AttackResult(
@@ -196,27 +200,26 @@ async def test_combined_damage_preserves_a_wasted_condition_reason():
         target_ac=14,
         damage=4,
         damage_type="piercing",
-        target_hp_remaining=21,
+        target_hp_remaining=enemy.hp_current - 4,
         target_killed=False,
         narrative_hint="",
     )
+    hp_before = enemy.hp_current
 
-    with patch(
-        "combat_enemy_action._resolve_enemy_condition_packet",
-        AsyncMock(return_value={"resolved": False, "reason": "condition diagnostic"}),
-    ):
-        summary = await _resolve_one_packet(
-            make_context().userdata,
-            state,
-            packet,
-            mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
-            resolver=resolver,
-            concentration_break_mod=_concentration(),
-            sink=EventSink(),
-        )
+    summary = await _resolve_one_packet(
+        make_context().userdata,
+        state,
+        packet,
+        mutations=MagicMock(update_player_hp=AsyncMock()),
+        queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+        resolver=resolver,
+        concentration_break_mod=_concentration(),
+        sink=EventSink(),
+    )
 
-    assert _participant(state, "player_1").hp_current == 21
+    assert _participant(state, enemy.id).hp_current == hp_before - 4
     assert summary["damage"] == 4
     assert summary["resolved"] is True
-    assert summary["reason"] == "condition diagnostic"
+    assert summary["condition_reason"] == "condition action requires a non-self target_id"
+    # Not under the packet-level key: that one means the whole blow was wasted.
+    assert "reason" not in summary
