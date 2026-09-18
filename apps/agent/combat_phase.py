@@ -145,6 +145,17 @@ def advance_combat_phase(
                 )
             if declaration.type is DeclarationType.RETREAT and (blocked := speed_zero(actor.conditions)):
                 raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot retreat")
+            if declaration.type in (DeclarationType.ATTACK, DeclarationType.MANEUVER):
+                target = next_state.get_participant(declaration.target_id) if declaration.target_id else None
+                if target is None:
+                    raise ValueError(f"Unknown target {declaration.target_id!r} for {actor.name} ({actor.id})")
+                # Only the stand MANEUVER may name its own actor: a self-targeted ATTACK resolves
+                # as a real swing against the actor's own AC and damage (combat_packet attack path).
+                self_stand = declaration.type is DeclarationType.MANEUVER and target.id == actor.id
+                if not self_stand and target.is_ally == actor.is_ally:
+                    raise ValueError(
+                        f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
+                    )
             if (
                 declaration.type is DeclarationType.MANEUVER
                 and declaration.target_id == actor.id
