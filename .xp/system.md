@@ -138,12 +138,44 @@ item number, not this section.
 - **11 — recurrence.** The training midpoint judge red in sprints 48, 49 and 50,
   about 40% of pushes, each run shrugged off alone; the cause was the DM
   paraphrasing the resolved state away, one prompt line.
-- **12 — absence and floors.** Sprint-053's review: story-078's producer
+- **12 — absence and floors.** SPRINT 54 CAUGHT SEVEN VACUOUS GUARDS WITH THIS
+  RULE, five of them inside cards written to fix a vacuous guard: 062's
+  `half_on_success` check (deletable on either side, all 16 Python and 95 TS
+  tests green, because every fixture row carrying the flag also carried damage);
+  067's parity pin (mage and warrior of eighteen archetypes); 055's declarability
+  pin (2 ability rows of 145); 081's parity walks (green with
+  `content/spells.json` DELETED); 084's walk (the declare gate short-circuits and
+  ACCEPTS what it cannot resolve, so for 11 spell-backed rows it ABSTAINED and
+  the walk scored abstention as agreement); 088's armor gate (deletable — the one
+  test reaching it with 0 damage equips no armor, so `_find_equipped` returns
+  None and hides it); and 086, where tightening the ownership test DRAINED the
+  neighbouring `p.type == "player"` check — deleting it left all 7127 Python
+  tests green, though it redded at base. A floor must also be REACHABLE: a card
+  refresh caught me writing one (`shorter than content/archetype_abilities.json`)
+  that `query_info` can never meet, since it emits only the caller's
+  class-and-level rows.
+- **12, earlier.** Sprint-053's review: story-078's producer
   tripwire walked `archetype_abilities.json` only, so `content/spells.json` was
   walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
   (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
   against its own relocation, because `os.walk` over a missing directory yields
   nothing.
+
+**Handback contract** — what a story owes before it is handed back. Sprint 54
+lost review rounds to both halves of this, five times.
+
+- RUN THE CARD'S `Verify:` AND SAY YOU RAN IT. story-085 was handed back with a
+  RED Verify (6 of 7 cases failing) and a tests-only diff — the production fix
+  was never written, and nothing in the handback said so. A red Verify is the one
+  state a story cannot be handed over in.
+- RUN EVERY LANE THE CARD NAMES. A card carrying a `THE SLOW LANE` line means
+  `bun run test:acceptance:nollm` before finishing (constraint 7). Stories 073,
+  083, 084, 085 and 088 all skipped it silently and a reviewer ran it each time —
+  five for five, which means the gate was the review, not the executor.
+- IF A COMMAND WILL NOT RUN, SAY WHICH AND WHY in the handback. A phantom red
+  from the wrong command is worse than a missing run: story-087's handback
+  claimed "infrastructure contamination" from 3 failures that `bun run
+  test:server` excludes by design — the tree was green and the command was wrong.
 
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 

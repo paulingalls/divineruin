@@ -47,6 +47,10 @@ one is `.xp/system.md` → Constraint case law.
    never the guard that caught it. A note naming an owner is not a schedule: if
    it must be fixed, it is a card.
 12. **An absence AC is only as wide as the walk under it, and a walk needs a
-   non-empty floor.** A guard proving "nothing does X" names every corpus it
-   walks and reds when that corpus comes back empty: a missing directory, a
-   hand-maintained tuple and a moved file all read as green.
+   REACHABLE non-empty floor.** A guard proving "nothing does X" names every
+   corpus it walks and reds when that corpus comes back empty: a missing
+   directory, a hand-maintained tuple and a moved file all read as green. A walk
+   is only as good as the ANSWER it compares: a side that can ABSTAIN turns
+   "they agree" into no measurement. Tightening one predicate DRAINS its
+   neighbour — re-inject the guards a change passes through, not only the one it
+   adds.
