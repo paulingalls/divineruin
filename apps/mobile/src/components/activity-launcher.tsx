@@ -52,7 +52,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   const mountedRef = useRef(true);
 
   const fetchTemplates = useCallback(async () => {
-    const nextState = await getActivityTemplatesState(
+    const nextState = await getActivityTemplatesState(() =>
       fetch(`${API_BASE}/api/activity-templates`, {
         headers: authHeaders(),
       }),
@@ -140,9 +140,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   if (templatesState.kind === "error") {
     return (
       <View style={styles.container}>
-        <View style={styles.errorBanner}>
+        <Pressable style={styles.errorBanner} onPress={() => void fetchTemplates()}>
           <ThemedText style={styles.errorText}>{templatesState.message}</ThemedText>
-        </View>
+        </Pressable>
       </View>
     );
   }

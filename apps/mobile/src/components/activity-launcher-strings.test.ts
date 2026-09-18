@@ -19,47 +19,83 @@ const templateResponse = (groups: TemplateGroup[], status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
+const EMPTY_STATE = { kind: "empty", message: "No activities are available right now." } as const;
+const ERROR_STATE = {
+  kind: "error",
+  message: "Activities are unavailable right now. Tap to retry.",
+} as const;
+
 test("a successful empty template response has a visible empty state", async () => {
-  expect(await getActivityTemplatesState(Promise.resolve(templateResponse([])))).toEqual({
-    kind: "empty",
-    message: "No activities are available right now.",
-  });
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    expect(await getActivityTemplatesState(() => Promise.resolve(templateResponse([])))).toEqual(
+      EMPTY_STATE,
+    );
+    // Legitimate emptiness is not a defect: it must stay out of the log.
+    expect(warn.mock.calls).toEqual([]);
+  } finally {
+    warn.mockRestore();
+  }
 });
 
 test("a failed or rejected template request has a distinct visible error state", async () => {
-  const failed = await getActivityTemplatesState(Promise.resolve(templateResponse([], 500)));
-  const rejected = await getActivityTemplatesState(Promise.reject(new Error("offline")));
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const failed = await getActivityTemplatesState(() =>
+      Promise.resolve(templateResponse([], 500)),
+    );
+    const rejected = await getActivityTemplatesState(() => Promise.reject(new Error("offline")));
 
-  expect(failed).toEqual({
-    kind: "error",
-    message: "Activities are unavailable right now.",
-  });
-  expect(rejected).toEqual(failed);
-  expect(rejected).not.toEqual({
-    kind: "empty",
-    message: "No activities are available right now.",
-  });
+    expect(failed).toEqual(ERROR_STATE);
+    expect(rejected).toEqual(failed);
+    expect(rejected).not.toEqual(EMPTY_STATE);
+    // Each failure names its own cause: one sentence on screen, the distinction in the log.
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] templates request failed:", "response status", 500],
+      ["[activity-launcher] templates request failed:", "request threw", new Error("offline")],
+    ]);
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+test("a request that throws before it is sent is an error, never a blank HUD", async () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const state = await getActivityTemplatesState(() => {
+      throw new TypeError("Failed to parse URL");
+    });
+
+    expect(state).toEqual(ERROR_STATE);
+  } finally {
+    warn.mockRestore();
+  }
 });
 
 test("a populated template response preserves its groups", async () => {
   const groups: TemplateGroup[] = [{ type: "training", label: "Training", items: [] }];
 
-  expect(await getActivityTemplatesState(Promise.resolve(templateResponse(groups)))).toEqual({
+  expect(await getActivityTemplatesState(() => Promise.resolve(templateResponse(groups)))).toEqual({
     kind: "ready",
     groups,
   });
 });
 
 test("a malformed successful template response is an error", async () => {
-  const response = new Response(JSON.stringify({ groups: "not-an-array" }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const response = new Response(JSON.stringify({ groups: "not-an-array" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
 
-  expect(await getActivityTemplatesState(Promise.resolve(response))).toEqual({
-    kind: "error",
-    message: "Activities are unavailable right now.",
-  });
+    expect(await getActivityTemplatesState(() => Promise.resolve(response))).toEqual(ERROR_STATE);
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] templates request failed:", "groups is not an array", "not-an-array"],
+    ]);
+  } finally {
+    warn.mockRestore();
+  }
 });
 
 test("errand strings name the assigned companion", () => {

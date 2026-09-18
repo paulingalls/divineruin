@@ -6,25 +6,43 @@ export type ActivityTemplatesState =
   | { kind: "empty"; message: string }
   | { kind: "error"; message: string };
 
+const TEMPLATES_EMPTY_MESSAGE = "No activities are available right now.";
+// The error card is the only refetch trigger once it is showing — the mount fetch has
+// already run and a start cannot be pressed — so the words have to offer the way out.
+const TEMPLATES_ERROR_MESSAGE = "Activities are unavailable right now. Tap to retry.";
+
+function templatesError(cause: string, detail: unknown): ActivityTemplatesState {
+  // The player gets one sentence for every failure; without the cause in the log a 500,
+  // a malformed body and a dead network are indistinguishable after the fact.
+  console.warn("[activity-launcher] templates request failed:", cause, detail);
+  return { kind: "error", message: TEMPLATES_ERROR_MESSAGE };
+}
+
+/**
+ * Classify one templates request into what the HUD shows. `request` is a thunk, not a
+ * promise, so a throw while building the request lands in the error state too — handed a
+ * promise, that throw escapes the caller's `void fetchTemplates()` and strands the HUD in
+ * `loading`, which renders as the blank screen this whole seam exists to prevent.
+ */
 export async function getActivityTemplatesState(
-  request: Promise<Response>,
+  request: () => Promise<Response>,
 ): Promise<ActivityTemplatesState> {
   try {
-    const response = await request;
+    const response = await request();
     if (!response.ok) {
-      return { kind: "error", message: "Activities are unavailable right now." };
+      return templatesError("response status", response.status);
     }
     const data = (await response.json()) as { groups?: unknown };
     if (!Array.isArray(data.groups)) {
-      return { kind: "error", message: "Activities are unavailable right now." };
+      return templatesError("groups is not an array", data.groups);
     }
     const groups = data.groups as TemplateGroup[];
     if (groups.length === 0) {
-      return { kind: "empty", message: "No activities are available right now." };
+      return { kind: "empty", message: TEMPLATES_EMPTY_MESSAGE };
     }
     return { kind: "ready", groups };
-  } catch {
-    return { kind: "error", message: "Activities are unavailable right now." };
+  } catch (err) {
+    return templatesError("request threw", err);
   }
 }
 
