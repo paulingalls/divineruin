@@ -33,6 +33,7 @@ import db_queries
 import mentor_variants
 import reaction_gate
 import spells
+from combat_ability import condition_ability
 from resource_costs import gate_pool
 from session_data import SessionData
 from tool_support import _validate_id
@@ -64,6 +65,12 @@ async def _request_ability_activation_impl(
 
     session: SessionData = context.userdata
     if session.in_combat and ability.ability_type != "reaction":
+        # Only send the DM to declare_phase for an id that gate ACCEPTS. combat_phase's declare gate
+        # takes a spell-backed ability by its spell_id and a non-spell condition ability by its own
+        # id, and refuses every other ability outright — so naming declare_phase for one of those
+        # would bounce the DM between two refusals and burn the player's turn.
+        if ability.spell_id is None and condition_ability((ability, None)) is None:
+            raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
         declared_id = ability.spell_id or variant_id or ability_id
         raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
 

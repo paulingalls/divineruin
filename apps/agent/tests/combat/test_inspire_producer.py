@@ -16,6 +16,7 @@ condition_applied surfaces only when the condition actually landed (conditions.h
 """
 
 import json
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -81,6 +82,12 @@ def _inspire_ability(applies_condition: str | None = "inspired") -> Ability:
     )
 
 
+def _inspire_reaction() -> Ability:
+    """The bard_inspire row reshaped as a REACTION — the one ability shape that still reaches the
+    unlocked activation path mid-fight after story-055's non-reaction refusal on _impl."""
+    return replace(_inspire_ability(), ability_type="reaction", window="on_ally_targeted")
+
+
 def _bard(player_id: str = "bard_1", conditions_list: list | None = None) -> dict:
     return {
         "player_id": player_id,
@@ -103,12 +110,17 @@ async def _activate(
     in_combat: bool = False,
     party_member_ids: list[str] | None = None,
     companion_id: str | None = None,
+    entry=None,
 ):
     """Drive _request_ability_activation_impl out of combat. Returns (response, conditions_mutations
     mock, get_players_for_update mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
     producer's not-in-combat persist gate can be exercised. ``party_member_ids`` (M4.8 story-007
     party gate) must include any non-caster target — the OOC producer now refuses a target that is
-    neither a party member nor the caster's companion."""
+    neither a party member nor the caster's companion.
+
+    ``entry`` overrides the entry point: story-055's in-combat refusal lives on ``_impl``, so the
+    guard INSIDE ``_request_ability_activation_unlocked`` is reachable in a fight only through the
+    reaction branch, which enters there directly."""
     ctx = make_context(player_id=caster["player_id"], party_member_ids=party_member_ids, companion_id=companion_id)
     if in_combat:
         ctx.userdata.combat_state = CombatState(combat_id="c_inspire_guard", participants=[], initiative_order=[])
@@ -132,7 +144,7 @@ async def _activate(
     )
     abilities_mod = MagicMock(get_ability=MagicMock(return_value=ability), owns_ability=MagicMock(return_value=True))
     cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
-    raw = await ability_tools._request_ability_activation_impl(
+    raw = await (entry or ability_tools._request_ability_activation_impl)(
         ctx,
         ability.id,
         target_id=target_id,
@@ -231,6 +243,24 @@ async def test_ooc_inspire_non_player_target_narrates_without_persist():
 async def test_ooc_ability_no_applies_condition_does_not_persist():
     # AC3: an ability with no applies_condition produces nothing — existing abilities unchanged.
     response, cond_mut, _gp = await _activate(_inspire_ability(applies_condition=None), caster=_bard())
+
+    assert "condition_applied" not in response
+    cond_mut.save_many_player_conditions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_in_combat_producer_does_not_persist_to_players_data():
+    # In combat the CombatParticipant is the SSOT and declare_phase owns the apply; this path must
+    # NOT write Inspired to players.data (mirrors the spell producer's not-in-combat gate). story-055
+    # refuses every non-reaction activate on _impl, so a REACTION entering the unlocked path directly
+    # is the only shape that still reaches this guard in a fight — drive that, or the guard is
+    # certified by nothing.
+    response, cond_mut, _gp = await _activate(
+        _inspire_reaction(),
+        caster=_bard(),
+        in_combat=True,
+        entry=ability_tools._request_ability_activation_unlocked,
+    )
 
     assert "condition_applied" not in response
     cond_mut.save_many_player_conditions.assert_not_awaited()

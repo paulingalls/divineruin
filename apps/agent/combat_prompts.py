@@ -39,11 +39,13 @@ A grappled combatant breaks free by declaring maneuver on their grappler, which 
 whole phase; they cannot retreat. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") before declaring one: declare its spell id from the row's spell_id when present. \
-Never declare a combat: false row. When a supported ability row carries active_variant_id, declare that exact variant id. \
+A combat: false row has no combat action at all — never declare it, and never activate it mid-fight. \
+When a row you may declare carries active_variant_id, declare that exact variant id. \
 Reaction rows name the window where their id can interrupt through activate. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
-In combat, an ordinary spell or ability marked as supported is an Ability declaration through declare_phase — never a free \
+In combat, an ordinary spell or ability (any row not marked combat: false) is an Ability declaration through \
+declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \
 or dropping a Veil Ward (activate "veil_ward" / "veil_ward_dismiss"). If the player gives no clear \
