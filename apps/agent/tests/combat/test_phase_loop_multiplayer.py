@@ -7,7 +7,7 @@ member's OWN caster pool, and the WRAP Resonance decay sheds from EACH member's 
 existing tests/combat/test_phase_loop.py — here every party has ≥2 members.
 
 The casts themselves are mocked (cast_resolver._resolve_cast); the wiring/identity/decay is
-under test, not the spell internals (covered by tests/test_spell_casting.py).
+under test, not the spell internals (covered by the tests/test_spell_cast_* modules).
 """
 
 from unittest.mock import AsyncMock, MagicMock

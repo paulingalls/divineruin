@@ -8,7 +8,7 @@ Resonance double-decays. So a cast IN combat must only GENERATE, never shed; the
 wrap beat owns decay. Out of combat, cast-paced decay stays exactly as sprint-017.
 
 These tests drive _cast_spell_impl directly with mock db/queries/persistence/
-mutations (the test_spell_casting precedent) and the seeded racial-spec stub, and
+mutations (the _spell_casting_helpers precedent) and the seeded racial-spec stub, and
 flip session.combat_state to toggle session.in_combat. The invariant: decay fires
 once per context, never both — proven here for the cast path (in-combat suppressed,
 out-of-combat unchanged) regardless of race.
@@ -24,7 +24,7 @@ from spell_casting import _cast_spell_impl
 from spells import Spell, SpellSource, SpellTier
 
 # The seeded human decay_bonus (content/racial_resonance_bonuses.json) the cast reads via
-# racial_resonance.get_racial_resonance_modifier. Mirrors test_spell_casting._RACIAL_SPEC.
+# racial_resonance.get_racial_resonance_modifier. Mirrors _spell_casting_helpers._RACIAL_SPEC.
 _RACIAL_SPEC = {
     ("human", "decay_bonus"): 1,
 }

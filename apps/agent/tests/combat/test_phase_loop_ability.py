@@ -18,7 +18,7 @@ from sample_fixtures import make_context
 class TestResolvePhaseAbility:
     """story-007: an in-combat ABILITY declaration resolves via the shared cast resolver and appears
     as a resolved packet in initiative order alongside attacks. The cast itself is mocked here — the
-    wiring/ordering is under test, not the spell internals (covered by test_spell_casting)."""
+    wiring/ordering is under test, not the spell internals (covered by the test_spell_cast_* modules)."""
 
     def _ability_state(self):
         state = _resolution_state()

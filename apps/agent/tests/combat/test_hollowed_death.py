@@ -41,7 +41,7 @@ def _revival_spell(spell_id: str = "divine_revivify") -> Spell:
 
 async def _cast(spell: Spell, *, player: dict):
     """Drive _cast_spell_impl with a controlled spells_mod + the given player row (mirrors
-    test_spell_casting._cast). Returns the parsed packet; raises ToolError on a gated cast."""
+    _spell_casting_helpers._cast). Returns the parsed packet; raises ToolError on a gated cast."""
     ctx = make_context()
     mock_db, _conn = make_db_mod()
     # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch; the
