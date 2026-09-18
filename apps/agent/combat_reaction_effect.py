@@ -1,6 +1,6 @@
 """What a spent reaction does to the held blow it answered.
 
-Counterspell, the third outcome the spec names, is NOT here and is not faked: its window is
+Counterspell, the third outcome game_mechanics_combat.md:187 names, is NOT here and is not faked: its window is
 ``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
 08bc5548). ``tests/combat/test_reaction_catalog_reach.py`` pins it refused at every window the
 engine can open, rather than shipping a guard that certifies nothing.

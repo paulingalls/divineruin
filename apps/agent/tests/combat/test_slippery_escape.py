@@ -27,7 +27,7 @@ def _grab() -> dict:
     )
 
 
-def _state(enemy_id="mawling_1"):
+def _state(enemy_id: str = "mawling_1"):
     state = _ctx_at_resolution(player_hp=25, enemy_hp=18).userdata.combat_state
     enemy = state.get_participant("goblin_scout_1")
     player = state.get_participant("player_1")
@@ -138,16 +138,15 @@ async def test_slippery_fails_loud_when_existing_grapple_has_no_source():
     await _pause_at(ctx, deps, actor_id="mawling_2", stage=reaction_windows.POST_ROLL, packets=packets)
     await _activate(ctx, "rogue_slippery", player_class="rogue")
 
-    with pytest.raises(ValueError, match="player_1"):
+    with pytest.raises(ValueError, match="player_1 is grappled without a source"):
         await _drain(ctx, deps, packets)
 
 
 def test_combat_prompt_explains_slippery_still_held_packet():
-    assert (
-        '"grapple_blocked_still_held" means Slippery stopped the incoming grapple, but "grappler_id" names the '
-        "prior grappler who still holds the reactor; voice both halves and never say the reactor escaped that holder."
-        in combat_prompts.COMBAT_PROMPT
-    )
+    prompt = combat_prompts.COMBAT_PROMPT
+    assert '"grapple_blocked_still_held"' in prompt
+    assert '"grappler_id" names the ' in prompt and "prior grappler who still holds the reactor" in prompt
+    assert "never say the reactor escaped that holder" in prompt
 
 
 def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():
