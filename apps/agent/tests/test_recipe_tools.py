@@ -37,10 +37,12 @@ RECIPE = {
 
 def _queries(*, tier="trained", known=2, player=None):
     q = MagicMock()
-    q.get_player = AsyncMock(return_value=player if player is not None else {"player_id": "player_1"})
-    q.get_single_skill_advancement = AsyncMock(
-        return_value={"tier": tier, "use_counter": 0, "narrative_moment_ready": False}
-    )
+    if player is None:
+        default_player: dict[str, object] = {"player_id": "player_1"}
+        if tier != "untrained":
+            default_player["skill_tiers"] = {"crafting": tier}
+        player = default_player
+    q.get_player = AsyncMock(return_value=player)
     q.count_player_known_recipes = AsyncMock(return_value=known)
     return q
 

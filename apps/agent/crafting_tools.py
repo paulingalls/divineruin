@@ -39,6 +39,7 @@ import preflight_pipeline
 import pricing_queries
 import recipe_validation
 import recipes
+import rules_engine
 import workspace
 from disposition import resolve_disposition
 from session_data import SessionData
@@ -327,7 +328,7 @@ async def _start_crafting_project_impl(
         # Gather the five-check pre-flight inputs (materials locked FOR UPDATE so the
         # allocate→consume below can't race a concurrent craft on the same stacks).
         known = await queries_mod.get_player_known_recipe_ids(player_id, conn=conn)
-        crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
+        crafting_tier = rules_engine._get_skill_tier(player, "crafting")
         accessible = await queries_mod.get_accessible_workspaces(
             player_id, location_id, conn=conn, has_portable_lab=has_portable_lab
         )
