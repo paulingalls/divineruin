@@ -1,11 +1,73 @@
 """Tests for BaseGameAgent — shared voice pipeline and lifecycle infrastructure."""
 
+import asyncio
+import importlib
+import inspect
+import logging
+import pathlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents import Agent
 
+import base_agent
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
 from session_data import SessionData
+
+
+def _concrete_agent_types() -> tuple[type[Agent], ...]:
+    agent_dir = pathlib.Path(base_agent.__file__).parent
+    found: list[type[Agent]] = []
+    for path in sorted(agent_dir.glob("*.py")):
+        if path.name == "base_agent.py":
+            continue
+        module = importlib.import_module(path.stem)
+        found.extend(
+            member
+            for _, member in inspect.getmembers(module, inspect.isclass)
+            if member.__module__ == module.__name__ and issubclass(member, Agent)
+        )
+    return tuple(found)
+
+
+CONCRETE_AGENT_TYPES = _concrete_agent_types()
+
+
+def _application_errors(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [
+        record for record in caplog.records if record.levelno == logging.ERROR and record.name.startswith("divineruin.")
+    ]
+
+
+def test_agent_walk_finds_every_current_concrete_agent():
+    assert len(CONCRETE_AGENT_TYPES) >= 7
+
+
+@pytest.mark.parametrize("agent_type", CONCRETE_AGENT_TYPES, ids=lambda agent_type: agent_type.__name__)
+@pytest.mark.asyncio
+async def test_every_concrete_agent_reports_its_entry_failure_once(agent_type, caplog):
+    agent = agent_type()
+    failure = RuntimeError(f"{agent_type.__module__} entry exploded")
+    if hasattr(agent, "_affect_analyzer"):
+        agent._affect_analyzer.start = MagicMock()
+
+    with (
+        patch.object(
+            type(agent), "session", new_callable=lambda: property(lambda self: (_ for _ in ()).throw(failure))
+        ),
+        caplog.at_level(logging.ERROR),
+    ):
+        task = asyncio.create_task(agent.on_enter())
+        done, pending = await asyncio.wait({task}, timeout=5)
+
+    assert done == {task}
+    assert pending == set()
+    assert task.exception() is None
+    [record] = _application_errors(caplog)
+    assert agent_type.__name__.lower() in record.getMessage().replace("_", "").lower()
+    assert record.exc_info is not None
+    assert record.exc_info[1] is failure
+    assert "entry exploded" in logging.Formatter().format(record)
 
 
 class TestBaseGameAgentInit:

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator, AsyncIterable, Coroutine
+from collections.abc import AsyncGenerator, AsyncIterable
 from typing import Any
 
 from livekit import agents, rtc
@@ -45,7 +45,28 @@ def _make_tts(voice: str = "", speaking_rate: float = 1.0) -> inworld.TTS:
     return inworld.TTS(**kwargs)
 
 
-class BaseGameAgent(Agent):
+class ReportingEntry(Agent):
+    """Base for every game agent: `on_enter` REPORTS whatever its entry body raises.
+
+    LiveKit does log an escaping `on_enter` (`agent_activity._traceable_on_enter` carries
+    `utils.log_exceptions`), but under the `livekit.agents` logger and against the vendor's
+    own function name — so the line that says WHICH agent entered half-built is not there,
+    and it is outside the `divineruin.*` tree. Agents put their entry body in `_enter` and
+    never override `on_enter`, so an agent gets the named report by existing rather than by
+    remembering to ask for it.
+    """
+
+    async def on_enter(self) -> None:
+        try:
+            await self._enter()
+        except Exception as exc:
+            logger.error("%s entry failed", type(self).__name__, exc_info=exc)
+
+    async def _enter(self) -> None:
+        """This agent's entry body. Override this, not `on_enter`."""
+
+
+class BaseGameAgent(ReportingEntry):
     """Shared base for all Divine Ruin game agents.
 
     Provides the voice pipeline (TTS with multi-character dialogue parsing,
@@ -94,19 +115,7 @@ class BaseGameAgent(Agent):
         self._bg_tasks.discard(task)
         log_task_failure(task, logger, "Background task failed")
 
-    async def _run_owned_entry(
-        self, coro: Coroutine[Any, Any, None], entry_logger: logging.Logger, failure_message: str
-    ) -> None:
-        """Run an agent's entry body and REPORT its failure — LiveKit runs on_enter in a task
-        whose exception nothing retrieves, so an escaping error surfaces only as the vendor's
-        GC-time print and the agent enters half-built in silence.
-        """
-        try:
-            await coro
-        except Exception as exc:
-            entry_logger.error(failure_message, exc_info=exc)
-
-    async def on_enter(self) -> None:
+    async def _enter(self) -> None:
         logger.info("%s entered session", type(self).__name__)
         self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
