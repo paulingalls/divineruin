@@ -27,12 +27,14 @@ ResourcePattern = Literal["stamina_only", "focus_only", "focus_primary", "split"
 # "cross" for Bard; null/absent for pure martials (no magic). "cross" and the spell
 # catalog's SpellSource intentionally differ — only single sources index the catalog.
 MagicSource = Literal["arcane", "divine", "primal", "cross"]
+SpellTier = Literal["cantrip", "minor", "standard", "major", "supreme"]
 
 # Closed vocabularies for the chassis enums — the loader owns fail-loud validation
 # (constraint chassis-row-shape-contract), mirroring the TS parseArchetypeRow.
 _HP_CATEGORIES = frozenset(get_args(HPCategory))
 _RESOURCE_PATTERNS = frozenset(get_args(ResourcePattern))
 _MAGIC_SOURCES = frozenset(get_args(MagicSource))
+_SPELL_TIERS = frozenset(get_args(SpellTier))
 
 
 @dataclass(frozen=True)
@@ -61,7 +63,8 @@ class Chassis:
     weapon_proficiencies: tuple[str, ...]
     skill_options: tuple[str, ...]
     num_skill_choices: int
-    magic_source: str | None = None  # M8: arcane/divine/primal/cross; None for pure martials
+    magic_source: str | None
+    spell_tier_min_levels: dict[str, int]
 
 
 # Module-level runtime-loaded chassis. Populated by load_archetypes() at worker
@@ -105,6 +108,20 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
             raise ValueError(
                 f"archetype {archetype_id!r} magic_source {magic_source!r} not in {sorted(_MAGIC_SOURCES)}"
             )
+        raw_floors = data["spell_tier_min_levels"]
+        if not isinstance(raw_floors, dict):
+            raise ValueError(f"archetype {archetype_id!r} spell_tier_min_levels is not an object")
+        if magic_source is not None and not raw_floors:
+            raise ValueError(f"archetype {archetype_id!r} spell_tier_min_levels is empty for a caster")
+        if magic_source is None and raw_floors:
+            raise ValueError(f"archetype {archetype_id!r} spell_tier_min_levels must be empty for a martial")
+        spell_tier_min_levels: dict[str, int] = {}
+        for tier, floor in raw_floors.items():
+            if tier not in _SPELL_TIERS:
+                raise ValueError(f"archetype {archetype_id!r} spell_tier_min_levels tier {tier!r} is invalid")
+            if isinstance(floor, bool) or not isinstance(floor, int) or not 1 <= floor <= 20:
+                raise ValueError(f"archetype {archetype_id!r} spell_tier_min_levels[{tier!r}] must be an integer 1-20")
+            spell_tier_min_levels[tier] = floor
         return Chassis(
             id=archetype_id,
             hp_base=hp["base"],
@@ -121,6 +138,7 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
             skill_options=tuple(skills["options"]),
             num_skill_choices=skills["num_choices"],
             magic_source=magic_source,
+            spell_tier_min_levels=spell_tier_min_levels,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetypes row {archetype_id!r}: {e}") from e

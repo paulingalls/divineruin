@@ -6,6 +6,8 @@
 // dataclass names for cross-language parity. Every field is required — the
 // chassis is fully-specified content, not the optionally-widened Item type.
 
+import type { SpellTier } from "./spell";
+
 export type HpCategory = "martial" | "primal_divine" | "arcane_shadow";
 
 export type ResourcePattern = "stamina_only" | "focus_only" | "focus_primary" | "split";
@@ -14,7 +16,6 @@ export type ResourcePattern = "stamina_only" | "focus_only" | "focus_primary" | 
 // for Bard; null/absent for pure martials. "cross" intentionally differs from the spell
 // catalog's SpellSource (only single sources index the catalog).
 export type MagicSource = "arcane" | "divine" | "primal" | "cross";
-
 export interface PoolFormula {
   base: number;
   attribute: string;
@@ -47,4 +48,5 @@ export interface Archetype {
   weapon_proficiencies: string[];
   starting_skills: StartingSkills;
   magic_source: MagicSource | null; // M8; null for pure martials (no magic)
+  spell_tier_min_levels: Partial<Record<SpellTier, number>>;
 }

@@ -37,6 +37,7 @@ export type {
   ResourcePattern,
   MagicSource,
 } from "./archetype";
+export { minLevelForSpellTier, isSpellTierUnlocked } from "./archetype_tiers";
 
 export type { Ability, Cost, AbilityType, ReactionWindow } from "./ability";
 export type { MentorVariant } from "./mentor_variant";

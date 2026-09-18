@@ -5,11 +5,12 @@ import {
   errandDestinationPrompt,
   formatTimeRemaining,
   getActivityGroupState,
+  getLaunchIntent,
   isStartVisible,
   mode,
   trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
-import type { ActiveStatus, TemplateGroup } from "@divineruin/shared";
+import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
 
 test("errand strings name the assigned companion", () => {
   expect(errandBusyLabel("Sable", "Scouting Run")).toBe("Sable is on a Scouting Run");
@@ -114,4 +115,47 @@ test("a running training program hides every start action", () => {
   const state = getActivityGroupState(runningTrainingGroup);
 
   expect(runningTrainingGroup.items.every((item) => !isStartVisible(item, state))).toBe(true);
+});
+
+const trainingItem = (params: Record<string, unknown>): TemplateItem => ({
+  ...inactive,
+  id: "arcane_study",
+  name: "Arcane Study",
+  params: { program_id: "arcane_study", ...params },
+});
+
+test("launch policy preserves ordinary training and crafting payloads", () => {
+  expect(getLaunchIntent("training", trainingItem({}))).toEqual({
+    kind: "ready",
+    params: { program_id: "arcane_study" },
+  });
+  expect(
+    getLaunchIntent("crafting", {
+      ...trainingItem({ recipe_id: "iron_sword" }),
+      id: "iron_sword",
+    }),
+  ).toEqual({ kind: "ready", params: { recipe_id: "iron_sword" } });
+});
+
+test("spell training chooses before posting and preserves the canonical id", () => {
+  const item = trainingItem({ studiiable_typo: [], studiable_spell_ids: ["arcane_hold_person"] });
+  expect(getLaunchIntent("training", item)).toEqual({
+    kind: "choose-spell",
+    spellIds: ["arcane_hold_person"],
+  });
+  expect(getLaunchIntent("training", item, "arcane_hold_person")).toEqual({
+    kind: "ready",
+    params: { program_id: "arcane_study", spell_id: "arcane_hold_person" },
+  });
+  expect(() => getLaunchIntent("training", item, "Hold Person")).toThrow(/not available/);
+});
+
+test("empty or malformed spell choices disable launch with a stable reason", () => {
+  expect(getLaunchIntent("training", trainingItem({ studiable_spell_ids: [] }))).toEqual({
+    kind: "disabled",
+    reason: "No spells available to study.",
+  });
+  expect(() =>
+    getLaunchIntent("training", trainingItem({ studiable_spell_ids: ["arcane_hold_person", 42] })),
+  ).toThrow(/studiable_spell_ids/);
 });

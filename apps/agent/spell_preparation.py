@@ -12,8 +12,8 @@ import leveling
 from spells import SpellTier
 
 # The Major-tier cap for paladin/diplomat/marshal (no Supreme access, spec L809/L1060/L1135)
-# is now subsumed by the per-archetype gate in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER: those
-# archetypes simply have no "supreme" entry, so is_spell_tier_unlocked returns False for it
+# is subsumed by the content-backed per-archetype gate: those archetypes simply have no
+# "supreme" entry, so is_spell_tier_unlocked returns False for it
 # at any level — no separate cap set is needed (story-008, closes 66fa8bae).
 
 

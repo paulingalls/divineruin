@@ -20,7 +20,7 @@ const spellRows = (await Bun.file(spellsPath).json()) as Record<string, unknown>
 const archetypeRows = (await Bun.file(archetypesPath).json()) as Record<string, unknown>[];
 
 const slotsEmpty = { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 0 }] };
-const playerMage = { match: "FROM players", result: [{ class: "mage" }] };
+const playerMage = { match: "FROM players", result: [{ class: "mage", level: "3" }] };
 const knownEmpty = { match: "FROM character_spells", result: [] };
 
 function setupCatalogs(): void {
@@ -156,7 +156,7 @@ describe("handleCreateActivity training", () => {
   });
 
   test("rejects an off-source spell before insert", async () => {
-    setQueryStubs([{ match: "FROM players", result: [{ class: "cleric" }] }]);
+    setQueryStubs([{ match: "FROM players", result: [{ class: "cleric", level: "3" }] }]);
     const res = await handleCreateActivity(
       makeRequest("POST", "/api/activities", {
         type: "training",
@@ -183,7 +183,7 @@ describe("handleCreateActivity training", () => {
   });
 
   test("rejects spell training for an unknown player class", async () => {
-    setQueryStubs([{ match: "FROM players", result: [{ class: "unknown" }] }]);
+    setQueryStubs([{ match: "FROM players", result: [{ class: "unknown", level: "3" }] }]);
     const res = await handleCreateActivity(
       makeRequest("POST", "/api/activities", {
         type: "training",
@@ -210,6 +210,21 @@ describe("handleCreateActivity training", () => {
     );
 
     expect(res.status).toBe(400);
+    expect(trainingInserts()).toHaveLength(0);
+  });
+
+  test("rejects an otherwise valid spell below its tier floor", async () => {
+    setQueryStubs([{ match: "FROM players", result: [{ class: "mage", level: "2" }] }, knownEmpty]);
+    const res = await handleCreateActivity(
+      makeRequest("POST", "/api/activities", {
+        type: "training",
+        parameters: { program_id: "arcane_study", spell_id: "arcane_hold_person" },
+      }),
+      "player_1",
+    );
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("not available at level 2");
     expect(trainingInserts()).toHaveLength(0);
   });
 

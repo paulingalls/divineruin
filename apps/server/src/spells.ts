@@ -33,6 +33,10 @@ export function getSpellsBySource(source: string): Spell[] {
   return Array.from(spells.values()).filter((s) => s.source === source);
 }
 
+export function listSpells(): Spell[] {
+  return Array.from(spells.values());
+}
+
 export function setSpells(map: ReadonlyMap<string, Spell>): void {
   spells = map;
 }

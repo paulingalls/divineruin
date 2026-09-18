@@ -30,6 +30,7 @@ const warrior: Archetype = {
     num_choices: 3,
   },
   magic_source: null, // pure martial — no magic (M8)
+  spell_tier_min_levels: {},
 };
 
 describe("Archetype — content/archetypes.json row shape (7 fields, all required)", () => {
@@ -61,6 +62,7 @@ describe("Archetype — content/archetypes.json row shape (7 fields, all require
       weapon_proficiencies: ["simple"],
       starting_skills: { options: ["arcana", "history", "investigation"], num_choices: 2 },
       magic_source: "arcane", // M8
+      spell_tier_min_levels: { cantrip: 1, minor: 1, standard: 3, major: 5, supreme: 9 },
     };
     expect(mage.resource.stamina_formula).toBeNull();
     expect(mage.resource.focus_formula?.attribute).toBe("intelligence");
