@@ -4,7 +4,6 @@ import asyncio
 import logging
 import re
 from collections.abc import AsyncGenerator, AsyncIterable, Coroutine
-from functools import partial
 from typing import Any
 
 from livekit import agents, rtc
@@ -98,9 +97,14 @@ class BaseGameAgent(Agent):
     async def _run_owned_entry(
         self, coro: Coroutine[Any, Any, None], entry_logger: logging.Logger, failure_message: str
     ) -> None:
-        task = asyncio.create_task(coro)
-        task.add_done_callback(partial(log_task_failure, logger=entry_logger, message=failure_message))
-        await asyncio.gather(task, return_exceptions=True)
+        """Run an agent's entry body and REPORT its failure — LiveKit runs on_enter in a task
+        whose exception nothing retrieves, so an escaping error surfaces only as the vendor's
+        GC-time print and the agent enters half-built in silence.
+        """
+        try:
+            await coro
+        except Exception as exc:
+            entry_logger.error(failure_message, exc_info=exc)
 
     async def on_enter(self) -> None:
         logger.info("%s entered session", type(self).__name__)

@@ -21,7 +21,8 @@ def _agent_with_session(room: MagicMock | None) -> tuple[DispatchAgent, MagicMoc
 async def _enter(agent: DispatchAgent, session: MagicMock) -> asyncio.Task[None]:
     with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)):
         task = asyncio.create_task(agent.on_enter())
-        done, pending = await asyncio.wait({task})
+        # A timeout, so an entry that never returns reds here instead of hanging the lane.
+        done, pending = await asyncio.wait({task}, timeout=5)
     assert done == {task}
     assert pending == set()
     return task
