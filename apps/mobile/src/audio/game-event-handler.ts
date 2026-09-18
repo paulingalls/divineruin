@@ -438,7 +438,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         const favorMax = typeof event.max === "number" ? event.max : 100;
         characterStore.getState().updateDivineFavor(event.new_level, favorMax);
         const favorAmount = typeof event.amount === "number" ? event.amount : 0;
-        if (favorAmount > 0) {
+        if (favorAmount !== 0) {
           hudStore.getState().pushOverlay(
             "divine_favor",
             {

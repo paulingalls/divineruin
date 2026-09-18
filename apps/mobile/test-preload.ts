@@ -6,6 +6,11 @@ import { mock } from "bun:test";
 // React Native's entry point uses Flow syntax that Bun can't parse.
 // Mock it and other native modules before any test files load.
 mock.module("react-native", () => ({
+  // Host-element strings, not RN components: render tests go through react-dom/server, which
+  // cannot render a native View/Text. React's casing/unknown-prop warnings on them are expected —
+  // silencing them means modelling react-native-web's prop mapping. Assert on rendered TEXT only.
+  View: "View",
+  Text: "Text",
   // select() mirrors RN's resolution order: exact OS key, then native, then default.
   Platform: {
     OS: "ios",
