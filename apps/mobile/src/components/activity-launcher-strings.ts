@@ -21,7 +21,7 @@ export function getLaunchIntent(
     !Array.isArray(spellIdsRaw) ||
     spellIdsRaw.some((id) => typeof id !== "string" || id.length === 0)
   ) {
-    throw new Error("studiable_spell_ids must be an array of non-empty strings");
+    return { kind: "disabled", reason: "Spell choices are unavailable." };
   }
   const spellIds = spellIdsRaw as string[];
   if (spellIds.length === 0) {

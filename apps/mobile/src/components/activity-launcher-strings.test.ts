@@ -150,12 +150,35 @@ test("spell training chooses before posting and preserves the canonical id", () 
   expect(() => getLaunchIntent("training", item, "Hold Person")).toThrow(/not available/);
 });
 
-test("empty or malformed spell choices disable launch with a stable reason", () => {
+test("empty spell choices disable launch with a stable reason", () => {
   expect(getLaunchIntent("training", trainingItem({ studiable_spell_ids: [] }))).toEqual({
     kind: "disabled",
     reason: "No spells available to study.",
   });
-  expect(() =>
-    getLaunchIntent("training", trainingItem({ studiable_spell_ids: ["arcane_hold_person", 42] })),
-  ).toThrow(/studiable_spell_ids/);
+});
+
+test("each malformed spell choice row is disabled without blocking its sibling", () => {
+  for (const malformedSpellIds of ["arcane_hold_person", ["arcane_hold_person", 42], [""]]) {
+    const items = [
+      trainingItem({ studiable_spell_ids: malformedSpellIds }),
+      {
+        ...trainingItem({}),
+        id: "combat_basics",
+        name: "Combat Fundamentals",
+        params: { program_id: "combat_basics" },
+      },
+    ];
+
+    const intents = items.map((item) => getLaunchIntent("training", item));
+
+    expect(intents).toHaveLength(2);
+    expect(intents[0]).toEqual({
+      kind: "disabled",
+      reason: "Spell choices are unavailable.",
+    });
+    expect(intents[1]).toEqual({
+      kind: "ready",
+      params: { program_id: "combat_basics" },
+    });
+  }
 });
