@@ -77,7 +77,7 @@ def _self_targeted_round(*, player_hp: int):
     kael = state.get_participant("player_1")
     assert kael is not None
     kael.hp_current = player_hp
-    return _ctx_at_resolution(state=state)
+    return _ctx_at_resolution(state=state, reaction_ids=(UNCANNY_DODGE,))
 
 
 @pytest.mark.asyncio

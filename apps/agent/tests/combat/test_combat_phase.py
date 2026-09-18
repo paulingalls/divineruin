@@ -37,9 +37,12 @@ class TestDeclarationBeat:
         assert advance.packets == []
         assert advance.wrap is None
 
-    def test_refreshes_reaction_for_players_only(self):
+    def test_refreshes_reaction_for_known_player_owners_only(self):
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.has_reaction_ability = True
 
         next_state, _ = advance_combat_phase(state, _declarations())
 

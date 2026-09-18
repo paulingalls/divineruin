@@ -81,10 +81,7 @@ def pause_allowed(state) -> bool:
     return any(
         not reaction_spend.is_spent(state.reactions_available.get(p.id))
         for p in state.participants
-        if p.type == "player"
-        and not p.is_fallen
-        and not cannot_act(p.conditions)
-        and p.has_reaction_ability is not False
+        if p.type == "player" and not p.is_fallen and not cannot_act(p.conditions) and p.has_reaction_ability is True
     )
 
 

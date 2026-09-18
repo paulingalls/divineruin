@@ -114,7 +114,7 @@ class TestTheInterruptLoop:
         The second half is the truthiness trap: having spent, the player opens NO further window
         for the rest of the round, so the post-roll pause does not come back around.
         """
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
 
         await _call(ctx, deps)  # Beat 2: the ally band commits, the enemy blow is held

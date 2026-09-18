@@ -2,7 +2,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _resolution_state, _resolve_deps
+from combat._helpers import _activate, _resolution_state, _resolve_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -44,7 +44,7 @@ async def _step(ctx, deps):
     [
         pytest.param(True, True, id="true"),
         pytest.param(False, False, id="false"),
-        pytest.param(None, True, id="absent"),
+        pytest.param(None, False, id="absent"),
     ],
 )
 async def test_roundtripped_ownership_controls_the_window(ownership, opens_window):
@@ -118,7 +118,7 @@ async def test_known_owner_with_spent_reaction_opens_no_window():
     assert ctx.userdata.combat_state.get_participant(owner.id).hp_current == 22
 
 
-def test_declaration_refresh_seeds_only_owners_and_legacy_unknowns():
+def test_declaration_refresh_seeds_only_known_owners():
     state = _resolution_state()
     state.beat = combat_phase.PhaseBeat.DECLARATION
     known_owner = state.get_participant("player_1")
@@ -133,7 +133,7 @@ def test_declaration_refresh_seeds_only_owners_and_legacy_unknowns():
 
     refreshed, _ = combat_phase.advance_combat_phase(state, {known_owner.id: {"type": "defend"}})
 
-    assert set(refreshed.reactions_available) == {"player_1", "player_3"}
+    assert set(refreshed.reactions_available) == {"player_1"}
 
 
 def _start_mocks(player_class, player_level=6):
@@ -238,8 +238,8 @@ async def test_activation_refuses_a_reaction_id_the_actor_does_not_own():
     post_roll = (await _step(ctx, deps))["next"]["waiting_on"]
     assert post_roll["stage"] == "post_roll"
 
-    with pytest.raises(ValueError) as refused:
-        reaction_gate.validate_reaction_activation(ctx.userdata.combat_state, "player_1", "rogue_uncanny_dodge")
+    with pytest.raises(ToolError) as refused:
+        await _activate(ctx, "rogue_uncanny_dodge", player_class="rogue")
 
     assert "player_1" in str(refused.value)
     assert "rogue_uncanny_dodge" in str(refused.value)

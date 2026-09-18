@@ -11,10 +11,9 @@ import combat_turn
 import reaction_spend
 from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
-from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
 
-# High enough to own every reaction the interrupt tests activate (the L5/L6 tier).
+# High enough to pass the class-level gate for every reaction the interrupt tests activate.
 _ACTIVATE_LEVEL = 6
 
 
@@ -130,6 +129,7 @@ def _resolution_state(
                 level=player_level,
                 action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
                 conditions=player_conditions or [],
+                has_reaction_ability=True,
             ),
             CombatParticipant(
                 id=enemy_id,
@@ -255,14 +255,18 @@ async def _resolve_round(ctx, *, max_calls: int = 64, **deps) -> Any:
     )
 
 
-def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None):
-    """A context parked at the RESOLUTION beat with the round's reaction unspent.
+def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None, reaction_ids=None):
+    """A context parked at RESOLUTION with known owners' round reactions unspent.
 
     The interrupt loop's entry point: resolve_phase from here holds the enemy blow and pauses on
     its windows, which is the only state in which ``_activate`` below is legal.
     """
     ctx = make_context(room=room) if room is not None else make_context()
     state = state if state is not None else _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
+    if reaction_ids is not None:
+        reactor = state.get_participant(ctx.userdata.player_id)
+        assert reactor is not None
+        reactor.reaction_ids = list(reaction_ids)
     state.reactions_available = {p.id: reaction_spend.unspent() for p in state.participants if p.type == "player"}
     ctx.userdata.combat_state = state
     return ctx
@@ -284,11 +288,9 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     """
     player = ctx.userdata.combat_state.get_participant(ctx.userdata.player_id)
     assert player is not None
-    # One level for the participant AND the row activate reads: ownership is gated on both, and
-    # two literals drifting apart would offer a reaction the activation then refuses.
+    # One level for the participant AND the row activate reads: the ability's class-level gate
+    # checks both, and two literals drifting apart would offer an ability activation then refuse it.
     player.level = _ACTIVATE_LEVEL
-    player.reaction_ids = class_reaction_ids(player_class, player.level)
-    player.has_reaction_ability = bool(player.reaction_ids)
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(
