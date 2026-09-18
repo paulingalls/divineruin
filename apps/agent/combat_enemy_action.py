@@ -4,8 +4,10 @@ from typing import TYPE_CHECKING
 
 import check_resolution_save
 import concentration_break
+import event_types as E
 from check_resolution_attack import AttackResult
 from combat_ability import _resolve_condition_target, land_condition_on_participant
+from combat_events import emit_or_publish
 from combat_support import _resolve_attack_packet, apply_attack_result
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
@@ -179,7 +181,7 @@ async def resolve_combined_attack_action(
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
         )
-        summary.update({key: value for key, value in condition.items() if key not in {"resolved", "reason"}})
+        summary.update({key: value for key, value in condition.items() if key != "resolved"})
     return summary
 
 
@@ -217,7 +219,7 @@ async def resolve_save_damage_action(
     rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
     damage = rolled_damage // 2 if result.success else rolled_damage
     damage_result = AttackResult(
-        hit=True,
+        hit=not result.success,
         roll=result.roll,
         attack_modifier=result.modifier,
         attack_total=result.total,
@@ -230,6 +232,22 @@ async def resolve_save_damage_action(
         overkill=max(0, damage - target.hp_current),
         dramatic=result.dramatic,
         context=result.context,
+    )
+    await emit_or_publish(
+        sink,
+        session.room,
+        E.DICE_ROLL,
+        {
+            "roll_type": "saving_throw",
+            "save_type": result.save_type,
+            "roll": result.roll,
+            "total": result.total,
+            "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
+            "damage": damage,
+        },
+        event_bus=session.event_bus,
     )
     summary = await apply_attack_result(
         session,
