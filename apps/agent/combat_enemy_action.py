@@ -4,8 +4,10 @@ from typing import TYPE_CHECKING
 
 import check_resolution_save
 import concentration_break
+import event_types as E
 from check_resolution_attack import AttackResult
 from combat_ability import _resolve_condition_target, land_condition_on_participant
+from combat_events import emit_or_publish
 from combat_support import _resolve_attack_packet, apply_attack_result
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
@@ -180,6 +182,11 @@ async def resolve_combined_attack_action(
             reaction_save_advantage=reaction_save_advantage,
         )
         summary.update({key: value for key, value in condition.items() if key not in {"resolved", "reason"}})
+        # A bare `reason` means "this packet did nothing" everywhere else in the resolver, so the
+        # condition half's own waste rides a namespaced key: the damage landed, and the DM must not
+        # read the condition's refusal as the whole blow's.
+        if (condition_reason := condition.get("reason")) is not None:
+            summary["condition_reason"] = condition_reason
     return summary
 
 
@@ -217,7 +224,7 @@ async def resolve_save_damage_action(
     rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
     damage = rolled_damage // 2 if result.success else rolled_damage
     damage_result = AttackResult(
-        hit=True,
+        hit=not result.success,
         roll=result.roll,
         attack_modifier=result.modifier,
         attack_total=result.total,
@@ -230,6 +237,24 @@ async def resolve_save_damage_action(
         overkill=max(0, damage - target.hp_current),
         dramatic=result.dramatic,
         context=result.context,
+    )
+    # Announced here, and publish_roll stays False below: apply_attack_result's payload would voice
+    # the victim's save as the attacker's swing (the same reason its attack keys are popped after it).
+    await emit_or_publish(
+        sink,
+        session.room,
+        E.DICE_ROLL,
+        {
+            "roll_type": "saving_throw",
+            "save_type": result.save_type,
+            "roll": result.roll,
+            "total": result.total,
+            "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
+            "damage": damage,
+        },
+        event_bus=session.event_bus,
     )
     summary = await apply_attack_result(
         session,

@@ -132,9 +132,9 @@ def _is_wasted(state, head: dict) -> bool:
     if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
-    if declaration.type is not DeclarationType.ATTACK:
+    if declaration.target_id is None:
         return False
-    target = state.get_participant(declaration.target_id) if declaration.target_id else None
+    target = state.get_participant(declaration.target_id)
     return target is None or target.is_fallen
 
 
