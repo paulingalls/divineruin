@@ -26,6 +26,7 @@ from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
 from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
+from sample_fixtures import make_mock_room
 
 import db
 from dispatch_agent import create_dispatch_agent
@@ -54,7 +55,7 @@ scenarios("features/m1_5_training_cycle.feature")
 
 
 async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
-    session_data = SessionData(player_id="player_1", location_id="accord_training_hall")
+    session_data = SessionData(player_id="player_1", location_id="accord_training_hall", room=make_mock_room())
     session = AgentSession(
         # Parity with agent.py: strict schemas are interim-OFF. At the plugin default this
         # dispatch session 400s before any turn runs ("compiled grammar is too large").
