@@ -29,7 +29,7 @@ interface EncounterActionBase {
   description?: string;
 }
 
-// A strike rolls to hit and deals `damage`; `applies_condition` makes it a save-gated condition row.
+// An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
   kind?: "attack";
   damage: string; // dice expression, e.g. "1d8", or "0" for a save-gated condition row
@@ -38,6 +38,7 @@ export interface EncounterAttackAction extends EncounterActionBase {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  half_on_success?: boolean;
   escape_dc?: number;
 }
 
@@ -60,6 +61,52 @@ export function encounterActionKind(action: { name: string; kind?: string }): En
     throw new Error(`action ${action.name} has unknown kind ${kind}`);
   }
   return kind as EncounterActionKind;
+}
+
+const SAVE_KEYS = new Set([
+  "strength",
+  "dexterity",
+  "constitution",
+  "intelligence",
+  "wisdom",
+  "charisma",
+  "str",
+  "dex",
+  "con",
+  "int",
+  "wis",
+  "cha",
+]);
+
+export function validateEncounterActionShape(action: {
+  name?: unknown;
+  damage?: unknown;
+  applies_condition?: unknown;
+  save?: unknown;
+  dc?: unknown;
+  half_on_success?: unknown;
+}): void {
+  const label = `action ${String(action.name)}`;
+  const condition = action.applies_condition;
+  const halfOnSuccess = action.half_on_success === true;
+  if (condition !== undefined || halfOnSuccess) {
+    const save = typeof action.save === "string" ? action.save.toLowerCase() : "";
+    if (!SAVE_KEYS.has(save)) {
+      throw new Error(`${label} condition/save damage needs a valid save`);
+    }
+    if (!Number.isInteger(action.dc)) {
+      throw new Error(`${label} condition/save damage needs an integer dc`);
+    }
+  }
+  if (
+    halfOnSuccess &&
+    (action.damage === undefined ||
+      action.damage === "" ||
+      action.damage === "0" ||
+      action.damage === 0)
+  ) {
+    throw new Error(`${label} half_on_success needs damage`);
+  }
 }
 
 // A Boss's unique signature ability (authored content, not generated). derive_role_stats attaches

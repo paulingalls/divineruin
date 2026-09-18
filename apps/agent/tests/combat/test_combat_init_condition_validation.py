@@ -5,9 +5,15 @@ applies_condition and a silent no-op at combat start. Pure — calls the validat
 against an in-memory enemies list, no DB.
 """
 
+import json
+from pathlib import Path
+
 import pytest
 
-from combat_init import _validate_enemy_action_conditions, _validate_enemy_resistance_tags
+from combat_init import _validate_enemy_action_shapes, _validate_enemy_resistance_tags
+
+FIXTURE_PATH = Path(__file__).resolve().parents[4] / "packages" / "shared" / "fixtures" / "enemy_action_shapes.json"
+ACTION_SHAPES = json.loads(FIXTURE_PATH.read_text())
 
 
 class TestValidateEnemyActionConditions:
@@ -21,7 +27,7 @@ class TestValidateEnemyActionConditions:
             }
         ]
         with pytest.raises(ValueError, match="not_a_condition"):
-            _validate_enemy_action_conditions(enemies)
+            _validate_enemy_action_shapes(enemies)
 
     def test_known_hostile_condition_with_save_and_dc_does_not_raise(self):
         enemies = [
@@ -32,7 +38,7 @@ class TestValidateEnemyActionConditions:
                 ],
             }
         ]
-        _validate_enemy_action_conditions(enemies)  # no raise
+        _validate_enemy_action_shapes(enemies)  # no raise
 
     def test_missing_save_raises_at_load(self):
         # The resolver hard-reads action["save"]; a missing save must fail loud HERE (combat start),
@@ -44,7 +50,7 @@ class TestValidateEnemyActionConditions:
             }
         ]
         with pytest.raises(ValueError, match="save"):
-            _validate_enemy_action_conditions(enemies)
+            _validate_enemy_action_shapes(enemies)
 
     def test_missing_or_nonint_dc_raises_at_load(self):
         enemies = [
@@ -54,7 +60,7 @@ class TestValidateEnemyActionConditions:
             }
         ]
         with pytest.raises(ValueError, match="dc"):
-            _validate_enemy_action_conditions(enemies)
+            _validate_enemy_action_shapes(enemies)
 
     def test_invalid_save_attribute_raises_at_load(self):
         enemies = [
@@ -64,7 +70,7 @@ class TestValidateEnemyActionConditions:
             }
         ]
         with pytest.raises(ValueError, match="save"):
-            _validate_enemy_action_conditions(enemies)
+            _validate_enemy_action_shapes(enemies)
 
     def test_abbreviated_save_key_is_accepted(self):
         # The resolver expands "wis" -> "wisdom" (roll_participant_save), so the load-gate must
@@ -75,22 +81,25 @@ class TestValidateEnemyActionConditions:
                 "action_pool": [{"name": "Hollow Shriek", "applies_condition": "frightened", "save": "wis", "dc": 12}],
             }
         ]
-        _validate_enemy_action_conditions(enemies)  # no raise
+        _validate_enemy_action_shapes(enemies)  # no raise
 
-    def test_damage_bearing_condition_action_raises_at_load(self):
-        # M13 condition actions are save-based; the resolver does not apply damage, so a non-zero
-        # damage on a condition action must fail loud at load (debt 69132c5d) rather than silently
-        # deal none.
-        enemies = [
-            {
-                "id": "venom_spider",
-                "action_pool": [
-                    {"name": "Venom Bite", "applies_condition": "poisoned", "save": "con", "dc": 12, "damage": "2d6"}
-                ],
-            }
-        ]
-        with pytest.raises(ValueError, match="save-based"):
-            _validate_enemy_action_conditions(enemies)
+    @pytest.mark.parametrize("fixture_name", ["valid_combined_bite", "valid_half_on_success", "corruption_wave"])
+    def test_supported_damage_and_save_shapes_are_accepted(self, fixture_name):
+        enemies = [{"id": "fixture_enemy", "action_pool": [ACTION_SHAPES[fixture_name]]}]
+        _validate_enemy_action_shapes(enemies)
+
+    def test_half_on_success_without_save_is_refused(self):
+        enemies = [{"id": "fixture_enemy", "action_pool": [ACTION_SHAPES["invalid_half_without_save"]]}]
+        with pytest.raises(ValueError, match="save"):
+            _validate_enemy_action_shapes(enemies)
+
+    def test_half_on_success_without_damage_is_refused(self):
+        # half_on_success halves action["damage"]; a "0"-damage row would resolve as a save that
+        # deals nothing, so the load gate refuses it. The row carries a valid save/dc, so only the
+        # damage check can raise here.
+        enemies = [{"id": "fixture_enemy", "action_pool": [ACTION_SHAPES["invalid_half_without_damage"]]}]
+        with pytest.raises(ValueError, match="non-zero"):
+            _validate_enemy_action_shapes(enemies)
 
     def test_zero_damage_condition_action_does_not_raise(self):
         enemies = [
@@ -107,7 +116,7 @@ class TestValidateEnemyActionConditions:
                 ],
             }
         ]
-        _validate_enemy_action_conditions(enemies)  # no raise
+        _validate_enemy_action_shapes(enemies)  # no raise
 
     def test_action_with_no_applies_condition_does_not_raise(self):
         enemies = [
@@ -118,7 +127,7 @@ class TestValidateEnemyActionConditions:
                 ],
             }
         ]
-        _validate_enemy_action_conditions(enemies)  # no raise
+        _validate_enemy_action_shapes(enemies)  # no raise
 
 
 class TestValidateEnemyResistanceTags:

@@ -15,7 +15,7 @@ from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
 from check_resolution_save import SavingThrowResult
-from combat_ability import _resolve_enemy_condition_packet
+from combat_enemy_action import _resolve_enemy_condition_packet
 from combat_packet import _resolve_one_packet
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant, CombatState

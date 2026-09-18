@@ -11,7 +11,7 @@ from sample_fixtures import make_context
 import combat_prompts
 import conditions
 from check_resolution_save import roll_participant_save
-from combat_ability import _resolve_enemy_condition_packet
+from combat_enemy_action import _resolve_enemy_condition_packet
 from combat_init import _start_combat_impl
 from combat_maneuver import resolve_maneuver
 from declarations import Declaration, DeclarationType

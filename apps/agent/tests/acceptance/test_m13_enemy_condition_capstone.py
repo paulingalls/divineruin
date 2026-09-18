@@ -4,9 +4,9 @@ story-001 (content + fail-loud validation) and story-002 (resolve path, homes de
 f9a5d1e88432) shipped the M13 chain in slices with unit / mock-conn coverage. This capstone
 proves they COMPOSE against ONE seeded testcontainer (auto-marked `acceptance`), driving the
 REAL pipeline: content-driven `combat_init._start_combat_impl` builds participants from the
-seeded `hollow_patrol_greyvale` encounter (running `_validate_enemy_action_conditions`), the
+seeded `hollow_patrol_greyvale` encounter (running `_validate_enemy_action_shapes`), the
 declare/resolve loop dispatches the enemy `hollow_rend_1`'s "Hollow Shriek" through
-`combat_packet._resolve_one_packet` to `combat_ability._resolve_enemy_condition_packet`, which
+`combat_packet._resolve_one_packet` to `combat_enemy_action._resolve_enemy_condition_packet`, which
 rolls the target's save and lands the condition via the immunity-gated `apply_condition` SSOT.
 
 The enemy action is declared as an **ATTACK** — the way the DM actually declares an enemy pool
