@@ -165,19 +165,20 @@ def _attack_action(state, head: dict) -> dict | None:
 
     A save-only condition action (Hollow Shriek) gets the PRE-ROLL window only, which is how the
     countercharms reach it. A combined damaging condition action still rolls to hit and gets both
-    windows. A mark action (any ``encounter_actions`` kind other than "attack") never rolls.
+    windows under EITHER declaration type, because _resolve_one_packet routes it on the ACTION
+    FIELD, not the type. Every OTHER enemy ABILITY is routed elsewhere by that same dispatch and
+    never consumes a held roll, so rolling one would publish a DICE_ROLL and open a post-roll
+    window — a player spending the round's one reaction — for a blow that never lands
+    (constraint 6). A mark action (any ``encounter_actions`` kind other than "attack") never rolls.
     """
     declaration = _held_declaration(head)
-    if declaration.type not in (DeclarationType.ATTACK, DeclarationType.ABILITY):
-        return None
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if (
-        action is None
-        or is_save_damage_action(action)
-        or (action.get("applies_condition") and not is_combined_attack_action(action))
-        or action_kind(action) != "attack"
-    ):
+    if action is None or is_save_damage_action(action) or action_kind(action) != "attack":
+        return None
+    if is_combined_attack_action(action):
+        return action
+    if declaration.type is not DeclarationType.ATTACK or action.get("applies_condition"):
         return None
     return action
 

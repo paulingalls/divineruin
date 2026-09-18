@@ -151,4 +151,12 @@ describe("enemy action resolution shapes", () => {
       "save",
     );
   });
+
+  // "0" is truthy in JS, so a naive falsiness check would wave this row through; the row carries a
+  // valid save/dc, so only the damage check can throw here.
+  test("half_on_success without damage is refused", () => {
+    expect(() => validateEncounterActionShape(actionShapes.invalid_half_without_damage!)).toThrow(
+      "needs damage",
+    );
+  });
 });

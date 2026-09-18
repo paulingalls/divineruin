@@ -93,6 +93,14 @@ class TestValidateEnemyActionConditions:
         with pytest.raises(ValueError, match="save"):
             _validate_enemy_action_shapes(enemies)
 
+    def test_half_on_success_without_damage_is_refused(self):
+        # half_on_success halves action["damage"]; a "0"-damage row would resolve as a save that
+        # deals nothing, so the load gate refuses it. The row carries a valid save/dc, so only the
+        # damage check can raise here.
+        enemies = [{"id": "fixture_enemy", "action_pool": [ACTION_SHAPES["invalid_half_without_damage"]]}]
+        with pytest.raises(ValueError, match="non-zero"):
+            _validate_enemy_action_shapes(enemies)
+
     def test_zero_damage_condition_action_does_not_raise(self):
         enemies = [
             {

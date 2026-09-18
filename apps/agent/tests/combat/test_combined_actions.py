@@ -11,6 +11,7 @@ from sample_fixtures import make_context
 import check_resolution_attack
 import check_resolution_save
 import combat_hold
+import event_types as E
 import reaction_spend
 from check_resolution_attack import AttackResult
 from combat_packet import _resolve_one_packet
@@ -40,6 +41,19 @@ def _attack_result(*, hit: bool, damage: int = 4) -> AttackResult:
         target_killed=False,
         narrative_hint="",
     )
+
+
+def _held_deps(resolver) -> dict:
+    return {
+        "resolver": resolver,
+        "sink": MagicMock(emit=AsyncMock()),
+        "mutations": MagicMock(update_player_hp=AsyncMock()),
+        "queries": MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+        "concentration_break_mod": MagicMock(
+            break_concentration_on_damage=AsyncMock(return_value=None),
+            break_concentration_on_incapacitation=AsyncMock(return_value=None),
+        ),
+    }
 
 
 async def _resolve(action, *, hit=True, save_success=False, declaration_type=DeclarationType.ATTACK):
@@ -149,16 +163,7 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
     state.held_actions = combat_hold.hold_enemy_packets(state, [packet])
     resolver = MagicMock()
     resolver.resolve_attack.return_value = _attack_result(hit=True)
-    deps = {
-        "resolver": resolver,
-        "sink": MagicMock(emit=AsyncMock()),
-        "mutations": MagicMock(update_player_hp=AsyncMock()),
-        "queries": MagicMock(get_player_inventory=AsyncMock(return_value=[])),
-        "concentration_break_mod": MagicMock(
-            break_concentration_on_damage=AsyncMock(return_value=None),
-            break_concentration_on_incapacitation=AsyncMock(return_value=None),
-        ),
-    }
+    deps = _held_deps(resolver)
 
     await combat_hold.pump(make_context().userdata, state, packet_deps=deps)
     pre_roll_window = state.open_window
@@ -186,3 +191,47 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
     assert summaries[0]["hit"] is True
     assert summaries[0]["condition_inflicted"] == "poisoned"
     held_save.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("action", "declaration_type", "rolls"),
+    [
+        # The combined action rolls to hit under EITHER declaration type: _resolve_one_packet
+        # routes it on the action field, so the hold must not gate the roll on the type.
+        (ACTIONS["valid_combined_bite"], "ability", True),
+        (ACTIONS["valid_combined_bite"], "attack", True),
+        # A plain attack row declared as an ABILITY resolves down the ability path, which never
+        # consumes a held roll — rolling one would announce a DICE_ROLL and open a post-roll
+        # window for a blow that never lands.
+        ({"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": []}, "ability", False),
+    ],
+)
+async def test_only_a_combined_action_rolls_when_the_dm_declares_an_enemy_ability(action, declaration_type, rolls):
+    state = _make_combat_state()
+    enemy = _participant(state, "goblin_scout_1")
+    enemy.action_pool = [action]
+    player = _participant(state, "player_1")
+    player.has_reaction_ability = True
+    state.reactions_available[player.id] = reaction_spend.unspent()
+    state.pending_declarations[enemy.id] = {
+        "type": declaration_type,
+        "action": action["name"],
+        "target_id": player.id,
+    }
+    packet = SimpleNamespace(actor_id=enemy.id, initiative=enemy.initiative)
+    state.held_actions = combat_hold.hold_enemy_packets(state, [packet])
+    resolver = MagicMock()
+    resolver.resolve_attack.return_value = _attack_result(hit=True)
+    deps = _held_deps(resolver)
+
+    await combat_hold.pump(make_context().userdata, state, packet_deps=deps)
+    assert state.open_window is not None
+    assert state.open_window["stage"] == "pre_roll"
+
+    with patch("check_resolution_save.roll_participant_save", MagicMock(side_effect=REAL_ROLL_PARTICIPANT_SAVE)):
+        await combat_hold.pump(make_context().userdata, state, packet_deps=deps)
+
+    post_roll = state.open_window is not None and state.open_window["stage"] == "post_roll"
+    assert post_roll is rolls
+    assert (resolver.resolve_attack.call_count > 0) is rolls
+    assert any(call.args[1] == E.DICE_ROLL for call in deps["sink"].emit.call_args_list) is rolls
