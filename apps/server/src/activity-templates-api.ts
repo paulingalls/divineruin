@@ -4,6 +4,8 @@ import { getActivityTypeConfig } from "./training_state_machine.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
+import { getArchetypeChassis } from "./archetypes.ts";
+import { listSpells } from "./spells.ts";
 import {
   displayName,
   computePercentComplete,
@@ -11,6 +13,7 @@ import {
   type MaterialRequirement,
   type TemplateGroup,
   type TemplateItem,
+  isSpellTierUnlocked,
 } from "@divineruin/shared";
 
 function formatDuration(minSec: number, maxSec: number): string {
@@ -98,11 +101,17 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       }[]
     >;
 
-    const [inventoryRows, activeRows, trainingRows] = await Promise.all([
-      inventoryPromise,
-      activePromise,
-      trainingPromise,
-    ]);
+    const playerPromise = sql<{ class: string | null; level: string | null }[]>`
+      SELECT data->>'class' AS class, data->>'level' AS level
+      FROM players WHERE player_id = ${playerId}
+    `;
+    const knownSpellsPromise = sql<{ spell_id: string }[]>`
+      SELECT spell_id FROM character_spells WHERE player_id = ${playerId}
+    `;
+
+    const [inventoryRows, activeRows, trainingRows, playerRows, knownSpellRows] = await Promise.all(
+      [inventoryPromise, activePromise, trainingPromise, playerPromise, knownSpellsPromise],
+    );
 
     // Build owned map
     const owned: Record<string, number> = {};
@@ -139,20 +148,49 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       }
     }
 
-    const trainingItems: TemplateItem[] = getAllTrainingPrograms()
-      .filter((p) => !p.training_activity_type.startsWith("spell_") || activeMap.has(p.id))
-      .map((p) => ({
+    const player = playerRows[0];
+    const chassis = player?.class ? getArchetypeChassis(player.class) : undefined;
+    const level =
+      player?.level === null || player?.level === undefined ? NaN : Number(player.level);
+    const knownSpellIds = new Set(knownSpellRows.map((row) => row.spell_id));
+
+    const trainingItems: TemplateItem[] = getAllTrainingPrograms().map((p) => {
+      const params: Record<string, unknown> = {
+        program_id: p.id,
+        stat: p.stat,
+        skill: p.skill,
+      };
+      if (p.training_activity_type.startsWith("spell_")) {
+        // The tier gate is a property of the program and the player, not of any one spell —
+        // evaluate it once, outside the catalog walk.
+        const tier = p.training_activity_type.slice("spell_".length);
+        const canStudyTier =
+          chassis !== undefined &&
+          chassis.magic_source !== null &&
+          Number.isInteger(level) &&
+          level >= 1 &&
+          isSpellTierUnlocked(chassis, tier, level);
+        params.studiable_spell_ids = canStudyTier
+          ? listSpells()
+              .filter(
+                (spell) =>
+                  spell.spell_tier === tier &&
+                  (chassis.magic_source === "cross" || chassis.magic_source === spell.source) &&
+                  !knownSpellIds.has(spell.id),
+              )
+              .map((spell) => spell.id)
+              .sort()
+          : [];
+      }
+      return {
         id: p.id,
         name: p.name,
         duration: trainingDuration(p.training_activity_type, `Training program ${p.id}`),
-        params: {
-          program_id: p.id,
-          stat: p.stat,
-          skill: p.skill,
-        },
+        params,
         materials: null,
         active: activeMap.get(p.id) ?? null,
-      }));
+      };
+    });
 
     // Every non-terminal training row holds the training slot, but only one naming a listed
     // program has a row to carry its `active`: learn(kind="variant") writes variant_id and no

@@ -10,7 +10,7 @@ cross-language SSOT contract; it borrows M3.3's schema minimally and stays
 forward-compatible with the full Phase-3 Magic catalog.
 
 Tier-unlock ladder (the floor character level at which a tier becomes learnable) is
-PER-ARCHETYPE (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER): full casters reach standard/major/
+PER-ARCHETYPE (content/archetypes.json): full casters reach standard/major/
 supreme at L3/L5/L9. This tier table is the ACTIVE learn/cast gate. (The per-row
 level_requirement / catalog "Level" column was deleted as orphaned non-gating metadata
 with no reader — access is gated by the per-archetype tier tables in
@@ -42,7 +42,7 @@ SPELL_TIERS = {"cantrip", "minor", "standard", "major", "supreme"}
 
 # Representative full-caster archetype per spell source. The 87 content spells are all
 # full-caster-source (arcane/divine/primal), so each is gated by a full caster of its
-# source; the per-archetype floors live in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER.
+# source; the per-archetype floors live in content/archetypes.json.
 SOURCE_REPRESENTATIVE = {"arcane": "mage", "divine": "cleric", "primal": "druid"}
 
 _FIREBALL_ROW = {
@@ -352,7 +352,7 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
 
 def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
     # Every content spell's tier is covered by the per-archetype level->tier gate
-    # (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER), validated against a representative full
+    # (content/archetypes.json), validated against a representative full
     # caster of the spell's source: unlocked exactly at that archetype's tier floor,
     # gated one level below. This tier table is the sole ACTIVE gate.
     _seed_from_content()

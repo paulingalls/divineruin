@@ -66,6 +66,10 @@ async def test_martial_refuses_spell_with_both_sources_named():
 
 
 def test_every_archetype_with_a_magic_source_has_a_tier_table():
-    # learn lets the tier gate's ValueError raise, so a source-holding archetype must never lack a table.
-    holders = {a.id for a in archetypes._archetypes.values() if a.magic_source is not None}
-    assert holders == set(leveling.MIN_LEVEL_BY_ARCHETYPE_TIER)
+    # learn lets the tier gate's ValueError raise, so a source-holding archetype must never lack a
+    # table. Run the gate, don't re-read the field the loader already validated.
+    holders = [a.id for a in archetypes._archetypes.values() if a.magic_source is not None]
+    assert len(holders) == 13, holders
+    for archetype_id in holders:
+        floors = [leveling.min_level_for_tier(archetype_id, tier) for tier in leveling.SPELL_TIERS]
+        assert any(floor is not None for floor in floors), archetype_id

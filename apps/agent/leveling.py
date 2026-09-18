@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from archetypes import get_archetype_chassis
 from hp_scaling import calculate_max_hp
 from rules_engine import proficiency_bonus
 
@@ -24,36 +25,6 @@ MilestoneType = Literal[
 # The five spell tiers, low->high — the closed vocabulary the gate validates against.
 SPELL_TIERS: frozenset[str] = frozenset({"cantrip", "minor", "standard", "major", "supreme"})
 
-# Minimum character level for each archetype to learn/prepare an elective spell of each
-# tier, sourced from game_mechanics_archetypes.md "Max Tier by level" tables. A tier
-# ABSENT from an archetype's map is never available to it (paladin/diplomat/marshal have
-# no Supreme; the half-casters and Whisper have no elective cantrip). An archetype absent
-# from the table is a non-caster (fail loud). The old single global table (standard 4 /
-# major 7 / supreme 13) matched only Whisper — full casters unlock at 3 / 5 / 9, the
-# divergence concern 66fa8bae flagged.
-_FULL_CASTER: dict[str, int] = {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9}
-MIN_LEVEL_BY_ARCHETYPE_TIER: dict[str, dict[str, int]] = {
-    "mage": _FULL_CASTER,
-    "artificer": _FULL_CASTER,
-    "seeker": _FULL_CASTER,
-    "druid": _FULL_CASTER,
-    "beastcaller": _FULL_CASTER,
-    "warden": _FULL_CASTER,
-    "cleric": _FULL_CASTER,
-    "oracle": _FULL_CASTER,
-    # Bard Supreme unlocks at L10, not L9 — the lone full-caster outlier (Mass Inspire is
-    # core at L9, Supreme arrives at L10). Ref: game_mechanics_archetypes.md:399-400.
-    "bard": {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 10},
-    # Half-casters: elective spells start at L3, cap at Major, no Supreme (spec
-    # archetypes.md:807-811 paladin / 1057-1060 diplomat / 1132-1135 marshal).
-    "paladin": {"minor": 3, "standard": 5, "major": 9},
-    "diplomat": {"minor": 3, "standard": 5, "major": 9},
-    "marshal": {"minor": 3, "standard": 5, "major": 9},
-    # Whisper's shadow-magic catalog: the lone caster matching the old global 4/7/13
-    # (spec archetypes.md:983-986).
-    "whisper": {"minor": 1, "standard": 4, "major": 7, "supreme": 13},
-}
-
 
 def min_level_for_tier(archetype: str, tier: str) -> int | None:
     """Minimum character level for `archetype` to access spell `tier`, or None when the
@@ -64,11 +35,10 @@ def min_level_for_tier(archetype: str, tier: str) -> int | None:
     """
     if tier not in SPELL_TIERS:
         raise ValueError(f"unknown spell tier {tier!r}; expected one of {sorted(SPELL_TIERS)}")
-    if archetype not in MIN_LEVEL_BY_ARCHETYPE_TIER:
-        raise ValueError(
-            f"unknown spellcasting archetype {archetype!r}; expected one of {sorted(MIN_LEVEL_BY_ARCHETYPE_TIER)}"
-        )
-    return MIN_LEVEL_BY_ARCHETYPE_TIER[archetype].get(tier)
+    chassis = get_archetype_chassis(archetype)
+    if chassis.magic_source is None:
+        raise ValueError(f"unknown spellcasting archetype {archetype!r}")
+    return chassis.spell_tier_min_levels.get(tier)
 
 
 def is_spell_tier_unlocked(archetype: str, tier: str, level: int) -> bool:

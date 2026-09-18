@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import archetypes
 import leveling
 import rest_mechanics
 import spell_preparation
@@ -163,7 +164,11 @@ def test_uncapped_caster_can_prepare_supreme(archetype_id):
 def test_supreme_capped_archetypes_are_known_divine_casters():
     # paladin/diplomat/marshal cap at Major — no "supreme" entry in the per-archetype gate.
     # They are a STRICT subset of divine casters (cleric/oracle keep Supreme).
-    no_supreme = {a for a, tiers in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER.items() if "supreme" not in tiers}
+    no_supreme = {
+        a.id
+        for a in archetypes._archetypes.values()
+        if a.magic_source is not None and "supreme" not in a.spell_tier_min_levels
+    }
     assert no_supreme == {"paladin", "diplomat", "marshal"}
     divine_in_content = _archetypes_by_magic_source().get("divine", set())
     assert divine_in_content >= no_supreme

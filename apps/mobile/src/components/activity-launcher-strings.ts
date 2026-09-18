@@ -1,5 +1,42 @@
 import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
 
+export type LaunchIntent =
+  | { kind: "ready"; params: Record<string, unknown> }
+  | { kind: "choose-spell"; spellIds: string[] }
+  | { kind: "disabled"; reason: string };
+
+export function getLaunchIntent(
+  type: "crafting" | "training",
+  item: TemplateItem,
+  selectedSpellId?: string,
+): LaunchIntent {
+  if (type === "crafting") {
+    return { kind: "ready", params: { recipe_id: item.params.recipe_id } };
+  }
+  const spellIdsRaw = item.params.studiable_spell_ids;
+  if (spellIdsRaw === undefined) {
+    return { kind: "ready", params: { program_id: item.params.program_id } };
+  }
+  if (
+    !Array.isArray(spellIdsRaw) ||
+    spellIdsRaw.some((id) => typeof id !== "string" || id.length === 0)
+  ) {
+    throw new Error("studiable_spell_ids must be an array of non-empty strings");
+  }
+  const spellIds = spellIdsRaw as string[];
+  if (spellIds.length === 0) {
+    return { kind: "disabled", reason: "No spells available to study." };
+  }
+  if (selectedSpellId === undefined) return { kind: "choose-spell", spellIds };
+  if (!spellIds.includes(selectedSpellId)) {
+    throw new Error(`Selected spell ${selectedSpellId} is not available to study`);
+  }
+  return {
+    kind: "ready",
+    params: { program_id: item.params.program_id, spell_id: selectedSpellId },
+  };
+}
+
 // The Bun lane's React Native mock omits View/Text, so testable presentation policy must
 // stay outside activity-launcher.tsx.
 
