@@ -2424,6 +2424,10 @@
     "effects": [
       {
         "type": "utility",
+        "advantage_vs": [
+          "prone",
+          "push"
+        ],
         "description": "+10 ft speed; advantage vs prone/push; once/long rest Disengage as a free action."
       }
     ],
@@ -2564,6 +2568,10 @@
     "effects": [
       {
         "type": "utility",
+        "condition_immunities": [
+          "charmed",
+          "frightened"
+        ],
         "description": "Immune to psychic damage, Charmed, Frightened; once/long rest 30 ft Silence for 10 min."
       }
     ],
@@ -2590,6 +2598,12 @@
     "effects": [
       {
         "type": "utility",
+        "condition_immunities": [
+          "charmed"
+        ],
+        "save_advantages": [
+          "wisdom"
+        ],
         "description": "Advantage on WIS saves; immune to Charmed; once/long rest 15 ft aura of calm. Drawback: weekly WIS DC 15 or lose a long rest's benefit."
       }
     ],

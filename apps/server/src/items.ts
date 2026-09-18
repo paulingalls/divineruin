@@ -17,6 +17,39 @@ const ALLOWED_DURABILITY_TIERS = new Set<NonNullable<Item["durability_tier"]>>([
   "masterwork",
 ]);
 const ATTUNEMENT_KINDS = new Set(["none", "required", "class"]);
+const CONDITION_NAMES = new Set([
+  "wounded",
+  "stunned",
+  "prone",
+  "grappled",
+  "restrained",
+  "incapacitated",
+  "paralyzed",
+  "poisoned",
+  "blessed",
+  "shielded",
+  "enraged",
+  "exhausted",
+  "blinded",
+  "frightened",
+  "charmed",
+  "deafened",
+  "shaken",
+  "petrified",
+  "cursed",
+  "inspired",
+  "hollowed",
+  "temporary_hollowed",
+]);
+const SAVE_NAMES = new Set([
+  "strength",
+  "dexterity",
+  "constitution",
+  "intelligence",
+  "wisdom",
+  "charisma",
+]);
+const ADVANTAGE_VS = new Set(["prone", "push"]);
 // Item types that degrade in combat/use — must carry durability_tier (spec
 // §Durability). Weapons additionally need damage_dice, armor/shield need ac.
 const EQUIPPABLE_TYPES = new Set(["weapon", "armor", "shield", "tool"]);
@@ -51,7 +84,24 @@ function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   if (e.description !== undefined && typeof e.description !== "string") {
     throw new Error(`${ctx}.description is not a string`);
   }
+  validateEffectTokens(e, "condition_immunities", CONDITION_NAMES, ctx);
+  validateEffectTokens(e, "save_advantages", SAVE_NAMES, ctx);
+  validateEffectTokens(e, "advantage_vs", ADVANTAGE_VS, ctx);
   return e as unknown as ItemEffect;
+}
+
+function validateEffectTokens(
+  effect: Record<string, unknown>,
+  field: string,
+  allowed: ReadonlySet<string>,
+  ctx: string,
+): void {
+  if (effect[field] === undefined) return;
+  const values = parseStringArray(effect[field], `${ctx}.${field}`);
+  for (const value of values) {
+    if (!allowed.has(value))
+      throw new Error(`${ctx}.${field} has unknown token ${JSON.stringify(value)}`);
+  }
 }
 
 function parseAttunement(raw: unknown, ctx: string): ItemAttunement {

@@ -23,6 +23,7 @@ def _mocks():
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    queries.get_player_inventory = AsyncMock(return_value=[])
     content = MagicMock()
     content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
     content.get_npc = AsyncMock(return_value=None)

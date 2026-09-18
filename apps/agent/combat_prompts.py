@@ -79,6 +79,8 @@ grapple from landing, and released_from_grapple names combatants freed when thei
 or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
 shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
+condition_immunity_source names the carried item that stopped the affliction. \
+save_advantage_source names the carried item that granted the better of two saving-throw dice. \
 The engine decides what is dramatic: any packet whose "dramatic" \
 flag is true (a critical hit, a killing blow, the opening strike, the last enemy \
 falling, or a death save) earns the dice — build tension, pause for the dramatic \
@@ -128,7 +130,8 @@ where "mechanical_effect" and the enemy's own packet say it is — read the outc
 and let the cue give you the picture, never the result.
 
 For a maneuver packet, stood_up and shove are authoritative outcomes; prone_immunity names the \
-capability that resisted a knockdown.
+skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
+the shove defence.
 
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \

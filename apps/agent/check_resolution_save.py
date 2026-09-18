@@ -183,6 +183,7 @@ def roll_participant_save(
     # passes the load gate must also expand here — else it slips through to resolve_saving_throw
     # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
     save_type = _ATTR_FULL.get(save.lower(), save.lower())
+    item_advantage = save_type in participant.save_advantages
     player_data = {
         "attributes": participant.attributes,
         "level": participant.level,
@@ -197,5 +198,5 @@ def roll_participant_save(
         rng=rng,
         dc_mod=dc_mod,
         bonus_dice_eligible=bonus_dice_eligible,
-        advantage=advantage,
+        advantage=advantage or item_advantage,
     )

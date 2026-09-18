@@ -4,6 +4,9 @@ export interface ItemEffect {
   value?: number | string;
   trigger?: string;
   description?: string;
+  condition_immunities?: string[];
+  save_advantages?: string[];
+  advantage_vs?: string[];
 }
 
 export interface ItemArtTemplate {

@@ -280,6 +280,7 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
     queries = MagicMock(
         get_player=AsyncMock(return_value=deepcopy(SAMPLE_PLAYER)),
         get_player_faction_reputation=AsyncMock(return_value=0),
+        get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
         get_encounter_template=AsyncMock(return_value=encounter),

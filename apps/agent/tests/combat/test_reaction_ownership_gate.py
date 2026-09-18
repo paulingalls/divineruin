@@ -149,7 +149,8 @@ def _start_mocks(player_class, player_level=6):
                 "attributes": {"dexterity": 12},
                 "equipment": {},
             }
-        )
+        ),
+        get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
         get_encounter_template=AsyncMock(return_value={"id": "empty_road", "name": "Empty Road", "enemies": []})

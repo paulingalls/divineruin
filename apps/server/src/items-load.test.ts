@@ -46,6 +46,20 @@ describe("content/items.json — parseItemRow conformance", () => {
     expect([1, 2, 3, 4]).toContain(parsed.tier);
   });
 
+  test("first protection slice retains exact structured arrays", async () => {
+    const rows = await loadItemsJson();
+    const parsed = new Map(
+      rows.map((row) => [row.id as string, parseItemRow(row.id as string, row)]),
+    );
+    expect(parsed.get("cloak_steppe_winds")?.effects[0]?.advantage_vs).toEqual(["prone", "push"]);
+    expect(parsed.get("choirs_silence")?.effects[0]?.condition_immunities).toEqual([
+      "charmed",
+      "frightened",
+    ]);
+    expect(parsed.get("stillheart")?.effects[0]?.condition_immunities).toEqual(["charmed"]);
+    expect(parsed.get("stillheart")?.effects[0]?.save_advantages).toEqual(["wisdom"]);
+  });
+
   test("has 6 Rare + 4 Legendary magic items, each with an audio_cue; Thornridge is quest_only", async () => {
     const items = await loadItemsJson();
     const magic = items
@@ -198,6 +212,29 @@ describe("parseItemRow — fail-loud validation", () => {
     expect(() => parseItemRow("x", { ...base, effects: [{ target: "self" }] })).toThrow(
       /effects\[0\]\.type/,
     );
+  });
+
+  test.each([
+    ["condition_immunities", "charmd"],
+    ["save_advantages", "luck"],
+    ["advantage_vs", "trip"],
+  ])("rejects an unknown structured effect token in %s", (field, token) => {
+    expect(() =>
+      parseItemRow("x", { ...base, effects: [{ type: "utility", [field]: [token] }] }),
+    ).toThrow(new RegExp(`effects\\[0\\]\\.${field}.*${token}`));
+  });
+
+  test.each([
+    ["condition_immunities", "charmed"],
+    ["save_advantages", "wisdom"],
+    ["advantage_vs", "prone"],
+  ])("rejects malformed %s arrays", (field, token) => {
+    expect(() =>
+      parseItemRow("x", { ...base, effects: [{ type: "utility", [field]: token }] }),
+    ).toThrow(new RegExp(`effects\\[0\\]\\.${field}`));
+    expect(() =>
+      parseItemRow("x", { ...base, effects: [{ type: "utility", [field]: [1] }] }),
+    ).toThrow(new RegExp(`effects\\[0\\]\\.${field}`));
   });
 
   test("rejects a malformed attunement union", () => {
