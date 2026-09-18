@@ -26,6 +26,7 @@ import db_queries
 import mentor_variant_tools
 import recipe_slots
 import recipes
+import rules_engine
 import spell_tools
 from recipe_validation import validate_recipe_slot_capacity
 from session_data import SessionData
@@ -132,7 +133,7 @@ async def _learn_recipe_impl(
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
 
-        crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
+        crafting_tier = rules_engine._get_skill_tier(player, "crafting")
         known_count = await queries_mod.count_player_known_recipes(player_id, conn=conn)
 
         # A missing/partial recipe_slots row for a real crafting tier is a content
