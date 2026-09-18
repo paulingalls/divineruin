@@ -15,8 +15,8 @@ from sample_fixtures import FixedRng
 import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
+from tools._discover_fixtures import LOCATION_WITH_HIDDEN, _roll
 from tools._helpers import SAMPLE_PLAYER, _ctx_with_bus, _make_context
-from tools.test_discover import LOCATION_WITH_HIDDEN, _roll
 
 BLESSED = apply_condition([], "blessed")
 _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "charisma": 12, "intelligence": 12}
