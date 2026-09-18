@@ -223,6 +223,29 @@ async def test_each_window_names_only_the_reactions_the_gate_would_accept():
 
 
 @pytest.mark.asyncio
+async def test_activation_refuses_a_reaction_id_the_actor_does_not_own():
+    state = _resolution_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
+    player.reaction_ids = []
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
+    ctx = _context(state)
+    deps = _resolve_deps(damage=3)
+
+    await _step(ctx, deps)
+    await _step(ctx, deps)
+    post_roll = (await _step(ctx, deps))["next"]["waiting_on"]
+    assert post_roll["stage"] == "post_roll"
+
+    with pytest.raises(ValueError) as refused:
+        reaction_gate.validate_reaction_activation(ctx.userdata.combat_state, "player_1", "rogue_uncanny_dodge")
+
+    assert "player_1" in str(refused.value)
+    assert "rogue_uncanny_dodge" in str(refused.value)
+
+
+@pytest.mark.asyncio
 async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
     state = _resolution_state()
     player = state.get_participant("player_1")

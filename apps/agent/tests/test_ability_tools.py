@@ -60,6 +60,11 @@ async def _call(
     queries = MagicMock()
     default_player = _player(stamina, focus, class_=ability_id.split("_")[0])
     row = default_player if player is None else player
+    if ctx.userdata.combat_state is not None and abilities.get_ability(ability_id).ability_type == "reaction":
+        participant = ctx.userdata.combat_state.get_participant(ctx.userdata.player_id)
+        assert participant is not None
+        participant.reaction_ids = [ability_id]
+        participant.has_reaction_ability = True
     # story-008: the caster row now comes from the id-ordered get_players_for_update batch (was a
     # single caster get_player FOR UPDATE). These self-cast cases lock only the caster.
     queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})

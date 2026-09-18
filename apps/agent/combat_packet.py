@@ -103,7 +103,7 @@ async def _prevalidate_ability_focus(
     The per-player locks are taken in initiative order within the phase tx (adv.packets is ordered),
     once per player — the deterministic ordering story-008's caster-vs-target locking builds on."""
     player_ability_packets = [
-        (p.actor_id, p.declaration)
+        (p.actor_id, p.declaration, actor)
         for p in adv.packets
         if p.declaration.type is DeclarationType.ABILITY
         and p.declaration.action
@@ -114,7 +114,7 @@ async def _prevalidate_ability_focus(
         return {}
     players_by_id: dict[str, dict] = {}
     known_spell_ids_by_player: dict[str, frozenset[str]] = {}
-    for actor_id, decl in player_ability_packets:
+    for actor_id, decl, actor in player_ability_packets:
         player = players_by_id.get(actor_id)
         if player is None:
             # Lock this member's row once (a member with two ability declarations reuses the lock).
@@ -132,13 +132,11 @@ async def _prevalidate_ability_focus(
                 else False
             )
             if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
-                actor = state.get_participant(actor_id)
-                actor_name = actor.name if actor is not None else actor_id
-                raise ToolError(f"{actor_name} hasn't learned {ability.name}.")
+                raise ToolError(f"{actor.name} hasn't learned {ability.name}.")
             if variant is not None:
                 active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
                 if active_variant_id != variant.id:
-                    raise ToolError(f"{variant.id} is not your active variant for {ability.name}.")
+                    raise ToolError(f"{actor.name} does not have {variant.id} active for {ability.name}.")
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability

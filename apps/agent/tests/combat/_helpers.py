@@ -11,7 +11,23 @@ import combat_turn
 import reaction_spend
 from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
+from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
+
+# High enough to own every reaction the interrupt tests activate (the L5/L6 tier).
+_ACTIVATE_LEVEL = 6
+
+
+def _own_reaction(state, *ability_ids: str) -> None:
+    """Give player_1 exactly ``ability_ids`` as its reaction catalog.
+
+    validate_reaction_activation refuses an id the participant's reaction_ids omits, so a test
+    aiming at a LATER refusal (window, target binding, spend) must own the id first or it reds on
+    ownership instead of on the rule it is pinning.
+    """
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = list(ability_ids)
 
 
 def _declarations():
@@ -266,6 +282,13 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     so a test of a reaction that guards an ALLY must make player_1 the REACTOR and retarget the
     enemy at someone else.
     """
+    player = ctx.userdata.combat_state.get_participant(ctx.userdata.player_id)
+    assert player is not None
+    # One level for the participant AND the row activate reads: ownership is gated on both, and
+    # two literals drifting apart would offer a reaction the activation then refuses.
+    player.level = _ACTIVATE_LEVEL
+    player.reaction_ids = class_reaction_ids(player_class, player.level)
+    player.has_reaction_ability = bool(player.reaction_ids)
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(
@@ -274,7 +297,7 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
-                "level": 6,
+                "level": _ACTIVATE_LEVEL,
                 "stamina": {"current": stamina, "max": 10},
                 "focus": {"current": focus, "max": 10},
             }

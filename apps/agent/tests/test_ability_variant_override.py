@@ -147,13 +147,18 @@ class TestExplicitVariantActivation:
 
     async def test_variant_id_must_be_the_active_learned_variant(self):
         variant = _drathian_variant()
-        with pytest.raises(ToolError, match="active variant"):
+        with pytest.raises(ToolError) as refused:
             await _call(
                 "warrior_cleaving_blow",
                 variant_id=variant.id,
                 active_variant_id="warrior_cleaving_blow_keldaran",
                 variant=variant,
             )
+        message = str(refused.value)
+        assert "Kael" in message
+        assert variant.id in message
+        assert "Cleaving Blow" in message
+        assert "your active variant" not in message
 
     async def test_save_variant_in_combat_names_exact_id_to_declare(self):
         ctx = make_context()
