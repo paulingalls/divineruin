@@ -17,6 +17,7 @@ import db_content_queries
 import db_queries
 import disposition
 import mentor_variants
+import rules_engine
 from role_archetypes import DISPOSITIONS
 from rules_engine import SKILL_TIER_ORDER, SKILLS
 
@@ -45,13 +46,10 @@ def _skill_tier_meets(have_tier: str, required_tier: str) -> bool:
     return SKILL_TIER_ORDER.index(have_tier) >= SKILL_TIER_ORDER.index(required_tier)
 
 
-async def _evaluate_skill(player_id: str, skill_requirement: str, *, conn, queries_mod) -> tuple[bool, str]:
-    """Parse the "SkillName: Tier" requirement, read the player's advancement once, and
-    report (meets_requirement, have_tier). A skill with no advancement row is 'untrained'.
-    Single source for both the boolean check_skill_tier and the unmet-label aggregate."""
+def _evaluate_skill(player: dict | None, skill_requirement: str) -> tuple[bool, str]:
+    """Parse the requirement and report whether the player's effective skill tier meets it."""
     skill_id, required_tier = _parse_skill_requirement(skill_requirement)
-    advancement = await queries_mod.get_skill_advancement(player_id, conn=conn)
-    have_tier = advancement.get(skill_id, {}).get("tier", "untrained")
+    have_tier = rules_engine._get_skill_tier(player or {}, skill_id)
     return _skill_tier_meets(have_tier, required_tier), have_tier
 
 
@@ -66,9 +64,9 @@ async def check_quest_completed(player_id: str, quest_id: str, *, conn=None, que
 
 
 async def check_skill_tier(player_id: str, skill_requirement: str, *, conn=None, queries_mod=db_queries) -> bool:
-    """True iff the player's tier in the required skill is at or above the requirement.
-    A player with no advancement row for the skill is treated as 'untrained' (rank 0)."""
-    met, _ = await _evaluate_skill(player_id, skill_requirement, conn=conn, queries_mod=queries_mod)
+    """True iff the player's effective tier in the required skill meets the requirement."""
+    player = await queries_mod.get_player(player_id, conn=conn)
+    met, _ = _evaluate_skill(player, skill_requirement)
     return met
 
 
@@ -125,7 +123,7 @@ async def check_mentor_requirements(
 
     skill = req.get("skill")
     if skill is not None:
-        met, have_tier = await _evaluate_skill(player_id, skill, conn=conn, queries_mod=queries_mod)
+        met, have_tier = _evaluate_skill(player, skill)
         if not met:
             unmet.append(f"skill: need {skill}, have {have_tier}")
 

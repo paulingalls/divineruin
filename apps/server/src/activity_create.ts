@@ -14,6 +14,7 @@ import { startTrainingCycle } from "./training_state_machine.ts";
 import { resolveAssignedCompanion } from "./assigned_companion.ts";
 import { getSpell } from "./spells.ts";
 import { getArchetypeChassis } from "./archetypes.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
@@ -235,12 +236,17 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       // outside the txn (parity with the in-memory recipe fetch); mirrors the
       // Python producer (crafting_tools.py) for a byte-identical parameters shape.
       // workspace_access is sorted so the stored JSONB is deterministic.
-      const playerRows = await sql<{ location_id: string | null; class: string | null }[]>`
-        SELECT data->>'location_id' AS location_id, data->>'class' AS class
+      const playerRows = await sql<
+        { location_id: string | null; class: string | null; proficiencies: unknown }[]
+      >`
+        SELECT data->>'location_id' AS location_id, data->>'class' AS class,
+               data->'proficiencies' AS proficiencies
         FROM players WHERE player_id = ${playerId}
       `;
       const locationId = playerRows[0]?.location_id ?? "unknown";
       archetype = playerRows[0]?.class ?? undefined;
+      const parsedProficiencies = parseJsonb<unknown>(playerRows[0]?.proficiencies);
+      const proficiencies = Array.isArray(parsedProficiencies) ? parsedProficiencies : [];
 
       // Artificer Portable-Lab ownership (story-006): ONE inventory read, used for both
       // the workspace grant (accessibleWorkspaceTier) and the slot exception
@@ -267,12 +273,18 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         );
       }
 
-      // Mirror Python get_single_skill_advancement: default to "untrained" when
-      // the player has no crafting skill_advancement row.
       const skillRows = await sql<{ tier: string }[]>`
-        SELECT tier FROM skill_advancement WHERE player_id = ${playerId} AND skill_id = 'crafting'
+        SELECT tier FROM skill_advancement
+        WHERE player_id = ${playerId} AND skill_id = 'crafting' AND tier <> 'untrained'
       `;
-      const craftingTier = skillRows[0]?.tier ?? "untrained";
+      const craftingTier =
+        skillRows[0]?.tier ??
+        (proficiencies.some(
+          (proficiency) =>
+            typeof proficiency === "string" && proficiency.toLowerCase() === "crafting",
+        )
+          ? "trained"
+          : "untrained");
 
       // skill/npc_id are intentionally omitted — the resolver defaults them
       // (arcana / grimjaw_blacksmith). Per-recipe skill+NPC were dropped from the

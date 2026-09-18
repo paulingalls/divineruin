@@ -1,10 +1,4 @@
-"""Unit tests for mentor_requirements (sprint-011 / story-002).
-
-check_mentor_requirements reads a mentor's mentor{} training block (story-001) and
-gates the player on disposition/quest/gold/skill against injectable db seams. Pure
-read-only logic — every seam is an AsyncMock here, so no DB is touched. pytest runs
-in asyncio AUTO mode, so async tests need no marker.
-"""
+"""Unit tests for mentor requirement gates against injectable DB seams."""
 
 import json
 import types
@@ -66,15 +60,12 @@ async def _check(reqs, *, mentor_id="mentor_x", variant_mentor="mentor_x", dispo
     )
 
 
-# --- aggregate: met / unmet -------------------------------------------------
-
-
 async def test_all_requirements_met():
     reqs = {"disposition": "friendly", "quest": None, "gold": 50, "skill": "Athletics: Trained"}
     res = await _check(
         reqs,
         disposition="trusted",
-        get_player=AsyncMock(return_value={"gold": 100}),
+        get_player=AsyncMock(return_value={"gold": 100, "skill_tiers": {"athletics": "expert"}}),
         get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "expert"}}),
     )
     assert res.met is True
@@ -104,23 +95,71 @@ async def test_gold_boundary(gold, met):
         assert any("gold" in u for u in res.unmet)
 
 
-# --- check_skill_tier -------------------------------------------------------
-
-
 async def test_check_skill_tier_below_required_is_false():
-    q = _queries(get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "trained"}}))
+    q = _queries(
+        get_player=AsyncMock(return_value={"skill_tiers": {"athletics": "trained"}}),
+        get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "trained"}}),
+    )
     assert await mr.check_skill_tier("p1", "Athletics: Expert", queries_mod=q) is False
 
 
 async def test_check_skill_tier_at_or_above_required_is_true():
-    q = _queries(get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "master"}}))
+    q = _queries(
+        get_player=AsyncMock(return_value={"skill_tiers": {"athletics": "master"}}),
+        get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "master"}}),
+    )
     assert await mr.check_skill_tier("p1", "Athletics: Expert", queries_mod=q) is True
 
 
-async def test_check_skill_tier_missing_row_is_untrained():
-    q = _queries(get_skill_advancement=AsyncMock(return_value={}))
-    assert await mr.check_skill_tier("p1", "Athletics: Trained", queries_mod=q) is False
-    assert await mr.check_skill_tier("p1", "Athletics: Untrained", queries_mod=q) is True
+async def test_check_skill_tier_missing_row_uses_proficiency():
+    q = _queries(
+        get_player=AsyncMock(return_value={"proficiencies": ["athletics"]}),
+        get_skill_advancement=AsyncMock(return_value={}),
+    )
+    assert await mr.check_skill_tier("p1", "Athletics: Trained", queries_mod=q) is True
+
+
+@pytest.mark.parametrize(
+    "player,advancement,requirement,expected",
+    [
+        pytest.param(
+            {"gold": 100, "proficiencies": ["athletics"]},
+            {},
+            "Athletics: Trained",
+            (True, []),
+            id="proficient-no-row-meets-trained",
+        ),
+        pytest.param(
+            {"gold": 100, "proficiencies": ["athletics"]},
+            {},
+            "Athletics: Expert",
+            (False, ["skill: need Athletics: Expert, have trained"]),
+            id="proficient-no-row-reports-trained",
+        ),
+        pytest.param(
+            {"gold": 100, "proficiencies": ["athletics"], "skill_tiers": {"athletics": "expert"}},
+            {"athletics": {"tier": "expert"}},
+            "Athletics: Expert",
+            (True, []),
+            id="expert-row-wins",
+        ),
+        pytest.param(
+            {"gold": 100},
+            {},
+            "Athletics: Trained",
+            (False, ["skill: need Athletics: Trained, have untrained"]),
+            id="nonproficient-no-row",
+        ),
+    ],
+)
+async def test_mentor_skill_gate_uses_effective_player_tier(player, advancement, requirement, expected):
+    reqs = {"disposition": "neutral", "quest": None, "gold": 0, "skill": requirement}
+    res = await _check(
+        reqs,
+        get_player=AsyncMock(return_value=player),
+        get_skill_advancement=AsyncMock(return_value=advancement),
+    )
+    assert (res.met, res.unmet) == expected
 
 
 # --- check_quest_completed --------------------------------------------------

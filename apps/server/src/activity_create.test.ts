@@ -109,12 +109,85 @@ describe("handleCreateActivity", () => {
     });
   });
 
-  test("defaults workspace_access to ['field'] and crafting_tier to 'untrained' when unrented/untrained (story-005)", async () => {
+  test.each([
+    ["array", ["crafting"]],
+    ["JSON string", '["crafting"]'],
+  ])("persists trained for a proficient player with no row (%s)", async (_shape, proficiencies) => {
+    setQueryStubs([
+      {
+        match: "data->'proficiencies'",
+        result: [{ location_id: "millhaven", class: "warrior", proficiencies }],
+      },
+      slotsEmpty,
+      { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
+    ]);
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(200);
+
+    const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
+    const data = insert!.values[2] as { parameters: Record<string, unknown> };
+    expect(data.parameters.crafting_tier).toBe("trained");
+  });
+
+  test("persists an advancement row over crafting proficiency", async () => {
+    setQueryStubs([
+      {
+        match: "data->'proficiencies'",
+        result: [{ location_id: "millhaven", class: "warrior", proficiencies: ["crafting"] }],
+      },
+      skillExpert,
+      slotsEmpty,
+      { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
+    ]);
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(200);
+
+    const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
+    const data = insert!.values[2] as { parameters: Record<string, unknown> };
+    expect(data.parameters.crafting_tier).toBe("expert");
+  });
+
+  test("an untrained row does not beat crafting proficiency", async () => {
+    setQueryStubs([
+      {
+        match: "data->'proficiencies'",
+        result: [{ location_id: "millhaven", class: "warrior", proficiencies: ["crafting"] }],
+      },
+      { match: /skill_id = 'crafting'\s*$/, result: [{ tier: "untrained" }] },
+      slotsEmpty,
+      { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
+    ]);
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(200);
+
+    const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
+    const data = insert!.values[2] as { parameters: Record<string, unknown> };
+    expect(data.parameters.crafting_tier).toBe("trained");
+  });
+
+  test("persists untrained for a non-proficient player with no row", async () => {
     // healing_poultice is a FIELD recipe, so field-only access passes the story-006
     // workspace gate while still exercising the unrented/untrained capture defaults.
-    // No players/workspace/skill stubs -> location "unknown", class undefined, no
-    // rentals (field only), untrained.
     setQueryStubs([
+      {
+        match: "data->'proficiencies'",
+        result: [{ location_id: "millhaven", class: "warrior", proficiencies: [] }],
+      },
       slotsEmpty,
       { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
     ]);
