@@ -21,6 +21,7 @@ SKIPPED_DIRECTORY_PATHS = {
 def _code_files():
     files = []
     for source_root in SOURCE_ROOTS:
+        found = []
         for directory, child_directories, filenames in os.walk(REPO_ROOT / source_root):
             directory_path = Path(directory)
             child_directories[:] = [
@@ -29,9 +30,15 @@ def _code_files():
                 if name not in SKIPPED_DIRECTORY_NAMES
                 and (directory_path / name).relative_to(REPO_ROOT).as_posix() not in SKIPPED_DIRECTORY_PATHS
             ]
-            files.extend(
+            found.extend(
                 directory_path / filename for filename in filenames if Path(filename).suffix in SOURCE_SUFFIXES
             )
+        assert found, (
+            f"no code files under {REPO_ROOT / source_root} — os.walk yields nothing for a missing "
+            "directory, so a wrong REPO_ROOT or a renamed source root leaves the cap green over an "
+            "empty walk"
+        )
+        files.extend(found)
     return sorted(files)
 
 
