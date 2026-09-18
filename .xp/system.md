@@ -107,6 +107,16 @@ reds the moment a correct fix moves the code: `b8b869ae` went red when story-029
 put the payload in a builder. When a change MOVES or RENAMES a test file or
 class, grep `work.md` for the old name and re-resolve every record pointing at it.
 
-**Worktree bootstrap**: `bash scripts/init-worktree.sh`
+**Checkout and worktree bootstrap**: `bash scripts/init-worktree.sh`. Each primary
+clone defaults to offset zero, so sibling clones can collide even with different
+Compose project names. Before bootstrapping a second clone, choose unused
+Postgres/Valkey ports with `WT_PORT_OFFSET=<offset>` and persist matching
+`DATABASE_URL`, `REDIS_URL`, `POSTGRES_HOST_PORT`, `VALKEY_HOST_PORT`, and a unique
+`COMPOSE_PROJECT_NAME` in its local `.env`; bootstrap preserves existing `.env`.
+Pass the same offset when rerunning bootstrap. Check actual listeners and Docker
+ownership before starting or removing services; never reuse a sibling's database.
+Any shared isolation helper must govern provisioning, test startup, and teardown
+together. `../legacy/scripts/checkout-id.sh` and its checkout/lane tests are a
+reference for clone-qualified worktree identity, not a collision-free allocator.
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

@@ -6,6 +6,23 @@ Implements the divine patron system: 10 gods with 4-layer mechanical architectur
 
 ---
 
+## Sprint-101: favor standing and content
+
+The favor foundation is implemented: all ten patrons have values, opposed values,
+and signed favor actions; tiers derive from the current favor row at 0%, 40%, and
+75% of its own maximum, with fractional boundaries rounded upward.
+`query_info(kind="patron")` returns standing, progress to the next tier, and the
+authored action IDs. Unbound and Exalted have explicit responses. Negative favor
+events now reach the HUD, with signed toast rendering covered by mobile tests.
+
+This slice does not implement alignment evaluation, time decay, or mechanical
+gift layers. Layers 1–4 remain null. Query discovery is in the tool schema and
+description; the future alignment workflow still needs its invocation path and
+prompt cue. Tier/content/query tests and the mobile test directory cover this
+slice; no real-LLM patron-query scenario or negative-toast browser case is claimed.
+
+The Sprint-002 audit below is historical, not the current content inventory.
+
 ## Audit Status (Sprint-002)
 
 Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) and shipped code. **Full audit:** `docs/milestones/audit/phase-8-patrons.md` <!-- see audit/phase-8-patrons.md -->.
@@ -66,7 +83,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] Each patron's Layer 1 passive is mechanically distinct and always active
 - [ ] Layer 2 Resonance modifiers integrate with Phase 3 Magic Resonance calculations
 - [ ] `evaluate_patron_alignment` produces positive delta for aligned actions and negative for misaligned
-- [ ] Favor tiers transition correctly: Acknowledged at threshold A, Devoted at B, Exalted at C
+- [x] Favor tiers transition correctly: Acknowledged at 0%, Devoted at 40%, Exalted at 75% of the patron's maximum (Sprint-101)
 - [ ] Favor can decay (not just grow) — neglecting patron values reduces favor over time
 - [ ] Unbound Path is selectable and grants Resonance visibility, +3 voluntary Resonance push, and Veil Mastery
 - [ ] `content/gods.json` validates with all 10 complete patron profiles
