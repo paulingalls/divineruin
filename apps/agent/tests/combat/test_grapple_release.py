@@ -136,8 +136,6 @@ def test_player_hostile_cannot_act_condition_reports_released_grapple():
     state = _release_state()
     attacker = _participant(state, "player_1")
     target = _participant(state, "mawling_1")
-    attacker.attributes["strength"] = 16
-    attacker.level = 8
     ability = replace(abilities.get_ability("warrior_unstoppable_charge"), applies_condition="stunned")
     decl = Declaration(type=DeclarationType.ABILITY, action=ability.id, target_id=target.id)
 
