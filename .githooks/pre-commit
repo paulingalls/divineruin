@@ -15,7 +15,11 @@ fi
 # budget and clips constraints.md's tail, so a file over the cap is not "a bit long" —
 # it is rules the lead never reads. Before the node_modules early-exit: this needs
 # python3 and two files, so it holds in a fresh teammate worktree too.
-cap="$(sed -n 's/^constraints_chars_cap:[[:space:]]*//p' .xp/config.yml | head -1 | sed 's/[^0-9].*$//')"
+# The pre-push self-test runs this hook inside a scratch repo that has no .xp/ at all.
+# A tree with neither file is not an xp checkout, so there is nothing to measure; a tree
+# with constraints.md but no config.yml IS a misconfiguration and still refuses below.
+if [ -f .xp/constraints.md ] || [ -f .xp/config.yml ]; then
+cap="$(sed -n 's/^constraints_chars_cap:[[:space:]]*//p' .xp/config.yml 2>/dev/null | head -1 | sed 's/[^0-9].*$//')"
 if [ -z "$cap" ]; then
   echo "ERROR: constraints_chars_cap missing from .xp/config.yml — refusing to pass a commit nothing measured." >&2
   exit 1
@@ -26,6 +30,7 @@ if [ "$size" -gt "$cap" ]; then
   echo "  SessionStart clips the tail at its 9500-byte budget. Shorten a rule or retire one;" >&2
   echo "  the evidence behind a rule belongs in .xp/system.md (Constraint case law)." >&2
   exit 1
+fi
 fi
 
 # The lint suite below (bun/tsc/eslint/prettier + the uv-driven ruff script) needs installed deps.
