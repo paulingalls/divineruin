@@ -15,12 +15,15 @@ SPELL_CASTING_TEST_FILES = (
 # The retired 1148-line original stays in the tree, emptied: story-061's recorded Verify
 # command names this path, so deleting it would break a command already written down.
 RETIRED_PATH = "tests/test_spell_casting.py"
-# Derived, never re-typed: a file added to the count pin above cannot escape the line cap.
-SPELL_CASTING_FILES = (
-    "tests/_spell_casting_helpers.py",
-    *SPELL_CASTING_TEST_FILES,
-    RETIRED_PATH,
-    "tests/test_spell_casting_split_guard.py",
+SPELL_CASTING_FILES = tuple(
+    sorted(
+        {
+            "tests/_spell_casting_helpers.py",
+            *SPELL_CASTING_TEST_FILES,
+            RETIRED_PATH,
+            *(path.relative_to(AGENT_ROOT).as_posix() for path in (AGENT_ROOT / "tests").glob("test_spell_cast*.py")),
+        }
+    )
 )
 
 
