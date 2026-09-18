@@ -1,3 +1,5 @@
+"""Resonance generation on a cast — catalog-over-formula sourcing and the racial modifiers (fixtures: _spell_casting_helpers)."""
+
 from dataclasses import replace
 from unittest.mock import MagicMock
 

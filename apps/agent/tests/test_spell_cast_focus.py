@@ -1,3 +1,5 @@
+"""The Focus gate on a cast, plus the two real-catalog end-to-end casts (fixtures: _spell_casting_helpers)."""
+
 from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 

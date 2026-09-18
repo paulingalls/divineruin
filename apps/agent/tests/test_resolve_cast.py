@@ -1,3 +1,5 @@
+"""``_resolve_cast``, the shared cast core the tool and the combat phase both call (fixtures: _spell_casting_helpers)."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 from _spell_casting_helpers import _known, _player, _spell

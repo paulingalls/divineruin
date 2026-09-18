@@ -1,3 +1,5 @@
+"""The get_spell_info tool, read against the real seeded catalog."""
+
 import json
 
 import pytest

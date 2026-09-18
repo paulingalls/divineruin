@@ -1,4 +1,13 @@
-"""Shared fixtures for spell-casting tests."""
+"""Shared fixtures for the spell-casting suites, split out of test_spell_casting.py.
+
+Every ``_cast*`` helper here drives a tool's ``_impl`` directly with a mock RunContext plus
+injected mock db/queries/persistence/resonance-mutations mods (the sample_fixtures seam, the
+ability_tools precedent) — our own seams only. spells/resonance/leveling run REAL: the
+seed_spells autouse fixture in tests/conftest.py supplies the live catalog, and resonance +
+cantrip dice are pure. Casts needing a precise focus_cost/source inject a controlled Spell via
+a mock spells_mod so the arithmetic is independent of catalog tuning; pass the real module
+(TestCastSpellRealCatalog) to exercise the catalog end-to-end.
+"""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
