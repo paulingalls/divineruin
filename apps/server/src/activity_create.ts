@@ -273,6 +273,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         );
       }
 
+      // `tier <> 'untrained'` mirrors Python db_queries._hydrate_skill_tiers: a tier-less
+      // INSERT leaves a row at the column DEFAULT, and honouring it would shadow the
+      // proficiency fallback below and read a crafting-proficient character back as
+      // untrained. Dropping it is lossless — untrained IS that fallback's floor.
       const skillRows = await sql<{ tier: string }[]>`
         SELECT tier FROM skill_advancement
         WHERE player_id = ${playerId} AND skill_id = 'crafting' AND tier <> 'untrained'

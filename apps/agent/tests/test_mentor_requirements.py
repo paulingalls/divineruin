@@ -20,7 +20,6 @@ def _queries(**overrides):
     m = Mock()
     m.get_player = AsyncMock(return_value={"gold": 1000})
     m.get_player_quest = AsyncMock(return_value=None)
-    m.get_skill_advancement = AsyncMock(return_value={})
     for key, value in overrides.items():
         setattr(m, key, value)
     return m
@@ -66,7 +65,6 @@ async def test_all_requirements_met():
         reqs,
         disposition="trusted",
         get_player=AsyncMock(return_value={"gold": 100, "skill_tiers": {"athletics": "expert"}}),
-        get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "expert"}}),
     )
     assert res.met is True
     assert res.unmet == []
@@ -98,7 +96,6 @@ async def test_gold_boundary(gold, met):
 async def test_check_skill_tier_below_required_is_false():
     q = _queries(
         get_player=AsyncMock(return_value={"skill_tiers": {"athletics": "trained"}}),
-        get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "trained"}}),
     )
     assert await mr.check_skill_tier("p1", "Athletics: Expert", queries_mod=q) is False
 
@@ -106,7 +103,6 @@ async def test_check_skill_tier_below_required_is_false():
 async def test_check_skill_tier_at_or_above_required_is_true():
     q = _queries(
         get_player=AsyncMock(return_value={"skill_tiers": {"athletics": "master"}}),
-        get_skill_advancement=AsyncMock(return_value={"athletics": {"tier": "master"}}),
     )
     assert await mr.check_skill_tier("p1", "Athletics: Expert", queries_mod=q) is True
 
@@ -114,51 +110,48 @@ async def test_check_skill_tier_at_or_above_required_is_true():
 async def test_check_skill_tier_missing_row_uses_proficiency():
     q = _queries(
         get_player=AsyncMock(return_value={"proficiencies": ["athletics"]}),
-        get_skill_advancement=AsyncMock(return_value={}),
     )
     assert await mr.check_skill_tier("p1", "Athletics: Trained", queries_mod=q) is True
 
 
 @pytest.mark.parametrize(
-    "player,advancement,requirement,expected",
+    "player,requirement,expected",
     [
         pytest.param(
             {"gold": 100, "proficiencies": ["athletics"]},
-            {},
             "Athletics: Trained",
             (True, []),
             id="proficient-no-row-meets-trained",
         ),
         pytest.param(
             {"gold": 100, "proficiencies": ["athletics"]},
-            {},
             "Athletics: Expert",
             (False, ["skill: need Athletics: Expert, have trained"]),
             id="proficient-no-row-reports-trained",
         ),
         pytest.param(
+            {"gold": 100, "skill_tiers": {"athletics": "expert"}},
+            "Athletics: Expert",
+            (True, []),
+            id="row-wins-without-proficiency",
+        ),
+        pytest.param(
             {"gold": 100, "proficiencies": ["athletics"], "skill_tiers": {"athletics": "expert"}},
-            {"athletics": {"tier": "expert"}},
             "Athletics: Expert",
             (True, []),
             id="expert-row-wins",
         ),
         pytest.param(
             {"gold": 100},
-            {},
             "Athletics: Trained",
             (False, ["skill: need Athletics: Trained, have untrained"]),
             id="nonproficient-no-row",
         ),
     ],
 )
-async def test_mentor_skill_gate_uses_effective_player_tier(player, advancement, requirement, expected):
+async def test_mentor_skill_gate_uses_effective_player_tier(player, requirement, expected):
     reqs = {"disposition": "neutral", "quest": None, "gold": 0, "skill": requirement}
-    res = await _check(
-        reqs,
-        get_player=AsyncMock(return_value=player),
-        get_skill_advancement=AsyncMock(return_value=advancement),
-    )
+    res = await _check(reqs, get_player=AsyncMock(return_value=player))
     assert (res.met, res.unmet) == expected
 
 
@@ -272,23 +265,33 @@ async def test_requirements_missing_required_key_raises_valueerror(requirements)
 # --- real content integration ----------------------------------------------
 
 
-async def test_real_drathian_binding_skill_gate():
-    """Drathian Hessa gates on Athletics: Trained; an untrained but friendly, rich
-    player fails on exactly the skill gate — proves the aggregate reads real content."""
+async def _check_real_drathian(player):
+    """Run the aggregate against the live Drathian Hessa binding in content/npcs.json,
+    which gates on Athletics: Trained."""
     npcs = json.loads((_CONTENT / "npcs.json").read_text())
     drathian = next(n for n in npcs if n["id"] == "mentor_drathian_warleader")
-    res = await mr.check_mentor_requirements(
+    return await mr.check_mentor_requirements(
         "p1",
         "mentor_drathian_warleader",
         "v1",
-        queries_mod=_queries(
-            get_player=AsyncMock(return_value={"gold": 1000}),
-            get_skill_advancement=AsyncMock(return_value={}),
-        ),
+        queries_mod=_queries(get_player=AsyncMock(return_value=player)),
         content_mod=_content(drathian),
         variants_mod=_variants("mentor_drathian_warleader"),
         disposition_mod=_disposition("friendly"),
     )
+
+
+async def test_real_drathian_binding_skill_gate():
+    """An untrained but friendly, rich player fails on exactly the skill gate —
+    proves the aggregate reads real content."""
+    res = await _check_real_drathian({"gold": 1000})
     assert res.met is False
     assert len(res.unmet) == 1
     assert "skill" in res.unmet[0] and "Athletics" in res.unmet[0]
+
+
+async def test_real_drathian_binding_opens_for_athletics_proficient():
+    """The reported defect, against live content: an Athletics-PROFICIENT character with
+    no skill_advancement row was refused training the rules engine already opens."""
+    res = await _check_real_drathian({"gold": 1000, "proficiencies": ["athletics"]})
+    assert (res.met, res.unmet) == (True, [])

@@ -163,7 +163,14 @@ describe("handleCreateActivity", () => {
         match: "data->'proficiencies'",
         result: [{ location_id: "millhaven", class: "warrior", proficiencies: ["crafting"] }],
       },
-      { match: /skill_id = 'crafting'\s*$/, result: [{ tier: "untrained" }] },
+      // The demotion happens in SQL, not in JS, so this stub answers ONLY a query that
+      // has LOST the `tier <> 'untrained'` filter: it hands back the row the real DB
+      // withholds. That is what makes the assertion below red if the filter is dropped —
+      // do NOT relax this to a plain "FROM skill_advancement" match.
+      {
+        match: /FROM skill_advancement(?![\s\S]*tier <> 'untrained')/,
+        result: [{ tier: "untrained" }],
+      },
       slotsEmpty,
       { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
     ]);
