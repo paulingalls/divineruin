@@ -79,7 +79,7 @@ grapple from landing, and released_from_grapple names combatants freed when thei
 or was disabled. condition_resisted means the target shook \
 it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
 shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
-condition_immunity names the carried item that stopped the affliction. \
+condition_immunity_source names the carried item that stopped the affliction. \
 save_advantage_source names the carried item that granted the better of two saving-throw dice. \
 The engine decides what is dramatic: any packet whose "dramatic" \
 flag is true (a critical hit, a killing blow, the opening strike, the last enemy \

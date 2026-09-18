@@ -80,5 +80,13 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
     if actor_total <= target_total:
         return {**summary, "shove": "resisted"}
     if not _land_condition_on_one(state, target.id, attacker, "prone", source="shove"):
-        return {**summary, "shove": "resisted", "prone_immunity": target.prone_immunity}
+        # A won contest that still lands nothing means the target is immune to prone. Name WHICH
+        # immunity: a carried item (condition_immunities) or the skill capability (prone_immunity).
+        blocked = {**summary, "shove": "resisted"}
+        item_immunity = target.condition_immunities.get("prone")
+        if item_immunity:
+            blocked["condition_immunity_source"] = item_immunity
+        if target.prone_immunity:
+            blocked["prone_immunity"] = target.prone_immunity
+        return blocked
     return {**summary, "shove": "knocked_prone"}

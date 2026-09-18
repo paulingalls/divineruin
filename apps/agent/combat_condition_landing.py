@@ -1,13 +1,7 @@
-from typing import TYPE_CHECKING
-
 import combat_grapple
 import conditions
-from condition_produce import resolve_effective_targets
+from combat_participant import CombatParticipant
 from condition_restrictions import cannot_act
-from session_data import CombatParticipant
-
-if TYPE_CHECKING:
-    from declarations import Declaration
 
 
 def _land_condition_on_one(
@@ -37,38 +31,3 @@ def _land_condition_on_one(
         if released_from_grapple is not None:
             released_from_grapple.extend(released)
     return landed
-
-
-def land_condition_on_participant(
-    state,
-    attacker: CombatParticipant,
-    decl: "Declaration",
-    cond_type: str,
-    source: str,
-    released_from_grapple: list[str] | None = None,
-) -> bool:
-    """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
-    and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
-    ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
-    ``_land_condition_on_one`` (M4.8 story-012 extraction); back-compat for existing callers."""
-    return _land_condition_on_one(
-        state, decl.target_id, attacker, cond_type, source, released_from_grapple=released_from_grapple
-    )
-
-
-def land_condition_on_participants(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
-) -> list[str]:
-    """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
-
-    Resolves the target list: ``decl.target_ids`` (order-preserving dedup) when present, else the
-    single ``decl.target_id``, else the caster (self-cast). The cap was already enforced at the
-    declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
-    double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
-    on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
-    targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
-    voiced: list[str] = []
-    for tid in targets:
-        if _land_condition_on_one(state, tid, attacker, cond_type, source):
-            voiced.append(tid if tid is not None else attacker.id)
-    return voiced

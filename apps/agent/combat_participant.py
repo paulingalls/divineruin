@@ -78,6 +78,12 @@ class CombatParticipant:
     # an exact id at a window.
     reaction_ids: list[str] = field(default_factory=list)
     prone_immunity: str | None = None
+    # Carried-item protections (story-053), folded from the member's inventory by
+    # item_effects.combat_traits at combat init. Each maps the protected token -> the NAME of the
+    # item(s) granting it, because every consumer must tell the DM which item saved them; a bare
+    # set would lose that. Empty for enemies/companions and for rows written before the fields
+    # existed (from_dict uses CombatParticipant(**p)). Read by _land_condition_on_one (immunity),
+    # roll_participant_save (save advantage) and resolve_maneuver (shove defence).
     condition_immunities: dict[str, str] = field(default_factory=dict)
     save_advantages: dict[str, str] = field(default_factory=dict)
     advantage_vs: dict[str, str] = field(default_factory=dict)

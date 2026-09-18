@@ -119,7 +119,7 @@ async def test_real_hollow_shriek_cannot_frighten_choirs_silence_bearer():
 
     assert not conditions.has_condition(target.conditions, "frightened")
     assert summary["condition_immune"] == "frightened"
-    assert summary["condition_immunity"] == "Choir's Silence"
+    assert summary["condition_immunity_source"] == "Choir's Silence"
 
 
 @pytest.mark.asyncio
@@ -180,7 +180,7 @@ async def test_carried_item_condition_immunity_blocks_landing_and_names_source()
 
     assert not conditions.has_condition(target.conditions, "charmed")
     assert summary["condition_immune"] == "charmed"
-    assert summary["condition_immunity"] == "Stillheart"
+    assert summary["condition_immunity_source"] == "Stillheart"
 
 
 def test_save_advantage_is_applied_at_participant_save_ssot():
@@ -228,7 +228,28 @@ def test_item_opposition_advantage_drives_shove_defence(token):
     assert summary["advantage_vs"] == "Cloak of the Steppe Winds"
 
 
+def test_a_won_shove_blocked_by_a_carried_item_names_that_item():
+    # _land_condition_on_one now refuses prone for a carried immunity too, so the maneuver's
+    # blocked-shove branch can no longer assume the skill capability is what stopped it.
+    state = _make_combat_state()
+    attacker = _participant(state, "goblin_scout_1")
+    target = _participant(state, "player_1")
+    target.condition_immunities = {"prone": "Stillheart"}
+    attacker.attributes = {"strength": 20, "dexterity": 10}
+    target.attributes = {"strength": 1, "dexterity": 1}
+    decl = Declaration(type=DeclarationType.MANEUVER, target_id=target.id)
+    rng = MagicMock()
+    rng.randint.side_effect = [20, 1]
+
+    summary = resolve_maneuver(state, attacker, decl, rng=rng)
+
+    assert summary["shove"] == "resisted"
+    assert summary["condition_immunity_source"] == "Stillheart"
+    assert "prone_immunity" not in summary  # no null attribution to the skill capability
+
+
 def test_item_protection_packet_vocabulary_reaches_dm():
     assert all(
-        key in combat_prompts.COMBAT_PROMPT for key in ("condition_immunity", "save_advantage_source", "advantage_vs")
+        key in combat_prompts.COMBAT_PROMPT
+        for key in ("condition_immunity_source", "save_advantage_source", "advantage_vs")
     )

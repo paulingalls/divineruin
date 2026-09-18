@@ -1,14 +1,18 @@
 import json
+import re
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sample_fixtures import make_context
 
-from item_effects import CombatItemTraits, combat_traits
+from check_resolution_save import VALID_SAVE_NAMES
+from conditions import CONDITION_CATALOG
+from item_effects import _ADVANTAGE_VS, CombatItemTraits, combat_traits
 from query_tools import _query_inventory_impl
 
 ITEMS_PATH = Path(__file__).parents[3] / "content" / "items.json"
+ITEMS_TS_PATH = Path(__file__).parents[2] / "server" / "src" / "items.ts"
 
 STRUCTURED = {
     "cloak_steppe_winds": {"advantage_vs": ["prone", "push"]},
@@ -143,3 +147,29 @@ async def test_description_only_effects_reach_dm_verbatim():
         source = expected_by_name[returned["name"]]
         assert returned["description"] == source.get("description")
         assert returned["effects"] == source["effects"]
+
+
+# Cross-language conformance (constraint 7), same shape as test_errand_risk_conformance: the
+# structured-effect token sets are pinned independently in item_effects.py and in
+# apps/server/src/items.ts, because no code crosses the language split. Without this guard a
+# token dropped on one side only stays silent at the TS load boundary and surfaces as a mid-fight
+# ToolError at combat init — the worst possible moment to learn about it.
+_TS_SET_RE = re.compile(r"const (CONDITION_NAMES|SAVE_NAMES|ADVANTAGE_VS) = new Set\(\[(.*?)\]\)", re.DOTALL)
+_TS_TOKEN_RE = re.compile(r'"([a-z_]+)"')
+
+
+def _ts_token_sets() -> dict[str, frozenset[str]]:
+    found = {
+        name: frozenset(_TS_TOKEN_RE.findall(body)) for name, body in _TS_SET_RE.findall(ITEMS_TS_PATH.read_text())
+    }
+    # Fail loud on a parse miss rather than passing vacuously against an empty dict.
+    assert set(found) == {"CONDITION_NAMES", "SAVE_NAMES", "ADVANTAGE_VS"}, f"parser drift in {ITEMS_TS_PATH}: {found}"
+    assert all(found.values()), f"extracted an empty token set from {ITEMS_TS_PATH}: {found}"
+    return found
+
+
+def test_structured_effect_token_sets_match_across_languages():
+    ts = _ts_token_sets()
+    assert ts["CONDITION_NAMES"] == frozenset(CONDITION_CATALOG)
+    assert ts["SAVE_NAMES"] == frozenset(VALID_SAVE_NAMES)
+    assert ts["ADVANTAGE_VS"] == frozenset(_ADVANTAGE_VS)
