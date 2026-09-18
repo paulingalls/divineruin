@@ -67,6 +67,12 @@ def _paused_state(shape):
     return state
 
 
+def _own(state, ability_id: str) -> None:
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = [ability_id]
+
+
 async def _queried_reactions():
     """Every reaction row the DM can be shown, for every archetype — the producer's own output."""
     context = make_context()
@@ -106,6 +112,7 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
         assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
         for name in answered:
             state = _paused_state(_PRODUCIBLE[name])
+            _own(state, ability_id)
             try:
                 validate_reaction_activation(state, "player_1", ability_id)
             except ValueError:
@@ -128,6 +135,7 @@ async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_windo
     for ability_id, window in unreachable.items():
         for shape in _PRODUCIBLE.values():
             state = _paused_state(shape)
+            _own(state, ability_id)
             with pytest.raises(ValueError, match=window):
                 validate_reaction_activation(state, "player_1", ability_id)
 

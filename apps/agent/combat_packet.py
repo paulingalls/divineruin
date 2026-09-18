@@ -138,7 +138,9 @@ async def _prevalidate_ability_focus(
             if variant is not None:
                 active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
                 if active_variant_id != variant.id:
-                    raise ToolError(f"{variant.id} is not your active variant for {ability.name}.")
+                    actor = state.get_participant(actor_id)
+                    actor_name = actor.name if actor is not None else actor_id
+                    raise ToolError(f"{actor_name} does not have {variant.id} active for {ability.name}.")
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability

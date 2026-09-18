@@ -40,6 +40,12 @@ def _ally_targeted_window(*, stage: str, triggers: tuple[str, ...]):
     return state
 
 
+def _own(state, ability_id: str) -> None:
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = [ability_id]
+
+
 class TestReactionTargetPolicy:
     def test_every_catalog_window_has_an_explicit_target_policy(self):
         assert frozenset({"on_hit", "on_targeted", "on_condition_imposed"}) == (
@@ -77,6 +83,7 @@ class TestReactionTargetPolicy:
     )
     def test_self_targeted_reaction_refuses_an_ally_s_window(self, ability_id, stage, triggers):
         state = _ally_targeted_window(stage=stage, triggers=triggers)
+        _own(state, ability_id)
 
         with pytest.raises(ValueError) as refused:
             reaction_gate.validate_reaction_activation(state, "player_1", ability_id)
@@ -89,6 +96,7 @@ class TestReactionTargetPolicy:
             stage=reaction_windows.POST_ROLL,
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
+        _own(state, "guardian_intercept")
         monkeypatch.setattr(
             reaction_gate,
             "UNBOUND_REACTION_WINDOWS",
@@ -149,6 +157,7 @@ class TestTheInterruptLoop:
 
         assert "on_targeted" in r1["next"]["waiting_on"]["triggers"]
         cs = ctx.userdata.combat_state
+        _own(cs, PRE_ROLL_REACTION)
         assert reaction_gate.validate_reaction_activation(cs, "player_1", PRE_ROLL_REACTION) is None
 
     @pytest.mark.asyncio
@@ -159,6 +168,7 @@ class TestTheInterruptLoop:
         deps = _resolve_deps()
         await _call(ctx, deps)
         await _call(ctx, deps)
+        _own(ctx.userdata.combat_state, POST_ROLL_REACTION)
 
         with pytest.raises(ValueError, match="on_hit"):
             reaction_gate.validate_reaction_activation(ctx.userdata.combat_state, "player_1", POST_ROLL_REACTION)

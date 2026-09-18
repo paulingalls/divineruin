@@ -203,7 +203,8 @@ async def _request_ability_activation_unlocked(
         if variant_id is not None:
             active_variant_id = await persistence_mod.get_active_variant(player_id, ability_id, conn=conn)
             if active_variant_id != variant_id:
-                raise ToolError(f"{variant_id} is not your active variant for {ability.name}.")
+                member_name = player.get("name") or player_id
+                raise ToolError(f"{member_name} does not have {variant_id} active for {ability.name}.")
             try:
                 variant = variants_mod.get_variant(ability_id, variant_id)
             except ValueError as e:

@@ -78,6 +78,8 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     # so "no window is open" would send the DM waiting for one that cannot come.
     if actor.has_reaction_ability is False:
         raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
+    if ability_id not in actor.reaction_ids:
+        raise ValueError(f"player {actor_id!r} does not own reaction {ability_id!r}")
 
     window = state.open_window
     if window is None:

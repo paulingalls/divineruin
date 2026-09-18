@@ -11,6 +11,7 @@ import combat_turn
 import reaction_spend
 from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
+from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
 
 
@@ -266,6 +267,11 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     so a test of a reaction that guards an ALLY must make player_1 the REACTOR and retarget the
     enemy at someone else.
     """
+    player = ctx.userdata.combat_state.get_participant(ctx.userdata.player_id)
+    assert player is not None
+    player.level = 6
+    player.reaction_ids = class_reaction_ids(player_class, player.level)
+    player.has_reaction_ability = bool(player.reaction_ids)
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(

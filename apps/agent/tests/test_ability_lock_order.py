@@ -138,6 +138,9 @@ class TestAbilityLockOrder:
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.reaction_ids = ["rogue_uncanny_dodge"]
         ctx.userdata.combat_state = state
         db_mod, _conn = make_db_mod()
         queries = _lock_spy("rogue")

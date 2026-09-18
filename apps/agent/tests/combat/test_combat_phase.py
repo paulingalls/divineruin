@@ -151,6 +151,9 @@ class TestValidateReactionActivation:
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.reaction_ids = [self.accepts, self.refuses]
         return state
 
     def test_accepts_a_reaction_whose_catalog_window_is_open_with_no_declaration(self):
