@@ -46,10 +46,6 @@ class TestResolveDeclarationValid:
         d = resolve_declaration({"type": "maneuver", "target_id": "goblin_1", "maneuver_intent": "escape"})
         assert d.maneuver_intent is ManeuverIntent.ESCAPE
 
-    def test_unknown_maneuver_intent_fails_loud(self):
-        with pytest.raises(ValueError, match="not a valid ManeuverIntent"):
-            resolve_declaration({"type": "maneuver", "target_id": "goblin_1", "maneuver_intent": "shove"})
-
     def test_defend_yields_ac_bonus_and_no_attack(self):
         d = resolve_declaration({"type": "defend"})
         assert d.type is DeclarationType.DEFEND
@@ -176,6 +172,10 @@ class TestResolveDeclarationInvalid:
     def test_maneuver_without_target_raises(self):
         with pytest.raises(ValueError, match="target_id"):
             resolve_declaration({"type": "maneuver"})
+
+    def test_unknown_maneuver_intent_fails_loud(self):
+        with pytest.raises(ValueError, match="not a valid ManeuverIntent"):
+            resolve_declaration({"type": "maneuver", "target_id": "goblin_1", "maneuver_intent": "shove"})
 
     def test_empty_dict_raises(self):
         with pytest.raises(ValueError, match="type"):

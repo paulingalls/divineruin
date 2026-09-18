@@ -317,6 +317,29 @@ async def test_grappled_actor_maneuvering_on_someone_else_still_shoves():
 
 
 @pytest.mark.asyncio
+async def test_a_shove_declared_before_the_grab_stays_a_shove():
+    """The mirror of the stale escape (story-074): the grab lands AFTER the declaration.
+
+    Until the intent rode the declaration, resolution re-derived it from the actor still being
+    grappled by the target, so a mid-round grab silently upgraded a declared shove into a
+    break-free. It no longer does, and the actor stays held.
+    """
+    state = _escape_round_state()
+    state.pending_declarations["player_1"].pop("maneuver_intent")
+    ctx = _ctx_at_resolution(state=state)
+
+    with patch("random.randint", side_effect=[20, 1]):
+        result = await _resolve_round(ctx, **_resolve_deps())
+
+    packet = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
+    assert packet["shove"] == "knocked_prone"
+    assert "escape" not in packet
+    player = ctx.userdata.combat_state.get_participant("player_1")
+    assert player is not None
+    assert conditions.has_condition(player.conditions, "grappled")
+
+
+@pytest.mark.asyncio
 async def test_escape_fails_loud_when_the_grappler_has_no_authored_grapple_action():
     state = _escape_round_state()
     grappler = state.get_participant("mawling_1")

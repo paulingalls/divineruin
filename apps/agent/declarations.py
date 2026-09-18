@@ -69,6 +69,9 @@ class Declaration:
     # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
     # not in this pure classifier. None for every non-de_escalate declaration.
     argument_type: str | None = None
+    # story-074: which maneuver this is. Only the declare gate (combat_phase.advance_combat_phase)
+    # can set it — it has the actor and the state this pure classifier does not — and resolution
+    # reads it instead of re-deriving it there, where the hold may already have ended.
     maneuver_intent: ManeuverIntent | None = None
 
 

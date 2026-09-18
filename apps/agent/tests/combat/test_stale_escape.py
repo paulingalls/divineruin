@@ -13,7 +13,7 @@ import conditions
 from session_data import CombatParticipant
 
 
-def _round(*, grappled: bool):
+def _round_setup(*, grappled: bool):
     state = _make_combat_state(player_hp=25, enemy_hp=18)
     escapee = state.get_participant("player_1")
     grappler = state.get_participant("goblin_scout_1")
@@ -61,7 +61,7 @@ def _player_row(player_id, **_kwargs):
 
 
 async def _resolve_disabled_target(*, grappled: bool):
-    state, declarations = _round(grappled=grappled)
+    state, declarations = _round_setup(grappled=grappled)
     context = make_context()
     context.userdata.combat_state = state
     deps = _resolve_deps()
@@ -81,7 +81,11 @@ async def _resolve_disabled_target(*, grappled: bool):
     ):
         await combat_turn._declare_phase_impl(context, declarations, mutations=deps["mutations"])
         assert "maneuver_intent" not in declarations["player_1"]
-        json.dumps(context.userdata.combat_state.to_dict())
+        # The gate's stamp is what the resolver reads a beat later, across a JSONB round-trip:
+        # it has to land as a plain string, and land only on the escape.
+        persisted = json.loads(json.dumps(context.userdata.combat_state.to_dict()))
+        expected_intent = "escape" if grappled else None
+        assert persisted["pending_declarations"]["player_1"].get("maneuver_intent") == expected_intent
         result = await _resolve_round(context, **deps)
 
     assert not isinstance(result, tuple)
