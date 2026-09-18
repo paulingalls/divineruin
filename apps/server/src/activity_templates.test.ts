@@ -4,6 +4,10 @@ import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
 import { parseArchetypeRow, setArchetypes } from "./archetypes.ts";
 import { listSpells, parseSpellRow, setSpells } from "./spells.ts";
+// The launcher's payload builder itself, not a copy of its shape: this is the only place
+// the HUD half and the start route meet in one process, so a rename on either side reds here.
+import { getLaunchIntent } from "../../mobile/src/components/activity-launcher-strings.ts";
+import type { TemplateItem } from "@divineruin/shared";
 
 void mock.module("./db.ts", dbMockFactory);
 
@@ -33,21 +37,10 @@ beforeEach(() => {
   );
 });
 
-interface TrainingItem {
-  id: string;
-  name: string;
-  active: {
-    startTime: string;
-    resolveAtEstimate: string;
-    isAwaitingDecision: boolean;
-  } | null;
-  params: Record<string, unknown>;
-}
-
-async function getTrainingItems(): Promise<TrainingItem[]> {
+async function getTrainingItems(): Promise<TemplateItem[]> {
   const response = await handleGetActivityTemplates("player_1");
   const payload = (await response.json()) as {
-    groups: { type: string; items: TrainingItem[] }[];
+    groups: { type: string; items: TemplateItem[] }[];
   };
   const training = payload.groups.find((group) => group.type === "training");
 
@@ -92,6 +85,44 @@ test("level and source gates keep the row but empty its choices", async () => {
     const item = (await getTrainingItems()).find((candidate) => candidate.id === "arcane_study")!;
     expect(item.params.studiable_spell_ids).toEqual([]);
   }
+});
+
+test("the launcher's own payload starts the activity", async () => {
+  setQueryStubs([
+    { match: /FROM players/, result: [{ class: "mage", level: "3" }] },
+    { match: /FROM character_spells/, result: [] },
+  ]);
+  const item = (await getTrainingItems()).find((candidate) => candidate.id === "arcane_study")!;
+
+  const choice = getLaunchIntent("training", item);
+  expect(choice).toMatchObject({ kind: "choose-spell" });
+  const spellId = (choice as { spellIds: string[] }).spellIds[0]!;
+  const ready = getLaunchIntent("training", item, spellId);
+  expect(ready).toMatchObject({ kind: "ready" });
+
+  // Stubs are consumed on match, so the start route needs its own reads restubbed.
+  setQueryStubs([
+    { match: /FROM players/, result: [{ class: "mage", level: "3" }] },
+    { match: /FROM character_spells/, result: [] },
+    { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 0 }] },
+  ]);
+  const response = await handleCreateActivity(
+    makeRequest("POST", "/api/activities", {
+      type: "training",
+      parameters: (ready as { params: Record<string, unknown> }).params,
+    }),
+    "player_1",
+  );
+  expect(response.status).toBe(200);
+});
+
+test("a martial's spell row is disabled with a reason, so the launcher never posts", async () => {
+  setQueryStubs([{ match: /FROM players/, result: [{ class: "warrior", level: "20" }] }]);
+  const item = (await getTrainingItems()).find((candidate) => candidate.id === "arcane_study")!;
+
+  const intent = getLaunchIntent("training", item);
+  expect(intent.kind).toBe("disabled");
+  expect((intent as { reason: string }).reason.length).toBeGreaterThan(0);
 });
 
 test("template ids equal the real start route acceptance set", async () => {

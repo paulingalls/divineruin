@@ -161,20 +161,26 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
         skill: p.skill,
       };
       if (p.training_activity_type.startsWith("spell_")) {
+        // The tier gate is a property of the program and the player, not of any one spell —
+        // evaluate it once, outside the catalog walk.
         const tier = p.training_activity_type.slice("spell_".length);
-        params.studiable_spell_ids =
-          chassis && chassis.magic_source !== null && Number.isInteger(level) && level >= 1
-            ? listSpells()
-                .filter(
-                  (spell) =>
-                    spell.spell_tier === tier &&
-                    (chassis.magic_source === "cross" || chassis.magic_source === spell.source) &&
-                    isSpellTierUnlocked(chassis, tier, level) &&
-                    !knownSpellIds.has(spell.id),
-                )
-                .map((spell) => spell.id)
-                .sort()
-            : [];
+        const canStudyTier =
+          chassis !== undefined &&
+          chassis.magic_source !== null &&
+          Number.isInteger(level) &&
+          level >= 1 &&
+          isSpellTierUnlocked(chassis, tier, level);
+        params.studiable_spell_ids = canStudyTier
+          ? listSpells()
+              .filter(
+                (spell) =>
+                  spell.spell_tier === tier &&
+                  (chassis.magic_source === "cross" || chassis.magic_source === spell.source) &&
+                  !knownSpellIds.has(spell.id),
+              )
+              .map((spell) => spell.id)
+              .sort()
+          : [];
       }
       return {
         id: p.id,
