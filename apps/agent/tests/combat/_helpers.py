@@ -260,14 +260,19 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None, react
 
     The interrupt loop's entry point: resolve_phase from here holds the enemy blow and pauses on
     its windows, which is the only state in which ``_activate`` below is legal.
+
+    Seeded on the same ownership the DECLARATION refresh seeds on, so the harness cannot hand a
+    budget to a participant production would never have given one.
     """
     ctx = make_context(room=room) if room is not None else make_context()
     state = state if state is not None else _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
     if reaction_ids is not None:
-        reactor = state.get_participant(ctx.userdata.player_id)
-        assert reactor is not None
-        reactor.reaction_ids = list(reaction_ids)
-    state.reactions_available = {p.id: reaction_spend.unspent() for p in state.participants if p.type == "player"}
+        _own_reaction(state, *reaction_ids)
+    state.reactions_available = {
+        p.id: reaction_spend.unspent()
+        for p in state.participants
+        if p.type == "player" and p.has_reaction_ability is True
+    }
     ctx.userdata.combat_state = state
     return ctx
 
@@ -286,11 +291,6 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     so a test of a reaction that guards an ALLY must make player_1 the REACTOR and retarget the
     enemy at someone else.
     """
-    player = ctx.userdata.combat_state.get_participant(ctx.userdata.player_id)
-    assert player is not None
-    # One level for the participant AND the row activate reads: the ability's class-level gate
-    # checks both, and two literals drifting apart would offer an ability activation then refuse it.
-    player.level = _ACTIVATE_LEVEL
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(
