@@ -121,6 +121,24 @@ story-019. Answers "right information / right action at the right time" for the 
 
 ---
 
+## agent_strict_mode.md (404 lines)
+
+Proposed continuation of ADR 0008: retain verbs and typed nouns, and generate selected
+complex arguments in separate strict requests. Live provider and LiveKit feasibility
+probes succeeded; voice latency remains a release gate. Measured 2026-09-18.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Recommendation and protection boundary | 17-69 | Strict input guarantees, existing local validation, tool results as a separate contract |
+| Diagnosis and fresh evidence | 70-130 | Current counts, live failures, production model mismatch, unsuccessful simplifications, successful request partition |
+| The two requests | 131-193 | Fixed per-mode policy, selection and argument generation, LiveKit feasibility probe |
+| Integration and execution invariants | 194-241 | Tool scoping, call IDs, batches, cancellation, visible failure, request accounting |
+| Cache, latency, and cost | 242-293 | Measured preliminary timings, warmup, paired voice benchmark, go/no-go conditions |
+| Verification and rollout | 294-355 | Fault injections, implementation sequence, strict-off inventory, rollback |
+| Alternatives and reproduction | 356-404 | Rejected approaches, reproduction procedure, limits of the evidence |
+
+---
+
 ## audio_design.md (~800 lines)
 
 Soundscapes, SFX, music, voice design.
