@@ -85,6 +85,15 @@ def test_negative_actions_reference_their_patron_opposed_values():
             )
 
 
+def test_opposed_value_ids_belong_to_exactly_one_patron():
+    """A shared id would let a negative row cite another patron's opposed value
+    and still pass test_negative_actions_reference_their_patron_opposed_values."""
+    opposed_ids = [opposed_value for patron in load_gods() for opposed_value in patron["opposed_values"]]
+    shared = [opposed_value for opposed_value, count in Counter(opposed_ids).items() if count > 1]
+
+    assert not shared, f"opposed_value IDs shared by several patrons: {shared}"
+
+
 def test_action_ids_are_unique_across_all_patrons():
     action_ids = [
         row["action"]
