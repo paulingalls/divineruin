@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator, AsyncIterable, Coroutine
+from functools import partial
 from typing import Any
 
 from livekit import agents, rtc
@@ -93,6 +94,13 @@ class BaseGameAgent(Agent):
     def _on_bg_task_done(self, task: asyncio.Task[None]) -> None:
         self._bg_tasks.discard(task)
         log_task_failure(task, logger, "Background task failed")
+
+    async def _run_owned_entry(
+        self, coro: Coroutine[Any, Any, None], entry_logger: logging.Logger, failure_message: str
+    ) -> None:
+        task = asyncio.create_task(coro)
+        task.add_done_callback(partial(log_task_failure, logger=entry_logger, message=failure_message))
+        await asyncio.gather(task, return_exceptions=True)
 
     async def on_enter(self) -> None:
         logger.info("%s entered session", type(self).__name__)

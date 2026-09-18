@@ -60,6 +60,7 @@ from livekit.agents.llm import ChatContext, ChatMessage
 from livekit.agents.voice import AgentSession
 from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
+from sample_fixtures import make_mock_room
 
 import abilities
 import db
@@ -203,7 +204,7 @@ def _nudge_until(harness: SimpleNamespace, ready, *, attempts: int, unmet) -> No
 @given("a rogue in combat against a mawling")
 def _given_rogue_in_combat(harness: SimpleNamespace) -> None:
     state = _build_state(f"combat_m29_{uuid4().hex[:8]}", _PLAYER_ID, [_enemy(_ENEMY_ID, hp=30)])
-    session_data = SessionData(player_id=_PLAYER_ID, location_id="accord_guild_hall")
+    session_data = SessionData(player_id=_PLAYER_ID, location_id="accord_guild_hall", room=make_mock_room())
 
     async def _setup() -> None:
         pool = await db.get_pool()

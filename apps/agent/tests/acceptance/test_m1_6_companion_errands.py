@@ -30,6 +30,7 @@ from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
 from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
+from sample_fixtures import make_mock_room
 
 import db
 import db_activity_queries
@@ -69,6 +70,7 @@ def _given_dispatch_scene(harness: SimpleNamespace) -> None:
         session_data = SessionData(
             player_id="player_1",
             location_id="accord_guild_hall",
+            room=make_mock_room(),
             companion=CompanionState(id="companion_kael", name="Kael", session_count=4),
         )
         # Brief the dispatch scene with the ids the DM needs — there is no query
