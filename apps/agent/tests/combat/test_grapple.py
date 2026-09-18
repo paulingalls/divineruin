@@ -110,9 +110,7 @@ def _miss_resolver():
 async def test_seizing_grab_hit_lands_sourced_grapple_and_surfaces_it_to_dm():
     state = _grapple_round_state()
     ctx = _ctx_at_resolution(state=state)
-
     result = await _resolve_round(ctx, **_resolve_deps(damage=2))
-
     packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
     assert packet["damage"] == 2
     assert packet["condition_inflicted"] == "grappled"
@@ -128,7 +126,7 @@ async def test_seizing_grab_hit_lands_sourced_grapple_and_surfaces_it_to_dm():
 
 
 @pytest.mark.asyncio
-async def test_a_later_seizing_grab_replaces_the_prior_grapple_source():
+async def test_a_later_seizing_grab_keeps_the_prior_source_and_reports_grapple_held():
     state = _grapple_round_state()
     enemy = state.get_participant("mawling_1")
     player = state.get_participant("player_1")
@@ -138,12 +136,25 @@ async def test_a_later_seizing_grab_replaces_the_prior_grapple_source():
     state.pending_declarations[enemy.id] = state.pending_declarations.pop("mawling_1")
     player.conditions = conditions.apply_condition([], "grappled", source="mawling_1")
     ctx = _ctx_at_resolution(state=state)
-
-    await _resolve_round(ctx, **_resolve_deps(damage=2))
-
+    result = await _resolve_round(ctx, **_resolve_deps(damage=2))
     player = ctx.userdata.combat_state.get_participant("player_1")
     grapples = [condition for condition in player.conditions if condition["type"] == "grappled"]
-    assert [condition["source"] for condition in grapples] == ["mawling_2"]
+    assert [condition["source"] for condition in grapples] == ["mawling_1"]
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    assert packet["grapple_held"] is True
+    assert "condition_inflicted" not in packet
+
+
+@pytest.mark.asyncio
+async def test_seizing_grab_that_drops_its_target_lands_no_grapple():
+    state = _grapple_round_state()
+    ctx = _ctx_at_resolution(state=state)
+    result = await _resolve_round(ctx, **_resolve_deps(damage=25))
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    player = ctx.userdata.combat_state.get_participant("player_1")
+    assert packet["target_fallen"] is True
+    assert not conditions.has_condition(player.conditions, "grappled")
+    assert not ({"condition_inflicted", "grapple_held"} & packet.keys())
 
 
 @pytest.mark.asyncio
@@ -151,12 +162,12 @@ async def test_seizing_grab_miss_lands_nothing():
     state = _grapple_round_state()
     ctx = _ctx_at_resolution(state=state)
     deps = {**_resolve_deps(), "resolver": _miss_resolver()}
-
     result = await _resolve_round(ctx, **deps)
 
     packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
     assert packet["hit"] is False
     assert "condition_inflicted" not in packet
+    assert "grapple_held" not in packet
     player = ctx.userdata.combat_state.get_participant("player_1")
     assert player is not None
     assert not conditions.has_condition(player.conditions, "grappled")
@@ -210,7 +221,9 @@ def test_grapple_vocabulary_reaches_schema_and_combat_prompt():
     prompt = combat_prompts.COMBAT_PROMPT
     assert "breaks free by declaring maneuver on their grappler" in prompt
     assert "cannot retreat" in prompt
-    assert all(token in prompt for token in ("grappled", "escape", "grapple_escaped", "released_from_grapple"))
+    assert all(
+        token in prompt for token in ("grappled", "escape", "grapple_escaped", "grapple_held", "released_from_grapple")
+    )
 
 
 def _escape_round_state(*, dc=13, target_id="mawling_1"):

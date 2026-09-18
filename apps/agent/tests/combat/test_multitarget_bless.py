@@ -306,7 +306,12 @@ def test_land_condition_on_participants_blesses_each():
     state = _combat_state_with_allies()
     caster = _p(state, "caster")
     voiced = combat_ability.land_condition_on_participants(
-        state, caster, _ability_decl(target_ids=["ally_1", "ally_2", "ally_3"]), "blessed", source="divine_bless"
+        state,
+        caster,
+        _ability_decl(target_ids=["ally_1", "ally_2", "ally_3"]),
+        "blessed",
+        source="divine_bless",
+        packet={},
     )
     assert voiced == ["ally_1", "ally_2", "ally_3"]
     for aid in ("ally_1", "ally_2", "ally_3"):
@@ -318,7 +323,7 @@ def test_land_condition_on_participants_dedups_and_drops_off_state():
     state = _combat_state_with_allies()
     caster = _p(state, "caster")
     voiced = combat_ability.land_condition_on_participants(
-        state, caster, _ability_decl(target_ids=["ally_1", "ally_1", "ghost"]), "blessed", source="x"
+        state, caster, _ability_decl(target_ids=["ally_1", "ally_1", "ghost"]), "blessed", source="x", packet={}
     )
     assert voiced == ["ally_1"]  # dedup (one ally_1) + "ghost" not on state is dropped
 
@@ -328,12 +333,12 @@ def test_land_condition_on_participants_single_and_self():
     caster = _p(state, "caster")
     # single target_id (no target_ids) — back-compat with the singular path
     assert combat_ability.land_condition_on_participants(
-        state, caster, _ability_decl(target_id="ally_1"), "blessed", source="x"
+        state, caster, _ability_decl(target_id="ally_1"), "blessed", source="x", packet={}
     ) == ["ally_1"]
     # no target -> self-cast voices the caster
-    assert combat_ability.land_condition_on_participants(state, caster, _ability_decl(), "blessed", source="x") == [
-        "caster"
-    ]
+    assert combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(), "blessed", source="x", packet={}
+    ) == ["caster"]
 
 
 # --- In-combat resolution wiring (_resolve_ability_packet) + declare-gate (_prevalidate_ability_focus) ---

@@ -1,5 +1,6 @@
 import copy
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,7 +9,10 @@ import pytest
 from combat._helpers import _damage_resolver, _make_combat_state, _resolve_deps
 from sample_fixtures import make_context
 
+import abilities
+import combat_ability_save
 import conditions
+from combat_condition_landing import _land_condition_on_one
 from combat_packet import _resolve_one_packet
 from combat_phase import ResolutionPacket
 from combat_support import _handle_hp_zero
@@ -126,6 +130,26 @@ async def test_cannot_act_condition_releases_only_when_it_lands(save_success, re
     assert conditions.has_condition(player.conditions, "grappled") is not released
     assert summary.get("released_from_grapple") == (["player_1"] if released else None)
     assert conditions.has_condition(_participant(state, "player_2").conditions, "grappled")
+
+
+def test_player_hostile_cannot_act_condition_reports_released_grapple():
+    state = _release_state()
+    attacker = _participant(state, "player_1")
+    target = _participant(state, "mawling_1")
+    attacker.attributes["strength"] = 16
+    attacker.level = 8
+    ability = replace(abilities.get_ability("warrior_unstoppable_charge"), applies_condition="stunned")
+    decl = Declaration(type=DeclarationType.ABILITY, action=ability.id, target_id=target.id)
+
+    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)):
+        summary = combat_ability_save.resolve_hostile_condition(
+            state, attacker, target, decl, ability, _land_condition_on_one
+        )
+
+    assert conditions.has_condition(target.conditions, "stunned")
+    assert not conditions.has_condition(_participant(state, "player_1").conditions, "grappled")
+    assert conditions.has_condition(_participant(state, "player_2").conditions, "grappled")
+    assert summary["released_from_grapple"] == ["player_1"]
 
 
 def test_hollowed_rise_does_not_release_the_rising_grappler():

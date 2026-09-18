@@ -199,9 +199,15 @@ async def _resolve_attack_packet(
         and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])
         and not grapple_blocked
         and combat_state is not None
-        and combat_ability._land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id)
     ):
-        summary["condition_inflicted"] = "grappled"
+        if target.is_fallen:
+            pass
+        elif conditions.has_condition(target.conditions, "grappled"):
+            summary["grapple_held"] = True
+        elif combat_ability._land_condition_on_one(
+            combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
+        ):
+            summary["condition_inflicted"] = "grappled"
     return summary
 
 
