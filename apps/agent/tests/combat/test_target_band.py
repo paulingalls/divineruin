@@ -129,3 +129,38 @@ def test_unknown_target_is_refused_at_declaration(declaration):
     assert "Kael" in message
     assert "player_1" in message
     assert "missing_target" in message
+
+
+def _echo_state():
+    """A risen Stage-2 echo: a former PC whose type flipped in place to temporary_hollowed."""
+    state = _target_band_state()
+    echo = state.get_participant("companion_1")
+    assert echo is not None
+    echo.type = "temporary_hollowed"
+    return state
+
+
+def test_an_enemy_cannot_strike_a_risen_echo():
+    """The echo fights AGAINST the party (session_data.is_ally), so it shares the enemy band and an
+    enemy striking it is a same-band blow. Decided 2026-09-17 when this rule reded the M20 capstone,
+    whose phase B had an enemy destroy the echo; the party lands that blow now. Reversible: exempt
+    temporary_hollowed in combat_phase and this test is the one that says so."""
+    state = _echo_state()
+
+    with pytest.raises(ValueError) as excinfo:
+        advance_combat_phase(
+            state, {"enemy_commander": {"type": "attack", "action": "Rally", "target_id": "companion_1"}}
+        )
+
+    assert "cannot target Mira (companion_1)" in str(excinfo.value)
+
+
+def test_a_player_may_strike_a_risen_echo():
+    """The inverse, and the declaration the M20 capstone now makes: the party kills its turned member."""
+    state = _echo_state()
+    declaration = {"type": "attack", "action": "Longsword", "target_id": "companion_1"}
+
+    next_state, _ = advance_combat_phase(state, {"player_1": declaration})
+
+    assert next_state.beat == PhaseBeat.RESOLUTION
+    assert next_state.pending_declarations == {"player_1": declaration}
