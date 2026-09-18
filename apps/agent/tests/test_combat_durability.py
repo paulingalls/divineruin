@@ -223,9 +223,9 @@ def _forced_attack(*, hit, critical=False):
     res.critical_success = critical
     res.roll = 15
     res.attack_total = 17
-    res.damage = 5
+    res.damage = 5 if hit else 0
     res.damage_type = "slashing"
-    res.target_hp_remaining = 20
+    res.target_hp_remaining = 20 if hit else 25
     res.narrative_hint = "The blade bites."
     return res
 
@@ -304,6 +304,15 @@ async def test_shield_reaction_accrues_shield_hit():
     inv = [_inv_item("shield_iron", "shield", current_hits=10)]
     accrue = await _run_enemy_turn(ctx, inv, shield_reaction=RETALIATING_SHIELD)
     # one accrual for the shield (no armor equipped)
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "shield_iron"
+
+
+async def test_missed_blow_with_shield_reaction_accrues_shield_hit():
+    ctx = _combat_ctx()
+    shield = _inv_item("shield_iron", "shield", current_hits=10)
+    accrue = await _run_enemy_turn(ctx, [shield], shield_reaction=RETALIATING_SHIELD, hit=False)
     accrue.assert_awaited_once()
     assert accrue.await_args is not None
     assert accrue.await_args.args[2]["id"] == "shield_iron"

@@ -17,8 +17,9 @@ import reaction_spend
 from check_resolution_attack import AttackResult
 from combat_events import EventSink
 from combat_packet import _resolve_one_packet
+from combat_support import SaveDamageResult, apply_attack_result
 from declarations import Declaration, DeclarationType
-from tool_support import SOUND_ATTACK_HIT, SOUND_ATTACK_MISS
+from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS
 
 FIXTURE_PATH = Path(__file__).resolve().parents[4] / "packages" / "shared" / "fixtures" / "enemy_action_shapes.json"
 ACTIONS = json.loads(FIXTURE_PATH.read_text())
@@ -47,10 +48,10 @@ def _concentration():
     )
 
 
-async def _resolve_save_damage(*, save_seed: int):
+async def _resolve_save_damage(*, save_seed: int, damage: str = "1d1+6"):
     state = _make_combat_state(player_hp=25)
     enemy = _participant(state, "goblin_scout_1")
-    action = {**ACTIONS["valid_half_on_success"], "damage": "1d1+6"}
+    action = {**ACTIONS["valid_half_on_success"], "damage": damage}
     enemy.action_pool = [action]
     declaration = Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id="player_1")
     packet = SimpleNamespace(actor_id=enemy.id, declaration=declaration)
@@ -82,27 +83,43 @@ async def _resolve_save_damage(*, save_seed: int):
             concentration_break_mod=_concentration(),
             sink=sink,
         )
-    return session, state, summary, sink, save_result, mutations, durability_mutations
+    return session, state, summary, sink, save_result, mutations, queries, durability_mutations
 
 
 @pytest.mark.parametrize(
-    ("save_seed", "expected_damage", "save_success", "expected_sound", "expected_hit"),
+    ("save_seed", "expected_damage", "save_success", "save_outcome"),
     [
-        (6, 3, True, SOUND_ATTACK_MISS, False),
-        (1, 7, False, SOUND_ATTACK_HIT, True),
+        (6, 3, True, "succeeded"),
+        (1, 7, False, "failed"),
     ],
 )
 async def test_save_damage_announces_the_save_and_applied_damage(
-    save_seed, expected_damage, save_success, expected_sound, expected_hit
+    save_seed, expected_damage, save_success, save_outcome
 ):
-    session, state, summary, sink, save, mutations, _durability_mutations = await _resolve_save_damage(
+    session, state, summary, sink, save, mutations, _queries, _durability_mutations = await _resolve_save_damage(
         save_seed=save_seed
     )
 
     assert _participant(state, "player_1").hp_current == 25 - expected_damage
     assert summary["damage"] == expected_damage
-    assert summary["hit"] is expected_hit
-    assert [event.event_type for event in sink.captured[:2]] == [E.DICE_ROLL, E.PLAY_SOUND]
+    assert summary["save_success"] is save_success
+    assert summary["damage_halved"] is save_success
+    attack_sounds = {SOUND_ATTACK_HIT, SOUND_ATTACK_MISS, SOUND_ATTACK_CRITICAL}
+    assert not attack_sounds.intersection(
+        event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND
+    )
+    attack_fields = {
+        "hit",
+        "critical",
+        "roll",
+        "attack_total",
+        "target_ac",
+        "bonus_damage",
+        "bonus_damage_type",
+        "consumed_conditions",
+    }
+    assert not attack_fields.intersection(summary)
+    assert [event.event_type for event in sink.captured[:1]] == [E.DICE_ROLL]
     assert sink.captured[0].payload == {
         "roll_type": "saving_throw",
         "save_type": save.save_type,
@@ -113,32 +130,62 @@ async def test_save_damage_announces_the_save_and_applied_damage(
         "context": save.context,
         "damage": expected_damage,
     }
-    assert [event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND] == [
-        expected_sound
-    ]
     mutations.update_player_hp.assert_awaited_once_with("player_1", 25 - expected_damage, conn=None)
-    outcome = "hit" if expected_hit else "miss"
-    assert session.recent_events[-1] == f"Goblin Scout attacks Kael: {outcome}, {expected_damage} damage"
+    assert session.recent_events[-1] == (
+        f"Goblin Scout uses Necrotic Pulse on Kael: constitution save {save_outcome}, {expected_damage} damage"
+    )
 
 
-async def test_made_save_does_not_cost_armor_or_play_the_hit_sound():
-    _session, _state, summary, sink, _save, _mutations, durability_mutations = await _resolve_save_damage(save_seed=6)
+async def test_made_save_with_damage_costs_armor_after_the_announced_save():
+    _session, _state, summary, sink, _save, _mutations, _queries, durability_mutations = await _resolve_save_damage(
+        save_seed=6
+    )
 
-    assert summary["durability"] == {}
-    assert summary["hit"] is False
-    assert SOUND_ATTACK_HIT not in [
-        event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND
-    ]
-    assert E.ITEM_DURABILITY_HIT not in [event.event_type for event in sink.captured]
-    durability_mutations.update_item_durability.assert_not_awaited()
+    assert summary["durability"]["armor"]["current_hits"] == 9
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.ITEM_DURABILITY_HIT]
+    durability_mutations.update_item_durability.assert_awaited_once_with("player_1", "plate_armor", 9, conn=None)
 
 
 async def test_failed_save_costs_armor_after_the_announced_damage():
-    _session, _state, summary, sink, _save, _mutations, durability_mutations = await _resolve_save_damage(save_seed=1)
+    _session, _state, summary, sink, _save, _mutations, _queries, durability_mutations = await _resolve_save_damage(
+        save_seed=1
+    )
 
     assert summary["durability"]["armor"]["current_hits"] == 9
-    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.PLAY_SOUND, E.ITEM_DURABILITY_HIT]
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.ITEM_DURABILITY_HIT]
     durability_mutations.update_item_durability.assert_awaited_once_with("player_1", "plate_armor", 9, conn=None)
+
+
+async def test_made_save_with_zero_damage_does_not_cost_armor():
+    _session, state, summary, sink, _save, _mutations, queries, durability_mutations = await _resolve_save_damage(
+        save_seed=6, damage="1d1"
+    )
+
+    assert _participant(state, "player_1").hp_current == 25
+    assert summary["damage"] == 0
+    assert summary["durability"] == {}
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL]
+    queries.get_player_inventory.assert_not_awaited()
+    durability_mutations.update_item_durability.assert_not_awaited()
+
+
+async def test_save_damage_refuses_to_publish_an_attack_roll():
+    session = make_context().userdata
+    state = _make_combat_state()
+    attacker = _participant(state, "goblin_scout_1")
+    target = _participant(state, "player_1")
+    result = SaveDamageResult(
+        save_type="constitution",
+        save_success=True,
+        damage=0,
+        damage_type="necrotic",
+        narrative_hint="",
+        dramatic=False,
+        context="",
+    )
+
+    with pytest.raises(ValueError, match="save damage cannot publish an attack roll"):
+        await apply_attack_result(session, attacker, {}, target, result, target.ac)
 
 
 async def test_held_combined_ability_wastes_before_windows_when_target_fell():

@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 
 from livekit.agents.llm import ToolError
 
@@ -312,12 +312,23 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
     }
 
 
+@dataclass(frozen=True)
+class SaveDamageResult:
+    save_type: str
+    save_success: bool
+    damage: int
+    damage_type: str
+    narrative_hint: str
+    dramatic: bool
+    context: str
+
+
 async def apply_attack_result(
     session: SessionData,
     attacker,
     action: dict,
     target,
-    attack_result,
+    attack_result: check_resolution_attack.AttackResult | SaveDamageResult,
     effective_ac: int,
     *,
     shield_reaction: str | None = None,
@@ -329,11 +340,15 @@ async def apply_attack_result(
     sink=None,
     publish_roll: bool = True,
 ) -> dict:
-    """Apply an already-rolled attack: HP, fall/death, events, durability, and the summary.
+    """Apply already-rolled attack or save damage and its shared combat effects.
 
     Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
     story-016), so the engine can pause on a post-roll, pre-damage reaction window.
     """
+    save_damage = isinstance(attack_result, SaveDamageResult)
+    if save_damage and publish_roll:
+        raise ValueError("save damage cannot publish an attack roll")
+
     # Capture pre-hit Fallen state: the instant-death verdict (below) is scoped to the
     # live -> 0 transition (spec game_mechanics_combat.md L350 + on_hp_zero pseudocode L554:
     # "a single source of damage REDUCES HP to 0"). A hit on a target already at 0 is the
@@ -354,11 +369,11 @@ async def apply_attack_result(
     target.hp_current = max(0, hp_before - attack_result.damage)
 
     sounds: list[str] = []
-    if attack_result.critical_success:
+    if not save_damage and attack_result.critical_success:
         sounds.append(SOUND_ATTACK_CRITICAL)
-    elif attack_result.hit:
+    elif not save_damage and attack_result.hit:
         sounds.append(SOUND_ATTACK_HIT)
-    else:
+    elif not save_damage:
         sounds.append(SOUND_ATTACK_MISS)
 
     # Check HP thresholds
@@ -414,16 +429,17 @@ async def apply_attack_result(
 
     # Accrue durability on the player's equipped armor (1 hit per damage taken),
     # and on a shield when the player spends a shield reaction. Hollow zones double.
-    # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
+    # Runs after the resolution's DICE_ROLL so ITEM_DURABILITY_HIT follows the damage.
     durability_results: dict = {}
-    if target.type == "player" and attack_result.hit:
+    if target.type == "player" and (attack_result.damage > 0 or shield_reaction):
         inventory = await queries.get_player_inventory(target.id, conn=conn)
         is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
-        armor = _find_equipped(inventory, "armor")
-        if armor is not None:
-            durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
-            )
+        if attack_result.damage > 0:
+            armor = _find_equipped(inventory, "armor")
+            if armor is not None:
+                durability_results["armor"] = await _accrue_durability(
+                    session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
+                )
         if shield_reaction:
             shield = _find_equipped(inventory, "shield")
             if shield is not None:
@@ -431,20 +447,12 @@ async def apply_attack_result(
                     session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
                 )
 
-    hit_miss = "hit" if attack_result.hit else "miss"
-    session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
-
     response = {
         "attacker": attacker.name,
         "action": action.get("name", ""),
         "target": target.name,
-        "hit": attack_result.hit,
-        "roll": attack_result.roll,
-        "attack_total": attack_result.attack_total,
-        "target_ac": effective_ac,
         "damage": attack_result.damage,
         "damage_type": attack_result.damage_type,
-        "critical": attack_result.critical_success,
         "target_hp_status": hp_status,
         "target_fallen": target.is_fallen,
         "narrative_hint": attack_result.narrative_hint,
@@ -452,23 +460,36 @@ async def apply_attack_result(
         "concentration_broken": concentration_broken,
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
-        # Bonus-damage rider (M4.4 story-008): the necrotic bite a Temporary Hollowed attacker
-        # adds, for the DM to voice. 0/None on a normal hit.
-        "bonus_damage": attack_result.bonus_damage,
-        "bonus_damage_type": attack_result.bonus_damage_type,
-        # Conditions spent by this attack; the caller removes them before another swing.
-        "consumed_conditions": attack_result.consumed_conditions,
-        # Set when this hit raised a Stage-2+ Hollowed target as a Temporary Hollowed echo
-        # instead of felling them — the DM narrates the corpse rising.
         "target_rose_hollowed": rose_hollowed,
     }
+    if save_damage:
+        save_outcome = "succeeded" if attack_result.save_success else "failed"
+        session.record_event(
+            f"{attacker.name} uses {action.get('name', '')} on {target.name}: "
+            f"{attack_result.save_type} save {save_outcome}, {attack_result.damage} damage"
+        )
+        log_outcome = f"{attack_result.save_type} save {save_outcome}"
+    else:
+        hit_miss = "hit" if attack_result.hit else "miss"
+        session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
+        response.update(
+            hit=attack_result.hit,
+            roll=attack_result.roll,
+            attack_total=attack_result.attack_total,
+            target_ac=effective_ac,
+            critical=attack_result.critical_success,
+            bonus_damage=attack_result.bonus_damage,
+            bonus_damage_type=attack_result.bonus_damage_type,
+            consumed_conditions=attack_result.consumed_conditions,
+        )
+        log_outcome = hit_miss
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
         attacker.name,
         target.name,
-        hit_miss,
+        log_outcome,
         attack_result.damage,
         hp_status,
     )

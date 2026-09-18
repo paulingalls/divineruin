@@ -5,10 +5,9 @@ from typing import TYPE_CHECKING
 import check_resolution_save
 import concentration_break
 import event_types as E
-from check_resolution_attack import AttackResult
 from combat_ability import _resolve_condition_target, land_condition_on_participant
 from combat_events import emit_or_publish
-from combat_support import _resolve_attack_packet, apply_attack_result
+from combat_support import SaveDamageResult, _resolve_attack_packet, apply_attack_result
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 from session_data import CombatParticipant, SessionData
@@ -223,23 +222,16 @@ async def resolve_save_damage_action(
     # rides the save above, so dropping the multiplier here would role-scale half the action.
     rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
     damage = rolled_damage // 2 if result.success else rolled_damage
-    damage_result = AttackResult(
-        hit=not result.success,
-        roll=result.roll,
-        attack_modifier=result.modifier,
-        attack_total=result.total,
-        target_ac=result.dc,
+    damage_result = SaveDamageResult(
+        save_type=result.save_type,
+        save_success=result.success,
         damage=damage,
         damage_type=action.get("damage_type", "none"),
-        target_hp_remaining=max(0, target.hp_current - damage),
-        target_killed=damage >= target.hp_current,
         narrative_hint=result.narrative_hint,
-        overkill=max(0, damage - target.hp_current),
         dramatic=result.dramatic,
         context=result.context,
     )
-    # Announced here, and publish_roll stays False below: apply_attack_result's payload would voice
-    # the victim's save as the attacker's swing (the same reason its attack keys are popped after it).
+    # Announced here because the shared applicator refuses to publish an attack roll for save damage.
     await emit_or_publish(
         sink,
         session.room,
@@ -274,11 +266,6 @@ async def resolve_save_damage_action(
     summary.update(_save_fields(result))
     summary["half_on_success"] = True
     summary["damage_halved"] = result.success
-    # apply_attack_result fills the attack vocabulary from the AttackResult synthesized above, where
-    # roll/attack_total/target_ac are really the TARGET's save and its DC. Drop them: the save rides
-    # its own keys, and left in place the DM would voice the victim's save as the enemy's swing.
-    for attack_roll_key in ("roll", "attack_total", "target_ac"):
-        summary.pop(attack_roll_key, None)
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
