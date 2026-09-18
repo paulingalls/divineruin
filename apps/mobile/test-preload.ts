@@ -6,6 +6,8 @@ import { mock } from "bun:test";
 // React Native's entry point uses Flow syntax that Bun can't parse.
 // Mock it and other native modules before any test files load.
 mock.module("react-native", () => ({
+  View: "View",
+  Text: "Text",
   // select() mirrors RN's resolution order: exact OS key, then native, then default.
   Platform: {
     OS: "ios",
