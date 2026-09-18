@@ -27,6 +27,7 @@ import db_training
 import leveling
 import mentor_variant_progress
 import mentor_variants
+import rules_engine
 import skill_persistence
 import spell_knowledge
 import spells
@@ -76,10 +77,14 @@ async def apply_skill_practice_advancement(
     async with dbm.transaction() as conn:
         if not await training.claim_training_accrual(activity_id, conn=conn):
             return None
+        player = await queries.get_player(player_id, conn=conn)
+        if player is None:
+            raise ValueError(f"Player {player_id!r} not found while applying skill practice.")
         adv = await skill_persistence.apply_skill_use_with_persistence(
             player_id,
             training_skill,
             counter_increment,
+            initial_tier=rules_engine._get_skill_tier(player, training_skill.lower()),
             conn=conn,
             queries=queries,
             mutations=mutations,

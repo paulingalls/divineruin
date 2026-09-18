@@ -20,6 +20,7 @@ async def apply_skill_use_with_persistence(
     skill: str,
     counter_increment: int = 1,
     *,
+    initial_tier: str = "untrained",
     conn=None,
     queries=db_queries,
     mutations=db_mutations_skill_advancement,
@@ -40,7 +41,7 @@ async def apply_skill_use_with_persistence(
     if counter_increment <= 0:
         return None
     skill_key = skill.lower()
-    skill_adv = await queries.get_single_skill_advancement(player_id, skill_key, conn=conn)
+    skill_adv = await queries.get_single_skill_advancement(player_id, skill_key, conn=conn, default_tier=initial_tier)
     tiers = {skill_key: skill_adv["tier"]}
     counters = {skill_key: skill_adv["use_counter"]}
     narrative = skill_adv["narrative_moment_ready"]

@@ -110,6 +110,19 @@ async def get_npc_dispositions(
     return {row["npc_id"]: json.loads(row["data"]).get("disposition", "neutral") for row in rows}
 
 
+async def _hydrate_skill_tiers(players: dict[str, dict], conn: asyncpg.Connection | asyncpg.Pool) -> None:
+    for player in players.values():
+        player.pop("skill_tiers", None)
+    if not players:
+        return
+    rows = await conn.fetch(
+        "SELECT player_id, skill_id, tier FROM skill_advancement WHERE player_id = ANY($1)",
+        list(players),
+    )
+    for row in rows:
+        players[row["player_id"]].setdefault("skill_tiers", {})[row["skill_id"]] = row["tier"]
+
+
 async def get_player(
     player_id: str,
     *,
@@ -131,6 +144,7 @@ async def get_player(
     if not isinstance(data, dict):
         logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
         return None
+    await _hydrate_skill_tiers({player_id: data}, _conn)
     return data
 
 
@@ -162,6 +176,7 @@ async def get_players_for_update(
             logger.warning("Player %s has non-dict data: %s", row["player_id"], type(data).__name__)
             continue
         result[row["player_id"]] = data
+    await _hydrate_skill_tiers(result, _conn)
     return result
 
 
@@ -239,7 +254,11 @@ async def get_skill_advancement(
 
 
 async def get_single_skill_advancement(
-    player_id: str, skill: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    skill: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    default_tier: str = "untrained",
 ) -> dict:
     """Fetch advancement data for a single skill. Returns {tier, use_counter, narrative_moment_ready} or defaults."""
     _conn = conn or await db.get_pool()
@@ -249,7 +268,7 @@ async def get_single_skill_advancement(
         skill,
     )
     if row is None:
-        return {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
+        return {"tier": default_tier, "use_counter": 0, "narrative_moment_ready": False}
     return {
         "tier": row["tier"],
         "use_counter": row["use_counter"],

@@ -39,9 +39,11 @@ _RUINS = "greyvale_ruins_exterior"  # terrain: unmarked_wilderness (start)
 async def _set_endurance_master(pool, player_id: str) -> None:
     """Give the player the Endurance master tier (Iron Constitution) → Exhausted caps at 3."""
     await pool.execute(
-        "UPDATE players SET data = jsonb_set(data, '{skill_tiers}', $2::jsonb) WHERE player_id = $1",
+        "INSERT INTO skill_advancement "
+        "(player_id, skill_id, tier, use_counter, narrative_moment_ready) "
+        "VALUES ($1, 'endurance', 'master', 0, FALSE) "
+        "ON CONFLICT (player_id, skill_id) DO UPDATE SET tier = EXCLUDED.tier",
         player_id,
-        json.dumps({"endurance": "master"}),
     )
 
 
