@@ -129,26 +129,22 @@ async def test_malformed_stored_declaration_reopens_and_allows_retry(dev_db_pool
             await combat_turn._resolve_phase_impl(context, resolver=_damage_resolver(0))
 
         message = str(refused.value)
-        session_beat = context.userdata.combat_state.beat
-        session_pending = context.userdata.combat_state.pending_declarations
-        persisted = await db_mutations.load_combat_state(combat_id, conn=pool)
-        assert persisted is not None
-        row = await db_queries.get_player(player_id, conn=pool)
-        assert row is not None
-
-        await combat_turn._declare_phase_impl(context, {player_id: {"type": "defend"}})
-
         assert "attack declaration requires a 'target_id'" in message
         assert "whole phase" in message
-        assert session_beat == combat_phase.PhaseBeat.DECLARATION
-        assert session_pending == {}
+        assert context.userdata.combat_state.beat == combat_phase.PhaseBeat.DECLARATION
+        assert context.userdata.combat_state.pending_declarations == {}
+        persisted = await db_mutations.load_combat_state(combat_id, conn=pool)
+        assert persisted is not None
         assert persisted.beat == combat_phase.PhaseBeat.DECLARATION
         assert persisted.pending_declarations == {}
+        row = await db_queries.get_player(player_id, conn=pool)
+        assert row is not None
         assert row["hp"]["current"] == 25
         assert row["stamina"]["current"] == 10
         assert row["focus"]["current"] == 0
         assert all(not participant.conditions for participant in persisted.participants)
 
+        await combat_turn._declare_phase_impl(context, {player_id: {"type": "defend"}})
         result = await combat_turn._resolve_phase_impl(context, resolver=_damage_resolver(0))
         assert isinstance(result, str)
         assert json.loads(result)["packets"][0]["resolved"] is True

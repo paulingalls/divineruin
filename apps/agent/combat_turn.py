@@ -214,8 +214,7 @@ async def _resolve_phase_locked(
             try:
                 state, adv = combat_phase.advance_combat_phase(cs)
             except ValueError as e:
-                error = ToolError(str(e))
-                raise PrevalidationRefusal(error) from e
+                raise PrevalidationRefusal(ToolError(str(e))) from e
 
             # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
             # initiative order, so apply every Defend's bonus to state.ac_modifiers before any

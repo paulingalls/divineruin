@@ -19,7 +19,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state
+from combat._helpers import _make_combat_state, _own_reaction
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
@@ -138,9 +138,7 @@ class TestAbilityLockOrder:
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}
-        player = state.get_participant("player_1")
-        assert player is not None
-        player.reaction_ids = ["rogue_uncanny_dodge"]
+        _own_reaction(state, "rogue_uncanny_dodge")
         ctx.userdata.combat_state = state
         db_mod, _conn = make_db_mod()
         queries = _lock_spy("rogue")
