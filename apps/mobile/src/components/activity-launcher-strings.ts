@@ -21,6 +21,10 @@ export function getLaunchIntent(
     !Array.isArray(spellIdsRaw) ||
     spellIdsRaw.some((id) => typeof id !== "string" || id.length === 0)
   ) {
+    // The row disables itself rather than raising: getLaunchIntent runs during render for
+    // every row, so a raise costs the player every other row too. Our own server is the
+    // producer and nothing downstream records what it sent, so name it in the log as well.
+    console.warn("[activity-launcher] malformed studiable_spell_ids:", item.id, spellIdsRaw);
     return { kind: "disabled", reason: "Spell choices are unavailable." };
   }
   const spellIds = spellIdsRaw as string[];

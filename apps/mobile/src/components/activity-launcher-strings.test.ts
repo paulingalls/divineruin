@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect, spyOn } from "bun:test";
 import {
   activeText,
   errandBusyLabel,
@@ -158,6 +158,7 @@ test("empty spell choices disable launch with a stable reason", () => {
 });
 
 test("each malformed spell choice row is disabled without blocking its sibling", () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
   for (const malformedSpellIds of ["arcane_hold_person", ["arcane_hold_person", 42], [""]]) {
     const items = [
       trainingItem({ studiable_spell_ids: malformedSpellIds }),
@@ -180,5 +181,21 @@ test("each malformed spell choice row is disabled without blocking its sibling",
       kind: "ready",
       params: { program_id: "combat_basics" },
     });
+  }
+  warn.mockRestore();
+});
+
+test("a malformed row names itself in the log, not just on screen", () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    getLaunchIntent("training", trainingItem({ studiable_spell_ids: 42 }));
+    getLaunchIntent("training", trainingItem({ studiable_spell_ids: [] }));
+
+    // The empty catalog is a legitimate payload, not a defect: it must stay out of the log.
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] malformed studiable_spell_ids:", "arcane_study", 42],
+    ]);
+  } finally {
+    warn.mockRestore();
   }
 });
