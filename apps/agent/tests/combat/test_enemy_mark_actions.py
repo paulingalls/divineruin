@@ -121,6 +121,19 @@ async def test_a_second_same_band_mark_packet_names_the_incumbent_holding_it():
     assert "held" in second["reason"]
 
 
+def test_a_cancelled_mark_reports_its_declared_kind_and_writes_no_row():
+    state = _mark_state([])
+    marker = _participant("marker")
+    state.participants.append(marker)
+    target = state.get_participant("player_1")
+    assert target is not None
+
+    outcome = resolve_mark_action(state, marker, target, "command", cancelled=True)
+
+    assert outcome == {"resolved": True, "kind": "command"}
+    assert state.focus_marks == {}
+
+
 @pytest.mark.parametrize("second_kind", ["command", "accusation"])
 def test_the_first_same_band_marker_owns_the_target(second_kind):
     state = _mark_state([])
