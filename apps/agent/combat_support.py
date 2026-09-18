@@ -427,9 +427,9 @@ async def apply_attack_result(
         )
     await _publish_sounds(session, sounds, sink=sink)
 
-    # Accrue durability on the player's equipped armor (1 hit per damage taken),
-    # and on a shield when the player spends a shield reaction. Hollow zones double.
-    # Runs after the resolution's DICE_ROLL so ITEM_DURABILITY_HIT follows the damage.
+    # Armor wears per damage TAKEN, a shield per reaction SPENT (spec game_mechanics_crafting.md
+    # L536-537): two rules, which disagree on a 0-damage blow — hence the nested gates. Hollow
+    # zones double. Runs after the resolution's DICE_ROLL so ITEM_DURABILITY_HIT follows the damage.
     durability_results: dict = {}
     if target.type == "player" and (attack_result.damage > 0 or shield_reaction):
         inventory = await queries.get_player_inventory(target.id, conn=conn)

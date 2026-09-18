@@ -217,15 +217,15 @@ def _combat_ctx(corruption_level=0):
     return ctx
 
 
-def _forced_attack(*, hit, critical=False):
+def _forced_attack(*, hit, critical=False, damage=None):
     res = AsyncMock()
     res.hit = hit
     res.critical_success = critical
     res.roll = 15
     res.attack_total = 17
-    res.damage = 5 if hit else 0
+    res.damage = (5 if hit else 0) if damage is None else damage
     res.damage_type = "slashing"
-    res.target_hp_remaining = 20 if hit else 25
+    res.target_hp_remaining = 25 - res.damage
     res.narrative_hint = "The blade bites."
     return res
 
@@ -236,7 +236,7 @@ def _forced_attack(*, hit, critical=False):
 RETALIATING_SHIELD = "guardian_retaliating_shield"
 
 
-async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
+async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True, damage=None):
     # Durability accrual now lives in the shared _resolve_attack_packet resolver (the
     # phase loop's per-packet path, story-003); the enemy attacks the player participant.
     session = ctx.userdata
@@ -248,7 +248,11 @@ async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
     queries = AsyncMock()
     queries.get_player_inventory = AsyncMock(return_value=inventory)
     with (
-        patch.object(combat_support.check_resolution_attack, "resolve_attack", return_value=_forced_attack(hit=hit)),
+        patch.object(
+            combat_support.check_resolution_attack,
+            "resolve_attack",
+            return_value=_forced_attack(hit=hit, damage=damage),
+        ),
         patch.object(
             combat_support,
             "_accrue_durability",
@@ -313,6 +317,24 @@ async def test_missed_blow_with_shield_reaction_accrues_shield_hit():
     ctx = _combat_ctx()
     shield = _inv_item("shield_iron", "shield", current_hits=10)
     accrue = await _run_enemy_turn(ctx, [shield], shield_reaction=RETALIATING_SHIELD, hit=False)
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "shield_iron"
+
+
+# A hit CAN land for 0 damage: check_resolution_attack floors the Minion damage multiplier
+# through max(0, int(...)), so "was hit" and "took damage" are separate questions below.
+async def test_zero_damage_hit_accrues_no_armor():
+    ctx = _combat_ctx()
+    armor = _inv_item("plate_armor", "armor", current_hits=10)
+    accrue = await _run_enemy_turn(ctx, [armor], hit=True, damage=0)
+    accrue.assert_not_awaited()
+
+
+async def test_zero_damage_hit_with_shield_reaction_wears_only_the_shield():
+    ctx = _combat_ctx()
+    inv = [_inv_item("plate_armor", "armor", current_hits=10), _inv_item("shield_iron", "shield", current_hits=10)]
+    accrue = await _run_enemy_turn(ctx, inv, shield_reaction=RETALIATING_SHIELD, hit=True, damage=0)
     accrue.assert_awaited_once()
     assert accrue.await_args is not None
     assert accrue.await_args.args[2]["id"] == "shield_iron"
