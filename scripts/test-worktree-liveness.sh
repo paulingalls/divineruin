@@ -33,12 +33,20 @@ assert_unavailable_refused() {
 
 mv "$linked" "$TMP/unavailable"
 assert_unavailable_refused registered
-mv "$TMP/unavailable" "$linked"
+# The refusal recommends prune, so pin real Git's prune contract: that advice
+# would hand sweep an offline volume's data if prune took locked checkouts.
+git -C "$repo" worktree prune
+live="$(cd "$repo" && wt_live_checkout_ids)"
+[ "$live" = "$primary_id" ] || fail "pruning the abandoned registration did not unblock sweep"
+rm -rf "$TMP/unavailable"
+git -C "$repo" worktree add -q "$linked"
 git -C "$repo" worktree lock --reason 'external volume temporarily unavailable' "$linked"
 mv "$linked" "$TMP/unavailable"
 git -C "$repo" worktree list --porcelain | grep -q '^locked external volume temporarily unavailable$' \
   || fail "real Git locked-worktree floor missing"
 assert_unavailable_refused locked
+git -C "$repo" worktree prune
+assert_unavailable_refused 'pruned locked'
 mv "$TMP/unavailable" "$linked"
 git -C "$repo" worktree unlock "$linked"
 git -C "$repo" worktree remove "$linked"

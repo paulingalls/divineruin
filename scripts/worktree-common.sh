@@ -236,7 +236,7 @@ wt_live_checkout_ids() {
   paths="$(git worktree list --porcelain | sed -n 's/^worktree //p')" || return 1
   [ -n "$paths" ] || { wt_die "Git worktree enumeration produced nothing usable."; return 1; }
   while IFS= read -r path; do
-    [ -d "$path" ] || { wt_die "registered worktree $path is unavailable; refusing sweep."; return 1; }
+    [ -d "$path" ] || { wt_die "registered worktree $path is unavailable; refusing sweep. Restore that checkout, or prune the abandoned registration with 'git worktree prune' (it preserves locked checkouts), then retry."; return 1; }
     git_dir="$(git -C "$path" rev-parse --absolute-git-dir 2>/dev/null)" \
       || { wt_die "worktree $path is still on disk but its Git metadata is unreadable; refusing sweep."; return 1; }
     wt_hash "$(wt_realpath "$git_dir")"
