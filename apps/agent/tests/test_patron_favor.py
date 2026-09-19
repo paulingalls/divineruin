@@ -78,6 +78,19 @@ def test_invalid_favor_raises_with_the_offending_value(row: dict, message: str) 
         get_patron_tier(row)
 
 
+@pytest.mark.parametrize("shape", ["absent", "null"])
+def test_absent_or_null_patron_reads_as_unbound(shape: str) -> None:
+    """The rule async_worker's whisper sweep already applies (`patron IS NULL` is skipped
+    alongside `'none'`), so this reader must not be the one that raises on the same row."""
+    row = favor(level=0, max_level=100)
+    if shape == "absent":
+        del row["patron"]
+    else:
+        row["patron"] = None
+
+    assert get_patron_tier(row) is None
+
+
 def test_tier_resolver_is_a_pure_synchronous_function() -> None:
     assert list(inspect.signature(get_patron_tier).parameters) == ["favor"]
     assert not inspect.iscoroutinefunction(get_patron_tier)

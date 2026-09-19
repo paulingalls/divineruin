@@ -91,6 +91,19 @@ describe("handleDebugPage", () => {
     expect(html).not.toContain("character:'Maren the Innkeeper'");
   });
 
+  test("the favor-loss button sends a negative amount", () => {
+    // The mobile handler pushes the toast only for a NON-ZERO amount
+    // (game-event-handler.ts DIVINE_FAVOR_CHANGED), so a loss button carrying amount:0 —
+    // what this one shipped with — renders nothing and silently certifies the negative path.
+    const amounts = [...html.matchAll(/type:'divine_favor_changed',amount:(-?\d+)/g)].map((m) =>
+      Number(m[1]),
+    );
+
+    expect(amounts.length).toBeGreaterThan(0);
+    expect(amounts.filter((n) => n < 0).length).toBeGreaterThan(0);
+    expect(amounts).not.toContain(0);
+  });
+
   test("combat_started payloads include difficulty", () => {
     expect(html).toContain("difficulty:'moderate'");
     expect(html).toContain("difficulty:'hard'");

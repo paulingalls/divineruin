@@ -18,6 +18,13 @@ def get_patron_tier(favor: dict) -> PatronTier | None:
     ``None`` means the player has no patron — a domain answer, not an error. An unusable row
     (non-positive ``max``, a ``level`` outside 0..max) raises rather than clamping, so a corrupt
     favor row can never read as a tier.
+
+    An ABSENT or null ``patron`` reads as Unbound, because that is the rule every other reader
+    of this row already applies: ``async_worker``'s whisper sweep skips
+    ``divine_favor->>'patron' IS NULL`` alongside ``'none'``, and participant_lifecycle, agent,
+    resurrection and the favor Resolve all default it to ``"none"``. Subscripting instead would
+    make this the one reader that turns an Unbound row into a KeyError, which ``db_tool``
+    deliberately does not translate into a ToolError.
     """
     max_level = favor["max"]
     level = favor["level"]
@@ -29,7 +36,7 @@ def get_patron_tier(favor: dict) -> PatronTier | None:
     if level > max_level:
         raise ValueError(f"level must not exceed max, got {level}")
 
-    if favor["patron"] == "none":
+    if (favor.get("patron") or "none") == "none":
         return None
 
     devoted_level = (max_level * _DEVOTED_PERCENT + 99) // 100
