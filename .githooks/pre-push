@@ -52,6 +52,14 @@ else
       exit 1
     fi
 
+    # Both stand up real Compose stacks, so they sit BELOW the Docker gate (a
+    # Docker-less host gets the message above, not a raw compose error) and
+    # below the lint backstop, which is what keeps a typo cheap.
+    echo "  Worktree ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
+    echo "  Worktree listener ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
+
     # Reap orphaned per-run test containers from earlier runs that were SIGKILL'd
     # (or SIGTERM'd before teardown finished) so they don't accumulate. PID-aware:
     # a live concurrent run's containers are skipped, never killed.

@@ -1,19 +1,21 @@
-// Test-harness DB lifecycle: make the test gate self-heal when docker isn't up.
-//
-// Both unit lanes in test-all.ts connect to the docker-compose Postgres at
-// :55432 (the canonical dev DB) — the TS DB/integration suites and many Python
-// non-acceptance tests. When that DB isn't running, the gate fails with
-// connection errors. ensureDbUp() detects reachability and, only if the DB is
-// down, runs `docker compose up -d` and waits for readiness; stopIfStarted()
-// stops ONLY what this run started (never `down -v`, so a pre-existing dev DB
-// and its volumes survive). The Python session conftest mirrors this for bare
-// `pytest` runs (apps/agent/tests/_db_lifecycle.py).
-
 import { Socket } from "node:net";
 
 const DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
-const COMPOSE_FILE = new URL("../docker-compose.yml", import.meta.url).pathname;
+const OWNER = new URL("./worktree-common.sh", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
+const OWNERSHIP_REFUSAL_EXIT = 78;
+
+export type OwnershipIntent = "settings" | "create" | "connect" | "reuse" | "destroy" | "ci";
+
+export interface LifecycleDeps {
+  authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void>;
+  authorize(intent: OwnershipIntent): Promise<void>;
+  compose(intent: OwnershipIntent, ...args: string[]): Promise<number>;
+  reachable(host: string, port: number): Promise<boolean>;
+  accepting(user: string): Promise<boolean>;
+  sleep(ms: number): Promise<void>;
+  now(): number;
+}
 
 export function parseHostPort(databaseUrl: string): { host: string; port: number } {
   const url = new URL(databaseUrl);
@@ -22,6 +24,10 @@ export function parseHostPort(databaseUrl: string): { host: string; port: number
 
 export function parseUser(databaseUrl: string): string {
   return decodeURIComponent(new URL(databaseUrl).username) || "divineruin";
+}
+
+export function isCiServiceMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.GITHUB_ACTIONS === "true" && env.DIVINERUIN_CI_SERVICE_DB === "1";
 }
 
 export function isReachable(host: string, port: number, timeoutMs = 1000): Promise<boolean> {
@@ -43,60 +49,103 @@ export function isReachable(host: string, port: number, timeoutMs = 1000): Promi
   });
 }
 
-async function compose(...args: string[]): Promise<number> {
-  const proc = Bun.spawn(["docker", "compose", "-f", COMPOSE_FILE, ...args], {
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  return proc.exited;
+async function runOwner(...args: string[]): Promise<{ exit: number; stderr: string }> {
+  const proc = Bun.spawn(["bash", OWNER, ...args], { stdout: "inherit", stderr: "pipe" });
+  const stderr = await new Response(proc.stderr).text();
+  return { exit: await proc.exited, stderr };
 }
 
-// True if Postgres accepts queries (not just listening). On a cold start the
-// container opens the TCP port while still recovering and rejects queries with
-// 'the database system is starting up'; pg_isready inside the container reports
-// actual query-readiness, closing that race.
-async function isAcceptingQueries(user: string): Promise<boolean> {
-  const proc = Bun.spawn(
-    ["docker", "compose", "-f", COMPOSE_FILE, "exec", "-T", "postgres", "pg_isready", "-U", user],
-    {
-      stdout: "ignore",
-      stderr: "ignore",
-    },
+async function authorize(intent: OwnershipIntent): Promise<void> {
+  const result = await runOwner("authorize", intent);
+  if (result.exit !== 0)
+    throw new Error(result.stderr.trim() || `ownership check failed (${result.exit})`);
+}
+
+export async function authorizeRuntime(
+  databaseUrl: string,
+  redisUrl?: string,
+  runner: (...args: string[]) => Promise<OwnerResult> = runOwner,
+): Promise<void> {
+  const result = await runner("authorize-runtime", databaseUrl, redisUrl ?? "");
+  if (result.exit !== 0)
+    throw new Error(result.stderr.trim() || `runtime ownership check failed (${result.exit})`);
+}
+
+async function compose(intent: OwnershipIntent, ...args: string[]): Promise<number> {
+  const result = await runOwner("compose", intent, ...args);
+  if (result.stderr) process.stderr.write(result.stderr);
+  return result.exit;
+}
+
+type OwnerResult = { exit: number; stderr: string };
+
+export async function isAcceptingQueries(
+  user: string,
+  runner: (...args: string[]) => Promise<OwnerResult> = runOwner,
+): Promise<boolean> {
+  const result = await runner(
+    "compose",
+    "connect",
+    "exec",
+    "-T",
+    "postgres",
+    "pg_isready",
+    "-U",
+    user,
   );
-  return (await proc.exited) === 0;
+  if (result.exit === OWNERSHIP_REFUSAL_EXIT)
+    throw new Error(result.stderr.trim() || "ownership check failed during Postgres readiness");
+  return result.exit === 0;
 }
 
-// Returns true iff THIS call started docker compose — pass it to stopIfStarted
-// so a pre-existing dev DB is never stopped.
-export async function ensureDbUp(): Promise<boolean> {
+const defaults: LifecycleDeps = {
+  authorizeRuntime,
+  authorize,
+  compose,
+  reachable: isReachable,
+  accepting: isAcceptingQueries,
+  sleep: Bun.sleep,
+  now: Date.now,
+};
+
+export async function ensureDbUp(deps: LifecycleDeps = defaults): Promise<boolean> {
   const databaseUrl = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
   const { host, port } = parseHostPort(databaseUrl);
   const user = parseUser(databaseUrl);
-  if (await isReachable(host, port)) return false;
+  const ci = isCiServiceMode();
+  if (ci) await deps.authorize("ci");
+  else await deps.authorizeRuntime(databaseUrl, process.env.REDIS_URL);
+  if (await deps.reachable(host, port)) {
+    if (!ci) await deps.authorize("connect");
+    return false;
+  }
+  if (ci)
+    throw new Error(
+      `CI service Postgres is not reachable at ${host}:${port}; Compose mutation is disabled`,
+    );
 
   console.log(
-    `[db-lifecycle] Postgres not reachable at ${host}:${port} — starting docker compose...`,
+    `[db-lifecycle] Postgres not reachable at ${host}:${port} — starting owned Compose project...`,
   );
-  const upExit = await compose("up", "-d");
-  if (upExit !== 0) {
-    throw new Error(`\`docker compose up -d\` failed (exit ${upExit})`);
-  }
+  const upExit = await deps.compose("create", "up", "-d");
+  if (upExit !== 0) throw new Error(`owned \`docker compose up -d\` failed (exit ${upExit})`);
 
-  const deadline = Date.now() + READY_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    if (await isAcceptingQueries(user)) {
-      console.log("[db-lifecycle] Postgres ready.");
-      return true;
-    }
-    await Bun.sleep(1000);
+  const deadline = deps.now() + READY_TIMEOUT_MS;
+  while (deps.now() < deadline) {
+    if (await deps.accepting(user)) return true;
+    await deps.sleep(1000);
   }
   throw new Error(
     `Postgres at ${host}:${port} did not accept queries within ${READY_TIMEOUT_MS}ms`,
   );
 }
 
-export async function stopIfStarted(started: boolean): Promise<void> {
+export async function stopIfStarted(
+  started: boolean,
+  deps: LifecycleDeps = defaults,
+): Promise<void> {
   if (!started) return;
-  console.log("[db-lifecycle] Stopping docker compose services this run started...");
-  await compose("stop");
+  if (isCiServiceMode()) throw new Error("CI service mode cannot stop Compose resources");
+  const exit = await deps.compose("destroy", "stop");
+  if (exit !== 0) throw new Error(`owned \`docker compose stop\` failed (exit ${exit})`);
 }

@@ -78,7 +78,7 @@ reap_typegen_reservation() {
 # bootstrap; a dead owner is reaped before one retry.
 # Args: <port>
 reserve_typegen_port() {
-  local port="$1" lock_dir owner
+  local port="$1" lock_dir owner status
   lock_dir="$TYPEGEN_LOCK_ROOT/$port"
   if ! mkdir "$lock_dir" 2>/dev/null; then
     owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
@@ -97,9 +97,15 @@ reserve_typegen_port() {
     echo "init-worktree: could not record the owner of typegen port $port." >&2
     return 2
   fi
-  if lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; then
+  if wt_port_listeners "$port" >/dev/null; then
     release_typegen_port "$port"
     return 1
+  else
+    status=$?
+    if [ "$status" -ne 1 ]; then
+      release_typegen_port "$port"
+      return "$status"
+    fi
   fi
 }
 
@@ -148,9 +154,12 @@ reap_typegen() {
 # absent listener means the port was never ours.
 # Args: <port> <expected-process-group>
 assert_typegen_port_owner() {
-  local port="$1" expected_group="$2" listeners listener group
-  listeners="$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)"
-  if [ -z "$listeners" ]; then
+  local port="$1" expected_group="$2" listeners listener group status
+  if listeners="$(wt_port_listeners "$port")"; then
+    :
+  else
+    status=$?
+    [ "$status" -eq 1 ] || return "$status"
     echo "init-worktree: no listener on reserved typegen port $port." >&2
     return 1
   fi
@@ -190,7 +199,9 @@ run_typegen() {
 
   waited=0
   bound=1
-  until lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; do
+  until wt_port_listeners "$port" >/dev/null; do
+    status=$?
+    [ "$status" -eq 1 ] || exit "$status"
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "init-worktree: the typegen dev server exited before binding reserved port $port." >&2
       sed 's/^/    /' "$log" >&2
@@ -266,7 +277,7 @@ write_env_if_absent() {
     return 0
   fi
   echo "==> writing .env (from .env.example, offset $WT_OFFSET)"
-  DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
+  WT_PORT_OFFSET="$WT_OFFSET" DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
   POSTGRES_HOST_PORT="$POSTGRES_HOST_PORT" VALKEY_HOST_PORT="$VALKEY_HOST_PORT" \
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   python3 - "$REPO_ROOT/.env.example" "$REPO_ROOT/.env" <<'PY'
@@ -274,7 +285,7 @@ import os, sys
 src, dst = sys.argv[1], sys.argv[2]
 # Keys we set/override so the worktree stack is self-describing in .env.
 overrides = {k: os.environ[k] for k in (
-    "DATABASE_URL", "REDIS_URL",
+    "WT_PORT_OFFSET", "DATABASE_URL", "REDIS_URL",
     "POSTGRES_HOST_PORT", "VALKEY_HOST_PORT", "COMPOSE_PROJECT_NAME",
 )}
 seen = set()
@@ -298,34 +309,24 @@ PY
 }
 
 # ── docker stack ──────────────────────────────────────────────────────────────
-# Bring up THIS worktree's isolated Postgres+Valkey. Guard against a foreign
-# holder of our offset host ports (a rare basename-hash collision) with a
-# loud, actionable failure rather than compose's cryptic bind error.
+# Bring up THIS worktree's isolated Postgres+Valkey. `wt_compose create` proves
+# ownership first: an existing project must carry this checkout's labels, and an
+# absent one must find its host ports vacant.
 start_stack() {
   echo "==> docker stack: project=$COMPOSE_PROJECT_NAME pg=$POSTGRES_HOST_PORT valkey=$VALKEY_HOST_PORT"
-  # Our own running stack already holds the ports on a re-run — that's fine.
-  if [ -z "$(docker compose ps --status running -q postgres 2>/dev/null)" ]; then
-    local pair port label
-    for pair in "$POSTGRES_HOST_PORT:postgres" "$VALKEY_HOST_PORT:valkey"; do
-      port="${pair%%:*}"; label="${pair##*:}"
-      if lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; then
-        echo "init-worktree: host port $port ($label) is already in use by another" >&2
-        echo "               process/worktree (offset collision). Set WT_PORT_OFFSET" >&2
-        echo "               to a distinct value and re-run." >&2
-        exit 1
-      fi
-    done
-  fi
-  # --wait blocks until BOTH services pass their compose healthcheck (Postgres's
-  # is pg_isready), so a cold volume is query-ready before migrate/seed — which
-  # talk to the DB directly with no readiness wait of their own.
-  docker compose up -d --remove-orphans --wait --wait-timeout 120
+  wt_compose create up -d --remove-orphans --wait --wait-timeout 120
 }
 
 # ── run ───────────────────────────────────────────────────────────────────────
 main() {
-  wt_export_env
+  runtime_database_url="${DATABASE_URL:-}"
+  runtime_redis_url="${REDIS_URL:-}"
+  wt_expected_env
+  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID"
   echo "==> provisioning worktree: project=$COMPOSE_PROJECT_NAME offset=$WT_OFFSET"
+
+  write_env_if_absent
+  wt_authorize_runtime "$runtime_database_url" "$runtime_redis_url"
 
   echo "==> bun install"
   bun install
@@ -337,8 +338,6 @@ main() {
   # `bun run lint:e2e`.
   echo "==> bun install (e2e)"
   ( cd "$REPO_ROOT/e2e" && bun install )
-
-  write_env_if_absent
 
   echo "==> uv sync (apps/agent)"
   ( cd "$REPO_ROOT/apps/agent" && uv sync )

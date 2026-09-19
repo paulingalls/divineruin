@@ -66,9 +66,19 @@ ok "distinct sample names get distinct offsets"
 [ "$(wt_project_name '--weird.name')" = "dr-weird-name" ] || fail "project name leading/illegal strip wrong: $(wt_project_name '--weird.name')"
 ok "wt_project_name sanitizes + dr- prefixes to a legal compose project"
 
-# 7. WT_PORT_OFFSET is a manual override, honored verbatim.
-[ "$(WT_PORT_OFFSET=1234 wt_resolved_offset)" = "1234" ] || fail "WT_PORT_OFFSET override ignored"
-ok "WT_PORT_OFFSET override honored"
+# 7. Linked names include the clone fingerprint, so a basename alone never
+#    grants access to another clone's stack.
+wt_identity
+if ! wt_is_primary; then
+  wt_expected_env
+  case "$COMPOSE_PROJECT_NAME" in
+    *"${WT_CLONE_ID:0:8}") ;;
+    *) fail "linked project $COMPOSE_PROJECT_NAME lacks clone fingerprint ${WT_CLONE_ID:0:8}" ;;
+  esac
+  ok "linked project name includes clone identity"
+else
+  ok "primary project keeps its established basename convention"
+fi
 
 # 8. Offset resolves per checkout context: the primary resolves to 0 (ports
 #    byte-identical to today); a linked worktree resolves to a real non-zero
@@ -82,16 +92,13 @@ else
   ok "linked worktree -> non-zero offset $off (ports isolated from primary)"
 fi
 
-# 9. wt_stale_worktree_projects: given running dr-* projects (stdin) and live
-#    worktree basenames (args), returns only the orphans to reap — never a live
-#    worktree's stack and never dr-divineruin. The lowercase/sanitize case is the
-#    data-loss trap: a live worktree 'story-006_Foo' runs as 'dr-story-006_foo',
-#    so a naive dr-<basename> cross-check would mis-classify it as orphaned and
-#    down -v a LIVE stack. Deriving via wt_project_name closes that.
-running=$'dr-divineruin\ndr-worktree-story-004\ndr-story-006_foo\ndr-old-gone\nsome-other-project'
-orphans="$(printf '%s\n' "$running" | wt_stale_worktree_projects 'story-006_Foo' 'worktree-story-004')"
-[ "$orphans" = "dr-old-gone" ] || fail "stale-project set wrong (expected only dr-old-gone): got [$orphans]"
-ok "wt_stale_worktree_projects reaps only true orphans (protects live + dr-divineruin + non-dr-)"
+# 9. This checkout's complete coupled settings agree with its Git identity.
+wt_validate_settings || fail "checkout-owned .env was rejected"
+[ "$POSTGRES_HOST_PORT" = "$(printf '%s' "$DATABASE_URL" | sed -E 's#.*:([0-9]+)/.*#\1#')" ] \
+  || fail "DATABASE_URL does not use the derived Postgres port"
+[ "$VALKEY_HOST_PORT" = "$(printf '%s' "$REDIS_URL" | sed -E 's#.*:([0-9]+).*#\1#')" ] \
+  || fail "REDIS_URL does not use the derived Valkey port"
+ok "project, ports, and service URLs form one checkout-owned setting"
 
 # 10. Two pickers starting from the same point reserve different ports.
 TEST_TYPEGEN_LOCK_ROOT="$(mktemp -d -t test-typegen-locks)"
@@ -117,12 +124,16 @@ ok "dead-owner reservation is reaped and retaken"
 # 12. A bound port plus a live reservation exhausts the band and preserves the
 # existing loud diagnostic.
 TEST_BOUND_PORT=48930
-lsof() {
-  case "$*" in
-    *":$TEST_BOUND_PORT"*) printf '%s\n' "$$"; return 0 ;;
-    *) return 1 ;;
-  esac
-}
+cat > "$TYPEGEN_LOCK_ROOT/bound-lsof" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+    *":$TEST_BOUND_PORT"*) printf '%s\n' "$TEST_LISTENER_PID"; exit 0 ;;
+    *) exit 1 ;;
+esac
+SH
+chmod +x "$TYPEGEN_LOCK_ROOT/bound-lsof"
+export TEST_BOUND_PORT TEST_LISTENER_PID="$$"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/bound-lsof"
 mkdir "$TYPEGEN_LOCK_ROOT/48931"
 printf '%s\n' 999999999 > "$TYPEGEN_LOCK_ROOT/48931/pid"
 release_typegen_port 48931
@@ -135,14 +146,19 @@ case "$exhausted" in
   *"init-worktree: no free port in 48930-48931 for the typegen dev server."*) ;;
   *) fail "exhaustion did not preserve the no-free-port diagnostic: $exhausted" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 rm -f "$TYPEGEN_LOCK_ROOT/48931/pid"
 rmdir "$TYPEGEN_LOCK_ROOT/48931"
 ok "bound/live-locked exhaustion fails loud"
 
 # 13. Bind confirmation rejects both an absent listener (silent Expo auto-bump)
 # and a listener outside the launched Expo process group.
-lsof() { return 1; }
+cat > "$TYPEGEN_LOCK_ROOT/vacant-lsof" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+chmod +x "$TYPEGEN_LOCK_ROOT/vacant-lsof"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/vacant-lsof"
 if absent="$(assert_typegen_port_owner 48940 999999999 2>&1)"; then
   fail "bind confirmation accepted an absent listener"
 fi
@@ -150,10 +166,11 @@ case "$absent" in
   *"no listener on reserved typegen port 48940"*) ;;
   *) fail "absent-listener diagnostic missing: $absent" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 
 TEST_BOUND_PORT=48941
-lsof() { printf '%s\n' "$$"; }
+export TEST_BOUND_PORT TEST_LISTENER_PID="$$"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/bound-lsof"
 expected_group="$(ps -o pgid= -p "$$" | tr -d ' ')"
 assert_typegen_port_owner "$TEST_BOUND_PORT" "$expected_group" || fail "bind confirmation rejected Expo's process group"
 if foreign="$(assert_typegen_port_owner "$TEST_BOUND_PORT" 999999999 2>&1)"; then
@@ -163,7 +180,7 @@ case "$foreign" in
   *"listener on reserved typegen port $TEST_BOUND_PORT is outside Expo's process group"*) ;;
   *) fail "foreign-listener diagnostic missing: $foreign" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 ok "bind confirmation rejects absent and foreign listeners"
 
 # 14. Reservation metadata and lock-root I/O failures are loud and leave no
@@ -250,5 +267,77 @@ case "$propagated" in
   *"no free port"*) fail "a fatal reservation was mislabelled as an exhausted band: $propagated" ;;
 esac
 ok "a fatal reservation status aborts the scan"
+
+# 18. Port inspection failures are fatal; only the documented empty exit 1 is
+# a vacant port.
+cat > "$TEST_TYPEGEN_LOCK_ROOT/error-lsof" <<'SH'
+#!/usr/bin/env bash
+echo inspection-failed >&2
+exit 2
+SH
+chmod +x "$TEST_TYPEGEN_LOCK_ROOT/error-lsof"
+WT_LSOF="$TEST_TYPEGEN_LOCK_ROOT/error-lsof"
+if inspected="$(pick_typegen_port 48981 48981 2>&1)"; then
+  fail "typegen selected a port after inspection failed"
+fi
+case "$inspected" in
+  *"inspection failed"*) ;;
+  *) fail "inspection failure diagnostic missing: $inspected" ;;
+esac
+WT_LSOF="$TEST_TYPEGEN_LOCK_ROOT/missing-lsof"
+if inspected="$(pick_typegen_port 48982 48982 2>&1)"; then
+  fail "typegen selected a port without an inspector"
+fi
+unset WT_LSOF
+ok "typegen port inspection fails closed"
+
+if real_error="$(wt_port_listeners notaport 2>&1)"; then
+  fail "real lsof accepted an invalid port expression"
+fi
+case "$real_error" in
+  *"port inspection failed"*) ;;
+  *) fail "real lsof error was not distinguished from vacancy: $real_error" ;;
+esac
+ok "real lsof vacancy and error results remain distinct"
+
+for inspector_status in 1 2 127; do
+  if ! (
+    wt_port_listeners() { return "$inspector_status"; }
+    wt_service_observation() { exit 99; }
+    outcome=0
+    wt_validate_occupied_service fixture postgres 5432 55432 || outcome=$?
+    expected="$inspector_status"
+    [ "$inspector_status" -ne 1 ] || expected=0
+    [ "$outcome" -eq "$expected" ]
+  ); then
+    fail "warm provisioning converted port inspection status $inspector_status into permission"
+  fi
+done
+ok "warm provisioning accepts confirmed vacancy and propagates inspection failures"
+
+# 19. An existing port key must agree with the derived settings even when the
+# coupled service URLs already match, so the URL check cannot stand in for it.
+settings_root="$(mktemp -d -t test-wt-settings)"
+git -C "$settings_root" init -q
+settings_authority() {  # the real CLI, in a fixture checkout, with no ambient settings
+  ( unset DATABASE_URL REDIS_URL WT_PORT_OFFSET COMPOSE_PROJECT_NAME \
+      POSTGRES_HOST_PORT VALKEY_HOST_PORT
+    cd "$settings_root" && bash "$SCRIPT_DIR/worktree-common.sh" "$@" )
+}
+settings_authority expected-env > "$settings_root/.env"
+settings_authority authorize settings || fail "the fixture's own generated settings were rejected"
+for key in POSTGRES_HOST_PORT VALKEY_HOST_PORT; do
+  sed -E "s/^${key}=([0-9]+)$/${key}=9\1/" "$settings_root/.env" > "$settings_root/.env.stale"
+  if cmp -s "$settings_root/.env" "$settings_root/.env.stale"; then
+    fail "the generated settings carry no $key line to make stale"
+  fi
+  mv "$settings_root/.env.stale" "$settings_root/.env"
+  if settings_authority authorize settings >/dev/null 2>&1; then
+    fail "a stale $key was accepted alongside matching service URLs"
+  fi
+  settings_authority expected-env > "$settings_root/.env"
+done
+rm -rf "$settings_root"
+ok "a stale port key is refused even when the coupled service URLs agree"
 
 echo "All init-worktree tests passed."

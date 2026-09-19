@@ -177,16 +177,27 @@ lost review rounds to both halves of this, five times.
   claimed "infrastructure contamination" from 3 failures that `bun run
   test:server` excludes by design — the tree was green and the command was wrong.
 
-**Checkout and worktree bootstrap**: `bash scripts/init-worktree.sh`. Each primary
-clone defaults to offset zero, so sibling clones can collide even with different
-Compose project names. Before bootstrapping a second clone, choose unused
-Postgres/Valkey ports with `WT_PORT_OFFSET=<offset>` and persist matching
-`DATABASE_URL`, `REDIS_URL`, `POSTGRES_HOST_PORT`, `VALKEY_HOST_PORT`, and a unique
-`COMPOSE_PROJECT_NAME` in its local `.env`; bootstrap preserves existing `.env`.
-Pass the same offset when rerunning bootstrap. Check actual listeners and Docker
-ownership before starting or removing services; never reuse a sibling's database.
-Any shared isolation helper must govern provisioning, test startup, and teardown
-together. `../legacy/scripts/checkout-id.sh` and its checkout/lane tests are a
-reference for clone-qualified worktree identity, not a collision-free allocator.
+**Checkout-owned local infrastructure**: `scripts/worktree-common.sh` is the one
+authority used by bootstrap, Bun and Python test startup, and teardown. It hashes
+the physical common Git directory for clone identity and the checkout Git
+directory for checkout identity. Linked project names and default port offsets
+include clone identity; the primary naming convention remains unchanged. A
+validated `WT_PORT_OFFSET` may resolve a local collision, but never establishes
+Docker ownership. `.env` is a request: its project and URL endpoints must match
+the checkout before any reachability probe or Compose operation. Existing port
+keys, when present, must agree; older primary files may derive absent port keys
+from their coupled URLs without being rewritten. The Bun and Python adapters
+also submit their actual runtime `DATABASE_URL` and `REDIS_URL` to this shared
+authority. Port inspection errors and readiness ownership refusals fail
+immediately. Compose resources carry clone and checkout labels. Resource
+ownership permits metadata inspection and intentional teardown; connection
+authority separately requires exactly one running checkout-owned service to
+publish the selected loopback endpoint. A stopped owned volume is not proof of
+the process listening on its former port. Missing, mixed, foreign, unreadable,
+or legacy labels fail closed without adoption or deletion.
+Back up and migrate or remove legacy data manually. CI service Postgres requires
+the explicit GitHub Actions marker and cannot run Compose. Sweep deletes only
+consistently labeled stale checkouts from the current clone and rejects empty or
+unreadable enumeration.
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`
