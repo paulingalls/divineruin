@@ -1,12 +1,3 @@
-"""Real-PG round-trip for the M4.6c gathering_nodes table (story-002, migration 056).
-
-Single-table round-trip against the shared dev DB at :55432 (fast lane; conftest auto-starts
-docker). Proves AC#1 — the gathering_nodes (id, data JSONB) row persists the node's
-location_id / node_type / resource_type / quantity / discovered / respawn_days fields — and the
-quantity-deplete / discovered-set jsonb_set mutations story-003 will issue. Isolates via a
-unique id + cleanup (the _db_lifecycle / dev_db_pool pattern).
-"""
-
 import json
 import uuid
 

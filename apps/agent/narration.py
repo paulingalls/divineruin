@@ -147,6 +147,7 @@ def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
             "properties": {
                 "segments": {
                     "type": "array",
+                    "minItems": 1,
                     "description": "Ordered narration segments. Each is one voice block.",
                     "items": {
                         "type": "object",

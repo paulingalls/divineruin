@@ -180,7 +180,9 @@ class TestInitiateTrainingCycle:
         )
         mock_training.create_training_activity = AsyncMock()
         cycle = _make_cycle()
-        with pytest.raises(ToolError, match="already in progress"):
+        with pytest.raises(
+            ToolError, match=r"already in progress.*cannot start another training cycle or switch programs"
+        ):
             await _initiate_training_cycle_impl(
                 ctx,
                 "combat_basics",
