@@ -32,6 +32,7 @@ const stages = {
 async function defaultRunCommand(command: string[], cwd: string): Promise<CommandResult> {
   const child = Bun.spawn(command, {
     cwd,
+    // Expo's web render probes Corepack, which otherwise auto-pins pnpm in package.json.
     env: { ...process.env, COREPACK_ENABLE_PROJECT_SPEC: "0" },
     stdout: "inherit",
     stderr: "inherit",
@@ -82,9 +83,10 @@ async function generateRouteTypes(
 
   const routeTypes = join(typesDirectory, "router.d.ts");
   try {
-    if ((await stat(routeTypes)).size === 0) throw new Error("empty");
+    const generated = await stat(routeTypes);
+    if (!generated.isFile() || generated.size === 0) throw new Error("invalid route declarations");
   } catch {
-    throw new Error("Expo Router generated route types are missing or empty");
+    throw new Error("Expo Router generated route types must be a nonempty regular file");
   }
 }
 

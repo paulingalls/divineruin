@@ -122,8 +122,40 @@ describe("runUpgradeVerification", () => {
       projectRoot,
       runCommand: () => Promise.resolve({ exitCode: 0 }),
     });
-    expect(await failureMessage(result)).toContain("generated route types are missing or empty");
+    expect(await failureMessage(result)).toContain("generated route types");
   });
+
+  test("rejects route types left over from an earlier generation", async () => {
+    const projectRoot = await fixture();
+    await mkdir(join(projectRoot, ".expo", "types"), { recursive: true });
+    await writeFile(join(projectRoot, ".expo", "types", "router.d.ts"), "stale\n");
+    const result = runUpgradeVerification({
+      projectRoot,
+      runCommand: () => Promise.resolve({ exitCode: 0 }),
+    });
+    expect(await failureMessage(result)).toContain("generated route types");
+  });
+
+  test.each(["directory", "empty file"])(
+    "rejects %s output as generated route types",
+    async (kind) => {
+      const projectRoot = await fixture();
+      const result = runUpgradeVerification({
+        projectRoot,
+        runCommand: async (command) => {
+          if (command[2] === "customize") {
+            const directory = join(projectRoot, ".expo", "types");
+            await mkdir(directory, { recursive: true });
+            const routeTypes = join(directory, "router.d.ts");
+            if (kind === "directory") await mkdir(routeTypes);
+            else await writeFile(routeTypes, "");
+          }
+          return { exitCode: 0 };
+        },
+      });
+      expect(await failureMessage(result)).toContain("generated route types");
+    },
+  );
 
   test("rejects type generation that edits tracked TypeScript config", async () => {
     const projectRoot = await fixture();
