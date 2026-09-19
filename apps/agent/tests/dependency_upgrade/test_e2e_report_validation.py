@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from dependency_upgrade_report import validate_outcomes
 from e2e_dependency_report import probe_installed, validate_e2e_report
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -93,3 +94,23 @@ def test_stale_e2e_exclusion_fails(tmp_path):
     report["exclusions"] = {"e2e": "deferred"}
     with pytest.raises(ValueError, match="stale e2e exclusion"):
         _validate(root, report)
+
+
+def test_validation_outcomes_cover_every_required_lane():
+    validate_outcomes(_report(ROOT))
+
+
+def test_missing_validation_outcome_fails():
+    report = _report(ROOT)
+    report["validation_outcomes"].pop(0)
+    with pytest.raises(ValueError, match="required validation outcome"):
+        validate_outcomes(report)
+
+
+def test_real_llm_pass_requires_executed_command_evidence():
+    report = _report(ROOT)
+    outcome = next(row for row in report["validation_outcomes"] if row["lane"] == "real-LLM acceptance")
+    outcome["status"] = "passed"
+    outcome["evidence"] = "green"
+    with pytest.raises(ValueError, match="real-LLM pass lacks executed command evidence"):
+        validate_outcomes(report)

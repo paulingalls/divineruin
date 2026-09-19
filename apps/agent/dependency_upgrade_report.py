@@ -19,6 +19,34 @@ from workspace_dependency_report import validate_workspace_report
 PROJECTS = ("apps/agent", "scripts")
 NAME_RE = re.compile(r"[-_.]+")
 REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(.*)$")
+VERIFY_LANES = (
+    "bun install --frozen-lockfile",
+    "bun install --cwd e2e --frozen-lockfile",
+    "uv sync --project apps/agent --frozen",
+    "uv sync --project scripts --frozen",
+    "dependency report --scope all",
+    "dependency report tests",
+    "worktree bootstrap tests",
+    "required e2e environment tests",
+    "bun run lint",
+    "bun run lint:e2e",
+    "bun run test:python",
+    "bun run test:server",
+    "Bun scripts/shared/design-tokens tests",
+    "Bun mobile tests",
+    "Bun web tests",
+    "full Playwright suite",
+    "mobile verify:upgrade",
+    "mobile verify:native-build",
+    "mobile verify:native-transport",
+    "bun run test:acceptance:nollm",
+)
+EXTRA_REQUIRED_LANES = (
+    "Playwright web project",
+    "Playwright web-lighthouse project",
+    "Playwright chromium project",
+    "clean-worktree bootstrap",
+)
 
 
 @dataclass
@@ -245,6 +273,34 @@ def validate_markdown(root: Path, report: dict) -> None:
         raise ValueError("rendered documentation mismatch: docs/dependency_upgrade.md")
 
 
+def validate_outcomes(report: dict) -> None:
+    rows = report.get("validation_outcomes")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("validation outcome corpus is empty")
+    outcomes = {}
+    for row in rows:
+        lane = row.get("lane", "")
+        if lane in outcomes:
+            raise ValueError(f"duplicate validation outcome: {lane}")
+        if not lane or not row.get("status") or not row.get("evidence"):
+            raise ValueError(f"validation outcome is incomplete: {lane}")
+        outcomes[lane] = row
+    for lane in (*VERIFY_LANES, *EXTRA_REQUIRED_LANES):
+        if outcomes.get(lane, {}).get("status") != "passed":
+            raise ValueError(f"required validation outcome is not passed: {lane}")
+    android = outcomes.get("Android device check")
+    if android is None or android["status"] not in {"passed", "missing"}:
+        raise ValueError("Android device outcome is missing")
+    real_llm = outcomes.get("real-LLM acceptance")
+    if real_llm is None:
+        raise ValueError("real-LLM acceptance outcome is missing")
+    if real_llm["status"] == "passed":
+        if "REQUIRE_REAL_LLM=1" not in real_llm["evidence"] or "bun run test:acceptance" not in real_llm["evidence"]:
+            raise ValueError("real-LLM pass lacks executed command evidence")
+    elif real_llm["status"] != "required at sprint close":
+        raise ValueError("real-LLM acceptance must remain required at sprint close")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -270,6 +326,7 @@ def main() -> int:
         validate_e2e_report(root, report, probe_e2e_installed(root, report))
     if args.scope == "all":
         validate_ci_toolchain(root, report)
+        validate_outcomes(report)
     validate_markdown(root, report)
     print(f"{args.scope.capitalize()} dependency upgrade report is valid.")
     return 0

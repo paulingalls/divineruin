@@ -187,4 +187,35 @@ Compatibility exceptions:
 - `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
 - `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
 
+## Validation outcomes
+
+| Lane | Outcome | Evidence |
+|---|---|---|
+| bun install --frozen-lockfile | passed | Bun 1.4.2 accepted the root frozen lock without changes. |
+| bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.2 accepted the independent e2e frozen lock without changes. |
+| uv sync --project apps/agent --frozen | passed | uv 0.10.6 installed the agent lock under CPython 3.14.7. |
+| uv sync --project scripts --frozen | passed | uv 0.10.6 installed the scripts lock under CPython 3.14.7. |
+| dependency report --scope all | passed | All nine manifests, four locks, installed trees, CI, and rendered Markdown validated. |
+| dependency report tests | passed | Fault suite passed, including named YAML steps and missing e2e inputs. |
+| worktree bootstrap tests | passed | Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed. |
+| required e2e environment tests | passed | Six subprocess tests passed, including independent auth/config guard removals. |
+| bun run lint | passed | TypeScript, ESLint, Prettier, Ruff, Pyright, and Python format checks passed. |
+| bun run lint:e2e | passed | Independent frozen install, TypeScript, and ESLint passed. |
+| bun run test:python | passed | 7000 non-acceptance Python tests passed. |
+| bun run test:server | passed | Server unit and database/Redis integration lanes passed. |
+| Bun scripts/shared/design-tokens tests | passed | All three explicitly selected Bun test corpora passed. |
+| Bun mobile tests | passed | 508 mobile tests passed. |
+| Bun web tests | passed | 204 web tests passed. |
+| full Playwright suite | passed | Full upgraded browser suite passed after the final app/server graph. |
+| mobile verify:upgrade | passed | Expo doctor passed 21/21 checks and iOS, Android, and web exports completed. |
+| mobile verify:native-build | passed | Clean iOS build succeeded; launch and auth flows passed 2/2 on the owned simulator. |
+| mobile verify:native-transport | passed | Owned-simulator audio, microphone, event/HUD, and fault runs passed. |
+| bun run test:acceptance:nollm | passed | 270 acceptance tests passed; 9 real-LLM tests were deselected. |
+| Playwright web project | passed | 40 production marketing tests passed. |
+| Playwright web-lighthouse project | passed | 4 tests passed; performance, SEO, and accessibility each scored 100. |
+| Playwright chromium project | passed | 40 authenticated mobile-web tests passed. |
+| clean-worktree bootstrap | passed | Detached 38196933 proof installed four locks and Chromium, then migrated and seeded isolated ports 55832/56779. |
+| Android device check | missing | adb devices returned no attached device. |
+| real-LLM acceptance | required at sprint close | Credentialed cost-bearing lane was not run by the story executor. |
+
 The committed agent/scripts `uv.lock` files and root/e2e `bun.lock` files are the exact transitive dependency records.
