@@ -10,7 +10,6 @@
     "apps/mobile/ios/Pods",
     "apps/mobile/ios/build",
     "assets",
-    "content",
     "docs",
     "e2e",
     "playtest",

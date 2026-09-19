@@ -12,9 +12,17 @@ const config = getDefaultConfig(__dirname);
 // Node-style resolution walking parents. NOTE: this list is explicit, not
 // auto-discovered — a new workspace (e.g. apps/audio) that mobile starts
 // importing from must be added here.
+//
+// content/ is here because sound-registry.ts imports content/combat_sounds.json
+// (story-089: the combat sound wire ids are shared with the Python agent through
+// that file). A watchFolders entry alone is NOT enough — Metro's file map comes
+// from watchman, so the directory must also be absent from the repo root's
+// .watchmanconfig `ignore_dirs`, or every path under it resolves as nonexistent.
+// The two must be changed together.
 const repoRoot = path.resolve(__dirname, '../..');
 config.watchFolders = [
   __dirname,
+  path.join(repoRoot, 'content'),
   path.join(repoRoot, 'packages/shared'),
   path.join(repoRoot, 'packages/design-tokens'),
   path.join(repoRoot, 'node_modules'),

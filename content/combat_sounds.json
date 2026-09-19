@@ -1,0 +1,18 @@
+[
+  { "export": "SOUND_COMBAT_START", "id": "combat_start_stinger", "asset": "quest_sting" },
+  { "export": "SOUND_COMBAT_VICTORY", "id": "combat_victory_stinger", "asset": "success_sting" },
+  { "export": "SOUND_COMBAT_DEFEAT", "id": "combat_defeat_stinger", "asset": "fail_sting" },
+  { "export": "SOUND_COMBAT_FLED", "id": "combat_fled_stinger", "asset": "menu_close" },
+  { "export": "SOUND_ATTACK_HIT", "id": "weapon_hit", "asset": "sword_clash" },
+  { "export": "SOUND_ATTACK_MISS", "id": "weapon_miss", "asset": "weapon_miss" },
+  { "export": "SOUND_ATTACK_CRITICAL", "id": "critical_hit", "asset": "critical_hit_sting" },
+  { "export": "SOUND_HEARTBEAT", "id": "heartbeat_low_hp", "asset": "heartbeat_low_hp" },
+  { "export": "SOUND_DEATH_SAVE_SUCCESS", "id": "death_save_success", "asset": "success_sting" },
+  { "export": "SOUND_DEATH_SAVE_FAIL", "id": "death_save_fail", "asset": "fail_sting" },
+  { "export": "SOUND_DEATH_SAVE_CRITICAL", "id": "death_save_critical_success", "asset": "level_up_sting" },
+  { "export": "SOUND_PLAYER_FALLEN", "id": "player_fallen", "asset": "hit_taken" },
+  { "export": "SOUND_HOLLOW_RISE", "id": "hollow_rise", "asset": "god_whisper_stinger" },
+  { "export": "SOUND_PLAYER_DEATH", "id": "player_death", "asset": "fail_sting" },
+  { "export": "SOUND_PLAYER_STABILIZED", "id": "player_stabilized", "asset": "discovery_chime" },
+  { "export": "SOUND_SAVE_DAMAGE", "id": "save_damage", "asset": "hit_taken" }
+]
