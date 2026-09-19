@@ -381,7 +381,7 @@ async def apply_attack_result(
             hp_status=hp_status,
             sounds=sounds,
         )
-    elif hp_status in ("bloodied", "critical"):
+    elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
 
     # Update DB if target is a player

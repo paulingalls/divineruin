@@ -19,7 +19,7 @@ from combat_events import EventSink
 from combat_packet import _resolve_one_packet
 from combat_support import SaveDamageResult, apply_attack_result
 from declarations import Declaration, DeclarationType
-from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS
+from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS, SOUND_HEARTBEAT
 
 # Spelled out, not imported: this is the only pin on the save cue's WIRE value, so importing
 # tool_support's constant here would make it agree with itself. The other three are imported
@@ -53,8 +53,8 @@ def _concentration():
     )
 
 
-async def _resolve_save_damage(*, save_seed: int, damage: str = "1d1+6"):
-    state = _make_combat_state(player_hp=25)
+async def _resolve_save_damage(*, save_seed: int, damage: str = "1d1+6", player_hp: int = 25):
+    state = _make_combat_state(player_hp=player_hp)
     enemy = _participant(state, "goblin_scout_1")
     action = {**ACTIONS["valid_half_on_success"], "damage": damage}
     enemy.action_pool = [action]
@@ -171,6 +171,33 @@ async def test_made_save_with_zero_damage_does_not_cost_armor():
     assert [event.event_type for event in sink.captured] == [E.DICE_ROLL]
     queries.get_player_inventory.assert_not_awaited()
     durability_mutations.update_item_durability.assert_not_awaited()
+
+
+async def test_made_save_with_zero_damage_is_silent_when_already_bloodied():
+    _session, _state, summary, sink, _save, _mutations, _queries, _durability_mutations = await _resolve_save_damage(
+        save_seed=6, damage="1d1", player_hp=5
+    )
+
+    assert summary["damage"] == 0
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL]
+
+
+async def test_positive_save_damage_keeps_low_hp_heartbeat():
+    _session, _state, summary, sink, _save, _mutations, _queries, _durability_mutations = await _resolve_save_damage(
+        save_seed=6, player_hp=5
+    )
+
+    assert summary["damage"] == 3
+    assert [event.event_type for event in sink.captured] == [
+        E.DICE_ROLL,
+        E.PLAY_SOUND,
+        E.PLAY_SOUND,
+        E.ITEM_DURABILITY_HIT,
+    ]
+    assert [event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND] == [
+        SOUND_SAVE_DAMAGE,
+        SOUND_HEARTBEAT,
+    ]
 
 
 async def test_save_damage_refuses_to_publish_an_attack_roll():

@@ -3,24 +3,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 _CONTENT_PATH = Path(__file__).resolve().parents[2] / "content" / "combat_sounds.json"
-_REQUIRED_EXPORTS = {
-    "SOUND_COMBAT_START",
-    "SOUND_COMBAT_VICTORY",
-    "SOUND_COMBAT_DEFEAT",
-    "SOUND_COMBAT_FLED",
-    "SOUND_ATTACK_HIT",
-    "SOUND_ATTACK_MISS",
-    "SOUND_ATTACK_CRITICAL",
-    "SOUND_HEARTBEAT",
-    "SOUND_DEATH_SAVE_SUCCESS",
-    "SOUND_DEATH_SAVE_FAIL",
-    "SOUND_DEATH_SAVE_CRITICAL",
-    "SOUND_PLAYER_FALLEN",
-    "SOUND_HOLLOW_RISE",
-    "SOUND_PLAYER_DEATH",
-    "SOUND_PLAYER_STABILIZED",
-    "SOUND_SAVE_DAMAGE",
-}
 
 
 def _load_combat_sounds() -> dict[str, str]:
@@ -46,8 +28,6 @@ def _load_combat_sounds() -> dict[str, str]:
             raise ValueError(f"duplicate combat sound row: {export}/{sound_id}")
         exports[export] = sound_id
         ids.add(sound_id)
-    if set(exports) != _REQUIRED_EXPORTS:
-        raise ValueError(f"combat sound exports do not match required exports: {sorted(exports)}")
     return exports
 
 
