@@ -677,6 +677,10 @@ Phase 2+ player-to-player trade design intent, inherited constraints, open quest
 
 Operational procedures and (future) deployment/infra docs live under `docs/ops/`.
 
+## dependency_upgrade.md
+
+Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
+
 ## ops/async-activity-reset.md (72 lines)
 
 Runbook: reset a stuck async-activity resolution — when the worker loops replaying a poisoned narration cache past the revert-attempt threshold. Verified by `apps/agent/tests/acceptance/test_ops_async_reset_runbook.py`.

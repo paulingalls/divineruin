@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
   summaryDarkOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: BrandColors.void,
     opacity: 0.5,
   },

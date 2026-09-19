@@ -4,6 +4,8 @@ export {
   LiveKitRoom,
   useConnectionState,
   useLocalParticipant,
+  useRemoteParticipants,
+  useRoomContext,
   useVoiceAssistant,
   useDataChannel,
   useMaybeRoomContext,

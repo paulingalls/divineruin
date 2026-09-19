@@ -1,4 +1,3 @@
-import importlib.metadata
 import os
 import selectors
 import subprocess
@@ -7,17 +6,15 @@ import time
 from pathlib import Path
 
 import pytest
+from anthropic import AsyncAnthropic
 from livekit.agents import AgentSession, AgentStateChangedEvent, utils
+from livekit.agents.llm import ToolContext
 from livekit.plugins import anthropic
 
+import activity_tools
 import agent
 from session_data import SessionData
 from voices import VOICE_ENV_VARS
-
-
-def test_anthropic_sdk_stays_below_1():
-    major = int(importlib.metadata.version("anthropic").split(".", 1)[0])
-    assert major < 1
 
 
 @pytest.mark.asyncio
@@ -29,7 +26,21 @@ async def test_locked_anthropic_client_constructs():
         _strict_tool_schema=False,
         api_key="test",
     )
+    assert isinstance(llm._client, AsyncAnthropic)
+    assert not llm._client.is_closed()
     await llm._client.close()
+    assert llm._client.is_closed()
+
+
+def test_production_function_tool_emits_anthropic_schema():
+    schemas = ToolContext([activity_tools.begin_activity]).parse_function_tools("anthropic", strict=False)
+
+    assert len(schemas) == 1
+    assert schemas[0]["name"] == "begin_activity"
+    schema = schemas[0]["input_schema"]
+    assert schema["type"] == "object"
+    assert schema["required"] == ["activity"]
+    assert schema["properties"]["activity"]
 
 
 @pytest.mark.asyncio

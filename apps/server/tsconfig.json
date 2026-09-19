@@ -5,6 +5,7 @@
     "module": "Preserve",
     "moduleDetection": "force",
     "allowJs": true,
+    "types": ["bun"],
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

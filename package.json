@@ -3,19 +3,20 @@
   "version": "0.11.0",
   "type": "module",
   "private": true,
+  "packageManager": "bun@1.4.2",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev:server": "bun run --cwd apps/server dev",
+    "dev:server": "bun --env-file=../../.env run --cwd apps/server dev",
     "dev:mobile": "bun run --cwd apps/mobile start",
     "dev:mobile:ios": "bun run --cwd apps/mobile ios",
     "dev:mobile:android": "bun run --cwd apps/mobile android",
-    "migrate": "bun run scripts/migrate.ts",
-    "seed": "cd scripts && uv run --project ../apps/agent python seed_content.py",
-    "dev:agent": "cd apps/agent && uv run --env-file ../../.env python agent.py dev",
-    "dev:worker": "cd apps/agent && uv run --env-file ../../.env python async_worker.py",
+    "migrate": "bun --env-file=.env run scripts/migrate.ts",
+    "seed": "bun --env-file=.env run uv run --project scripts --frozen python scripts/seed_content.py",
+    "dev:agent": "bun --env-file=../../.env run --cwd apps/agent uv run python agent.py dev",
+    "dev:worker": "bun --env-file=../../.env run --cwd apps/agent uv run python async_worker.py",
     "typecheck": "tsc --noEmit",
     "typecheck:mobile": "cd apps/mobile && bunx tsc --noEmit",
     "typecheck:server": "cd apps/server && bunx tsc --noEmit",
@@ -26,30 +27,31 @@
     "lint:e2e": "cd e2e && bun install --frozen-lockfile && bunx tsc --noEmit && bunx eslint --max-warnings 0 .",
     "lint": "bun run lint:ts && bun run lint:python",
     "lint:fix": "bunx eslint --fix . && bunx prettier --write 'apps/**/*.{ts,tsx}' 'apps/web/**/*.{html,css}' 'packages/**/*.ts' 'e2e/**/*.ts' && bun run lint:python:fix",
-    "test:server": "bun test --cwd apps/server --path-ignore-patterns='**/{db,locations-load.integration,invite-store}.test.ts' && REQUIRE_DB=1 bun test --cwd apps/server src/db.test.ts && REQUIRE_DB=1 bun test --cwd apps/server src/locations-load.integration.test.ts && REQUIRE_REDIS=1 bun test --cwd apps/server src/invite-store.test.ts",
-    "test": "bun test ./scripts && bun test --cwd packages/shared && bun run test:server && bun test --cwd apps/mobile && bun test --cwd apps/web",
-    "test:python": "cd apps/agent && uv run pytest tests/ -q -m \"not acceptance\" -n 8",
-    "test:acceptance": "cd apps/agent && REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true uv run --env-file ../../.env pytest tests/acceptance -m acceptance -q",
-    "test:acceptance:nollm": "cd apps/agent && TESTCONTAINERS_RYUK_DISABLED=true uv run --env-file ../../.env pytest tests/acceptance -m \"acceptance and not real_llm\" -q",
+    "test:server": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,locations-load.integration,invite-store}.test.ts' && REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/db.test.ts && REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/locations-load.integration.test.ts && REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/invite-store.test.ts",
+    "test": "bun --env-file=.env test ./scripts && bun test --cwd packages/shared && bun test --cwd packages/design-tokens && bun run test:server && bun test --cwd apps/mobile && bun test --cwd apps/web && bun test e2e/require-environment.test.ts",
+    "test:python": "bun --env-file=../../.env run --cwd apps/agent uv run pytest tests/ -q -m \"not acceptance\" -n 8",
+    "test:acceptance": "REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true bun --env-file=../../.env run --cwd apps/agent uv run pytest tests/acceptance -m acceptance -q",
+    "test:acceptance:nollm": "TESTCONTAINERS_RYUK_DISABLED=true bun --env-file=../../.env run --cwd apps/agent uv run pytest tests/acceptance -m \"acceptance and not real_llm\" -q",
     "test:acceptance:clean": "docker rm -f divineruin-livekit-acceptance 2>/dev/null || true",
     "test:sweep": "bash scripts/test-sweep-test-containers.sh",
-    "test:all": "bun run scripts/test-all.ts",
+    "test:all": "bun --env-file=.env run scripts/test-all.ts",
     "docker:sweep": "bash scripts/sweep-test-containers.sh",
     "worktree:teardown": "bash scripts/teardown-worktree.sh",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/bun": "^1.3.13",
-    "eslint": "^10.3.0",
+    "@types/bun": "1.4.2",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "prettier": "^3.8.3",
-    "typescript-eslint": "^8.59.2"
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "prettier": "^3.9.6",
+    "typescript-eslint": "^8.70.0",
+    "typescript": "6.0.3"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": ">=5.9 <6.1"
   },
   "overrides": {
     "dnssd-advertise": "1.1.4"

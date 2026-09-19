@@ -109,7 +109,8 @@ def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, m
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        dbl.resolve_database_url()
 
 
 def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
@@ -170,7 +171,8 @@ def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, m
     _write_env(tmp_path, "DEEPGRAM_API_KEY=abc\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        dbl.resolve_database_url()
 
 
 def test_ownership_is_checked_before_reachability(monkeypatch):

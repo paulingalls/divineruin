@@ -26,14 +26,15 @@ make_fixture() {
   local name="$1" repo linked
   repo="$TMP/$name"
   linked="$TMP/${name}-linked"
-  mkdir -p "$repo/scripts" "$repo/bin"
+  mkdir -p "$repo/scripts" "$repo/bin" "$repo/docs"
   cp "$ROOT/scripts/worktree-common.sh" "$ROOT/scripts/worktree-docker.sh" \
     "$ROOT/scripts/teardown-worktree.sh" "$ROOT/scripts/init-worktree.sh" "$repo/scripts/"
-  cp "$ROOT/docker-compose.yml" "$repo/"
+  cp "$ROOT/docker-compose.yml" "$ROOT/package.json" "$repo/"
+  cp "$ROOT/docs/dependency_upgrade.json" "$repo/docs/"
   git -C "$repo" init -q
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name Test
-  git -C "$repo" add scripts docker-compose.yml
+  git -C "$repo" add scripts docker-compose.yml package.json docs
   git -C "$repo" commit -qm fixture
   git -C "$repo" worktree add -q "$linked"
   printf '%s\n' "$repo" "$linked"
@@ -71,8 +72,10 @@ dirs="$(make_fixture copied-primary)"
 primary="$(printf '%s\n' "$dirs" | sed -n '1p')"
 linked="$(printf '%s\n' "$dirs" | sed -n '2p')"
 install_recorder "$primary"
+export REAL_BUN="$(command -v bun)"
 cat > "$primary/bin/bun" <<'SH'
 #!/usr/bin/env bash
+if [ "${1:-}" = --version ]; then exec "$REAL_BUN" "$@"; fi
 printf '%s\n' "$*" >> "$BUN_RECORD"
 exit 42
 SH

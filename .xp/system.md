@@ -9,7 +9,7 @@ Setting: a god (Veythar) broke the world trying to save it, creating the Veil,
 the Sundering, and the Hollow corruption. Greyvale is the MVP region.
 
 **Stack**: Two languages, one database — no code crosses the boundary, only
-PostgreSQL + Valkey. Python 3.11+ (uv; asyncpg, redis.asyncio, all-async, typed)
+PostgreSQL + Valkey. Python 3.14.7 (uv; asyncpg, redis.asyncio, all-async, typed)
 runs the DM agent on LiveKit AgentSession: Deepgram STT → Claude → Inworld TTS,
 plus an async worker. Everything else is TypeScript on Bun (never Node): Bun.serve
 REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
@@ -49,8 +49,9 @@ API cost) and runs at pre-push and sprint close only.
 - `e2e/specs` — Playwright specs; `scripts/` — `migrate.ts`, `seed_content.py`
 
 **Conventions**:
-- Python only in `apps/agent`; everything else Bun/TS. State is shared through
-  the DB and Valkey, never through shared code.
+- Python agents live in `apps/agent`; content seeding uses the separate `scripts`
+  uv project. Other services use Bun/TS. State crosses languages through the DB
+  and Valkey, never shared code.
 - **Deterministic mechanics.** The rules engine is pure functions. The LLM decides
   *when* to invoke and *how to narrate* — never the math.
 - **DB is the source of truth, not the prompt.** The agent re-queries every turn.
@@ -203,5 +204,15 @@ The pre-push per-run Postgres and Valkey belong to the server and E2E lanes.
 Acceptance and Python enter without those sibling-lane DSNs so their Python
 lifecycle can validate checkout-owned settings; acceptance then loads the
 checkout settings and provider credentials through its existing env file.
+
+**Dependency-changing landings**: before a land command that pushes automatically,
+stage installs from the reviewed manifests/locks and refresh the integration
+checkout's changed installed graphs; retain the old graph until push succeeds.
+After merge, these commands install the committed graph:
+`bun install --frozen-lockfile`, `bun install --cwd e2e --frozen-lockfile`,
+`uv sync --project apps/agent --frozen`, `uv sync --project scripts --frozen`.
+If land merges and then push fails, inspect HEAD and the close record before
+retrying: the story worktree may already be removed. Never reformat with stale
+tools to satisfy an upgraded lock.
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

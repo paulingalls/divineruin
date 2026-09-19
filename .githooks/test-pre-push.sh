@@ -55,6 +55,38 @@ run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 
 # change then runs the suite. Guards the ALL_DELETIONS=false transition.
 run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  "no"
 
+mask_file=$(mktemp)
+cat > "$mask_file" <<'EOF'
+DATABASE_URL=from-file
+REDIS_URL=from-file
+LIVEKIT_URL=from-file
+LIVEKIT_API_KEY=from-file
+LIVEKIT_API_SECRET=from-file
+ANTHROPIC_API_KEY=from-file
+DEEPGRAM_API_KEY=from-file
+INWORLD_API_KEY=from-file
+INWORLD_WORKSPACE_ID=from-file
+EOF
+if BASH_TEST=1 BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK"; then
+  echo "  PASS: masked-unit-environment-beats-explicit-env-file"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: masked-unit-environment-beats-explicit-env-file"
+  FAIL=$((FAIL + 1))
+fi
+out=$(env -u BASH_TEST BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK" <<'EOF'
+refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123
+EOF
+)
+if echo "$out" | grep -q "Branch-deletion push"; then
+  echo "  PASS: mask-probe-requires-the-existing-test-mode"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: mask-probe-bypassed-production-hook-routing"
+  FAIL=$((FAIL + 1))
+fi
+rm -f "$mask_file"
+
 # --- Parallel-lane fail-loud collector (scripts/lane-utils.sh) ---
 # wait_all_lanes must be sourced + called IN THIS shell — `wait` reaps only the
 # current shell's children, so it can't be tested through the hook subprocess.

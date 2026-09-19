@@ -51,9 +51,7 @@ export interface EncounterAccusationAction extends EncounterActionBase {
 }
 
 export type EncounterAction =
-  | EncounterAttackAction
-  | EncounterCommandAction
-  | EncounterAccusationAction;
+  EncounterAttackAction | EncounterCommandAction | EncounterAccusationAction;
 
 export function encounterActionKind(action: { name: string; kind?: string }): EncounterActionKind {
   const kind = action.kind ?? "attack";

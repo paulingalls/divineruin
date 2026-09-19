@@ -1,5 +1,7 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { Socket } from "node:net";
+import { runMigrations } from "./migrate.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -215,4 +217,55 @@ test("CI mode never invokes Compose", async () => {
     expect((error as Error).message).toContain("Compose mutation is disabled");
   }
   expect(calls).toEqual(["authorize:ci", "reachable"]);
+});
+
+test("missing DATABASE_URL fails before socket or compose actions", async () => {
+  const prior = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  const connect = spyOn(Socket.prototype, "connect");
+  const spawn = spyOn(Bun, "spawn");
+  try {
+    let failure: unknown;
+    try {
+      await ensureDbUp();
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    if (!(failure instanceof Error)) throw failure;
+    expect(failure.message).toContain("DATABASE_URL");
+    expect(connect).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+  } finally {
+    connect.mockRestore();
+    spawn.mockRestore();
+    if (prior === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = prior;
+  }
+});
+
+test("the migration entrypoint refuses before it opens a SQL client", async () => {
+  const prior = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  const constructed = (): never => {
+    throw new Error("Bun.SQL constructed without a DATABASE_URL guard");
+  };
+  // spyOn over a class narrows mockImplementation's parameter to never.
+  const sql = spyOn(Bun, "SQL").mockImplementation(constructed as never);
+  try {
+    let failure: unknown;
+    try {
+      await runMigrations();
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    if (!(failure instanceof Error)) throw failure;
+    expect(failure.message).toContain("DATABASE_URL is not set");
+    expect(sql).not.toHaveBeenCalled();
+  } finally {
+    sql.mockRestore();
+    if (prior === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = prior;
+  }
 });

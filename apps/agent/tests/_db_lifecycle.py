@@ -52,10 +52,6 @@ from urllib.parse import unquote, urlparse
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _OWNER_HELPER = _REPO_ROOT / "scripts" / "worktree-common.sh"
 
-# Last resort ONLY: this names the PRIMARY checkout's stack, so a worktree
-# reaching it is a bug (see resolve_database_url).
-_DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
-
 _READY_TIMEOUT_SECONDS = 60
 _OWNERSHIP_REFUSAL_EXIT = 78
 
@@ -91,15 +87,16 @@ def resolve_database_url() -> str:
        testcontainer fixture assigns it, so the environment must always win.
     2. Repo-root `.env` — `uv run` passes ambient env through but never LOADS .env
        (Bun does, which is why only non-bun invocations broke). Without this, a
-       bare `cd apps/agent && uv run pytest` inside a git worktree fell through to
-       the default below and read AND WROTE the PRIMARY checkout's database.
-    3. `_DEFAULT_DATABASE_URL` — a fresh clone with no .env yet.
+       bare `cd apps/agent && uv run pytest` inside a git worktree could read and
+       write the primary checkout's database.
     """
     from_environment = os.environ.get("DATABASE_URL")
     if from_environment:
         return from_environment
     from_env_file = _read_env_file(_REPO_ROOT / ".env").get("DATABASE_URL")
-    return from_env_file or _DEFAULT_DATABASE_URL
+    if from_env_file:
+        return from_env_file
+    raise RuntimeError("DATABASE_URL is not set in the environment or repo-root .env")
 
 
 def parse_host_port(database_url: str) -> tuple[str, int]:
