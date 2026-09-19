@@ -107,6 +107,7 @@ test("the scripts-owned seed consumes its caller's database without a root env f
 const SERVICE_ENTRYPOINTS = [
   /scripts\/migrate\.ts/,
   /scripts\/test-all\.ts/,
+  /seed_content\.py/,
   /\bagent\.py\b/,
   /\basync_worker\.py\b/,
   /\bpytest\b/,

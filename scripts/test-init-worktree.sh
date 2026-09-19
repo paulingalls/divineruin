@@ -262,7 +262,7 @@ esac
 ok "tool version mismatches fail loud"
 
 # 19. Every independent graph is installed frozen, and Chromium comes from the
-# e2e lock before the scripts-owned seed can run.
+# e2e lock rather than an ambient global Playwright.
 TEST_BOOTSTRAP_LOG="$(mktemp -t test-bootstrap-log)"
 bun() { printf 'bun %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
 bunx() { printf 'bunx %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }

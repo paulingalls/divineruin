@@ -14,7 +14,7 @@
     "dev:mobile:ios": "bun run --cwd apps/mobile ios",
     "dev:mobile:android": "bun run --cwd apps/mobile android",
     "migrate": "bun --env-file=.env run scripts/migrate.ts",
-    "seed": "uv run --project scripts --frozen python scripts/seed_content.py",
+    "seed": "bun --env-file=.env run uv run --project scripts --frozen python scripts/seed_content.py",
     "dev:agent": "bun --env-file=../../.env run --cwd apps/agent uv run python agent.py dev",
     "dev:worker": "bun --env-file=../../.env run --cwd apps/agent uv run python async_worker.py",
     "typecheck": "tsc --noEmit",

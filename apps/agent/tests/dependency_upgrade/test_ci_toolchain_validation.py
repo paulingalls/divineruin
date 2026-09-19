@@ -67,6 +67,21 @@ def test_ci_tool_or_lock_drift_fails(tmp_path, original, replacement, diagnostic
             "- name: Install browser graph\n        run: |\n          bun install --cwd e2e",
             "frozen Bun install",
         ),
+        (
+            "- run: bun install --frozen-lockfile",
+            "- name: Mixed installs\n        run: |\n          bun install --frozen-lockfile\n          bun install --cwd e2e",
+            "frozen Bun install",
+        ),
+        (
+            "- run: bun install --frozen-lockfile",
+            "- run: bun install --frozen-lockfile && bun install --cwd e2e",
+            "frozen Bun install",
+        ),
+        (
+            "- run: uv sync --project apps/agent --frozen",
+            "- run: uv sync --project apps/agent --frozen && uv sync --project scripts",
+            "frozen uv sync",
+        ),
     ],
 )
 def test_named_and_multiline_mutable_installs_fail(tmp_path, original, replacement, diagnostic):
@@ -132,4 +147,20 @@ def test_workflow_requires_jobs_and_job_steps(tmp_path):
 
     path.write_text("name: CI\njobs:\n  empty:\n    runs-on: ubuntu-latest\n    steps: []\n")
     with pytest.raises(ValueError, match="job has no steps: empty"):
+        validate_ci_toolchain(root, _report(root))
+
+
+@pytest.mark.parametrize(
+    ("relative", "mutate", "diagnostic"),
+    [
+        (".python-version", lambda text: "3.13.0\n", "repository Python"),
+        ("package.json", lambda text: text.replace('"bun@1.4.2"', '"bun@0.0.0"', 1), "declared Bun"),
+    ],
+)
+def test_repository_tool_pins_must_match_the_measured_report(tmp_path, relative, mutate, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / relative
+    path.write_text(mutate(path.read_text()))
+
+    with pytest.raises(ValueError, match=diagnostic):
         validate_ci_toolchain(root, _report(root))

@@ -26,11 +26,27 @@ def _workflow_jobs(path: Path) -> dict[str, dict]:
     return jobs
 
 
+# A `run:` block is a shell script, not one command: `a --frozen && b` and a multiline
+# block both hide a mutable install behind a frozen neighbour unless each is checked alone.
+CONTINUATION_RE = re.compile(r"\\\n")
+SEPARATOR_RE = re.compile(r"&&|\|+|;|\n")
+
+
+def _shell_commands(run: str) -> list[str]:
+    commands = SEPARATOR_RE.split(CONTINUATION_RE.sub(" ", run))
+    return [command.strip() for command in commands if command.strip()]
+
+
 def _job_runs(job_name: str, job: dict) -> list[str]:
     steps = job.get("steps")
     if not isinstance(steps, list) or not steps:
         raise ValueError(f"CI job has no steps: {job_name}")
-    return [step["run"] for step in steps if isinstance(step, dict) and isinstance(step.get("run"), str)]
+    return [
+        command
+        for step in steps
+        if isinstance(step, dict) and isinstance(step.get("run"), str)
+        for command in _shell_commands(step["run"])
+    ]
 
 
 def _has_frozen_e2e_install(commands: list[str]) -> bool:
@@ -53,6 +69,10 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
     expected_bun = package_manager.removeprefix("bun@")
     expected_python = (root / ".python-version").read_text().strip()
     expected_uv = report["uv_version"]
+    if expected_python != report["python_version"]:
+        raise ValueError(f"repository Python {expected_python} differs from recorded Python {report['python_version']}")
+    if expected_bun != report["bun_version"]:
+        raise ValueError(f"declared Bun {expected_bun} differs from recorded Bun {report['bun_version']}")
     jobs = _workflow_jobs(workflow)
     runs_by_job = {name: _job_runs(name, job) for name, job in jobs.items()}
     steps = [step for job in jobs.values() for step in job.get("steps", []) if isinstance(step, dict)]

@@ -101,6 +101,7 @@ jobs:
       - run: bun run test:server
       - run: bun test --cwd apps/mobile
       - run: bun test --cwd packages/shared
+      - run: bun test --cwd packages/design-tokens
       - run: bun test --cwd apps/web
 
   lint-python:
