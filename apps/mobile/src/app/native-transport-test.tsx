@@ -54,6 +54,14 @@ async function readMicrophoneFrames(endpoint: string, runId: string): Promise<nu
   return typeof raw.microphone_frames === "number" ? raw.microphone_frames : 0;
 }
 
+export function loadTransportRouteFixture(
+  endpoint: string,
+  runId: string,
+  request?: Parameters<typeof fetchTransportFixture>[3],
+) {
+  return fetchTransportFixture(endpoint, runId, __DEV__, request);
+}
+
 function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpoint: string }) {
   const connectionState = useConnectionState();
   const { localParticipant } = useLocalParticipant();
@@ -196,7 +204,7 @@ function DevelopmentTransportScreen() {
     sessionStore.getState().reset();
     void (async () => {
       await configureAudioSession();
-      const loaded = await fetchTransportFixture(rawEndpoint, runId, __DEV__);
+      const loaded = await loadTransportRouteFixture(rawEndpoint, runId);
       setEndpoint(loaded.endpoint);
       setFixture(loaded.fixture);
     })().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));

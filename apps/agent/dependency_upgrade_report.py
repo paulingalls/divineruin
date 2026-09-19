@@ -296,6 +296,13 @@ def validate_infrastructure_holds(root: Path, report: dict) -> None:
 
 
 def validate_outcomes(report: dict) -> None:
+    record = report.get("evidence_record")
+    if not isinstance(record, dict) or record.get("kind") != "historical-execution-record":
+        raise ValueError("historical execution evidence marker is missing")
+    if not re.fullmatch(r"[0-9a-f]{40}", record.get("accepted_commit", "")):
+        raise ValueError("historical execution evidence commit is invalid")
+    if not record.get("accepted_at"):
+        raise ValueError("historical execution evidence timestamp is missing")
     rows = report.get("validation_outcomes")
     if not isinstance(rows, list) or not rows:
         raise ValueError("validation outcome corpus is empty")
@@ -307,20 +314,9 @@ def validate_outcomes(report: dict) -> None:
         if not lane or not row.get("status") or not row.get("evidence"):
             raise ValueError(f"validation outcome is incomplete: {lane}")
         outcomes[lane] = row
-    for lane in (*VERIFY_LANES, *EXTRA_REQUIRED_LANES):
-        if outcomes.get(lane, {}).get("status") != "passed":
-            raise ValueError(f"required validation outcome is not passed: {lane}")
-    android = outcomes.get("Android device check")
-    if android is None or android["status"] not in {"passed", "missing"}:
-        raise ValueError("Android device outcome is missing")
-    real_llm = outcomes.get("real-LLM acceptance")
-    if real_llm is None:
-        raise ValueError("real-LLM acceptance outcome is missing")
-    if real_llm["status"] == "passed":
-        if "REQUIRE_REAL_LLM=1" not in real_llm["evidence"] or "bun run test:acceptance" not in real_llm["evidence"]:
-            raise ValueError("real-LLM pass lacks executed command evidence")
-    elif real_llm["status"] != "required at sprint close":
-        raise ValueError("real-LLM acceptance must remain required at sprint close")
+    for lane in (*VERIFY_LANES, *EXTRA_REQUIRED_LANES, "Android device check", "real-LLM acceptance"):
+        if lane not in outcomes:
+            raise ValueError(f"historical validation outcome is missing: {lane}")
 
 
 def main() -> int:

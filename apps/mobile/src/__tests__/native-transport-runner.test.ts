@@ -5,6 +5,7 @@ import {
   developmentClientUrl,
   transportRouteUrl,
   validateScenarioResult,
+  runNativeTransport,
 } from "../../scripts/verify-native-transport";
 
 const good = {
@@ -33,6 +34,27 @@ test("runner binds Metro and route URLs to one run without credentials", () => {
   expect(route).toContain("run_id=run-one");
   expect(route).toContain("fixture=http%3A%2F%2F127.0.0.1%3A3210%2Ffixture");
   expect(route).not.toMatch(/token|secret/);
+});
+
+test("runner refuses transport evidence when the current native app build fails", async () => {
+  let prepared = false;
+  let error: unknown;
+  try {
+    await runNativeTransport(
+      "/unused",
+      { IOS_SIMULATOR_UDID: OWNED_SIMULATOR_UDID },
+      "none",
+      () => {
+        prepared = true;
+        return Promise.reject(new Error("injected native build failure"));
+      },
+    );
+  } catch (caught) {
+    error = caught;
+  }
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe("injected native build failure");
+  expect(prepared).toBeTrue();
 });
 
 test("success requires every observation from the current run", () => {

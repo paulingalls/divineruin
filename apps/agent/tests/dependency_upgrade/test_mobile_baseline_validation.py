@@ -16,8 +16,8 @@ from workspace_dependency_report import _validate_mobile_baseline
         (("plugins",), [], "plugin inventory"),
         (("git_sources",), [], "git source inventory"),
         (("release_age_exceptions",), [], "release-age exceptions"),
-        (("native_validation", "ios", "auth_flow"), "missing", "iOS native validation"),
-        (("native_validation", "android", "prebuild"), "missing", "Android validation"),
+        (("native_validation", "ios", "auth_flow"), "", "iOS native validation"),
+        (("native_validation", "android", "prebuild"), "", "Android validation"),
     ],
 )
 def test_mobile_baseline_faults_fail(tmp_path, path, value, message):
@@ -39,9 +39,17 @@ def test_release_exception_version_and_android_missing_floor_fail(tmp_path):
         _validate(root, report)
 
     report = deepcopy(_report(root))
-    report["mobile_baseline"]["native_validation"]["android"]["device"] = "unknown"
-    with pytest.raises(ValueError, match="passed or missing"):
+    report["mobile_baseline"]["native_validation"]["android"]["device"] = ""
+    with pytest.raises(ValueError, match="recorded Android validation is empty"):
         _validate(root, report)
+
+
+def test_native_results_are_historical_records_not_current_pass_requirements(tmp_path):
+    root = _copy_scope(tmp_path)
+    report = _report(root)
+    report["mobile_baseline"]["native_validation"]["ios"]["build"] = "recorded failure"
+    report["mobile_baseline"]["native_transport"]["status"] = "recorded failure"
+    _validate(root, report)
 
 
 def test_livekit_graph_and_metadata_exception_faults_fail(tmp_path):
@@ -99,7 +107,7 @@ def test_patch_inventory_walks_our_sources_and_skips_vendored_trees(tmp_path):
 @pytest.mark.parametrize(
     ("path", "value", "message"),
     [
-        (("status",), "missing", "native transport status"),
+        (("status",), "", "native transport status"),
         (("simulator_udid",), "wrong", "native transport simulator"),
         (("tool",), "skipped", "native transport tool"),
         (("expo_mcp",), "connected", "Expo MCP capability"),

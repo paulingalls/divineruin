@@ -15,6 +15,11 @@ export const OWNED_SIMULATOR_UDID = "DC457949-200B-479A-95FD-611E33210F12";
 const BUNDLE_ID = "com.divineruin.app";
 const SCENARIOS = ["none", "withhold-audio", "withhold-event"] as const;
 type Fault = (typeof SCENARIOS)[number];
+type PrepareNativeApp = (
+  scope: OwnedProcesses,
+  repoRoot: string,
+  env: Record<string, string | undefined>,
+) => Promise<void>;
 
 interface OwnedProcess {
   exited: Promise<number>;
@@ -122,6 +127,19 @@ async function requireTargetSimulator(
     throw new Error(`requested simulator is not booted and available: ${udid}`);
   }
   await capture(scope, ["xcrun", "simctl", "get_app_container", udid, BUNDLE_ID, "app"], repoRoot);
+}
+
+async function buildCurrentNativeApp(
+  scope: OwnedProcesses,
+  repoRoot: string,
+  env: Record<string, string | undefined>,
+): Promise<void> {
+  const child = scope.spawn(["bun", "run", "--cwd", "apps/mobile", "verify:native-build"], {
+    cwd: repoRoot,
+    env: definedEnv(env),
+  });
+  const exit = await scope.wait(child.exited);
+  if (exit !== 0) throw new Error(`native app build failed with status ${exit}`);
 }
 
 async function reservePort(): Promise<number> {
@@ -312,9 +330,11 @@ export async function runNativeTransport(
   repoRoot: string,
   processEnv: Record<string, string | undefined>,
   selectedFault?: Fault,
+  prepareNativeApp: PrepareNativeApp = buildCurrentNativeApp,
 ): Promise<void> {
   await withOwnedProcesses(async (scope) => {
     const udid = required(processEnv, "IOS_SIMULATOR_UDID");
+    await prepareNativeApp(scope, repoRoot, processEnv);
     await requireTargetSimulator(scope, repoRoot, udid);
     const flow = join(repoRoot, "apps/mobile/.maestro/native-transport.yaml");
     if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");

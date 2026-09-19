@@ -2,6 +2,7 @@
 
 Registry snapshot: 2026-09-19  
 Toolchain: CPython 3.14.7; uv 0.10.6; Bun 1.4.2
+Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments
 
@@ -187,9 +188,9 @@ Compatibility exceptions:
 - `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
 - `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
 
-## Validation outcomes
+## Historical validation outcomes
 
-| Lane | Outcome | Evidence |
+| Lane | Recorded outcome | Evidence |
 |---|---|---|
 | bun install --frozen-lockfile | passed | Bun 1.4.2 accepted the root frozen lock without changes. |
 | bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.2 accepted the independent e2e frozen lock without changes. |

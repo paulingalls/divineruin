@@ -4,6 +4,7 @@ def render_markdown(report: dict) -> str:
         "",
         f"Registry snapshot: {report['registry_snapshot_date']}  ",
         f"Toolchain: CPython {report['python_version']}; uv {report['uv_version']}; Bun {report.get('bun_version', 'unreported')}",
+        f"Execution evidence: historical record accepted at {report['evidence_record']['accepted_commit']} on {report['evidence_record']['accepted_at']}.",
         "",
         "## Python environments",
         "",
@@ -148,7 +149,9 @@ def render_markdown(report: dict) -> str:
     for hold in report["infrastructure_holds"]:
         lines.append(f"- `{hold['reference']}` ({hold['name']}): {hold['status']}. {hold['reason']}")
     if report.get("validation_outcomes"):
-        lines.extend(["", "## Validation outcomes", "", "| Lane | Outcome | Evidence |", "|---|---|---|"])
+        lines.extend(
+            ["", "## Historical validation outcomes", "", "| Lane | Recorded outcome | Evidence |", "|---|---|---|"]
+        )
         for outcome in report["validation_outcomes"]:
             lines.append(f"| {outcome['lane']} | {outcome['status']} | {outcome['evidence']} |")
     lines.extend(

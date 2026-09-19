@@ -1,6 +1,11 @@
 {
   "schema_version": 3,
   "scope": "all-direct-dependencies",
+  "evidence_record": {
+    "kind": "historical-execution-record",
+    "accepted_commit": "795cec97832a7fe2d7567b36d0343e476e236b76",
+    "accepted_at": "2026-09-19T14:14:59Z"
+  },
   "registry_snapshot_date": "2026-09-19",
   "python_version": "3.14.7",
   "uv_version": "0.10.6",

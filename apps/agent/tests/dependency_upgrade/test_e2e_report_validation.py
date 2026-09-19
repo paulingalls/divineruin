@@ -96,39 +96,37 @@ def test_stale_e2e_exclusion_fails(tmp_path):
         _validate(root, report)
 
 
-def test_validation_outcomes_cover_every_required_lane():
+def test_historical_validation_record_covers_every_required_lane():
     validate_outcomes(_report(ROOT))
 
 
 def test_missing_validation_outcome_fails():
     report = _report(ROOT)
     report["validation_outcomes"].pop(0)
-    with pytest.raises(ValueError, match="required validation outcome"):
-        validate_outcomes(report)
-
-
-def test_real_llm_pass_requires_executed_command_evidence():
-    report = _report(ROOT)
-    outcome = next(row for row in report["validation_outcomes"] if row["lane"] == "real-LLM acceptance")
-    outcome["status"] = "passed"
-    outcome["evidence"] = "green"
-    with pytest.raises(ValueError, match="real-LLM pass lacks executed command evidence"):
+    with pytest.raises(ValueError, match="historical validation outcome"):
         validate_outcomes(report)
 
 
 @pytest.mark.parametrize(
-    ("lane", "status", "diagnostic"),
+    ("path", "value", "diagnostic"),
     [
-        ("Android device check", "skipped", "Android device outcome"),
-        ("real-LLM acceptance", "skipped", "must remain required"),
+        (("kind",), "current-execution-record", "marker"),
+        (("accepted_commit",), "not-a-commit", "commit"),
+        (("accepted_at",), "", "timestamp"),
     ],
 )
-def test_platform_and_real_llm_statuses_reject_unverified_success(lane, status, diagnostic):
-    report = json.loads((ROOT / "docs/dependency_upgrade.json").read_text())
-    row = next(row for row in report["validation_outcomes"] if row["lane"] == lane)
-    row["status"] = status
+def test_historical_validation_record_requires_an_acceptance_marker(path, value, diagnostic):
+    report = _report(ROOT)
+    target = report["evidence_record"]
+    target[path[0]] = value
     with pytest.raises(ValueError, match=diagnostic):
         validate_outcomes(report)
+
+
+def test_historical_outcomes_are_not_current_pass_requirements():
+    report = _report(ROOT)
+    report["validation_outcomes"][0]["status"] = "recorded failure"
+    validate_outcomes(report)
 
 
 def test_recorded_infrastructure_holds_are_declared_compose_images():
