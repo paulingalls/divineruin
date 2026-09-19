@@ -210,7 +210,10 @@ wt_authorize() {
         wt_assert_ports_vacant
       fi
       ;;
-    connect) wt_validate_service_publication "$COMPOSE_PROJECT_NAME" postgres 5432 "$POSTGRES_HOST_PORT" ;;
+    connect)
+      wt_validate_service_publication "$COMPOSE_PROJECT_NAME" postgres 5432 "$POSTGRES_HOST_PORT" || return 1
+      wt_validate_service_publication "$COMPOSE_PROJECT_NAME" valkey 6379 "$VALKEY_HOST_PORT"
+      ;;
     reuse|destroy) wt_validate_resources "$COMPOSE_PROJECT_NAME" ;;
     *) wt_die "unknown ownership intent: $intent" ;;
   esac

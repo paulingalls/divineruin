@@ -161,7 +161,8 @@ run_hook() {
     PREPUSH_ACCEPTANCE_RECORD="$case_dir/pytest.json" \
     PYTHONPATH="$TMP/plugin:$ROOT/apps/agent:$ROOT/apps/agent/tests" \
     PYTEST_PLUGINS=prepush_probe UV_PROJECT_ENVIRONMENT="$ROOT/apps/agent/.venv" \
-    DEEPGRAM_API_KEY=parent-deepgram-key bash "$HOOK" </dev/null >"$case_dir/hook.log" 2>&1
+    DEEPGRAM_API_KEY=parent-deepgram-key bash "$HOOK" \
+    __prepush_harness__ __prepush_harness__ lanes </dev/null >"$case_dir/hook.log" 2>&1
   rc=$?
   printf '%s\n' "$rc" > "$case_dir/rc"
 }

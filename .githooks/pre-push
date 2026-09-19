@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
+PREPUSH_TEST_MODE=production
+if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; then
+  case "${3:-}" in
+    docs|lanes) PREPUSH_TEST_MODE="$3" ;;
+  esac
+fi
+
+if [ "$PREPUSH_TEST_MODE" = production ]; then
+  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE; do
+    value="${!name-}"
+    if [ -n "$value" ]; then
+      echo "ERROR: production pre-push refuses internal test override $name." >&2
+      exit 1
+    fi
+  done
+fi
+
 # Env vars to strip from unit tests so missing mocks are caught locally.
 # CI's test-bun job has DATABASE_URL + REDIS_URL (real services) but NOT
 # these external API vars — so we match that here.
@@ -19,7 +36,7 @@ mask_python_test_environment() {
   export DATABASE_URL= REDIS_URL=
 }
 
-if [ "${BASH_TEST:-}" = "1" ] && [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
+if [ "$PREPUSH_TEST_MODE" = docs ] && [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
   mask_python_test_environment
   exec bun --env-file="$BASH_TEST_MASK_ENV" -e '
     const names = ["DATABASE_URL", "REDIS_URL", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY", "INWORLD_API_KEY", "INWORLD_WORKSPACE_ID"];
@@ -27,10 +44,8 @@ if [ "${BASH_TEST:-}" = "1" ] && [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
   '
 fi
 
-# BASH_TEST=1 stubs the git diff source (env var instead of `git`) and the
-# heavy test runners (single `echo TESTS_RAN` marker). Used by the harness
-# at .githooks/test-pre-push.sh — see that file for the contract.
-if [ "${BASH_TEST:-}" = "1" ]; then
+# The positional docs mode stubs the git diff source and heavy test runner.
+if [ "$PREPUSH_TEST_MODE" = docs ]; then
   _get_diff() { printf '%s\n' "${BASH_TEST_DIFF:-}"; }
   _run_tests() { echo "TESTS_RAN"; }
 else
@@ -38,13 +53,10 @@ else
   _run_tests() {
     echo "Running pre-push test suite..."
 
-    # The preamble below (self-tests, lint backstop, Docker gate, orphan sweep)
-    # is gated on the SAME seam that replaces the lanes, so no separate env var
-    # can skip the backstop while the real suites still run and the hook still
-    # prints "All tests passed."
-    if [ -z "${PREPUSH_LANE_DRIVER:-}" ]; then
+    # The positional lane mode replaces the lanes and their preamble together.
+    if [ "$PREPUSH_TEST_MODE" != lanes ]; then
     # Validate the hook's own docs-only-skip logic before relying on it.
-    # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
+    # The harness uses positional docs mode in sub-shells, so it cannot recurse here.
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
@@ -113,7 +125,11 @@ else
     trap _cleanup EXIT INT TERM
 
     # shellcheck source=scripts/test-env.sh
-    source "${PREPUSH_TEST_ENV_SOURCE:-$(dirname "$0")/../scripts/test-env.sh}"
+    if [ "$PREPUSH_TEST_MODE" = lanes ]; then
+      source "$PREPUSH_TEST_ENV_SOURCE"
+    else
+      source "$(dirname "$0")/../scripts/test-env.sh"
+    fi
     # shellcheck source=scripts/lane-utils.sh
     source "$(dirname "$0")/../scripts/lane-utils.sh"
 
@@ -231,7 +247,11 @@ else
       exit 1
     fi
 
-    echo "All tests passed."
+    if [ "$PREPUSH_TEST_MODE" = lanes ]; then
+      echo "Internal pre-push lane harness passed."
+    else
+      echo "All tests passed."
+    fi
   }
 fi
 

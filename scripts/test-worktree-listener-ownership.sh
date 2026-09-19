@@ -201,13 +201,16 @@ if [ "${1:-} ${2:-}" = "ps -aq" ]; then printf 'resource-id\n'; exit 0; fi
 if { [ "${1:-} ${2:-}" = "volume ls" ] || [ "${1:-} ${2:-}" = "network ls" ]; }; then exit 0; fi
 if [ "${1:-} ${2:-}" = "ps -q" ]; then
   [ "${DOCKER_ENUM_FAIL:-0}" -eq 0 ] || exit 2
-  printf '%b' "${DOCKER_SERVICE_IDS-service-id\\n}"
+  case "$*" in
+    *com.docker.compose.service=valkey*) printf '%b' "${DOCKER_VALKEY_SERVICE_IDS-valkey-id\\n}" ;;
+    *) printf '%b' "${DOCKER_SERVICE_IDS-postgres-id\\n}" ;;
+  esac
   exit 0
 fi
 if [ "${1:-}" = inspect ] && [ "${2:-}" = --format ]; then cat "$DOCKER_LABELS"; exit 0; fi
 if [ "${1:-}" = inspect ]; then
   [ "${DOCKER_INSPECT_FAIL:-0}" -eq 0 ] || exit 2
-  cat "$DOCKER_INSPECTION"
+  if [ "${2:-}" = valkey-id ]; then cat "$DOCKER_VALKEY_INSPECTION"; else cat "$DOCKER_INSPECTION"; fi
   exit 0
 fi
 exit 0
@@ -219,32 +222,37 @@ checkout_id="$(cd "${ROOTS[0]}" && source scripts/worktree-common.sh && wt_ident
 root_a="$(cd "${ROOTS[0]}" && pwd -P)"
 project_a="${PROJECTS[0]}"
 port_a="$(setting 0 POSTGRES_HOST_PORT)"
-python3 - "$recorder" "$clone_id" "$checkout_id" "$root_a" "$project_a" "$port_a" <<'PY'
+valkey_port_a="$(setting 0 VALKEY_HOST_PORT)"
+python3 - "$recorder" "$clone_id" "$checkout_id" "$root_a" "$project_a" "$port_a" "$valkey_port_a" <<'PY'
 import json, sys
 from pathlib import Path
-directory, clone, checkout, root, project, port = sys.argv[1:]
+directory, clone, checkout, root, project, port, valkey_port = sys.argv[1:]
 directory = Path(directory)
 labels = {
     "com.docker.compose.project": project,
-    "com.docker.compose.service": "postgres",
     "com.docker.compose.project.working_dir": root,
     "com.docker.compose.project.config_files": root + "/docker-compose.yml",
     "com.divineruin.clone": clone,
     "com.divineruin.checkout": checkout,
 }
-(directory / "labels.json").write_text(json.dumps(labels))
+(directory / "labels.json").write_text(json.dumps(labels | {"com.docker.compose.service": "postgres"}))
 
-def write(name, *, running=True, bindings=None, overrides=None):
-    row_labels = labels | (overrides or {})
+def write(name, *, service="postgres", container_port="5432", running=True, bindings=None, overrides=None):
+    row_labels = labels | {"com.docker.compose.service": service} | (overrides or {})
     row = {
         "Config": {"Labels": row_labels},
         "State": {"Running": running},
-        "NetworkSettings": {"Ports": {"5432/tcp": bindings}},
+        "NetworkSettings": {"Ports": {container_port + "/tcp": bindings}},
     }
     (directory / f"{name}.json").write_text(json.dumps([row]))
 
 valid = [{"HostIp": "127.0.0.1", "HostPort": port}]
 write("valid", bindings=valid)
+write("valid-valkey", service="valkey", container_port="6379",
+      bindings=[{"HostIp": "127.0.0.1", "HostPort": valkey_port}])
+write("foreign-valkey", service="valkey", container_port="6379",
+      bindings=[{"HostIp": "127.0.0.1", "HostPort": valkey_port}],
+      overrides={"com.divineruin.checkout": "foreign-checkout"})
 write("stopped", running=False, bindings=valid)
 # working_dir and config_files are checked independently, so each case keeps the
 # other's expectation satisfied and neither guard can hide behind its neighbour.
@@ -264,7 +272,8 @@ PY
 authorize_recorded() {
   local inspection="$1"; shift
   (cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/labels.json" \
-    DOCKER_INSPECTION="$recorder/$inspection.json" PATH="$recorder/bin:$PATH" \
+    DOCKER_INSPECTION="$recorder/$inspection.json" \
+    DOCKER_VALKEY_INSPECTION="$recorder/valid-valkey.json" PATH="$recorder/bin:$PATH" \
     "$@" bash scripts/worktree-common.sh authorize connect)
 }
 
@@ -272,6 +281,11 @@ authorize_recorded() {
 authorize_recorded valid env
 grep -Fq "ps -q --filter label=com.docker.compose.project=$project_a --filter label=com.docker.compose.service=postgres" \
   "$recorder/calls" || fail "running-service enumeration omitted project or service filtering"
+grep -Fq "ps -q --filter label=com.docker.compose.project=$project_a --filter label=com.docker.compose.service=valkey" \
+  "$recorder/calls" || fail "connection authority never inspected the Valkey service"
+if authorize_recorded valid env DOCKER_VALKEY_INSPECTION="$recorder/foreign-valkey.json" >/dev/null 2>&1; then
+  fail "a foreign Valkey listener authorized a connection"
+fi
 for bad in stopped absent-port wrong-port non-loopback multiple-bindings foreign-label \
   foreign-working-dir foreign-compose-config malformed; do
   if authorize_recorded "$bad" env >/dev/null 2>&1; then

@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 # Test harness for .githooks/pre-push.
 #
-# Runs 7 cases against the hook via BASH_TEST=1 + BASH_TEST_DIFF=<changed-files>
-# stubs (which the hook honors to bypass `git diff` and the real test runners).
-# Without the BASH_TEST shim in the hook, this harness would invoke the real
-# test suite — so it aborts early if the shim isn't present.
+# Runs docs-routing cases through the hook's positional internal test mode.
+# Production Git calls supply exactly the remote name and URL, so ambient
+# variables cannot select this mode.
 set -u
 
 HOOK="$(cd "$(dirname "$0")" && pwd)/pre-push"
 
-if ! grep -q "BASH_TEST" "$HOOK"; then
-  echo "FAIL: $HOOK lacks BASH_TEST shim. Harness cannot run without invoking real test suite."
-  echo "      The shim is added in the docs-only-skip commit on this branch."
+if ! grep -q "__prepush_harness__" "$HOOK"; then
+  echo "FAIL: $HOOK lacks its positional test mode."
   exit 1
 fi
 
@@ -21,7 +19,7 @@ FAIL=0
 run_case() {
   local name="$1" stdin="$2" diff="$3" want_skip="$4"
   local out rc got_skip got_tests
-  out=$(BASH_TEST=1 BASH_TEST_DIFF="$diff" bash "$HOOK" <<< "$stdin" 2>&1)
+  out=$(BASH_TEST_DIFF="$diff" bash "$HOOK" __prepush_harness__ __prepush_harness__ docs <<< "$stdin" 2>&1)
   rc=$?
   # Both short-circuit messages end in "skipping test suites." (docs-only and
   # branch-deletion), so grep the common suffix to cover either skip path.
@@ -67,25 +65,37 @@ DEEPGRAM_API_KEY=from-file
 INWORLD_API_KEY=from-file
 INWORLD_WORKSPACE_ID=from-file
 EOF
-if BASH_TEST=1 BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK"; then
+if BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK" __prepush_harness__ __prepush_harness__ docs; then
   echo "  PASS: masked-unit-environment-beats-explicit-env-file"
   PASS=$((PASS + 1))
 else
   echo "  FAIL: masked-unit-environment-beats-explicit-env-file"
   FAIL=$((FAIL + 1))
 fi
-out=$(env -u BASH_TEST BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK" <<'EOF'
+out=$(env -u BASH_TEST BASH_TEST_MASK_ENV="$mask_file" bash "$HOOK" 2>&1 <<'EOF'
 refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123
 EOF
 )
-if echo "$out" | grep -q "Branch-deletion push"; then
-  echo "  PASS: mask-probe-requires-the-existing-test-mode"
+mask_status=$?
+if [ "$mask_status" -ne 0 ] && echo "$out" | grep -q "BASH_TEST_MASK_ENV"; then
+  echo "  PASS: mask-probe-requires-positional-test-mode"
   PASS=$((PASS + 1))
 else
-  echo "  FAIL: mask-probe-bypassed-production-hook-routing"
+  echo "  FAIL: mask-probe-bypassed-production-hook-routing (rc=$mask_status)"
   FAIL=$((FAIL + 1))
 fi
 rm -f "$mask_file"
+
+override_output=$(env PREPUSH_LANE_DRIVER=/usr/bin/true PREPUSH_TEST_ENV_SOURCE=/dev/null \
+  bash "$HOOK" </dev/null 2>&1)
+override_status=$?
+if [ "$override_status" -ne 0 ] && echo "$override_output" | grep -q "PREPUSH_LANE_DRIVER"; then
+  echo "  PASS: production-hook-rejects-ambient-test-overrides"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: production-hook-accepted-ambient-test-overrides (rc=$override_status)"
+  FAIL=$((FAIL + 1))
+fi
 
 # --- Parallel-lane fail-loud collector (scripts/lane-utils.sh) ---
 # wait_all_lanes must be sourced + called IN THIS shell — `wait` reaps only the

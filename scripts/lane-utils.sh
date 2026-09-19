@@ -9,14 +9,12 @@
 
 # run_pre_push_lane NAME COMMAND [ARG...]
 # Exec COMMAND in place. The NAME is the seam: scripts/test-prepush-environment.sh
-# sets PREPUSH_LANE_DRIVER to an executable that records the lane's real child
-# environment and argv instead of running the suite, which is the only way to
-# prove what each lane actually inherits without running the whole gate.
-# PREPUSH_LANE_DRIVER also skips the hook's preamble (see .githooks/pre-push).
+# invokes the hook's positional internal test mode and sets PREPUSH_LANE_DRIVER
+# to an executable that records the lane's real child environment and argv.
 run_pre_push_lane() {
   local lane="$1"
   shift
-  if [ -n "${PREPUSH_LANE_DRIVER:-}" ]; then
+  if [ "${PREPUSH_TEST_MODE:-production}" = lanes ]; then
     "$PREPUSH_LANE_DRIVER" "$lane" "$@"
   else
     "$@"
