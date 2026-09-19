@@ -380,7 +380,9 @@ fi
 if lifecycle_recorded valid env DOCKER_SERVICE_IDS= >/dev/null 2>&1; then
   fail "a missing declared service produced teardown identity"
 fi
-if lifecycle_recorded valid env DOCKER_SERVICE_IDS='one\ntwo\n' >/dev/null 2>&1; then
+# The first enumerated id must match the inspection fixture's Id, or the
+# ID-consistency check refuses first and the per-service count never decides.
+if lifecycle_recorded valid env DOCKER_SERVICE_IDS='postgres-id\nsecond-id\n' >/dev/null 2>&1; then
   fail "duplicate service containers produced teardown identity"
 fi
 if lifecycle_recorded valid env DOCKER_CONFIG_FAIL=1 >/dev/null 2>&1; then

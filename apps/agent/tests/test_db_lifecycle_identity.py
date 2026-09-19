@@ -137,7 +137,7 @@ def test_invalid_persisted_identity_fails_loud(tmp_path, payload):
     state_path = tmp_path / "state.json"
     state_path.write_text(json.dumps(payload))
 
-    with pytest.raises(RuntimeError, match=r"lifecycle (identity|state)"):
+    with pytest.raises(RuntimeError, match=r"lifecycle state .*state\.json"):
         dbl._read_state(state_path)
 
     assert json.loads(state_path.read_text()) == payload

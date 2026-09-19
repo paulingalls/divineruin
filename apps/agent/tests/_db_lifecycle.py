@@ -260,7 +260,10 @@ def _read_state(state_path: Path) -> dict:
     if state["count"] < 0 or not isinstance(state.get("harness_started"), bool):
         raise RuntimeError(f"lifecycle state {state_path} has invalid ownership fields")
     if state["harness_started"]:
-        state["lifetime"] = _validate_lifetime(state.get("lifetime"))
+        try:
+            state["lifetime"] = _validate_lifetime(state.get("lifetime"))
+        except RuntimeError as error:
+            raise RuntimeError(f"lifecycle state {state_path} has an invalid identity: {error}") from error
     elif "lifetime" in state:
         raise RuntimeError(f"lifecycle state {state_path} has identity without harness ownership")
     return state
@@ -385,12 +388,14 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     """Down the compose services once the shared refcount hits zero.
 
     `started` is this call's own start flag. It's used only as a fallback when
-    no state file exists at all — e.g. a caller that bypasses ensure_db_up
-    entirely. Otherwise the real decision is the cross-process refcount:
-    whichever concurrent run finishes LAST does the teardown, even if that run
-    itself didn't start the DB (`started` may be False there). A DB a developer
-    started by hand (`harness_started` False in the state file) is never torn
-    down, at any count.
+    no state file exists at all — e.g. it was deleted under a run whose own
+    ensure_db_up started the stack and captured its identity in-process. A
+    caller that bypassed ensure_db_up captured nothing and is refused rather
+    than allowed to destroy. Otherwise the real decision is the cross-process
+    refcount: whichever concurrent run finishes LAST does the teardown, even if
+    that run itself didn't start the DB (`started` may be False there). A DB a
+    developer started by hand (`harness_started` False in the state file) is
+    never torn down, at any count.
 
     `database_url` must be the SAME DSN ensure_db_up was given, so both ends key
     the same host:port state file. Re-resolving here would read whatever
