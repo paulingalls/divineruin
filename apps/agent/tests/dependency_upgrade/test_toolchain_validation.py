@@ -1,6 +1,7 @@
 import copy
 import json
 import platform
+from importlib import metadata
 from pathlib import Path
 
 import pytest
@@ -24,7 +25,9 @@ def _snapshots(report: dict) -> dict[str, EnvironmentSnapshot]:
             prefix=str(ROOT / project / ".venv"),
             python_version=platform.python_version(),
             versions=project_versions,
-            requirements={"livekit-plugins-anthropic": ["anthropic<1,>=0.41"]},
+            requirements={
+                "livekit-plugins-anthropic": metadata.distribution("livekit-plugins-anthropic").requires or []
+            },
         )
         for project, project_versions in versions.items()
     }

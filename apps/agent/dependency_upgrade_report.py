@@ -5,11 +5,9 @@ import re
 import subprocess
 import sys
 import tomllib
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 PROJECTS = ("apps/agent", "scripts")
 NAME_RE = re.compile(r"[-_.]+")
@@ -95,15 +93,11 @@ for requested in sys.argv[1:]:
     requirements[name]=distribution.requires or []
 print(json.dumps({"prefix": sys.prefix, "python_version": platform.python_version(), "versions": versions, "requirements": requirements, "missing": missing}))
 """
-    environment = os.environ.copy()
-    environment.pop("PYTHONHOME", None)
-    environment.pop("PYTHONPATH", None)
     result = subprocess.run(
         [str(interpreter), "-I", "-c", probe, *packages],
         check=True,
         capture_output=True,
         text=True,
-        env=environment,
     )
     payload = json.loads(result.stdout)
     if payload["missing"]:
@@ -155,8 +149,8 @@ def _require_metadata(report: dict) -> None:
         raise ValueError("registry snapshot date must be ISO 8601 YYYY-MM-DD")
 
 
-def current_uv_version(run: Callable[..., Any] = subprocess.run) -> str:
-    result = run(["uv", "--version"], check=True, capture_output=True, text=True)
+def current_uv_version() -> str:
+    result = subprocess.run(["uv", "--version"], check=True, capture_output=True, text=True)
     return result.stdout.split()[1]
 
 
@@ -268,6 +262,14 @@ def render_markdown(report: dict) -> str:
     return "\n".join(lines)
 
 
+def validate_markdown(root: Path, report: dict) -> None:
+    markdown_path = root / "docs/dependency_upgrade.md"
+    if not markdown_path.is_file():
+        raise ValueError("missing report: docs/dependency_upgrade.md")
+    if markdown_path.read_text() != render_markdown(report):
+        raise ValueError("rendered documentation mismatch: docs/dependency_upgrade.md")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -276,7 +278,6 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     report_path = root / "docs/dependency_upgrade.json"
-    markdown_path = root / "docs/dependency_upgrade.md"
     if not report_path.is_file():
         raise ValueError("missing report: docs/dependency_upgrade.json")
     mappings = {}
@@ -288,10 +289,7 @@ def main() -> int:
     report = json.loads(report_path.read_text())
     snapshots = probe_scope(root, mappings or None)
     validate_report(root=root, report=report, snapshots=snapshots)
-    if not markdown_path.is_file():
-        raise ValueError("missing report: docs/dependency_upgrade.md")
-    if markdown_path.read_text() != render_markdown(report):
-        raise ValueError("rendered documentation mismatch: docs/dependency_upgrade.md")
+    validate_markdown(root, report)
     print("Python dependency upgrade report is valid.")
     return 0
 
