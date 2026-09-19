@@ -336,12 +336,12 @@ def test_resolve_database_url_strips_surrounding_quotes(tmp_path, monkeypatch):
     assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
 
 
-def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, monkeypatch):
-    """No .env at all (a fresh clone) still resolves to the canonical dev DB."""
+def test_resolve_database_url_fails_without_env_file(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        dbl.resolve_database_url()
 
 
 def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
@@ -396,10 +396,10 @@ def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, m
     assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
 
 
-def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, monkeypatch):
-    """A .env that never declares DATABASE_URL must not resolve to empty."""
+def test_resolve_database_url_fails_when_env_file_lacks_the_key(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, "DEEPGRAM_API_KEY=abc\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        dbl.resolve_database_url()

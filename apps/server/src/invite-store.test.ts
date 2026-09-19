@@ -10,6 +10,25 @@ const { putInvite, getInvite } = await import("./invite-store.ts");
 // REDIS_URL) runs it for real under REQUIRE_REDIS=1.
 const hasRedis = Boolean(process.env.REDIS_URL);
 
+test("missing REDIS_URL fails before using the client", async () => {
+  const prior = process.env.REDIS_URL;
+  delete process.env.REDIS_URL;
+  try {
+    let failure: unknown;
+    try {
+      await getInvite("missing-env");
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    if (!(failure instanceof Error)) throw failure;
+    expect(failure.message).toContain("REDIS_URL");
+  } finally {
+    if (prior === undefined) delete process.env.REDIS_URL;
+    else process.env.REDIS_URL = prior;
+  }
+});
+
 // Anti-silent-skip sentinel: the server lane sets REQUIRE_REDIS=1, so a
 // REDIS_URL drift that would make the live-Valkey describe below silently skip
 // fails loud here instead of quietly not running the wiring guard.

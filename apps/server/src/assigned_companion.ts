@@ -1,8 +1,7 @@
 import { sql } from "./db.ts";
 
 export type AssignedCompanion =
-  | { ok: true; companionId: string }
-  | { ok: false; status: 400 | 500; error: string };
+  { ok: true; companionId: string } | { ok: false; status: 400 | 500; error: string };
 
 /**
  * The companion assigned to a player — the complement of their archetype, the same rule the
