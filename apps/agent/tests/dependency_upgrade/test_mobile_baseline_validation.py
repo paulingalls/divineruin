@@ -94,3 +94,41 @@ def test_patch_inventory_walks_our_sources_and_skips_vendored_trees(tmp_path):
     ours.write_text("--- ours\n")
     with pytest.raises(ValueError, match="patch inventory"):
         _validate(root, report)
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [
+        (("status",), "missing", "native transport status"),
+        (("simulator_udid",), "wrong", "native transport simulator"),
+        (("tool",), "skipped", "native transport tool"),
+        (("expo_mcp",), "connected", "Expo MCP capability"),
+        (("received_audio",), "", "native transport evidence"),
+        (("microphone_audio",), "", "native transport evidence"),
+        (("game_events_hud",), "", "native transport evidence"),
+        (("artifact",), "", "native transport evidence"),
+        (("fault_guards",), [], "fault guards"),
+    ],
+)
+def test_native_transport_evidence_faults_fail(tmp_path, path, value, message):
+    root = _copy_scope(tmp_path)
+    report = _report(root)
+    target = report["mobile_baseline"]["native_transport"]
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(ValueError, match=message):
+        _validate(root, report)
+
+
+def test_native_transport_rejects_credential_fields_and_empty_block(tmp_path):
+    root = _copy_scope(tmp_path)
+    report = _report(root)
+    report["mobile_baseline"]["native_transport"] = {}
+    with pytest.raises(ValueError, match="native transport status"):
+        _validate(root, report)
+
+    report = _report(root)
+    report["mobile_baseline"]["native_transport"]["nested"] = {"token": "leak"}
+    with pytest.raises(ValueError, match="credential field"):
+        _validate(root, report)

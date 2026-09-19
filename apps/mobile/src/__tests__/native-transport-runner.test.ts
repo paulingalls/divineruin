@@ -1,0 +1,93 @@
+import { expect, test } from "bun:test";
+
+import {
+  OWNED_SIMULATOR_UDID,
+  developmentClientUrl,
+  transportRouteUrl,
+  validateScenarioResult,
+} from "../../scripts/verify-native-transport";
+
+const good = {
+  run_id: "run-one",
+  room_name: "room-one",
+  mobile_identity: "mobile-run-one",
+  publisher_identity: "python-run-one",
+  peer_ready: true,
+  subscribed_publisher_identity: "python-run-one",
+  audio_track_sid: "TR_audio",
+  packets_received: 4,
+  bytes_received: 640,
+  microphone_frames: 3,
+  event_received: true,
+  event_sender_identity: "python-run-one",
+  hud_character: "Upgrade Test Hero",
+  hud_location: "Upgrade Test Room",
+};
+
+test("runner binds Metro and route URLs to one run without credentials", () => {
+  expect(OWNED_SIMULATOR_UDID).toBe("DC457949-200B-479A-95FD-611E33210F12");
+  expect(developmentClientUrl(18082)).toBe(
+    "exp+divineruin://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A18082",
+  );
+  const route = transportRouteUrl("http://127.0.0.1:3210/fixture", "run-one");
+  expect(route).toContain("run_id=run-one");
+  expect(route).toContain("fixture=http%3A%2F%2F127.0.0.1%3A3210%2Ffixture");
+  expect(route).not.toMatch(/token|secret/);
+});
+
+test("success requires every observation from the current run", () => {
+  expect(validateScenarioResult(good, "run-one", "none").bytes_received).toBe(640);
+  for (const [field, value, message] of [
+    ["run_id", "stale", /run ID/],
+    ["peer_ready", false, /peer/],
+    ["microphone_frames", 0, /microphone/],
+    ["packets_received", 0, /audio/],
+    ["event_received", false, /SESSION_INIT/],
+  ] as const) {
+    expect(() => validateScenarioResult({ ...good, [field]: value }, "run-one", "none")).toThrow(
+      message,
+    );
+  }
+});
+
+test("withhold-audio accepts only its guard after unaffected evidence", () => {
+  const result = {
+    ...good,
+    subscribed_publisher_identity: "",
+    audio_track_sid: "",
+    packets_received: 0,
+    bytes_received: 0,
+    guard_failed: "received-audio",
+    expected_guard: "received-audio",
+  };
+  expect(validateScenarioResult(result, "run-one", "withhold-audio").event_received).toBeTrue();
+  expect(() =>
+    validateScenarioResult({ ...result, event_received: false }, "run-one", "withhold-audio"),
+  ).toThrow(/SESSION_INIT/);
+  expect(() =>
+    validateScenarioResult(
+      { ...result, guard_failed: "session-init-hud" },
+      "run-one",
+      "withhold-audio",
+    ),
+  ).toThrow(/received-audio/);
+});
+
+test("withhold-event accepts only its guard after audio evidence", () => {
+  const result = {
+    ...good,
+    event_received: false,
+    event_sender_identity: "",
+    hud_character: "",
+    hud_location: "",
+    guard_failed: "session-init-hud",
+    expected_guard: "session-init-hud",
+  };
+  expect(validateScenarioResult(result, "run-one", "withhold-event").packets_received).toBe(4);
+  expect(() =>
+    validateScenarioResult({ ...result, packets_received: 0 }, "run-one", "withhold-event"),
+  ).toThrow(/audio/);
+  expect(() =>
+    validateScenarioResult({ ...result, hud_character: "stale" }, "run-one", "withhold-event"),
+  ).toThrow(/unexpectedly/);
+});

@@ -28,6 +28,7 @@ def mint_access_token(
     room_name: str,
     identity: str,
     ttl_s: int = DEFAULT_TOKEN_TTL_S,
+    participant_kind: api.AccessToken.ParticipantKind = "standard",
 ) -> str:
     """Mint a LiveKit access token for `identity` to join `room_name`.
 
@@ -41,14 +42,14 @@ def mint_access_token(
         can_publish_data=True,
         can_subscribe=True,
     )
-    return (
+    token = (
         api.AccessToken(api_key, api_secret)
         .with_identity(identity)
         .with_name(identity)
         .with_grants(grants)
         .with_ttl(timedelta(seconds=ttl_s))
-        .to_jwt()
     )
+    return token.with_kind(participant_kind).to_jwt()
 
 
 async def connect_room(ws_url: str, token: str) -> rtc.Room:
@@ -154,4 +155,71 @@ async def aclose_room(room: rtc.Room) -> None:
     except BaseException:
         # Best-effort teardown — connection may already be gone, or pytest may
         # be cancelling. Either way, swallowing keeps later cleanups running.
+        pass
+
+
+async def publish_audio_frames(
+    room: rtc.Room, frames: list[rtc.AudioFrame], *, name: str = "native-transport-tone"
+) -> tuple[rtc.AudioSource, rtc.LocalAudioTrack, rtc.LocalTrackPublication]:
+    if not frames:
+        raise ValueError("audio fixture produced no frames")
+    source = rtc.AudioSource(frames[0].sample_rate, frames[0].num_channels)
+    track = rtc.LocalAudioTrack.create_audio_track(name, source)
+    options = rtc.TrackPublishOptions()
+    options.source = rtc.TrackSource.SOURCE_MICROPHONE
+    publication = await room.local_participant.publish_track(track, options)
+    for frame in frames:
+        await source.capture_frame(frame)
+    await source.wait_for_playout()
+    return source, track, publication
+
+
+async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float = 15.0) -> rtc.Track:
+    matched: asyncio.Future[rtc.Track] = asyncio.get_running_loop().create_future()
+
+    def consider(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant) -> None:
+        if not matched.done() and participant.identity == identity and publication.kind == rtc.TrackKind.KIND_AUDIO:
+            matched.set_result(track)
+
+    room.on("track_subscribed", consider)
+    try:
+        participant = room.remote_participants.get(identity)
+        if participant:
+            for publication in participant.track_publications.values():
+                if publication.kind == rtc.TrackKind.KIND_AUDIO and publication.track is not None:
+                    return publication.track
+        try:
+            return await asyncio.wait_for(matched, timeout)
+        except TimeoutError as exc:
+            raise TimeoutError(f"audio track from {identity!r} was not subscribed") from exc
+    finally:
+        room.off("track_subscribed", consider)
+
+
+async def count_audio_frames(track: rtc.Track, *, timeout: float = 10.0) -> int:
+    stream = rtc.AudioStream(track)
+    count = 0
+    try:
+        async with asyncio.timeout(timeout):
+            async for _event in stream:
+                count += 1
+                if count >= 3:
+                    break
+    except TimeoutError as exc:
+        if count == 0:
+            raise TimeoutError("microphone audio stream produced no frames") from exc
+    finally:
+        await stream.aclose()
+    if count == 0:
+        raise ValueError("microphone audio stream produced no frames")
+    return count
+
+
+async def aclose_audio(source: rtc.AudioSource | None) -> None:
+    if source is None:
+        return
+    try:
+        source.clear_queue()
+        await source.aclose()
+    except BaseException:
         pass

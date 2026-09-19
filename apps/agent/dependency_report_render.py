@@ -93,6 +93,20 @@ def render_markdown(report: dict) -> str:
             f"| Android | {android['prebuild']} | {android['build']} | {android['device']} | export: {android['export']} |",
         ]
     )
+    transport = mobile["native_transport"]
+    lines.extend(
+        [
+            "",
+            "### Native LiveKit transport",
+            "",
+            f"- Status: {transport['status']} on `{transport['simulator_udid']}` with {transport['sdk']}.",
+            f"- Python to iOS audio: {transport['received_audio']}.",
+            f"- iOS microphone to Python: {transport['microphone_audio']}.",
+            f"- Game event and HUD: {transport['game_events_hud']}.",
+            f"- Fault guards: {', '.join(transport['fault_guards'])}.",
+            f"- Evidence: {transport['artifact']}; driver: {transport['tool']}; Expo MCP: {transport['expo_mcp']}.",
+        ]
+    )
     overrides = report.get("overrides", [])
     if overrides:
         lines.extend(

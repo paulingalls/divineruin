@@ -3,15 +3,17 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start --port 8082",
-    "start:mcp": "EXPO_UNSTABLE_MCP_SERVER=1 expo start --port 8082",
+    "start:expo": "expo start --port 8082",
+    "start": "bun run start:expo",
+    "start:mcp": "EXPO_UNSTABLE_MCP_SERVER=1 bun run start:expo",
     "android": "expo run:android",
     "ios": "expo run:ios --port 8082",
     "web": "expo start --web",
     "prebuild:clean": "expo prebuild --clean",
     "test:e2e:mobile": "bun run ../../scripts/maestro-acceptance.ts",
     "verify:upgrade": "bun scripts/verify-upgrade.ts",
-    "verify:native-build": "bun scripts/verify-native-build.ts"
+    "verify:native-build": "bun scripts/verify-native-build.ts",
+    "verify:native-transport": "bun scripts/verify-native-transport.ts"
   },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "15.0.2",

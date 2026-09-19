@@ -218,6 +218,35 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
             raise ValueError(f"iOS native validation is not passed: {field}")
     if not ios.get("simulator_udid") or not ios.get("runtime"):
         raise ValueError("iOS native validation device evidence is empty")
+
+    transport = baseline.get("native_transport", {})
+    if transport.get("status") != "passed":
+        raise ValueError("native transport status must be passed")
+    if transport.get("simulator_udid") != ios.get("simulator_udid"):
+        raise ValueError("native transport simulator differs from iOS validation")
+    if transport.get("tool") != "maestro":
+        raise ValueError("native transport tool must be maestro")
+    if transport.get("expo_mcp") != "unavailable_in_tool_catalog":
+        raise ValueError("Expo MCP capability must be unavailable_in_tool_catalog")
+    for field in ("sdk", "received_audio", "microphone_audio", "game_events_hud", "artifact"):
+        if not transport.get(field):
+            raise ValueError(f"native transport evidence is empty: {field}")
+    if transport.get("fault_guards") != ["received-audio", "session-init-hud"]:
+        raise ValueError("native transport fault guards are incomplete")
+
+    def credential_field(value: object) -> bool:
+        if isinstance(value, dict):
+            return any(
+                re.search(r"token|secret|credential", str(key), re.IGNORECASE) or credential_field(child)
+                for key, child in value.items()
+            )
+        if isinstance(value, list):
+            return any(credential_field(child) for child in value)
+        return False
+
+    if credential_field(transport):
+        raise ValueError("native transport evidence contains a credential field")
+
     android = native.get("android", {})
     for field in ("prebuild", "export"):
         if android.get(field) != "passed":

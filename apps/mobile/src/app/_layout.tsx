@@ -101,6 +101,7 @@ export default function RootLayout() {
             {/* join must resolve pre-auth: a cold-start invite deep-links here,
                 stashes the code, and routes to sign-in (see join.tsx). */}
             <Stack.Screen name="join" />
+            {__DEV__ && <Stack.Screen name="native-transport-test" />}
           </Stack>
           <GrainOverlay />
         </GestureHandlerRootView>
@@ -118,6 +119,7 @@ export default function RootLayout() {
           <Stack.Screen name="join" />
           <Stack.Screen name="session" />
           {__DEV__ && <Stack.Screen name="session-test" />}
+          {__DEV__ && <Stack.Screen name="native-transport-test" />}
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />
         </Stack>

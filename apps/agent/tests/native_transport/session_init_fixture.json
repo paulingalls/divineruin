@@ -1,0 +1,41 @@
+{
+  "character": {
+    "player_id": "native-transport-player",
+    "name": "Upgrade Test Hero",
+    "race": "human",
+    "class": "warrior",
+    "level": 3,
+    "xp": 450,
+    "location_id": "upgrade_test_room",
+    "location_name": "Upgrade Test Room",
+    "hp": { "current": 25, "max": 30 },
+    "attributes": {
+      "strength": 14,
+      "dexterity": 12,
+      "constitution": 14,
+      "intelligence": 10,
+      "wisdom": 13,
+      "charisma": 8
+    },
+    "ac": 16,
+    "gold": 35,
+    "proficiencies": ["Athletics", "Survival"],
+    "saving_throw_proficiencies": ["Strength", "Constitution"],
+    "equipment": {
+      "main_hand": { "name": "Iron Longsword" },
+      "armor": { "name": "Chain Mail" },
+      "shield": null
+    }
+  },
+  "location": {
+    "id": "upgrade_test_room",
+    "name": "Upgrade Test Room",
+    "atmosphere": "controlled native transport fixture",
+    "region": "Acceptance",
+    "tags": ["test", "safe"],
+    "ambient_sounds": "silence"
+  },
+  "world_state": { "time": "evening" },
+  "inventory": [],
+  "quests": []
+}

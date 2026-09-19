@@ -9,8 +9,12 @@ ryuk reaper is never launched, so the container persists across runs.
 from __future__ import annotations
 
 import hashlib
+import time
+from dataclasses import dataclass
 from typing import Any
 
+import docker
+import httpx
 import pytest
 from docker.errors import DockerException
 
@@ -38,6 +42,44 @@ _COMMAND = "--dev --bind 0.0.0.0"
 # left over from before this UDP-mux change) instead of silently kept — otherwise the
 # concurrency fix would be absent until a manual `test:acceptance:clean`.
 _CONFIG_DIGEST = hashlib.sha256(f"{IMAGE}|{_COMMAND}|{_LIVEKIT_CONFIG}|{RTC_UDP_PORT}".encode()).hexdigest()[:12]
+
+
+@dataclass(frozen=True)
+class LiveKitServer:
+    ws_url: str
+    http_url: str
+    api_key: str
+    api_secret: str
+    container: Any
+
+
+def ensure_livekit_server(*, require_docker: bool = True) -> LiveKitServer:
+    try:
+        client = docker.from_env()
+        client.ping()
+    except DockerException as exc:
+        _handle_docker_unavailable(exc, require_docker=require_docker)
+        raise RuntimeError("LiveKit Docker server is unavailable") from exc
+    container, host_port = _ensure_livekit_container(client, name=CONTAINER_NAME, image=IMAGE, port=PORT)
+    http_url = f"http://127.0.0.1:{host_port}"
+    deadline = time.monotonic() + 60
+    last_error = "no response"
+    while time.monotonic() < deadline:
+        try:
+            response = httpx.get(http_url, timeout=2)
+            if response.status_code < 500:
+                return LiveKitServer(
+                    ws_url=f"ws://127.0.0.1:{host_port}",
+                    http_url=http_url,
+                    api_key="devkey",
+                    api_secret="secret",
+                    container=container,
+                )
+            last_error = f"HTTP {response.status_code}"
+        except httpx.HTTPError as exc:
+            last_error = str(exc)
+        time.sleep(0.5)
+    raise RuntimeError(f"LiveKit server not ready within 60s: {last_error}")
 
 
 def _handle_docker_unavailable(exc: DockerException, *, require_docker: bool) -> None:
