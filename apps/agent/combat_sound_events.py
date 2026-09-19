@@ -9,6 +9,10 @@ class UnknownCombatSoundError(ValueError):
 
 
 async def publish_combat_sounds(session: SessionData, sounds: list[str], *, sink: EventSink | None = None) -> None:
+    """Publish combat sound events, rejecting any id absent from content/combat_sounds.json.
+
+    When ``sink`` is active the events buffer until the phase transaction commits
+    (rollback-safe); otherwise they publish immediately."""
     unknown = [sound for sound in sounds if sound not in COMBAT_SOUND_IDS]
     if unknown:
         raise UnknownCombatSoundError(f"unknown combat sound: {unknown[0]}")

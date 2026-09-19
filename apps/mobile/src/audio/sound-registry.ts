@@ -71,12 +71,18 @@ const COMBAT_ONLY_ASSETS: Partial<Record<string, SoundAsset>> = {
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
-const BASE_BY_STEM = BASE_SOUNDS as Partial<Record<string, SoundAsset>>;
+const ASSET_BY_STEM: Partial<Record<string, SoundAsset>> = {
+  ...BASE_SOUNDS,
+  ...COMBAT_ONLY_ASSETS,
+};
 
 const SOUNDS: Record<string, SoundAsset> = { ...BASE_SOUNDS };
 for (const row of combatSounds) {
-  if (row.id in SOUNDS) throw new Error(`Duplicate sound id: ${row.id}`);
-  const source = BASE_BY_STEM[row.asset] ?? COMBAT_ONLY_ASSETS[row.asset];
+  // hasOwn, never `in`/`obj[key]`: a row naming an Object.prototype member ("toString",
+  // "constructor") otherwise reads the INHERITED value — a false "Duplicate sound id", or
+  // Object.prototype.toString registered as a playable asset instead of the throw below.
+  if (Object.hasOwn(SOUNDS, row.id)) throw new Error(`Duplicate sound id: ${row.id}`);
+  const source = Object.hasOwn(ASSET_BY_STEM, row.asset) ? ASSET_BY_STEM[row.asset] : undefined;
   if (source === undefined) throw new Error(`Unmapped combat sound asset: ${row.asset}`);
   SOUNDS[row.id] = source;
 }

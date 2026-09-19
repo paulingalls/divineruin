@@ -9,11 +9,10 @@ import re
 from livekit.agents.llm import ToolError
 
 import rules_engine
-from combat_sound_content import COMBAT_SOUND_EXPORTS, COMBAT_SOUND_IDS
+from combat_sound_content import COMBAT_SOUND_EXPORTS
 from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS, disposition_rank
 
 __all__ = [
-    "COMBAT_SOUND_IDS",
     "DISPOSITION_ORDER",
     "DISPOSITION_TIERS",
     "LOCATION_CORRUPTION",

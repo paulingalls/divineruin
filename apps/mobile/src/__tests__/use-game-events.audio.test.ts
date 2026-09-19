@@ -9,6 +9,7 @@ type MockPlayer = {
   playCalls: number;
   removed: boolean;
   play: () => void;
+  pause: () => void;
   remove: () => void;
   addListener: () => { remove: () => void };
 };
@@ -24,6 +25,7 @@ void mock.module("expo-audio", () => ({
       play() {
         this.playCalls += 1;
       },
+      pause() {},
       remove() {
         this.removed = true;
       },
@@ -32,6 +34,10 @@ void mock.module("expo-audio", () => ({
     mockPlayers.push(player);
     return player;
   },
+  // bun's mock.module is process-global and never restored, so this replaces
+  // test-preload.ts's expo-audio stub for every file that runs after this one.
+  // Carry its whole surface or a later file loses an export it depends on.
+  setAudioModeAsync: async () => {},
 }));
 
 import { handleGameEvent } from "@/audio/game-event-handler";
