@@ -16,6 +16,7 @@ def _isolated_lock_dir(tmp_path, monkeypatch):
     """Every test gets its own lock/state dir so tests never see each
     other's (or a real dev run's) refcount state."""
     monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
+    monkeypatch.setattr(dbl, "_authorize", lambda intent: None)
 
 
 def test_parse_host_port_reads_host_and_port():
@@ -403,3 +404,71 @@ def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, m
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     assert dbl.resolve_database_url() == dbl._DEFAULT_DATABASE_URL
+
+
+def test_ownership_is_checked_before_reachability(monkeypatch):
+    events: list[str] = []
+
+    def authorize(intent):
+        events.append(f"authorize:{intent}")
+
+    def reachable(host, port, timeout=1.0):
+        events.append("reachable")
+        return True
+
+    monkeypatch.setattr(dbl, "_authorize", authorize)
+    monkeypatch.setattr(dbl, "is_reachable", reachable)
+
+    assert dbl.ensure_db_up("postgresql://u:p@localhost:55432/db") is False
+    assert events == ["authorize:settings", "reachable", "authorize:reuse"]
+
+
+def test_ownership_refusal_prevents_reachability(monkeypatch):
+    monkeypatch.setattr(
+        dbl,
+        "_authorize",
+        lambda intent: (_ for _ in ()).throw(RuntimeError("foreign checkout owner")),
+    )
+    monkeypatch.setattr(
+        dbl,
+        "is_reachable",
+        lambda *args: (_ for _ in ()).throw(AssertionError("reachability must not run")),
+    )
+
+    with pytest.raises(RuntimeError, match="foreign checkout owner"):
+        dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
+
+
+def test_ci_service_mode_never_starts_compose(monkeypatch):
+    events: list[str] = []
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("DIVINERUIN_CI_SERVICE_DB", "1")
+    monkeypatch.setattr(dbl, "_authorize", lambda intent: events.append(f"authorize:{intent}"))
+    monkeypatch.setattr(dbl, "is_reachable", lambda *args: False)
+    monkeypatch.setattr(
+        dbl,
+        "_compose",
+        lambda *args: (_ for _ in ()).throw(AssertionError("CI must not invoke Compose")),
+    )
+
+    with pytest.raises(RuntimeError, match="Compose mutation is disabled"):
+        dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
+    assert events == ["authorize:ci"]
+
+
+def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    monkeypatch.setattr(
+        dbl,
+        "_authorize",
+        lambda intent: (_ for _ in ()).throw(RuntimeError("owner changed")),
+    )
+    monkeypatch.setattr(
+        dbl,
+        "_compose",
+        lambda *args: (_ for _ in ()).throw(AssertionError("down must not run")),
+    )
+
+    with pytest.raises(RuntimeError, match="owner changed"):
+        dbl.stop_if_started(True, "postgresql://u:p@localhost:55432/db")

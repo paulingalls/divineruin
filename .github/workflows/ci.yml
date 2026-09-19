@@ -79,6 +79,7 @@ jobs:
           --health-timeout 3s
           --health-retries 5
     env:
+      DIVINERUIN_CI_SERVICE_DB: "1"
       DATABASE_URL: postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
       REDIS_URL: redis://localhost:56379
     steps:
@@ -138,6 +139,7 @@ jobs:
           --health-timeout 3s
           --health-retries 5
     env:
+      DIVINERUIN_CI_SERVICE_DB: "1"
       DATABASE_URL: postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
       REDIS_URL: redis://localhost:56379
     steps:
@@ -183,6 +185,7 @@ jobs:
           --health-timeout 3s
           --health-retries 5
     env:
+      DIVINERUIN_CI_SERVICE_DB: "1"
       DATABASE_URL: postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
       REDIS_URL: redis://localhost:56379
       JWT_SECRET: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2

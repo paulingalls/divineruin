@@ -303,29 +303,16 @@ PY
 # loud, actionable failure rather than compose's cryptic bind error.
 start_stack() {
   echo "==> docker stack: project=$COMPOSE_PROJECT_NAME pg=$POSTGRES_HOST_PORT valkey=$VALKEY_HOST_PORT"
-  # Our own running stack already holds the ports on a re-run — that's fine.
-  if [ -z "$(docker compose ps --status running -q postgres 2>/dev/null)" ]; then
-    local pair port label
-    for pair in "$POSTGRES_HOST_PORT:postgres" "$VALKEY_HOST_PORT:valkey"; do
-      port="${pair%%:*}"; label="${pair##*:}"
-      if lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; then
-        echo "init-worktree: host port $port ($label) is already in use by another" >&2
-        echo "               process/worktree (offset collision). Set WT_PORT_OFFSET" >&2
-        echo "               to a distinct value and re-run." >&2
-        exit 1
-      fi
-    done
-  fi
-  # --wait blocks until BOTH services pass their compose healthcheck (Postgres's
-  # is pg_isready), so a cold volume is query-ready before migrate/seed — which
-  # talk to the DB directly with no readiness wait of their own.
-  docker compose up -d --remove-orphans --wait --wait-timeout 120
+  wt_compose create up -d --remove-orphans --wait --wait-timeout 120
 }
 
 # ── run ───────────────────────────────────────────────────────────────────────
 main() {
   wt_export_env
   echo "==> provisioning worktree: project=$COMPOSE_PROJECT_NAME offset=$WT_OFFSET"
+
+  write_env_if_absent
+  wt_authorize settings
 
   echo "==> bun install"
   bun install
@@ -337,8 +324,6 @@ main() {
   # `bun run lint:e2e`.
   echo "==> bun install (e2e)"
   ( cd "$REPO_ROOT/e2e" && bun install )
-
-  write_env_if_absent
 
   echo "==> uv sync (apps/agent)"
   ( cd "$REPO_ROOT/apps/agent" && uv sync )

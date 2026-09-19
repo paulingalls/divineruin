@@ -66,9 +66,19 @@ ok "distinct sample names get distinct offsets"
 [ "$(wt_project_name '--weird.name')" = "dr-weird-name" ] || fail "project name leading/illegal strip wrong: $(wt_project_name '--weird.name')"
 ok "wt_project_name sanitizes + dr- prefixes to a legal compose project"
 
-# 7. WT_PORT_OFFSET is a manual override, honored verbatim.
-[ "$(WT_PORT_OFFSET=1234 wt_resolved_offset)" = "1234" ] || fail "WT_PORT_OFFSET override ignored"
-ok "WT_PORT_OFFSET override honored"
+# 7. Linked names include the clone fingerprint, so a basename alone never
+#    grants access to another clone's stack.
+wt_identity
+if ! wt_is_primary; then
+  wt_expected_env
+  case "$COMPOSE_PROJECT_NAME" in
+    *"${WT_CLONE_ID:0:8}") ;;
+    *) fail "linked project $COMPOSE_PROJECT_NAME lacks clone fingerprint ${WT_CLONE_ID:0:8}" ;;
+  esac
+  ok "linked project name includes clone identity"
+else
+  ok "primary project keeps its established basename convention"
+fi
 
 # 8. Offset resolves per checkout context: the primary resolves to 0 (ports
 #    byte-identical to today); a linked worktree resolves to a real non-zero
@@ -82,16 +92,13 @@ else
   ok "linked worktree -> non-zero offset $off (ports isolated from primary)"
 fi
 
-# 9. wt_stale_worktree_projects: given running dr-* projects (stdin) and live
-#    worktree basenames (args), returns only the orphans to reap — never a live
-#    worktree's stack and never dr-divineruin. The lowercase/sanitize case is the
-#    data-loss trap: a live worktree 'story-006_Foo' runs as 'dr-story-006_foo',
-#    so a naive dr-<basename> cross-check would mis-classify it as orphaned and
-#    down -v a LIVE stack. Deriving via wt_project_name closes that.
-running=$'dr-divineruin\ndr-worktree-story-004\ndr-story-006_foo\ndr-old-gone\nsome-other-project'
-orphans="$(printf '%s\n' "$running" | wt_stale_worktree_projects 'story-006_Foo' 'worktree-story-004')"
-[ "$orphans" = "dr-old-gone" ] || fail "stale-project set wrong (expected only dr-old-gone): got [$orphans]"
-ok "wt_stale_worktree_projects reaps only true orphans (protects live + dr-divineruin + non-dr-)"
+# 9. This checkout's complete coupled settings agree with its Git identity.
+wt_validate_settings || fail "checkout-owned .env was rejected"
+[ "$POSTGRES_HOST_PORT" = "$(printf '%s' "$DATABASE_URL" | sed -E 's#.*:([0-9]+)/.*#\1#')" ] \
+  || fail "DATABASE_URL does not use the derived Postgres port"
+[ "$VALKEY_HOST_PORT" = "$(printf '%s' "$REDIS_URL" | sed -E 's#.*:([0-9]+).*#\1#')" ] \
+  || fail "REDIS_URL does not use the derived Valkey port"
+ok "project, ports, and service URLs form one checkout-owned setting"
 
 # 10. Two pickers starting from the same point reserve different ports.
 TEST_TYPEGEN_LOCK_ROOT="$(mktemp -d -t test-typegen-locks)"
