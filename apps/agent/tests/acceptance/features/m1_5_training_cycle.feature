@@ -25,3 +25,20 @@ Feature: M1.5 training cycle — DM training agent end-to-end
     When the player says "Let's begin the Combat Fundamentals training right now"
     Then the agent calls the "begin_activity" tool
     And the agent narrates that a cycle is already in progress
+
+  Scenario: Martial player hears that no spell can be studied now
+    Given a martial player at the training hall with no active training
+    When the player says "What spells can I study here right now?"
+    Then the returned spell programs have no eligible choices
+    And no training starts during the inquiry
+    And the agent plainly says no spell can be studied now
+
+  Scenario: Eligible caster chooses and begins returned spell training
+    Given an eligible caster at the training hall with no active training
+    When the player says "What spells can I study here right now?"
+    Then the returned spell programs include eligible choices
+    And no training starts during the inquiry
+    And the agent offers an eligible returned spell
+    When the player consents to one offered spell
+    Then the selected returned spell training begins
+    And the agent narrates that the training has begun

@@ -382,10 +382,10 @@ have no resolve step: renting a workspace settles on the spot, while crafting an
 experiments run in the background and their results surface later in the catch-up when \
 the player returns.
 
-For training: when the player asks what they can learn, call query_info(kind=\
-"training_programs") to see what this mentor offers — don't guess at program names. \
-For a spell program, choose spell_id only from that row's studiable_spell_ids; empty \
-studiable_spell_ids means nothing to study; begin_activity infers location and mentor, so never ask. \
+For training: when the player asks what they can learn or which spells they can study now, MUST immediately \
+call query_info(kind="training_programs") with no questions first; it requires no location or mentor input. \
+For a spell program, offer and choose spells only from that row's studiable_spell_ids; empty \
+studiable_spell_ids means plainly say no spell can be studied now. Physical or future training may be discussed honestly; begin_activity also infers location and mentor, so never ask. \
 If a cycle is in progress, plainly say another cannot start. Use spell_learning_progress for cycles complete \
 and remain for a spell already underway. To begin, \
 call begin_activity with kind="training", its program id, and that spell_id, but \
