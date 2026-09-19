@@ -6,8 +6,10 @@ cross-language mismatch between the four mobile TS registries and the bundled
 assets: a bundled asset wired to no registry (orphan asset), or a registry key
 with no asset (missing file). This capstone enumerates every registry key
 in-band under bun (via scripts/emit-audio-registry-keys.ts) and asserts, per
-family, that the registry key-set exactly equals the bundled stem-set — then
-ties the whole set to the generator PROMPTS SSOT (generatable) with no .wav.
+family, that the registry key-set — resolved through the combat alias map, since
+a combat wire id is an alias for a stem rather than a filename — exactly equals
+the bundled stem-set, then ties the whole set to the generator PROMPTS SSOT
+(generatable) with no .wav.
 
 Pure filesystem + bun; NO Postgres (AC3 amended — the DB spell-catalog half is
 owned by test_m17_spell_sfx_capstone.py). Lives in the acceptance lane for the
@@ -39,8 +41,9 @@ _REPO_ROOT = _APPS_DIR.parents[0]
 _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"
 _MOBILE_DIR = _APPS_DIR / "mobile"
 _GENERATOR_PATH = _REPO_ROOT / "scripts" / "audio" / "generate_spell_sfx.py"
+_COMBAT_SOUNDS_PATH = _REPO_ROOT / "content" / "combat_sounds.json"
 
-# Emitter family key -> bundled subdir ("." = the flat root: 20 legacy + 7 spell).
+# Emitter family key -> bundled subdir ("." = the flat root).
 _FAMILIES = (
     ("sound", "."),
     ("music", "music"),
@@ -76,6 +79,19 @@ def _registry_keys() -> dict[str, list[str]]:
 
 
 @functools.cache
+def _asset_for_key() -> dict[str, str]:
+    """Registry key -> the bundled stem it actually plays.
+
+    Combat ids are ALIASES (story-089): several wire ids share one stem, so a
+    combat key's own name is not a filename and never will be. Only the stem it
+    resolves to has to exist on disk.
+    """
+    rows = json.loads(_COMBAT_SOUNDS_PATH.read_text())
+    assert rows, f"{_COMBAT_SOUNDS_PATH} is empty -- an empty alias map would read as 'no aliases'"
+    return {row["id"]: row["asset"] for row in rows}
+
+
+@functools.cache
 def _load_prompts() -> dict[str, str]:
     """Import the generator PROMPTS SSOT by file path (it lives outside the agent package)."""
     spec = importlib.util.spec_from_file_location("generate_spell_sfx", _GENERATOR_PATH)
@@ -89,19 +105,22 @@ def _load_prompts() -> dict[str, str]:
 def test_registry_keyset_equals_bundled_stems(family: str, subdir: str) -> None:
     """The novel cross-language completeness assertion: every family's TS-registry
 
-    key-set exactly equals its bundled <dir>/*.mp3 stem-set. Catches a missing
-    file (registry key with no asset) AND an orphan asset (bundled file wired to
-    no registry) -- the direction no existing guard spans.
+    key-set, resolved through the combat alias map, exactly equals its bundled
+    <dir>/*.mp3 stem-set. Catches a missing file (registry key playing no asset)
+    AND an orphan asset (bundled file wired to no registry) -- the direction no
+    existing guard spans.
     """
     keys = _registry_keys()
     registry = set(keys[family])
     assert registry, f"{family}: emitter returned no keys -- enumeration is a no-op"
+    aliases = _asset_for_key() if family == "sound" else {}
+    played = {aliases.get(key, key) for key in registry}
     base = _SOUNDS_DIR if subdir == "." else _SOUNDS_DIR / subdir
     bundled = {p.stem for p in base.glob("*.mp3")}
-    assert registry == bundled, (
-        f"{family}: TS registry keys != bundled stems\n"
-        f"  registry-only (missing file): {sorted(registry - bundled)}\n"
-        f"  disk-only (orphan asset):     {sorted(bundled - registry)}"
+    assert played == bundled, (
+        f"{family}: TS registry keys (alias-resolved) != bundled stems\n"
+        f"  registry-only (missing file): {sorted(played - bundled)}\n"
+        f"  disk-only (orphan asset):     {sorted(bundled - played)}"
     )
 
 

@@ -78,7 +78,7 @@ reap_typegen_reservation() {
 # bootstrap; a dead owner is reaped before one retry.
 # Args: <port>
 reserve_typegen_port() {
-  local port="$1" lock_dir owner
+  local port="$1" lock_dir owner status
   lock_dir="$TYPEGEN_LOCK_ROOT/$port"
   if ! mkdir "$lock_dir" 2>/dev/null; then
     owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
@@ -97,9 +97,15 @@ reserve_typegen_port() {
     echo "init-worktree: could not record the owner of typegen port $port." >&2
     return 2
   fi
-  if lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; then
+  if wt_port_listeners "$port" >/dev/null; then
     release_typegen_port "$port"
     return 1
+  else
+    status=$?
+    if [ "$status" -ne 1 ]; then
+      release_typegen_port "$port"
+      return "$status"
+    fi
   fi
 }
 
@@ -148,9 +154,12 @@ reap_typegen() {
 # absent listener means the port was never ours.
 # Args: <port> <expected-process-group>
 assert_typegen_port_owner() {
-  local port="$1" expected_group="$2" listeners listener group
-  listeners="$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)"
-  if [ -z "$listeners" ]; then
+  local port="$1" expected_group="$2" listeners listener group status
+  if listeners="$(wt_port_listeners "$port")"; then
+    :
+  else
+    status=$?
+    [ "$status" -eq 1 ] || return "$status"
     echo "init-worktree: no listener on reserved typegen port $port." >&2
     return 1
   fi
@@ -190,7 +199,9 @@ run_typegen() {
 
   waited=0
   bound=1
-  until lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; do
+  until wt_port_listeners "$port" >/dev/null; do
+    status=$?
+    [ "$status" -eq 1 ] || exit "$status"
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "init-worktree: the typegen dev server exited before binding reserved port $port." >&2
       sed 's/^/    /' "$log" >&2
@@ -266,7 +277,7 @@ write_env_if_absent() {
     return 0
   fi
   echo "==> writing .env (from .env.example, offset $WT_OFFSET)"
-  DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
+  WT_PORT_OFFSET="$WT_OFFSET" DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
   POSTGRES_HOST_PORT="$POSTGRES_HOST_PORT" VALKEY_HOST_PORT="$VALKEY_HOST_PORT" \
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   python3 - "$REPO_ROOT/.env.example" "$REPO_ROOT/.env" <<'PY'
@@ -274,7 +285,7 @@ import os, sys
 src, dst = sys.argv[1], sys.argv[2]
 # Keys we set/override so the worktree stack is self-describing in .env.
 overrides = {k: os.environ[k] for k in (
-    "DATABASE_URL", "REDIS_URL",
+    "WT_PORT_OFFSET", "DATABASE_URL", "REDIS_URL",
     "POSTGRES_HOST_PORT", "VALKEY_HOST_PORT", "COMPOSE_PROJECT_NAME",
 )}
 seen = set()
@@ -298,37 +309,12 @@ PY
 }
 
 # ── docker stack ──────────────────────────────────────────────────────────────
-# Bring up THIS worktree's isolated Postgres+Valkey. Guard against a foreign
-# holder of our offset host ports (a rare basename-hash collision) with a
-# loud, actionable failure rather than compose's cryptic bind error.
+# Bring up THIS worktree's isolated Postgres+Valkey. `wt_compose create` proves
+# ownership first: an existing project must carry this checkout's labels, and an
+# absent one must find its host ports vacant.
 start_stack() {
   echo "==> docker stack: project=$COMPOSE_PROJECT_NAME pg=$POSTGRES_HOST_PORT valkey=$VALKEY_HOST_PORT"
-  assert_compose_port_owner "$POSTGRES_HOST_PORT" postgres
-  assert_compose_port_owner "$VALKEY_HOST_PORT" valkey
-  # --wait blocks until BOTH services pass their compose healthcheck (Postgres's
-  # is pg_isready), so a cold volume is query-ready before migrate/seed — which
-  # talk to the DB directly with no readiness wait of their own.
-  docker compose up -d --remove-orphans --wait --wait-timeout 120
-}
-
-assert_compose_port_owner() {
-  local port="$1" service="$2" containers labels
-  if ! lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; then
-    return 0
-  fi
-  containers="$(docker ps --filter "publish=$port" --format '{{.ID}}')"
-  if [ -z "$containers" ] || [ "$(printf '%s\n' "$containers" | wc -l | tr -d ' ')" != "1" ]; then
-    echo "init-worktree: host port $port ($service) has a listener not owned by one Docker container" >&2
-    echo "               Set WT_PORT_OFFSET to a distinct value and re-run." >&2
-    return 1
-  fi
-  labels="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }} {{ index .Config.Labels "com.docker.compose.service" }}' "$containers")"
-  if [ "$labels" != "$COMPOSE_PROJECT_NAME $service" ]; then
-    echo "init-worktree: host port $port ($service) belongs to '$labels', not '$COMPOSE_PROJECT_NAME $service'" >&2
-    echo "               Never reuse a sibling's database. Set WT_PORT_OFFSET to a" >&2
-    echo "               distinct value and re-run." >&2
-    return 1
-  fi
+  wt_compose create up -d --remove-orphans --wait --wait-timeout 120
 }
 
 verify_project_python() {
@@ -367,13 +353,17 @@ install_locked_dependencies() {
 
 # ── run ───────────────────────────────────────────────────────────────────────
 main() {
-  wt_export_env
+  runtime_database_url="${DATABASE_URL:-}"
+  runtime_redis_url="${REDIS_URL:-}"
+  wt_expected_env
+  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID"
   echo "==> provisioning worktree: project=$COMPOSE_PROJECT_NAME offset=$WT_OFFSET"
+
+  write_env_if_absent
+  wt_authorize_runtime "$runtime_database_url" "$runtime_redis_url"
 
   require_declared_toolchain
   install_locked_dependencies
-
-  write_env_if_absent
 
   run_typegen
 

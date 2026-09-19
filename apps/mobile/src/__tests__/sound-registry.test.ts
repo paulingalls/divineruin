@@ -1,6 +1,25 @@
 import { test, expect } from "bun:test";
 import { lookupSound, knownSoundNames } from "@/audio/sound-registry";
+import combatSounds from "../../../../content/combat_sounds.json";
 import spells from "../../../../content/spells.json";
+
+const preservedCombatIds = new Set([
+  "combat_start_stinger",
+  "combat_victory_stinger",
+  "combat_defeat_stinger",
+  "combat_fled_stinger",
+  "weapon_hit",
+  "weapon_miss",
+  "critical_hit",
+  "heartbeat_low_hp",
+  "death_save_success",
+  "death_save_fail",
+  "death_save_critical_success",
+  "player_fallen",
+  "hollow_rise",
+  "player_death",
+  "player_stabilized",
+]);
 
 test("lookupSound returns asset for known sounds", () => {
   expect(lookupSound("dice_roll")).not.toBeNull();
@@ -26,9 +45,12 @@ test("lookupSound returns null for unknown sounds", () => {
   expect(lookupSound("nonexistent")).toBeNull();
   expect(lookupSound("")).toBeNull();
   expect(lookupSound("DICE_ROLL")).toBeNull(); // case-sensitive
+  for (const name of ["toString", "constructor", "__proto__"]) {
+    expect(lookupSound(name)).toBeNull();
+  }
 });
 
-test("knownSoundNames returns all registered names", () => {
+test("knownSoundNames returns the existing registry", () => {
   const names = knownSoundNames();
   expect(names).toContain("dice_roll");
   expect(names).toContain("sword_clash");
@@ -57,7 +79,18 @@ test("knownSoundNames returns all registered names", () => {
   expect(names).toContain("spell_radiant");
   expect(names).toContain("spell_nature");
   expect(names).toContain("spell_generic");
-  expect(names.length).toBe(27);
+  expect(names.length).toBeGreaterThanOrEqual(27);
+});
+
+test("every shared combat sound resolves in the client registry", () => {
+  expect(combatSounds.length).toBeGreaterThanOrEqual(16);
+  const ids = combatSounds.map((row) => row.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const id of preservedCombatIds) expect(ids).toContain(id);
+  for (const id of ids) {
+    expect(lookupSound(id)).not.toBeNull();
+    expect(knownSoundNames()).toContain(id);
+  }
 });
 
 test("every content/spells.json sound_id resolves in the client registry", () => {

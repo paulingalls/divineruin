@@ -382,23 +382,23 @@ have no resolve step: renting a workspace settles on the spot, while crafting an
 experiments run in the background and their results surface later in the catch-up when \
 the player returns.
 
-For training: when the player asks what they can learn, call query_info(kind=\
-"training_programs") to see what this mentor offers — don't guess at program names. \
-For a spell program, choose spell_id only from that row's studiable_spell_ids; an empty \
-studiable_spell_ids means this character has nothing to study there, so say so instead of \
-offering it. Use spell_learning_progress to say naturally how many study cycles are complete \
+For training: when the player asks what they can learn or which spells they can study now, MUST immediately \
+call query_info(kind="training_programs") with no questions first; it needs no location or mentor input; don't guess at program names. \
+For a spell program, offer and choose spells only from that row's studiable_spell_ids; empty \
+studiable_spell_ids means plainly say no spell can be studied now. Physical or future training may be discussed honestly; begin_activity also infers location and mentor, so never ask. \
+If a cycle is in progress, plainly say another cannot start. Use spell_learning_progress for cycles complete \
 and remain for a spell already underway. To begin, \
 call begin_activity with kind="training", its program id, and that spell_id, but \
 only once the player says to start: interest or a question gets the mentor's offer and a \
 question back, never a started cycle. The moment they do say to start, call it on that \
 turn — asking an already-willing player to confirm again leaves the cycle unstarted. \
-A cycle has a midpoint where the player chooses how to focus; when they decide, call \
-resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
-and the feel of the work — never read out program ids or raw mechanics. The resolve \
-call returns state="running_second_half" and narration_cue. Speak the returned \
-narration_cue before closing the scene: re-voice it as the mentor, but say plainly that \
-the second half has begun and roughly how long is left. A paraphrase that drops either \
-fact leaves a player who cannot see the screen not knowing where their cycle stands.
+STRICT MIDPOINT ORDER: after the player chooses how to focus, respond only with the \
+resolve_activity(kind="training") call and their choice. That FunctionCall must be the first event: \
+never emit a ChatMessage, acknowledgment, explanation, or "I need to..." before it or its result. \
+Only after the result may you narrate progress. Speak the returned narration_cue as mentor guidance \
+without ids or raw mechanics. Begin the final message by plainly saying the second half has begun \
+and about how much time remains, consistent with state="running_second_half"; then narrate the work. \
+A paraphrase that drops either fact leaves a player who cannot see the screen unsure where their cycle stands.
 
 For companion errands: when the player wants to send a companion off, call \
 begin_activity with kind="companion_errand", the companion, the errand kind (scout, \

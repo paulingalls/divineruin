@@ -7,6 +7,20 @@
 # it in the same shell that spawned the background lanes, which a subprocess
 # (the BASH_TEST harness invoking the hook) cannot do.
 
+# run_pre_push_lane NAME COMMAND [ARG...]
+# Exec COMMAND in place. The NAME is the seam: scripts/test-prepush-environment.sh
+# invokes the hook's positional internal test mode and sets PREPUSH_LANE_DRIVER
+# to an executable that records the lane's real child environment and argv.
+run_pre_push_lane() {
+  local lane="$1"
+  shift
+  if [ "${PREPUSH_TEST_MODE:-production}" = lanes ]; then
+    "$PREPUSH_LANE_DRIVER" "$lane" "$@"
+  else
+    "$@"
+  fi
+}
+
 # wait_all_lanes PID:NAME [PID:NAME ...]
 # Wait for EVERY backgrounded lane (so wall-clock is max-lane, not first-failure,
 # and every failure is reported), printing "ERROR: <name> lane failed." for each

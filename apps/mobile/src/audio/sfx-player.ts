@@ -5,12 +5,17 @@ import { getEffectiveVolume } from "./volume";
 const MAX_CONCURRENT = 8;
 const activePlayers = new Set<AudioPlayer>();
 
-export function playSfx(soundName: string): void {
-  const source = lookupSound(soundName);
-  if (!source) {
-    console.warn(`[sfx] Unknown sound: "${soundName}"`);
-    return;
+export class UnknownSoundError extends Error {
+  constructor(soundName: string) {
+    super(`Unknown sound: "${soundName}"`);
+    this.name = "UnknownSoundError";
   }
+}
+
+export function playSfx(soundName: string): void {
+  if (!soundName) return;
+  const source = lookupSound(soundName);
+  if (source === null) throw new UnknownSoundError(soundName);
 
   if (activePlayers.size >= MAX_CONCURRENT) {
     console.warn("[sfx] Max concurrent players reached, skipping");

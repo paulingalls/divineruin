@@ -298,22 +298,26 @@ The `INWORLD_VOICE_*` variables are optional — stock voices are used if unset.
 
 ### 1. Start infrastructure
 
+Create `.env` first (step 2 below, or `bash scripts/init-worktree.sh`, which writes one): every Compose operation goes through the ownership helper, which refuses while `.env` is missing or names a different checkout. If your clone's directory is not named `divineruin`, correct `COMPOSE_PROJECT_NAME` to the name the refusal message quotes.
+
 Ensure Docker Desktop is running, then bring up Divine Ruin's dedicated stack:
 
 ```bash
-docker compose up -d
+bash scripts/worktree-common.sh compose create up -d
 ```
 
 Wait for healthy status:
 ```bash
-docker compose ps
+bash scripts/worktree-common.sh compose reuse ps
 ```
 
-PostgreSQL on `localhost:55432`, Valkey on `localhost:56379` in the primary checkout. Containers are compose-namespaced as `dr-divineruin-postgres-1` / `dr-divineruin-valkey-1` (from `COMPOSE_PROJECT_NAME=dr-divineruin` in `.env`) rather than pinned by `container_name`, so a **git worktree** can run its own isolated `dr-<checkout>-*` stack on offset host ports (see below), and every stack reads as this project's in `docker ps`. Valkey is Redis-protocol wire-compatible, so `REDIS_URL` and the `redis://` scheme are unchanged. These are **unique, project-dedicated ports** so the stack never collides with a shared host Postgres/cache or your other projects — `docker compose up` is the only supported way to run local infra. If you have leftover hand-rolled `dr-pg` / `dr-redis` containers from before, retire them: `docker rm -f dr-pg dr-redis`. **Migrating an older checkout to the `dr-` names:** add `COMPOSE_PROJECT_NAME=dr-divineruin` to your `.env` (it's now in `.env.example`), then `docker compose down && docker compose up -d --wait && bun run migrate && bun run seed` once — the project rename means a fresh `dr-divineruin_pgdata` volume, and the dev DB is reproducible from migrations + `content/*.json`.
+PostgreSQL uses `localhost:55432` and Valkey uses `localhost:56379` in the primary checkout. Every Compose resource carries clone and checkout labels, and `scripts/worktree-common.sh` verifies those labels before reuse or mutation. A client connection additionally requires this checkout's running service to publish the selected loopback endpoint; a stopped owned volume remains inspectable or removable but cannot authorize a connection. An existing unlabeled or conflicting stack is left untouched; back it up and migrate or remove it manually before retrying. Valkey remains Redis protocol compatible, so `REDIS_URL` keeps the `redis://` scheme.
 
-**Working in a git worktree?** Run `bash scripts/init-worktree.sh` inside it. It installs the gitignored artifacts `git worktree add` doesn't materialize (`node_modules`, `apps/agent/.venv`, the Expo generated types, `.env`) and brings up an **isolated per-worktree docker stack** on offset ports — `POSTGRES_HOST_PORT`/`VALKEY_HOST_PORT` derived from the checkout basename (primary = offset 0, byte-identical), so multiple worktrees run their suites concurrently without colliding. The stack comes up as `dr-<checkout-basename>-postgres-1` on the offset ports. It is idempotent, fail-loud, and never overwrites an existing `.env`. Set `WT_PORT_OFFSET` to force a distinct offset on the rare basename-hash collision.
+**Working in a git worktree?** Run `bash scripts/init-worktree.sh` inside it. It installs the gitignored artifacts `git worktree add` does not materialize and brings up an isolated stack. Linked project names and ports include a fingerprint of the clone's real Git directory, so equal worktree names in different clones do not collide. Bootstrap rejects an existing `.env` whose project, ports, or URLs belong to another checkout and never rewrites it.
 
-When you're done with a worktree, tear its stack down before removing the worktree so containers + volumes don't leak: `bun run worktree:teardown` (from inside it) does `docker compose down -v` for that worktree's stack (it refuses the primary `dr-divineruin` unless `--force`). To reap stacks from worktrees already deleted, `bun run worktree:teardown --sweep` removes every running `dr-*` worktree stack whose git worktree is gone — never touching `dr-divineruin` or a live worktree.
+Set `WT_PORT_OFFSET` in `.env` when the derived ports collide with another local service. Values from 0 through 9000 are valid for a primary checkout; linked checkouts require a nonzero value. The offset only selects ports. Docker labels still establish resource ownership, and existing credentials and other `.env` values remain untouched. Test startup validates the actual `DATABASE_URL` and `REDIS_URL` endpoints before probing them. Missing or failing port inspection and ownership failures during readiness stop immediately with their original diagnostic.
+
+When done, run `bun run worktree:teardown` from that checkout. Primary destruction still requires `--force` from the proven primary checkout. `bun run worktree:teardown --sweep` removes only labeled stale projects owned by this clone; foreign, live, legacy, and unreadable projects are preserved.
 
 ### 2. Configure environment
 

@@ -1,3 +1,5 @@
+import combatSounds from "../../../../content/combat_sounds.json";
+
 /** React Native asset IDs returned by require() are numbers. */
 type SoundAsset = number;
 
@@ -31,7 +33,7 @@ export type SoundName =
   | "spell_generic";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
-const SOUNDS: Record<SoundName, SoundAsset> = {
+const BASE_SOUNDS: Record<SoundName, SoundAsset> = {
   dice_roll: require("@/assets/sounds/dice_roll.mp3"),
   sword_clash: require("@/assets/sounds/sword_clash.mp3"),
   tavern: require("@/assets/sounds/tavern.mp3"),
@@ -60,14 +62,37 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   spell_nature: require("@/assets/sounds/spell_nature.mp3"),
   spell_generic: require("@/assets/sounds/spell_generic.mp3"),
 };
+
+// Stems that exist only to back a combat alias — everything else a combat row
+// aliases is already a BASE_SOUNDS key and is resolved from there.
+const COMBAT_ONLY_ASSETS: Partial<Record<string, SoundAsset>> = {
+  weapon_miss: require("@/assets/sounds/weapon_miss.mp3"),
+  heartbeat_low_hp: require("@/assets/sounds/heartbeat_low_hp.mp3"),
+};
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
-const SOUND_NAMES = Object.keys(SOUNDS) as SoundName[];
+const ASSET_BY_STEM: Partial<Record<string, SoundAsset>> = {
+  ...BASE_SOUNDS,
+  ...COMBAT_ONLY_ASSETS,
+};
 
-export function lookupSound(name: string): SoundAsset | null {
-  return (SOUNDS as Record<string, SoundAsset | undefined>)[name] ?? null;
+const SOUNDS: Record<string, SoundAsset> = { ...BASE_SOUNDS };
+for (const row of combatSounds) {
+  // hasOwn, never `in`/`obj[key]`: a row naming an Object.prototype member ("toString",
+  // "constructor") otherwise reads the INHERITED value — a false "Duplicate sound id", or
+  // Object.prototype.toString registered as a playable asset instead of the throw below.
+  if (Object.hasOwn(SOUNDS, row.id)) throw new Error(`Duplicate sound id: ${row.id}`);
+  const source = Object.hasOwn(ASSET_BY_STEM, row.asset) ? ASSET_BY_STEM[row.asset] : undefined;
+  if (source === undefined) throw new Error(`Unmapped combat sound asset: ${row.asset}`);
+  SOUNDS[row.id] = source;
 }
 
-export function knownSoundNames(): SoundName[] {
+const SOUND_NAMES = Object.keys(SOUNDS);
+
+export function lookupSound(name: string): SoundAsset | null {
+  return Object.hasOwn(SOUNDS, name) ? SOUNDS[name] : null;
+}
+
+export function knownSoundNames(): string[] {
   return SOUND_NAMES;
 }

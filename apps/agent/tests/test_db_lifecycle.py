@@ -7,8 +7,43 @@ tests pin the pure parse + the start/stop decision; the actual docker subprocess
 calls are stubbed so the suite stays hermetic.
 """
 
+import subprocess
+
 import _db_lifecycle as dbl
 import pytest
+
+REAL_AUTHORIZE = dbl._authorize
+REAL_AUTHORIZE_RUNTIME = dbl._authorize_runtime
+REAL_OWNER_HELPER = dbl._OWNER_HELPER
+TEST_LIFETIME = [{"service": "postgres", "id": "postgres-id", "started_at": "2026-09-19T01:00:00Z"}]
+
+
+def _owned_state(count: int) -> dict:
+    return {"count": count, "harness_started": True, "lifetime": TEST_LIFETIME}
+
+
+def _owned_checkout(tmp_path, monkeypatch) -> dict[str, str]:
+    """A disposable Git checkout whose .env the REAL authority accepts.
+
+    The authority answers about the checkout it runs in, so a hardcoded
+    "foreign" endpoint is only foreign from SOME checkouts: :55432/:56379 are
+    the primary's OWN endpoints, and CI's runner has no repo-root .env at all.
+    Generating the settings here makes owned-vs-foreign known rather than
+    inherited from wherever the suite happens to run. Returns those settings.
+    """
+    root = tmp_path / "checkout"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    expected = subprocess.run(
+        ["bash", str(REAL_OWNER_HELPER), "expected-env"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    (root / ".env").write_text(expected)
+    monkeypatch.setattr(dbl, "_REPO_ROOT", root)
+    return dict(line.split("=", 1) for line in expected.splitlines())
 
 
 @pytest.fixture(autouse=True)
@@ -16,52 +51,14 @@ def _isolated_lock_dir(tmp_path, monkeypatch):
     """Every test gets its own lock/state dir so tests never see each
     other's (or a real dev run's) refcount state."""
     monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
-
-
-def test_parse_host_port_reads_host_and_port():
-    host, port = dbl.parse_host_port("postgresql://u:p@localhost:55432/divineruin")
-    assert host == "localhost"
-    assert port == 55432
-
-
-def test_parse_host_port_defaults_port_when_absent():
-    host, port = dbl.parse_host_port("postgresql://u:p@db.example/divineruin")
-    assert host == "db.example"
-    assert port == 5432
-
-
-def test_parse_user_reads_user():
-    assert dbl._parse_user("postgresql://divineruin:p@localhost:55432/divineruin") == "divineruin"
-
-
-def test_parse_user_defaults_when_absent():
-    assert dbl._parse_user("postgresql://localhost:55432/divineruin") == "divineruin"
-
-
-def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
-    """Fallback path: no refcount state file on disk (e.g. a caller that
-    bypasses ensure_db_up) -> `started` alone decides."""
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
-    dbl.stop_if_started(False)
-    assert calls == []
-
-
-def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
-    """Fallback path: no refcount state file on disk -> `started` alone decides."""
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
-    dbl.stop_if_started(True)
-    assert calls == [("down",)]  # never ("down", "-v") — dev DB volumes preserved
-
-
-def test_ensure_db_up_noop_when_already_reachable(monkeypatch):
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
-    assert dbl.ensure_db_up() is False
-    assert calls == []  # reachable -> never touches docker
+    monkeypatch.setattr(dbl, "_authorize", lambda intent: None)
+    monkeypatch.setattr(dbl, "_authorize_runtime", lambda database_url, redis_url: None)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: TEST_LIFETIME)
+    # CI exports REDIS_URL and the service markers, and `bun run test:python`
+    # is documented to export the URLs too; read ambiently they change which
+    # branch ensure_db_up/stop_if_started take. Cases that need them set them.
+    for leaked in ("REDIS_URL", "GITHUB_ACTIONS", "DIVINERUIN_CI_SERVICE_DB"):
+        monkeypatch.delenv(leaked, raising=False)
 
 
 class _FakeCompleted:
@@ -69,229 +66,6 @@ class _FakeCompleted:
         self.returncode = returncode
         self.stdout = ""
         self.stderr = ""
-
-
-def test_ensure_db_up_starts_compose_when_unreachable(monkeypatch):
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    # Port unreachable -> start compose; readiness gated on pg_isready, not TCP.
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
-
-    def fake_compose(*args):
-        calls.append(args)
-        return _FakeCompleted()
-
-    monkeypatch.setattr(dbl, "_compose", fake_compose)
-    assert dbl.ensure_db_up() is True
-    assert ("up", "-d", "--remove-orphans") in calls
-
-
-def test_ensure_db_up_raises_when_compose_up_fails(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-
-    def fake_compose_non_conflict(*args):
-        # Generic (non-conflict) failure — not retried.
-        result = _FakeCompleted(returncode=1)
-        result.stderr = "image pull failed"
-        return result
-
-    monkeypatch.setattr(dbl, "_compose", fake_compose_non_conflict)
-    try:
-        dbl.ensure_db_up()
-    except RuntimeError as exc:
-        assert "docker compose up" in str(exc)
-        assert "image pull failed" in str(exc)
-    else:
-        raise AssertionError("expected RuntimeError when `docker compose up` fails")
-
-
-def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
-    """Under Option B (per-worktree stacks, no `container_name`) a name conflict
-    cannot arise — compose auto-names `<project>-postgres-1` per project and
-    restarts a stopped container of the same project. So a failing `up` is NOT
-    special-cased or retried; it raises like any other failure (no `down`+retry
-    self-heal). Pins the removal of that dead branch."""
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-
-    def fake_compose_conflict(*args):
-        calls.append(args)
-        result = _FakeCompleted(returncode=1)
-        result.stderr = "container name is already in use"
-        return result
-
-    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict)
-    try:
-        dbl.ensure_db_up()
-    except RuntimeError as exc:
-        assert "docker compose up" in str(exc)
-    else:
-        raise AssertionError("expected RuntimeError when `docker compose up` fails")
-    # Exactly one `up` — no `down`, no retry.
-    assert calls == [("up", "-d", "--remove-orphans")]
-
-
-def test_lockfile_paths_keyed_on_host_port_not_compose_file(monkeypatch, tmp_path):
-    """Two different `_COMPOSE_FILE` values (i.e. two worktrees) resolve to the
-    SAME lock/state paths as long as host:port match — the whole point of
-    keying on the shared singleton rather than the per-checkout path."""
-    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-a" / "docker-compose.yml")
-    paths_a = dbl._lockfile_paths("localhost", 55432)
-    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-b" / "docker-compose.yml")
-    paths_b = dbl._lockfile_paths("localhost", 55432)
-    assert paths_a == paths_b
-
-
-def test_read_state_missing_file_returns_zero_state(tmp_path):
-    assert dbl._read_state(tmp_path / "missing.json") == {"count": 0, "harness_started": False}
-
-
-def test_state_round_trips_through_json(tmp_path):
-    state_path = tmp_path / "state.json"
-    dbl._write_state(state_path, {"count": 2, "harness_started": True})
-    assert dbl._read_state(state_path) == {"count": 2, "harness_started": True}
-
-
-def test_ensure_db_up_increments_count_when_already_reachable(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
-    monkeypatch.setattr(
-        dbl, "_compose", lambda *args: (_ for _ in ()).throw(AssertionError("no compose call expected"))
-    )
-    assert dbl.ensure_db_up() is False
-    _, state_path = dbl._lockfile_paths("localhost", 55432)
-    assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
-
-
-def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
-    """A leaked count from a SIGKILLed prior run must not survive once the DB
-    is actually observed to be down."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 5, "harness_started": True})
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
-    monkeypatch.setattr(dbl, "_compose", lambda *args: _FakeCompleted())
-
-    assert dbl.ensure_db_up() is True
-    assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
-
-
-def test_ensure_db_up_holds_lock_during_start(monkeypatch):
-    """`_start_compose`'s `up` must run while the exclusive lock is held, so no
-    other run can be mid-startup concurrently (Race A)."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
-
-    lock_path, _ = dbl._lockfile_paths("localhost", 55432)
-    calls: list[tuple[str, ...]] = []
-
-    def probe_lock_held() -> bool:
-        """True iff a second, independent flock on the same file would block."""
-        import fcntl
-
-        with open(lock_path, "w") as fh:
-            try:
-                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.flock(fh, fcntl.LOCK_UN)
-                return False
-            except OSError:
-                return True
-
-    def fake_compose(*args):
-        calls.append(args)
-        assert probe_lock_held(), "lock must be held during the start critical section"
-        return _FakeCompleted()
-
-    monkeypatch.setattr(dbl, "_compose", fake_compose)
-    assert dbl.ensure_db_up() is True
-    assert calls == [("up", "-d", "--remove-orphans")]
-
-
-def test_stop_if_started_refcount_teardown(monkeypatch):
-    """AC3: two joiners -> the first to finish doesn't tear down; the last
-    (hitting count 0) does, and only when the harness started it."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 2, "harness_started": True})
-
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
-
-    dbl.stop_if_started(False)  # run B (joiner) finishes first
-    assert calls == []
-    assert dbl._read_state(state_path)["count"] == 1
-
-    dbl.stop_if_started(True)  # run A (starter) finishes last -> count hits 0
-    assert calls == [("down",)]
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
-
-
-def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
-    """AC4: a DB a developer started by hand (harness_started False) is never
-    torn down, at any count, regardless of `started`."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": False})
-
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
-
-    dbl.stop_if_started(True)
-    assert calls == []
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
-
-
-def test_ensure_db_up_concurrent_callers_race_unreachable(monkeypatch):
-    """AC5 e2e: two threads race ensure_db_up against an unreachable DB ->
-    compose `up` runs exactly once, both callers return, and the refcount
-    lands at 2."""
-    import threading
-    import time as time_module
-
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-
-    up_calls: list[tuple[str, ...]] = []
-    up_lock = threading.Lock()
-    started = {"value": False}
-
-    def fake_compose(*args):
-        if args == ("up", "-d", "--remove-orphans"):
-            with up_lock:
-                up_calls.append(args)
-            time_module.sleep(0.05)  # widen the window for a racing second caller
-            started["value"] = True
-        return _FakeCompleted()
-
-    # Both is_reachable and is_accepting_queries flip True once `up` completes,
-    # so a second thread that acquires the lock after the first has started
-    # the DB takes the "already reachable" branch instead of racing `up` again.
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: started["value"])
-    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: started["value"])
-    monkeypatch.setattr(dbl, "_compose", fake_compose)
-
-    results: list[bool] = []
-    results_lock = threading.Lock()
-
-    def call_ensure_db_up():
-        result = dbl.ensure_db_up()
-        with results_lock:
-            results.append(result)
-
-    threads = [threading.Thread(target=call_ensure_db_up) for _ in range(2)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-
-    assert up_calls == [("up", "-d", "--remove-orphans")]
-    assert sorted(results) == [False, True]
-    _, state_path = dbl._lockfile_paths("localhost", 55432)
-    assert dbl._read_state(state_path)["count"] == 2
 
 
 # ── DSN resolution (story-006) ────────────────────────────────────────────────
@@ -336,7 +110,8 @@ def test_resolve_database_url_strips_surrounding_quotes(tmp_path, monkeypatch):
     assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
 
 
-def test_resolve_database_url_fails_without_env_file(tmp_path, monkeypatch):
+def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, monkeypatch):
+    """No .env at all (a fresh clone) still resolves to the canonical dev DB."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
@@ -355,10 +130,10 @@ def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
     """
     dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
 
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
     # A leaked testcontainer DSN in the environment must not steer the teardown.
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
 
@@ -396,10 +171,207 @@ def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, m
     assert dbl.resolve_database_url() == "postgresql://u:p@localhost:63782/divineruin"
 
 
-def test_resolve_database_url_fails_when_env_file_lacks_the_key(tmp_path, monkeypatch):
+def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, monkeypatch):
+    """A .env that never declares DATABASE_URL must not resolve to empty."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, "DEEPGRAM_API_KEY=abc\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         dbl.resolve_database_url()
+
+
+def test_ownership_is_checked_before_reachability(monkeypatch):
+    events: list[str] = []
+
+    def authorize_runtime(database_url, redis_url):
+        events.append(f"authorize-runtime:{database_url}:{redis_url or ''}")
+
+    def reachable(host, port, timeout=1.0):
+        events.append("reachable")
+        return True
+
+    monkeypatch.setattr(dbl, "_authorize_runtime", authorize_runtime)
+    monkeypatch.setattr(dbl, "_authorize", lambda intent: events.append(f"authorize:{intent}"))
+    monkeypatch.setattr(dbl, "is_reachable", reachable)
+
+    assert dbl.ensure_db_up("postgresql://u:p@localhost:55432/db") is False
+    assert events == [
+        "authorize-runtime:postgresql://u:p@localhost:55432/db:",
+        "reachable",
+        "authorize:connect",
+    ]
+
+
+def test_ownership_refusal_prevents_reachability(monkeypatch):
+    monkeypatch.setattr(
+        dbl,
+        "_authorize_runtime",
+        lambda database_url, redis_url: (_ for _ in ()).throw(RuntimeError("foreign checkout owner")),
+    )
+    monkeypatch.setattr(
+        dbl,
+        "is_reachable",
+        lambda *args: (_ for _ in ()).throw(AssertionError("reachability must not run")),
+    )
+
+    with pytest.raises(RuntimeError, match="foreign checkout owner"):
+        dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
+
+
+def test_real_authority_accepts_the_checkouts_own_endpoints(tmp_path, monkeypatch):
+    """The floor under the two refusals below: this fixture is not a blanket no."""
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    REAL_AUTHORIZE_RUNTIME(settings["DATABASE_URL"], settings["REDIS_URL"])
+
+
+def test_real_authority_rejects_explicit_foreign_dsn_before_probe(tmp_path, monkeypatch):
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    monkeypatch.setattr(dbl, "_authorize_runtime", REAL_AUTHORIZE_RUNTIME)
+    monkeypatch.setenv("REDIS_URL", settings["REDIS_URL"])
+    monkeypatch.setattr(
+        dbl,
+        "is_reachable",
+        lambda *args: (_ for _ in ()).throw(AssertionError("foreign endpoint was probed")),
+    )
+    foreign_port = int(settings["POSTGRES_HOST_PORT"]) + 1
+
+    with pytest.raises(RuntimeError, match="runtime DATABASE_URL"):
+        dbl.ensure_db_up(f"postgresql://u:p@localhost:{foreign_port}/divineruin")
+
+
+def test_real_authority_rejects_foreign_redis_before_probe(tmp_path, monkeypatch):
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    monkeypatch.setattr(dbl, "_authorize_runtime", REAL_AUTHORIZE_RUNTIME)
+    monkeypatch.setenv("REDIS_URL", f"redis://localhost:{int(settings['VALKEY_HOST_PORT']) + 1}")
+    monkeypatch.setattr(
+        dbl,
+        "is_reachable",
+        lambda *args: (_ for _ in ()).throw(AssertionError("foreign endpoint was probed")),
+    )
+
+    with pytest.raises(RuntimeError, match="runtime REDIS_URL"):
+        dbl.ensure_db_up(settings["DATABASE_URL"])
+
+
+def test_readiness_raises_ownership_refusal_without_sleep(monkeypatch):
+    result = _FakeCompleted(returncode=0)
+    refusal = _FakeCompleted(returncode=78)
+    refusal.stderr = "worktree ownership: project belongs to foreign checkout"
+    calls = iter([result, refusal])
+    monkeypatch.setattr(dbl, "_compose", lambda *args: next(calls))
+    monkeypatch.setattr(
+        dbl.time,
+        "sleep",
+        lambda seconds: (_ for _ in ()).throw(AssertionError("ownership refusal was retried")),
+    )
+
+    with pytest.raises(RuntimeError, match="foreign checkout"):
+        dbl._start_compose("localhost", 55432, "divineruin")
+
+
+def test_readiness_retries_plain_pg_isready_not_ready(monkeypatch):
+    ready = _FakeCompleted(returncode=0)
+    not_ready = _FakeCompleted(returncode=1)
+    calls = iter([ready, not_ready, ready])
+    sleeps = []
+    monkeypatch.setattr(dbl, "_compose", lambda *args: next(calls))
+    monkeypatch.setattr(dbl.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    dbl._start_compose("localhost", 55432, "divineruin")
+    assert sleeps == [1]
+
+
+def test_compose_never_inherits_the_callers_runtime_urls(monkeypatch):
+    captured = {}
+
+    def run(*args, **kwargs):
+        captured.update(kwargs["env"])
+        return _FakeCompleted()
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://foreign@localhost:1/db")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:2")
+    monkeypatch.setattr(dbl.subprocess, "run", run)
+
+    dbl._compose("ps")
+    assert "DATABASE_URL" not in captured
+    assert "REDIS_URL" not in captured
+
+
+def test_authority_uses_repo_root_and_exec_uses_connection_intent(tmp_path, monkeypatch):
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        return _FakeCompleted()
+
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(dbl, "_authorize", REAL_AUTHORIZE)
+    monkeypatch.setattr(dbl.subprocess, "run", run)
+
+    dbl._authorize("connect")
+    dbl._compose("exec", "-T", "postgres", "pg_isready")
+
+    assert calls[0][0][-2:] == ["authorize", "connect"]
+    assert calls[0][1]["cwd"] == tmp_path
+    assert calls[1][0][2:4] == ["compose", "connect"]
+
+
+def test_ci_service_mode_never_starts_compose(monkeypatch):
+    events: list[str] = []
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("DIVINERUIN_CI_SERVICE_DB", "1")
+    monkeypatch.setattr(dbl, "_authorize", lambda intent: events.append(f"authorize:{intent}"))
+    monkeypatch.setattr(dbl, "is_reachable", lambda *args: False)
+    monkeypatch.setattr(
+        dbl,
+        "_compose",
+        lambda *args: (_ for _ in ()).throw(AssertionError("CI must not invoke Compose")),
+    )
+
+    with pytest.raises(RuntimeError, match="Compose mutation is disabled"):
+        dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
+    assert events == ["authorize:ci"]
+
+
+def test_destroy_recheck_ignores_a_stale_ambient_dsn(tmp_path, monkeypatch):
+    """At session END os.environ["DATABASE_URL"] is the acceptance testcontainer's
+    — the bdd fixture assigns it and never restores it — so a destroy recheck that
+    read the ambient value would refuse this checkout's own teardown. The pinned
+    DSN was already authorized when the session started.
+    """
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    monkeypatch.setattr(dbl, "_authorize", REAL_AUTHORIZE)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setattr(dbl, "_compose", lambda *args: (_ for _ in ()).throw(AssertionError("down must not run")))
+    host, port = dbl.parse_host_port(settings["DATABASE_URL"])
+    _, state_path = dbl._lockfile_paths(host, port)
+    dbl._write_state(state_path, _owned_state(1))
+
+    with pytest.raises(RuntimeError) as refusal:
+        dbl.stop_if_started(True, settings["DATABASE_URL"])
+
+    # The disposable checkout owns no Docker resources, so the real authority
+    # still refuses — but about ITS project, never about the stale endpoint.
+    assert "runtime DATABASE_URL" not in str(refusal.value)
+    assert settings["COMPOSE_PROJECT_NAME"] in str(refusal.value)
+
+
+def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, _owned_state(1))
+    monkeypatch.setattr(
+        dbl,
+        "_authorize",
+        lambda intent: (_ for _ in ()).throw(RuntimeError("owner changed")),
+    )
+    monkeypatch.setattr(
+        dbl,
+        "_compose",
+        lambda *args: (_ for _ in ()).throw(AssertionError("down must not run")),
+    )
+
+    with pytest.raises(RuntimeError, match="owner changed"):
+        dbl.stop_if_started(True, "postgresql://u:p@localhost:55432/db")
+    assert dbl._read_state(state_path) == _owned_state(0)

@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
+PREPUSH_TEST_MODE=production
+if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; then
+  case "${3:-}" in
+    docs|lanes) PREPUSH_TEST_MODE="$3" ;;
+  esac
+fi
+
+if [ "$PREPUSH_TEST_MODE" = production ]; then
+  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
+    value="${!name-}"
+    if [ -n "$value" ]; then
+      echo "ERROR: production pre-push refuses internal test override $name." >&2
+      exit 1
+    fi
+  done
+fi
+
 # Env vars to strip from unit tests so missing mocks are caught locally.
 # CI's test-bun job has DATABASE_URL + REDIS_URL (real services) but NOT
 # these external API vars — so we match that here.
@@ -19,7 +36,7 @@ mask_python_test_environment() {
   export DATABASE_URL= REDIS_URL=
 }
 
-if [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
+if [ "$PREPUSH_TEST_MODE" = docs ] && [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
   mask_python_test_environment
   exec bun --env-file="$BASH_TEST_MASK_ENV" -e '
     const names = ["DATABASE_URL", "REDIS_URL", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY", "INWORLD_API_KEY", "INWORLD_WORKSPACE_ID"];
@@ -27,10 +44,8 @@ if [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
   '
 fi
 
-# BASH_TEST=1 stubs the git diff source (env var instead of `git`) and the
-# heavy test runners (single `echo TESTS_RAN` marker). Used by the harness
-# at .githooks/test-pre-push.sh — see that file for the contract.
-if [ "${BASH_TEST:-}" = "1" ]; then
+# The positional docs mode stubs the git diff source and heavy test runner.
+if [ "$PREPUSH_TEST_MODE" = docs ]; then
   _get_diff() { printf '%s\n' "${BASH_TEST_DIFF:-}"; }
   _run_tests() { echo "TESTS_RAN"; }
 else
@@ -38,8 +53,10 @@ else
   _run_tests() {
     echo "Running pre-push test suite..."
 
+    # The positional lane mode replaces the lanes and their preamble together.
+    if [ "$PREPUSH_TEST_MODE" != lanes ]; then
     # Validate the hook's own docs-only-skip logic before relying on it.
-    # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
+    # The harness uses positional docs mode in sub-shells, so it cannot recurse here.
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
@@ -69,10 +86,19 @@ else
       exit 1
     fi
 
+    # Both stand up real Compose stacks, so they sit BELOW the Docker gate (a
+    # Docker-less host gets the message above, not a raw compose error) and
+    # below the lint backstop, which is what keeps a typo cheap.
+    echo "  Worktree ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
+    echo "  Worktree listener ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
+
     # Reap orphaned per-run test containers from earlier runs that were SIGKILL'd
     # (or SIGTERM'd before teardown finished) so they don't accumulate. PID-aware:
     # a live concurrent run's containers are skipped, never killed.
     bash "$(dirname "$0")/../scripts/sweep-test-containers.sh" || true
+    fi
 
     # Provision Postgres + Redis for the lanes that need real services (E2E's API
     # server). No-op when DATABASE_URL is already set, so a dev with .env / CI's
@@ -81,8 +107,10 @@ else
     # gate run without a sourced .env, and isolates the DB across overlapping runs.
     # Most server bun tests are env-independent, but the test:server lane
     # below runs db.test.ts against the live DB — keep DATABASE_URL exported here
-    # or that lazy-Proxy regression test silently skips. (The Python lane unsets
-    # these below and uses its own testcontainers.)
+    # or that lazy-Proxy regression test silently skips. (The acceptance and
+    # Python lanes unset these below: their pytest lifecycle resolves and
+    # validates THIS checkout's own stack, which a per-run ephemeral endpoint
+    # is not and is refused as foreign.)
     # Combined cleanup: kill every STILL-RUNNING backgrounded lane AND remove the
     # per-run test-env containers via _te_teardown (defined by test-env.sh).
     # bg_pids tracks only un-reaped jobs (reaped PIDs are dropped below so the
@@ -90,14 +118,26 @@ else
     # sourcing so a failure mid-provision still tears down; _te_teardown guard
     # tolerates it not existing yet. INT/TERM too so a killed push doesn't leak.
     bg_pids=()
+    _terminate_lane_tree() {
+      local parent="$1" child
+      for child in $(pgrep -P "$parent" 2>/dev/null); do
+        _terminate_lane_tree "$child"
+      done
+      kill "$parent" 2>/dev/null || true
+    }
     _cleanup() {
-      for pid in "${bg_pids[@]}"; do kill "$pid" 2>/dev/null; done
+      for pid in "${bg_pids[@]}"; do _terminate_lane_tree "$pid"; done
+      for pid in "${bg_pids[@]}"; do wait "$pid" 2>/dev/null || true; done
       command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
     }
     trap _cleanup EXIT INT TERM
 
     # shellcheck source=scripts/test-env.sh
-    source "$(dirname "$0")/../scripts/test-env.sh"
+    if [ "$PREPUSH_TEST_MODE" = lanes ]; then
+      source "$PREPUSH_TEST_ENV_SOURCE"
+    else
+      source "$(dirname "$0")/../scripts/test-env.sh"
+    fi
     # shellcheck source=scripts/lane-utils.sh
     source "$(dirname "$0")/../scripts/lane-utils.sh"
 
@@ -108,7 +148,7 @@ else
     # place to look when the gate flakes — the e2e lane already proved the pattern;
     # the acceptance + unit lanes (where the sprint-027 testcontainer transient hit)
     # had no capture at all before this.
-    ART="$(cd "$(dirname "$0")/.." && pwd)/flake-artifacts"
+    ART="${PREPUSH_ART_DIR:-$(cd "$(dirname "$0")/.." && pwd)/flake-artifacts}"
     mkdir -p "$ART"
     snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse --short HEAD)"; }
 
@@ -118,18 +158,18 @@ else
     # failure through the pipe.
     # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
     # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
-    # test:acceptance deliberately loads the root .env; ambient values still win over
-    # that file, which lets the unit lanes below mask credentials without changing the
-    # developer-facing scripts.
-    ( set -o pipefail; REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
-      bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
+    # The per-run services belong to server/E2E. Acceptance reloads this checkout's
+    # owned settings and provider credentials through test:acceptance's env file.
+    ( set -o pipefail; unset DATABASE_URL REDIS_URL; \
+      REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
+      run_pre_push_lane acceptance bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
     bg_pids+=("$acc_pid")
 
     # The four bun/python unit lanes are independent — server's db.test.ts uses
-    # the provisioned DB, python uses its own testcontainers and unsets DB/REDIS,
-    # mobile/shared are env-light — so run them CONCURRENTLY, each in its own env
-    # subshell so var scoping can't leak across siblings. Wall-clock drops from
+    # the provisioned DB, python unsets DB/REDIS and resolves this checkout's own
+    # stack from .env, mobile/shared are env-light — so run them CONCURRENTLY,
+    # each in its own env subshell so var scoping can't leak across siblings. Wall-clock drops from
     # sum-of-lanes to max-lane; wait_all_lanes fails the push loud if ANY lane
     # exits non-zero (never swallows an exit code).
     echo "  Bun + Python unit lanes (parallel: server, mobile, shared, python)..."
@@ -141,16 +181,15 @@ else
     # process; keep DATABASE_URL or it silently skips. Strip only the external API
     # vars (matches CI's test-bun env).
     ( set -o pipefail; mask_external_api_environment; \
-      bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
+      run_pre_push_lane server bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
-    ( set -o pipefail; bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
+    ( set -o pipefail; run_pre_push_lane mobile bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
-    ( set -o pipefail; bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
+    ( set -o pipefail; run_pre_push_lane shared bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
-    # python: mask DB/REDIS too — it uses its own testcontainers. Empty ambient
-    # values remain authoritative when the package script explicitly loads .env.
+    # Empty values prevent explicit env files from restoring unit-test credentials.
     ( set -o pipefail; mask_python_test_environment; \
-      bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
+      run_pre_push_lane python bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
     # `if` context suppresses set -e so a failing lane is captured, not aborted-on.
@@ -180,9 +219,9 @@ else
     # 0), so `set -e` won't abort before we read PIPESTATUS[0] — Playwright's REAL
     # exit code (NOT tee's). Capturing PIPESTATUS[0] must be the statement
     # immediately after the pipeline (any other command clobbers PIPESTATUS).
-    e2e_dir="$(cd "$(dirname "$0")/../e2e" && pwd)"
+    e2e_dir="${PREPUSH_E2E_DIR:-$(cd "$(dirname "$0")/../e2e" && pwd)}"
     e2e_log="$ART/last-e2e.log"
-    (cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
+    (cd "$e2e_dir" && run_pre_push_lane e2e bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
     e2e_rc=${PIPESTATUS[0]}
     if [ "$e2e_rc" -ne 0 ]; then
       snap="$(snap_dir)"
@@ -216,7 +255,11 @@ else
       exit 1
     fi
 
-    echo "All tests passed."
+    if [ "$PREPUSH_TEST_MODE" = lanes ]; then
+      echo "Internal pre-push lane harness passed."
+    else
+      echo "All tests passed."
+    fi
   }
 fi
 
