@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Test that the pre-commit hook skips the lint suite when node_modules is absent,
-# and that the .env security guard still fires regardless.
+# Test that the pre-commit hook skips the lint suite when node_modules is absent, that the
+# .env security guard still fires regardless, and that the constraints-cap wall answers the
+# same way for each of the four .xp/ trees the hook can meet. That last set is the reason
+# this file is not just a worktree-skip test: without it the whole cap block can be deleted
+# and every gate in the repo stays green (constraint 1).
 
 # Resolve the hook from this script's location so the test runs correctly
 # regardless of the invoking CWD (e.g. from the pre-push gate). Mirrors the
@@ -26,90 +29,118 @@ mkdir -p "$TEMP_REPO/.githooks"
 cp "$HOOK" "$TEMP_REPO/.githooks/pre-commit"
 chmod +x "$TEMP_REPO/.githooks/pre-commit"
 
-# Initialize git repo in temp location
 cd "$TEMP_REPO"
-git init -q
-git config core.hooksPath .githooks
-git config user.email "test@example.com"
-git config user.name "Test User"
 
-# Ensure no node_modules in temp repo
-[ ! -d node_modules ] || rm -rf node_modules
+# A fresh tree with one ordinary file staged and no node_modules, so every case below
+# starts from the same place: no .xp/, no .env, nothing left over from the case before it.
+reset_repo() {
+  cd "$TEMP_REPO"
+  rm -rf .git .xp .env dummy.txt node_modules
+  git init -q
+  git config core.hooksPath .githooks
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "dummy content" > dummy.txt
+  git add dummy.txt
+}
+
+run_hook() {
+  if output=$(./.githooks/pre-commit 2>&1); then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
+  echo "Exit code: $exit_code"
+  echo "Output:"
+  echo "$output"
+}
+
+expect_exit() { # expect_exit <0|nonzero> <description>
+  case "$1" in
+    0) [ "$exit_code" -eq 0 ] || { echo "✗ $2 — hook exited $exit_code"; exit 1; } ;;
+    *) [ "$exit_code" -ne 0 ] || { echo "✗ $2 — hook exited 0"; exit 1; } ;;
+  esac
+  echo "✓ $2"
+}
+
+expect_output() { # expect_output <grep -E pattern> <description>
+  if ! echo "$output" | grep -qiE "$1"; then
+    echo "✗ $2 — no match for /$1/"
+    exit 1
+  fi
+  echo "✓ $2"
+}
+
+reject_output() { # reject_output <grep -E pattern> <description>
+  if echo "$output" | grep -qiE "$1"; then
+    echo "✗ $2 — matched /$1/"
+    exit 1
+  fi
+  echo "✓ $2"
+}
+
+write_xp() { # write_xp <cap|none> <constraints byte count|none>
+  mkdir -p .xp
+  [ "$1" = "none" ] || printf 'constraints_chars_cap: %s\n' "$1" > .xp/config.yml
+  [ "$2" = "none" ] || python3 -c "import sys; open('.xp/constraints.md','w').write('y' * int(sys.argv[1]))" "$2"
+}
 
 echo ""
 echo "========== Test Case 1: Skip path (no node_modules, normal file) =========="
-
-# Stage a normal file
-echo "dummy content" > dummy.txt
-git add dummy.txt
-
-# Run the hook
-if output=$(./.githooks/pre-commit 2>&1); then
-  exit_code=0
-else
-  exit_code=$?
-fi
-
-echo "Exit code: $exit_code"
-echo "Output:"
-echo "$output"
-
-# Check assertions
-if [ $exit_code -eq 0 ]; then
-  echo "✓ Hook exited with 0"
-else
-  echo "✗ Hook exited with non-zero: $exit_code"
-  exit 1
-fi
-
-if echo "$output" | grep -qiE "(node_modules absent|skipping)"; then
-  echo "✓ Output contains skip notice"
-else
-  echo "✗ Output does not mention node_modules or skipping"
-  echo "Expected to find 'node_modules absent' or 'skipping' in output"
-  exit 1
-fi
+reset_repo
+run_hook
+expect_exit 0 "Hook exited with 0"
+expect_output "(node_modules absent|skipping)" "Output contains skip notice"
 
 echo ""
 echo "========== Test Case 2: .env guard still fires (no node_modules, .env file) =========="
-
-# Reset the test repo
-rm -rf "$TEMP_REPO/.git"
-git init -q
-git config core.hooksPath .githooks
-git config user.email "test@example.com"
-git config user.name "Test User"
-
-# Stage a .env file
+reset_repo
 echo "SECRET_KEY=secret" > .env
 git add .env
+run_hook
+expect_exit 1 "Hook blocked the .env"
+expect_output "\.env file detected" "Output contains .env guard message"
 
-# Run the hook
-if output=$(./.githooks/pre-commit 2>&1); then
-  exit_code=0
-else
-  exit_code=$?
-fi
+# The four .xp/ trees. Case 3 is the one the pre-push self-test itself runs in — a scratch
+# repo that is not an xp checkout — and cases 4-6 are what stops that scoping from widening
+# into "the cap is never measured". Delete the cap block and case 4 reds; swap its `||` for
+# `&&` and cases 5 and 6 red.
+echo ""
+echo "========== Test Case 3: no .xp/ at all — nothing to measure, no refusal =========="
+reset_repo
+run_hook
+expect_exit 0 "Hook exited with 0"
+reject_output "constraints" "No constraints complaint in a non-xp tree"
 
-echo "Exit code: $exit_code"
-echo "Output:"
-echo "$output"
+echo ""
+echo "========== Test Case 4: constraints.md over its cap — refused by size =========="
+reset_repo
+write_xp 10 50
+run_hook
+expect_exit 1 "Hook blocked the over-cap constraints.md"
+expect_output "50 bytes, over its 10-byte cap" "Refusal names the measured size and the cap"
 
-# Check assertions
-if [ $exit_code -ne 0 ]; then
-  echo "✓ Hook exited with non-zero (correctly blocked .env)"
-else
-  echo "✗ Hook exited with 0 (should have blocked .env)"
-  exit 1
-fi
+echo ""
+echo "========== Test Case 5: constraints.md under its cap — passes =========="
+reset_repo
+write_xp 10 5
+run_hook
+expect_exit 0 "Hook exited with 0"
+reject_output "over its" "No size refusal under the cap"
 
-if echo "$output" | grep -qi ".env file detected"; then
-  echo "✓ Output contains .env guard message"
-else
-  echo "✗ Output does not mention .env file detection"
-  echo "Expected to find '.env file detected' in output"
-  exit 1
-fi
+echo ""
+echo "========== Test Case 6: half an .xp/ either way — misconfigured, refused =========="
+reset_repo
+write_xp none 50
+run_hook
+expect_exit 1 "Hook blocked constraints.md with no config.yml"
+expect_output "constraints_chars_cap missing" "Refusal names the missing cap"
+
+reset_repo
+write_xp 4000 none
+run_hook
+expect_exit 1 "Hook blocked config.yml with no constraints.md"
+expect_output "constraints\.md is missing" "Refusal names the missing constraints.md"
 
 echo ""
 echo "========== All tests passed! =========="

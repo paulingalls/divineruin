@@ -1,0 +1,47 @@
+{
+  "valid_combined_bite": {
+    "name": "Venom Bite",
+    "damage": "1d8+3",
+    "damage_type": "piercing",
+    "properties": [],
+    "applies_condition": "poisoned",
+    "save": "constitution",
+    "dc": 12
+  },
+  "valid_half_on_success": {
+    "name": "Necrotic Pulse",
+    "damage": "2d8",
+    "damage_type": "necrotic",
+    "properties": [],
+    "save": "constitution",
+    "dc": 14,
+    "half_on_success": true
+  },
+  "invalid_half_without_save": {
+    "name": "Malformed Wave",
+    "damage": "2d8",
+    "damage_type": "necrotic",
+    "properties": [],
+    "dc": 14,
+    "half_on_success": true
+  },
+  "invalid_half_without_damage": {
+    "name": "Hollow Wave",
+    "damage": "0",
+    "damage_type": "necrotic",
+    "properties": [],
+    "save": "constitution",
+    "dc": 14,
+    "half_on_success": true
+  },
+  "corruption_wave": {
+    "name": "Corruption Wave",
+    "damage": "2d8",
+    "damage_type": "necrotic",
+    "properties": [],
+    "applies_condition": "poisoned",
+    "save": "constitution",
+    "dc": 16,
+    "half_on_success": true
+  }
+}

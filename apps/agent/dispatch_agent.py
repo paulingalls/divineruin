@@ -9,6 +9,7 @@ Anthropic's strict-tool ceiling (llm_config.MAX_STRICT_TOOLS; see
 docs/decisions/0004-agent-tool-scaling.md).
 """
 
+import logging
 from typing import Any
 
 from activity_tools import begin_activity, resolve_activity
@@ -22,6 +23,8 @@ from query_tools import query_info
 from recipe_tools import learn
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
+
+logger = logging.getLogger("divineruin.dispatch_agent")
 
 DISPATCH_TOOLS = [
     # Downtime activities (training, companion errands, crafting, workspaces,
@@ -58,8 +61,8 @@ class DispatchAgent(BaseGameAgent):
         )
         self._spec_tap: SpecializationTapHandler | None = None
 
-    async def on_enter(self) -> None:
-        await super().on_enter()
+    async def _enter(self) -> None:
+        await super()._enter()
         # Host the L5 specialization-tap consumer: training-driven level-ups can surface
         # the fork here, so a tap (or DM voice) resolves it via select without a handoff.
         sd = self.session.userdata

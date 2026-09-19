@@ -209,6 +209,7 @@ _MAGE_ROW = {
     "weapon_proficiencies": ["staff"],
     "starting_skills": {"options": ["arcana"], "num_choices": 1},
     "magic_source": "arcane",
+    "spell_tier_min_levels": {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9},
 }
 
 
@@ -218,6 +219,7 @@ class TestMagicSourceParse:
 
     def test_absent_magic_source_is_none(self):
         row = {k: v for k, v in _MAGE_ROW.items() if k != "magic_source"}
+        row["spell_tier_min_levels"] = {}
         assert parse_archetype_row("warrior", row).magic_source is None
 
     def test_rejects_out_of_vocab_magic_source(self):

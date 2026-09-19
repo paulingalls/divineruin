@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { dbMockFactory, resetMockDb, setQueryStubs } from "./activities-test-mock.ts";
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 import { setupTrainingConfigFixture } from "./test-fixtures/training-config.ts";
+import type { TemplateItem } from "@divineruin/shared";
+import type { TrainingProgramConfig } from "./activity_templates.ts";
 
 void mock.module("./db.ts", dbMockFactory);
 
 const { handleGetActivityTemplates } = await import("./activity-templates-api.ts");
 const { handleGetCatchUpFeed } = await import("./catchup.ts");
-const { getAllTrainingPrograms, getErrandTemplate } = await import("./activity_templates.ts");
+const { getErrandTemplate, parseProgramRows, setTrainingPrograms } =
+  await import("./activity_templates.ts");
+const { parseActivityTypeRows } = await import("./training_state_machine.ts");
 
 beforeEach(() => {
   resetMockDb();
@@ -15,20 +19,10 @@ beforeEach(() => {
   setupTrainingConfigFixture();
 });
 
-interface TrainingItem {
-  id: string;
-  name: string;
-  active: {
-    startTime: string;
-    resolveAtEstimate: string;
-    isAwaitingDecision: boolean;
-  } | null;
-}
-
-async function getTrainingItems(): Promise<TrainingItem[]> {
+async function getTrainingItems(): Promise<TemplateItem[]> {
   const response = await handleGetActivityTemplates("player_1");
   const payload = (await response.json()) as {
-    groups: { type: string; items: TrainingItem[] }[];
+    groups: { type: string; items: TemplateItem[] }[];
   };
   const training = payload.groups.find((group) => group.type === "training");
 
@@ -36,17 +30,88 @@ async function getTrainingItems(): Promise<TrainingItem[]> {
   return training!.items;
 }
 
-test("training templates are inactive and exclude spell programs when no cycle runs", async () => {
-  const items = await getTrainingItems();
-  const expectedIds = getAllTrainingPrograms()
-    .filter((program) => !program.training_activity_type.startsWith("spell_"))
-    .map((program) => program.id);
+describe("training program catalog", () => {
+  const programRows = async () =>
+    (
+      (await Bun.file(
+        new URL("../../../content/training_programs.json", import.meta.url),
+      ).json()) as Record<string, unknown>[]
+    ).map(({ id, ...data }) => ({ id: id as string, data }));
 
-  expect(items.length).toBeGreaterThan(0);
-  expect(items.map((item) => item.id)).toEqual(expectedIds);
-  expect(items.map((item) => item.id)).toContain("combat_basics");
-  expect(items.map((item) => item.id)).not.toContain("arcane_study");
-  expect(items.every((item) => item.active === null)).toBe(true);
+  const activityTypeRows = async () =>
+    (
+      (await Bun.file(
+        new URL("../../../content/training_activity_types.json", import.meta.url),
+      ).json()) as Record<string, unknown>[]
+    ).map(({ id, ...data }) => ({ id: id as string, data }));
+
+  test("the real authored catalogs are non-empty and every program names an activity type", async () => {
+    const programs = await programRows();
+    const types = await activityTypeRows();
+    expect(programs.length).toBeGreaterThan(0);
+    expect(types.length).toBeGreaterThan(0);
+
+    const activityTypes = parseActivityTypeRows(types);
+    expect(parseProgramRows(programs, activityTypes).size).toBe(programs.length);
+  });
+
+  test("rejects a bogus non-spell activity type where the program is authored", async () => {
+    const programs = await programRows();
+    const activityTypes = parseActivityTypeRows(await activityTypeRows());
+    const [program] = programs;
+    expect(program).toBeDefined();
+    const bad = {
+      id: program!.id,
+      data: { ...(program!.data as object), training_activity_type: "recipe_unpublished" },
+    };
+    expect(() => parseProgramRows([bad], activityTypes)).toThrow(
+      /training_activity_type.*recipe_unpublished/,
+    );
+  });
+
+  test("an empty activity type catalog fails loud", async () => {
+    const programs = await programRows();
+    expect(() => parseProgramRows(programs, new Map())).toThrow(
+      /training_activity_types produced no rows/,
+    );
+  });
+
+  test("an empty authored catalog fails loud", () => {
+    expect(() => parseProgramRows([], new Map([["technique_base", {} as never]]))).toThrow(
+      /training_programs produced no rows/,
+    );
+  });
+
+  test("a duplicate row id fails loud", async () => {
+    const [first] = await programRows();
+    const activityTypes = parseActivityTypeRows(await activityTypeRows());
+    expect(() => parseProgramRows([first!, first!], activityTypes)).toThrow(/duplicate/);
+  });
+});
+
+test("a render failure is a 500, never a successful empty HUD", async () => {
+  setTrainingPrograms(
+    new Map([
+      [
+        "broken_program",
+        {
+          id: "broken_program",
+          name: "Broken Program",
+          training_activity_type: "recipe_unpublished",
+          stat: "intelligence",
+          dc: 10,
+          mentor_id: "mentor_missing",
+        } as unknown as TrainingProgramConfig,
+      ],
+    ]),
+  );
+
+  const response = await handleGetActivityTemplates("player_1");
+  const payload = (await response.json()) as Record<string, unknown>;
+
+  expect(response.status).toBe(500);
+  expect(payload).toEqual({ error: "Internal server error" });
+  expect(payload).not.toHaveProperty("groups");
 });
 
 test("a running technique cycle is active on its training program", async () => {

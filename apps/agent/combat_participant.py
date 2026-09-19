@@ -72,7 +72,9 @@ class CombatParticipant:
     # players/companions and untagged/pre-M15 enemy rows (from_dict uses CombatParticipant(**p),
     # so the default covers legacy rows), mirroring enhancers/conditions/saving_throw_proficiencies.
     resistance_tags: list[str] = field(default_factory=list)
-    # Unknown keeps legacy in-flight combats eligible rather than silently removing a capability.
+    # None is a row persisted before this field existed. The window openers read it as NOT an
+    # owner rather than tolerating it: such a row carries no reaction_ids either, so a window
+    # offered to it could only ever end in the activation gate refusing the spend.
     has_reaction_ability: bool | None = None
     # The class catalog's reaction ids: a participant carries no class, and the DM must be handed
     # an exact id at a window.

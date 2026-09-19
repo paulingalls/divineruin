@@ -132,8 +132,8 @@ class ExplorationAgent(BaseGameAgent):
         except Exception:
             logger.exception("Failed to publish session_init")
 
-    async def on_enter(self) -> None:
-        await super().on_enter()
+    async def _enter(self) -> None:
+        await super()._enter()
         logger.info("%sAgent entered session", self._agent_type.capitalize())
         sd: SessionData = self.session.userdata
 

@@ -288,7 +288,7 @@ class SessionData:
     disconnect_time: float = 0.0
 
     # The warm-layer loop, owned by the SESSION rather than by the agent that built it: it is
-    # constructed once (ExplorationAgent.on_enter, if absent) and survives every mode handoff,
+    # constructed once (ExplorationAgent._enter, if absent) and survives every mode handoff,
     # so the DM keeps a warm layer while a CombatAgent holds the floor. Not serialized.
     background: BackgroundProcess | None = field(default=None, repr=False, compare=False)
 
@@ -297,7 +297,7 @@ class SessionData:
     # ExplorationAgent, so anything the recap reads off `self` restarts at every fight.
     session_start_time: float = field(default_factory=time.time)
     # One transcript file per session, seeded by the first agent to enter and appended to by
-    # every agent after it (BaseGameAgent.on_enter). TranscriptLogger mints a fresh timestamped
+    # every agent after it (BaseGameAgent._enter). TranscriptLogger mints a fresh timestamped
     # path when given none, so per-agent handles meant the recap read only the last agent's half.
     transcript_path: str | None = None
     # The handle agent.py's on_session_end joins. AgentSession emits "close" synchronously

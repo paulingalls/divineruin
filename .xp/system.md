@@ -107,6 +107,76 @@ reds the moment a correct fix moves the code: `b8b869ae` went red when story-029
 put the payload in a builder. When a change MOVES or RENAMES a test file or
 class, grep `work.md` for the old name and re-resolve every record pointing at it.
 
+**Constraint case law** — the incident each `.xp/constraints.md` item was
+written against. The rule is the wall; this is why it is where it is. Cite the
+item number, not this section.
+
+- **2 — file cap.** Two reviewers spent a round arguing about `content/*.json`
+  before the human ruled authored data exempt (2026-09-04).
+- **4 — tolerance.** Sprint-048's narration normalizer coerced the shapes I had
+  seen and let its `else` absorb every shape I had not, so an errand "resolved"
+  in silence.
+- **5 — falsifiers.** Four red at the sprint-052 close: three grepped a name the
+  fix had put elsewhere or in camelCase, one debt's polarity was inverted.
+- **6 — producers.** Twice in sprint-045 we shipped a gate keyed on a token
+  nothing produced: a reaction `window` the DM had to guess among 9.
+- **7 — both sides.** Sprint-051 lost three land rounds to pins outside a card's
+  directories. The acceptance clause is sprint-053's: a combat declaration or
+  band card whose only lane is `test:all` ships untested against the harness.
+- **8 — inventories.** Sprint-046 story-008 excluded four `companion_kael` sites
+  without grepping; the reviewer found sixteen more on the session path.
+- **9 — someone else's contract.** Sprint-047: a schema walk went green while
+  the live API refused three agents, and a `MagicMock` invented every attribute
+  production read (again in sprint-051). Sprint-048 added the PARSING side — we
+  read the model's narration `segments` assuming dicts, and it sent a bare
+  string. ADR 0004's strict ceilings are the gameplay agents' toolsets;
+  narration's one tool was accepted strict the day we finally asked (sprint-050).
+- **10 — code claims.** Sprint-048: four lead assertions taken from a
+  DESCRIPTION were wrong, one stating `reactions_available`'s polarity backwards
+  from its name. Sprint-053: five CARD claims were, including a `Verify:` naming
+  a test file that does not exist — pytest exits 4 and nothing reds.
+- **11 — recurrence.** The training midpoint judge red in sprints 48, 49 and 50,
+  about 40% of pushes, each run shrugged off alone; the cause was the DM
+  paraphrasing the resolved state away, one prompt line.
+- **12 — absence and floors.** SPRINT 54 CAUGHT SEVEN VACUOUS GUARDS WITH THIS
+  RULE, five of them inside cards written to fix a vacuous guard: 062's
+  `half_on_success` check (deletable on either side, all 16 Python and 95 TS
+  tests green, because every fixture row carrying the flag also carried damage);
+  067's parity pin (mage and warrior of eighteen archetypes); 055's declarability
+  pin (2 ability rows of 145); 081's parity walks (green with
+  `content/spells.json` DELETED); 084's walk (the declare gate short-circuits and
+  ACCEPTS what it cannot resolve, so for 11 spell-backed rows it ABSTAINED and
+  the walk scored abstention as agreement); 088's armor gate (deletable — the one
+  test reaching it with 0 damage equips no armor, so `_find_equipped` returns
+  None and hides it); and 086, where tightening the ownership test DRAINED the
+  neighbouring `p.type == "player"` check — deleting it left all 7127 Python
+  tests green, though it redded at base. A floor must also be REACHABLE: a card
+  refresh caught me writing one (`shorter than content/archetype_abilities.json`)
+  that `query_info` can never meet, since it emits only the caller's
+  class-and-level rows.
+- **12, earlier.** Sprint-053's review: story-078's producer
+  tripwire walked `archetype_abilities.json` only, so `content/spells.json` was
+  walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
+  (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
+  against its own relocation, because `os.walk` over a missing directory yields
+  nothing.
+
+**Handback contract** — what a story owes before it is handed back. Sprint 54
+lost review rounds to both halves of this, five times.
+
+- RUN THE CARD'S `Verify:` AND SAY YOU RAN IT. story-085 was handed back with a
+  RED Verify (6 of 7 cases failing) and a tests-only diff — the production fix
+  was never written, and nothing in the handback said so. A red Verify is the one
+  state a story cannot be handed over in.
+- RUN EVERY LANE THE CARD NAMES. A card carrying a `THE SLOW LANE` line means
+  `bun run test:acceptance:nollm` before finishing (constraint 7). Stories 073,
+  083, 084, 085 and 088 all skipped it silently and a reviewer ran it each time —
+  five for five, which means the gate was the review, not the executor.
+- IF A COMMAND WILL NOT RUN, SAY WHICH AND WHY in the handback. A phantom red
+  from the wrong command is worse than a missing run: story-087's handback
+  claimed "infrastructure contamination" from 3 failures that `bun run
+  test:server` excludes by design — the tree was green and the command was wrong.
+
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

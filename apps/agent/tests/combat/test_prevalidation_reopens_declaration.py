@@ -112,6 +112,47 @@ async def test_prevalidation_refusal_reopens_persisted_phase_and_allows_retry(de
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
 
+@pytest.mark.asyncio
+async def test_malformed_stored_declaration_reopens_and_allows_retry(dev_db_pool):
+    pool = dev_db_pool
+    player_id = "s060_malformed"
+    combat_id = "combat_s060_malformed"
+    try:
+        await _seed(pool, player_id)
+        state = _state(combat_id, player_id, "Longsword")
+        state.pending_declarations[player_id] = {"type": "attack", "action": "Longsword"}
+        await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
+        context = make_context(player_id=player_id)
+        context.userdata.combat_state = state
+
+        with pytest.raises(ToolError) as refused:
+            await combat_turn._resolve_phase_impl(context, resolver=_damage_resolver(0))
+
+        message = str(refused.value)
+        assert "attack declaration requires a 'target_id'" in message
+        assert "whole phase" in message
+        assert context.userdata.combat_state.beat == combat_phase.PhaseBeat.DECLARATION
+        assert context.userdata.combat_state.pending_declarations == {}
+        persisted = await db_mutations.load_combat_state(combat_id, conn=pool)
+        assert persisted is not None
+        assert persisted.beat == combat_phase.PhaseBeat.DECLARATION
+        assert persisted.pending_declarations == {}
+        row = await db_queries.get_player(player_id, conn=pool)
+        assert row is not None
+        assert row["hp"]["current"] == 25
+        assert row["stamina"]["current"] == 10
+        assert row["focus"]["current"] == 0
+        assert all(not participant.conditions for participant in persisted.participants)
+
+        await combat_turn._declare_phase_impl(context, {player_id: {"type": "defend"}})
+        result = await combat_turn._resolve_phase_impl(context, resolver=_damage_resolver(0))
+        assert isinstance(result, str)
+        assert json.loads(result)["packets"][0]["resolved"] is True
+    finally:
+        await db_mutations.delete_combat_state(combat_id, conn=pool)
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+
 def test_reopen_helper_is_pure_and_changes_only_declaration_fields():
     original = _state("combat_reset_pure", "reset_pure", "invented_ability")
 

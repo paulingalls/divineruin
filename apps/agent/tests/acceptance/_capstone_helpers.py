@@ -17,6 +17,7 @@ from acceptance.seeds import seed_player, seed_player_with_pools
 from combat import _helpers as _combat_helpers
 
 import db_mutations
+import db_queries
 import event_types as E
 from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
@@ -100,13 +101,18 @@ async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player
     window names a reaction the DM can pass.
     """
     if player_class is not None:
-        player = state.get_participant(player_id)
-        assert player is not None, f"{player_id!r} is not in the hand-built combat"
-        player.reaction_ids = class_reaction_ids(player_class, player.level)
-        player.has_reaction_ability = bool(player.reaction_ids)
         await seed_player_with_pools(pool, player_id=player_id, class_=player_class)
     else:
         await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
+    row = await db_queries.get_player(player_id, conn=pool)
+    if row is None:
+        raise RuntimeError(f"Seeded player {player_id!r} disappeared before combat setup")
+    player = state.get_participant(player_id)
+    assert player is not None, f"{player_id!r} is not in the hand-built combat"
+    player.level = row["level"]
+    if player_class is not None:
+        player.reaction_ids = class_reaction_ids(player_class, player.level)
+        player.has_reaction_ability = bool(player.reaction_ids)
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
     ctx.userdata.combat_state = state
 

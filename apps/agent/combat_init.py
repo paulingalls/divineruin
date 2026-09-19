@@ -21,7 +21,7 @@ import db_queries
 import event_types as E
 import item_effects
 import rules_engine
-from combat_init_validation import _validate_enemy_action_conditions, _validate_enemy_resistance_tags
+from combat_init_validation import _validate_enemy_action_shapes, _validate_enemy_resistance_tags
 from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
@@ -155,7 +155,7 @@ async def _start_combat_locked(
     # ToolError (the _start_combat_impl content-error convention, matching the stance-gate above),
     # not a raw ValueError at the tool boundary. The inner {e} names the specific defect.
     try:
-        _validate_enemy_action_conditions(enemies)
+        _validate_enemy_action_shapes(enemies)
         validate_encounter_actions(enemies)
         _validate_enemy_resistance_tags(enemies)
     except ValueError as e:

@@ -10,7 +10,7 @@ module only computes beat transitions, ordered resolution packets, and wrap effe
 import random
 
 import pytest
-from combat._helpers import _declarations, _make_combat_state
+from combat._helpers import _declarations, _make_combat_state, _own_reaction
 
 import reaction_spend
 import reaction_windows
@@ -40,6 +40,10 @@ class TestDeclarationBeat:
     def test_refreshes_reaction_for_players_only(self):
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
+        for participant in state.participants:
+            # The enemy owns a reaction too, so TYPE is the only thing that can exclude it —
+            # with the ownership gate alone, every enemy is skipped for carrying None.
+            participant.has_reaction_ability = True
 
         next_state, _ = advance_combat_phase(state, _declarations())
 
@@ -151,6 +155,7 @@ class TestValidateReactionActivation:
             triggers=reaction_windows.post_roll_triggers({}, hit=hit),
         )
         state.reactions_available = {"player_1": reaction_spend.unspent()}
+        _own_reaction(state, self.accepts, self.refuses)
         return state
 
     def test_accepts_a_reaction_whose_catalog_window_is_open_with_no_declaration(self):

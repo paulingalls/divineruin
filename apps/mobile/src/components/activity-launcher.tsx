@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, View } from "react-native";
 import { useStore } from "zustand";
 
 import {
@@ -7,15 +7,19 @@ import {
   errandBusyLabel,
   errandDestinationPrompt,
   getActivityGroupState,
+  getActivityTemplatesState,
+  getLaunchIntent,
   isStartVisible,
   mode,
   trainingBusyLabel,
+  type ActivityTemplatesState,
 } from "@/components/activity-launcher-strings";
+import { styles } from "@/components/activity-launcher-styles";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
+import { BrandColors } from "@/constants/theme";
 import { portraitStore } from "@/stores/portrait-store";
 import { API_BASE, authHeaders } from "@/utils/api";
-import type { MaterialRequirement, TemplateItem, TemplateGroup } from "@divineruin/shared";
+import type { MaterialRequirement, TemplateItem } from "@divineruin/shared";
 
 interface ActivityLauncherProps {
   onStartActivity: (type: string, parameters: Record<string, unknown>) => Promise<void>;
@@ -31,27 +35,30 @@ interface ErrandPickerState {
   destinations: string[];
 }
 
+interface SpellPickerState {
+  item: TemplateItem;
+  spellIds: string[];
+}
+
 export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
-  const [groups, setGroups] = useState<TemplateGroup[]>([]);
+  const [templatesState, setTemplatesState] = useState<ActivityTemplatesState>({ kind: "loading" });
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [startingItemId, setStartingItemId] = useState<string | null>(null);
   const [error, setError] = useState<{ itemId: string; message: string } | null>(null);
   const [errandPicker, setErrandPicker] = useState<ErrandPickerState | null>(null);
+  const [spellPicker, setSpellPicker] = useState<SpellPickerState | null>(null);
   const [pickerSelection, setPickerSelection] = useState<string | null>(null);
   const companionName = useStore(portraitStore, (s) => s.companionName);
   const mountedRef = useRef(true);
 
   const fetchTemplates = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/activity-templates`, {
+    const nextState = await getActivityTemplatesState(() =>
+      fetch(`${API_BASE}/api/activity-templates`, {
         headers: authHeaders(),
-      });
-      if (res.ok && mountedRef.current) {
-        const data = (await res.json()) as { groups: TemplateGroup[] };
-        setGroups(data.groups);
-      }
-    } catch {
-      // Templates will be empty — launcher just won't show
+      }),
+    );
+    if (mountedRef.current) {
+      setTemplatesState(nextState);
     }
   }, []);
 
@@ -91,13 +98,14 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
         return;
       }
 
-      let params: Record<string, unknown>;
-      if (type === "crafting") {
-        params = { recipe_id: item.params.recipe_id };
-      } else {
-        params = { program_id: item.params.program_id };
+      const intent = getLaunchIntent(type as "crafting" | "training", item);
+      if (intent.kind === "choose-spell") {
+        setSpellPicker({ item, spellIds: intent.spellIds });
+        setPickerSelection(null);
+        return;
       }
-      void executeStart(type, params, item.id);
+      if (intent.kind === "disabled") return;
+      void executeStart(type, intent.params, item.id);
     },
     [executeStart],
   );
@@ -112,7 +120,34 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
     void executeStart("companion_errand", params, errandPicker.item.id);
   }, [errandPicker, pickerSelection, executeStart]);
 
-  if (groups.length === 0) return null;
+  const handleSpellConfirm = useCallback(() => {
+    if (!spellPicker || !pickerSelection) return;
+    const intent = getLaunchIntent("training", spellPicker.item, pickerSelection);
+    if (intent.kind !== "ready") return;
+    setSpellPicker(null);
+    setPickerSelection(null);
+    void executeStart("training", intent.params, spellPicker.item.id);
+  }, [spellPicker, pickerSelection, executeStart]);
+
+  if (templatesState.kind === "loading") return null;
+  if (templatesState.kind === "empty") {
+    return (
+      <View style={styles.container}>
+        <ThemedText>{templatesState.message}</ThemedText>
+      </View>
+    );
+  }
+  if (templatesState.kind === "error") {
+    return (
+      <View style={styles.container}>
+        <Pressable style={styles.errorBanner} onPress={() => void fetchTemplates()}>
+          <ThemedText style={styles.errorText}>{templatesState.message}</ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const groups = templatesState.groups;
 
   return (
     <View style={styles.container}>
@@ -161,6 +196,12 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                 )}
                 {group.items.map((item, idx) => {
                   const canStart = hasSufficientMaterials(item.materials);
+                  const launchIntent =
+                    group.type === "crafting" || group.type === "training"
+                      ? getLaunchIntent(group.type, item)
+                      : null;
+                  const disabledReason =
+                    launchIntent?.kind === "disabled" ? launchIntent.reason : null;
                   const isActive = item.active !== null;
                   const showStart = isStartVisible(item, groupState);
                   return (
@@ -179,6 +220,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                           </ThemedText>
                           <ThemedText style={styles.durationText}>{item.duration}</ThemedText>
                         </View>
+                        {disabledReason && (
+                          <ThemedText style={styles.disabledReason}>{disabledReason}</ThemedText>
+                        )}
 
                         {isActive && !isGroupLocked ? (
                           <View style={styles.activeStatus}>
@@ -211,10 +255,14 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                             <Pressable
                               style={[
                                 styles.confirmButton,
-                                (startingItemId === item.id || !canStart) &&
+                                (startingItemId === item.id ||
+                                  !canStart ||
+                                  disabledReason !== null) &&
                                   styles.confirmButtonDisabled,
                               ]}
-                              disabled={startingItemId !== null || !canStart}
+                              disabled={
+                                startingItemId !== null || !canStart || disabledReason !== null
+                              }
                               onPress={() => handleStart(group.type, item)}
                             >
                               {startingItemId === item.id ? (
@@ -289,212 +337,70 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={spellPicker !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setSpellPicker(null);
+          setPickerSelection(null);
+        }}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => {
+            setSpellPicker(null);
+            setPickerSelection(null);
+          }}
+        >
+          <Pressable style={styles.modalContent} onPress={() => {}}>
+            <ThemedText variant="h2" style={styles.modalTitle}>
+              {spellPicker?.item.name ?? "Choose Spell"}
+            </ThemedText>
+            <ThemedText style={styles.modalSubtitle}>Choose a spell to study.</ThemedText>
+            <View style={styles.destList}>
+              {spellPicker?.spellIds.map((spellId) => (
+                <Pressable
+                  key={spellId}
+                  style={[
+                    styles.destOption,
+                    pickerSelection === spellId && styles.destOptionSelected,
+                  ]}
+                  onPress={() => setPickerSelection(spellId)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.destOptionText,
+                      pickerSelection === spellId && styles.destOptionTextSelected,
+                    ]}
+                  >
+                    {spellId.replace(/_/g, " ")}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => {
+                  setSpellPicker(null);
+                  setPickerSelection(null);
+                }}
+              >
+                <ThemedText style={styles.cancelText}>CANCEL</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.confirmButton, !pickerSelection && styles.confirmButtonDisabled]}
+                disabled={!pickerSelection}
+                onPress={handleSpellConfirm}
+              >
+                <ThemedText style={styles.confirmText}>STUDY</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: Spacing.two,
-  },
-  errorBanner: {
-    marginTop: Spacing.one,
-    backgroundColor: BrandColors.ember + "22",
-    borderWidth: 1,
-    borderColor: BrandColors.ember,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  errorText: {
-    ...FontStyles.system,
-    fontSize: 13,
-    color: BrandColors.ember,
-  },
-  groupCard: {
-    backgroundColor: BrandColors.ink,
-    borderWidth: 1,
-    borderColor: BrandColors.charcoal,
-    borderRadius: Radius.md,
-    overflow: "hidden",
-  },
-  groupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: Spacing.three,
-  },
-  groupLabel: {
-    flex: 1,
-  },
-  chevron: {
-    fontSize: 12,
-    color: BrandColors.ash,
-    marginLeft: Spacing.two,
-  },
-  groupBusyHint: {
-    ...FontStyles.systemLight,
-    fontSize: 11,
-    color: BrandColors.divine,
-  },
-  itemList: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.three,
-  },
-  groupBusyBanner: {
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
-    paddingBottom: Spacing.two,
-    borderBottomWidth: 1,
-    borderBottomColor: BrandColors.charcoal,
-  },
-  groupBusyText: {
-    ...FontStyles.bodyLightItalic,
-    fontSize: 13,
-    color: BrandColors.bone,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: BrandColors.charcoal,
-    marginVertical: Spacing.two,
-  },
-  itemRow: {
-    gap: Spacing.two,
-  },
-  itemInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  itemBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  itemName: {
-    flex: 1,
-  },
-  itemNameDimmed: {
-    opacity: 0.4,
-  },
-  durationText: {
-    ...FontStyles.systemLight,
-    fontSize: 12,
-    color: BrandColors.ash,
-    textTransform: "uppercase",
-    letterSpacing: 2,
-  },
-  materialsColumn: {
-    gap: 2,
-  },
-  materialText: {
-    ...FontStyles.system,
-    fontSize: 11,
-    color: BrandColors.ember,
-  },
-  materialTextSufficient: {
-    color: BrandColors.hollow,
-  },
-  activeStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-  },
-  activeLabel: {
-    ...FontStyles.system,
-    fontSize: 11,
-    color: BrandColors.divine,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-  },
-  activeTime: {
-    ...FontStyles.systemLight,
-    fontSize: 11,
-    color: BrandColors.ash,
-  },
-  confirmButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: BrandColors.hollowMuted,
-  },
-  confirmButtonDisabled: {
-    borderColor: BrandColors.slate,
-    opacity: 0.5,
-  },
-  confirmText: {
-    ...FontStyles.system,
-    fontSize: 12,
-    color: BrandColors.hollow,
-    letterSpacing: 2,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Spacing.four,
-  },
-  modalContent: {
-    backgroundColor: BrandColors.ink,
-    borderWidth: 1,
-    borderColor: BrandColors.charcoal,
-    borderRadius: Radius.md,
-    padding: Spacing.four,
-    width: "100%",
-    maxWidth: 340,
-    gap: Spacing.three,
-  },
-  modalTitle: {
-    textAlign: "center",
-  },
-  modalSubtitle: {
-    ...FontStyles.systemLight,
-    fontSize: 13,
-    color: BrandColors.ash,
-    textAlign: "center",
-  },
-  destList: {
-    gap: Spacing.two,
-  },
-  destOption: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: BrandColors.charcoal,
-  },
-  destOptionSelected: {
-    borderColor: BrandColors.hollowMuted,
-    backgroundColor: BrandColors.hollowFaint,
-  },
-  destOptionText: {
-    ...FontStyles.system,
-    fontSize: 14,
-    color: BrandColors.ash,
-    textTransform: "capitalize",
-  },
-  destOptionTextSelected: {
-    color: BrandColors.hollow,
-  },
-  modalActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  cancelButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: BrandColors.charcoal,
-  },
-  cancelText: {
-    ...FontStyles.system,
-    fontSize: 12,
-    color: BrandColors.ash,
-    letterSpacing: 2,
-  },
-});

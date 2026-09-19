@@ -122,7 +122,7 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
 
 @pytest.mark.asyncio
 async def test_post_roll_pause_publishes_the_attack_once_before_the_hud():
-    ctx = _ctx_at_resolution()
+    ctx = _ctx_at_resolution(reaction_ids=("rogue_uncanny_dodge",))
     deps = _resolve_deps(damage=6)
     await _call(ctx, deps)
     ctx.userdata.event_bus.drain()

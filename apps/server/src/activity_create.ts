@@ -6,7 +6,7 @@ import {
   getErrandTemplate,
 } from "./activity_templates.ts";
 import { getRecipe, recipeMaterialIds, craftingDurationSeconds } from "./recipes.ts";
-import { displayName } from "@divineruin/shared";
+import { displayName, isSpellTierUnlocked } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 import { validateErrandDispatch } from "./errand_risk.ts";
 import { accessibleWorkspaceTier } from "./workspace.ts";
@@ -112,10 +112,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!isSpellProgram && spellId !== undefined) {
         return Response.json({ error: "Non-spell training forbids spell_id" }, { status: 400 });
       }
-      // The per-archetype tier-unlock floor (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER) is a
-      // Python-only table with no content backing, so the agent's start wall and worker
-      // promotion wall refuse a too-low-level caster and this route cannot (constraint 7:
-      // the rule only one side holds is stated). Every refusal below is decidable from shared content.
       if (isSpellProgram) {
         if (spellId === undefined) {
           return Response.json(
@@ -136,13 +132,17 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
           );
         }
 
-        const playerRows = await sql<{ class: string | null }[]>`
-          SELECT data->>'class' AS class FROM players WHERE player_id = ${playerId}
+        const playerRows = await sql<{ class: string | null; level: string | null }[]>`
+          SELECT data->>'class' AS class, data->>'level' AS level
+          FROM players WHERE player_id = ${playerId}
         `;
         const archetypeId = playerRows[0]?.class;
+        const level = Number(playerRows[0]?.level);
         const chassis = archetypeId ? getArchetypeChassis(archetypeId) : undefined;
         if (
           !chassis ||
+          !Number.isInteger(level) ||
+          level < 1 ||
           (chassis.magic_source !== "cross" && chassis.magic_source !== spell.source)
         ) {
           return Response.json(
@@ -150,7 +150,12 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
             { status: 400 },
           );
         }
-
+        if (!isSpellTierUnlocked(chassis, spell.spell_tier, level)) {
+          return Response.json(
+            { error: `${spell.spell_tier} spells are not available at level ${level}` },
+            { status: 400 },
+          );
+        }
         const knownRows = await sql<{ spell_id: string }[]>`
           SELECT spell_id FROM character_spells
           WHERE player_id = ${playerId} AND spell_id = ${spellId}

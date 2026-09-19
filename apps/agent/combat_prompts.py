@@ -38,11 +38,14 @@ the target prone). \
 A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
 whole phase; they cannot retreat. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
-Call query_info(kind="abilities") for castable spell ids and the reaction windows abilities answer. \
-When an ability row carries active_variant_id, declare that exact variant id when the player uses that technique. \
+Call query_info(kind="abilities") before declaring one: declare its spell id from the row's spell_id when present. \
+A combat: false row has no combat action at all — never declare it, and never activate it mid-fight. \
+When a row you may declare carries active_variant_id, declare that exact variant id. \
+Reaction rows name the window where their id can interrupt through activate. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
-In combat, an ordinary spell or ability is an Ability declaration through declare_phase — never a free \
+In combat, an ordinary spell or ability (any row not marked combat: false) is an Ability declaration through \
+declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \
 or dropping a Veil Ward (activate "veil_ward" / "veil_ward_dismiss"). If the player gives no clear \
@@ -74,7 +77,10 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
-The escape outcome names a break-free attempt; grapple_escaped means Slippery prevented this \
+When a damage packet carries save_success, the save has already resolved: damage_halved means \
+the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \
+The escape outcome names a break-free attempt; grapple_already_released means the declared escape \
+found that the hold had already ended, so no shove occurred. grapple_escaped means Slippery prevented this \
 grapple from landing; grapple_held means an existing grapple held and this grab only dealt damage. \
 "grapple_blocked_still_held" means the reactor was ALREADY held when this grab hit, so no second hold \
 could take and the reaction changed nothing; "grappler_id" names the \

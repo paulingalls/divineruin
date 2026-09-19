@@ -69,7 +69,7 @@ class BackgroundProcess:
         # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
         self._session.on("close", self._on_session_close)
         # ...and the same reasoning puts the end-of-session recap here. start() is called from
-        # ExplorationAgent.on_enter's `if sd.background is None:` block, so a handback registers
+        # ExplorationAgent._enter's `if sd.background is None:` block, so a handback registers
         # nothing new and the recap fires exactly once per session. Its own handler, not folded
         # into _on_session_close: stop() calls that one directly to join the loop, and a recap
         # there would run an LLM call and a DB write from inside the fast lane.

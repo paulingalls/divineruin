@@ -11,6 +11,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import character_spells
+import combat_ability
 import crafting_tools
 import db_content_queries
 import db_queries
@@ -129,9 +130,8 @@ async def _query_abilities_impl(
     library_rows = await character_spells_mod.get_known(session.player_id)
     castable_ids = spell_knowledge_mod.castable_spell_ids(player_class, (row["spell_id"] for row in library_rows))
 
-    # An archetype with no catalog rows means an unknown class or an unloaded catalog, never a
-    # classed character who owns nothing — returning [] would tell the DM the player has no
-    # reactions, the exact silent wrong answer this kind exists to remove.
+    # An empty catalog means unknown or unloaded, not zero ownership; returning [] would falsely
+    # tell the DM the player owns no reactions.
     catalog = ability_catalog.get_archetype_abilities(player_class)
     if not catalog:
         raise ToolError(f"Cannot query abilities: no abilities loaded for class {player_class!r}.")
@@ -158,6 +158,10 @@ async def _query_abilities_impl(
     results = []
     for ability in owned:
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
+        if ability.spell_id is not None:
+            row["spell_id"] = ability.spell_id
+        elif ability.ability_type != "reaction" and combat_ability.condition_ability((ability, None)) is None:
+            row["combat"] = False
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":

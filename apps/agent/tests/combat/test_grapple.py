@@ -13,9 +13,10 @@ import combat_prompts
 import combat_turn
 import conditions
 from check_resolution_attack import AttackResult
-from combat_init import _start_combat_impl, _validate_enemy_action_conditions
+from combat_init import _start_combat_impl, _validate_enemy_action_shapes
 from combat_support import _participant_summary
 from declaration_payloads import ManeuverDecl
+from declarations import ManeuverIntent
 from tests.combat.test_start_combat import _make_start_combat_mocks
 
 _CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
@@ -41,7 +42,7 @@ def test_real_mawling_grapple_actions_author_escape_dc_13():
         ("mawling_1", "Seizing Grab", 13),
         ("mawling_2", "Seizing Grab", 13),
     ]
-    _validate_enemy_action_conditions(_mawlings())
+    _validate_enemy_action_shapes(_mawlings())
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,15 @@ def test_grapple_vocabulary_reaches_schema_and_combat_prompt():
     assert "breaks free by declaring maneuver on their grappler" in prompt
     assert "cannot retreat" in prompt
     assert all(
-        token in prompt for token in ("grappled", "escape", "grapple_escaped", "grapple_held", "released_from_grapple")
+        token in prompt
+        for token in (
+            "grappled",
+            "escape",
+            "grapple_escaped",
+            "grapple_held",
+            "grapple_already_released",
+            "released_from_grapple",
+        )
     )
 
 
@@ -250,8 +259,11 @@ def _escape_round_state(*, dc=13, target_id="mawling_1"):
     player.attributes = {"strength": 8, "dexterity": 16}
     player.conditions = conditions.apply_condition([], "grappled", source=grappler.id)
     grappler.action_pool[0]["escape_dc"] = dc
+    maneuver = {"type": "maneuver", "target_id": target_id}
+    if target_id == grappler.id:
+        maneuver["maneuver_intent"] = ManeuverIntent.ESCAPE
     state.pending_declarations = {
-        player.id: {"type": "maneuver", "target_id": target_id},
+        player.id: maneuver,
         grappler.id: {"type": "defend"},
     }
     return state
@@ -302,6 +314,29 @@ async def test_grappled_actor_maneuvering_on_someone_else_still_shoves():
     packet = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
     assert packet["shove"] == "knocked_prone"
     assert "escape" not in packet
+
+
+@pytest.mark.asyncio
+async def test_a_shove_declared_before_the_grab_stays_a_shove():
+    """The mirror of the stale escape (story-074): the grab lands AFTER the declaration.
+
+    Until the intent rode the declaration, resolution re-derived it from the actor still being
+    grappled by the target, so a mid-round grab silently upgraded a declared shove into a
+    break-free. It no longer does, and the actor stays held.
+    """
+    state = _escape_round_state()
+    state.pending_declarations["player_1"].pop("maneuver_intent")
+    ctx = _ctx_at_resolution(state=state)
+
+    with patch("random.randint", side_effect=[20, 1]):
+        result = await _resolve_round(ctx, **_resolve_deps())
+
+    packet = next(packet for packet in result["packets"] if packet["actor_id"] == "player_1")
+    assert packet["shove"] == "knocked_prone"
+    assert "escape" not in packet
+    player = ctx.userdata.combat_state.get_participant("player_1")
+    assert player is not None
+    assert conditions.has_condition(player.conditions, "grappled")
 
 
 @pytest.mark.asyncio
