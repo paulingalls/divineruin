@@ -1,5 +1,3 @@
-"""Validate the recorded Python dependency upgrade against manifests and environments."""
-
 import argparse
 import json
 import os
@@ -7,8 +5,11 @@ import re
 import subprocess
 import sys
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 PROJECTS = ("apps/agent", "scripts")
 NAME_RE = re.compile(r"[-_.]+")
@@ -18,6 +19,7 @@ REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(.*)$")
 @dataclass
 class EnvironmentSnapshot:
     prefix: str
+    python_version: str
     versions: dict[str, str]
     requirements: dict[str, list[str]]
 
@@ -40,6 +42,9 @@ def manifest_rows(root: Path) -> dict[tuple[str, str, str], str]:
         if not path.is_file():
             raise ValueError(f"missing manifest: {path.relative_to(root)}")
         manifest = tomllib.loads(path.read_text())
+        optional = manifest.get("project", {}).get("optional-dependencies", {})
+        if optional:
+            raise ValueError(f"unwalked optional dependencies: {project}/{', '.join(sorted(optional))}")
         groups = {"runtime": manifest.get("project", {}).get("dependencies", [])}
         groups.update(manifest.get("dependency-groups", {}))
         for group, requirements in groups.items():
@@ -74,7 +79,7 @@ def probe_environment(interpreter: Path, packages: list[str]) -> EnvironmentSnap
     if not interpreter.is_file():
         raise ValueError(f"environment interpreter does not exist: {interpreter}")
     probe = """
-import importlib.metadata as m, json, re, sys
+import importlib.metadata as m, json, platform, re, sys
 norm=lambda value: re.sub(r"[-_.]+", "-", value).lower()
 versions={}
 requirements={}
@@ -88,7 +93,7 @@ for requested in sys.argv[1:]:
     name=norm(distribution.metadata["Name"])
     versions[name]=distribution.version
     requirements[name]=distribution.requires or []
-print(json.dumps({"prefix": sys.prefix, "versions": versions, "requirements": requirements, "missing": missing}))
+print(json.dumps({"prefix": sys.prefix, "python_version": platform.python_version(), "versions": versions, "requirements": requirements, "missing": missing}))
 """
     environment = os.environ.copy()
     environment.pop("PYTHONHOME", None)
@@ -103,7 +108,9 @@ print(json.dumps({"prefix": sys.prefix, "versions": versions, "requirements": re
     payload = json.loads(result.stdout)
     if payload["missing"]:
         raise ValueError(f"installed package is missing: {', '.join(payload['missing'])}")
-    return EnvironmentSnapshot(payload["prefix"], payload["versions"], payload["requirements"])
+    return EnvironmentSnapshot(
+        payload["prefix"], payload["python_version"], payload["versions"], payload["requirements"]
+    )
 
 
 def probe_scope(root: Path, environment_paths: dict[str, Path] | None = None) -> dict[str, EnvironmentSnapshot]:
@@ -140,6 +147,17 @@ def _require_metadata(report: dict) -> None:
             raise ValueError(f"report metadata is missing: {field}")
     if report.get("projects") != list(PROJECTS):
         raise ValueError(f"report projects must be: {', '.join(PROJECTS)}")
+    try:
+        registry_date = date.fromisoformat(report["registry_snapshot_date"])
+    except ValueError as error:
+        raise ValueError("registry snapshot date must be ISO 8601 YYYY-MM-DD") from error
+    if registry_date.isoformat() != report["registry_snapshot_date"]:
+        raise ValueError("registry snapshot date must be ISO 8601 YYYY-MM-DD")
+
+
+def current_uv_version(run: Callable[..., Any] = subprocess.run) -> str:
+    result = run(["uv", "--version"], check=True, capture_output=True, text=True)
+    return result.stdout.split()[1]
 
 
 def _vendor_specifier(requirements: list[str], dependency: str) -> str | None:
@@ -161,6 +179,19 @@ def validate_report(*, root: Path, report: dict, snapshots: dict[str, Environmen
         raise ValueError(f"missing dependency row: {'/'.join(missing[0])}")
     if surplus:
         raise ValueError(f"surplus dependency row: {'/'.join(surplus[0])}")
+
+    for project in PROJECTS:
+        snapshot = snapshots.get(project)
+        if snapshot is None:
+            raise ValueError(f"missing environment snapshot: {project}")
+        if snapshot.python_version != report["python_version"]:
+            raise ValueError(
+                f"{project}: recorded Python {report['python_version']} differs from "
+                f"environment Python {snapshot.python_version}"
+            )
+    uv_version = current_uv_version()
+    if report["uv_version"] != uv_version:
+        raise ValueError(f"recorded uv {report['uv_version']} differs from current uv {uv_version}")
 
     prefixes = [snapshot.prefix for snapshot in snapshots.values()]
     if len(prefixes) != len(PROJECTS) or len(set(prefixes)) != len(PROJECTS):

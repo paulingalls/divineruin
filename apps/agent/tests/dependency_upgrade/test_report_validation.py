@@ -1,5 +1,6 @@
 import copy
 import json
+import platform
 import shutil
 from pathlib import Path
 
@@ -8,7 +9,6 @@ import pytest
 from dependency_upgrade_report import EnvironmentSnapshot, render_markdown, validate_report
 
 ROOT = Path(__file__).resolve().parents[4]
-REPORT = ROOT / "docs/dependency_upgrade.json"
 
 
 def _copy_scope(tmp_path: Path) -> Path:
@@ -26,7 +26,7 @@ def _copy_scope(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _load_report(root: Path = ROOT) -> dict:
+def _load_report(root: Path) -> dict:
     return json.loads((root / "docs/dependency_upgrade.json").read_text())
 
 
@@ -37,6 +37,7 @@ def _snapshots(report: dict, root: Path) -> dict[str, EnvironmentSnapshot]:
     return {
         project: EnvironmentSnapshot(
             prefix=str(root / project / ".venv"),
+            python_version=platform.python_version(),
             versions=project_versions,
             requirements={"livekit-plugins-anthropic": ["anthropic<1,>=0.41"]},
         )
@@ -162,10 +163,40 @@ def test_shared_environment_prefix_fails(tmp_path):
         validate_report(root=root, report=report, snapshots=snapshots)
 
 
-def test_metadata_is_complete():
-    report = _load_report()
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("registry_snapshot_date", "", "report metadata is missing: registry_snapshot_date"),
+        ("python_version", "", "report metadata is missing: python_version"),
+        ("uv_version", "", "report metadata is missing: uv_version"),
+        ("projects", ["apps/agent"], "report projects must be"),
+    ),
+)
+def test_missing_report_metadata_fails_after_green_baseline(tmp_path, field, value, message):
+    root = _copy_scope(tmp_path)
+    report = _validate(root)
+    snapshots = _snapshots(report, root)
+    report[field] = value
 
-    assert report["registry_snapshot_date"]
-    assert report["python_version"]
-    assert report["uv_version"]
-    assert report["projects"] == ["apps/agent", "scripts"]
+    with pytest.raises(ValueError, match=message):
+        validate_report(root=root, report=report, snapshots=snapshots)
+
+
+def test_empty_latest_stable_fails_after_green_baseline(tmp_path):
+    root = _copy_scope(tmp_path)
+    report = _validate(root)
+    snapshots = _snapshots(report, root)
+    report["dependencies"][0]["latest_stable"] = ""
+
+    with pytest.raises(ValueError, match=r"latest stable version is empty.*livekit-agents"):
+        validate_report(root=root, report=report, snapshots=snapshots)
+
+
+def test_optional_dependency_group_fails_rather_than_going_unwalked(tmp_path):
+    root = _copy_scope(tmp_path)
+    _validate(root)
+    manifest = root / "scripts/pyproject.toml"
+    manifest.write_text(manifest.read_text() + '\n[project.optional-dependencies]\nextra = ["httpx>=0.28.1"]\n')
+
+    with pytest.raises(ValueError, match=r"unwalked optional dependencies: scripts/extra"):
+        _validate(root)
