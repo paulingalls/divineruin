@@ -17,8 +17,10 @@ REQUIRE_BACKEND=1 bun run test:e2e:mobile    # additionally run flows that need 
 1. With `REQUIRE_EMULATOR=1`, requires `IOS_SIMULATOR_UDID`, proves that exact
    simulator is booted and available, and passes it to Maestro with `--device`.
    Other booted simulators and Android devices cannot satisfy the strict gate.
-2. Without the strict flag, checks broadly for a booted iOS simulator or an
-   attached Android device and skips cleanly when neither exists.
+2. An explicit `IOS_SIMULATOR_UDID` must identify a booted, available simulator,
+   even without the strict flag; an unavailable requested device fails. With
+   neither a requested UDID nor the strict flag, checks broadly for a booted iOS
+   simulator or an attached Android device and skips cleanly when neither exists.
 3. Runs offline-safe flows by default and adds backend-required flows when
    `REQUIRE_BACKEND=1` is set.
 
