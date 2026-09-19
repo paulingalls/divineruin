@@ -11,6 +11,7 @@
     "web": "expo start --web",
     "prebuild:clean": "expo prebuild --clean",
     "test:e2e:mobile": "bun run ../../scripts/maestro-acceptance.ts",
+    "generate:route-types": "bun scripts/generate-route-types.ts",
     "verify:upgrade": "bun scripts/verify-upgrade.ts",
     "verify:native-build": "bun scripts/verify-native-build.ts",
     "verify:native-transport": "bun scripts/verify-native-transport.ts"

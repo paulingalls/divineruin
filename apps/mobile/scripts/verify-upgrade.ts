@@ -70,9 +70,15 @@ async function executeStage(
   }
 }
 
-async function generateRouteTypes(
+// Exported because CI needs the generation AND its floor without the export
+// stages: `lint:ts` typechecks apps/mobile, whose tsconfig includes the gitignored
+// generated types. A missing expo-env.d.ts reds loudly (TS2882), but a missing
+// router.d.ts does not — `Href` falls back to `string`, so a bogus route compiles
+// clean. Measured 2026-09-19: dropping .expo/types alone typechecks a
+// `router.push("/definitely-not-a-route")` green.
+export async function generateRouteTypes(
   projectRoot: string,
-  runCommand: NonNullable<VerificationOptions["runCommand"]>,
+  runCommand: NonNullable<VerificationOptions["runCommand"]> = defaultRunCommand,
 ): Promise<void> {
   const tsconfig = join(projectRoot, "tsconfig.json");
   const before = await readFile(tsconfig);

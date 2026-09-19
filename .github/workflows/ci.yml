@@ -43,7 +43,12 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun install --cwd e2e --frozen-lockfile
-      - run: cd apps/mobile && bun expo customize tsconfig.json
+      # lint:ts typechecks apps/mobile, whose tsconfig includes the gitignored
+      # generated types. This runs the same guarded generator verify:upgrade uses,
+      # which fails when router.d.ts comes back missing, empty or a directory --
+      # without it typed-route errors compile clean and CI reports a mobile
+      # typecheck it does not perform.
+      - run: bun run --cwd apps/mobile generate:route-types
       - run: bun run lint:ts
       - run: bun run lint:e2e
 
