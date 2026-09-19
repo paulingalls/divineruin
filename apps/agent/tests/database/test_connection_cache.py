@@ -81,13 +81,17 @@ class TestConnectionPoolManagement:
                 assert db._redis is mock_redis
 
     @pytest.mark.asyncio
-    async def test_get_redis_requires_url_before_constructing_client(self):
+    @pytest.mark.parametrize("value", [None, ""])
+    async def test_get_redis_requires_url_before_constructing_client(self, monkeypatch, value):
         db._redis = None
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("redis.asyncio.from_url") as mock_from_url:
-                with pytest.raises(RuntimeError, match="REDIS_URL"):
-                    await db.get_redis()
-                mock_from_url.assert_not_called()
+        if value is None:
+            monkeypatch.delenv("REDIS_URL", raising=False)
+        else:
+            monkeypatch.setenv("REDIS_URL", value)
+        with patch("redis.asyncio.from_url") as mock_from_url:
+            with pytest.raises(RuntimeError, match="REDIS_URL"):
+                await db.get_redis()
+            mock_from_url.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_redis_reuses_existing_client(self):
