@@ -1,8 +1,26 @@
 import { describe, expect, test } from "bun:test";
-import { rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 const e2eRoot = import.meta.dir;
+
+async function withFault(relativePath: string, check: (path: string) => void) {
+  const directory = await mkdtemp(join(tmpdir(), "e2e-environment-fault-"));
+  try {
+    await mkdir(join(directory, "fixtures"));
+    for (const dependency of ["node_modules", "require-environment.ts", "fixtures/lighthouse.ts"]) {
+      await symlink(resolve(e2eRoot, dependency), join(directory, dependency));
+    }
+    const source = await Bun.file(resolve(e2eRoot, relativePath)).text();
+    expect(source).toContain('requireEnvironment("DATABASE_URL")');
+    const faultPath = join(directory, relativePath);
+    await writeFile(faultPath, source.replace('requireEnvironment("DATABASE_URL")', '"unguarded"'));
+    check(faultPath);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
 
 function runChild(source: string, databaseUrl?: string) {
   const env: NodeJS.ProcessEnv = { ...process.env, REDIS_URL: "redis://127.0.0.1:61235" };
@@ -72,12 +90,7 @@ describe("required e2e environment", () => {
   });
 
   test("removing only the auth guard exposes the auth module", async () => {
-    const sourcePath = resolve(e2eRoot, "fixtures/auth.ts");
-    const faultPath = resolve(e2eRoot, "fixtures/.story210-auth-fault.ts");
-    const source = await Bun.file(sourcePath).text();
-    expect(source).toContain('requireEnvironment("DATABASE_URL")');
-    await writeFile(faultPath, source.replace('requireEnvironment("DATABASE_URL")', '"unguarded"'));
-    try {
+    await withFault("fixtures/auth.ts", (faultPath) => {
       const fault = runChild(
         `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
       );
@@ -87,18 +100,11 @@ describe("required e2e environment", () => {
         `await import(${JSON.stringify(resolve(e2eRoot, "playwright.config.ts"))}); console.log("REACHED_SENTINEL");`,
       );
       expectDatabaseGuard(config);
-    } finally {
-      await rm(faultPath, { force: true });
-    }
+    });
   });
 
   test("removing only the config guard exposes the config module", async () => {
-    const sourcePath = resolve(e2eRoot, "playwright.config.ts");
-    const faultPath = resolve(e2eRoot, ".story210-config-fault.ts");
-    const source = await Bun.file(sourcePath).text();
-    expect(source).toContain('requireEnvironment("DATABASE_URL")');
-    await writeFile(faultPath, source.replace('requireEnvironment("DATABASE_URL")', '"unguarded"'));
-    try {
+    await withFault("playwright.config.ts", (faultPath) => {
       const fault = runChild(
         `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
       );
@@ -108,9 +114,7 @@ describe("required e2e environment", () => {
         `await import(${JSON.stringify(resolve(e2eRoot, "fixtures/auth.ts"))}); console.log("REACHED_SENTINEL");`,
       );
       expectDatabaseGuard(auth);
-    } finally {
-      await rm(faultPath, { force: true });
-    }
+    });
   });
 
   test("the Playwright server receives a valid fixed test JWT key", () => {
