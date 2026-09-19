@@ -29,7 +29,7 @@ const stages = {
   typecheck: { name: "mobile typecheck", command: ["bunx", "tsc", "--noEmit"] },
 } satisfies Record<string, Stage>;
 
-async function defaultRunCommand(command: string[], cwd: string): Promise<CommandResult> {
+export async function defaultRunCommand(command: string[], cwd: string): Promise<CommandResult> {
   const child = Bun.spawn(command, {
     cwd,
     // Expo's web render probes Corepack, which otherwise auto-pins pnpm in package.json.
@@ -82,10 +82,8 @@ async function generateRouteTypes(
   }
 
   const routeTypes = join(typesDirectory, "router.d.ts");
-  try {
-    const generated = await stat(routeTypes);
-    if (!generated.isFile() || generated.size === 0) throw new Error("invalid route declarations");
-  } catch {
+  const generated = await stat(routeTypes).catch(() => null);
+  if (!generated?.isFile() || generated.size === 0) {
     throw new Error("Expo Router generated route types must be a nonempty regular file");
   }
 }

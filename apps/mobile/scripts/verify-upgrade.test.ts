@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
   type CommandResult,
   type VerificationOptions,
+  defaultRunCommand,
   runUpgradeVerification,
 } from "./verify-upgrade";
 
@@ -195,5 +196,41 @@ describe("runUpgradeVerification", () => {
     });
 
     expect(await readFile(join(projectRoot, ".expo", "types", "router.d.ts"), "utf8")).not.toBe("");
+  });
+});
+
+describe("defaultRunCommand", () => {
+  async function probe(projectRoot: string, expression: string): Promise<string> {
+    const report = join(projectRoot, "probe.json");
+    const result = await defaultRunCommand(
+      ["bun", "-e", `await Bun.write(${JSON.stringify(report)}, String(${expression}))`],
+      projectRoot,
+    );
+    expect(result).toEqual({ exitCode: 0, signal: undefined });
+    return readFile(report, "utf8");
+  }
+
+  test("disables Corepack project pinning so exports cannot rewrite package.json", async () => {
+    const projectRoot = await fixture();
+    expect(await probe(projectRoot, "process.env.COREPACK_ENABLE_PROJECT_SPEC")).toBe("0");
+  });
+
+  test("passes the rest of the environment and the project root through", async () => {
+    const projectRoot = await fixture();
+    process.env.VERIFY_UPGRADE_PROBE = "inherited";
+    try {
+      expect(await probe(projectRoot, "process.env.VERIFY_UPGRADE_PROBE")).toBe("inherited");
+    } finally {
+      delete process.env.VERIFY_UPGRADE_PROBE;
+    }
+    expect(await probe(projectRoot, "process.cwd()")).toBe(await realpath(projectRoot));
+  });
+
+  test("reports the exit status of a failing command", async () => {
+    const projectRoot = await fixture();
+    expect(await defaultRunCommand(["bun", "-e", "process.exit(23)"], projectRoot)).toEqual({
+      exitCode: 23,
+      signal: undefined,
+    });
   });
 });

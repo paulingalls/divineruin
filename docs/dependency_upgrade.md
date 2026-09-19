@@ -121,6 +121,15 @@ Release age policy: 604800 seconds.
 | packages/shared | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 
+### Root resolution overrides
+
+| Override | Requested | Reason |
+|---|---|---|
+| dnssd-advertise | `1.1.4` | Root resolution override retained unchanged. |
+| expo-constants | `56.0.26` | Aligns expo-asset with the Expo SDK 56 CLI-selected direct native module version. |
+| hermes-compiler | `0.15.0` | expo-build-properties requires this compiler for the supported SDK 56 legacy Hermes opt-out. |
+| react-native-screens | `4.26.0` | Aligns Expo Router with the Expo SDK 56 CLI-selected direct native module version. |
+
 E2E exclusion: Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort.
 
 The committed `uv.lock` and root `bun.lock` files are the exact transitive dependency records.
