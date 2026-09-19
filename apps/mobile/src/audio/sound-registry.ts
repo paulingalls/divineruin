@@ -84,7 +84,7 @@ for (const row of combatSounds) {
 const SOUND_NAMES = Object.keys(SOUNDS);
 
 export function lookupSound(name: string): SoundAsset | null {
-  return SOUNDS[name] ?? null;
+  return Object.hasOwn(SOUNDS, name) ? SOUNDS[name] : null;
 }
 
 export function knownSoundNames(): string[] {

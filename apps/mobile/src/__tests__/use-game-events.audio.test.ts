@@ -100,22 +100,25 @@ test("play_sound with empty sound_name is ignored", () => {
   expect(mockPlayers).toHaveLength(0);
 });
 
-test("a nonempty unknown sound raises through player and event handler", () => {
-  for (const invoke of [
-    () => playSfx("nonexistent"),
-    () => handleGameEvent({ type: "play_sound", sound_name: "nonexistent" }),
-  ]) {
-    let thrown: unknown;
-    try {
-      invoke();
-    } catch (error) {
-      thrown = error;
+test.each(["nonexistent", "toString", "constructor", "__proto__"])(
+  "unknown sound %s raises through player and event handler",
+  (soundName) => {
+    for (const invoke of [
+      () => playSfx(soundName),
+      () => handleGameEvent({ type: "play_sound", sound_name: soundName }),
+    ]) {
+      let thrown: unknown;
+      try {
+        invoke();
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).name).toBe("UnknownSoundError");
     }
-    expect(thrown).toBeInstanceOf(Error);
-    expect((thrown as Error).name).toBe("UnknownSoundError");
-  }
-  expect(mockPlayers).toHaveLength(0);
-});
+    expect(mockPlayers).toHaveLength(0);
+  },
+);
 
 // --- Milestone 8.1: Music system events ---
 

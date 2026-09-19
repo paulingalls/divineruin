@@ -45,6 +45,9 @@ test("lookupSound returns null for unknown sounds", () => {
   expect(lookupSound("nonexistent")).toBeNull();
   expect(lookupSound("")).toBeNull();
   expect(lookupSound("DICE_ROLL")).toBeNull(); // case-sensitive
+  for (const name of ["toString", "constructor", "__proto__"]) {
+    expect(lookupSound(name)).toBeNull();
+  }
 });
 
 test("knownSoundNames returns the existing registry", () => {
