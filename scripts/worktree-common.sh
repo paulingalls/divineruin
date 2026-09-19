@@ -105,7 +105,7 @@ wt_resolved_offset() { wt_expected_env >/dev/null || return 1; printf '%s\n' "$W
 
 wt_export_env() {
   wt_expected_env
-  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT"
+  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID"
 }
 
 wt_env_value() {
@@ -181,8 +181,8 @@ wt_validate_settings() {
     fi
   done
   DATABASE_URL="$db_url" REDIS_URL="$redis_url"
-  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT"
-  export DATABASE_URL REDIS_URL DR_CLONE_ID DR_CHECKOUT_ID DR_CHECKOUT_ROOT
+  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID"
+  export DATABASE_URL REDIS_URL DR_CLONE_ID DR_CHECKOUT_ID
 }
 
 wt_authorize() {
@@ -223,7 +223,7 @@ wt_compose() {
 }
 
 wt_run_compose() {
-  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT" \
+  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" \
     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" POSTGRES_HOST_PORT="$POSTGRES_HOST_PORT" \
     VALKEY_HOST_PORT="$VALKEY_HOST_PORT" docker compose -f "$WT_ROOT/docker-compose.yml" "$@"
 }
@@ -277,7 +277,7 @@ wt_destroy_candidate() {
   local project="$1" checkout="$2"
   wt_identity || { wt_die "cannot identify this Git clone."; return 1; }
   wt_validate_resources "$project" "$WT_CLONE_ID" "$checkout" "" || return 1
-  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$checkout" DR_CHECKOUT_ROOT="stale" \
+  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$checkout" \
     COMPOSE_PROJECT_NAME="$project" docker compose -f "$WT_ROOT/docker-compose.yml" -p "$project" down -v
 }
 

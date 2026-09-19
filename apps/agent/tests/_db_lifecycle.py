@@ -126,6 +126,22 @@ def _is_ci_service_mode() -> bool:
     return os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("DIVINERUIN_CI_SERVICE_DB") == "1"
 
 
+def _authority_env() -> dict[str, str]:
+    """Child environment for an ownership call, with the caller's DSNs stripped.
+
+    The DSN under authorization is the one ensure_db_up/stop_if_started pinned at
+    session start and already submitted through `_authorize_runtime`. By session
+    END os.environ no longer holds it — the acceptance bdd fixture reassigns
+    DATABASE_URL to its testcontainer and never restores it — so leaving the
+    ambient value in place makes the shared authority refuse this checkout's own
+    teardown.
+    """
+    child_env = os.environ.copy()
+    child_env.pop("DATABASE_URL", None)
+    child_env.pop("REDIS_URL", None)
+    return child_env
+
+
 def _authorize(intent: str) -> None:
     result = subprocess.run(
         ["bash", str(_OWNER_HELPER), "authorize", intent],
@@ -133,6 +149,7 @@ def _authorize(intent: str) -> None:
         text=True,
         check=False,
         cwd=_REPO_ROOT,
+        env=_authority_env(),
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"ownership check failed ({result.returncode})")
@@ -160,15 +177,12 @@ def _compose(*args: str) -> subprocess.CompletedProcess[str]:
         if args[:1] == ("exec",)
         else "reuse"
     )
-    child_env = os.environ.copy()
-    child_env.pop("DATABASE_URL", None)
-    child_env.pop("REDIS_URL", None)
     return subprocess.run(
         ["bash", str(_OWNER_HELPER), "compose", intent, *args],
         capture_output=True,
         text=True,
         check=False,
-        env=child_env,
+        env=_authority_env(),
     )
 
 

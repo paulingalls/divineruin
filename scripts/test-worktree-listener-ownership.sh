@@ -236,6 +236,13 @@ def write(name, *, running=True, bindings=None, overrides=None):
 valid = [{"HostIp": "127.0.0.1", "HostPort": port}]
 write("valid", bindings=valid)
 write("stopped", running=False, bindings=valid)
+# working_dir and config_files are checked independently, so each case keeps the
+# other's expectation satisfied and neither guard can hide behind its neighbour.
+elsewhere = root + "-elsewhere"
+write("foreign-working-dir", bindings=valid,
+      overrides={"com.docker.compose.project.working_dir": elsewhere})
+write("foreign-compose-config", bindings=valid,
+      overrides={"com.docker.compose.project.config_files": elsewhere + "/docker-compose.yml"})
 write("absent-port", bindings=None)
 write("wrong-port", bindings=[{"HostIp": "127.0.0.1", "HostPort": str(int(port) + 1)}])
 write("non-loopback", bindings=[{"HostIp": "0.0.0.0", "HostPort": port}])
@@ -255,7 +262,8 @@ authorize_recorded() {
 authorize_recorded valid env
 grep -Fq "ps -q --filter label=com.docker.compose.project=$project_a --filter label=com.docker.compose.service=postgres" \
   "$recorder/calls" || fail "running-service enumeration omitted project or service filtering"
-for bad in stopped absent-port wrong-port non-loopback multiple-bindings foreign-label malformed; do
+for bad in stopped absent-port wrong-port non-loopback multiple-bindings foreign-label \
+  foreign-working-dir foreign-compose-config malformed; do
   if authorize_recorded "$bad" env >/dev/null 2>&1; then
     fail "$bad Docker inspection authorized a connection"
   fi
@@ -272,6 +280,6 @@ fi
 if authorize_recorded valid env DOCKER_INSPECT_FAIL=1 >/dev/null 2>&1; then
   fail "an unreadable running-service inspection authorized a connection"
 fi
-ok "empty, multiple, stopped, malformed, unreadable, foreign, and mispublished services fail closed"
+ok "empty, multiple, stopped, malformed, unreadable, foreign, relocated, and mispublished services fail closed"
 
 echo "All running-service ownership tests passed."

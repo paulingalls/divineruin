@@ -322,7 +322,7 @@ main() {
   runtime_database_url="${DATABASE_URL:-}"
   runtime_redis_url="${REDIS_URL:-}"
   wt_expected_env
-  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT"
+  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID"
   echo "==> provisioning worktree: project=$COMPOSE_PROJECT_NAME offset=$WT_OFFSET"
 
   write_env_if_absent

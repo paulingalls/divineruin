@@ -269,7 +269,7 @@ def test_readiness_retries_plain_pg_isready_not_ready(monkeypatch):
     assert sleeps == [1]
 
 
-def test_compose_runs_only_after_runtime_urls_are_authorized(monkeypatch):
+def test_compose_never_inherits_the_callers_runtime_urls(monkeypatch):
     captured = {}
 
     def run(*args, **kwargs):
@@ -319,6 +319,30 @@ def test_ci_service_mode_never_starts_compose(monkeypatch):
     with pytest.raises(RuntimeError, match="Compose mutation is disabled"):
         dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
     assert events == ["authorize:ci"]
+
+
+def test_destroy_recheck_ignores_a_stale_ambient_dsn(tmp_path, monkeypatch):
+    """At session END os.environ["DATABASE_URL"] is the acceptance testcontainer's
+    — the bdd fixture assigns it and never restores it — so a destroy recheck that
+    read the ambient value would refuse this checkout's own teardown. The pinned
+    DSN was already authorized when the session started.
+    """
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    monkeypatch.setattr(dbl, "_authorize", REAL_AUTHORIZE)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setattr(dbl, "_compose", lambda *args: (_ for _ in ()).throw(AssertionError("down must not run")))
+    host, port = dbl.parse_host_port(settings["DATABASE_URL"])
+    _, state_path = dbl._lockfile_paths(host, port)
+    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+
+    with pytest.raises(RuntimeError) as refusal:
+        dbl.stop_if_started(True, settings["DATABASE_URL"])
+
+    # The disposable checkout owns no Docker resources, so the real authority
+    # still refuses — but about ITS project, never about the stale endpoint.
+    assert "runtime DATABASE_URL" not in str(refusal.value)
+    assert settings["COMPOSE_PROJECT_NAME"] in str(refusal.value)
 
 
 def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
