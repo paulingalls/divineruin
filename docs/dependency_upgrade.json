@@ -1408,31 +1408,135 @@
     }
   ],
   "validation_outcomes": [
-    {"lane": "bun install --frozen-lockfile", "status": "passed", "evidence": "Bun 1.4.2 accepted the root frozen lock without changes."},
-    {"lane": "bun install --cwd e2e --frozen-lockfile", "status": "passed", "evidence": "Bun 1.4.2 accepted the independent e2e frozen lock without changes."},
-    {"lane": "uv sync --project apps/agent --frozen", "status": "passed", "evidence": "uv 0.10.6 installed the agent lock under CPython 3.14.7."},
-    {"lane": "uv sync --project scripts --frozen", "status": "passed", "evidence": "uv 0.10.6 installed the scripts lock under CPython 3.14.7."},
-    {"lane": "dependency report --scope all", "status": "passed", "evidence": "All nine manifests, four locks, installed trees, CI, and rendered Markdown validated."},
-    {"lane": "dependency report tests", "status": "passed", "evidence": "Fault suite passed, including named YAML steps and missing e2e inputs."},
-    {"lane": "worktree bootstrap tests", "status": "passed", "evidence": "Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed."},
-    {"lane": "required e2e environment tests", "status": "passed", "evidence": "Six subprocess tests passed, including independent auth/config guard removals."},
-    {"lane": "bun run lint", "status": "passed", "evidence": "TypeScript, ESLint, Prettier, Ruff, Pyright, and Python format checks passed."},
-    {"lane": "bun run lint:e2e", "status": "passed", "evidence": "Independent frozen install, TypeScript, and ESLint passed."},
-    {"lane": "bun run test:python", "status": "passed", "evidence": "7000 non-acceptance Python tests passed."},
-    {"lane": "bun run test:server", "status": "passed", "evidence": "Server unit and database/Redis integration lanes passed."},
-    {"lane": "Bun scripts/shared/design-tokens tests", "status": "passed", "evidence": "All three explicitly selected Bun test corpora passed."},
-    {"lane": "Bun mobile tests", "status": "passed", "evidence": "508 mobile tests passed."},
-    {"lane": "Bun web tests", "status": "passed", "evidence": "204 web tests passed."},
-    {"lane": "full Playwright suite", "status": "passed", "evidence": "Full upgraded browser suite passed after the final app/server graph."},
-    {"lane": "mobile verify:upgrade", "status": "passed", "evidence": "Expo doctor passed 21/21 checks and iOS, Android, and web exports completed."},
-    {"lane": "mobile verify:native-build", "status": "passed", "evidence": "Clean iOS build succeeded; launch and auth flows passed 2/2 on the owned simulator."},
-    {"lane": "mobile verify:native-transport", "status": "passed", "evidence": "Owned-simulator audio, microphone, event/HUD, and fault runs passed."},
-    {"lane": "bun run test:acceptance:nollm", "status": "passed", "evidence": "270 acceptance tests passed; 9 real-LLM tests were deselected."},
-    {"lane": "Playwright web project", "status": "passed", "evidence": "40 production marketing tests passed."},
-    {"lane": "Playwright web-lighthouse project", "status": "passed", "evidence": "4 tests passed; performance, SEO, and accessibility each scored 100."},
-    {"lane": "Playwright chromium project", "status": "passed", "evidence": "40 authenticated mobile-web tests passed."},
-    {"lane": "clean-worktree bootstrap", "status": "passed", "evidence": "Detached 38196933 proof installed four locks and Chromium, then migrated and seeded isolated ports 55832/56779."},
-    {"lane": "Android device check", "status": "missing", "evidence": "adb devices returned no attached device."},
-    {"lane": "real-LLM acceptance", "status": "required at sprint close", "evidence": "Credentialed cost-bearing lane was not run by the story executor."}
+    {
+      "lane": "bun install --frozen-lockfile",
+      "status": "passed",
+      "evidence": "Bun 1.4.2 accepted the root frozen lock without changes."
+    },
+    {
+      "lane": "bun install --cwd e2e --frozen-lockfile",
+      "status": "passed",
+      "evidence": "Bun 1.4.2 accepted the independent e2e frozen lock without changes."
+    },
+    {
+      "lane": "uv sync --project apps/agent --frozen",
+      "status": "passed",
+      "evidence": "uv 0.10.6 installed the agent lock under CPython 3.14.7."
+    },
+    {
+      "lane": "uv sync --project scripts --frozen",
+      "status": "passed",
+      "evidence": "uv 0.10.6 installed the scripts lock under CPython 3.14.7."
+    },
+    {
+      "lane": "dependency report --scope all",
+      "status": "passed",
+      "evidence": "All nine manifests, four locks, installed trees, CI, and rendered Markdown validated."
+    },
+    {
+      "lane": "dependency report tests",
+      "status": "passed",
+      "evidence": "Fault suite passed, including named YAML steps and missing e2e inputs."
+    },
+    {
+      "lane": "worktree bootstrap tests",
+      "status": "passed",
+      "evidence": "Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed."
+    },
+    {
+      "lane": "required e2e environment tests",
+      "status": "passed",
+      "evidence": "Six subprocess tests passed, including independent auth/config guard removals."
+    },
+    {
+      "lane": "bun run lint",
+      "status": "passed",
+      "evidence": "TypeScript, ESLint, Prettier, Ruff, Pyright, and Python format checks passed."
+    },
+    {
+      "lane": "bun run lint:e2e",
+      "status": "passed",
+      "evidence": "Independent frozen install, TypeScript, and ESLint passed."
+    },
+    {
+      "lane": "bun run test:python",
+      "status": "passed",
+      "evidence": "7000 non-acceptance Python tests passed."
+    },
+    {
+      "lane": "bun run test:server",
+      "status": "passed",
+      "evidence": "Server unit and database/Redis integration lanes passed."
+    },
+    {
+      "lane": "Bun scripts/shared/design-tokens tests",
+      "status": "passed",
+      "evidence": "All three explicitly selected Bun test corpora passed."
+    },
+    {
+      "lane": "Bun mobile tests",
+      "status": "passed",
+      "evidence": "508 mobile tests passed."
+    },
+    {
+      "lane": "Bun web tests",
+      "status": "passed",
+      "evidence": "204 web tests passed."
+    },
+    {
+      "lane": "full Playwright suite",
+      "status": "passed",
+      "evidence": "Full upgraded browser suite passed after the final app/server graph."
+    },
+    {
+      "lane": "mobile verify:upgrade",
+      "status": "passed",
+      "evidence": "Expo doctor passed 21/21 checks and iOS, Android, and web exports completed."
+    },
+    {
+      "lane": "mobile verify:native-build",
+      "status": "passed",
+      "evidence": "Clean iOS build succeeded; launch and auth flows passed 2/2 on the owned simulator."
+    },
+    {
+      "lane": "mobile verify:native-transport",
+      "status": "passed",
+      "evidence": "Owned-simulator audio, microphone, event/HUD, and fault runs passed."
+    },
+    {
+      "lane": "bun run test:acceptance:nollm",
+      "status": "passed",
+      "evidence": "270 acceptance tests passed; 9 real-LLM tests were deselected."
+    },
+    {
+      "lane": "Playwright web project",
+      "status": "passed",
+      "evidence": "40 production marketing tests passed."
+    },
+    {
+      "lane": "Playwright web-lighthouse project",
+      "status": "passed",
+      "evidence": "4 tests passed; performance, SEO, and accessibility each scored 100."
+    },
+    {
+      "lane": "Playwright chromium project",
+      "status": "passed",
+      "evidence": "40 authenticated mobile-web tests passed."
+    },
+    {
+      "lane": "clean-worktree bootstrap",
+      "status": "passed",
+      "evidence": "Detached 89d5efff proof installed four frozen locks and Chromium, migrated and seeded isolated ports 56032/56979, and passed report, seed, environment, and aggregate checks; owned containers and worktree cleaned."
+    },
+    {
+      "lane": "Android device check",
+      "status": "missing",
+      "evidence": "adb devices returned no attached device."
+    },
+    {
+      "lane": "real-LLM acceptance",
+      "status": "required at sprint close",
+      "evidence": "Credentialed cost-bearing lane was not run by the story executor."
+    }
   ]
 }

@@ -214,7 +214,7 @@ Compatibility exceptions:
 | Playwright web project | passed | 40 production marketing tests passed. |
 | Playwright web-lighthouse project | passed | 4 tests passed; performance, SEO, and accessibility each scored 100. |
 | Playwright chromium project | passed | 40 authenticated mobile-web tests passed. |
-| clean-worktree bootstrap | passed | Detached 38196933 proof installed four locks and Chromium, then migrated and seeded isolated ports 55832/56779. |
+| clean-worktree bootstrap | passed | Detached 89d5efff proof installed four frozen locks and Chromium, migrated and seeded isolated ports 56032/56979, and passed report, seed, environment, and aggregate checks; owned containers and worktree cleaned. |
 | Android device check | missing | adb devices returned no attached device. |
 | real-LLM acceptance | required at sprint close | Credentialed cost-bearing lane was not run by the story executor. |
 
