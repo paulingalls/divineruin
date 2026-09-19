@@ -78,7 +78,7 @@ reap_typegen_reservation() {
 # bootstrap; a dead owner is reaped before one retry.
 # Args: <port>
 reserve_typegen_port() {
-  local port="$1" lock_dir owner
+  local port="$1" lock_dir owner status
   lock_dir="$TYPEGEN_LOCK_ROOT/$port"
   if ! mkdir "$lock_dir" 2>/dev/null; then
     owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
@@ -97,9 +97,15 @@ reserve_typegen_port() {
     echo "init-worktree: could not record the owner of typegen port $port." >&2
     return 2
   fi
-  if lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; then
+  if wt_port_listeners "$port" >/dev/null; then
     release_typegen_port "$port"
     return 1
+  else
+    status=$?
+    if [ "$status" -ne 1 ]; then
+      release_typegen_port "$port"
+      return "$status"
+    fi
   fi
 }
 
@@ -148,9 +154,12 @@ reap_typegen() {
 # absent listener means the port was never ours.
 # Args: <port> <expected-process-group>
 assert_typegen_port_owner() {
-  local port="$1" expected_group="$2" listeners listener group
-  listeners="$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)"
-  if [ -z "$listeners" ]; then
+  local port="$1" expected_group="$2" listeners listener group status
+  if listeners="$(wt_port_listeners "$port")"; then
+    :
+  else
+    status=$?
+    [ "$status" -eq 1 ] || return "$status"
     echo "init-worktree: no listener on reserved typegen port $port." >&2
     return 1
   fi
@@ -190,7 +199,9 @@ run_typegen() {
 
   waited=0
   bound=1
-  until lsof -ti ":$port" -sTCP:LISTEN >/dev/null 2>&1; do
+  until wt_port_listeners "$port" >/dev/null; do
+    status=$?
+    [ "$status" -eq 1 ] || exit "$status"
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "init-worktree: the typegen dev server exited before binding reserved port $port." >&2
       sed 's/^/    /' "$log" >&2
@@ -266,7 +277,7 @@ write_env_if_absent() {
     return 0
   fi
   echo "==> writing .env (from .env.example, offset $WT_OFFSET)"
-  DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
+  WT_PORT_OFFSET="$WT_OFFSET" DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
   POSTGRES_HOST_PORT="$POSTGRES_HOST_PORT" VALKEY_HOST_PORT="$VALKEY_HOST_PORT" \
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   python3 - "$REPO_ROOT/.env.example" "$REPO_ROOT/.env" <<'PY'
@@ -274,7 +285,7 @@ import os, sys
 src, dst = sys.argv[1], sys.argv[2]
 # Keys we set/override so the worktree stack is self-describing in .env.
 overrides = {k: os.environ[k] for k in (
-    "DATABASE_URL", "REDIS_URL",
+    "WT_PORT_OFFSET", "DATABASE_URL", "REDIS_URL",
     "POSTGRES_HOST_PORT", "VALKEY_HOST_PORT", "COMPOSE_PROJECT_NAME",
 )}
 seen = set()
@@ -308,11 +319,14 @@ start_stack() {
 
 # ── run ───────────────────────────────────────────────────────────────────────
 main() {
-  wt_export_env
+  runtime_database_url="${DATABASE_URL:-}"
+  runtime_redis_url="${REDIS_URL:-}"
+  wt_expected_env
+  export DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT"
   echo "==> provisioning worktree: project=$COMPOSE_PROJECT_NAME offset=$WT_OFFSET"
 
   write_env_if_absent
-  wt_authorize settings
+  wt_authorize_runtime "$runtime_database_url" "$runtime_redis_url"
 
   echo "==> bun install"
   bun install

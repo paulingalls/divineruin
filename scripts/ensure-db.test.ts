@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  authorizeRuntime,
   ensureDbUp,
+  isAcceptingQueries,
   isCiServiceMode,
   parseHostPort,
   parseUser,
   stopIfStarted,
   type LifecycleDeps,
-  type OwnershipIntent,
 } from "./ensure-db.ts";
 
 const originalEnv = { ...process.env };
@@ -17,6 +18,10 @@ afterEach(() => {
 function fakeDeps(reachable: boolean) {
   const calls: string[] = [];
   const deps: LifecycleDeps = {
+    authorizeRuntime: (databaseUrl, redisUrl) => {
+      calls.push(`authorize-runtime:${databaseUrl}:${redisUrl ?? ""}`);
+      return Promise.resolve();
+    },
     authorize: (intent) => {
       calls.push(`authorize:${intent}`);
       return Promise.resolve();
@@ -52,13 +57,43 @@ describe("URL parsing", () => {
 test("ownership is checked before reachability and reachable reuse", async () => {
   const { calls, deps } = fakeDeps(true);
   expect(await ensureDbUp(deps)).toBe(false);
-  expect(calls).toEqual(["authorize:settings", "reachable", "authorize:reuse"]);
+  expect(calls).toEqual([
+    `authorize-runtime:${process.env.DATABASE_URL}:${process.env.REDIS_URL ?? ""}`,
+    "reachable",
+    "authorize:reuse",
+  ]);
+});
+
+test("the real shared authority rejects a foreign runtime endpoint", () => {
+  expect(
+    authorizeRuntime("postgresql://u:p@localhost:55432/divineruin", undefined),
+  ).rejects.toThrow("runtime DATABASE_URL");
+});
+
+test("the real shared authority rejects a foreign ambient Redis endpoint", () => {
+  expect(authorizeRuntime(process.env.DATABASE_URL!, "redis://localhost:56379")).rejects.toThrow(
+    "runtime REDIS_URL",
+  );
+});
+
+test("readiness raises ownership refusal instead of returning not-ready", async () => {
+  expect(
+    isAcceptingQueries("divineruin", () =>
+      Promise.resolve({
+        exit: 78,
+        stderr: "worktree ownership: project belongs to foreign checkout",
+      }),
+    ),
+  ).rejects.toThrow("foreign checkout");
+  expect(
+    await isAcceptingQueries("divineruin", () => Promise.resolve({ exit: 1, stderr: "not ready" })),
+  ).toBe(false);
 });
 
 test("an ownership refusal prevents the reachability probe", async () => {
   const { calls, deps } = fakeDeps(true);
-  deps.authorize = (intent: OwnershipIntent) => {
-    calls.push(`authorize:${intent}`);
+  deps.authorizeRuntime = (databaseUrl, redisUrl) => {
+    calls.push(`authorize-runtime:${databaseUrl}:${redisUrl ?? ""}`);
     return Promise.reject(new Error("foreign checkout owner"));
   };
   try {
@@ -68,13 +103,19 @@ test("an ownership refusal prevents the reachability probe", async () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain("foreign checkout owner");
   }
-  expect(calls).toEqual(["authorize:settings"]);
+  expect(calls).toEqual([
+    `authorize-runtime:${process.env.DATABASE_URL}:${process.env.REDIS_URL ?? ""}`,
+  ]);
 });
 
 test("an owned unreachable database starts only through create intent", async () => {
   const { calls, deps } = fakeDeps(false);
   expect(await ensureDbUp(deps)).toBe(true);
-  expect(calls).toEqual(["authorize:settings", "reachable", "compose:create:up -d"]);
+  expect(calls).toEqual([
+    `authorize-runtime:${process.env.DATABASE_URL}:${process.env.REDIS_URL ?? ""}`,
+    "reachable",
+    "compose:create:up -d",
+  ]);
 });
 
 test("stop uses the destructive ownership intent", async () => {

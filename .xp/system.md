@@ -180,14 +180,20 @@ lost review rounds to both halves of this, five times.
 **Checkout-owned local infrastructure**: `scripts/worktree-common.sh` is the one
 authority used by bootstrap, Bun and Python test startup, and teardown. It hashes
 the physical common Git directory for clone identity and the checkout Git
-directory for checkout identity. Linked project names and port offsets include
-the clone identity; the primary convention remains unchanged. `.env` is a
-request and must match all five derived project, port, and URL settings before
-any reachability probe or Compose operation. Compose resources carry clone and
-checkout labels. Missing, mixed, foreign, unreadable, or legacy labels fail
-closed without adoption or deletion. Back up and migrate or remove legacy data
-manually. CI service Postgres requires the explicit GitHub Actions marker and
-cannot run Compose. Sweep deletes only consistently labeled stale checkouts from
-the current clone and rejects empty or unreadable enumeration.
+directory for checkout identity. Linked project names and default port offsets
+include clone identity; the primary naming convention remains unchanged. A
+validated `WT_PORT_OFFSET` may resolve a local collision, but never establishes
+Docker ownership. `.env` is a request: its project and URL endpoints must match
+the checkout before any reachability probe or Compose operation. Existing port
+keys, when present, must agree; older primary files may derive absent port keys
+from their coupled URLs without being rewritten. The Bun and Python adapters
+also submit their actual runtime `DATABASE_URL` and `REDIS_URL` to this shared
+authority. Port inspection errors and readiness ownership refusals fail
+immediately. Compose resources carry clone and checkout labels. Missing, mixed,
+foreign, unreadable, or legacy labels fail closed without adoption or deletion.
+Back up and migrate or remove legacy data manually. CI service Postgres requires
+the explicit GitHub Actions marker and cannot run Compose. Sweep deletes only
+consistently labeled stale checkouts from the current clone and rejects empty or
+unreadable enumeration.
 
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`

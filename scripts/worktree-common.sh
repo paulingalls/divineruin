@@ -47,6 +47,29 @@ wt_sanitize_name() {
 
 wt_project_name() { printf 'dr-%s' "$(wt_sanitize_name "$1")"; }
 
+wt_select_offset() {
+  local derived="$1" file="$WT_ROOT/.env" selected source
+  if [ "${WT_PORT_OFFSET+x}" = x ]; then
+    selected="$WT_PORT_OFFSET"; source="exported WT_PORT_OFFSET"
+  elif selected="$(wt_env_value WT_PORT_OFFSET "$file" 2>/dev/null)"; then
+    source="$file WT_PORT_OFFSET"
+  else
+    selected="$derived"; source="checkout identity"
+  fi
+  case "$selected" in
+    ''|*[!0-9]*) wt_die "$source value '${selected:-<empty>}' is invalid; use a decimal offset from 0 through 9000."; return 1 ;;
+  esac
+  if [ "$selected" -gt 9000 ]; then
+    wt_die "$source value $selected is invalid; use a decimal offset from 0 through 9000."
+    return 1
+  fi
+  if [ "$WT_GIT_DIR" != "$WT_COMMON_DIR" ] && [ "$selected" -eq 0 ]; then
+    wt_die "$source value 0 would target the primary ports from linked checkout $WT_CHECKOUT_ID; use 1 through 9000."
+    return 1
+  fi
+  printf '%s\n' "$selected"
+}
+
 wt_expected_env() {
   wt_identity || { wt_die "cannot identify this Git checkout."; return 1; }
   local name key offset
@@ -59,7 +82,8 @@ wt_expected_env() {
     offset="$(wt_offset_for_name "$key")"
     COMPOSE_PROJECT_NAME="$(wt_project_name "$name")-${WT_CLONE_ID:0:8}"
   fi
-  WT_OFFSET="$offset"
+  WT_OFFSET="$(wt_select_offset "$offset")" || return 1
+  offset="$WT_OFFSET"
   POSTGRES_HOST_PORT=$((55432 + offset))
   VALKEY_HOST_PORT=$((56379 + offset))
   DATABASE_URL="postgresql://divineruin:divineruin_dev@localhost:${POSTGRES_HOST_PORT}/divineruin"
@@ -90,11 +114,35 @@ wt_url_endpoint() {
   python3 -c 'from urllib.parse import urlparse; import sys; u=urlparse(sys.argv[1]); print("{}\t{}\t{}".format(u.scheme,u.hostname or "",u.port or sys.argv[2]))' "$1" "$2"
 }
 
+wt_validate_runtime_values() {
+  local db_url="${1:-}" redis_url="${2:-}" endpoint
+  if [ -n "$db_url" ]; then
+    endpoint="$(wt_url_endpoint "$db_url" 5432 2>/dev/null || true)"
+    if [ "$endpoint" != $'postgresql\tlocalhost\t'"$POSTGRES_HOST_PORT" ]; then
+      wt_die "runtime DATABASE_URL=$db_url conflicts with checkout $WT_CHECKOUT_ID; expected PostgreSQL at localhost:$POSTGRES_HOST_PORT. Preserve the data, correct the caller environment, then retry."
+      return 1
+    fi
+  fi
+  if [ -n "$redis_url" ]; then
+    endpoint="$(wt_url_endpoint "$redis_url" 6379 2>/dev/null || true)"
+    if [ "$endpoint" != $'redis\tlocalhost\t'"$VALKEY_HOST_PORT" ]; then
+      wt_die "runtime REDIS_URL=$redis_url conflicts with checkout $WT_CHECKOUT_ID; expected Redis at localhost:$VALKEY_HOST_PORT. Preserve the data, correct the caller environment, then retry."
+      return 1
+    fi
+  fi
+}
+
+wt_authorize_runtime() {
+  local db_url="${1:-}" redis_url="${2:-}"
+  wt_validate_settings || return 1
+  wt_validate_runtime_values "$db_url" "$redis_url"
+}
+
 wt_validate_settings() {
   wt_expected_env || return 1
   local file="$WT_ROOT/.env" key actual expected db_url redis_url db_endpoint redis_endpoint
   [ -r "$file" ] || { wt_die "$file is missing or unreadable. Run bash scripts/init-worktree.sh to create checkout-owned settings."; return 1; }
-  for key in COMPOSE_PROJECT_NAME POSTGRES_HOST_PORT VALKEY_HOST_PORT; do
+  for key in COMPOSE_PROJECT_NAME; do
     actual="$(wt_env_value "$key" "$file" 2>/dev/null || true)"
     expected="${!key}"
     if [ "$actual" != "$expected" ]; then
@@ -114,6 +162,14 @@ wt_validate_settings() {
     wt_die "REDIS_URL conflicts with checkout $WT_CHECKOUT_ID and its owned Valkey endpoint localhost:$VALKEY_HOST_PORT. Preserve the data, correct $file, then retry."
     return 1
   fi
+  for key in POSTGRES_HOST_PORT VALKEY_HOST_PORT; do
+    actual="$(wt_env_value "$key" "$file" 2>/dev/null || true)"
+    expected="${!key}"
+    if [ -n "$actual" ] && [ "$actual" != "$expected" ]; then
+      wt_die "$key=$actual conflicts with checkout $WT_CHECKOUT_ID (expected $expected). Preserve the data, correct $file, then retry."
+      return 1
+    fi
+  done
   DATABASE_URL="$db_url" REDIS_URL="$redis_url"
   DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT"
   export DATABASE_URL REDIS_URL DR_CLONE_ID DR_CHECKOUT_ID DR_CHECKOUT_ROOT
@@ -171,17 +227,40 @@ wt_validate_resources() {
 }
 
 wt_assert_ports_vacant() {
-  local port
+  local port status
   for port in "$POSTGRES_HOST_PORT" "$VALKEY_HOST_PORT"; do
-    if lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    if wt_port_listeners "$port" >/dev/null; then
       wt_die "host port $port is already in use without an owned project. Preserve and stop the conflicting service before retrying."
       return 1
+    else
+      status=$?
+      [ "$status" -eq 1 ] || return "$status"
     fi
   done
 }
 
+wt_port_listeners() {
+  local port="$1" inspector output errors status error_file
+  inspector="${WT_LSOF:-$(type -P lsof 2>/dev/null || true)}"
+  if [ -z "$inspector" ] || [ ! -x "$inspector" ]; then
+    wt_die "port inspection failed for $port: lsof executable '${inspector:-<missing>}' is unavailable."
+    return 2
+  fi
+  error_file="$(mktemp -t dr-lsof)" || { wt_die "port inspection failed for $port: cannot capture lsof errors."; return 2; }
+  if output="$("$inspector" -ti "tcp:$port" -sTCP:LISTEN 2>"$error_file")"; then
+    status=0
+  else
+    status=$?
+  fi
+  errors="$(cat "$error_file")"; rm -f "$error_file"
+  if [ "$status" -eq 0 ] && [ -n "$output" ] && [ -z "$errors" ]; then printf '%s\n' "$output"; return 0; fi
+  if [ "$status" -eq 1 ] && [ -z "$output" ] && [ -z "$errors" ]; then return 1; fi
+  wt_die "port inspection failed for $port using $inspector (exit $status): ${errors:-unexpected empty result}."
+  return 2
+}
+
 wt_authorize() {
-  local intent="$1" ids
+  local intent="$1" ids runtime_db="${DATABASE_URL:-}" runtime_redis="${REDIS_URL:-}"
   if [ "$intent" = ci ]; then
     wt_identity || { wt_die "cannot identify the CI checkout."; return 1; }
     [ "$WT_GIT_DIR" = "$WT_COMMON_DIR" ] \
@@ -191,6 +270,7 @@ wt_authorize() {
     return 0
   fi
   wt_validate_settings || return 1
+  wt_validate_runtime_values "$runtime_db" "$runtime_redis" || return 1
   case "$intent" in
     settings) return 0 ;;
     create)
@@ -206,6 +286,10 @@ wt_authorize() {
 wt_compose() {
   local intent="$1"; shift
   wt_authorize "$intent" || return 1
+  wt_run_compose "$@"
+}
+
+wt_run_compose() {
   DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$WT_CHECKOUT_ID" DR_CHECKOUT_ROOT="$WT_ROOT" \
     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" POSTGRES_HOST_PORT="$POSTGRES_HOST_PORT" \
     VALKEY_HOST_PORT="$VALKEY_HOST_PORT" docker compose -f "$WT_ROOT/docker-compose.yml" "$@"
@@ -268,11 +352,14 @@ wt_cli() {
   local command="${1:-}"; shift || true
   case "$command" in
     authorize) wt_authorize "${1:-}" ;;
-    compose) local intent="${1:-}"; shift; wt_compose "$intent" "$@" ;;
-    expected-env) wt_export_env; printf '%s\n' "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" ;;
+    authorize-runtime) wt_authorize_runtime "${1:-}" "${2:-}" ;;
+    # 78 is the adapter contract for refusal before Docker. Child exit codes,
+    # including pg_isready's ordinary not-ready status, pass through unchanged.
+    compose) local intent="${1:-}"; shift; wt_authorize "$intent" || return 78; wt_run_compose "$@" ;;
+    expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" ;;
     sweep-candidates) wt_sweep_candidates ;;
     destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" ;;
-    *) wt_die "usage: worktree-common.sh {authorize INTENT|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;
+    *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;
   esac
 }
 

@@ -3,10 +3,12 @@ import { Socket } from "node:net";
 const DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 const OWNER = new URL("./worktree-common.sh", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
+const OWNERSHIP_REFUSAL_EXIT = 78;
 
 export type OwnershipIntent = "settings" | "create" | "reuse" | "destroy" | "ci";
 
 export interface LifecycleDeps {
+  authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void>;
   authorize(intent: OwnershipIntent): Promise<void>;
   compose(intent: OwnershipIntent, ...args: string[]): Promise<number>;
   reachable(host: string, port: number): Promise<boolean>;
@@ -59,17 +61,41 @@ async function authorize(intent: OwnershipIntent): Promise<void> {
     throw new Error(result.stderr.trim() || `ownership check failed (${result.exit})`);
 }
 
+export async function authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void> {
+  const result = await runOwner("authorize-runtime", databaseUrl, redisUrl ?? "");
+  if (result.exit !== 0)
+    throw new Error(result.stderr.trim() || `runtime ownership check failed (${result.exit})`);
+}
+
 async function compose(intent: OwnershipIntent, ...args: string[]): Promise<number> {
   const result = await runOwner("compose", intent, ...args);
   if (result.stderr) process.stderr.write(result.stderr);
   return result.exit;
 }
 
-async function isAcceptingQueries(user: string): Promise<boolean> {
-  return (await compose("reuse", "exec", "-T", "postgres", "pg_isready", "-U", user)) === 0;
+type OwnerResult = { exit: number; stderr: string };
+
+export async function isAcceptingQueries(
+  user: string,
+  runner: (...args: string[]) => Promise<OwnerResult> = runOwner,
+): Promise<boolean> {
+  const result = await runner(
+    "compose",
+    "reuse",
+    "exec",
+    "-T",
+    "postgres",
+    "pg_isready",
+    "-U",
+    user,
+  );
+  if (result.exit === OWNERSHIP_REFUSAL_EXIT)
+    throw new Error(result.stderr.trim() || "ownership check failed during Postgres readiness");
+  return result.exit === 0;
 }
 
 const defaults: LifecycleDeps = {
+  authorizeRuntime,
   authorize,
   compose,
   reachable: isReachable,
@@ -83,7 +109,8 @@ export async function ensureDbUp(deps: LifecycleDeps = defaults): Promise<boolea
   const { host, port } = parseHostPort(databaseUrl);
   const user = parseUser(databaseUrl);
   const ci = isCiServiceMode();
-  await deps.authorize(ci ? "ci" : "settings");
+  if (ci) await deps.authorize("ci");
+  else await deps.authorizeRuntime(databaseUrl, process.env.REDIS_URL);
   if (await deps.reachable(host, port)) {
     if (!ci) await deps.authorize("reuse");
     return false;

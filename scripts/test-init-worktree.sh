@@ -124,12 +124,16 @@ ok "dead-owner reservation is reaped and retaken"
 # 12. A bound port plus a live reservation exhausts the band and preserves the
 # existing loud diagnostic.
 TEST_BOUND_PORT=48930
-lsof() {
-  case "$*" in
-    *":$TEST_BOUND_PORT"*) printf '%s\n' "$$"; return 0 ;;
-    *) return 1 ;;
-  esac
-}
+cat > "$TYPEGEN_LOCK_ROOT/bound-lsof" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+    *":$TEST_BOUND_PORT"*) printf '%s\n' "$TEST_LISTENER_PID"; exit 0 ;;
+    *) exit 1 ;;
+esac
+SH
+chmod +x "$TYPEGEN_LOCK_ROOT/bound-lsof"
+export TEST_BOUND_PORT TEST_LISTENER_PID="$$"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/bound-lsof"
 mkdir "$TYPEGEN_LOCK_ROOT/48931"
 printf '%s\n' 999999999 > "$TYPEGEN_LOCK_ROOT/48931/pid"
 release_typegen_port 48931
@@ -142,14 +146,19 @@ case "$exhausted" in
   *"init-worktree: no free port in 48930-48931 for the typegen dev server."*) ;;
   *) fail "exhaustion did not preserve the no-free-port diagnostic: $exhausted" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 rm -f "$TYPEGEN_LOCK_ROOT/48931/pid"
 rmdir "$TYPEGEN_LOCK_ROOT/48931"
 ok "bound/live-locked exhaustion fails loud"
 
 # 13. Bind confirmation rejects both an absent listener (silent Expo auto-bump)
 # and a listener outside the launched Expo process group.
-lsof() { return 1; }
+cat > "$TYPEGEN_LOCK_ROOT/vacant-lsof" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+chmod +x "$TYPEGEN_LOCK_ROOT/vacant-lsof"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/vacant-lsof"
 if absent="$(assert_typegen_port_owner 48940 999999999 2>&1)"; then
   fail "bind confirmation accepted an absent listener"
 fi
@@ -157,10 +166,11 @@ case "$absent" in
   *"no listener on reserved typegen port 48940"*) ;;
   *) fail "absent-listener diagnostic missing: $absent" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 
 TEST_BOUND_PORT=48941
-lsof() { printf '%s\n' "$$"; }
+export TEST_BOUND_PORT TEST_LISTENER_PID="$$"
+WT_LSOF="$TYPEGEN_LOCK_ROOT/bound-lsof"
 expected_group="$(ps -o pgid= -p "$$" | tr -d ' ')"
 assert_typegen_port_owner "$TEST_BOUND_PORT" "$expected_group" || fail "bind confirmation rejected Expo's process group"
 if foreign="$(assert_typegen_port_owner "$TEST_BOUND_PORT" 999999999 2>&1)"; then
@@ -170,7 +180,7 @@ case "$foreign" in
   *"listener on reserved typegen port $TEST_BOUND_PORT is outside Expo's process group"*) ;;
   *) fail "foreign-listener diagnostic missing: $foreign" ;;
 esac
-unset -f lsof
+unset WT_LSOF
 ok "bind confirmation rejects absent and foreign listeners"
 
 # 14. Reservation metadata and lock-root I/O failures are loud and leave no
@@ -257,5 +267,37 @@ case "$propagated" in
   *"no free port"*) fail "a fatal reservation was mislabelled as an exhausted band: $propagated" ;;
 esac
 ok "a fatal reservation status aborts the scan"
+
+# 18. Port inspection failures are fatal; only the documented empty exit 1 is
+# a vacant port.
+cat > "$TEST_TYPEGEN_LOCK_ROOT/error-lsof" <<'SH'
+#!/usr/bin/env bash
+echo inspection-failed >&2
+exit 2
+SH
+chmod +x "$TEST_TYPEGEN_LOCK_ROOT/error-lsof"
+WT_LSOF="$TEST_TYPEGEN_LOCK_ROOT/error-lsof"
+if inspected="$(pick_typegen_port 48981 48981 2>&1)"; then
+  fail "typegen selected a port after inspection failed"
+fi
+case "$inspected" in
+  *"inspection failed"*) ;;
+  *) fail "inspection failure diagnostic missing: $inspected" ;;
+esac
+WT_LSOF="$TEST_TYPEGEN_LOCK_ROOT/missing-lsof"
+if inspected="$(pick_typegen_port 48982 48982 2>&1)"; then
+  fail "typegen selected a port without an inspector"
+fi
+unset WT_LSOF
+ok "typegen port inspection fails closed"
+
+if real_error="$(wt_port_listeners notaport 2>&1)"; then
+  fail "real lsof accepted an invalid port expression"
+fi
+case "$real_error" in
+  *"port inspection failed"*) ;;
+  *) fail "real lsof error was not distinguished from vacancy: $real_error" ;;
+esac
+ok "real lsof vacancy and error results remain distinct"
 
 echo "All init-worktree tests passed."

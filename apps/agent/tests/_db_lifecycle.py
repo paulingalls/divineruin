@@ -57,6 +57,7 @@ _OWNER_HELPER = _REPO_ROOT / "scripts" / "worktree-common.sh"
 _DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
 
 _READY_TIMEOUT_SECONDS = 60
+_OWNERSHIP_REFUSAL_EXIT = 78
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -136,13 +137,29 @@ def _authorize(intent: str) -> None:
         raise RuntimeError(result.stderr.strip() or f"ownership check failed ({result.returncode})")
 
 
+def _authorize_runtime(database_url: str, redis_url: str | None) -> None:
+    result = subprocess.run(
+        ["bash", str(_OWNER_HELPER), "authorize-runtime", database_url, redis_url or ""],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=_REPO_ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"runtime ownership check failed ({result.returncode})")
+
+
 def _compose(*args: str) -> subprocess.CompletedProcess[str]:
     intent = "create" if args[:1] == ("up",) else "destroy" if args[:1] in (("down",), ("stop",)) else "reuse"
+    child_env = os.environ.copy()
+    child_env.pop("DATABASE_URL", None)
+    child_env.pop("REDIS_URL", None)
     return subprocess.run(
         ["bash", str(_OWNER_HELPER), "compose", intent, *args],
         capture_output=True,
         text=True,
         check=False,
+        env=child_env,
     )
 
 
@@ -206,7 +223,10 @@ def is_accepting_queries(user: str) -> bool:
     rejects queries with 'the database system is starting up'. pg_isready inside
     the container reports actual query-readiness, closing that race.
     """
-    return _compose("exec", "-T", "postgres", "pg_isready", "-U", user).returncode == 0
+    result = _compose("exec", "-T", "postgres", "pg_isready", "-U", user)
+    if result.returncode == _OWNERSHIP_REFUSAL_EXIT:
+        raise RuntimeError(result.stderr.strip() or "ownership check failed during Postgres readiness")
+    return result.returncode == 0
 
 
 def _start_compose(host: str, port: int, user: str) -> None:
@@ -258,7 +278,10 @@ def ensure_db_up(database_url: str | None = None) -> bool:
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
     ci_mode = _is_ci_service_mode()
-    _authorize("ci" if ci_mode else "settings")
+    if ci_mode:
+        _authorize("ci")
+    else:
+        _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     lock_path, state_path = _lockfile_paths(host, port)
 
     with _locked(lock_path):
@@ -306,6 +329,7 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
         if started:
             raise RuntimeError("CI service mode cannot stop Compose resources")
         return
+    _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
 

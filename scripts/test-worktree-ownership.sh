@@ -121,6 +121,49 @@ set -e
 [ ! -s "$record" ] || fail "injected installation stop unexpectedly reached Docker"
 ok "valid settings and credentials remain byte-for-byte unchanged"
 
+cat > "$primary/.env" <<'ENV'
+WT_PORT_OFFSET=2700
+COMPOSE_PROJECT_NAME=dr-copied-primary
+DATABASE_URL=postgresql://custom_user:custom_password@localhost:58132/divineruin
+REDIS_URL=redis://localhost:59079
+POSTGRES_USER=custom_user
+POSTGRES_PASSWORD=custom_password
+ANTHROPIC_API_KEY=preserve-primary
+ENV
+primary_before="$(shasum -a 256 "$primary/.env")"
+primary_override="$(expected_env "$primary")"
+[ "$(printf '%s\n' "$primary_override" | sed -n 's/^POSTGRES_HOST_PORT=//p')" = 58132 ] \
+  || fail "primary WT_PORT_OFFSET=2700 did not select Postgres 58132"
+(cd "$primary" && bash scripts/worktree-common.sh authorize settings)
+[ "$primary_before" = "$(shasum -a 256 "$primary/.env")" ] || fail "primary override rewrote credentials"
+ok "primary offset override and credentials are preserved"
+
+cat > "$primary/.env" <<'ENV'
+COMPOSE_PROJECT_NAME=dr-copied-primary
+DATABASE_URL=postgresql://custom_user:custom_password@localhost:55432/divineruin
+REDIS_URL=redis://localhost:56379
+POSTGRES_USER=custom_user
+POSTGRES_PASSWORD=custom_password
+ENV
+primary_before="$(shasum -a 256 "$primary/.env")"
+(cd "$primary" && bash scripts/worktree-common.sh authorize settings)
+[ "$primary_before" = "$(shasum -a 256 "$primary/.env")" ] || fail "legacy primary settings were rewritten"
+ok "primary URLs may supply coupled ports without rewriting the existing file"
+
+linked_override="$(cd "$linked" && WT_PORT_OFFSET=3200 bash scripts/worktree-common.sh expected-env)"
+printf 'WT_PORT_OFFSET=3200\n%s\nPOSTGRES_USER=linked_user\nPOSTGRES_PASSWORD=linked_password\n' \
+  "$linked_override" > "$linked/.env"
+(cd "$linked" && bash scripts/worktree-common.sh authorize settings)
+for bad in '' nope -1 9001; do
+  if (cd "$linked" && WT_PORT_OFFSET="$bad" bash scripts/worktree-common.sh expected-env >/dev/null 2>&1); then
+    fail "invalid WT_PORT_OFFSET [$bad] was accepted"
+  fi
+done
+if (cd "$linked" && WT_PORT_OFFSET=0 bash scripts/worktree-common.sh expected-env >/dev/null 2>&1); then
+  fail "linked checkout accepted primary offset zero"
+fi
+ok "linked overrides work and malformed or unsafe offsets fail loud"
+
 make_labels() {
   local dir="$1" id="$2" clone="$3" checkout="$4" working="${5:-}" config="${6:-}"
   mkdir -p "$dir/labels"
@@ -170,6 +213,12 @@ ok "copied sibling settings are rejected"
 
 valid="$same_a"
 printf '%s\n' "$env_a" > "$valid/.env"
+foreign_db='postgresql://u:p@localhost:55432/divineruin'
+if (cd "$valid" && bash scripts/worktree-common.sh authorize-runtime "$foreign_db" '' >/dev/null 2>&1); then
+  fail "foreign runtime DATABASE_URL was authorized"
+fi
+ok "runtime endpoints are checked by the shared authority"
+
 mkdir -p "$TMP/valid-docker"
 record="$TMP/valid.calls"; : > "$record"
 if ! (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$TMP/valid-docker" \
@@ -358,6 +407,35 @@ fi
 kill "$HOLDER_PID" 2>/dev/null || true
 HOLDER_PID=""
 ok "creation refuses an occupied host port with no owned project"
+
+record="$TMP/inspector.calls"; : > "$record"
+if (cd "$valid" && WT_LSOF="$TMP/missing-lsof" DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose create up -d >/dev/null 2>&1); then
+  fail "creation treated a missing port inspector as vacant"
+fi
+! grep -q 'compose .* up -d' "$record" || fail "missing inspector reached Compose startup"
+cat > "$TMP/error-lsof" <<'SH'
+#!/usr/bin/env bash
+echo inspection-failed >&2
+exit 2
+SH
+chmod +x "$TMP/error-lsof"
+: > "$record"
+if (cd "$valid" && WT_LSOF="$TMP/error-lsof" DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose create up -d >/dev/null 2>&1); then
+  fail "creation treated an inspector error as vacant"
+fi
+! grep -q 'compose .* up -d' "$record" || fail "inspector error reached Compose startup"
+cat > "$TMP/vacant-lsof" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+chmod +x "$TMP/vacant-lsof"
+: > "$record"
+(cd "$valid" && WT_LSOF="$TMP/vacant-lsof" DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose create up -d)
+grep -q 'compose .* up -d' "$record" || fail "confirmed vacant ports did not reach Compose startup"
+ok "missing and failing port inspection fail closed; confirmed vacancy proceeds"
 
 # The worktree lives outside the repo, as this project's do: a nested one would
 # resolve its identity from the enclosing checkout instead of failing.
