@@ -35,7 +35,7 @@ def _pricing():
     return mod
 
 
-def _content(settlement_tier: str = "city", *, location: dict | None | EllipsisType = ...):
+def _content(settlement_tier: str = "city", *, location: dict | EllipsisType | None = ...):
     """A content_mod seam: the location the bundle offer-gate reads, plus the get_npc the
     disposition fallback would use (unused here — _queries records a disposition)."""
     mod = MagicMock()

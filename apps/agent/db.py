@@ -73,8 +73,11 @@ async def get_pool() -> asyncpg.Pool:
         return _pool
     async with _pool_lock:
         if _pool is None:
+            database_url = os.environ.get("DATABASE_URL")
+            if not database_url:
+                raise RuntimeError("DATABASE_URL is not set")
             _pool = await asyncpg.create_pool(
-                os.environ["DATABASE_URL"],
+                database_url,
                 min_size=2,
                 max_size=5,
                 connect=_connect_with_retry,
@@ -88,8 +91,11 @@ async def get_redis() -> aioredis.Redis:
         return _redis
     async with _redis_lock:
         if _redis is None:
+            redis_url = os.environ.get("REDIS_URL")
+            if not redis_url:
+                raise RuntimeError("REDIS_URL is not set")
             _redis = aioredis.from_url(
-                os.environ.get("REDIS_URL", "redis://localhost:56379"),
+                redis_url,
                 decode_responses=True,
             )
         return _redis

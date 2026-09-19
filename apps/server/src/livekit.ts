@@ -71,6 +71,7 @@ export async function mintParticipantToken(
     identity,
     name: identity,
   });
+  token.kind = "standard";
   token.addGrant({
     roomJoin: true,
     room: roomName,
@@ -78,6 +79,7 @@ export async function mintParticipantToken(
     canSubscribe: true,
     canPublishData: true,
     canPublishSources: [TrackSource.MICROPHONE],
+    agent: false,
   });
 
   return await token.toJwt();

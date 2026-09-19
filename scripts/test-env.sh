@@ -90,7 +90,7 @@ export REDIS_URL="redis://localhost:${_te_redis_port}"
 
 echo "  test-env: applying migrations + content seed..."
 ( cd "$_te_root" && bun run scripts/migrate.ts )
-( cd "$_te_root/scripts" && uv sync && uv run python seed_content.py )
+( cd "$_te_root" && uv sync --project scripts --frozen && bun run seed )
 
 # Keep _te_id/_te_pg_cid/_te_redis_cid/_te_teardown in the caller's shell — the
 # caller's EXIT trap needs them. Only the migrate/seed path needed _te_root.

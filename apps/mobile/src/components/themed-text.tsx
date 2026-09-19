@@ -4,14 +4,7 @@ import { TypeScale, type ThemeColor } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 export type TextVariant =
-  | "display"
-  | "h1"
-  | "h2"
-  | "body-lg"
-  | "body"
-  | "system"
-  | "caption"
-  | "label";
+  "display" | "h1" | "h2" | "body-lg" | "body" | "system" | "caption" | "label";
 
 export type ThemedTextProps = TextProps & {
   variant?: TextVariant;

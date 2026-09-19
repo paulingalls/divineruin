@@ -10,6 +10,23 @@ EXTERNAL_API_VARS=(
   INWORLD_API_KEY INWORLD_WORKSPACE_ID
 )
 
+mask_external_api_environment() {
+  for var in "${EXTERNAL_API_VARS[@]}"; do export "$var="; done
+}
+
+mask_python_test_environment() {
+  mask_external_api_environment
+  export DATABASE_URL= REDIS_URL=
+}
+
+if [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
+  mask_python_test_environment
+  exec bun --env-file="$BASH_TEST_MASK_ENV" -e '
+    const names = ["DATABASE_URL", "REDIS_URL", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY", "INWORLD_API_KEY", "INWORLD_WORKSPACE_ID"];
+    if (names.some((name) => Bun.env[name] !== "")) process.exit(1);
+  '
+fi
+
 # BASH_TEST=1 stubs the git diff source (env var instead of `git`) and the
 # heavy test runners (single `echo TESTS_RAN` marker). Used by the harness
 # at .githooks/test-pre-push.sh — see that file for the contract.
@@ -101,8 +118,9 @@ else
     # failure through the pipe.
     # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
     # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
-    # This hook does NOT source .env, and `bun run` does not hand .env to the command it
-    # spawns — the key reaches pytest only through test:acceptance's `uv run --env-file`.
+    # test:acceptance deliberately loads the root .env; ambient values still win over
+    # that file, which lets the unit lanes below mask credentials without changing the
+    # developer-facing scripts.
     ( set -o pipefail; REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
       bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
@@ -122,16 +140,17 @@ else
     # server: test:server isolates db.test.ts (real lazy SQL Proxy) in its own
     # process; keep DATABASE_URL or it silently skips. Strip only the external API
     # vars (matches CI's test-bun env).
-    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
+    ( set -o pipefail; mask_external_api_environment; \
       bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
     ( set -o pipefail; bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
     ( set -o pipefail; bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
-    # python: unset DB/REDIS too — it uses its own testcontainers.
-    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
-      unset DATABASE_URL REDIS_URL; bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
+    # python: mask DB/REDIS too — it uses its own testcontainers. Empty ambient
+    # values remain authoritative when the package script explicitly loads .env.
+    ( set -o pipefail; mask_python_test_environment; \
+      bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
     # `if` context suppresses set -e so a failing lane is captured, not aborted-on.
