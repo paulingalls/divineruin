@@ -13,13 +13,16 @@ import ability_persistence
 import character_spells
 import combat_ability
 import crafting_tools
+import db_activity_queries
 import db_content_queries
 import db_queries
 import recipe_tools
 import spell_knowledge
 import spells
 import training_tools
+from _gods_content import load_gods
 from db_errors import db_tool
+from patron_favor import get_patron_tier
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
 from tool_support import (
@@ -54,6 +57,7 @@ async def query_info(
         "training_programs",
         "workspaces",
         "abilities",
+        "patron",
     ],
     target_id: str | None = None,
 ) -> str:
@@ -73,7 +77,9 @@ async def query_info(
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
     - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
-      and active learned variant ids (no target_id needed)."""
+      and active learned variant ids (no target_id needed).
+    - kind="patron": the current player's patron standing, progress, and authored favor action ids
+      (no target_id needed)."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -94,6 +100,8 @@ async def _query_info_impl(
         return await crafting_mod._query_available_workspaces_impl(context, target_id)
     if kind == "abilities":
         return await _query_abilities_impl(context)
+    if kind == "patron":
+        return await _query_patron_impl(context)
     if target_id is None:
         raise ToolError(f"query_info(kind={kind!r}) requires target_id.")
     if kind == "location":
@@ -107,6 +115,50 @@ async def _query_info_impl(
     if kind == "recipe":
         return await recipe_mod._query_recipe_requirements_impl(context, target_id)
     raise ToolError(f"Unknown query_info kind: {kind!r}.")
+
+
+async def _query_patron_impl(
+    context: RunContext[SessionData],
+    *,
+    activities=db_activity_queries,
+    gods_loader=load_gods,
+) -> str:
+    session: SessionData = context.userdata
+    favor = await activities.get_divine_favor(session.player_id)
+    if favor is None:
+        raise ToolError("Cannot query patron: current player has no divine_favor row.")
+
+    tier = get_patron_tier(favor)
+    if tier is None:
+        return json.dumps({"state": "Unbound"})
+
+    patron_id = favor["patron"]
+    patron = next((row for row in gods_loader() if row["god_id"] == patron_id), None)
+    if patron is None:
+        raise ToolError(f"Cannot query patron: unknown patron id {patron_id!r}.")
+
+    next_tier = None
+    favor_needed = None
+    for level in range(favor["level"] + 1, favor["max"] + 1):
+        candidate_tier = get_patron_tier({**favor, "level": level})
+        if candidate_tier != tier:
+            next_tier = candidate_tier
+            favor_needed = level - favor["level"]
+            break
+
+    return json.dumps(
+        {
+            "patron_id": patron_id,
+            "short_name": patron["short_name"],
+            "title": patron["title"],
+            "tier": tier,
+            "level": favor["level"],
+            "max": favor["max"],
+            "next_tier": next_tier,
+            "favor_needed_to_next_tier": favor_needed,
+            "favor_actions": patron["favor_actions"],
+        }
+    )
 
 
 async def _query_abilities_impl(

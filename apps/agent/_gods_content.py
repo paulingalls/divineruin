@@ -1,7 +1,6 @@
 """Shared loader for content/gods.json — sole chokepoint per ADR 0001.
 
-Callers should read patron data via load_gods(); pinning tests in a follow-up
-commit enforce this by construction.
+Callers read patron data via load_gods() rather than reconstructing the path.
 """
 
 from __future__ import annotations

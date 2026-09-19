@@ -390,7 +390,9 @@ offering it. Use spell_learning_progress to say naturally how many study cycles 
 and remain for a spell already underway. To begin, \
 call begin_activity with kind="training", its program id, and that spell_id, but \
 only once the player says to start: interest or a question gets the mentor's offer and a \
-question back, never a started cycle. A cycle has a midpoint where the player chooses how to focus; when they decide, call \
+question back, never a started cycle. The moment they do say to start, call it on that \
+turn — asking an already-willing player to confirm again leaves the cycle unstarted. \
+A cycle has a midpoint where the player chooses how to focus; when they decide, call \
 resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
 and the feel of the work — never read out program ids or raw mechanics. The resolve \
 call returns state="running_second_half" and narration_cue. Speak the returned \

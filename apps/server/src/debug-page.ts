@@ -263,7 +263,7 @@ export const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   <div class="grid">
     <button class="btn" onclick="send({type:'divine_favor_changed',amount:10,patron_id:'solwyn',new_level:22,max:100})">Divine Favor +10 (Solwyn)</button>
     <button class="btn" onclick="send({type:'divine_favor_changed',amount:25,patron_id:'kaelthos',new_level:50,max:100})">Divine Favor +25 (Kaelthos)</button>
-    <button class="btn" onclick="send({type:'divine_favor_changed',amount:0,patron_id:'solwyn',new_level:5,max:100})">Divine Favor Lost</button>
+    <button class="btn" onclick="send({type:'divine_favor_changed',amount:-5,patron_id:'solwyn',new_level:5,max:100})">Divine Favor -5 (Lost)</button>
     <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:0})">Corruption 0 (Clean)</button>
     <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:1})">Corruption 1 (Touched)</button>
     <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:2})">Corruption 2 (Tainted)</button>

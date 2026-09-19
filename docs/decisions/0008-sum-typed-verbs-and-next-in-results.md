@@ -203,3 +203,12 @@ Two deviations, both deliberate:
   wrong-beat calls actually occurring with the `NOW` block in place.
 - Persisting the hot block in history to stabilize the prefix — only if the per-turn
   tail miss ever shows up in the usage numbers.
+
+## Proposed continuation (2026-09-18)
+
+[Strict gameplay tools without abandoning verbs and nouns](../agent_strict_mode.md)
+reproduces the compiler failures and demonstrates a fully strict request partition:
+selected verbs get their original typed arguments in a separate request. It retains
+the verb/noun contracts. Provider acceptance and a LiveKit streaming probe succeeded;
+voice latency remains unapproved. This is a proposal, not retirement of strict-off
+or a change to this ADR's accepted status.

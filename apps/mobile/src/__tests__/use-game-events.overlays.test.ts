@@ -373,6 +373,18 @@ test("divine_favor_changed pushes divine_favor overlay", () => {
   expect(overlays[0].payload.patronId).toBe("solwyn");
 });
 
+test("divine_favor_changed with negative amount pushes divine_favor overlay", () => {
+  handleGameEvent({
+    type: "divine_favor_changed",
+    new_level: 20,
+    amount: -5,
+  });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("divine_favor");
+  expect(overlays[0].payload.amount).toBe(-5);
+});
+
 test("divine_favor_changed with zero amount does not push overlay", () => {
   handleGameEvent({
     type: "divine_favor_changed",

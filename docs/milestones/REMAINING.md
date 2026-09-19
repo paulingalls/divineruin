@@ -5,7 +5,7 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 282 / 530 acceptance criteria — 53%** (the sum of the per-phase counts in
+**Position: 283 / 530 acceptance criteria — 53%** (the sum of the per-phase counts in
 `README.md`; last reconciled after sprint-046). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
