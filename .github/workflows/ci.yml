@@ -39,16 +39,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      # Shared scripts, so this job cannot drift from the git hooks.
-      # Python stays in the lint-python job below — this runner has no uv.
-      #
-      # lint:ts brings the mobile typecheck to CI for the first time, but only
-      # PARTLY: apps/mobile/tsconfig.json includes .expo/types/**/*.ts and
-      # expo-env.d.ts, both gitignored and produced only by a running Expo dev
-      # server (init-worktree.sh regenerates them locally). Without them
-      # typed-route errors compile clean, so CI reports a mobile typecheck it
-      # does not fully perform. Concern 5c9d504cd504.
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun install --cwd e2e --frozen-lockfile
+      # lint:ts typechecks apps/mobile, whose tsconfig includes the gitignored
+      # generated types. This runs the same guarded generator verify:upgrade uses,
+      # which fails when router.d.ts comes back missing, empty or a directory --
+      # without it typed-route errors compile clean and CI reports a mobile
+      # typecheck it does not perform.
+      - run: bun run --cwd apps/mobile generate:route-types
       - run: bun run lint:ts
       - run: bun run lint:e2e
 
@@ -85,15 +85,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
-      - run: bun install
+        with:
+          version: 0.10.6
+          python-version: 3.14.7
+      - run: bun install --frozen-lockfile
       - run: bun run scripts/migrate.ts
-      - run: cd scripts && uv sync && uv run python seed_content.py
+      - run: uv sync --project scripts --frozen && bun run seed
       # test:server isolates db.test.ts (real lazy SQL Proxy) from the bulk
       # suite, which mock.module()s ./db.ts (Bun module mocks leak across files).
       - run: bun run test:server
       - run: bun test --cwd apps/mobile
       - run: bun test --cwd packages/shared
+      - run: bun test --cwd packages/design-tokens
+      - run: bun install --cwd e2e --frozen-lockfile
+      - run: bun test e2e/require-environment.test.ts
+      - run: bun --env-file=.env test ./scripts
       - run: bun test --cwd apps/web
 
   lint-python:
@@ -101,8 +113,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
-      - run: cd apps/agent && uv sync
+        with:
+          version: 0.10.6
+          python-version: 3.14.7
+      - run: uv sync --project apps/agent --frozen
       - run: cd apps/agent && uv run ruff check .
       - run: cd apps/agent && uv run ruff format --check .
       - run: cd apps/agent && uv run pyright
@@ -149,12 +167,21 @@ jobs:
       # exercise the TS↔Python seam over real HTTP. Without it they error with
       # FileNotFoundError: 'bun'. Mirrors the test-bun / test-e2e setup.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.10.6
+          python-version: 3.14.7
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: bun run scripts/migrate.ts
-      - run: cd scripts && uv sync && uv run python seed_content.py
-      - run: cd apps/agent && uv sync
+      - run: uv sync --project scripts --frozen && bun run seed
+      - run: uv sync --project apps/agent --frozen
+      - run: bun install --cwd e2e --frozen-lockfile
       - run: cd apps/agent && uv run pytest tests/ -q
 
   test-e2e:
@@ -195,11 +222,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
-      - run: bun install
+        with:
+          version: 0.10.6
+          python-version: 3.14.7
+      - run: bun install --frozen-lockfile
       - run: bun run scripts/migrate.ts
-      - run: cd scripts && uv sync && uv run python seed_content.py
-      - run: cd e2e && bun install
+      - run: uv sync --project scripts --frozen && bun run seed
+      - run: bun install --cwd e2e --frozen-lockfile
       - run: cd e2e && bunx playwright install --with-deps chromium
       - run: cd e2e && bunx playwright test
       - uses: actions/upload-artifact@v4

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
-import { DEFAULT_DB_URL } from "./fixtures/auth.js";
 import { LH_DEBUG_PORT } from "./fixtures/lighthouse.js";
+import { requireEnvironment } from "./require-environment.js";
 
 const CI = !!process.env.CI;
 
@@ -55,10 +55,9 @@ const serverWebServer = {
   // it was already captured.
   stdout: "pipe" as const,
   env: {
-    DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
-    REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:56379",
-    JWT_SECRET:
-      process.env.JWT_SECRET ?? "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    DATABASE_URL: requireEnvironment("DATABASE_URL"),
+    REDIS_URL: requireEnvironment("REDIS_URL"),
+    JWT_SECRET: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     NODE_ENV: "development",
     RATE_LIMIT_BYPASS: "1",
     // Turn on the server-side diagnostic (apps/server/src/env.ts logDiag) only

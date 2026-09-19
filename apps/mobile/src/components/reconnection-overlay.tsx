@@ -51,7 +51,7 @@ export function ReconnectionOverlay() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(10,10,11,0.85)",
     justifyContent: "center",
     alignItems: "center",

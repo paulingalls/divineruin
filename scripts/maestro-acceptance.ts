@@ -1,27 +1,17 @@
-// Maestro acceptance lane gate.
-//
-// Mirrors the REQUIRE_DOCKER pattern in apps/agent/tests/acceptance/conftest.py
-// (lines 77-83) for the mobile native lane: skip-by-default when no booted iOS
-// simulator or attached Android device is present, hard-fail when
-// REQUIRE_EMULATOR=1. Without this gate, `bun run test:e2e:mobile` either
-// errors confusingly on headless dev machines or stalls /xp-free-close.
-//
-// Core logic is a pure async function `runGate({env, runSimctl, runAdb,
-// runMaestro})` so unit tests inject fakes; the CLI bottom wires the real
-// Bun.spawn invocations.
+export interface SimulatorDevice {
+  udid?: string;
+  name?: string;
+  state?: string;
+  isAvailable?: boolean;
+}
 
 export interface GateDeps {
   env: Record<string, string | undefined>;
   runSimctl: () => Promise<string>;
   runAdb: () => Promise<string>;
-  runMaestro: (flows: string[]) => Promise<number>;
+  probeRequestedIos: (udid: string) => Promise<boolean>;
+  runMaestro: (udid: string | undefined, flows: string[]) => Promise<number>;
 }
-
-// Flows that can run against a launched-but-offline app (no apps/server).
-const OFFLINE_SAFE_FLOWS = ["launch.yaml"];
-// Flows that require apps/server reachable from the device — gated by
-// REQUIRE_BACKEND=1 so default skip-cleanly is preserved.
-const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml"];
 
 export interface GateResult {
   exitCode: number;
@@ -30,143 +20,164 @@ export interface GateResult {
   maestroInvoked: boolean;
 }
 
+const OFFLINE_SAFE_FLOWS = ["launch.yaml"];
+const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml"];
 const SIMCTL_BOOTED_PATTERN = /\(Booted\)/;
-// "List of devices attached" header word "devices" must NOT match — match only
-// rows like `emulator-5554  device` or `1234abcd  device`. The trailing-tab
-// anchor distinguishes the column-aligned status from the header word.
 const ADB_DEVICE_LINE = /^\S+\s+device\b/m;
 
-// Detection returns the device-present boolean plus an optional diagnostic
-// when the underlying probe failed for a reason other than "tool missing".
-// REQUIRE_EMULATOR=1 surfaces these diagnostics so a wedged adb daemon or a
-// broken simctl install doesn't masquerade as "no device, boot one".
 interface DetectionResult {
   present: boolean;
   diagnostic?: string;
 }
 
-function isToolMissing(err: unknown): boolean {
-  // Bun.spawn rejects with an ENOENT-style error when the binary isn't on PATH.
-  const msg = err instanceof Error ? err.message : String(err);
-  return /ENOENT|not found|No such file/i.test(msg);
+function isToolMissing(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /ENOENT|not found|No such file/i.test(message);
 }
 
-async function detectIosBooted(deps: GateDeps): Promise<DetectionResult> {
+async function detect(
+  label: string,
+  probe: () => Promise<string>,
+  pattern: RegExp,
+): Promise<DetectionResult> {
   try {
-    const out = await deps.runSimctl();
-    return { present: SIMCTL_BOOTED_PATTERN.test(out) };
-  } catch (err) {
-    if (isToolMissing(err)) return { present: false };
-    return {
-      present: false,
-      diagnostic: `xcrun simctl probe failed: ${err instanceof Error ? err.message : String(err)}`,
-    };
+    return { present: pattern.test(await probe()) };
+  } catch (error) {
+    if (isToolMissing(error)) return { present: false };
+    const message = error instanceof Error ? error.message : String(error);
+    return { present: false, diagnostic: `${label} probe failed: ${message}` };
   }
 }
 
-async function detectAndroidAttached(deps: GateDeps): Promise<DetectionResult> {
-  try {
-    const out = await deps.runAdb();
-    return { present: ADB_DEVICE_LINE.test(out) };
-  } catch (err) {
-    if (isToolMissing(err)) return { present: false };
-    return {
-      present: false,
-      diagnostic: `adb devices probe failed: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
+function failure(stderr: string): GateResult {
+  return { exitCode: 1, stdout: "", stderr, maestroInvoked: false };
+}
+
+export function parseSimulatorDevices(raw: string): SimulatorDevice[] {
+  const payload = JSON.parse(raw) as { devices?: Record<string, SimulatorDevice[]> };
+  const devices = Object.values(payload.devices ?? {}).flat();
+  if (devices.length === 0) throw new Error("simctl returned no simulator devices");
+  return devices;
+}
+
+export function requestedDeviceIsBooted(devices: SimulatorDevice[], udid: string): boolean {
+  return devices.some(
+    (device) => device.udid === udid && device.state === "Booted" && device.isAvailable !== false,
+  );
 }
 
 export async function runGate(deps: GateDeps): Promise<GateResult> {
-  const requireEmulator = deps.env.REQUIRE_EMULATOR === "1";
-  const [ios, android] = await Promise.all([
-    detectIosBooted(deps),
-    detectAndroidAttached(deps),
-  ]);
-
-  if (!ios.present && !android.present) {
-    const diagnostics = [ios.diagnostic, android.diagnostic].filter(
-      (d): d is string => Boolean(d),
-    );
-    if (requireEmulator) {
-      const base =
-        "REQUIRE_EMULATOR=1 but no booted iOS simulator or attached " +
-        "Android device was found. Boot one (e.g. `xcrun simctl boot " +
-        "'iPhone 15'` or `adb devices`) and rerun.";
-      const stderr =
-        diagnostics.length > 0
-          ? `${base}\nDetection diagnostics:\n  - ${diagnostics.join("\n  - ")}`
-          : base;
-      return { exitCode: 1, stdout: "", stderr, maestroInvoked: false };
-    }
-    return {
-      exitCode: 0,
-      stdout:
-        "Maestro acceptance: skipped (no booted iOS simulator or attached " +
-        "Android device). Set REQUIRE_EMULATOR=1 to hard-fail.",
-      stderr: "",
-      maestroInvoked: false,
-    };
-  }
-
+  const strict = deps.env.REQUIRE_EMULATOR === "1";
+  const requestedUdid = deps.env.IOS_SIMULATOR_UDID?.trim();
   const flows = [...OFFLINE_SAFE_FLOWS];
-  if (deps.env.REQUIRE_BACKEND === "1") {
-    flows.push(...BACKEND_REQUIRED_FLOWS);
+  if (deps.env.REQUIRE_BACKEND === "1") flows.push(...BACKEND_REQUIRED_FLOWS);
+
+  if (strict && !requestedUdid) {
+    return failure("REQUIRE_EMULATOR=1 requires IOS_SIMULATOR_UDID");
   }
 
-  const exit = await deps.runMaestro(flows);
-  // Bun.spawn .exited can resolve to null on signal termination; coerce to a
-  // non-zero exit so CI / pre-push doesn't read a Ctrl-C'd run as success.
-  const exitCode = typeof exit === "number" ? exit : 130;
-  return { exitCode, stdout: "", stderr: "", maestroInvoked: true };
+  if (requestedUdid) {
+    try {
+      if (!(await deps.probeRequestedIos(requestedUdid))) {
+        return failure(`Requested iOS simulator is not booted and available: ${requestedUdid}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return failure(`Requested iOS simulator probe failed for ${requestedUdid}: ${message}`);
+    }
+  } else {
+    const [ios, android] = await Promise.all([
+      detect("xcrun simctl", deps.runSimctl, SIMCTL_BOOTED_PATTERN),
+      detect("adb devices", deps.runAdb, ADB_DEVICE_LINE),
+    ]);
+    if (!ios.present && !android.present) {
+      const diagnostics = [ios.diagnostic, android.diagnostic].filter((value): value is string =>
+        Boolean(value),
+      );
+      if (strict) {
+        return failure(
+          diagnostics.length > 0
+            ? `No device is available:\n  - ${diagnostics.join("\n  - ")}`
+            : "REQUIRE_EMULATOR=1 found no available device",
+        );
+      }
+      return {
+        exitCode: 0,
+        stdout:
+          "Maestro acceptance: skipped (no booted iOS simulator or attached Android device). " +
+          "Set REQUIRE_EMULATOR=1 and IOS_SIMULATOR_UDID to hard-fail.",
+        stderr: "",
+        maestroInvoked: false,
+      };
+    }
+  }
+
+  const exit = await deps.runMaestro(requestedUdid, flows);
+  return {
+    exitCode: typeof exit === "number" ? exit : 130,
+    stdout: "",
+    stderr: "",
+    maestroInvoked: true,
+  };
 }
 
-// Bun.spawn helper — returns stdout as text. Drains stderr concurrently so a
-// chatty child (e.g. xcrun simctl on a host with many runtimes emitting
-// CoreSimulator warnings) can't deadlock on a full ~64KB pipe buffer; mirrors
-// the stdout+stderr drain pattern in scripts/test-all.ts. Throws on non-zero
-// exit so a broken adb daemon doesn't masquerade as 'no device'.
-async function spawnText(cmd: string[]): Promise<string> {
-  const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
+async function spawnText(command: string[]): Promise<string> {
+  const child = Bun.spawn(command, { stdout: "pipe", stderr: "pipe" });
   const [stdout, stderr, exit] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
   ]);
-  if (exit !== 0) {
-    throw new Error(`${cmd[0]} exited ${String(exit)}: ${stderr.trim()}`);
-  }
+  if (exit !== 0) throw new Error(`${command[0]} exited ${String(exit)}: ${stderr.trim()}`);
   return stdout;
 }
 
-async function spawnInherit(cmd: string[], cwd: string): Promise<number> {
-  const proc = Bun.spawn(cmd, { stdout: "inherit", stderr: "inherit", cwd });
-  const exit = await proc.exited;
-  // Coerce null (signal termination) so callers always see a numeric code.
+export async function listSimulatorDevices(): Promise<SimulatorDevice[]> {
+  return parseSimulatorDevices(await spawnText(["xcrun", "simctl", "list", "devices", "--json"]));
+}
+
+async function spawnInherit(command: string[], cwd: string): Promise<number> {
+  const child = Bun.spawn(command, { stdout: "inherit", stderr: "inherit", cwd });
+  const exit = await child.exited;
   return typeof exit === "number" ? exit : 130;
 }
 
-// CLI entrypoint — invoked when this file is run directly (Bun.main check).
-// Wires the pure runGate to the actual detection + Maestro commands.
-if (import.meta.main) {
-  const repoRoot = new URL("..", import.meta.url).pathname;
-  const mobileDir = `${repoRoot}apps/mobile`;
-  const maestroDir = `${mobileDir}/.maestro`;
+export function maestroCommand(
+  udid: string | undefined,
+  flows: string[],
+  maestroDir: string,
+  appLaunchUrl = "divineruin://",
+): string[] {
+  return [
+    "maestro",
+    ...(udid ? [`--device=${udid}`] : []),
+    "test",
+    "-e",
+    `APP_LAUNCH_URL=${appLaunchUrl}`,
+    ...flows.map((flow) => `${maestroDir}/${flow}`),
+  ];
+}
 
-  const result = await runGate({
-    env: process.env,
+export function createRealGateDeps(
+  env: Record<string, string | undefined>,
+  repoRoot: string,
+): GateDeps {
+  const mobileDir = `${repoRoot}/apps/mobile`;
+  const maestroDir = `${mobileDir}/.maestro`;
+  return {
+    env,
     runSimctl: () => spawnText(["xcrun", "simctl", "list", "devices"]),
     runAdb: () => spawnText(["adb", "devices"]),
-    // Pin cwd to apps/mobile so any future cwd-relative maestro output
-    // (junit reports, screenshots) lands in a predictable directory
-    // regardless of where `bun run test:e2e:mobile` was invoked from.
-    runMaestro: (flows) =>
-      spawnInherit(
-        ["maestro", "test", ...flows.map((f) => `${maestroDir}/${f}`)],
-        mobileDir,
-      ),
-  });
-  if (result.stdout) console.log(result.stdout);
-  if (result.stderr) console.error(result.stderr);
-  process.exit(result.exitCode);
+    probeRequestedIos: async (udid) => requestedDeviceIsBooted(await listSimulatorDevices(), udid),
+    runMaestro: (udid, flows) =>
+      spawnInherit(maestroCommand(udid, flows, maestroDir, env.MAESTRO_APP_LAUNCH_URL), mobileDir),
+  };
+}
+
+if (import.meta.main) {
+  const repoRoot = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+  const gate = await runGate(createRealGateDeps(process.env, repoRoot));
+  if (gate.stdout) console.log(gate.stdout);
+  if (gate.stderr) console.error(gate.stderr);
+  process.exit(gate.exitCode);
 }

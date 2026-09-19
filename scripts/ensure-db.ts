@@ -1,6 +1,5 @@
 import { Socket } from "node:net";
 
-const DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 const OWNER = new URL("./worktree-common.sh", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
 const OWNERSHIP_REFUSAL_EXIT = 78;
@@ -109,7 +108,8 @@ const defaults: LifecycleDeps = {
 };
 
 export async function ensureDbUp(deps: LifecycleDeps = defaults): Promise<boolean> {
-  const databaseUrl = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("DATABASE_URL is not set");
   const { host, port } = parseHostPort(databaseUrl);
   const user = parseUser(databaseUrl);
   const ci = isCiServiceMode();

@@ -1,16 +1,3 @@
-"""Real-PG round-trip for the M24 veil_wards scope table (story-003, migration 057).
-
-Single-table round-trip against the shared dev DB at :55432 (fast lane; conftest auto-starts
-docker). Proves the scope-keyed accessors against real SQL: an unwarded scope reads back as no
-ward at all, a written ward reads back with its source, lazy expiry hides an elapsed ward
-without any sweeper, and many wards may cover one scope without clobbering each other.
-
-Isolates via a unique scope_id + cleanup (the _db_lifecycle / dev_db_pool pattern) — the rows
-are scope-keyed, so a uuid scope_id can never collide with another test's.
-
-Requires migration 057 on the dev DB: run `bun run migrate` first (CI does this before the lane).
-"""
-
 import uuid
 from datetime import UTC, datetime, timedelta
 

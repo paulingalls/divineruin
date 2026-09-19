@@ -317,6 +317,40 @@ start_stack() {
   wt_compose create up -d --remove-orphans --wait --wait-timeout 120
 }
 
+verify_project_python() {
+  local project="$1" expected observed
+  expected="$(<"$REPO_ROOT/.python-version")"
+  observed="$("$project/.venv/bin/python" --version 2>&1)"
+  observed="${observed#Python }"
+  assert_tool_version "Python for ${project#$REPO_ROOT/}" "$expected" "$observed"
+}
+
+require_declared_toolchain() {
+  local bun_package expected_bun expected_uv observed_uv
+  bun_package="$(declared_json_version "$REPO_ROOT/package.json" packageManager)"
+  expected_bun="${bun_package#bun@}"
+  expected_uv="$(declared_json_version "$REPO_ROOT/docs/dependency_upgrade.json" uv_version)"
+  observed_uv="$(uv --version)"
+  observed_uv="${observed_uv#uv }"
+  observed_uv="${observed_uv%% *}"
+  assert_tool_version Bun "$expected_bun" "$(bun --version)"
+  assert_tool_version uv "$expected_uv" "$observed_uv"
+}
+
+install_locked_dependencies() {
+  ( cd "$REPO_ROOT" && bun install --frozen-lockfile )
+  # e2e/ is NOT a workspace member (root package.json lists only apps/* and
+  # packages/*) and carries its own lockfile, so the root install reaches none of
+  # its deps: without this, `bun run lint:e2e`, the pre-push Playwright lane and
+  # the installed-tree dependency report all die in a fresh worktree.
+  ( cd "$REPO_ROOT/e2e" && bun install --frozen-lockfile )
+  ( cd "$REPO_ROOT/e2e" && bunx playwright install chromium )
+  uv sync --project "$REPO_ROOT/apps/agent" --frozen
+  uv sync --project "$REPO_ROOT/scripts" --frozen
+  verify_project_python "$REPO_ROOT/apps/agent"
+  verify_project_python "$REPO_ROOT/scripts"
+}
+
 # ── run ───────────────────────────────────────────────────────────────────────
 main() {
   runtime_database_url="${DATABASE_URL:-}"
@@ -328,19 +362,8 @@ main() {
   write_env_if_absent
   wt_authorize_runtime "$runtime_database_url" "$runtime_redis_url"
 
-  echo "==> bun install"
-  bun install
-
-  # e2e/ is NOT a workspace member (root package.json lists only apps/* and
-  # packages/*) and carries its own lockfile, so the root install above reaches
-  # none of its deps. Without this the pre-push gate's Playwright lane dies in a
-  # fresh worktree with ERR_MODULE_NOT_FOUND on '@playwright/test', and so does
-  # `bun run lint:e2e`.
-  echo "==> bun install (e2e)"
-  ( cd "$REPO_ROOT/e2e" && bun install )
-
-  echo "==> uv sync (apps/agent)"
-  ( cd "$REPO_ROOT/apps/agent" && uv sync )
+  require_declared_toolchain
+  install_locked_dependencies
 
   run_typegen
 

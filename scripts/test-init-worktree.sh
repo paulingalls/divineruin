@@ -340,4 +340,82 @@ done
 rm -rf "$settings_root"
 ok "a stale port key is refused even when the coupled service URLs agree"
 
+# 18. Tool mismatches fail before any install command can run.
+if mismatch="$(assert_tool_version Bun 1.4.2 0.0.0 2>&1)"; then
+  fail "a wrong Bun version passed the bootstrap guard"
+fi
+case "$mismatch" in
+  *"Bun 1.4.2 is required; found 0.0.0"*) ;;
+  *) fail "wrong-version diagnostic was not actionable: $mismatch" ;;
+esac
+ok "tool version mismatches fail loud"
+
+# 19. Every independent graph is installed frozen, and Chromium comes from the
+# e2e lock rather than an ambient global Playwright.
+TEST_BOOTSTRAP_LOG="$(mktemp -t test-bootstrap-log)"
+bun() { printf 'bun %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+bunx() { printf 'bunx %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+uv() { printf 'uv %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+verify_project_python() { printf 'python %s\n' "$1" >> "$TEST_BOOTSTRAP_LOG"; }
+install_locked_dependencies
+unset -f bun bunx uv verify_project_python
+for expected in \
+  "bun install --frozen-lockfile cwd=$REPO_ROOT" \
+  "bun install --frozen-lockfile cwd=$REPO_ROOT/e2e" \
+  "bunx playwright install chromium cwd=$REPO_ROOT/e2e" \
+  "uv sync --project $REPO_ROOT/apps/agent --frozen cwd=$REPO_ROOT" \
+  "uv sync --project $REPO_ROOT/scripts --frozen cwd=$REPO_ROOT" \
+  "python $REPO_ROOT/apps/agent" \
+  "python $REPO_ROOT/scripts"; do
+  grep -qxF "$expected" "$TEST_BOOTSTRAP_LOG" || fail "locked bootstrap stage missing: $expected"
+done
+rm -f "$TEST_BOOTSTRAP_LOG"
+ok "bootstrap installs all four locks and the matched browser"
+
+read -r -d '' BOOTSTRAP_MAIN_PROBE <<'SH' || true
+set -euo pipefail
+source "$(dirname "$0")/init-worktree.sh"
+mode="$1"
+wt_expected_env() { COMPOSE_PROJECT_NAME=probe; WT_OFFSET=1; WT_CLONE_ID=clone; WT_CHECKOUT_ID=checkout; echo 'TRACE env'; }
+wt_authorize_runtime() { echo 'TRACE ownership'; }
+require_declared_toolchain() {
+  echo 'TRACE versions'
+  if [ "$mode" = wrong-version ]; then return 23; fi
+}
+install_locked_dependencies() { echo 'TRACE locks'; }
+write_env_if_absent() { echo 'TRACE env-file'; }
+run_typegen() { echo 'TRACE types'; }
+start_stack() { echo 'TRACE stack'; }
+bun() { echo "TRACE bun $*"; }
+case "$mode" in
+  omit-versions)
+    body="$(declare -f main)"
+    eval "${body/require_declared_toolchain/:}"
+    ;;
+  omit-locks)
+    body="$(declare -f main)"
+    eval "${body/install_locked_dependencies/:}"
+    ;;
+esac
+main
+SH
+expected_trace=$(printf '%s\n' 'TRACE env' 'TRACE env-file' 'TRACE ownership' 'TRACE versions' 'TRACE locks' 'TRACE types' 'TRACE stack' 'TRACE bun run migrate' 'TRACE bun run seed')
+actual_trace=$(bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" baseline | grep '^TRACE ')
+[ "$actual_trace" = "$expected_trace" ] || fail "bootstrap main omitted or reordered a required stage"
+for mode in omit-versions omit-locks; do
+  actual_trace=$(bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" "$mode" | grep '^TRACE ')
+  [ "$actual_trace" != "$expected_trace" ] || fail "main wiring fault did not change its behavior: $mode"
+done
+probe_log="$(mktemp -t bootstrap-main)"
+if bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" wrong-version >"$probe_log" 2>&1; then
+  rm -f "$probe_log"
+  fail "wrong tool version did not abort bootstrap main"
+fi
+if grep -q '^TRACE locks\|^TRACE stack\|^TRACE bun' "$probe_log"; then
+  rm -f "$probe_log"
+  fail "wrong tool version reached installation or services"
+fi
+rm -f "$probe_log"
+ok "bootstrap main calls its guards and stops before installs on version mismatch"
+
 echo "All init-worktree tests passed."

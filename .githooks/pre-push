@@ -10,6 +10,23 @@ EXTERNAL_API_VARS=(
   INWORLD_API_KEY INWORLD_WORKSPACE_ID
 )
 
+mask_external_api_environment() {
+  for var in "${EXTERNAL_API_VARS[@]}"; do export "$var="; done
+}
+
+mask_python_test_environment() {
+  mask_external_api_environment
+  export DATABASE_URL= REDIS_URL=
+}
+
+if [ "${BASH_TEST:-}" = "1" ] && [ -n "${BASH_TEST_MASK_ENV:-}" ]; then
+  mask_python_test_environment
+  exec bun --env-file="$BASH_TEST_MASK_ENV" -e '
+    const names = ["DATABASE_URL", "REDIS_URL", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY", "INWORLD_API_KEY", "INWORLD_WORKSPACE_ID"];
+    if (names.some((name) => Bun.env[name] !== "")) process.exit(1);
+  '
+fi
+
 # BASH_TEST=1 stubs the git diff source (env var instead of `git`) and the
 # heavy test runners (single `echo TESTS_RAN` marker). Used by the harness
 # at .githooks/test-pre-push.sh — see that file for the contract.
@@ -139,16 +156,16 @@ else
     # server: test:server isolates db.test.ts (real lazy SQL Proxy) in its own
     # process; keep DATABASE_URL or it silently skips. Strip only the external API
     # vars (matches CI's test-bun env).
-    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
+    ( set -o pipefail; mask_external_api_environment; \
       run_pre_push_lane server bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
     ( set -o pipefail; run_pre_push_lane mobile bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
     ( set -o pipefail; run_pre_push_lane shared bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
-    # Python validates and provisions its own checkout-owned lifecycle.
-    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
-      unset DATABASE_URL REDIS_URL; run_pre_push_lane python bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
+    # Empty values prevent explicit env files from restoring unit-test credentials.
+    ( set -o pipefail; mask_python_test_environment; \
+      run_pre_push_lane python bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
     # `if` context suppresses set -e so a failing lane is captured, not aborted-on.

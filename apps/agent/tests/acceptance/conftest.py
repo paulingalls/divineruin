@@ -13,7 +13,6 @@ import contextlib
 import os
 import sys
 import threading
-import time
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,15 +20,8 @@ from typing import Any
 
 import asyncpg
 import docker
-import httpx
 import pytest
-from acceptance._livekit import (
-    CONTAINER_NAME,
-    IMAGE,
-    PORT,
-    _ensure_livekit_container,
-    _handle_docker_unavailable,
-)
+from acceptance._livekit import _handle_docker_unavailable, ensure_livekit_server
 from acceptance._real_llm import require_real_llm_key
 from docker.errors import DockerException
 
@@ -42,7 +34,6 @@ _ACCEPTANCE_DIR = Path(__file__).parent
 _REPO_ROOT = _ACCEPTANCE_DIR.parents[3]
 _MIGRATIONS_DIR = _REPO_ROOT / "scripts" / "migrations"
 _SCRIPTS_DIR = _REPO_ROOT / "scripts"
-_READINESS_BUDGET_S = 60.0
 _PG_IMAGE = "postgres:16-alpine"
 
 
@@ -86,46 +77,20 @@ def _no_desynced_redis_reply(caplog: pytest.LogCaptureFixture) -> Iterator[None]
     assert not desynced, f"a cache read met a desynced Redis connection: {desynced}"
 
 
-def _wait_ready(http_url: str) -> None:
-    """Poll until the LiveKit server answers HTTP healthily (<500), within budget."""
-    deadline = time.monotonic() + _READINESS_BUDGET_S
-    last: str | None = None
-    while time.monotonic() < deadline:
-        try:
-            response = httpx.get(http_url, timeout=2.0)
-            if response.status_code < 500:
-                return
-            last = f"HTTP {response.status_code}"
-        except httpx.HTTPError as exc:
-            last = str(exc)
-        time.sleep(0.5)
-    raise RuntimeError(f"LiveKit server not ready within {_READINESS_BUDGET_S}s: {last}")
-
-
 @pytest.fixture(scope="session")
 def livekit_server() -> Iterator[dict[str, str]]:
     """Reuse or boot a persistent LiveKit dev server in Docker for the session."""
-    require_docker = os.environ.get("REQUIRE_DOCKER") == "1"
-    try:
-        client = docker.from_env()
-        client.ping()
-    except DockerException as exc:
-        _handle_docker_unavailable(exc, require_docker=require_docker)
-        return
-
-    container, host_port = _ensure_livekit_container(client, name=CONTAINER_NAME, image=IMAGE, port=PORT)
-    http_url = f"http://127.0.0.1:{host_port}"
-    _wait_ready(http_url)
+    server = ensure_livekit_server(require_docker=os.environ.get("REQUIRE_DOCKER") == "1")
     try:
         yield {
-            "ws_url": f"ws://127.0.0.1:{host_port}",
-            "http_url": http_url,
-            "api_key": "devkey",
-            "api_secret": "secret",
+            "ws_url": server.ws_url,
+            "http_url": server.http_url,
+            "api_key": server.api_key,
+            "api_secret": server.api_secret,
         }
     finally:
         if os.environ.get("ACCEPTANCE_NO_REUSE") == "1":
-            container.remove(force=True)
+            server.container.remove(force=True)
 
 
 async def _apply_migrations_and_seed(dsn: str) -> None:
