@@ -68,20 +68,13 @@ class TestConnectionPoolManagement:
                 assert db._redis is mock_redis
 
     @pytest.mark.asyncio
-    async def test_get_redis_uses_default_url_if_not_set(self):
-        """get_redis should default to localhost if REDIS_URL not set."""
+    async def test_get_redis_requires_url_before_constructing_client(self):
         db._redis = None
         with patch.dict(os.environ, {}, clear=True):
             with patch("redis.asyncio.from_url") as mock_from_url:
-                mock_redis = MagicMock()
-                mock_from_url.return_value = mock_redis
-
-                await db.get_redis()
-
-                mock_from_url.assert_called_once_with(
-                    "redis://localhost:56379",
-                    decode_responses=True,
-                )
+                with pytest.raises(RuntimeError, match="REDIS_URL"):
+                    await db.get_redis()
+                mock_from_url.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_redis_reuses_existing_client(self):

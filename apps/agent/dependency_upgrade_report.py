@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from dependency_report_render import render_markdown
+from workspace_dependency_report import probe_installed as probe_workspace_installed
+from workspace_dependency_report import validate_workspace_report
+
 PROJECTS = ("apps/agent", "scripts")
 NAME_RE = re.compile(r"[-_.]+")
 REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(.*)$")
@@ -230,38 +234,6 @@ def validate_report(*, root: Path, report: dict, snapshots: dict[str, Environmen
             raise ValueError(f"vendor metadata requires {name}{vendor_specifier}, not {name}{held_back['specifier']}")
 
 
-def render_markdown(report: dict) -> str:
-    lines = [
-        "# Python dependency upgrade",
-        "",
-        f"Registry snapshot: {report['registry_snapshot_date']}  ",
-        f"Toolchain: CPython {report['python_version']}; uv {report['uv_version']}",
-        "",
-    ]
-    for project in report["projects"]:
-        lines.extend(
-            [
-                f"## {project}",
-                "",
-                "| Group | Dependency | Requested | Resolved / installed | Latest stable | Holdback |",
-                "|---|---|---|---|---|---|",
-            ]
-        )
-        for row in (item for item in report["dependencies"] if item["project"] == project):
-            held = row.get("held_back_by")
-            holdback = (
-                "—"
-                if not held
-                else f"{held['package']}=={held['version']} requires {row['name']}{held['specifier']}: {held['reason']}"
-            )
-            lines.append(
-                f"| {row['group']} | {row['name']} | `{row['requested']}` | {row['resolved']} / {row['installed']} | {row['latest_stable']} | {holdback} |"
-            )
-        lines.append("")
-    lines.extend(["The committed `uv.lock` files are the exact transitive dependency record.", ""])
-    return "\n".join(lines)
-
-
 def validate_markdown(root: Path, report: dict) -> None:
     markdown_path = root / "docs/dependency_upgrade.md"
     if not markdown_path.is_file():
@@ -273,7 +245,7 @@ def validate_markdown(root: Path, report: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
-    parser.add_argument("--scope", choices=("python",), required=True)
+    parser.add_argument("--scope", choices=("python", "workspace"), required=True)
     parser.add_argument("--environment", action="append", default=[], metavar="PROJECT=PATH")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
@@ -289,8 +261,10 @@ def main() -> int:
     report = json.loads(report_path.read_text())
     snapshots = probe_scope(root, mappings or None)
     validate_report(root=root, report=report, snapshots=snapshots)
+    if args.scope == "workspace":
+        validate_workspace_report(root, report, probe_workspace_installed(root, report))
     validate_markdown(root, report)
-    print("Python dependency upgrade report is valid.")
+    print(f"{args.scope.capitalize()} dependency upgrade report is valid.")
     return 0
 
 

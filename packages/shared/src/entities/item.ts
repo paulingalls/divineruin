@@ -22,9 +22,7 @@ export interface ItemArtTemplate {
 // class_groups.resolve_attunement_classes (story-010 AC#5). Enforcement
 // (matching a player's class at equip/use) is deferred — no caller exists in M5.4.
 export type ItemAttunement =
-  | { kind: "none" }
-  | { kind: "required" }
-  | { kind: "class"; class: string };
+  { kind: "none" } | { kind: "required" } | { kind: "class"; class: string };
 
 export interface Item {
   id: string;
