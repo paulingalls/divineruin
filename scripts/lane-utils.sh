@@ -7,6 +7,22 @@
 # it in the same shell that spawned the background lanes, which a subprocess
 # (the BASH_TEST harness invoking the hook) cannot do.
 
+# run_pre_push_lane NAME COMMAND [ARG...]
+# Exec COMMAND in place. The NAME is the seam: scripts/test-prepush-environment.sh
+# sets PREPUSH_LANE_DRIVER to an executable that records the lane's real child
+# environment and argv instead of running the suite, which is the only way to
+# prove what each lane actually inherits without running the whole gate.
+# PREPUSH_LANE_DRIVER also skips the hook's preamble (see .githooks/pre-push).
+run_pre_push_lane() {
+  local lane="$1"
+  shift
+  if [ -n "${PREPUSH_LANE_DRIVER:-}" ]; then
+    "$PREPUSH_LANE_DRIVER" "$lane" "$@"
+  else
+    "$@"
+  fi
+}
+
 # wait_all_lanes PID:NAME [PID:NAME ...]
 # Wait for EVERY backgrounded lane (so wall-clock is max-lane, not first-failure,
 # and every failure is reported), printing "ERROR: <name> lane failed." for each
