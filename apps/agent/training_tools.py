@@ -177,7 +177,10 @@ async def _initiate_training_cycle_impl(
     async with db_mod.transaction() as conn:
         existing_rows = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing_rows):
-            raise ToolError("A training cycle is already in progress.")
+            raise ToolError(
+                "A training cycle is already in progress. You cannot start another training cycle or switch programs "
+                "until it completes. Tell the player this limit and offer to check their current cycle."
+            )
 
         data = {
             "program_id": program["id"],
