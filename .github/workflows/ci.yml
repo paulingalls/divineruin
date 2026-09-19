@@ -104,6 +104,7 @@ jobs:
       - run: bun test --cwd packages/design-tokens
       - run: bun install --cwd e2e --frozen-lockfile
       - run: bun test e2e/require-environment.test.ts
+      - run: bun --env-file=.env test ./scripts
       - run: bun test --cwd apps/web
 
   lint-python:

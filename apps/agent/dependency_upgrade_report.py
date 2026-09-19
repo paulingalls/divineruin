@@ -328,7 +328,7 @@ def main() -> int:
         validate_ci_toolchain(root, report)
         validate_outcomes(report)
     validate_markdown(root, report)
-    print(f"{args.scope.capitalize()} dependency upgrade report is valid.")
+    print(f"Dependency upgrade report is valid ({args.scope}).")
     return 0
 
 
