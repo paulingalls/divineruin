@@ -40,6 +40,19 @@ class TestConnectionPoolManagement:
                 assert db._pool is mock_pool
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("value", [None, ""])
+    async def test_get_pool_rejects_absent_or_empty_url_before_creating_pool(self, monkeypatch, value):
+        db._pool = None
+        if value is None:
+            monkeypatch.delenv("DATABASE_URL", raising=False)
+        else:
+            monkeypatch.setenv("DATABASE_URL", value)
+        with patch("asyncpg.create_pool", new_callable=AsyncMock) as create_pool:
+            with pytest.raises(RuntimeError, match="DATABASE_URL is not set"):
+                await db.get_pool()
+            create_pool.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_pool_reuses_existing_pool(self):
         """get_pool should return cached pool on subsequent calls."""
         mock_pool = MagicMock()

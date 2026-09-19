@@ -110,11 +110,6 @@ async function requireTargetSimulator(
   repoRoot: string,
   udid: string,
 ): Promise<void> {
-  if (udid !== OWNED_SIMULATOR_UDID) {
-    throw new Error(
-      `IOS_SIMULATOR_UDID must be the sprint-owned simulator ${OWNED_SIMULATOR_UDID}`,
-    );
-  }
   const raw = await capture(scope, ["xcrun", "simctl", "list", "devices", "--json"], repoRoot);
   const payload = JSON.parse(raw) as {
     devices?: Record<string, { udid?: string; state?: string; isAvailable?: boolean }[]>;
@@ -334,6 +329,11 @@ export async function runNativeTransport(
 ): Promise<void> {
   await withOwnedProcesses(async (scope) => {
     const udid = required(processEnv, "IOS_SIMULATOR_UDID");
+    if (udid !== OWNED_SIMULATOR_UDID) {
+      throw new Error(
+        `IOS_SIMULATOR_UDID must be the sprint-owned simulator ${OWNED_SIMULATOR_UDID}`,
+      );
+    }
     await prepareNativeApp(scope, repoRoot, processEnv);
     await requireTargetSimulator(scope, repoRoot, udid);
     const flow = join(repoRoot, "apps/mobile/.maestro/native-transport.yaml");

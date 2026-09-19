@@ -36,6 +36,27 @@ test("runner binds Metro and route URLs to one run without credentials", () => {
   expect(route).not.toMatch(/token|secret/);
 });
 
+test("runner rejects a non-owned simulator before any native build or install", async () => {
+  let built = false;
+  let error: unknown;
+  try {
+    await runNativeTransport(
+      "/unused",
+      { IOS_SIMULATOR_UDID: "not-the-owned-simulator" },
+      "none",
+      () => {
+        built = true;
+        return Promise.reject(new Error("build must not run"));
+      },
+    );
+  } catch (caught) {
+    error = caught;
+  }
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toContain("sprint-owned simulator");
+  expect(built).toBeFalse();
+});
+
 test("runner refuses transport evidence when the current native app build fails", async () => {
   let prepared = false;
   let error: unknown;
