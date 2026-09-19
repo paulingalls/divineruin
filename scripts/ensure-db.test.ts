@@ -199,6 +199,26 @@ test("stop uses the destructive ownership intent", async () => {
   expect(calls).toEqual(["compose:destroy:stop"]);
 });
 
+test("stop rejects a nonzero Compose result", () => {
+  const { calls, deps } = fakeDeps(true);
+  deps.compose = (intent, ...args) => {
+    calls.push(`compose:${intent}:${args.join(" ")}`);
+    return Promise.resolve(1);
+  };
+
+  expect(stopIfStarted(true, deps)).rejects.toThrow("docker compose stop` failed (exit 1)");
+  expect(calls).toEqual(["compose:destroy:stop"]);
+});
+
+test("CI service mode refuses stop without invoking Compose", () => {
+  process.env.GITHUB_ACTIONS = "true";
+  process.env.DIVINERUIN_CI_SERVICE_DB = "1";
+  const { calls, deps } = fakeDeps(true);
+
+  expect(stopIfStarted(true, deps)).rejects.toThrow("cannot stop Compose resources");
+  expect(calls).toEqual([]);
+});
+
 test("CI mode requires both explicit signals", () => {
   expect(isCiServiceMode({ GITHUB_ACTIONS: "true", DIVINERUIN_CI_SERVICE_DB: "1" })).toBe(true);
   expect(isCiServiceMode({ GITHUB_ACTIONS: "true" })).toBe(false);

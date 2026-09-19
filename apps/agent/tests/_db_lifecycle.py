@@ -354,18 +354,21 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     lock_path, state_path = _lockfile_paths(host, port)
 
     with _locked(lock_path):
-        if not state_path.exists():
-            if started:
-                print("[db-lifecycle] Tearing down docker compose services this run started...")
-                _authorize("destroy")
-                _compose("down")
+        if state_path.exists():
+            state = _read_state(state_path)
+            state["count"] = max(0, state["count"] - 1)
+        elif started:
+            state = {"count": 0, "harness_started": True}
+        else:
             return
 
-        state = _read_state(state_path)
-        state["count"] = max(0, state["count"] - 1)
         if state["count"] == 0 and state.get("harness_started"):
+            _write_state(state_path, state)
             print("[db-lifecycle] Tearing down docker compose services this run started...")
             _authorize("destroy")
-            _compose("down")
+            result = _compose("down")
+            if result.returncode != 0:
+                detail = result.stderr.strip() or result.stdout.strip() or "no error output"
+                raise RuntimeError(f"`docker compose down` failed (exit {result.returncode}): {detail}")
             state = {"count": 0, "harness_started": False}
         _write_state(state_path, state)

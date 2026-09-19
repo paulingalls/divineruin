@@ -48,7 +48,7 @@ def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
 def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
     """Fallback path: no refcount state file on disk -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
     dbl.stop_if_started(True)
     assert calls == [("down",)]  # never ("down", "-v") — dev DB volumes preserved
 
@@ -214,7 +214,7 @@ def test_stop_if_started_refcount_teardown(monkeypatch):
     dbl._write_state(state_path, {"count": 2, "harness_started": True})
 
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
 
     dbl.stop_if_started(False)  # run B (joiner) finishes first
     assert calls == []
@@ -225,6 +225,107 @@ def test_stop_if_started_refcount_teardown(monkeypatch):
     assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
 
 
+@pytest.mark.parametrize(
+    ("existing_state", "started"),
+    [(True, False), (False, True)],
+    ids=["last-caller", "started-without-state"],
+)
+@pytest.mark.parametrize(
+    ("returncode", "stderr"),
+    [
+        (1, "removal failed"),
+        (78, "worktree ownership: project belongs to foreign checkout"),
+    ],
+    ids=["command-failure", "ownership-refusal"],
+)
+def test_stop_failure_retains_retryable_ownership(monkeypatch, existing_state, started, returncode, stderr):
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    if existing_state:
+        dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    calls: list[tuple[str, ...]] = []
+
+    def failed_down(*args):
+        calls.append(args)
+        result = _FakeCompleted(returncode)
+        result.stderr = stderr
+        return result
+
+    monkeypatch.setattr(dbl, "_compose", failed_down)
+
+    with pytest.raises(RuntimeError) as failure:
+        dbl.stop_if_started(started, database_url)
+
+    assert "docker compose down" in str(failure.value)
+    assert f"exit {returncode}" in str(failure.value)
+    assert stderr in str(failure.value)
+    assert calls == [("down",)]
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
+
+
+def test_failed_teardown_can_be_joined_and_retried(monkeypatch):
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
+    results = iter([_FakeCompleted(1), _FakeCompleted(0)])
+    calls: list[tuple[str, ...]] = []
+
+    def compose(*args):
+        calls.append(args)
+        return next(results)
+
+    monkeypatch.setattr(dbl, "_compose", compose)
+
+    with pytest.raises(RuntimeError, match="docker compose down"):
+        dbl.stop_if_started(False, database_url)
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
+
+    assert dbl.ensure_db_up(database_url) is False
+    assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
+    dbl.stop_if_started(False, database_url)
+
+    assert calls == [("down",), ("down",)]
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+
+
+def test_stop_if_started_holds_lock_during_teardown(monkeypatch):
+    import fcntl
+
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+
+    def down_with_lock_probe(*args):
+        with open(lock_path, "w") as lock_file:
+            with pytest.raises(OSError):
+                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return _FakeCompleted()
+
+    monkeypatch.setattr(dbl, "_compose", down_with_lock_probe)
+
+    dbl.stop_if_started(False, database_url)
+
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+
+
+def test_stop_if_started_ci_service_mode_never_invokes_compose(monkeypatch):
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("DIVINERUIN_CI_SERVICE_DB", "1")
+
+    def sentinel(*args):
+        raise AssertionError("CI stop touched lifecycle state")
+
+    monkeypatch.setattr(dbl, "_authorize_runtime", sentinel)
+    monkeypatch.setattr(dbl, "_compose", sentinel)
+    monkeypatch.setattr(dbl, "_locked", sentinel)
+
+    with pytest.raises(RuntimeError, match="cannot stop Compose resources"):
+        dbl.stop_if_started(True, database_url)
+    dbl.stop_if_started(False, database_url)
+
+
 def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
     """AC4: a DB a developer started by hand (harness_started False) is never
     torn down, at any count, regardless of `started`."""
@@ -233,7 +334,7 @@ def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
     dbl._write_state(state_path, {"count": 1, "harness_started": False})
 
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
 
     dbl.stop_if_started(True)
     assert calls == []

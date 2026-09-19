@@ -127,7 +127,7 @@ def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
     dbl._write_state(state_path, {"count": 1, "harness_started": True})
 
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
     # A leaked testcontainer DSN in the environment must not steer the teardown.
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
 
@@ -368,3 +368,4 @@ def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
 
     with pytest.raises(RuntimeError, match="owner changed"):
         dbl.stop_if_started(True, "postgresql://u:p@localhost:55432/db")
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
