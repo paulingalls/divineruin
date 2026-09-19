@@ -1,36 +1,120 @@
-import { test, expect, beforeEach } from "bun:test";
+import { test, expect, beforeEach, mock } from "bun:test";
+import combatSounds from "../../../../content/combat_sounds.json";
+import gods from "../../../../content/gods.json";
+import spells from "../../../../content/spells.json";
+
+type MockPlayer = {
+  source: number;
+  volume: number;
+  playCalls: number;
+  removed: boolean;
+  play: () => void;
+  remove: () => void;
+  addListener: () => { remove: () => void };
+};
+
+const mockPlayers: MockPlayer[] = [];
+void mock.module("expo-audio", () => ({
+  createAudioPlayer: (source: number) => {
+    const player: MockPlayer = {
+      source,
+      volume: 0,
+      playCalls: 0,
+      removed: false,
+      play() {
+        this.playCalls += 1;
+      },
+      remove() {
+        this.removed = true;
+      },
+      addListener: () => ({ remove: () => {} }),
+    };
+    mockPlayers.push(player);
+    return player;
+  },
+}));
+
 import { handleGameEvent } from "@/audio/game-event-handler";
-import { activePlayerCount } from "@/audio/sfx-player";
+import { lookupSound } from "@/audio/sound-registry";
+import { playSfx, releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { resetStores } from "./use-game-events.helpers";
 
-beforeEach(resetStores);
+beforeEach(() => {
+  releaseAllPlayers();
+  mockPlayers.length = 0;
+  resetStores();
+});
 
 // --- handleGameEvent: play_sound / dice_roll ---
 
-test("play_sound event with known sound triggers playback", () => {
-  handleGameEvent({ type: "play_sound", sound_name: "dice_roll" });
-  expect(activePlayerCount()).toBeGreaterThanOrEqual(0);
+function expectEventPlays(soundName: string) {
+  const source = lookupSound(soundName);
+  if (source === null) throw new Error(`Missing registry entry for ${soundName}`);
+  handleGameEvent({ type: "play_sound", sound_name: soundName });
+  expect(mockPlayers).toHaveLength(1);
+  expect(mockPlayers[0].source).toBe(source);
+  expect(mockPlayers[0].playCalls).toBe(1);
+  releaseAllPlayers();
+  mockPlayers.length = 0;
+}
+
+test("every combat sound reaches the platform player", () => {
+  expect(combatSounds.length).toBeGreaterThanOrEqual(16);
+  for (const row of combatSounds) expectEventPlays(row.id);
+});
+
+test("spell and god whisper content sounds reach the platform player", () => {
+  const spellIds = new Set(spells.map((spell) => spell.sound_id));
+  expect(spellIds.size).toBeGreaterThan(0);
+  for (const soundName of spellIds) expectEventPlays(soundName);
+
+  const godStingers = gods.map((god) => god.whisper_profile.stinger_sound);
+  expect(godStingers.length).toBeGreaterThanOrEqual(10);
+  for (const soundName of new Set(godStingers)) expectEventPlays(soundName);
 });
 
 test("dice_roll event triggers playback", () => {
   handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14 });
+  expect(mockPlayers).toHaveLength(1);
+  expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
+  expect(mockPlayers[0].playCalls).toBe(1);
 });
 
 test("unknown event type does not crash", () => {
   expect(() => handleGameEvent({ type: "unknown_event" })).not.toThrow();
 });
 
-test("play_sound without sound_name does not crash", () => {
+test("play_sound without sound_name is ignored", () => {
   expect(() => handleGameEvent({ type: "play_sound" })).not.toThrow();
+  expect(mockPlayers).toHaveLength(0);
 });
 
-test("play_sound with non-string sound_name does not crash", () => {
+test("play_sound with non-string sound_name is ignored", () => {
   expect(() => handleGameEvent({ type: "play_sound", sound_name: 42 })).not.toThrow();
+  expect(mockPlayers).toHaveLength(0);
 });
 
-test("play_sound with unknown sound does not crash", () => {
-  expect(() => handleGameEvent({ type: "play_sound", sound_name: "nonexistent" })).not.toThrow();
+test("play_sound with empty sound_name is ignored", () => {
+  expect(() => handleGameEvent({ type: "play_sound", sound_name: "" })).not.toThrow();
+  expect(mockPlayers).toHaveLength(0);
+});
+
+test("a nonempty unknown sound raises through player and event handler", () => {
+  for (const invoke of [
+    () => playSfx("nonexistent"),
+    () => handleGameEvent({ type: "play_sound", sound_name: "nonexistent" }),
+  ]) {
+    let thrown: unknown;
+    try {
+      invoke();
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).name).toBe("UnknownSoundError");
+  }
+  expect(mockPlayers).toHaveLength(0);
 });
 
 // --- Milestone 8.1: Music system events ---

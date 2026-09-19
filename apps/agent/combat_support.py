@@ -16,7 +16,8 @@ import db_queries
 import event_types as E
 import reaction_windows
 from combat_durability import _accrue_durability, _find_equipped
-from combat_events import EventSink, emit_or_publish
+from combat_events import emit_or_publish
+from combat_sound_events import publish_combat_sounds as _publish_sounds
 from condition_restrictions import cannot_act
 from dramatic import DramaticContext, evaluate_dramatic_context
 from encounter_actions import action_kind
@@ -28,6 +29,7 @@ from tool_support import (
     SOUND_HEARTBEAT,
     SOUND_HOLLOW_RISE,
     SOUND_PLAYER_FALLEN,
+    SOUND_SAVE_DAMAGE,
 )
 
 logger = logging.getLogger("divineruin.tools")
@@ -64,19 +66,6 @@ def _require_combat(session: SessionData) -> CombatState:
     if session.combat_state is None:
         raise ToolError("Not in combat.")
     return session.combat_state
-
-
-async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: EventSink | None = None) -> None:
-    """Publish multiple sound events. When ``sink`` is active the events buffer until the phase
-    transaction commits (rollback-safe); otherwise they publish immediately."""
-    for sound in sounds:
-        await emit_or_publish(
-            sink,
-            session.room,
-            E.PLAY_SOUND,
-            {"sound_name": sound},
-            event_bus=session.event_bus,
-        )
 
 
 def _handle_hp_zero(
@@ -369,7 +358,9 @@ async def apply_attack_result(
     target.hp_current = max(0, hp_before - attack_result.damage)
 
     sounds: list[str] = []
-    if not save_damage and attack_result.critical_success:
+    if save_damage and attack_result.damage > 0:
+        sounds.append(SOUND_SAVE_DAMAGE)
+    elif not save_damage and attack_result.critical_success:
         sounds.append(SOUND_ATTACK_CRITICAL)
     elif not save_damage and attack_result.hit:
         sounds.append(SOUND_ATTACK_HIT)

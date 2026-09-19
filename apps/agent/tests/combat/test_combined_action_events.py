@@ -21,6 +21,8 @@ from combat_support import SaveDamageResult, apply_attack_result
 from declarations import Declaration, DeclarationType
 from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS
 
+SOUND_SAVE_DAMAGE = "save_damage"
+
 FIXTURE_PATH = Path(__file__).resolve().parents[4] / "packages" / "shared" / "fixtures" / "enemy_action_shapes.json"
 ACTIONS = json.loads(FIXTURE_PATH.read_text())
 REAL_ROLL_PARTICIPANT_SAVE = check_resolution_save.roll_participant_save
@@ -104,10 +106,9 @@ async def test_save_damage_announces_the_save_and_applied_damage(
     assert summary["damage"] == expected_damage
     assert summary["save_success"] is save_success
     assert summary["damage_halved"] is save_success
-    attack_sounds = {SOUND_ATTACK_HIT, SOUND_ATTACK_MISS, SOUND_ATTACK_CRITICAL}
-    assert not attack_sounds.intersection(
-        event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND
-    )
+    played_sounds = [event.payload["sound_name"] for event in sink.captured if event.event_type == E.PLAY_SOUND]
+    assert played_sounds == [SOUND_SAVE_DAMAGE]
+    assert not {SOUND_ATTACK_HIT, SOUND_ATTACK_MISS, SOUND_ATTACK_CRITICAL}.intersection(played_sounds)
     attack_fields = {
         "hit",
         "critical",
@@ -142,7 +143,7 @@ async def test_made_save_with_damage_costs_armor_after_the_announced_save():
     )
 
     assert summary["durability"]["armor"]["current_hits"] == 9
-    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.ITEM_DURABILITY_HIT]
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.PLAY_SOUND, E.ITEM_DURABILITY_HIT]
     durability_mutations.update_item_durability.assert_awaited_once_with("player_1", "plate_armor", 9, conn=None)
 
 
@@ -152,7 +153,7 @@ async def test_failed_save_costs_armor_after_the_announced_damage():
     )
 
     assert summary["durability"]["armor"]["current_hits"] == 9
-    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.ITEM_DURABILITY_HIT]
+    assert [event.event_type for event in sink.captured] == [E.DICE_ROLL, E.PLAY_SOUND, E.ITEM_DURABILITY_HIT]
     durability_mutations.update_item_durability.assert_awaited_once_with("player_1", "plate_armor", 9, conn=None)
 
 

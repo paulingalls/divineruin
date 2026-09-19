@@ -1,3 +1,5 @@
+import combatSounds from "../../../../content/combat_sounds.json";
+
 /** React Native asset IDs returned by require() are numbers. */
 type SoundAsset = number;
 
@@ -31,7 +33,7 @@ export type SoundName =
   | "spell_generic";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
-const SOUNDS: Record<SoundName, SoundAsset> = {
+const BASE_SOUNDS: Record<SoundName, SoundAsset> = {
   dice_roll: require("@/assets/sounds/dice_roll.mp3"),
   sword_clash: require("@/assets/sounds/sword_clash.mp3"),
   tavern: require("@/assets/sounds/tavern.mp3"),
@@ -60,14 +62,37 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   spell_nature: require("@/assets/sounds/spell_nature.mp3"),
   spell_generic: require("@/assets/sounds/spell_generic.mp3"),
 };
+
+const COMBAT_ASSETS: Record<string, SoundAsset> = {
+  quest_sting: require("@/assets/sounds/quest_sting.mp3"),
+  success_sting: require("@/assets/sounds/success_sting.mp3"),
+  fail_sting: require("@/assets/sounds/fail_sting.mp3"),
+  menu_close: require("@/assets/sounds/menu_close.mp3"),
+  sword_clash: require("@/assets/sounds/sword_clash.mp3"),
+  weapon_miss: require("@/assets/sounds/weapon_miss.mp3"),
+  critical_hit_sting: require("@/assets/sounds/critical_hit_sting.mp3"),
+  heartbeat_low_hp: require("@/assets/sounds/heartbeat_low_hp.mp3"),
+  level_up_sting: require("@/assets/sounds/level_up_sting.mp3"),
+  hit_taken: require("@/assets/sounds/hit_taken.mp3"),
+  god_whisper_stinger: require("@/assets/sounds/god_whisper_stinger.mp3"),
+  discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
+};
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
-const SOUND_NAMES = Object.keys(SOUNDS) as SoundName[];
-
-export function lookupSound(name: string): SoundAsset | null {
-  return (SOUNDS as Record<string, SoundAsset | undefined>)[name] ?? null;
+const SOUNDS: Record<string, SoundAsset> = { ...BASE_SOUNDS };
+for (const row of combatSounds) {
+  if (row.id in SOUNDS) throw new Error(`Duplicate sound id: ${row.id}`);
+  const source = (COMBAT_ASSETS as Partial<Record<string, SoundAsset>>)[row.asset];
+  if (source === undefined) throw new Error(`Unmapped combat sound asset: ${row.asset}`);
+  SOUNDS[row.id] = source;
 }
 
-export function knownSoundNames(): SoundName[] {
+const SOUND_NAMES = Object.keys(SOUNDS);
+
+export function lookupSound(name: string): SoundAsset | null {
+  return SOUNDS[name] ?? null;
+}
+
+export function knownSoundNames(): string[] {
   return SOUND_NAMES;
 }
