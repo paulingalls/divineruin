@@ -69,6 +69,6 @@ const GRADIENT_MAX_OPACITY = 0.35;
 
 const styles = StyleSheet.create({
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
 });

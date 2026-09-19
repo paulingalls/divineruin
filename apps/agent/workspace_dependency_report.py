@@ -102,7 +102,9 @@ def probe_installed(root: Path, report: dict) -> dict[tuple[str, str], str]:
             value = locked
         elif locked.startswith(("github:", "git+")):
             commit = locked.rsplit("#", 1)[-1]
-            if commit not in str(path.resolve()):
+            bun_tag = path / ".bun-tag"
+            installed_source = bun_tag.read_text().strip() if bun_tag.is_file() else str(path.resolve())
+            if commit not in installed_source:
                 raise ValueError(f"installed source differs from lock: {'/'.join(key)}")
             value = locked
         else:

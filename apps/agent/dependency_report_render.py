@@ -45,6 +45,19 @@ def render_markdown(report: dict) -> str:
         lines.append(
             f"| {row['project']} | {row['group']} | {row['name']} | `{row['requested']}` | {row['locked']} / {row['installed']} | {row['candidate']} | {row['registry_latest']} | {decision} |"
         )
+    overrides = report.get("overrides", [])
+    if overrides:
+        lines.extend(
+            [
+                "",
+                "### Root resolution overrides",
+                "",
+                "| Override | Requested | Reason |",
+                "|---|---|---|",
+            ]
+        )
+        for row in overrides:
+            lines.append(f"| {row['name']} | `{row['requested']}` | {row['reason']} |")
     lines.extend(
         [
             "",

@@ -42,6 +42,13 @@
     "plugins": [
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc",
+      [
+        "expo-build-properties",
+        {
+          "buildReactNativeFromSource": true,
+          "useHermesV1": false
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",

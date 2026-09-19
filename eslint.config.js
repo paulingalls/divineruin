@@ -27,7 +27,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.js"],
+          allowDefaultProject: ["eslint.config.js", "apps/mobile/babel.config.js"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -53,6 +53,15 @@ export default tseslint.config(
     files: ["apps/mobile/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
+  {
+    files: ["apps/mobile/babel.config.js"],
+    languageOptions: { globals: { module: "readonly" } },
+    rules: {
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
     },
   },
 
