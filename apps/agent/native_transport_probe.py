@@ -270,13 +270,12 @@ async def run_probe(run_id: str, fault: str, control_path: Path, result_path: Pa
         closers = [aclose_audio(audio_source)]
         if room is not None:
             closers.append(aclose_room(room))
-        results = await asyncio.gather(*closers, return_exceptions=True)
-        fixture_server.shutdown()
-        fixture_server.server_close()
-        fixture_thread.join(timeout=2)
-        errors = [result for result in results if isinstance(result, BaseException)]
-        if errors:
-            raise BaseExceptionGroup("native transport SDK cleanup failed", errors)
+        try:
+            await asyncio.gather(*closers)
+        finally:
+            fixture_server.shutdown()
+            fixture_server.server_close()
+            fixture_thread.join(timeout=2)
 
 
 def main() -> None:

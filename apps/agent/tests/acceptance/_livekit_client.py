@@ -216,6 +216,11 @@ async def count_audio_frames(track: rtc.Track, *, timeout: float = 10.0) -> int:
 
 
 async def aclose_audio(source: rtc.AudioSource | None) -> None:
+    """Drop any queued frames and close `source`, swallowing errors like aclose_room.
+
+    Same tolerance and same reason: a raise here (including a CancelledError mid-close)
+    would skip the room teardown that runs alongside it and leak a participant slot.
+    """
     if source is None:
         return
     try:

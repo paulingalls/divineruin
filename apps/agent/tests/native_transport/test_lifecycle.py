@@ -38,7 +38,12 @@ asyncio.run(run_cancellable(run))
         assert ready.exists()
         child.send_signal(kind)
         _, stderr = child.communicate(timeout=5)
-        assert child.returncode != 0
+        # Exit 1 with no KeyboardInterrupt is the handler's signature: the default
+        # SIGTERM kills the process outright, and the default SIGINT also cancels the
+        # task through asyncio.run's shutdown, so "CancelledError and nonzero" alone
+        # passes with no handler installed at all.
+        assert child.returncode == 1
+        assert b"KeyboardInterrupt" not in stderr
         assert b"CancelledError" in stderr
         assert closed.read_text() == "closed"
     finally:

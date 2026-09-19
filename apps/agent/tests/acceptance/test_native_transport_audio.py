@@ -107,7 +107,10 @@ def test_probe_cancellation_closes_live_room_and_fixture(tmp_path: Path, kind: s
                 assert await count_audio_frames(track) > 0
                 child.send_signal(kind)
                 _, stderr = await asyncio.wait_for(child.communicate(), 5)
-                assert child.returncode != 0
+                # See test_lifecycle: exit 1 without KeyboardInterrupt is what
+                # separates the probe's own handler from the interpreter default.
+                assert child.returncode == 1
+                assert b"KeyboardInterrupt" not in stderr
                 assert b"CancelledError" in stderr
                 while identity in receiver.remote_participants:
                     await asyncio.sleep(0.02)
