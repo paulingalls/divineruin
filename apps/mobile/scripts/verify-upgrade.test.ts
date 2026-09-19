@@ -1,0 +1,167 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import {
+  type CommandResult,
+  type VerificationOptions,
+  runUpgradeVerification,
+} from "./verify-upgrade";
+
+const roots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+async function fixture() {
+  const projectRoot = await mkdtemp(join(tmpdir(), "verify-expo-upgrade-"));
+  roots.push(projectRoot);
+  await mkdir(join(projectRoot, "src", "app"), { recursive: true });
+  await writeFile(join(projectRoot, "src", "app", "index.tsx"), "export default null;\n");
+  await writeFile(join(projectRoot, "tsconfig.json"), '{"extends":"expo/tsconfig.base"}\n');
+  return projectRoot;
+}
+
+async function failureMessage(action: Promise<unknown>): Promise<string> {
+  try {
+    await action;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error("expected the action to fail");
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function successfulRunner(projectRoot: string, calls: string[]) {
+  return async (command: string[]): Promise<CommandResult> => {
+    calls.push(command.join(" "));
+    if (command.join(" ") === "bun expo customize tsconfig.json") {
+      const types = join(projectRoot, ".expo", "types");
+      await mkdir(types, { recursive: true });
+      await writeFile(join(types, "router.d.ts"), "declare namespace ExpoRouter {}\n");
+    }
+    return { exitCode: 0 };
+  };
+}
+
+const expectedCommands = [
+  "bun expo install --check",
+  "bunx expo-doctor",
+  "bun expo customize tsconfig.json",
+  "bunx tsc --noEmit",
+  "bun expo export --platform ios --clear --output-dir .expo/upgrade-exports/ios",
+  "bun expo export --platform android --clear --output-dir .expo/upgrade-exports/android",
+  "bun expo export --platform web --clear --output-dir .expo/upgrade-exports/web",
+];
+
+describe("runUpgradeVerification", () => {
+  test("runs every compatibility, type, and export stage in order", async () => {
+    const projectRoot = await fixture();
+    const calls: string[] = [];
+
+    await runUpgradeVerification({ projectRoot, runCommand: successfulRunner(projectRoot, calls) });
+
+    expect(calls).toEqual(expectedCommands);
+  });
+
+  test.each(expectedCommands.map((_, index) => index))(
+    "propagates a nonzero result from stage %i",
+    async (failedIndex) => {
+      const projectRoot = await fixture();
+      let index = 0;
+      const options: VerificationOptions = {
+        projectRoot,
+        runCommand: async (command) => {
+          const current = index++;
+          if (current === failedIndex) return { exitCode: 23 };
+          if (command.join(" ") === "bun expo customize tsconfig.json") {
+            const types = join(projectRoot, ".expo", "types");
+            await mkdir(types, { recursive: true });
+            await writeFile(join(types, "router.d.ts"), "generated\n");
+          }
+          return { exitCode: 0 };
+        },
+      };
+
+      expect(await failureMessage(runUpgradeVerification(options))).toContain("exit status 23");
+      expect(index).toBe(failedIndex + 1);
+    },
+  );
+
+  test("reports signal termination", async () => {
+    const projectRoot = await fixture();
+    const result = runUpgradeVerification({
+      projectRoot,
+      runCommand: () => Promise.resolve({ exitCode: null, signal: "SIGTERM" }),
+    });
+    expect(await failureMessage(result)).toContain("SIGTERM");
+  });
+
+  test("reports spawn failures with the stage name", async () => {
+    const projectRoot = await fixture();
+    const result = runUpgradeVerification({
+      projectRoot,
+      runCommand: () => Promise.reject(new Error("ENOENT")),
+    });
+    expect(await failureMessage(result)).toContain("Expo dependency check failed to start: ENOENT");
+  });
+
+  test("rejects successful type generation that produces no route types", async () => {
+    const projectRoot = await fixture();
+    const result = runUpgradeVerification({
+      projectRoot,
+      runCommand: () => Promise.resolve({ exitCode: 0 }),
+    });
+    expect(await failureMessage(result)).toContain("generated route types are missing or empty");
+  });
+
+  test("rejects type generation that edits tracked TypeScript config", async () => {
+    const projectRoot = await fixture();
+    const result = runUpgradeVerification({
+      projectRoot,
+      runCommand: async (command) => {
+        if (command.join(" ") === "bun expo customize tsconfig.json") {
+          await writeFile(join(projectRoot, "tsconfig.json"), "{}\n");
+        }
+        return { exitCode: 0 };
+      },
+    });
+    expect(await failureMessage(result)).toContain("changed tsconfig.json");
+  });
+
+  test("removes stale export output before each platform export", async () => {
+    const projectRoot = await fixture();
+    for (const platform of ["ios", "android", "web"]) {
+      const output = join(projectRoot, ".expo", "upgrade-exports", platform);
+      await mkdir(output, { recursive: true });
+      await writeFile(join(output, "stale.txt"), "stale\n");
+    }
+    const calls: string[] = [];
+    const baseRunner = successfulRunner(projectRoot, calls);
+
+    await runUpgradeVerification({
+      projectRoot,
+      runCommand: async (command) => {
+        const platform = command[4];
+        if (command[2] === "export") {
+          expect(await pathExists(join(projectRoot, ".expo", "upgrade-exports", platform))).toBe(
+            false,
+          );
+        }
+        return baseRunner(command);
+      },
+    });
+
+    expect(await readFile(join(projectRoot, ".expo", "types", "router.d.ts"), "utf8")).not.toBe("");
+  });
+});

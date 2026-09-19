@@ -1,4 +1,4 @@
-import { Glob } from "bun";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { SHIP_FACES } from "@divineruin/design-tokens";
 
@@ -34,19 +34,10 @@ export interface SubsetJob {
   out: string;
 }
 
-// Resolve a face's source TTF in the .bun store, version-agnostically (the store
-// dir is version-pinned, e.g. @expo-google-fonts+crimson-pro@0.4.2). dot:true is
-// required because .bun is a hidden directory.
 function resolveTtf(pkg: string, variant: string, ttfFile: string): string {
-  const pattern = `.bun/@expo-google-fonts+${pkg}@*/node_modules/@expo-google-fonts/${pkg}/${variant}/${ttfFile}`;
-  for (const hit of new Glob(pattern).scanSync({
-    cwd: REPO_NODE_MODULES,
-    absolute: true,
-    dot: true,
-  })) {
-    return hit;
-  }
-  throw new Error(`gen-fonts: no installed TTF matching ${pattern} under ${REPO_NODE_MODULES}`);
+  const source = join(REPO_NODE_MODULES, "@expo-google-fonts", pkg, variant, ttfFile);
+  if (existsSync(source)) return source;
+  throw new Error(`gen-fonts: installed TTF is missing: ${source}`);
 }
 
 // Derive the subset jobs from the ship manifest: each shipped face maps to its

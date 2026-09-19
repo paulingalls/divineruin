@@ -1,4 +1,4 @@
-import { ThemeProvider, type Theme } from "@react-navigation/native";
+import { ThemeProvider, type Theme } from "expo-router/react-navigation";
 import { setupLiveKit } from "@/livekit/register";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";

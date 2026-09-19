@@ -40,6 +40,28 @@ def test_checked_in_workspace_report_covers_manifests_lock_and_installed_tree():
     assert report["workspace_dependencies"]
 
 
+def test_hoisted_git_dependency_uses_bun_provenance_tag(tmp_path):
+    package = tmp_path / "apps/mobile/node_modules/example"
+    package.mkdir(parents=True)
+    (package / "package.json").write_text('{"name":"example","version":"1.0.0"}')
+    (package / ".bun-tag").write_text("owner-example-abc1234")
+    report = {
+        "workspace_dependencies": [
+            {
+                "project": "apps/mobile",
+                "name": "example",
+                "locked": "github:owner/example#abc1234",
+            }
+        ]
+    }
+
+    assert probe_installed(tmp_path, report) == {("apps/mobile", "example"): "github:owner/example#abc1234"}
+
+    (package / ".bun-tag").write_text("owner-example-wrong")
+    with pytest.raises(ValueError, match="installed source differs from lock"):
+        probe_installed(tmp_path, report)
+
+
 def test_omitted_workspace_and_dependency_rows_fail(tmp_path):
     root = _copy_scope(tmp_path)
     report = _validate(root)
