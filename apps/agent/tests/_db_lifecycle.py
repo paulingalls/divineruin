@@ -54,6 +54,7 @@ _OWNER_HELPER = _REPO_ROOT / "scripts" / "worktree-common.sh"
 
 _READY_TIMEOUT_SECONDS = 60
 _OWNERSHIP_REFUSAL_EXIT = 78
+_started_lifetimes: dict[tuple[str, int], list[dict[str, str]]] = {}
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -183,6 +184,44 @@ def _compose(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _validate_lifetime(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list) or not value:
+        raise RuntimeError("lifecycle identity must contain at least one service")
+    normalized: list[dict[str, str]] = []
+    for entry in value:
+        if not isinstance(entry, dict) or set(entry) != {"service", "id", "started_at"}:
+            raise RuntimeError("lifecycle identity entries require service, id, and started_at")
+        if any(not isinstance(entry[key], str) or not entry[key] for key in ("service", "id", "started_at")):
+            raise RuntimeError("lifecycle identity fields must be nonempty strings")
+        normalized.append({key: entry[key] for key in ("service", "id", "started_at")})
+    normalized.sort(key=lambda entry: entry["service"])
+    if len({entry["service"] for entry in normalized}) != len(normalized):
+        raise RuntimeError("lifecycle identity contains duplicate services")
+    return normalized
+
+
+def _observe_lifetime() -> list[dict[str, str]]:
+    result = subprocess.run(
+        ["bash", str(_OWNER_HELPER), "lifecycle-identity"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=_REPO_ROOT,
+        env=_authority_env(),
+    )
+    detail = result.stderr.strip() or result.stdout.strip() or "no error output"
+    if result.returncode != 0:
+        raise RuntimeError(f"lifecycle identity failed (exit {result.returncode}): {detail}")
+    try:
+        return _validate_lifetime(json.loads(result.stdout))
+    except (json.JSONDecodeError, RuntimeError) as error:
+        raise RuntimeError(f"lifecycle identity was invalid: {error}") from error
+
+
+def _same_lifetime(expected: list[dict[str, str]], observed: list[dict[str, str]]) -> bool:
+    return expected == observed
+
+
 def _temp_base_dir() -> Path:
     """Where the lock + refcount state files live. A seam for tests.
 
@@ -209,11 +248,22 @@ def _lockfile_paths(host: str, port: int) -> tuple[Path, Path]:
 
 
 def _read_state(state_path: Path) -> dict:
-    """Read the refcount state; a missing/corrupt file reads as the zero state."""
+    """Read and validate lifecycle state; only a missing file means zero state."""
     try:
-        return json.loads(state_path.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
+        state = json.loads(state_path.read_text())
+    except FileNotFoundError:
         return {"count": 0, "harness_started": False}
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"lifecycle state {state_path} is unreadable or malformed: {error}") from error
+    if not isinstance(state, dict) or not isinstance(state.get("count"), int) or isinstance(state["count"], bool):
+        raise RuntimeError(f"lifecycle state {state_path} has an invalid count")
+    if state["count"] < 0 or not isinstance(state.get("harness_started"), bool):
+        raise RuntimeError(f"lifecycle state {state_path} has invalid ownership fields")
+    if state["harness_started"]:
+        state["lifetime"] = _validate_lifetime(state.get("lifetime"))
+    elif "lifetime" in state:
+        raise RuntimeError(f"lifecycle state {state_path} has identity without harness ownership")
+    return state
 
 
 def _write_state(state_path: Path, state: dict) -> None:
@@ -309,6 +359,8 @@ def ensure_db_up(database_url: str | None = None) -> bool:
         if is_reachable(host, port):
             if not ci_mode:
                 _authorize("connect")
+            if state["harness_started"] and not _same_lifetime(state["lifetime"], _observe_lifetime()):
+                state = {"count": 0, "harness_started": False}
             # Reachable while holding the lock -> nobody else can be
             # mid-startup right now, so this call did not start it.
             state["count"] += 1
@@ -320,8 +372,10 @@ def ensure_db_up(database_url: str | None = None) -> bool:
         # right now. Rebuild from zero rather than trust it.
         if ci_mode:
             raise RuntimeError(f"CI service Postgres is not reachable at {host}:{port}; Compose mutation is disabled")
-        state = {"count": 0, "harness_started": True}
         _start_compose(host, port, user)
+        lifetime = _observe_lifetime()
+        _started_lifetimes[(host, port)] = lifetime
+        state = {"count": 0, "harness_started": True, "lifetime": lifetime}
         state["count"] += 1
         _write_state(state_path, state)
         return True
@@ -344,12 +398,9 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     assigns DATABASE_URL to its testcontainer without restoring it — which would
     decrement a state file the dev DB's count never went into.
 
-    A failed `down` raises instead of recording a teardown that did not happen,
-    and the record keeps `harness_started` so a later session's last caller
-    retries it — while this caller's own live-user count is released, since it
-    IS finished. Tolerated: that claim now outlives a teardown that never
-    completed, so if the stack does disappear and a developer starts it by hand,
-    the next session tears down what it did not start.
+    A failed `down` retains the started service lifetime for an authorized retry.
+    A recreated or restarted service has a different lifetime and is treated as
+    developer-owned, so stale state cannot authorize deleting it.
     """
     database_url = database_url or resolve_database_url()
     if _is_ci_service_mode():
@@ -365,7 +416,10 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
             state = _read_state(state_path)
             state["count"] = max(0, state["count"] - 1)
         elif started:
-            state = {"count": 0, "harness_started": True}
+            lifetime = _started_lifetimes.get((host, port))
+            if lifetime is None:
+                raise RuntimeError("cannot authorize teardown: this process has no captured startup identity")
+            state = {"count": 0, "harness_started": True, "lifetime": lifetime}
         else:
             return
 
@@ -373,9 +427,15 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
             _write_state(state_path, state)
             print("[db-lifecycle] Tearing down docker compose services this run started...")
             _authorize("destroy")
+            if not _same_lifetime(state["lifetime"], _observe_lifetime()):
+                state = {"count": 0, "harness_started": False}
+                _started_lifetimes.pop((host, port), None)
+                _write_state(state_path, state)
+                return
             result = _compose("down")
             if result.returncode != 0:
                 detail = result.stderr.strip() or result.stdout.strip() or "no error output"
                 raise RuntimeError(f"`docker compose down` failed (exit {result.returncode}): {detail}")
             state = {"count": 0, "harness_started": False}
+            _started_lifetimes.pop((host, port), None)
         _write_state(state_path, state)

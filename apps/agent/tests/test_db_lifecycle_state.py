@@ -5,6 +5,12 @@ import fcntl
 import _db_lifecycle as dbl
 import pytest
 
+TEST_LIFETIME = [{"service": "postgres", "id": "postgres-id", "started_at": "2026-09-19T01:00:00Z"}]
+
+
+def _owned_state(count: int) -> dict:
+    return {"count": count, "harness_started": True, "lifetime": TEST_LIFETIME}
+
 
 def _lock_is_held(lock_path) -> bool:
     """True iff a second, independent flock on the same file would block."""
@@ -22,6 +28,8 @@ def _isolated_lock_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
     monkeypatch.setattr(dbl, "_authorize", lambda intent: None)
     monkeypatch.setattr(dbl, "_authorize_runtime", lambda database_url, redis_url: None)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: TEST_LIFETIME)
+    monkeypatch.setattr(dbl, "_started_lifetimes", {})
     # CI exports REDIS_URL and the service markers, and `bun run test:python`
     # is documented to export the URLs too; read ambiently they change which
     # branch ensure_db_up/stop_if_started take. Cases that need them set them.
@@ -59,10 +67,11 @@ def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
 
 
 def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
-    """Fallback path: no refcount state file on disk -> `started` alone decides."""
+    """No-state fallback uses the identity captured by this process at startup."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
-    dbl.stop_if_started(True)
+    dbl._started_lifetimes[("localhost", 55432)] = TEST_LIFETIME
+    dbl.stop_if_started(True, "postgresql://u:p@localhost:55432/divineruin")
     assert calls == [("down",)]  # never ("down", "-v") — dev DB volumes preserved
 
 
@@ -158,8 +167,8 @@ def test_read_state_missing_file_returns_zero_state(tmp_path):
 
 def test_state_round_trips_through_json(tmp_path):
     state_path = tmp_path / "state.json"
-    dbl._write_state(state_path, {"count": 2, "harness_started": True})
-    assert dbl._read_state(state_path) == {"count": 2, "harness_started": True}
+    dbl._write_state(state_path, _owned_state(2))
+    assert dbl._read_state(state_path) == _owned_state(2)
 
 
 def test_ensure_db_up_increments_count_when_already_reachable(monkeypatch):
@@ -178,13 +187,13 @@ def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
     is actually observed to be down."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 5, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(5))
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
     monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
     monkeypatch.setattr(dbl, "_compose", lambda *args: _FakeCompleted())
 
     assert dbl.ensure_db_up() is True
-    assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
+    assert dbl._read_state(state_path) == _owned_state(1)
 
 
 def test_ensure_db_up_holds_lock_during_start(monkeypatch):
@@ -212,7 +221,7 @@ def test_stop_if_started_refcount_teardown(monkeypatch):
     (hitting count 0) does, and only when the harness started it."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 2, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(2))
 
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
@@ -243,7 +252,9 @@ def test_stop_failure_retains_retryable_ownership(monkeypatch, existing_state, s
     database_url = "postgresql://u:p@localhost:55432/divineruin"
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     if existing_state:
-        dbl._write_state(state_path, {"count": 1, "harness_started": True})
+        dbl._write_state(state_path, _owned_state(1))
+    else:
+        dbl._started_lifetimes[("localhost", 55432)] = TEST_LIFETIME
     calls: list[tuple[str, ...]] = []
 
     def failed_down(*args):
@@ -261,13 +272,13 @@ def test_stop_failure_retains_retryable_ownership(monkeypatch, existing_state, s
     assert f"exit {returncode}" in str(failure.value)
     assert stderr in str(failure.value)
     assert calls == [("down",)]
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
+    assert dbl._read_state(state_path) == _owned_state(0)
 
 
 def test_failed_teardown_can_be_joined_and_retried(monkeypatch):
     database_url = "postgresql://u:p@localhost:55432/divineruin"
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
     results = iter([_FakeCompleted(1), _FakeCompleted(0)])
     calls: list[tuple[str, ...]] = []
@@ -280,10 +291,10 @@ def test_failed_teardown_can_be_joined_and_retried(monkeypatch):
 
     with pytest.raises(RuntimeError, match="docker compose down"):
         dbl.stop_if_started(False, database_url)
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
+    assert dbl._read_state(state_path) == _owned_state(0)
 
     assert dbl.ensure_db_up(database_url) is False
-    assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
+    assert dbl._read_state(state_path) == _owned_state(1)
     dbl.stop_if_started(False, database_url)
 
     assert calls == [("down",), ("down",)]
@@ -293,7 +304,7 @@ def test_failed_teardown_can_be_joined_and_retried(monkeypatch):
 def test_stop_if_started_holds_lock_during_teardown(monkeypatch):
     database_url = "postgresql://u:p@localhost:55432/divineruin"
     lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
 
     def down_with_lock_probe(*args):
         assert _lock_is_held(lock_path), "lock must be held during the teardown critical section"

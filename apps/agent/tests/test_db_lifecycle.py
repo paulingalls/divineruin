@@ -15,6 +15,11 @@ import pytest
 REAL_AUTHORIZE = dbl._authorize
 REAL_AUTHORIZE_RUNTIME = dbl._authorize_runtime
 REAL_OWNER_HELPER = dbl._OWNER_HELPER
+TEST_LIFETIME = [{"service": "postgres", "id": "postgres-id", "started_at": "2026-09-19T01:00:00Z"}]
+
+
+def _owned_state(count: int) -> dict:
+    return {"count": count, "harness_started": True, "lifetime": TEST_LIFETIME}
 
 
 def _owned_checkout(tmp_path, monkeypatch) -> dict[str, str]:
@@ -48,6 +53,7 @@ def _isolated_lock_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
     monkeypatch.setattr(dbl, "_authorize", lambda intent: None)
     monkeypatch.setattr(dbl, "_authorize_runtime", lambda database_url, redis_url: None)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: TEST_LIFETIME)
     # CI exports REDIS_URL and the service markers, and `bun run test:python`
     # is documented to export the URLs too; read ambiently they change which
     # branch ensure_db_up/stop_if_started take. Cases that need them set them.
@@ -124,7 +130,7 @@ def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
     """
     dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
 
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
@@ -341,7 +347,7 @@ def test_destroy_recheck_ignores_a_stale_ambient_dsn(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_compose", lambda *args: (_ for _ in ()).throw(AssertionError("down must not run")))
     host, port = dbl.parse_host_port(settings["DATABASE_URL"])
     _, state_path = dbl._lockfile_paths(host, port)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
 
     with pytest.raises(RuntimeError) as refusal:
         dbl.stop_if_started(True, settings["DATABASE_URL"])
@@ -354,7 +360,7 @@ def test_destroy_recheck_ignores_a_stale_ambient_dsn(tmp_path, monkeypatch):
 
 def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
     _, state_path = dbl._lockfile_paths("localhost", 55432)
-    dbl._write_state(state_path, {"count": 1, "harness_started": True})
+    dbl._write_state(state_path, _owned_state(1))
     monkeypatch.setattr(
         dbl,
         "_authorize",
@@ -368,4 +374,4 @@ def test_stop_rechecks_destroy_ownership_before_down(monkeypatch):
 
     with pytest.raises(RuntimeError, match="owner changed"):
         dbl.stop_if_started(True, "postgresql://u:p@localhost:55432/db")
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": True}
+    assert dbl._read_state(state_path) == _owned_state(0)
