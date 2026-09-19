@@ -84,14 +84,8 @@ scenarios("features/m1_5_training_cycle.feature")
 # lives in conftest.py, shared with the M1.6 errand acceptance test.
 
 
-async def _start_training_session(
-    harness: SimpleNamespace,
-    chat_ctx: ChatContext | None = None,
-    *,
-    player_id: str = "player_1",
-    location_id: str = "accord_training_hall",
-) -> None:
-    session_data = SessionData(player_id=player_id, location_id=location_id, room=make_mock_room())
+async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
+    session_data = SessionData(player_id="player_1", location_id="accord_training_hall", room=make_mock_room())
     session = AgentSession(
         # Parity with agent.py: strict schemas are interim-OFF. At the plugin default this
         # dispatch session 400s before any turn runs ("compiled grammar is too large").
@@ -121,7 +115,7 @@ async def _seed_training_player(harness: SimpleNamespace, *, class_: str, level:
         str(level),
     )
     await clear_training_activities(pool, "player_1")
-    await _start_training_session(harness, player_id="player_1", location_id="accord_training_hall")
+    await _start_training_session(harness)
 
 
 @given("a player at the training hall with no active training")

@@ -1,4 +1,8 @@
-"""Fault injection for returned-state training acceptance guards."""
+"""Fault injection for returned-state training acceptance guards.
+
+The guards are sync, but the tests are async: ``RunResult.__init__`` builds an
+``asyncio.Future``, so a turn can only be assembled under a running loop.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,7 @@ from collections.abc import Callable
 
 import pytest
 from acceptance._training_trace import (
+    TrainingStart,
     assert_no_training_start,
     assert_persisted_training,
     eligible_spell_pairs,
@@ -23,6 +28,7 @@ _PROGRAM = {
     "training_activity_type": "spell_standard",
     "studiable_spell_ids": ["arcane_counterspell"],
 }
+_PAIRS = {("arcane_study", "arcane_counterspell")}
 
 
 def _message(text: str) -> llm.ChatMessage:
@@ -38,12 +44,13 @@ def _query_output(
     *,
     payload: object = None,
     raw: str | None = None,
+    name: str = "query_info",
     is_error: bool = False,
 ) -> llm.FunctionCallOutput:
     body = {"programs": [_PROGRAM]} if payload is None else payload
     return llm.FunctionCallOutput(
         call_id=call_id,
-        name="query_info",
+        name=name,
         output=raw if raw is not None else json.dumps(body),
         is_error=is_error,
     )
@@ -66,12 +73,13 @@ def _begin_output(
     call_id: str = "begin",
     *,
     raw: str | None = None,
+    name: str = "begin_activity",
     is_error: bool = False,
 ) -> llm.FunctionCallOutput:
     payload = {"activity_id": "train_1", "state": "running_first_half"}
     return llm.FunctionCallOutput(
         call_id=call_id,
-        name="begin_activity",
+        name=name,
         output=raw if raw is not None else json.dumps(payload),
         is_error=is_error,
     )
@@ -117,20 +125,20 @@ def _inquiry_start() -> None:
 def _unreturned_id() -> None:
     training_start(
         _turn(_begin(spell_id="arcane_fireball"), _begin_output()),
-        {("arcane_study", "arcane_counterspell")},
+        _PAIRS,
     )
 
 
 def _begin_error() -> None:
-    training_start(_turn(_begin(), _begin_output(is_error=True)), {("arcane_study", "arcane_counterspell")})
+    training_start(_turn(_begin(), _begin_output(is_error=True)), _PAIRS)
 
 
 def _malformed_begin_output() -> None:
-    training_start(_turn(_begin(), _begin_output(raw="not json")), {("arcane_study", "arcane_counterspell")})
+    training_start(_turn(_begin(), _begin_output(raw="not json")), _PAIRS)
 
 
 def _persisted_row_mismatch() -> None:
-    start = training_start(_turn(_begin(), _begin_output()), {("arcane_study", "arcane_counterspell")})
+    start = training_start(_turn(_begin(), _begin_output()), _PAIRS)
     assert_persisted_training(
         {
             "state": "running_first_half",
@@ -143,7 +151,122 @@ def _persisted_row_mismatch() -> None:
 def _no_returned_offer() -> None:
     offered_spell(
         _turn(_message("You could study something here.")),
-        {("arcane_study", "arcane_counterspell")},
+        _PAIRS,
+    )
+
+
+def _non_object_query_output() -> None:
+    training_program_result(_turn(_query(), _query_output(raw=json.dumps(["arcane_study"]))))
+
+
+def _query_output_precedes_call() -> None:
+    training_program_result(_turn(_query_output(), _query()))
+
+
+def _renamed_query_output() -> None:
+    training_program_result(_turn(_query(), _query_output(name="begin_activity")))
+
+
+def _no_programs_key() -> None:
+    training_program_result(_turn(_query(), _query_output(payload={"spell_learning_progress": []})))
+
+
+def _programs_not_a_list() -> None:
+    spell_programs({"programs": "arcane_study"})
+
+
+def _studiable_ids_not_a_list() -> None:
+    spell_programs({"programs": [{**_PROGRAM, "studiable_spell_ids": "arcane_counterspell"}]})
+
+
+def _spell_program_without_id() -> None:
+    eligible_spell_pairs({"programs": [{k: v for k, v in _PROGRAM.items() if k != "id"}]})
+
+
+def _selected_narration_is_not_a_message() -> None:
+    offered_spell(_turn(_query(), _query_output()), _PAIRS)
+
+
+def _two_training_starts() -> None:
+    training_start(_turn(_begin("a"), _begin_output("a"), _begin("b"), _begin_output("b")), _PAIRS)
+
+
+def _non_training_activity() -> None:
+    # Training-shaped ids under a different kind: the ids alone satisfy every
+    # neighbouring guard, so only the `kind` check can red on this one.
+    call = llm.FunctionCall(
+        call_id="begin",
+        name="begin_activity",
+        arguments=json.dumps(
+            {"activity": {"kind": "crafting", "program_id": "arcane_study", "spell_id": "arcane_counterspell"}}
+        ),
+    )
+    training_start(_turn(call, _begin_output()), _PAIRS)
+
+
+def _activity_not_an_object() -> None:
+    call = llm.FunctionCall(call_id="begin", name="begin_activity", arguments=json.dumps({"activity": "training"}))
+    training_start(_turn(call, _begin_output()), _PAIRS)
+
+
+def _non_string_selection_ids() -> None:
+    call = llm.FunctionCall(
+        call_id="begin",
+        name="begin_activity",
+        arguments=json.dumps({"activity": {"kind": "training", "program_id": "arcane_study", "spell_id": None}}),
+    )
+    training_start(_turn(call, _begin_output()), _PAIRS)
+
+
+def _mismatched_begin_output() -> None:
+    training_start(_turn(_begin(), _begin_output("other")), _PAIRS)
+
+
+def _begin_output_precedes_call() -> None:
+    training_start(_turn(_begin_output(), _begin()), _PAIRS)
+
+
+def _renamed_begin_output() -> None:
+    training_start(_turn(_begin(), _begin_output(name="query_info")), _PAIRS)
+
+
+def _begin_output_without_activity_id() -> None:
+    training_start(_turn(_begin(), _begin_output(raw=json.dumps({"state": "running_first_half"}))), _PAIRS)
+
+
+def _begin_output_without_state() -> None:
+    training_start(_turn(_begin(), _begin_output(raw=json.dumps({"activity_id": "train_1"}))), _PAIRS)
+
+
+def _started() -> TrainingStart:
+    return training_start(_turn(_begin(), _begin_output()), _PAIRS)
+
+
+def _training_not_persisted() -> None:
+    assert_persisted_training(None, _started())
+
+
+def _persisted_row_without_data() -> None:
+    assert_persisted_training({"state": "running_first_half"}, _started())
+
+
+def _persisted_state_mismatch() -> None:
+    assert_persisted_training(
+        {
+            "state": "awaiting_decision",
+            "data": {"program_id": "arcane_study", "spell_id": "arcane_counterspell"},
+        },
+        _started(),
+    )
+
+
+def _persisted_program_mismatch() -> None:
+    assert_persisted_training(
+        {
+            "state": "running_first_half",
+            "data": {"program_id": "combat_basics", "spell_id": "arcane_counterspell"},
+        },
+        _started(),
     )
 
 
@@ -161,6 +284,27 @@ def _no_returned_offer() -> None:
         pytest.param(_malformed_begin_output, id="malformed-begin-output"),
         pytest.param(_persisted_row_mismatch, id="persisted-row-mismatch"),
         pytest.param(_no_returned_offer, id="no-returned-offer"),
+        pytest.param(_non_object_query_output, id="non-object-query-output"),
+        pytest.param(_query_output_precedes_call, id="query-output-precedes-call"),
+        pytest.param(_renamed_query_output, id="renamed-query-output"),
+        pytest.param(_no_programs_key, id="no-programs-key"),
+        pytest.param(_programs_not_a_list, id="programs-not-a-list"),
+        pytest.param(_studiable_ids_not_a_list, id="studiable-ids-not-a-list"),
+        pytest.param(_spell_program_without_id, id="spell-program-without-id"),
+        pytest.param(_selected_narration_is_not_a_message, id="selected-narration-is-not-a-message"),
+        pytest.param(_two_training_starts, id="two-training-starts"),
+        pytest.param(_non_training_activity, id="non-training-activity"),
+        pytest.param(_activity_not_an_object, id="activity-not-an-object"),
+        pytest.param(_non_string_selection_ids, id="non-string-selection-ids"),
+        pytest.param(_mismatched_begin_output, id="mismatched-begin-output"),
+        pytest.param(_begin_output_precedes_call, id="begin-output-precedes-call"),
+        pytest.param(_renamed_begin_output, id="renamed-begin-output"),
+        pytest.param(_begin_output_without_activity_id, id="begin-output-without-activity-id"),
+        pytest.param(_begin_output_without_state, id="begin-output-without-state"),
+        pytest.param(_training_not_persisted, id="training-not-persisted"),
+        pytest.param(_persisted_row_without_data, id="persisted-row-without-data"),
+        pytest.param(_persisted_state_mismatch, id="persisted-state-mismatch"),
+        pytest.param(_persisted_program_mismatch, id="persisted-program-mismatch"),
     ],
 )
 @pytest.mark.asyncio
