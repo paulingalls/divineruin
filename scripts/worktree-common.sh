@@ -289,13 +289,14 @@ wt_cli() {
   case "$command" in
     authorize) wt_authorize "${1:-}" ;;
     authorize-runtime) wt_authorize_runtime "${1:-}" "${2:-}" ;;
+    lifecycle-identity) wt_authorize reuse || return 1; wt_lifecycle_identity "$COMPOSE_PROJECT_NAME" ;;
     # 78 is the adapter contract for refusal before Docker. Child exit codes,
     # including pg_isready's ordinary not-ready status, pass through unchanged.
     compose) local intent="${1:-}"; shift; wt_authorize "$intent" || return 78; wt_run_compose "$@" ;;
     expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" ;;
     sweep-candidates) wt_sweep_candidates ;;
     destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" ;;
-    *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;
+    *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|lifecycle-identity|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;
   esac
 }
 

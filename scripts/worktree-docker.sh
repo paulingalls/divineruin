@@ -164,3 +164,64 @@ wt_validate_occupied_service() {
     [ "$status" -eq 1 ] || return "$status"
   fi
 }
+
+wt_lifecycle_identity() {
+  local project="$1" services service ids count id inspection observation status observations=""
+  services="$(wt_run_compose config --services)" \
+    || { wt_die "Compose service enumeration for project $project is unreadable."; return 1; }
+  if [ "$(printf '%s\n' "$services" | sed '/^$/d' | sort | uniq -d | wc -l | tr -d ' ')" -ne 0 ]; then
+    wt_die "Compose service enumeration for project $project contains duplicate services."
+    return 1
+  fi
+  while IFS= read -r service; do
+    [ -n "$service" ] || continue
+    ids="$(docker ps -aq \
+      --filter "label=com.docker.compose.project=$project" \
+      --filter "label=com.docker.compose.service=$service")" \
+      || { wt_die "container enumeration for project $project service $service is unreadable."; return 1; }
+    count="$(printf '%s\n' "$ids" | sed '/^$/d' | wc -l | tr -d ' ')"
+    if [ "$count" -ne 1 ]; then
+      wt_die "project $project has $count containers for declared service $service; expected exactly one."
+      return 1
+    fi
+    id="$(printf '%s\n' "$ids" | sed -n '1p')"
+    inspection="$(docker inspect "$id" 2>/dev/null)" \
+      || { wt_die "container $id for project $project service $service is unreadable."; return 1; }
+    if observation="$(printf '%s' "$inspection" | python3 -c '
+import json, sys
+service, enumerated = sys.argv[1:]
+try:
+    rows = json.load(sys.stdin)
+    if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+        raise ValueError("inspect did not return one container object")
+    row = rows[0]
+    state = row.get("State") or {}
+    identity = row.get("Id")
+    started = state.get("StartedAt")
+    if state.get("Running") is not True:
+        raise ValueError("container is not running")
+    if not isinstance(identity, str) or not identity or not identity.startswith(enumerated):
+        raise ValueError("container ID is missing or inconsistent")
+    if not isinstance(started, str) or not started or started.startswith("0001-"):
+        raise ValueError("State.StartedAt is missing")
+    print(json.dumps({"service": service, "id": identity, "started_at": started}, separators=(",", ":"), sort_keys=True))
+except (TypeError, ValueError, json.JSONDecodeError) as error:
+    print(error, file=sys.stderr)
+    raise SystemExit(1)
+' "$service" "$id" 2>&1)"; then
+      status=0
+    else
+      status=$?
+    fi
+    [ "$status" -eq 0 ] \
+      || { wt_die "lifecycle identity for project $project service $service is invalid: ${observation:-no diagnostic}."; return 1; }
+    observations="${observations}${observation}"$'\n'
+  done <<< "$services"
+  [ -n "$observations" ] \
+    || { wt_die "lifecycle identity for project $project produced nothing usable."; return 1; }
+  printf '%s' "$observations" | python3 -c '
+import json, sys
+rows = [json.loads(line) for line in sys.stdin if line.strip()]
+print(json.dumps(sorted(rows, key=lambda row: row["service"]), separators=(",", ":"), sort_keys=True))
+'
+}

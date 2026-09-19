@@ -220,7 +220,20 @@ mkdir -p "$recorder/bin"
 cat > "$recorder/bin/docker" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$DOCKER_RECORD"
-if [ "${1:-} ${2:-}" = "ps -aq" ]; then printf 'resource-id\n'; exit 0; fi
+if [ "${1:-}" = compose ] && [[ "$*" = *" config --services" ]]; then
+  [ "${DOCKER_CONFIG_FAIL:-0}" -eq 0 ] || exit 2
+  printf '%b' "${DOCKER_COMPOSE_SERVICES-postgres\nvalkey\n}"
+  exit 0
+fi
+if [ "${1:-} ${2:-}" = "ps -aq" ]; then
+  [ "${DOCKER_ENUM_FAIL:-0}" -eq 0 ] || exit 2
+  case "$*" in
+    *com.docker.compose.service=valkey*) printf '%b' "${DOCKER_VALKEY_SERVICE_IDS-valkey-id\n}" ;;
+    *com.docker.compose.service=postgres*) printf '%b' "${DOCKER_SERVICE_IDS-postgres-id\n}" ;;
+    *) printf 'resource-id\n' ;;
+  esac
+  exit 0
+fi
 if { [ "${1:-} ${2:-}" = "volume ls" ] || [ "${1:-} ${2:-}" = "network ls" ]; }; then exit 0; fi
 if [ "${1:-} ${2:-}" = "ps -q" ]; then
   [ "${DOCKER_ENUM_FAIL:-0}" -eq 0 ] || exit 2
@@ -260,11 +273,13 @@ labels = {
 }
 (directory / "labels.json").write_text(json.dumps(labels | {"com.docker.compose.service": "postgres"}))
 
-def write(name, *, service="postgres", container_port="5432", running=True, bindings=None, overrides=None):
+def write(name, *, service="postgres", container_port="5432", running=True, bindings=None,
+          overrides=None, identity=None, started_at="2026-09-19T01:00:00Z"):
     row_labels = labels | {"com.docker.compose.service": service} | (overrides or {})
     row = {
         "Config": {"Labels": row_labels},
-        "State": {"Running": running},
+        "Id": identity if identity is not None else service + "-id",
+        "State": {"Running": running, "StartedAt": started_at},
         "NetworkSettings": {"Ports": {container_port + "/tcp": bindings}},
     }
     (directory / f"{name}.json").write_text(json.dumps([row]))
@@ -289,7 +304,10 @@ write("wrong-port", bindings=[{"HostIp": "127.0.0.1", "HostPort": str(int(port) 
 write("non-loopback", bindings=[{"HostIp": "0.0.0.0", "HostPort": port}])
 write("multiple-bindings", bindings=valid + valid)
 write("foreign-label", bindings=valid, overrides={"com.divineruin.checkout": "foreign-checkout"})
+write("missing-id", bindings=valid, identity="")
+write("missing-started", bindings=valid, started_at="")
 (directory / "malformed.json").write_text("not-json")
+(directory / "foreign-labels.json").write_text(json.dumps(labels | {"com.divineruin.checkout": "foreign"}))
 PY
 
 authorize_recorded() {
@@ -329,4 +347,70 @@ if authorize_recorded valid env DOCKER_INSPECT_FAIL=1 >/dev/null 2>&1; then
 fi
 ok "empty, multiple, stopped, malformed, unreadable, foreign, relocated, and mispublished services fail closed"
 
+lifecycle_recorded() {
+  local inspection="$1"; shift
+  (cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/labels.json" \
+    DOCKER_INSPECTION="$recorder/$inspection.json" \
+    DOCKER_VALKEY_INSPECTION="$recorder/valid-valkey.json" PATH="$recorder/bin:$PATH" \
+    "$@" bash scripts/worktree-common.sh lifecycle-identity)
+}
+
+: > "$recorder/calls"
+identity="$(lifecycle_recorded valid env)"
+python3 - "$identity" <<'PY'
+import json, sys
+rows = json.loads(sys.argv[1])
+assert [row["service"] for row in rows] == ["postgres", "valkey"]
+assert all(row["id"] and row["started_at"] for row in rows)
+PY
+grep -Fq 'compose -f' "$recorder/calls" || fail "identity omitted the real Compose service model"
+grep -Fq "ps -aq --filter label=com.docker.compose.project=$project_a --filter label=com.docker.compose.service=valkey" \
+  "$recorder/calls" || fail "identity omitted the declared Valkey service"
+for bad in stopped malformed missing-id missing-started; do
+  if lifecycle_recorded "$bad" env >/dev/null 2>&1; then
+    fail "$bad Docker metadata produced teardown identity"
+  fi
+done
+if lifecycle_recorded valid env DOCKER_COMPOSE_SERVICES= >/dev/null 2>&1; then
+  fail "an empty Compose service model produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_COMPOSE_SERVICES='postgres\npostgres\n' >/dev/null 2>&1; then
+  fail "duplicate declared services produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_SERVICE_IDS= >/dev/null 2>&1; then
+  fail "a missing declared service produced teardown identity"
+fi
+# The first enumerated id must match the inspection fixture's Id, or the
+# ID-consistency check refuses first and the per-service count never decides.
+if lifecycle_recorded valid env DOCKER_SERVICE_IDS='postgres-id\nsecond-id\n' >/dev/null 2>&1; then
+  fail "duplicate service containers produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_CONFIG_FAIL=1 >/dev/null 2>&1; then
+  fail "failed Compose service enumeration produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_ENUM_FAIL=1 >/dev/null 2>&1; then
+  fail "failed container enumeration produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_INSPECT_FAIL=1 >/dev/null 2>&1; then
+  fail "unreadable Docker inspection produced teardown identity"
+fi
+if lifecycle_recorded valid env DOCKER_LABELS="$recorder/foreign-labels.json" >/dev/null 2>&1; then
+  fail "lifecycle identity bypassed shared reuse authorization"
+fi
+ok "lifecycle identity requires complete, running metadata for every declared service"
+
+: > "$recorder/calls"
+(cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/labels.json" \
+  PATH="$recorder/bin:$PATH" bash scripts/worktree-common.sh compose destroy down) >/dev/null
+grep -q '^compose .* down' "$recorder/calls" \
+  || fail "an authorized destroy never reached Docker Compose down"
+: > "$recorder/calls"
+second_status=0
+(cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/foreign-labels.json" \
+  PATH="$recorder/bin:$PATH" bash scripts/worktree-common.sh compose destroy down) >/dev/null 2>&1 || second_status=$?
+[ "$second_status" -eq 78 ] || fail "second destroy authorization returned $second_status instead of 78"
+grep -q '^compose .* down' "$recorder/calls" && fail "second authorization refusal reached Docker Compose down"
+ok "the Compose adapter returns 78 before Docker when its second authorization refuses"
+
+bash "$ROOT/scripts/test-worktree-lifecycle-identity.sh"
 echo "All running-service ownership tests passed."
