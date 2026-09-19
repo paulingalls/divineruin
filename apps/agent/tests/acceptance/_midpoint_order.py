@@ -10,6 +10,13 @@ from acceptance._judged_turn import last_assistant_message_index
 from livekit.agents.voice.run_result import ChatMessageEvent, FunctionCallEvent, FunctionCallOutputEvent, RunResult
 
 MessageEvaluator = Callable[[int, str], Awaitable[None]]
+PENDING_MIDPOINT_INTENT = (
+    "Does not announce or imply that the training's second half has already begun or is currently underway. "
+    "The midpoint decision is a choice BETWEEN the halves, not the second half itself. Saying that this "
+    "decision is pending or needs resolving now, including 'right now', is permitted. Reject a statement "
+    "that training has resumed into its second half before the tool result, not a statement that the "
+    "midpoint decision needs to be resolved."
+)
 
 
 async def assert_training_midpoint(
@@ -62,8 +69,4 @@ async def assert_training_midpoint(
     )
     for index, event in enumerate(events[:output_index]):
         if isinstance(event, ChatMessageEvent) and event.item.role == "assistant":
-            await evaluate_message(
-                index,
-                "Does not announce or imply that the training's second half has already begun or is currently "
-                "underway; discussing a pending midpoint decision does not claim it has begun",
-            )
+            await evaluate_message(index, PENDING_MIDPOINT_INTENT)

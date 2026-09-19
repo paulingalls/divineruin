@@ -21,15 +21,27 @@ from typing import Any
 
 import pytest
 from acceptance._judged_turn import last_assistant_message_index
-from acceptance._midpoint_order import assert_training_midpoint
+from acceptance._midpoint_order import PENDING_MIDPOINT_INTENT, assert_training_midpoint
+from acceptance._training_trace import (
+    assert_no_training_start,
+    assert_persisted_training,
+    eligible_spell_pairs,
+    offered_spell,
+    spell_programs,
+    training_program_result,
+    training_start,
+)
 from acceptance.seeds import clear_training_activities, seed_player, seed_training_activity
+from livekit.agents import llm
 from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
+from livekit.agents.voice.run_result import RunResult
 from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
 from sample_fixtures import make_mock_room
 
 import db
+import db_training
 from dispatch_agent import create_dispatch_agent
 from session_data import SessionData
 from training_rules import get_midpoint_decision
@@ -48,6 +60,24 @@ pytestmark = [
 
 # Production gameplay model (agent.py) — acceptance runs at production parity.
 _AGENT_MODEL = "claude-haiku-4-5-20251001"
+
+_ACTIVE_CYCLE_INTENT = (
+    "States both that an existing training cycle is already in progress and that another cannot start until "
+    "the existing cycle finishes or resolves. Compatible follow-up conversation is allowed; fail only if it "
+    "omits either required fact or contradicts the begin_activity result."
+)
+_NO_SPELL_INTENT = (
+    "Plainly states that no spell can currently be studied. It must not offer an unavailable spell or claim "
+    "spell training began. The tool returned these spell-training program names: {program_names}. These are "
+    "programs, not spells: saying a program is available while clearly saying it has no eligible spells is "
+    "valid and is not a spell offer. Honest physical "
+    "training or future spell possibilities are allowed."
+)
+_ELIGIBLE_SPELL_INTENT = (
+    "Offers at least one spell, and only spells from the exhaustive actual eligible choices: {choices}. "
+    "Human-readable names that clearly correspond to those ids are allowed. It must not say that no spell is "
+    "currently available."
+)
 
 scenarios("features/m1_5_training_cycle.feature")
 
@@ -72,6 +102,23 @@ async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContex
     harness.state["judge_llm"] = anthropic.LLM(model=_AGENT_MODEL)
 
 
+async def _seed_training_player(harness: SimpleNamespace, *, class_: str, level: int) -> None:
+    pool = await db.get_pool()
+    await seed_player(
+        pool,
+        player_id="player_1",
+        class_=class_,
+        location_id="accord_training_hall",
+    )
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{level}', $2::jsonb) WHERE player_id = $1",
+        "player_1",
+        str(level),
+    )
+    await clear_training_activities(pool, "player_1")
+    await _start_training_session(harness)
+
+
 @given("a player at the training hall with no active training")
 def _given_no_active_training(harness: SimpleNamespace) -> None:
     async def _setup() -> None:
@@ -81,6 +128,16 @@ def _given_no_active_training(harness: SimpleNamespace) -> None:
         await _start_training_session(harness)
 
     harness.run_sync(_setup())
+
+
+@given("a martial player at the training hall with no active training")
+def _given_martial_player(harness: SimpleNamespace) -> None:
+    harness.run_sync(_seed_training_player(harness, class_="warrior", level=2))
+
+
+@given("an eligible caster at the training hall with no active training")
+def _given_eligible_caster(harness: SimpleNamespace) -> None:
+    harness.run_sync(_seed_training_player(harness, class_="mage", level=3))
 
 
 @given("a player at the training hall awaiting a midpoint decision")
@@ -184,4 +241,194 @@ def _narrates_continuing(harness: SimpleNamespace) -> None:
 
 @then("the agent narrates that a cycle is already in progress")
 def _narrates_in_progress(harness: SimpleNamespace) -> None:
-    _judge(harness, "Tells the player they already have a training cycle in progress and cannot start another")
+    _judge(harness, _ACTIVE_CYCLE_INTENT)
+
+
+@then("the returned spell programs have no eligible choices")
+def _spell_programs_are_ineligible(harness: SimpleNamespace) -> None:
+    payload = training_program_result(harness.state["result"])
+    rows = spell_programs(payload)
+    assert all(not row["studiable_spell_ids"] for row in rows), rows
+
+
+@then("the returned spell programs include eligible choices")
+def _spell_programs_are_eligible(harness: SimpleNamespace) -> None:
+    payload = training_program_result(harness.state["result"])
+    pairs = eligible_spell_pairs(payload)
+    assert pairs, "the real training query returned no eligible spell choices"
+    harness.state["eligible_spell_pairs"] = pairs
+
+
+@then("no training starts during the inquiry")
+def _no_training_starts(harness: SimpleNamespace) -> None:
+    assert_no_training_start(harness.state["result"])
+
+
+@then("the agent plainly says no spell can be studied now")
+def _says_no_spell_can_be_studied(harness: SimpleNamespace) -> None:
+    rows = spell_programs(training_program_result(harness.state["result"]))
+    _judge(harness, _NO_SPELL_INTENT.format(program_names=[row["name"] for row in rows]))
+
+
+@then("the agent offers an eligible returned spell")
+def _offers_eligible_spell(harness: SimpleNamespace) -> None:
+    pairs = harness.state["eligible_spell_pairs"]
+    choices = sorted({spell_id for _, spell_id in pairs})
+    _judge(harness, _ELIGIBLE_SPELL_INTENT.format(choices=choices))
+
+
+@when("the player consents to one offered spell")
+def _player_consents_to_offered_spell(harness: SimpleNamespace) -> None:
+    pair = offered_spell(harness.state["result"], harness.state["eligible_spell_pairs"])
+    harness.state["consented_spell_pair"] = pair[:2]
+    _player_says(harness, f"Yes, begin training {pair[2]}")
+
+
+@then("the selected returned spell training begins")
+def _selected_spell_training_begins(harness: SimpleNamespace) -> None:
+    start = training_start(harness.state["result"], {harness.state["consented_spell_pair"]})
+
+    async def _read_persisted() -> dict[str, Any] | None:
+        return await db_training.get_training_activity(start.activity_id)
+
+    row = harness.run_sync(_read_persisted())
+    assert_persisted_training(row, start)
+
+
+def _synthetic_message(text: str):
+    result: RunResult = RunResult(user_input="test", output_type=None)
+    result._item_added(llm.ChatMessage(role="assistant", content=[text]))
+    return result.expect[0].is_message(role="assistant")
+
+
+async def _judge_synthetic(text: str, intent: str) -> None:
+    await _synthetic_message(text).judge(anthropic.LLM(model=_AGENT_MODEL), intent=intent)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        "I need to resolve your midpoint decision right now.",
+        "You've reached the midpoint. We must resolve your choice before the second half can begin.",
+        "Let me resolve your pending training decision.",
+    ],
+)
+async def test_midpoint_judge_accepts_pending_decisions(response: str) -> None:
+    await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        "The second half has begun; about three hours remain.",
+        "Your training is now underway in its second half.",
+        "I need to resolve the midpoint decision, but you've already resumed training in the second half.",
+    ],
+)
+async def test_midpoint_judge_rejects_premature_outcomes(response: str) -> None:
+    with pytest.raises(AssertionError):
+        await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        pytest.param(
+            "You've already got a training cycle underway. You'll need to finish or resolve what you're "
+            "working on before you can start something new. What's the focus of your current training?",
+            id="captured-follow-up",
+        ),
+        pytest.param(
+            "A training cycle is already underway, so another cannot begin until it finishes.",
+            id="direct-valid",
+        ),
+        pytest.param(
+            "Your current training cycle must resolve before another can start. Would you like a progress recap?",
+            id="compatible-follow-up",
+        ),
+    ],
+)
+async def test_active_cycle_judge_accepts_valid_responses(response: str) -> None:
+    await _judge_synthetic(response, _ACTIVE_CYCLE_INTENT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        pytest.param("You cannot start another training cycle right now.", id="omits-existing-cycle"),
+        pytest.param(
+            "A training cycle is underway, but we can start a second one before it finishes.",
+            id="permits-second-cycle",
+        ),
+        pytest.param(
+            "No training cycle is underway, so there is nothing blocking a new one.",
+            id="contradicts-result",
+        ),
+    ],
+)
+async def test_active_cycle_judge_rejects_invalid_responses(response: str) -> None:
+    with pytest.raises(AssertionError):
+        await _judge_synthetic(response, _ACTIVE_CYCLE_INTENT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "intent"),
+    [
+        pytest.param(
+            "No spell can be studied right now, though physical training remains available.",
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
+            id="valid-empty-eligibility",
+        ),
+        pytest.param(
+            "You have Arcane Study available right now — that's with Scholar Emris — but there are no spells "
+            "you can study in that program at the moment. The path forward there isn't open yet. You could "
+            "focus on physical training instead.",
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
+            id="captured-empty-program",
+        ),
+        pytest.param(
+            "You've got Arcane Study available through Scholar Emris, but there aren't any spells open for you "
+            "to learn right now. You could still work on physical training though.",
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
+            id="captured-program-is-not-spell",
+        ),
+        pytest.param(
+            "Temple Lessons and Scholar's Workshop are offered here, but neither has a spell you can study now.",
+            _NO_SPELL_INTENT.format(program_names=["Temple Lessons", "Scholar's Workshop"]),
+            id="renamed-and-additional-programs",
+        ),
+        pytest.param(
+            "Counterspell is available for you to study now. Would you like to begin?",
+            _ELIGIBLE_SPELL_INTENT.format(choices=["arcane_counterspell"]),
+            id="valid-returned-offer",
+        ),
+    ],
+)
+async def test_training_narration_judge_accepts_valid_responses(response: str, intent: str) -> None:
+    await _judge_synthetic(response, intent)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "intent"),
+    [
+        pytest.param(
+            "Arcane Fireball is available for you to study now.",
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
+            id="invented-martial-offer",
+        ),
+        pytest.param(
+            "There are no spells available for you to study.",
+            _ELIGIBLE_SPELL_INTENT.format(choices=["arcane_counterspell"]),
+            id="eligible-blanket-refusal",
+        ),
+    ],
+)
+async def test_training_narration_judge_rejects_eligibility_faults(response: str, intent: str) -> None:
+    with pytest.raises(AssertionError):
+        await _judge_synthetic(response, intent)
