@@ -21,6 +21,7 @@ from typing import Any
 
 import pytest
 from acceptance._judged_turn import last_assistant_message_index
+from acceptance._midpoint_order import assert_training_midpoint
 from acceptance.seeds import clear_training_activities, seed_player, seed_training_activity
 from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
@@ -165,7 +166,20 @@ def _narrates_begun(harness: SimpleNamespace) -> None:
 
 @then("the agent narrates the training continuing")
 def _narrates_continuing(harness: SimpleNamespace) -> None:
-    _judge(harness, "Tells the player their training continues into its second half")
+    result = harness.state["result"]
+
+    async def _assert_midpoint() -> None:
+        async def _evaluate(index: int, intent: str) -> None:
+            message = result.expect[index].is_message(role="assistant")
+            await message.judge(harness.state["judge_llm"], intent=intent)
+
+        await assert_training_midpoint(
+            result,
+            _evaluate,
+            transition_intent="Tells the player their training continues into its second half",
+        )
+
+    harness.run_sync(_assert_midpoint())
 
 
 @then("the agent narrates that a cycle is already in progress")
