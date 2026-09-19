@@ -5,6 +5,7 @@ from pathlib import Path
 
 import _db_lifecycle as dbl
 import pytest
+from test_db_lifecycle_state import _lock_is_held
 
 ORIGINAL = [
     {"service": "postgres", "id": "postgres-original", "started_at": "2026-09-19T01:00:00Z"},
@@ -37,7 +38,7 @@ def _isolated(tmp_path, monkeypatch):
     monkeypatch.delenv("REDIS_URL", raising=False)
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.delenv("DIVINERUIN_CI_SERVICE_DB", raising=False)
-    monkeypatch.setattr(dbl, "_started_lifetimes", {}, raising=False)
+    monkeypatch.setattr(dbl, "_started_lifetimes", {})
 
 
 def _owned_state(count=1, lifetime=ORIGINAL):
@@ -53,7 +54,7 @@ def test_reachable_replacement_revokes_stale_retry_authority(monkeypatch, replac
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, _owned_state(0))
     monkeypatch.setattr(dbl, "is_reachable", lambda *args, **kwargs: True)
-    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: replacement, raising=False)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: replacement)
     down_calls = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: down_calls.append(args) or _Completed())
 
@@ -68,7 +69,7 @@ def test_reachable_replacement_revokes_stale_retry_authority(monkeypatch, replac
 def test_replacement_before_last_caller_finishes_never_reaches_down(monkeypatch):
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, _owned_state())
-    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: RECREATED, raising=False)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: RECREATED)
     monkeypatch.setattr(
         dbl,
         "_compose",
@@ -82,7 +83,7 @@ def test_replacement_before_last_caller_finishes_never_reaches_down(monkeypatch)
 
 def test_started_without_state_uses_startup_lifetime_not_replacement(monkeypatch):
     dbl._started_lifetimes[("localhost", 55432)] = ORIGINAL
-    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: RECREATED, raising=False)
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: RECREATED)
     monkeypatch.setattr(
         dbl,
         "_compose",
@@ -276,26 +277,14 @@ def test_identity_checks_and_down_share_the_lifecycle_lock(monkeypatch):
 
     def observe():
         observations.append(True)
-        assert _independent_lock_would_block(lock_path)
+        assert _lock_is_held(lock_path)
         return ORIGINAL
 
     def down(*args):
-        assert _independent_lock_would_block(lock_path)
+        assert _lock_is_held(lock_path)
         return _Completed()
 
     monkeypatch.setattr(dbl, "_observe_lifetime", observe)
     monkeypatch.setattr(dbl, "_compose", down)
     dbl.stop_if_started(False, DATABASE_URL)
     assert observations == [True]
-
-
-def _independent_lock_would_block(lock_path):
-    import fcntl
-
-    with open(lock_path, "w") as probe:
-        try:
-            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            return True
-        fcntl.flock(probe, fcntl.LOCK_UN)
-        return False

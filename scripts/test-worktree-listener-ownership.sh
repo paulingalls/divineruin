@@ -399,7 +399,9 @@ ok "lifecycle identity requires complete, running metadata for every declared se
 
 : > "$recorder/calls"
 (cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/labels.json" \
-  PATH="$recorder/bin:$PATH" bash scripts/worktree-common.sh authorize destroy)
+  PATH="$recorder/bin:$PATH" bash scripts/worktree-common.sh compose destroy down) >/dev/null
+grep -q '^compose .* down' "$recorder/calls" \
+  || fail "an authorized destroy never reached Docker Compose down"
 : > "$recorder/calls"
 second_status=0
 (cd "${ROOTS[0]}" && DOCKER_RECORD="$recorder/calls" DOCKER_LABELS="$recorder/foreign-labels.json" \
@@ -408,5 +410,5 @@ second_status=0
 grep -q '^compose .* down' "$recorder/calls" && fail "second authorization refusal reached Docker Compose down"
 ok "the Compose adapter returns 78 before Docker when its second authorization refuses"
 
-echo "All running-service ownership tests passed."
 bash "$ROOT/scripts/test-worktree-lifecycle-identity.sh"
+echo "All running-service ownership tests passed."
