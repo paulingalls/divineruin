@@ -21,6 +21,7 @@ else
   _run_tests() {
     echo "Running pre-push test suite..."
 
+    if [ "${PREPUSH_ENV_TEST:-}" != "1" ]; then
     # Validate the hook's own docs-only-skip logic before relying on it.
     # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
     echo "  Pre-push hook self-test..."
@@ -64,6 +65,7 @@ else
     # (or SIGTERM'd before teardown finished) so they don't accumulate. PID-aware:
     # a live concurrent run's containers are skipped, never killed.
     bash "$(dirname "$0")/../scripts/sweep-test-containers.sh" || true
+    fi
 
     # Provision Postgres + Redis for the lanes that need real services (E2E's API
     # server). No-op when DATABASE_URL is already set, so a dev with .env / CI's
@@ -82,13 +84,13 @@ else
     # tolerates it not existing yet. INT/TERM too so a killed push doesn't leak.
     bg_pids=()
     _cleanup() {
-      for pid in "${bg_pids[@]}"; do kill "$pid" 2>/dev/null; done
+      for pid in "${bg_pids[@]}"; do kill "$pid" 2>/dev/null || true; done
       command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
     }
     trap _cleanup EXIT INT TERM
 
     # shellcheck source=scripts/test-env.sh
-    source "$(dirname "$0")/../scripts/test-env.sh"
+    source "${PREPUSH_TEST_ENV_SOURCE:-$(dirname "$0")/../scripts/test-env.sh}"
     # shellcheck source=scripts/lane-utils.sh
     source "$(dirname "$0")/../scripts/lane-utils.sh"
 
@@ -99,7 +101,7 @@ else
     # place to look when the gate flakes — the e2e lane already proved the pattern;
     # the acceptance + unit lanes (where the sprint-027 testcontainer transient hit)
     # had no capture at all before this.
-    ART="$(cd "$(dirname "$0")/.." && pwd)/flake-artifacts"
+    ART="${PREPUSH_ART_DIR:-$(cd "$(dirname "$0")/.." && pwd)/flake-artifacts}"
     mkdir -p "$ART"
     snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse --short HEAD)"; }
 
@@ -109,10 +111,11 @@ else
     # failure through the pipe.
     # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
     # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
-    # This hook does NOT source .env, and `bun run` does not hand .env to the command it
-    # spawns — the key reaches pytest only through test:acceptance's `uv run --env-file`.
-    ( set -o pipefail; REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
-      bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
+    # The per-run services belong to server/E2E. Acceptance reloads this checkout's
+    # owned settings and provider credentials through test:acceptance's env file.
+    ( set -o pipefail; unset DATABASE_URL REDIS_URL; \
+      REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
+      run_pre_push_lane acceptance bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
     bg_pids+=("$acc_pid")
 
@@ -131,15 +134,15 @@ else
     # process; keep DATABASE_URL or it silently skips. Strip only the external API
     # vars (matches CI's test-bun env).
     ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
-      bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
+      run_pre_push_lane server bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
-    ( set -o pipefail; bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
+    ( set -o pipefail; run_pre_push_lane mobile bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
-    ( set -o pipefail; bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
+    ( set -o pipefail; run_pre_push_lane shared bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
-    # python: unset DB/REDIS too — it uses its own testcontainers.
+    # Python validates and provisions its own checkout-owned lifecycle.
     ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
-      unset DATABASE_URL REDIS_URL; bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
+      unset DATABASE_URL REDIS_URL; run_pre_push_lane python bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
     # `if` context suppresses set -e so a failing lane is captured, not aborted-on.
@@ -169,9 +172,9 @@ else
     # 0), so `set -e` won't abort before we read PIPESTATUS[0] — Playwright's REAL
     # exit code (NOT tee's). Capturing PIPESTATUS[0] must be the statement
     # immediately after the pipeline (any other command clobbers PIPESTATUS).
-    e2e_dir="$(cd "$(dirname "$0")/../e2e" && pwd)"
+    e2e_dir="${PREPUSH_E2E_DIR:-$(cd "$(dirname "$0")/../e2e" && pwd)}"
     e2e_log="$ART/last-e2e.log"
-    (cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
+    (cd "$e2e_dir" && run_pre_push_lane e2e bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
     e2e_rc=${PIPESTATUS[0]}
     if [ "$e2e_rc" -ne 0 ]; then
       snap="$(snap_dir)"

@@ -7,6 +7,16 @@
 # it in the same shell that spawned the background lanes, which a subprocess
 # (the BASH_TEST harness invoking the hook) cannot do.
 
+run_pre_push_lane() {
+  local lane="$1"
+  shift
+  if [ -n "${PREPUSH_LANE_DRIVER:-}" ]; then
+    "$PREPUSH_LANE_DRIVER" "$lane" "$@"
+  else
+    "$@"
+  fi
+}
+
 # wait_all_lanes PID:NAME [PID:NAME ...]
 # Wait for EVERY backgrounded lane (so wall-clock is max-lane, not first-failure,
 # and every failure is reported), printing "ERROR: <name> lane failed." for each
