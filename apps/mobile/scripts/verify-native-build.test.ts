@@ -5,7 +5,7 @@ import {
   type NativeBuildOptions,
   runNativeBuild,
 } from "./verify-native-build";
-import { shouldCopyPath } from "./verify-native-build-runtime";
+import { requiredSimulatorAction, shouldCopyPath } from "./verify-native-build-runtime";
 
 const ROOT = "/source/story-208";
 const TEMP = "/tmp/story-208-native";
@@ -225,6 +225,41 @@ describe("runNativeBuild", () => {
     const { deps } = fixture();
     deps.runAcceptance = () => Promise.resolve(gate);
     expect(await failure(runNativeBuild(options(deps)))).toContain(expected);
+  });
+
+  test("reaps the workspace even when Metro refuses to stop, keeping the first failure", async () => {
+    const { deps, cleaned } = fixture();
+    deps.stopMetro = () => Promise.reject(new Error("Metro would not stop"));
+    deps.runAcceptance = () =>
+      Promise.resolve({ exitCode: 9, stdout: "", stderr: "", maestroInvoked: true });
+    expect(await failure(runNativeBuild(options(deps)))).toContain("exit status 9");
+    expect(cleaned).toEqual([TEMP]);
+  });
+
+  test("fails loud when cleanup fails after an otherwise passing run", async () => {
+    const { deps } = fixture();
+    deps.removeWorkspace = () => Promise.reject(new Error("temporary workspace is locked"));
+    expect(await failure(runNativeBuild(options(deps)))).toContain("left owned resources behind");
+  });
+});
+
+describe("requiredSimulatorAction", () => {
+  const sibling = { udid: "SIBLING-1", state: "Booted", isAvailable: true };
+
+  test("boots only the requested target, never a booted sibling", () => {
+    const devices = [sibling, { udid: UDID, state: "Shutdown", isAvailable: true }];
+    expect(requiredSimulatorAction(devices, UDID)).toBe("boot");
+    expect(requiredSimulatorAction([sibling, { ...devices[1], state: "Booted" }], UDID)).toBe(
+      "ready",
+    );
+  });
+
+  test.each([
+    [[sibling], "unknown"],
+    [[{ udid: UDID, state: "Shutdown", isAvailable: false }], "unavailable"],
+    [[{ udid: UDID, state: "Creating", isAvailable: true }], "unsupported state Creating"],
+  ])("refuses to act on %s", (devices, expected) => {
+    expect(() => requiredSimulatorAction(devices, UDID)).toThrow(expected);
   });
 });
 

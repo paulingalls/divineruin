@@ -87,6 +87,7 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
 
   let workspace: string | undefined;
   let metro: unknown;
+  let failure: Error | undefined;
   try {
     workspace = await deps.createWorkspace(repoRoot);
     const mobileRoot = join(workspace, "apps/mobile");
@@ -139,9 +140,24 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
     if (acceptance.exitCode !== 0) {
       throw new Error(`Maestro acceptance failed with exit status ${acceptance.exitCode}`);
     }
-  } finally {
-    if (metro) await deps.stopMetro(metro);
-    if (workspace) await deps.removeWorkspace(workspace);
+  } catch (error) {
+    failure = error instanceof Error ? error : new Error(String(error));
+  }
+
+  // Settle both reaps: a Metro that refuses to die must not strand the temporary
+  // workspace, and neither may replace a verification failure that already happened.
+  const unreaped = (
+    await Promise.allSettled([
+      metro ? deps.stopMetro(metro) : Promise.resolve(),
+      workspace ? deps.removeWorkspace(workspace) : Promise.resolve(),
+    ])
+  ).filter((outcome) => outcome.status === "rejected");
+  if (failure) throw failure;
+  if (unreaped.length > 0) {
+    throw new AggregateError(
+      unreaped.map((outcome) => outcome.reason as unknown),
+      "native verification left owned resources behind",
+    );
   }
 }
 

@@ -121,11 +121,14 @@ def _configured_plugins(root: Path) -> list[str]:
     return [plugin[0] if isinstance(plugin, list) else plugin for plugin in plugins]
 
 
+# Vendored trees ship their own .patch files (uv wheels under .venv, Expo caches
+# under .expo), and none of them is a mobile patch this baseline claims to inventory.
+_UNWALKED = {".git", "node_modules", ".venv", ".expo"}
+
+
 def _patch_inventory(root: Path) -> list[str]:
     files = [
-        path
-        for path in root.rglob("*")
-        if path.is_file() and not {".git", "node_modules"}.intersection(path.relative_to(root).parts)
+        path for path in root.rglob("*") if path.is_file() and not _UNWALKED.intersection(path.relative_to(root).parts)
     ]
     if not files:
         raise ValueError("repository file corpus is empty while checking patches")

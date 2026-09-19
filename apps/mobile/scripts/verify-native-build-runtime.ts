@@ -13,20 +13,19 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { createRealGateDeps, runGate } from "../../../scripts/maestro-acceptance";
+import {
+  createRealGateDeps,
+  listSimulatorDevices,
+  requestedDeviceIsBooted,
+  runGate,
+  type SimulatorDevice,
+} from "../../../scripts/maestro-acceptance";
 import type { CommandResult, NativeBuildDeps } from "./verify-native-build";
 
 interface OwnedProcess {
   pid: number;
   exited: Promise<number | null>;
   kill(signal?: number | NodeJS.Signals): void;
-}
-
-interface SimulatorDevice {
-  udid?: string;
-  name?: string;
-  state?: string;
-  isAvailable?: boolean;
 }
 
 function definedEnv(env: Record<string, string | undefined>): Record<string, string> {
@@ -85,28 +84,24 @@ function parseEnv(text: string): Record<string, string> {
   return env;
 }
 
-async function simulatorDevices(): Promise<SimulatorDevice[]> {
-  const raw = await capture(["xcrun", "simctl", "list", "devices", "--json"]);
-  const payload = JSON.parse(raw) as { devices?: Record<string, SimulatorDevice[]> };
-  const devices = Object.values(payload.devices ?? {}).flat();
-  if (devices.length === 0) throw new Error("simctl returned no simulator devices");
-  return devices;
+export function requiredSimulatorAction(
+  devices: SimulatorDevice[],
+  udid: string,
+): "ready" | "boot" {
+  const device = devices.find((candidate) => candidate.udid === udid);
+  if (!device) throw new Error(`requested simulator is unknown: ${udid}`);
+  if (device.isAvailable === false) throw new Error(`requested simulator is unavailable: ${udid}`);
+  if (device.state === "Booted") return "ready";
+  if (device.state === "Shutdown") return "boot";
+  throw new Error(`requested simulator has unsupported state ${device.state}: ${udid}`);
 }
 
 async function ensureSimulator(udid: string): Promise<void> {
-  const before = (await simulatorDevices()).find((device) => device.udid === udid);
-  if (!before) throw new Error(`requested simulator is unknown: ${udid}`);
-  if (before.isAvailable === false) throw new Error(`requested simulator is unavailable: ${udid}`);
-  if (before.state === "Shutdown") {
+  if (requiredSimulatorAction(await listSimulatorDevices(), udid) === "boot") {
     await capture(["xcrun", "simctl", "boot", udid]);
     await capture(["xcrun", "simctl", "bootstatus", udid, "-b"]);
-  } else if (before.state !== "Booted") {
-    throw new Error(
-      `requested simulator has unsupported state ${before.state ?? "unknown"}: ${udid}`,
-    );
   }
-  const after = (await simulatorDevices()).find((device) => device.udid === udid);
-  if (after?.state !== "Booted" || after.isAvailable === false) {
+  if (!requestedDeviceIsBooted(await listSimulatorDevices(), udid)) {
     throw new Error(`requested simulator did not become booted and available: ${udid}`);
   }
 }

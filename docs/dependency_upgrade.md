@@ -1,6 +1,6 @@
 # Dependency upgrade
 
-Registry snapshot: 2026-09-19
+Registry snapshot: 2026-09-19  
 Toolchain: CPython 3.14.7; uv 0.10.6; Bun 1.4.2
 
 ## Python environments
@@ -121,10 +121,10 @@ Release age policy: 604800 seconds.
 
 ### Mobile SDK 57 baseline
 
-Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
-Platform minimums: Android 7+ (compile/target SDK 36/36); iOS 16.4+; Xcode 26.4+.
-Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-audio, expo-secure-store, expo-asset, expo-image.
-Patch files: none.
+- Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
+- Platform minimums: Android 7+ (compile/target SDK 36/36); iOS 16.4+; Xcode 26.4+.
+- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-audio, expo-secure-store, expo-asset, expo-image.
+- Patch files: none.
 
 | Git dependency | Requested | Locked commit |
 |---|---|---|

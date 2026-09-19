@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { type GateDeps, maestroCommand, runGate } from "./maestro-acceptance";
+import {
+  type GateDeps,
+  maestroCommand,
+  parseSimulatorDevices,
+  requestedDeviceIsBooted,
+  runGate,
+} from "./maestro-acceptance";
 
 const TARGET_UDID = "A2080000-0000-0000-0000-000000000001";
 const ADB_EMPTY = "List of devices attached\n\n";
@@ -115,24 +121,6 @@ describe("runGate", () => {
     );
   });
 
-  test("fails rather than invoke Maestro when the selected flow set is empty", async () => {
-    let invoked = false;
-    const gate = await runGate(
-      deps({
-        env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: TARGET_UDID },
-        probeRequestedIos: result(true),
-        flowNames: { offlineSafe: [], backendRequired: [] },
-        runMaestro: () => {
-          invoked = true;
-          return Promise.resolve(0);
-        },
-      }),
-    );
-    expect(gate.exitCode).toBe(1);
-    expect(gate.stderr).toMatch(/flow/i);
-    expect(invoked).toBe(false);
-  });
-
   test("keeps broad device detection for the non-strict developer lane", async () => {
     for (const available of [
       { runSimctl: result(SIMCTL_SIBLINGS_BOOTED), runAdb: result(ADB_EMPTY) },
@@ -188,5 +176,44 @@ describe("runGate", () => {
     expect(gate.exitCode).toBe(1);
     expect(gate.stderr).toMatch(/simctl service unavailable/);
     expect(gate.maestroInvoked).toBe(false);
+  });
+});
+
+// Shape mirrors `xcrun simctl list devices --json`: runtime-keyed buckets whose
+// rows carry udid/state/isAvailable.
+const SIMCTL_JSON = JSON.stringify({
+  devices: {
+    "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [
+      { udid: "SIBLING-1", name: "story-045-legacy3-e2e", state: "Booted", isAvailable: true },
+      { udid: TARGET_UDID, name: "story-208-sdk57", state: "Shutdown", isAvailable: true },
+    ],
+    "com.apple.CoreSimulator.SimRuntime.iOS-26-4": [
+      { udid: "SIBLING-2", name: "story-058-legacy3-e2e", state: "Booted", isAvailable: true },
+    ],
+  },
+});
+
+describe("requested simulator selection", () => {
+  const devices = parseSimulatorDevices(SIMCTL_JSON);
+
+  test("flattens every runtime bucket and reds on an empty corpus", () => {
+    expect(devices.map((device) => device.udid)).toEqual([
+      "SIBLING-1",
+      TARGET_UDID,
+      "SIBLING-2",
+    ]);
+    expect(() => parseSimulatorDevices(JSON.stringify({ devices: {} }))).toThrow(/no simulator/);
+  });
+
+  test("booted siblings never satisfy the requested target", () => {
+    expect(requestedDeviceIsBooted(devices, TARGET_UDID)).toBe(false);
+    expect(requestedDeviceIsBooted(devices, "SIBLING-1")).toBe(true);
+  });
+
+  test("the requested target must be both booted and available", () => {
+    const booted = { udid: TARGET_UDID, state: "Booted" };
+    expect(requestedDeviceIsBooted([booted], TARGET_UDID)).toBe(true);
+    expect(requestedDeviceIsBooted([{ ...booted, isAvailable: false }], TARGET_UDID)).toBe(false);
+    expect(requestedDeviceIsBooted([{ ...booted, state: "Booting" }], TARGET_UDID)).toBe(false);
   });
 });

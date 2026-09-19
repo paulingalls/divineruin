@@ -77,3 +77,20 @@ def test_incompatible_livekit_graph_fails(name, version, tmp_path):
     rows[("apps/mobile", "dependencies", name)]["locked"] = version
     with pytest.raises(ValueError, match="incompatible LiveKit graph"):
         _validate_mobile_baseline(root, report, rows)
+
+
+def test_patch_inventory_walks_our_sources_and_skips_vendored_trees(tmp_path):
+    root = _copy_scope(tmp_path)
+    report = _report(root)
+
+    for vendored in ("node_modules/pkg", "apps/agent/.venv/lib/pkg", "apps/mobile/.expo"):
+        path = root / vendored / "vendor.patch"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("--- vendored\n")
+    _validate(root, report)
+
+    ours = root / "apps/mobile/patches/react-native+0.86.3.patch"
+    ours.parent.mkdir(parents=True, exist_ok=True)
+    ours.write_text("--- ours\n")
+    with pytest.raises(ValueError, match="patch inventory"):
+        _validate(root, report)

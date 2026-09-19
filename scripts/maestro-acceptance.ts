@@ -1,6 +1,8 @@
-export interface FlowNames {
-  offlineSafe: string[];
-  backendRequired: string[];
+export interface SimulatorDevice {
+  udid?: string;
+  name?: string;
+  state?: string;
+  isAvailable?: boolean;
 }
 
 export interface GateDeps {
@@ -9,7 +11,6 @@ export interface GateDeps {
   runAdb: () => Promise<string>;
   probeRequestedIos: (udid: string) => Promise<boolean>;
   runMaestro: (udid: string | undefined, flows: string[]) => Promise<number>;
-  flowNames?: FlowNames;
 }
 
 export interface GateResult {
@@ -19,10 +20,8 @@ export interface GateResult {
   maestroInvoked: boolean;
 }
 
-const DEFAULT_FLOWS: FlowNames = {
-  offlineSafe: ["launch.yaml"],
-  backendRequired: ["auth-form.yaml"],
-};
+const OFFLINE_SAFE_FLOWS = ["launch.yaml"];
+const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml"];
 const SIMCTL_BOOTED_PATTERN = /\(Booted\)/;
 const ADB_DEVICE_LINE = /^\S+\s+device\b/m;
 
@@ -54,13 +53,24 @@ function failure(stderr: string): GateResult {
   return { exitCode: 1, stdout: "", stderr, maestroInvoked: false };
 }
 
+export function parseSimulatorDevices(raw: string): SimulatorDevice[] {
+  const payload = JSON.parse(raw) as { devices?: Record<string, SimulatorDevice[]> };
+  const devices = Object.values(payload.devices ?? {}).flat();
+  if (devices.length === 0) throw new Error("simctl returned no simulator devices");
+  return devices;
+}
+
+export function requestedDeviceIsBooted(devices: SimulatorDevice[], udid: string): boolean {
+  return devices.some(
+    (device) => device.udid === udid && device.state === "Booted" && device.isAvailable !== false,
+  );
+}
+
 export async function runGate(deps: GateDeps): Promise<GateResult> {
   const strict = deps.env.REQUIRE_EMULATOR === "1";
   const requestedUdid = deps.env.IOS_SIMULATOR_UDID?.trim();
-  const selected = deps.flowNames ?? DEFAULT_FLOWS;
-  const flows = [...selected.offlineSafe];
-  if (deps.env.REQUIRE_BACKEND === "1") flows.push(...selected.backendRequired);
-  if (flows.length === 0) return failure("Maestro acceptance selected no flows");
+  const flows = [...OFFLINE_SAFE_FLOWS];
+  if (deps.env.REQUIRE_BACKEND === "1") flows.push(...BACKEND_REQUIRED_FLOWS);
 
   if (strict && !requestedUdid) {
     return failure("REQUIRE_EMULATOR=1 requires IOS_SIMULATOR_UDID");
@@ -122,16 +132,8 @@ async function spawnText(command: string[]): Promise<string> {
   return stdout;
 }
 
-async function requestedIosIsBooted(udid: string): Promise<boolean> {
-  const raw = await spawnText(["xcrun", "simctl", "list", "devices", "--json"]);
-  const payload = JSON.parse(raw) as {
-    devices?: Record<string, Array<{ udid?: string; state?: string; isAvailable?: boolean }>>;
-  };
-  return Object.values(payload.devices ?? {})
-    .flat()
-    .some(
-      (device) => device.udid === udid && device.state === "Booted" && device.isAvailable !== false,
-    );
+export async function listSimulatorDevices(): Promise<SimulatorDevice[]> {
+  return parseSimulatorDevices(await spawnText(["xcrun", "simctl", "list", "devices", "--json"]));
 }
 
 async function spawnInherit(command: string[], cwd: string): Promise<number> {
@@ -166,7 +168,7 @@ export function createRealGateDeps(
     env,
     runSimctl: () => spawnText(["xcrun", "simctl", "list", "devices"]),
     runAdb: () => spawnText(["adb", "devices"]),
-    probeRequestedIos: requestedIosIsBooted,
+    probeRequestedIos: async (udid) => requestedDeviceIsBooted(await listSimulatorDevices(), udid),
     runMaestro: (udid, flows) =>
       spawnInherit(maestroCommand(udid, flows, maestroDir, env.MAESTRO_APP_LAUNCH_URL), mobileDir),
   };
