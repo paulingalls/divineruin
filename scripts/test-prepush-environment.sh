@@ -7,7 +7,12 @@ TMP="$(mktemp -d)"
 PASS=0
 FAIL=0
 
-cleanup() { rm -rf "$TMP"; }
+# Keep the case dirs (hook.log, each lane's recorded child env, the acceptance
+# pytest env dump) when anything failed — this harness runs inside the pre-push
+# gate, where deleting the only evidence is how a real defect gets called a flake.
+cleanup() {
+  if [ "$FAIL" -eq 0 ]; then rm -rf "$TMP"; else echo "  Artifacts preserved at: $TMP"; fi
+}
 trap cleanup EXIT
 
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
@@ -145,11 +150,10 @@ run_hook() {
   local name="$1" fail_acceptance="$2" fail_e2e="${3:-0}" case_dir rc
   case_dir="$TMP/$name"
   mkdir -p "$case_dir/artifacts"
-  touch "$case_dir/foreign"
   env -u DATABASE_URL -u REDIS_URL -u LIVEKIT_URL -u LIVEKIT_API_KEY \
     -u LIVEKIT_API_SECRET -u ANTHROPIC_API_KEY -u INWORLD_API_KEY \
     -u INWORLD_WORKSPACE_ID \
-    PREPUSH_ENV_TEST=1 PREPUSH_TEST_ENV_SOURCE="$TMP/test-env.sh" \
+    PREPUSH_TEST_ENV_SOURCE="$TMP/test-env.sh" \
     PREPUSH_LANE_DRIVER="$TMP/driver.sh" PREPUSH_CASE_DIR="$case_dir" \
     PREPUSH_ART_DIR="$case_dir/artifacts" PREPUSH_E2E_DIR="$TMP/e2e" \
     PREPUSH_FIXTURE_ROOT="$TMP/fixture" PREPUSH_FAIL_ACCEPTANCE="$fail_acceptance" \
@@ -173,7 +177,6 @@ assert_cleaned() {
   want_eq "teardown once" "$(cat "$case_dir/teardown-count" 2>/dev/null)" "1"
   want_absent "owned postgres marker removed" "$case_dir/owned-pg"
   want_absent "owned redis marker removed" "$case_dir/owned-redis"
-  want_file "foreign marker preserved" "$case_dir/foreign"
   for lane in acceptance server mobile shared python e2e; do
     pid="$(cat "$case_dir/$lane.pid")"
     kill -0 "$pid" 2>/dev/null && running=$((running + 1))

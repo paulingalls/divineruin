@@ -21,7 +21,11 @@ else
   _run_tests() {
     echo "Running pre-push test suite..."
 
-    if [ "${PREPUSH_ENV_TEST:-}" != "1" ]; then
+    # The preamble below (self-tests, lint backstop, Docker gate, orphan sweep)
+    # is gated on the SAME seam that replaces the lanes, so no separate env var
+    # can skip the backstop while the real suites still run and the hook still
+    # prints "All tests passed."
+    if [ -z "${PREPUSH_LANE_DRIVER:-}" ]; then
     # Validate the hook's own docs-only-skip logic before relying on it.
     # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
     echo "  Pre-push hook self-test..."
@@ -74,8 +78,10 @@ else
     # gate run without a sourced .env, and isolates the DB across overlapping runs.
     # Most server bun tests are env-independent, but the test:server lane
     # below runs db.test.ts against the live DB — keep DATABASE_URL exported here
-    # or that lazy-Proxy regression test silently skips. (The Python lane unsets
-    # these below and uses its own testcontainers.)
+    # or that lazy-Proxy regression test silently skips. (The acceptance and
+    # Python lanes unset these below: their pytest lifecycle resolves and
+    # validates THIS checkout's own stack, which a per-run ephemeral endpoint
+    # is not and is refused as foreign.)
     # Combined cleanup: kill every STILL-RUNNING backgrounded lane AND remove the
     # per-run test-env containers via _te_teardown (defined by test-env.sh).
     # bg_pids tracks only un-reaped jobs (reaped PIDs are dropped below so the
@@ -120,9 +126,9 @@ else
     bg_pids+=("$acc_pid")
 
     # The four bun/python unit lanes are independent — server's db.test.ts uses
-    # the provisioned DB, python uses its own testcontainers and unsets DB/REDIS,
-    # mobile/shared are env-light — so run them CONCURRENTLY, each in its own env
-    # subshell so var scoping can't leak across siblings. Wall-clock drops from
+    # the provisioned DB, python unsets DB/REDIS and resolves this checkout's own
+    # stack from .env, mobile/shared are env-light — so run them CONCURRENTLY,
+    # each in its own env subshell so var scoping can't leak across siblings. Wall-clock drops from
     # sum-of-lanes to max-lane; wait_all_lanes fails the push loud if ANY lane
     # exits non-zero (never swallows an exit code).
     echo "  Bun + Python unit lanes (parallel: server, mobile, shared, python)..."
