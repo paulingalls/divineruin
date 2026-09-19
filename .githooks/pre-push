@@ -118,8 +118,16 @@ else
     # sourcing so a failure mid-provision still tears down; _te_teardown guard
     # tolerates it not existing yet. INT/TERM too so a killed push doesn't leak.
     bg_pids=()
+    _terminate_lane_tree() {
+      local parent="$1" child
+      for child in $(pgrep -P "$parent" 2>/dev/null); do
+        _terminate_lane_tree "$child"
+      done
+      kill "$parent" 2>/dev/null || true
+    }
     _cleanup() {
-      for pid in "${bg_pids[@]}"; do kill "$pid" 2>/dev/null || true; done
+      for pid in "${bg_pids[@]}"; do _terminate_lane_tree "$pid"; done
+      for pid in "${bg_pids[@]}"; do wait "$pid" 2>/dev/null || true; done
       command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
     }
     trap _cleanup EXIT INT TERM

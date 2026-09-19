@@ -121,6 +121,10 @@ wait_for_file() {
 }
 
 if [ "$lane" = acceptance ]; then
+  if [ "${PREPUSH_BLOCK_ACCEPTANCE:-}" = 1 ]; then
+    touch "$case_dir/acceptance.started"
+    while :; do sleep 1; done
+  fi
   if [ "${PREPUSH_FAIL_ACCEPTANCE:-}" = 1 ]; then
     wait_for_file "$case_dir/e2e.done" || exit $?
     echo "acceptance-environment-failure-17"
@@ -141,13 +145,19 @@ elif [ "$lane" = e2e ]; then
 elif [ "$lane" = shared ]; then
   sleep 0.2
 fi
+if [ "${PREPUSH_FAIL_UNIT:-}" = "$lane" ]; then
+  wait_for_file "$case_dir/acceptance.started" || exit $?
+  echo "$lane-environment-failure-23"
+  exit 23
+fi
 echo "$lane complete"
 touch "$case_dir/$lane.done"
 EOF
 chmod +x "$TMP/driver.sh"
 
 run_hook() {
-  local name="$1" fail_acceptance="$2" fail_e2e="${3:-0}" case_dir rc
+  local name="$1" fail_acceptance="$2" fail_e2e="${3:-0}"
+  local fail_unit="${4:-}" block_acceptance="${5:-0}" case_dir rc
   case_dir="$TMP/$name"
   mkdir -p "$case_dir/artifacts"
   env -u DATABASE_URL -u REDIS_URL -u LIVEKIT_URL -u LIVEKIT_API_KEY \
@@ -158,6 +168,7 @@ run_hook() {
     PREPUSH_ART_DIR="$case_dir/artifacts" PREPUSH_E2E_DIR="$TMP/e2e" \
     PREPUSH_FIXTURE_ROOT="$TMP/fixture" PREPUSH_FAIL_ACCEPTANCE="$fail_acceptance" \
     PREPUSH_FAIL_E2E="$fail_e2e" \
+    PREPUSH_FAIL_UNIT="$fail_unit" PREPUSH_BLOCK_ACCEPTANCE="$block_acceptance" \
     PREPUSH_ACCEPTANCE_RECORD="$case_dir/pytest.json" \
     PYTHONPATH="$TMP/plugin:$ROOT/apps/agent:$ROOT/apps/agent/tests" \
     PYTEST_PLUGINS=prepush_probe UV_PROJECT_ENVIRONMENT="$ROOT/apps/agent/.venv" \
@@ -165,6 +176,26 @@ run_hook() {
     __prepush_harness__ __prepush_harness__ lanes </dev/null >"$case_dir/hook.log" 2>&1
   rc=$?
   printf '%s\n' "$rc" > "$case_dir/rc"
+}
+
+assert_pid_stopped() {
+  local name="$1" pid_file="$2" pid attempt
+  if ! pid="$(cat "$pid_file" 2>/dev/null)"; then
+    fail "$name" "missing $pid_file"
+    return
+  fi
+  case "$pid" in
+    ''|*[!0-9]*) fail "$name" "invalid PID: $pid"; return ;;
+  esac
+  for attempt in $(seq 1 100); do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      pass "$name"
+      return
+    fi
+    sleep 0.02
+  done
+  fail "$name" "PID $pid still running"
+  kill "$pid" 2>/dev/null || true
 }
 
 assert_argv() {
@@ -254,6 +285,16 @@ E="$TMP/early-failure"
 if [ "$(cat "$E/rc")" -ne 0 ]; then pass "E2E failure fails hook"; else fail "E2E failure fails hook"; fi
 want_line "E2E failure remains in last log" "$E/artifacts/last-e2e.log" "e2e-environment-failure-19"
 assert_cleaned "$E"
+
+echo "Early unit failure reaping case:"
+run_hook unit-failure 0 0 mobile 1
+U="$TMP/unit-failure"
+if [ "$(cat "$U/rc")" -ne 0 ]; then pass "unit failure fails hook"; else fail "unit failure fails hook"; fi
+want_line "unit failure remains in last log" "$U/artifacts/last-mobile.log" "mobile-environment-failure-23"
+want_eq "unit failure teardown once" "$(cat "$U/teardown-count" 2>/dev/null)" "1"
+want_absent "unit failure postgres marker removed" "$U/owned-pg"
+want_absent "unit failure redis marker removed" "$U/owned-redis"
+assert_pid_stopped "blocked acceptance child reaped" "$U/acceptance.pid"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
