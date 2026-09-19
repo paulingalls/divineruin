@@ -1,3 +1,6 @@
+// Teardown is `compose stop`, never `down -v`: a dev database this run did not
+// start — and its volumes — has to survive the test gate. The Python session
+// conftest mirrors this helper for bare pytest runs (apps/agent/tests/_db_lifecycle.py).
 import { Socket } from "node:net";
 
 const COMPOSE_FILE = new URL("../docker-compose.yml", import.meta.url).pathname;
@@ -54,6 +57,7 @@ async function isAcceptingQueries(user: string): Promise<boolean> {
   return (await proc.exited) === 0;
 }
 
+// Returns true iff THIS call started docker compose — pass it to stopIfStarted.
 export async function ensureDbUp(): Promise<boolean> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is not set");

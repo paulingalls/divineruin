@@ -3,8 +3,8 @@ import { join } from "node:path";
 
 type Sql = InstanceType<typeof Bun.SQL>;
 
-export function requireDatabaseUrl(env: Record<string, string | undefined> = process.env): string {
-  const databaseUrl = env.DATABASE_URL;
+function requireDatabaseUrl(): string {
+  const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is not set");
   return databaseUrl;
 }
@@ -23,7 +23,7 @@ async function getAppliedMigrations(sql: Sql): Promise<Set<string>> {
   return new Set(rows.map((r) => r.name));
 }
 
-async function run() {
+export async function runMigrations() {
   console.log("Running migrations...");
   const sql = new Bun.SQL(requireDatabaseUrl());
 
@@ -57,7 +57,7 @@ async function run() {
 }
 
 if (import.meta.main) {
-  run().catch((err) => {
+  runMigrations().catch((err) => {
     console.error("Migration failed:", err);
     process.exit(1);
   });
