@@ -27,7 +27,8 @@ make_fixture() {
   repo="$TMP/$name"
   linked="$TMP/${name}-linked"
   mkdir -p "$repo/scripts" "$repo/bin"
-  cp "$ROOT/scripts/worktree-common.sh" "$ROOT/scripts/teardown-worktree.sh" "$ROOT/scripts/init-worktree.sh" "$repo/scripts/"
+  cp "$ROOT/scripts/worktree-common.sh" "$ROOT/scripts/worktree-docker.sh" \
+    "$ROOT/scripts/teardown-worktree.sh" "$ROOT/scripts/init-worktree.sh" "$repo/scripts/"
   cp "$ROOT/docker-compose.yml" "$repo/"
   git -C "$repo" init -q
   git -C "$repo" config user.email test@example.invalid
@@ -189,7 +190,7 @@ make_clone_with_same_worktree() {
   primary="$TMP/$clone"
   linked="$TMP/$clone/same-name"
   mkdir -p "$primary/scripts"
-  cp "$ROOT/scripts/worktree-common.sh" "$primary/scripts/"
+  cp "$ROOT/scripts/worktree-common.sh" "$ROOT/scripts/worktree-docker.sh" "$primary/scripts/"
   cp "$ROOT/docker-compose.yml" "$primary/"
   git -C "$primary" init -q
   git -C "$primary" config user.email test@example.invalid
@@ -467,7 +468,7 @@ ok "missing and failing port inspection fail closed; confirmed vacancy proceeds"
 # The worktree lives outside the repo, as this project's do: a nested one would
 # resolve its identity from the enclosing checkout instead of failing.
 mkdir -p "$TMP/ghost-clone/scripts"
-cp "$ROOT/scripts/worktree-common.sh" "$TMP/ghost-clone/scripts/"
+cp "$ROOT/scripts/worktree-common.sh" "$ROOT/scripts/worktree-docker.sh" "$TMP/ghost-clone/scripts/"
 git -C "$TMP/ghost-clone" init -q
 git -C "$TMP/ghost-clone" config user.email test@example.invalid
 git -C "$TMP/ghost-clone" config user.name Test

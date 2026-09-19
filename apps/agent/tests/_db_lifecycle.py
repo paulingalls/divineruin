@@ -132,6 +132,7 @@ def _authorize(intent: str) -> None:
         capture_output=True,
         text=True,
         check=False,
+        cwd=_REPO_ROOT,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"ownership check failed ({result.returncode})")
@@ -150,7 +151,15 @@ def _authorize_runtime(database_url: str, redis_url: str | None) -> None:
 
 
 def _compose(*args: str) -> subprocess.CompletedProcess[str]:
-    intent = "create" if args[:1] == ("up",) else "destroy" if args[:1] in (("down",), ("stop",)) else "reuse"
+    intent = (
+        "create"
+        if args[:1] == ("up",)
+        else "destroy"
+        if args[:1] in (("down",), ("stop",))
+        else "connect"
+        if args[:1] == ("exec",)
+        else "reuse"
+    )
     child_env = os.environ.copy()
     child_env.pop("DATABASE_URL", None)
     child_env.pop("REDIS_URL", None)
@@ -288,7 +297,7 @@ def ensure_db_up(database_url: str | None = None) -> bool:
         state = _read_state(state_path)
         if is_reachable(host, port):
             if not ci_mode:
-                _authorize("reuse")
+                _authorize("connect")
             # Reachable while holding the lock -> nobody else can be
             # mid-startup right now, so this call did not start it.
             state["count"] += 1

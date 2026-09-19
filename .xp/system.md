@@ -189,8 +189,12 @@ keys, when present, must agree; older primary files may derive absent port keys
 from their coupled URLs without being rewritten. The Bun and Python adapters
 also submit their actual runtime `DATABASE_URL` and `REDIS_URL` to this shared
 authority. Port inspection errors and readiness ownership refusals fail
-immediately. Compose resources carry clone and checkout labels. Missing, mixed,
-foreign, unreadable, or legacy labels fail closed without adoption or deletion.
+immediately. Compose resources carry clone and checkout labels. Resource
+ownership permits metadata inspection and intentional teardown; connection
+authority separately requires exactly one running checkout-owned service to
+publish the selected loopback endpoint. A stopped owned volume is not proof of
+the process listening on its former port. Missing, mixed, foreign, unreadable,
+or legacy labels fail closed without adoption or deletion.
 Back up and migrate or remove legacy data manually. CI service Postgres requires
 the explicit GitHub Actions marker and cannot run Compose. Sweep deletes only
 consistently labeled stale checkouts from the current clone and rejects empty or

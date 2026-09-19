@@ -311,7 +311,7 @@ Wait for healthy status:
 bash scripts/worktree-common.sh compose reuse ps
 ```
 
-PostgreSQL uses `localhost:55432` and Valkey uses `localhost:56379` in the primary checkout. Every Compose resource carries clone and checkout labels, and `scripts/worktree-common.sh` verifies those labels before reuse or mutation. An existing unlabeled or conflicting stack is left untouched; back it up and migrate or remove it manually before retrying. Valkey remains Redis protocol compatible, so `REDIS_URL` keeps the `redis://` scheme.
+PostgreSQL uses `localhost:55432` and Valkey uses `localhost:56379` in the primary checkout. Every Compose resource carries clone and checkout labels, and `scripts/worktree-common.sh` verifies those labels before reuse or mutation. A client connection additionally requires this checkout's running service to publish the selected loopback endpoint; a stopped owned volume remains inspectable or removable but cannot authorize a connection. An existing unlabeled or conflicting stack is left untouched; back it up and migrate or remove it manually before retrying. Valkey remains Redis protocol compatible, so `REDIS_URL` keeps the `redis://` scheme.
 
 **Working in a git worktree?** Run `bash scripts/init-worktree.sh` inside it. It installs the gitignored artifacts `git worktree add` does not materialize and brings up an isolated stack. Linked project names and ports include a fingerprint of the clone's real Git directory, so equal worktree names in different clones do not collide. Bootstrap rejects an existing `.env` whose project, ports, or URLs belong to another checkout and never rewrites it.
 

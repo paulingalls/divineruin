@@ -5,7 +5,7 @@ const OWNER = new URL("./worktree-common.sh", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
 const OWNERSHIP_REFUSAL_EXIT = 78;
 
-export type OwnershipIntent = "settings" | "create" | "reuse" | "destroy" | "ci";
+export type OwnershipIntent = "settings" | "create" | "connect" | "reuse" | "destroy" | "ci";
 
 export interface LifecycleDeps {
   authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void>;
@@ -85,7 +85,7 @@ export async function isAcceptingQueries(
 ): Promise<boolean> {
   const result = await runner(
     "compose",
-    "reuse",
+    "connect",
     "exec",
     "-T",
     "postgres",
@@ -116,7 +116,7 @@ export async function ensureDbUp(deps: LifecycleDeps = defaults): Promise<boolea
   if (ci) await deps.authorize("ci");
   else await deps.authorizeRuntime(databaseUrl, process.env.REDIS_URL);
   if (await deps.reachable(host, port)) {
-    if (!ci) await deps.authorize("reuse");
+    if (!ci) await deps.authorize("connect");
     return false;
   }
   if (ci)

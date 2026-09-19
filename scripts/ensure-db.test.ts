@@ -57,13 +57,13 @@ describe("URL parsing", () => {
   });
 });
 
-test("ownership is checked before reachability and reachable reuse", async () => {
+test("ownership is checked before reachability and reachable connection", async () => {
   const { calls, deps } = fakeDeps(true);
   expect(await ensureDbUp(deps)).toBe(false);
   expect(calls).toEqual([
     `authorize-runtime:${process.env.DATABASE_URL}:${process.env.REDIS_URL ?? ""}`,
     "reachable",
-    "authorize:reuse",
+    "authorize:connect",
   ]);
 });
 
@@ -139,14 +139,19 @@ test("the real shared authority rejects a foreign ambient Redis endpoint", () =>
 });
 
 test("readiness raises ownership refusal instead of returning not-ready", async () => {
+  const calls: string[][] = [];
   expect(
-    isAcceptingQueries("divineruin", () =>
-      Promise.resolve({
+    isAcceptingQueries("divineruin", (...args) => {
+      calls.push(args);
+      return Promise.resolve({
         exit: 78,
         stderr: "worktree ownership: project belongs to foreign checkout",
-      }),
-    ),
+      });
+    }),
   ).rejects.toThrow("foreign checkout");
+  expect(calls).toEqual([
+    ["compose", "connect", "exec", "-T", "postgres", "pg_isready", "-U", "divineruin"],
+  ]);
   expect(
     await isAcceptingQueries("divineruin", () => Promise.resolve({ exit: 1, stderr: "not ready" })),
   ).toBe(false);

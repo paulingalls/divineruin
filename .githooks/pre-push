@@ -33,6 +33,10 @@ else
     # Validate the per-worktree host-port-offset derivation (worktree-common.sh).
     echo "  Worktree bootstrap offset self-test..."
     bash "$(dirname "$0")/../scripts/test-init-worktree.sh"
+    echo "  Worktree ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
+    echo "  Worktree listener ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
 
     # Typecheck + lint backstop. The pre-commit hook SKIPS the TS/ESLint/Prettier/ruff suite on a
     # fresh worktree (no node_modules), so without this block lint/typecheck errors could reach a

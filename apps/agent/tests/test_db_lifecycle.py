@@ -186,7 +186,7 @@ def test_ownership_is_checked_before_reachability(monkeypatch):
     assert events == [
         "authorize-runtime:postgresql://u:p@localhost:55432/db:",
         "reachable",
-        "authorize:reuse",
+        "authorize:connect",
     ]
 
 
@@ -283,6 +283,25 @@ def test_compose_runs_only_after_runtime_urls_are_authorized(monkeypatch):
     dbl._compose("ps")
     assert "DATABASE_URL" not in captured
     assert "REDIS_URL" not in captured
+
+
+def test_authority_uses_repo_root_and_exec_uses_connection_intent(tmp_path, monkeypatch):
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        return _FakeCompleted()
+
+    monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(dbl, "_authorize", REAL_AUTHORIZE)
+    monkeypatch.setattr(dbl.subprocess, "run", run)
+
+    dbl._authorize("connect")
+    dbl._compose("exec", "-T", "postgres", "pg_isready")
+
+    assert calls[0][0][-2:] == ["authorize", "connect"]
+    assert calls[0][1]["cwd"] == tmp_path
+    assert calls[1][0][2:4] == ["compose", "connect"]
 
 
 def test_ci_service_mode_never_starts_compose(monkeypatch):
