@@ -83,6 +83,9 @@ def eligible_spell_pairs(payload: Mapping[str, Any]) -> set[tuple[str, str]]:
 
 def offered_spell(result: RunResult, eligible_pairs: set[tuple[str, str]]) -> tuple[str, str, str]:
     event = result.events[last_assistant_message_index(result.events)]
+    # Narrowing for the type checker, not a guard: last_assistant_message_index only ever
+    # returns the index of an event whose type is "message", and ChatMessageEvent is the only
+    # such class — a turn that narrated nothing reds inside it, never here.
     assert isinstance(event, ChatMessageEvent), f"selected narration was not a message: {event!r}"
     text = (event.item.text_content or "").lower()
     matches = []

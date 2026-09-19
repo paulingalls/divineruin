@@ -29,6 +29,11 @@ _PROGRAM = {
     "training_activity_type": "spell_standard",
     "studiable_spell_ids": ["arcane_counterspell"],
 }
+_PHYSICAL_PROGRAM = {
+    "id": "combat_basics",
+    "name": "Combat Fundamentals",
+    "training_activity_type": "technique_base",
+}
 _PAIRS = {("arcane_study", "arcane_counterspell")}
 
 
@@ -38,7 +43,11 @@ async def test_live_no_spell_judge_uses_all_returned_program_names(monkeypatch: 
 
     names = ["Temple Lessons", "Scholar's Workshop"]
     rows = [{**_PROGRAM, "name": name, "studiable_spell_ids": []} for name in names]
-    harness = SimpleNamespace(state={"result": _turn(_query(), _query_output(payload={"programs": rows}))})
+    # The physical row rides along because the real query returns one: the intent sentence
+    # tells the judge these names ARE spell-training programs, so listing a technique row
+    # among them states something the tool result denies.
+    payload = {"programs": [*rows, _PHYSICAL_PROGRAM]}
+    harness = SimpleNamespace(state={"result": _turn(_query(), _query_output(payload=payload))})
     intents: list[str] = []
     monkeypatch.setattr(training, "_judge", lambda _harness, intent: intents.append(intent))
 
@@ -46,6 +55,7 @@ async def test_live_no_spell_judge_uses_all_returned_program_names(monkeypatch: 
 
     assert len(intents) == 1
     assert all(name in intents[0] for name in names)
+    assert _PHYSICAL_PROGRAM["name"] not in intents[0]
     assert "Arcane Study" not in intents[0]
 
 
@@ -201,7 +211,7 @@ def _spell_program_without_id() -> None:
     eligible_spell_pairs({"programs": [{k: v for k, v in _PROGRAM.items() if k != "id"}]})
 
 
-def _selected_narration_is_not_a_message() -> None:
+def _turn_narrated_nothing() -> None:
     offered_spell(_turn(_query(), _query_output()), _PAIRS)
 
 
@@ -309,7 +319,7 @@ def _persisted_program_mismatch() -> None:
         pytest.param(_programs_not_a_list, id="programs-not-a-list"),
         pytest.param(_studiable_ids_not_a_list, id="studiable-ids-not-a-list"),
         pytest.param(_spell_program_without_id, id="spell-program-without-id"),
-        pytest.param(_selected_narration_is_not_a_message, id="selected-narration-is-not-a-message"),
+        pytest.param(_turn_narrated_nothing, id="turn-narrated-nothing"),
         pytest.param(_two_training_starts, id="two-training-starts"),
         pytest.param(_non_training_activity, id="non-training-activity"),
         pytest.param(_activity_not_an_object, id="activity-not-an-object"),
