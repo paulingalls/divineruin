@@ -63,26 +63,20 @@ const BASE_SOUNDS: Record<SoundName, SoundAsset> = {
   spell_generic: require("@/assets/sounds/spell_generic.mp3"),
 };
 
-const COMBAT_ASSETS: Record<string, SoundAsset> = {
-  quest_sting: require("@/assets/sounds/quest_sting.mp3"),
-  success_sting: require("@/assets/sounds/success_sting.mp3"),
-  fail_sting: require("@/assets/sounds/fail_sting.mp3"),
-  menu_close: require("@/assets/sounds/menu_close.mp3"),
-  sword_clash: require("@/assets/sounds/sword_clash.mp3"),
+// Stems that exist only to back a combat alias — everything else a combat row
+// aliases is already a BASE_SOUNDS key and is resolved from there.
+const COMBAT_ONLY_ASSETS: Partial<Record<string, SoundAsset>> = {
   weapon_miss: require("@/assets/sounds/weapon_miss.mp3"),
-  critical_hit_sting: require("@/assets/sounds/critical_hit_sting.mp3"),
   heartbeat_low_hp: require("@/assets/sounds/heartbeat_low_hp.mp3"),
-  level_up_sting: require("@/assets/sounds/level_up_sting.mp3"),
-  hit_taken: require("@/assets/sounds/hit_taken.mp3"),
-  god_whisper_stinger: require("@/assets/sounds/god_whisper_stinger.mp3"),
-  discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+
+const BASE_BY_STEM = BASE_SOUNDS as Partial<Record<string, SoundAsset>>;
 
 const SOUNDS: Record<string, SoundAsset> = { ...BASE_SOUNDS };
 for (const row of combatSounds) {
   if (row.id in SOUNDS) throw new Error(`Duplicate sound id: ${row.id}`);
-  const source = (COMBAT_ASSETS as Partial<Record<string, SoundAsset>>)[row.asset];
+  const source = BASE_BY_STEM[row.asset] ?? COMBAT_ONLY_ASSETS[row.asset];
   if (source === undefined) throw new Error(`Unmapped combat sound asset: ${row.asset}`);
   SOUNDS[row.id] = source;
 }

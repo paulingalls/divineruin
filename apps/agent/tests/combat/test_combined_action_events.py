@@ -21,6 +21,9 @@ from combat_support import SaveDamageResult, apply_attack_result
 from declarations import Declaration, DeclarationType
 from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS
 
+# Spelled out, not imported: this is the only pin on the save cue's WIRE value, so importing
+# tool_support's constant here would make it agree with itself. The other three are imported
+# because content/combat_sounds.json's ids are pinned in tests/test_combat_sound_contract.py.
 SOUND_SAVE_DAMAGE = "save_damage"
 
 FIXTURE_PATH = Path(__file__).resolve().parents[4] / "packages" / "shared" / "fixtures" / "enemy_action_shapes.json"

@@ -149,11 +149,11 @@ PROMPTS: dict[str, str] = {
     ),
     "weapon_miss": (
         "A fantasy melee weapon narrowly missing its target, a fast blade whoosh cutting "
-        "through empty air with no impact, clang, voice, or music. Short, dry game sound effect."
+        "through empty air with no impact or clang. Short, punchy game sound effect, dry, no music."
     ),
     "heartbeat_low_hp": (
         "A tense human heartbeat cue for dangerously low health, two slow heavy heartbeats "
-        "with a dark muffled pulse, no voice, melody, or music. Short, dry game sound effect."
+        "with a dark muffled pulse and no voice or melody. Short game sound effect, dry, no music."
     ),
     "critical_hit_sting": (
         "An emphatic musical stinger marking a critical hit. A sharp bright orchestral "
