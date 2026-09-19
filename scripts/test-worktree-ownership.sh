@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Every case drives a disposable fixture checkout, so the CALLER's own
+# DATABASE_URL/REDIS_URL are a foreign endpoint to all of them: left exported
+# (a shell that sourced this repo's .env, which is ordinary) they refuse every
+# fixture operation. The ambient dimension is exercised deliberately below.
+unset DATABASE_URL REDIS_URL
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d -t dr-ownership)"
 REAL_DIR=""; REAL_PROJECT=""; REAL_STARTED=0; HOLDER_PID=""
@@ -351,6 +357,27 @@ refuse_url 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://divineruin:divineruin_d
 refuse_url 's#^REDIS_URL=.*#REDIS_URL=redis://localhost:56379#' REDIS_URL
 printf '%s\n' "$env_a" > "$valid/.env"
 ok "a service URL aimed at another checkout's endpoint is refused before Docker"
+
+# .env can be perfect while the caller's PROCESS environment points elsewhere —
+# the runtime endpoints each adapter actually connects with. The owned run is
+# the floor: without it a fixture that refuses everything would look the same.
+valkey_a="$(printf '%s\n' "$env_a" | sed -n 's/^VALKEY_HOST_PORT=//p')"
+record="$TMP/ambient-owned.calls"; : > "$record"
+if ! (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$TMP/valid-docker" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
+  fail "an owned checkout with no ambient conflict was refused"
+fi
+[ -s "$record" ] || fail "the owned ambient case never reached Docker"
+for ambient in "DATABASE_URL=postgresql://u:p@localhost:$((port_a + 1))/divineruin" \
+               "REDIS_URL=redis://localhost:$((valkey_a + 1))"; do
+  record="$TMP/ambient-${ambient%%=*}.calls"; : > "$record"
+  if (cd "$valid" && env "$ambient" DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$TMP/valid-docker" \
+    PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
+    fail "ambient ${ambient%%=*} from another checkout was accepted"
+  fi
+  [ ! -s "$record" ] || fail "ambient ${ambient%%=*} conflict reached Docker"
+done
+ok "an ambient service URL from another checkout is refused before Docker"
 
 record="$TMP/ci-marker.calls"; : > "$record"
 if (cd "$primary" && DOCKER_RECORD="$record" PATH="$primary/bin:$PATH" \

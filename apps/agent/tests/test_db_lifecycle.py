@@ -7,11 +7,38 @@ tests pin the pure parse + the start/stop decision; the actual docker subprocess
 calls are stubbed so the suite stays hermetic.
 """
 
+import subprocess
+
 import _db_lifecycle as dbl
 import pytest
 
 REAL_AUTHORIZE = dbl._authorize
 REAL_AUTHORIZE_RUNTIME = dbl._authorize_runtime
+REAL_OWNER_HELPER = dbl._OWNER_HELPER
+
+
+def _owned_checkout(tmp_path, monkeypatch) -> dict[str, str]:
+    """A disposable Git checkout whose .env the REAL authority accepts.
+
+    The authority answers about the checkout it runs in, so a hardcoded
+    "foreign" endpoint is only foreign from SOME checkouts: :55432/:56379 are
+    the primary's OWN endpoints, and CI's runner has no repo-root .env at all.
+    Generating the settings here makes owned-vs-foreign known rather than
+    inherited from wherever the suite happens to run. Returns those settings.
+    """
+    root = tmp_path / "checkout"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    expected = subprocess.run(
+        ["bash", str(REAL_OWNER_HELPER), "expected-env"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    (root / ".env").write_text(expected)
+    monkeypatch.setattr(dbl, "_REPO_ROOT", root)
+    return dict(line.split("=", 1) for line in expected.splitlines())
 
 
 @pytest.fixture(autouse=True)
@@ -179,23 +206,31 @@ def test_ownership_refusal_prevents_reachability(monkeypatch):
         dbl.ensure_db_up("postgresql://u:p@localhost:55432/db")
 
 
-def test_real_authority_rejects_explicit_foreign_dsn_before_probe(monkeypatch):
+def test_real_authority_accepts_the_checkouts_own_endpoints(tmp_path, monkeypatch):
+    """The floor under the two refusals below: this fixture is not a blanket no."""
+    settings = _owned_checkout(tmp_path, monkeypatch)
+    REAL_AUTHORIZE_RUNTIME(settings["DATABASE_URL"], settings["REDIS_URL"])
+
+
+def test_real_authority_rejects_explicit_foreign_dsn_before_probe(tmp_path, monkeypatch):
+    settings = _owned_checkout(tmp_path, monkeypatch)
     monkeypatch.setattr(dbl, "_authorize_runtime", REAL_AUTHORIZE_RUNTIME)
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:56379")
+    monkeypatch.setenv("REDIS_URL", settings["REDIS_URL"])
     monkeypatch.setattr(
         dbl,
         "is_reachable",
         lambda *args: (_ for _ in ()).throw(AssertionError("foreign endpoint was probed")),
     )
+    foreign_port = int(settings["POSTGRES_HOST_PORT"]) + 1
 
     with pytest.raises(RuntimeError, match="runtime DATABASE_URL"):
-        dbl.ensure_db_up("postgresql://u:p@localhost:55432/divineruin")
+        dbl.ensure_db_up(f"postgresql://u:p@localhost:{foreign_port}/divineruin")
 
 
-def test_real_authority_rejects_foreign_redis_before_probe(monkeypatch):
+def test_real_authority_rejects_foreign_redis_before_probe(tmp_path, monkeypatch):
+    settings = _owned_checkout(tmp_path, monkeypatch)
     monkeypatch.setattr(dbl, "_authorize_runtime", REAL_AUTHORIZE_RUNTIME)
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:56379")
-    database_url = dbl._read_env_file(dbl._REPO_ROOT / ".env")["DATABASE_URL"]
+    monkeypatch.setenv("REDIS_URL", f"redis://localhost:{int(settings['VALKEY_HOST_PORT']) + 1}")
     monkeypatch.setattr(
         dbl,
         "is_reachable",
@@ -203,7 +238,7 @@ def test_real_authority_rejects_foreign_redis_before_probe(monkeypatch):
     )
 
     with pytest.raises(RuntimeError, match="runtime REDIS_URL"):
-        dbl.ensure_db_up(database_url)
+        dbl.ensure_db_up(settings["DATABASE_URL"])
 
 
 def test_readiness_raises_ownership_refusal_without_sleep(monkeypatch):

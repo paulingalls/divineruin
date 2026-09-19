@@ -298,6 +298,8 @@ The `INWORLD_VOICE_*` variables are optional — stock voices are used if unset.
 
 ### 1. Start infrastructure
 
+Create `.env` first (step 2 below, or `bash scripts/init-worktree.sh`, which writes one): every Compose operation goes through the ownership helper, which refuses while `.env` is missing or names a different checkout. If your clone's directory is not named `divineruin`, correct `COMPOSE_PROJECT_NAME` to the name the refusal message quotes.
+
 Ensure Docker Desktop is running, then bring up Divine Ruin's dedicated stack:
 
 ```bash

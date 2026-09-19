@@ -61,8 +61,12 @@ async function authorize(intent: OwnershipIntent): Promise<void> {
     throw new Error(result.stderr.trim() || `ownership check failed (${result.exit})`);
 }
 
-export async function authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void> {
-  const result = await runOwner("authorize-runtime", databaseUrl, redisUrl ?? "");
+export async function authorizeRuntime(
+  databaseUrl: string,
+  redisUrl?: string,
+  runner: (...args: string[]) => Promise<OwnerResult> = runOwner,
+): Promise<void> {
+  const result = await runner("authorize-runtime", databaseUrl, redisUrl ?? "");
   if (result.exit !== 0)
     throw new Error(result.stderr.trim() || `runtime ownership check failed (${result.exit})`);
 }

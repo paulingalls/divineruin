@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   authorizeRuntime,
   ensureDbUp,
@@ -64,16 +67,75 @@ test("ownership is checked before reachability and reachable reuse", async () =>
   ]);
 });
 
+// The real authority answers about the checkout it runs in, so a hardcoded
+// "foreign" endpoint is only foreign from SOME checkouts: :55432/:56379 are the
+// primary's OWN endpoints, and CI has no repo-root .env at all. These cases
+// drive the real script against a disposable checkout whose settings this test
+// generates, so what is owned and what is foreign is known here.
+const OWNER_SCRIPT = new URL("./worktree-common.sh", import.meta.url).pathname;
+let fixture: { dir: string; settings: Record<string, string> };
+
+function setting(key: string): string {
+  const value = fixture.settings[key];
+  if (value === undefined) throw new Error(`the fixture checkout has no ${key}`);
+  return value;
+}
+
+function ownerIn(cwd: string) {
+  return async (...args: string[]) => {
+    const proc = Bun.spawn(["bash", OWNER_SCRIPT, ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+    const stderr = await new Response(proc.stderr).text();
+    return { exit: await proc.exited, stderr };
+  };
+}
+
+beforeAll(() => {
+  const dir = mkdtempSync(join(tmpdir(), "dr-ensure-db-"));
+  Bun.spawnSync(["git", "init", "-q"], { cwd: dir });
+  const expected = Bun.spawnSync(["bash", OWNER_SCRIPT, "expected-env"], { cwd: dir });
+  const text = new TextDecoder().decode(expected.stdout);
+  writeFileSync(join(dir, ".env"), text);
+  const settings = Object.fromEntries(
+    text
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const at = line.indexOf("=");
+        return [line.slice(0, at), line.slice(at + 1)] as const;
+      }),
+  );
+  fixture = { dir, settings };
+  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+});
+
+test("the real shared authority accepts the checkout's own endpoints", async () => {
+  await authorizeRuntime(
+    setting("DATABASE_URL"),
+    setting("REDIS_URL"),
+    ownerIn(fixture.dir),
+  );
+});
+
 test("the real shared authority rejects a foreign runtime endpoint", () => {
+  const foreign = Number(setting("POSTGRES_HOST_PORT")) + 1;
   expect(
-    authorizeRuntime("postgresql://u:p@localhost:55432/divineruin", undefined),
+    authorizeRuntime(
+      `postgresql://u:p@localhost:${foreign}/divineruin`,
+      setting("REDIS_URL"),
+      ownerIn(fixture.dir),
+    ),
   ).rejects.toThrow("runtime DATABASE_URL");
 });
 
 test("the real shared authority rejects a foreign ambient Redis endpoint", () => {
-  expect(authorizeRuntime(process.env.DATABASE_URL!, "redis://localhost:56379")).rejects.toThrow(
-    "runtime REDIS_URL",
-  );
+  const foreign = Number(setting("VALKEY_HOST_PORT")) + 1;
+  expect(
+    authorizeRuntime(
+      setting("DATABASE_URL"),
+      `redis://localhost:${foreign}`,
+      ownerIn(fixture.dir),
+    ),
+  ).rejects.toThrow("runtime REDIS_URL");
 });
 
 test("readiness raises ownership refusal instead of returning not-ready", async () => {
