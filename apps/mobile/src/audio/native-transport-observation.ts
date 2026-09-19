@@ -75,7 +75,7 @@ export async function fetchTransportFixture(
 }
 
 export function isPositiveCount(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0;
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 export function isZeroCount(value: unknown): value is number {

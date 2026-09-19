@@ -215,7 +215,7 @@ test("transport result requires every current-run observation and emits no token
   for (const field of ["packets_received", "bytes_received", "microphone_frames"] as const) {
     const { [field]: _dropped, ...missing } = good;
     expect(() => assertTransportResult(missing, "run-current")).toThrow(/audio|microphone/);
-    for (const malformed of [Number.NaN, Infinity, "4", null]) {
+    for (const malformed of [Number.NaN, Infinity, "4", null, 1.5]) {
       expect(() => assertTransportResult({ ...good, [field]: malformed }, "run-current")).toThrow(
         /audio|microphone/,
       );

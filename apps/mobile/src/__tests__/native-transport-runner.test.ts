@@ -54,7 +54,7 @@ test("success rejects absent or malformed counters, not only zero ones", () => {
   for (const field of ["packets_received", "bytes_received", "microphone_frames"] as const) {
     const { [field]: _dropped, ...missing } = good;
     expect(() => validateScenarioResult(missing, "run-one", "none")).toThrow(/audio|microphone/);
-    for (const malformed of [Number.NaN, Infinity, "4", null]) {
+    for (const malformed of [Number.NaN, Infinity, "4", null, 1.5]) {
       expect(() =>
         validateScenarioResult({ ...good, [field]: malformed }, "run-one", "none"),
       ).toThrow(/audio|microphone/);

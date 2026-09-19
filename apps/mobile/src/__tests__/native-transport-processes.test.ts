@@ -35,6 +35,18 @@ async function waitForPid(path: string): Promise<number> {
   throw new Error(`child did not write its PID: ${path}`);
 }
 
+async function cleanupDeadline<T>(pending: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error("cleanup exceeded test deadline")), 8_000);
+  });
+  try {
+    return await Promise.race([pending, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function familySource(pidPath: string, ignoreTerm = false): string {
   const keepAlive = `${ignoreTerm ? 'process.on("SIGTERM", () => {});' : ""} setInterval(() => {}, 1000);`;
   return `
@@ -79,14 +91,16 @@ test("failed work keeps its error and escalates TERM-resistant owned descendants
   let error: unknown;
   try {
     try {
-      await withOwnedProcesses(async (scope) => {
-        parent = scope.spawn([process.execPath, "-e", familySource(join(scratch, "pid"), true)], {
-          cwd: scratch,
-        }).pid;
-        descendant = await waitForPid(join(scratch, "pid"));
-        await Bun.sleep(100);
-        throw new Error("original scenario failure");
-      });
+      await cleanupDeadline(
+        withOwnedProcesses(async (scope) => {
+          parent = scope.spawn([process.execPath, "-e", familySource(join(scratch, "pid"), true)], {
+            cwd: scratch,
+          }).pid;
+          descendant = await waitForPid(join(scratch, "pid"));
+          await Bun.sleep(100);
+          throw new Error("original scenario failure");
+        }),
+      );
     } catch (caught) {
       error = caught;
     }
