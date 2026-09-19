@@ -383,7 +383,7 @@ experiments run in the background and their results surface later in the catch-u
 the player returns.
 
 For training: when the player asks what they can learn or which spells they can study now, MUST immediately \
-call query_info(kind="training_programs") with no questions first; it requires no location or mentor input. \
+call query_info(kind="training_programs") with no questions first; it needs no location or mentor input; don't guess at program names. \
 For a spell program, offer and choose spells only from that row's studiable_spell_ids; empty \
 studiable_spell_ids means plainly say no spell can be studied now. Physical or future training may be discussed honestly; begin_activity also infers location and mentor, so never ask. \
 If a cycle is in progress, plainly say another cannot start. Use spell_learning_progress for cycles complete \

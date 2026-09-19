@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 from acceptance._judged_turn import last_assistant_message_index
-from acceptance._midpoint_order import assert_training_midpoint
+from acceptance._midpoint_order import PENDING_MIDPOINT_INTENT, assert_training_midpoint
 from acceptance._training_trace import (
     assert_no_training_start,
     assert_persisted_training,
@@ -68,8 +68,9 @@ _ACTIVE_CYCLE_INTENT = (
 )
 _NO_SPELL_INTENT = (
     "Plainly states that no spell can currently be studied. It must not offer an unavailable spell or claim "
-    "spell training began. Arcane Study is the name of a training program, not a spell: saying that program is "
-    "available while clearly saying it has no eligible spells is valid and is not a spell offer. Honest physical "
+    "spell training began. The tool returned these spell-training program names: {program_names}. These are "
+    "programs, not spells: saying a program is available while clearly saying it has no eligible spells is "
+    "valid and is not a spell offer. Honest physical "
     "training or future spell possibilities are allowed."
 )
 _ELIGIBLE_SPELL_INTENT = (
@@ -265,7 +266,8 @@ def _no_training_starts(harness: SimpleNamespace) -> None:
 
 @then("the agent plainly says no spell can be studied now")
 def _says_no_spell_can_be_studied(harness: SimpleNamespace) -> None:
-    _judge(harness, _NO_SPELL_INTENT)
+    rows = spell_programs(training_program_result(harness.state["result"]))
+    _judge(harness, _NO_SPELL_INTENT.format(program_names=[row["name"] for row in rows]))
 
 
 @then("the agent offers an eligible returned spell")
@@ -301,6 +303,33 @@ def _synthetic_message(text: str):
 
 async def _judge_synthetic(text: str, intent: str) -> None:
     await _synthetic_message(text).judge(anthropic.LLM(model=_AGENT_MODEL), intent=intent)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        "I need to resolve your midpoint decision right now.",
+        "You've reached the midpoint. We must resolve your choice before the second half can begin.",
+        "Let me resolve your pending training decision.",
+    ],
+)
+async def test_midpoint_judge_accepts_pending_decisions(response: str) -> None:
+    await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        "The second half has begun; about three hours remain.",
+        "Your training is now underway in its second half.",
+        "I need to resolve the midpoint decision, but you've already resumed training in the second half.",
+    ],
+)
+async def test_midpoint_judge_rejects_premature_outcomes(response: str) -> None:
+    with pytest.raises(AssertionError):
+        await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
 
 
 @pytest.mark.asyncio
@@ -352,21 +381,26 @@ async def test_active_cycle_judge_rejects_invalid_responses(response: str) -> No
     [
         pytest.param(
             "No spell can be studied right now, though physical training remains available.",
-            _NO_SPELL_INTENT,
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
             id="valid-empty-eligibility",
         ),
         pytest.param(
             "You have Arcane Study available right now — that's with Scholar Emris — but there are no spells "
             "you can study in that program at the moment. The path forward there isn't open yet. You could "
             "focus on physical training instead.",
-            _NO_SPELL_INTENT,
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
             id="captured-empty-program",
         ),
         pytest.param(
             "You've got Arcane Study available through Scholar Emris, but there aren't any spells open for you "
             "to learn right now. You could still work on physical training though.",
-            _NO_SPELL_INTENT,
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
             id="captured-program-is-not-spell",
+        ),
+        pytest.param(
+            "Temple Lessons and Scholar's Workshop are offered here, but neither has a spell you can study now.",
+            _NO_SPELL_INTENT.format(program_names=["Temple Lessons", "Scholar's Workshop"]),
+            id="renamed-and-additional-programs",
         ),
         pytest.param(
             "Counterspell is available for you to study now. Would you like to begin?",
@@ -385,7 +419,7 @@ async def test_training_narration_judge_accepts_valid_responses(response: str, i
     [
         pytest.param(
             "Arcane Fireball is available for you to study now.",
-            _NO_SPELL_INTENT,
+            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
             id="invented-martial-offer",
         ),
         pytest.param(

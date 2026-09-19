@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from types import SimpleNamespace
 
 import pytest
 from acceptance._training_trace import (
@@ -29,6 +30,23 @@ _PROGRAM = {
     "studiable_spell_ids": ["arcane_counterspell"],
 }
 _PAIRS = {("arcane_study", "arcane_counterspell")}
+
+
+@pytest.mark.asyncio
+async def test_live_no_spell_judge_uses_all_returned_program_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    from acceptance import test_m1_5_training_cycle as training
+
+    names = ["Temple Lessons", "Scholar's Workshop"]
+    rows = [{**_PROGRAM, "name": name, "studiable_spell_ids": []} for name in names]
+    harness = SimpleNamespace(state={"result": _turn(_query(), _query_output(payload={"programs": rows}))})
+    intents: list[str] = []
+    monkeypatch.setattr(training, "_judge", lambda _harness, intent: intents.append(intent))
+
+    training._says_no_spell_can_be_studied(harness)
+
+    assert len(intents) == 1
+    assert all(name in intents[0] for name in names)
+    assert "Arcane Study" not in intents[0]
 
 
 def _message(text: str) -> llm.ChatMessage:
