@@ -268,7 +268,7 @@ def _start_compose(host: str, port: int, user: str) -> None:
     if result.returncode != 0:
         raise RuntimeError(
             f"`docker compose up -d` failed (exit {result.returncode}): "
-            f"{result.stderr.strip() or result.stdout.strip()}"
+            f"{result.stderr.strip() or result.stdout.strip() or 'no error output'}"
         )
 
     deadline = time.monotonic() + _READY_TIMEOUT_SECONDS
@@ -343,6 +343,13 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     os.environ holds at session END, and the acceptance lane's bdd fixture
     assigns DATABASE_URL to its testcontainer without restoring it — which would
     decrement a state file the dev DB's count never went into.
+
+    A failed `down` raises instead of recording a teardown that did not happen,
+    and the record keeps `harness_started` so a later session's last caller
+    retries it — while this caller's own live-user count is released, since it
+    IS finished. Tolerated: that claim now outlives a teardown that never
+    completed, so if the stack does disappear and a developer starts it by hand,
+    the next session tears down what it did not start.
     """
     database_url = database_url or resolve_database_url()
     if _is_ci_service_mode():

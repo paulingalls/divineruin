@@ -1,7 +1,20 @@
 """Refcount, locking, and lifecycle state tests for ``_db_lifecycle``."""
 
+import fcntl
+
 import _db_lifecycle as dbl
 import pytest
+
+
+def _lock_is_held(lock_path) -> bool:
+    """True iff a second, independent flock on the same file would block."""
+    with open(lock_path, "w") as probe:
+        try:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(probe, fcntl.LOCK_UN)
+            return False
+        except OSError:
+            return True
 
 
 @pytest.fixture(autouse=True)
@@ -184,21 +197,9 @@ def test_ensure_db_up_holds_lock_during_start(monkeypatch):
     lock_path, _ = dbl._lockfile_paths("localhost", 55432)
     calls: list[tuple[str, ...]] = []
 
-    def probe_lock_held() -> bool:
-        """True iff a second, independent flock on the same file would block."""
-        import fcntl
-
-        with open(lock_path, "w") as fh:
-            try:
-                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.flock(fh, fcntl.LOCK_UN)
-                return False
-            except OSError:
-                return True
-
     def fake_compose(*args):
         calls.append(args)
-        assert probe_lock_held(), "lock must be held during the start critical section"
+        assert _lock_is_held(lock_path), "lock must be held during the start critical section"
         return _FakeCompleted()
 
     monkeypatch.setattr(dbl, "_compose", fake_compose)
@@ -290,16 +291,12 @@ def test_failed_teardown_can_be_joined_and_retried(monkeypatch):
 
 
 def test_stop_if_started_holds_lock_during_teardown(monkeypatch):
-    import fcntl
-
     database_url = "postgresql://u:p@localhost:55432/divineruin"
     lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, {"count": 1, "harness_started": True})
 
     def down_with_lock_probe(*args):
-        with open(lock_path, "w") as lock_file:
-            with pytest.raises(OSError):
-                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert _lock_is_held(lock_path), "lock must be held during the teardown critical section"
         return _FakeCompleted()
 
     monkeypatch.setattr(dbl, "_compose", down_with_lock_probe)
