@@ -40,6 +40,8 @@ from acceptance._livekit_client import (
 
 import event_types as E
 from game_events import publish_game_event
+from native_transport.evidence import reject_credentials
+from native_transport.lifecycle import run_cancellable
 
 
 def build_tone_frames() -> list[rtc.AudioFrame]:
@@ -93,20 +95,7 @@ def assert_mobile_result(result: dict[str, Any], run_id: str, publisher_identity
 
 
 def safe_result(result: dict[str, Any]) -> dict[str, Any]:
-    forbidden = ("token", "secret", "credential")
-
-    def contains_credential(value: object) -> bool:
-        if isinstance(value, dict):
-            return any(
-                any(word in str(key).lower() for word in forbidden) or contains_credential(child)
-                for key, child in value.items()
-            )
-        if isinstance(value, list):
-            return any(contains_credential(child) for child in value)
-        return False
-
-    if contains_credential(result):
-        raise ValueError("native transport result contains a credential field")
+    reject_credentials(result)
     return result
 
 
@@ -278,12 +267,16 @@ async def run_probe(run_id: str, fault: str, control_path: Path, result_path: Pa
         if microphone_task and not microphone_task.done():
             microphone_task.cancel()
             await asyncio.gather(microphone_task, return_exceptions=True)
-        await aclose_audio(audio_source)
+        closers = [aclose_audio(audio_source)]
         if room is not None:
-            await aclose_room(room)
+            closers.append(aclose_room(room))
+        results = await asyncio.gather(*closers, return_exceptions=True)
         fixture_server.shutdown()
         fixture_server.server_close()
         fixture_thread.join(timeout=2)
+        errors = [result for result in results if isinstance(result, BaseException)]
+        if errors:
+            raise BaseExceptionGroup("native transport SDK cleanup failed", errors)
 
 
 def main() -> None:
@@ -293,7 +286,7 @@ def main() -> None:
     parser.add_argument("--control", type=Path, required=True)
     parser.add_argument("--result", type=Path, required=True)
     args = parser.parse_args()
-    asyncio.run(run_probe(args.run_id, args.fault, args.control, args.result))
+    asyncio.run(run_cancellable(lambda: run_probe(args.run_id, args.fault, args.control, args.result)))
 
 
 if __name__ == "__main__":

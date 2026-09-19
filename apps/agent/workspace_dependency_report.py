@@ -5,6 +5,8 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+from native_transport.evidence import reject_credentials
+
 GROUPS = ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies")
 
 
@@ -234,19 +236,7 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
     if transport.get("fault_guards") != ["received-audio", "session-init-hud"]:
         raise ValueError("native transport fault guards are incomplete")
 
-    def credential_field(value: object) -> bool:
-        if isinstance(value, dict):
-            return any(
-                re.search(r"token|secret|credential", str(key), re.IGNORECASE) or credential_field(child)
-                for key, child in value.items()
-            )
-        if isinstance(value, list):
-            return any(credential_field(child) for child in value)
-        return False
-
-    if credential_field(transport):
-        raise ValueError("native transport evidence contains a credential field")
-
+    reject_credentials(transport)
     android = native.get("android", {})
     for field in ("prebuild", "export"):
         if android.get(field) != "passed":

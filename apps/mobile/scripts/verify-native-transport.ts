@@ -1,9 +1,11 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
+import { OwnedProcesses, withOwnedProcesses } from "./native-transport-processes";
 
 import {
   assertTransportResult,
+  assertNoCredentials,
   isPositiveCount,
   isZeroCount,
   type TransportResult,
@@ -85,24 +87,30 @@ export function validateScenarioResult(raw: unknown, runId: string, fault: Fault
   return result;
 }
 
-async function capture(command: string[], cwd: string): Promise<string> {
-  const child = Bun.spawn(command, { cwd, stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, exit] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
+async function capture(scope: OwnedProcesses, command: string[], cwd: string): Promise<string> {
+  const child = scope.spawn(command, { cwd, capture: true });
+  const [stdout, stderr, exit] = await scope.wait(
+    Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]),
+  );
   if (exit !== 0) throw new Error(`${command.join(" ")} failed: ${stderr.trim()}`);
   return stdout;
 }
 
-async function requireTargetSimulator(repoRoot: string, udid: string): Promise<void> {
+async function requireTargetSimulator(
+  scope: OwnedProcesses,
+  repoRoot: string,
+  udid: string,
+): Promise<void> {
   if (udid !== OWNED_SIMULATOR_UDID) {
     throw new Error(
       `IOS_SIMULATOR_UDID must be the sprint-owned simulator ${OWNED_SIMULATOR_UDID}`,
     );
   }
-  const raw = await capture(["xcrun", "simctl", "list", "devices", "--json"], repoRoot);
+  const raw = await capture(scope, ["xcrun", "simctl", "list", "devices", "--json"], repoRoot);
   const payload = JSON.parse(raw) as {
     devices?: Record<string, { udid?: string; state?: string; isAvailable?: boolean }[]>;
   };
@@ -113,7 +121,7 @@ async function requireTargetSimulator(repoRoot: string, udid: string): Promise<v
   if (target.isAvailable === false || target.state !== "Booted") {
     throw new Error(`requested simulator is not booted and available: ${udid}`);
   }
-  await capture(["xcrun", "simctl", "get_app_container", udid, BUNDLE_ID, "app"], repoRoot);
+  await capture(scope, ["xcrun", "simctl", "get_app_container", udid, BUNDLE_ID, "app"], repoRoot);
 }
 
 async function reservePort(): Promise<number> {
@@ -130,17 +138,22 @@ async function reservePort(): Promise<number> {
   return address.port;
 }
 
-async function waitForMetro(process: OwnedProcess, port: number): Promise<void> {
+async function waitForMetro(
+  scope: OwnedProcesses,
+  process: OwnedProcess,
+  port: number,
+): Promise<void> {
   let exit: number | undefined;
   void process.exited.then((code) => {
     exit = code;
   });
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
+    scope.signal.throwIfAborted();
     if (exit !== undefined) throw new Error(`Metro exited before readiness with status ${exit}`);
     try {
       const response = await fetch(`http://127.0.0.1:${port}/status`, {
-        signal: AbortSignal.timeout(1_000),
+        signal: AbortSignal.any([scope.signal, AbortSignal.timeout(1_000)]),
       });
       if (response.ok && (await response.text()).includes("packager-status:running")) return;
     } catch {
@@ -152,9 +165,14 @@ async function waitForMetro(process: OwnedProcess, port: number): Promise<void> 
   throw new Error(`Metro readiness timed out on owned port ${port}`);
 }
 
-async function waitForJson(path: string, timeoutMs: number): Promise<Record<string, unknown>> {
+async function waitForJson(
+  scope: OwnedProcesses,
+  path: string,
+  timeoutMs: number,
+): Promise<Record<string, unknown>> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    scope.signal.throwIfAborted();
     try {
       const raw: unknown = JSON.parse(await readFile(path, "utf8")) as unknown;
       if (raw && typeof raw === "object") return raw as Record<string, unknown>;
@@ -167,20 +185,8 @@ async function waitForJson(path: string, timeoutMs: number): Promise<Record<stri
   throw new Error(`timed out waiting for nonempty JSON artifact ${path}`);
 }
 
-async function stopOwned(process: OwnedProcess | undefined): Promise<void> {
-  if (!process) return;
-  process.kill("SIGTERM");
-  const stopped = await Promise.race([
-    process.exited.then(() => true),
-    Bun.sleep(5_000).then(() => false),
-  ]);
-  if (!stopped) {
-    process.kill("SIGKILL");
-    await process.exited;
-  }
-}
-
 async function runScenario(
+  scope: OwnedProcesses,
   repoRoot: string,
   env: Record<string, string | undefined>,
   udid: string,
@@ -194,20 +200,22 @@ async function runScenario(
   await mkdir(artifactDir, { recursive: true });
   const port = await reservePort();
   const mobileRoot = join(repoRoot, "apps/mobile");
-  let metro: OwnedProcess | undefined;
-  let probe: OwnedProcess | undefined;
+  let metro: ReturnType<OwnedProcesses["spawn"]> | undefined;
+  let probe: ReturnType<OwnedProcesses["spawn"]> | undefined;
+  let maestro: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let failure: Error | undefined;
   try {
-    const metroChild = Bun.spawn(["bun", "expo", "start", "--dev-client", "--port", String(port)], {
-      cwd: mobileRoot,
-      env: definedEnv({ ...env, CI: "1" }),
-      stdout: "inherit",
-      stderr: "inherit",
-    });
+    const metroChild = scope.spawn(
+      ["bun", "expo", "start", "--dev-client", "--port", String(port)],
+      {
+        cwd: mobileRoot,
+        env: definedEnv({ ...env, CI: "1" }),
+      },
+    );
     metro = metroChild;
-    await waitForMetro(metro, port);
+    await waitForMetro(scope, metro, port);
 
-    const probeChild = Bun.spawn(
+    const probeChild = scope.spawn(
       [
         "uv",
         "run",
@@ -224,10 +232,10 @@ async function runScenario(
         "--result",
         resultPath,
       ],
-      { cwd: repoRoot, env: definedEnv(env), stdout: "inherit", stderr: "inherit" },
+      { cwd: repoRoot, env: definedEnv(env) },
     );
     probe = probeChild;
-    const control = await waitForJson(controlPath, 60_000);
+    const control = await waitForJson(scope, controlPath, 60_000);
     const fixtureUrl = typeof control.fixture_url === "string" ? control.fixture_url : "";
     if (!fixtureUrl.startsWith("http://127.0.0.1:"))
       throw new Error("probe supplied no loopback fixture URL");
@@ -236,7 +244,7 @@ async function runScenario(
       fault === "none"
         ? "Transport complete"
         : `Guard failed: ${fault === "withhold-audio" ? "received-audio" : "session-init-hud"}`;
-    const maestro = Bun.spawn(
+    maestro = scope.spawn(
       [
         "maestro",
         `--device=${udid}`,
@@ -258,12 +266,12 @@ async function runScenario(
         "SCREENSHOT_PATH=simulator",
         join(mobileRoot, ".maestro/native-transport.yaml"),
       ],
-      { cwd: mobileRoot, env: definedEnv(env), stdout: "inherit", stderr: "inherit" },
+      { cwd: mobileRoot, env: definedEnv(env) },
     );
-    const maestroExit = await maestro.exited;
+    const maestroExit = await scope.wait(maestro.exited);
     if (maestroExit !== 0)
       throw new Error(`Maestro native transport failed with status ${maestroExit}`);
-    const rawResult = await waitForJson(resultPath, 10_000);
+    const rawResult = await waitForJson(scope, resultPath, 10_000);
     const result = validateScenarioResult(rawResult, runId, fault);
     const screenshotMatches = await Array.fromAsync(
       new Bun.Glob("**/takeScreenshot/simulator.png").scan({ cwd: maestroOutput }),
@@ -283,15 +291,18 @@ async function runScenario(
       expo_mcp: "unavailable_in_tool_catalog",
     };
     const serialized = JSON.stringify(durable, null, 2) + "\n";
-    if (/token|api_secret|credential/i.test(serialized))
-      throw new Error("durable result contains credential material");
+    assertNoCredentials(durable);
     await writeFile(resultPath, serialized);
-    const probeExit = await probe.exited;
+    const probeExit = await scope.wait(probe.exited);
     if (probeExit !== 0) throw new Error(`native transport probe failed with status ${probeExit}`);
   } catch (error) {
     failure = error instanceof Error ? error : new Error(String(error));
   }
-  const cleanup = await Promise.allSettled([stopOwned(probe), stopOwned(metro)]);
+  const cleanup = await Promise.allSettled([
+    scope.stop(probe),
+    scope.stop(metro),
+    scope.stop(maestro),
+  ]);
   if (failure) throw failure;
   const rejected = cleanup.filter((entry) => entry.status === "rejected");
   if (rejected.length) throw new AggregateError(rejected, "native transport cleanup failed");
@@ -302,13 +313,16 @@ export async function runNativeTransport(
   processEnv: Record<string, string | undefined>,
   selectedFault?: Fault,
 ): Promise<void> {
-  const udid = required(processEnv, "IOS_SIMULATOR_UDID");
-  await requireTargetSimulator(repoRoot, udid);
-  const flow = join(repoRoot, "apps/mobile/.maestro/native-transport.yaml");
-  if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");
-  for (const fault of selectedFault ? [selectedFault] : SCENARIOS) {
-    await runScenario(repoRoot, processEnv, udid, fault);
-  }
+  await withOwnedProcesses(async (scope) => {
+    const udid = required(processEnv, "IOS_SIMULATOR_UDID");
+    await requireTargetSimulator(scope, repoRoot, udid);
+    const flow = join(repoRoot, "apps/mobile/.maestro/native-transport.yaml");
+    if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");
+    for (const fault of selectedFault ? [selectedFault] : SCENARIOS) {
+      scope.signal.throwIfAborted();
+      await runScenario(scope, repoRoot, processEnv, udid, fault);
+    }
+  });
 }
 
 if (import.meta.main) {

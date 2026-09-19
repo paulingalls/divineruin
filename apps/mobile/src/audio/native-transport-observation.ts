@@ -143,20 +143,19 @@ export interface TransportResult {
   [key: string]: unknown;
 }
 
+export function assertNoCredentials(value: unknown): void {
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    if (/token|secret|credential/i.test(key))
+      throw new Error("transport evidence contains a credential field");
+    assertNoCredentials(child);
+  }
+}
+
 export function assertTransportResult(raw: unknown, expectedRunId: string): TransportResult {
   if (!raw || typeof raw !== "object") throw new Error("transport result must be an object");
   const result = raw as TransportResult;
-  const containsCredentialKey = (value: unknown): boolean =>
-    Boolean(
-      value &&
-      typeof value === "object" &&
-      Object.entries(value).some(
-        ([key, child]) => /token|secret|credential/i.test(key) || containsCredentialKey(child),
-      ),
-    );
-  if (containsCredentialKey(result)) {
-    throw new Error("transport result contains a credential field");
-  }
+  assertNoCredentials(result);
   if (result.run_id !== expectedRunId) throw new Error("transport result has stale run ID");
   if (!result.peer_ready || !result.mobile_identity || !result.publisher_identity) {
     throw new Error("transport result is missing peer readiness or identities");
