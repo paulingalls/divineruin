@@ -210,11 +210,11 @@ async def _resolve_phase_locked(
             # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
             # stored declaration (e.g. a combat persisted before the explicit-type change)
             # raises ValueError here as resolve_declaration re-validates; translate it to
-            # ToolError like declare_phase does so the DM re-prompts instead of crashing.
+            # a prevalidation refusal so recovery reopens the declaration beat.
             try:
                 state, adv = combat_phase.advance_combat_phase(cs)
             except ValueError as e:
-                raise ToolError(str(e)) from e
+                raise PrevalidationRefusal(ToolError(str(e))) from e
 
             # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
             # initiative order, so apply every Defend's bonus to state.ac_modifiers before any

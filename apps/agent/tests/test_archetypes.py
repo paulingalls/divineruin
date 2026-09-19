@@ -53,6 +53,7 @@ _WARRIOR_ROW = {
     "armor_proficiencies": ["heavy", "medium", "light", "shield"],
     "weapon_proficiencies": ["martial", "simple"],
     "starting_skills": {"options": ["athletics", "perception", "survival"], "num_choices": 3},
+    "spell_tier_min_levels": {},
 }
 
 

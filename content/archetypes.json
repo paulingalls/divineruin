@@ -1,6 +1,7 @@
 [
   {
     "id": "warrior",
+    "spell_tier_min_levels": {},
     "hp": { "base": 12, "growth": 5, "category": "martial" },
     "resource": {
       "pattern": "stamina_only",
@@ -17,6 +18,7 @@
   },
   {
     "id": "guardian",
+    "spell_tier_min_levels": {},
     "hp": { "base": 12, "growth": 5, "category": "martial" },
     "resource": {
       "pattern": "stamina_only",
@@ -33,6 +35,7 @@
   },
   {
     "id": "skirmisher",
+    "spell_tier_min_levels": {},
     "hp": { "base": 12, "growth": 5, "category": "martial" },
     "resource": {
       "pattern": "stamina_only",
@@ -50,6 +53,7 @@
   {
     "id": "mage",
     "magic_source": "arcane",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -67,6 +71,7 @@
   {
     "id": "artificer",
     "magic_source": "arcane",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -84,6 +89,7 @@
   {
     "id": "seeker",
     "magic_source": "arcane",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -101,6 +107,7 @@
   {
     "id": "druid",
     "magic_source": "primal",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -118,6 +125,7 @@
   {
     "id": "beastcaller",
     "magic_source": "primal",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -135,6 +143,7 @@
   {
     "id": "warden",
     "magic_source": "primal",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -152,6 +161,7 @@
   {
     "id": "cleric",
     "magic_source": "divine",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -169,6 +179,7 @@
   {
     "id": "paladin",
     "magic_source": "divine",
+    "spell_tier_min_levels": { "minor": 3, "standard": 5, "major": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -186,6 +197,7 @@
   {
     "id": "oracle",
     "magic_source": "divine",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 9 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_primary",
@@ -202,6 +214,7 @@
   },
   {
     "id": "rogue",
+    "spell_tier_min_levels": {},
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "stamina_only",
@@ -218,6 +231,7 @@
   },
   {
     "id": "spy",
+    "spell_tier_min_levels": {},
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "stamina_only",
@@ -235,6 +249,7 @@
   {
     "id": "whisper",
     "magic_source": "arcane",
+    "spell_tier_min_levels": { "minor": 1, "standard": 4, "major": 7, "supreme": 13 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -252,6 +267,7 @@
   {
     "id": "bard",
     "magic_source": "cross",
+    "spell_tier_min_levels": { "cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 10 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "split",
@@ -269,6 +285,7 @@
   {
     "id": "diplomat",
     "magic_source": "divine",
+    "spell_tier_min_levels": { "minor": 3, "standard": 5, "major": 9 },
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "split",
@@ -286,6 +303,7 @@
   {
     "id": "marshal",
     "magic_source": "divine",
+    "spell_tier_min_levels": { "minor": 3, "standard": 5, "major": 9 },
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "split",

@@ -106,7 +106,7 @@ class TestRoundTrip:
             ),
             patch("db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
         ):
-            await exploration.on_enter()
+            await exploration._enter()
             await _start_combat_impl(
                 ctx,
                 encounter_id="wolf_pack",
@@ -118,7 +118,7 @@ class TestRoundTrip:
             await exploration.on_exit()  # the handoff INTO combat
 
             await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
-            await ExplorationAgent(region_type="wilderness").on_enter()  # the handback
+            await ExplorationAgent(region_type="wilderness")._enter()  # the handback
 
         published = [e.event_type for e in sd.event_bus.drain()]
         assert E.SESSION_END not in published

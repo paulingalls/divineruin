@@ -6,6 +6,7 @@ import combat_grapple
 import conditions
 from combat_condition_landing import _land_condition_on_one
 from condition_restrictions import declaration_costs
+from declarations import ManeuverIntent
 from rules_engine import attribute_modifier
 
 
@@ -19,15 +20,15 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "declaration_type": str(decl.type),
             "reason": f"target '{decl.target_id}' not found",
         }
-    if target.is_fallen:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{target.name} already fell",
-        }
-    costs = declaration_costs(attacker.conditions)
-    if "grappled" in costs and combat_grapple.grappler_id(attacker.conditions) == target.id:
+    if decl.maneuver_intent is ManeuverIntent.ESCAPE:
+        if combat_grapple.grappler_id(attacker.conditions) != target.id:
+            return {
+                "actor_id": attacker.id,
+                "resolved": True,
+                "declaration_type": str(decl.type),
+                "target": target.name,
+                "escape": "grapple_already_released",
+            }
         total = roller.randint(1, 20) + max(
             attribute_modifier(attacker.attributes.get("strength", 10)),
             attribute_modifier(attacker.attributes.get("dexterity", 10)),
@@ -45,6 +46,14 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "escape_dc": dc,
             "escape": "escaped" if escaped else "failed",
         }
+    if target.is_fallen:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{target.name} already fell",
+        }
+    costs = declaration_costs(attacker.conditions)
     if target.id == attacker.id:
         if "prone" not in costs:
             raise ValueError(f"{attacker.name} ({attacker.id}) is not prone and cannot stand")

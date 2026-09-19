@@ -45,9 +45,9 @@ loadDestinationDangerLevels();
 // cast data (focus cost, mechanics, level) from the spell catalog at parse time, so
 // loadAbilities depends on the catalog already being populated (getSpell is fail-loud).
 await loadSpells();
+const trainingActivityTypes = await loadTrainingActivityTypes();
 await Promise.all([
-  loadTrainingActivityTypes(),
-  loadTrainingPrograms(),
+  loadTrainingPrograms(trainingActivityTypes),
   loadErrandTemplates(),
   loadRecipes(),
   loadItems(),

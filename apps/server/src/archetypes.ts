@@ -7,6 +7,7 @@ import type {
   HpCategory,
   ResourcePattern,
   MagicSource,
+  SpellTier,
 } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord, parseStringArray } from "./parse-helpers.ts";
@@ -28,6 +29,7 @@ const RESOURCE_PATTERNS = new Set<ResourcePattern>([
   "split",
 ]);
 const MAGIC_SOURCES = new Set<MagicSource>(["arcane", "divine", "primal", "cross"]);
+const SPELL_TIERS = new Set<SpellTier>(["cantrip", "minor", "standard", "major", "supreme"]);
 
 // Runtime-loaded chassis (populated by loadArchetypes at startup).
 let archetypes: ReadonlyMap<string, Archetype> = new Map();
@@ -104,6 +106,24 @@ export function parseArchetypeRow(id: string, raw: unknown): Archetype {
     magic_source = data.magic_source as MagicSource;
   }
 
+  const floorsRaw = asRecord(data.spell_tier_min_levels, `${ctx}.spell_tier_min_levels`);
+  const spell_tier_min_levels: Partial<Record<SpellTier, number>> = {};
+  for (const [tier, floor] of Object.entries(floorsRaw)) {
+    if (!SPELL_TIERS.has(tier as SpellTier)) {
+      throw new Error(`${ctx}.spell_tier_min_levels tier ${JSON.stringify(tier)} is invalid`);
+    }
+    if (!Number.isInteger(floor) || (floor as number) < 1 || (floor as number) > 20) {
+      throw new Error(`${ctx}.spell_tier_min_levels.${tier} must be an integer 1-20`);
+    }
+    spell_tier_min_levels[tier as SpellTier] = floor as number;
+  }
+  if (magic_source !== null && Object.keys(spell_tier_min_levels).length === 0) {
+    throw new Error(`${ctx}.spell_tier_min_levels is empty for a caster`);
+  }
+  if (magic_source === null && Object.keys(spell_tier_min_levels).length > 0) {
+    throw new Error(`${ctx}.spell_tier_min_levels must be empty for a martial`);
+  }
+
   return {
     id,
     hp,
@@ -116,6 +136,7 @@ export function parseArchetypeRow(id: string, raw: unknown): Archetype {
     ),
     starting_skills,
     magic_source,
+    spell_tier_min_levels,
   };
 }
 

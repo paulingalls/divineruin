@@ -21,7 +21,16 @@ def _with_third_player(*, target_id="player_3"):
     state = _guarded_ally_state(target_id=target_id)
     state.participants.insert(
         2,
-        CombatParticipant(id="player_3", name="Sable", type="player", initiative=16, hp_current=20, hp_max=20, ac=14),
+        CombatParticipant(
+            id="player_3",
+            name="Sable",
+            type="player",
+            initiative=16,
+            hp_current=20,
+            hp_max=20,
+            ac=14,
+            has_reaction_ability=True,
+        ),
     )
     state.initiative_order.insert(2, "player_3")
     return state

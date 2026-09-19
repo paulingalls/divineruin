@@ -150,10 +150,15 @@ async def test_inactive_variant_refuses_without_mechanical_write(dev_db_pool):
 
         with (
             patch("check_resolution_save.roll_participant_save") as save,
-            pytest.raises(ToolError, match=f"{_KELDARAN} is not your active variant"),
+            pytest.raises(ToolError) as refused,
         ):
             await combat_turn._resolve_phase_impl(context, resolver=_damage_resolver(0))
 
+        message = str(refused.value)
+        assert "Brann" in message
+        assert _KELDARAN in message
+        assert "Unstoppable Charge" in message
+        assert "your active variant" not in message
         row = await db_queries.get_player(player_id, conn=pool)
         assert row is not None
         assert row["stamina"]["current"] == 3

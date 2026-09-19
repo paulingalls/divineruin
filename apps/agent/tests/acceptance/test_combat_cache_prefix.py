@@ -21,6 +21,7 @@ from livekit.agents.llm import ChatMessage
 from livekit.agents.voice import AgentSession
 from livekit.plugins import anthropic
 from prompt_fixtures import sample_combat_state
+from sample_fixtures import make_mock_room
 
 import db
 from combat_agent import create_combat_agent
@@ -50,7 +51,7 @@ async def _drive_fight(rounds: int, *, rewrite_system_prompt: bool) -> tuple[Tok
     comparable number is the FIRST request of each round, the one that either reads the
     standing prefix or rewrites it.
     """
-    sd = SessionData(player_id="player_1", location_id="accord_guild_hall")
+    sd = SessionData(player_id="player_1", location_id="accord_guild_hall", room=make_mock_room())
     sd.combat_state = sample_combat_state(round_number=1)
     session = AgentSession(
         # Parity with agent.py, which is the whole point: caching="ephemeral" is what puts

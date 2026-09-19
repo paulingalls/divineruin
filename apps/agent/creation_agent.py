@@ -39,8 +39,8 @@ class CreationAgent(BaseGameAgent):
         self._card_tap: CardTapHandler | None = None
         self._ready = False
 
-    async def on_enter(self) -> None:
-        await super().on_enter()
+    async def _enter(self) -> None:
+        await super()._enter()
         sd: SessionData = self.session.userdata
         logger.info("CreationAgent entered session for player %s", sd.player_id)
 

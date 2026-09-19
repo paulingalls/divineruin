@@ -13,6 +13,21 @@ from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
 from session_data import CombatParticipant, CombatState
 
+# High enough to pass the class-level gate for every reaction the interrupt tests activate.
+_ACTIVATE_LEVEL = 6
+
+
+def _own_reaction(state, *ability_ids: str) -> None:
+    """Give player_1 exactly ``ability_ids`` as its reaction catalog.
+
+    validate_reaction_activation refuses an id the participant's reaction_ids omits, so a test
+    aiming at a LATER refusal (window, target binding, spend) must own the id first or it reds on
+    ownership instead of on the rule it is pinning.
+    """
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = list(ability_ids)
+
 
 def _declarations():
     """The all-attack declaration payload matching _make_combat_state()'s two participants."""
@@ -114,6 +129,7 @@ def _resolution_state(
                 level=player_level,
                 action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
                 conditions=player_conditions or [],
+                has_reaction_ability=True,
             ),
             CombatParticipant(
                 id=enemy_id,
@@ -239,15 +255,24 @@ async def _resolve_round(ctx, *, max_calls: int = 64, **deps) -> Any:
     )
 
 
-def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None):
-    """A context parked at the RESOLUTION beat with the round's reaction unspent.
+def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None, reaction_ids=None):
+    """A context parked at RESOLUTION with known owners' round reactions unspent.
 
     The interrupt loop's entry point: resolve_phase from here holds the enemy blow and pauses on
     its windows, which is the only state in which ``_activate`` below is legal.
+
+    Seeded on the same ownership the DECLARATION refresh seeds on, so the harness cannot hand a
+    budget to a participant production would never have given one.
     """
     ctx = make_context(room=room) if room is not None else make_context()
     state = state if state is not None else _resolution_state(player_hp=player_hp, enemy_hp=enemy_hp)
-    state.reactions_available = {p.id: reaction_spend.unspent() for p in state.participants if p.type == "player"}
+    if reaction_ids is not None:
+        _own_reaction(state, *reaction_ids)
+    state.reactions_available = {
+        p.id: reaction_spend.unspent()
+        for p in state.participants
+        if p.type == "player" and p.has_reaction_ability is True
+    }
     ctx.userdata.combat_state = state
     return ctx
 
@@ -274,7 +299,7 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
-                "level": 6,
+                "level": _ACTIVATE_LEVEL,
                 "stamina": {"current": stamina, "max": 10},
                 "focus": {"current": focus, "max": 10},
             }

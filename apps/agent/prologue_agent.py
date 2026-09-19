@@ -6,14 +6,13 @@ Programmatic handoff to CreationAgent on completion or skip.
 
 import logging
 
-from livekit.agents import Agent
-
+from base_agent import ReportingEntry
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.prologue_agent")
 
 
-class PrologueAgent(Agent):
+class PrologueAgent(ReportingEntry):
     """Audio-only agent that plays the prologue narration.
 
     No LLM, no tools. Detects player voice as skip signal.
@@ -23,7 +22,7 @@ class PrologueAgent(Agent):
     def __init__(self) -> None:
         super().__init__(instructions="")
 
-    async def on_enter(self) -> None:
+    async def _enter(self) -> None:
         from prologue import play_prologue
 
         sd: SessionData = self.session.userdata

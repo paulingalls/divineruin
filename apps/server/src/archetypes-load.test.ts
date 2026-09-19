@@ -130,6 +130,7 @@ describe("parseArchetypeRow — fail-loud validation", () => {
     armor_proficiencies: ["light"],
     weapon_proficiencies: ["simple"],
     starting_skills: { options: ["athletics", "perception"], num_choices: 1 },
+    spell_tier_min_levels: {},
   };
 
   test("accepts a valid row", () => {
@@ -138,12 +139,43 @@ describe("parseArchetypeRow — fail-loud validation", () => {
 
   test("parses an optional magic_source and defaults absent to null (M8 parity)", () => {
     expect(parseArchetypeRow("test_archetype", base).magic_source).toBeNull();
-    expect(parseArchetypeRow("x", { ...base, magic_source: "arcane" }).magic_source).toBe("arcane");
+    expect(
+      parseArchetypeRow("x", {
+        ...base,
+        magic_source: "arcane",
+        spell_tier_min_levels: { minor: 1 },
+      }).magic_source,
+    ).toBe("arcane");
   });
 
   test("rejects a magic_source outside the closed set (parity with Python)", () => {
     expect(() => parseArchetypeRow("x", { ...base, magic_source: "shadow" })).toThrow(
       /archetypes\[x\]\.magic_source/,
+    );
+  });
+
+  test("requires and validates caster spell tier floors", () => {
+    const caster = {
+      ...base,
+      magic_source: "arcane",
+      spell_tier_min_levels: { minor: 1 },
+    };
+    expect(parseArchetypeRow("x", caster).spell_tier_min_levels).toEqual({ minor: 1 });
+    const { spell_tier_min_levels: _omit, ...missing } = caster;
+    expect(() => parseArchetypeRow("x", missing)).toThrow(/spell_tier_min_levels/);
+    expect(() =>
+      parseArchetypeRow("x", { ...caster, spell_tier_min_levels: { legendary: 1 } }),
+    ).toThrow(/spell_tier_min_levels/);
+    for (const floor of [true, 1.5, 0, 21]) {
+      expect(() =>
+        parseArchetypeRow("x", { ...caster, spell_tier_min_levels: { minor: floor } }),
+      ).toThrow(/spell_tier_min_levels/);
+    }
+    expect(() => parseArchetypeRow("x", { ...caster, spell_tier_min_levels: {} })).toThrow(
+      /spell_tier_min_levels/,
+    );
+    expect(() => parseArchetypeRow("x", { ...base, spell_tier_min_levels: { minor: 1 } })).toThrow(
+      /spell_tier_min_levels/,
     );
   });
 

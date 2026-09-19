@@ -10,7 +10,7 @@ only read the list combat_wrap builds would certify the list, not the engine (co
 """
 
 import pytest
-from combat._helpers import _activate, _call, _ctx_at_resolution, _resolve_deps
+from combat._helpers import _activate, _call, _ctx_at_resolution, _own_reaction, _resolve_deps
 from combat._reaction_helpers import _guarded_ally_state
 
 import abilities
@@ -77,6 +77,7 @@ class TestReactionTargetPolicy:
     )
     def test_self_targeted_reaction_refuses_an_ally_s_window(self, ability_id, stage, triggers):
         state = _ally_targeted_window(stage=stage, triggers=triggers)
+        _own_reaction(state, ability_id)
 
         with pytest.raises(ValueError) as refused:
             reaction_gate.validate_reaction_activation(state, "player_1", ability_id)
@@ -89,6 +90,7 @@ class TestReactionTargetPolicy:
             stage=reaction_windows.POST_ROLL,
             triggers=reaction_windows.post_roll_triggers({}, hit=True),
         )
+        _own_reaction(state, "guardian_intercept")
         monkeypatch.setattr(
             reaction_gate,
             "UNBOUND_REACTION_WINDOWS",
@@ -112,7 +114,7 @@ class TestTheInterruptLoop:
         The second half is the truthiness trap: having spent, the player opens NO further window
         for the rest of the round, so the post-roll pause does not come back around.
         """
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
 
         await _call(ctx, deps)  # Beat 2: the ally band commits, the enemy blow is held
@@ -149,6 +151,7 @@ class TestTheInterruptLoop:
 
         assert "on_targeted" in r1["next"]["waiting_on"]["triggers"]
         cs = ctx.userdata.combat_state
+        _own_reaction(cs, PRE_ROLL_REACTION)
         assert reaction_gate.validate_reaction_activation(cs, "player_1", PRE_ROLL_REACTION) is None
 
     @pytest.mark.asyncio
@@ -159,6 +162,7 @@ class TestTheInterruptLoop:
         deps = _resolve_deps()
         await _call(ctx, deps)
         await _call(ctx, deps)
+        _own_reaction(ctx.userdata.combat_state, POST_ROLL_REACTION)
 
         with pytest.raises(ValueError, match="on_hit"):
             reaction_gate.validate_reaction_activation(ctx.userdata.combat_state, "player_1", POST_ROLL_REACTION)

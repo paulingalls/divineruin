@@ -13,17 +13,20 @@ deduction + Resonance generation + WRAP decay all exercise real mutations end-to
 import json
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from combat._helpers import _damage_resolver, _resolve_round
 
-import character_spells
+import activate_tools
 import db_mutations
 import db_queries
 import spell_casting
 import spells
+from combat_phase import PhaseBeat, advance_combat_phase
+from query_tools import _query_abilities_impl
 from session_data import CombatParticipant, CombatState, SessionData
 
 
-async def _seed_player(pool, player_id: str, *, focus: int, resonance: int) -> None:
+async def _seed_player(pool, player_id: str, *, player_class: str, focus: int, resonance: int) -> None:
     await pool.execute(
         "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
         "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
@@ -31,6 +34,8 @@ async def _seed_player(pool, player_id: str, *, focus: int, resonance: int) -> N
         json.dumps(
             {
                 "player_id": player_id,
+                "class": player_class,
+                "level": 5,
                 "hp": {"current": 25, "max": 25},
                 "focus": {"current": focus, "max": focus},
                 "resonance": {"current": resonance},
@@ -76,21 +81,21 @@ class TestInCombatAbilityResolution:
         player_id = "s007_ability_player"
         enemy_id = "s007_ability_enemy"
         combat_id = "combat_s007_ability"
-        spell_id = "arcane_shield_spell"
-
-        spell = spells.get_spell(spell_id)
-        assert spell.focus_cost > 0, "AC needs a real Focus deduction to observe"
-        generated = spell.resonance_by_source[spell.source]
+        ability_id = "cleric_heal_wounds"
 
         start_focus = 10
         standing_res = 5
-        await _seed_player(pool, player_id, focus=start_focus, resonance=standing_res)
-        await character_spells.record_learned(player_id, spell_id, "discovery", conn=pool)
+        await _seed_player(pool, player_id, player_class="cleric", focus=start_focus, resonance=standing_res)
 
         session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
         session.resonance.current = standing_res  # the cast's in-memory base
         ctx = MagicMock()
         ctx.userdata = session
+        ability_rows = json.loads(await _query_abilities_impl(ctx))["abilities"]
+        spell_id = next(row["spell_id"] for row in ability_rows if row["id"] == ability_id)
+        spell = spells.get_spell(spell_id)
+        assert spell.focus_cost == 2, "AC needs the non-zero spell-backed row"
+        generated = spell.resonance_by_source[spell.source]
         session.combat_state = _ability_vs_attack_state(combat_id, player_id, enemy_id, spell_id)
 
         try:
@@ -121,35 +126,82 @@ class TestInCombatAbilityResolution:
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
             await db_mutations.delete_combat_state(combat_id, conn=pool)
 
+    def test_plain_ability_refuses_during_declaration_without_mutating_input(self) -> None:
+        state = _ability_vs_attack_state("s055_plain", "player_1", "enemy_1", "arcane_bolt")
+        state.beat = PhaseBeat.DECLARATION
+        state.pending_declarations = {}
+        declarations = {"player_1": {"type": "ability", "action": "warrior_devastating_strike"}}
+
+        with pytest.raises(ValueError, match=r"warrior_devastating_strike.*not declarable in combat"):
+            advance_combat_phase(state, declarations)
+
+        assert state.beat is PhaseBeat.DECLARATION
+        assert state.pending_declarations == {}
+
+    def test_spell_backed_alias_refusal_names_the_spell_to_declare(self) -> None:
+        state = _ability_vs_attack_state("s055_alias", "player_1", "enemy_1", "arcane_bolt")
+        state.beat = PhaseBeat.DECLARATION
+
+        with pytest.raises(ValueError, match=r"mage_arcane_bolt.*declare arcane_bolt in combat"):
+            advance_combat_phase(state, {"player_1": {"type": "ability", "action": "mage_arcane_bolt"}})
+
+    @pytest.mark.parametrize("action", ["bard_inspire", "de_escalate"])
+    def test_supported_non_spell_ability_declarations_remain_allowed(self, action) -> None:
+        state = _ability_vs_attack_state("s055_supported", "player_1", "enemy_1", "arcane_bolt")
+        state.beat = PhaseBeat.DECLARATION
+        declaration = {"type": "ability", "action": action}
+
+        next_state, _advance = advance_combat_phase(state, {"player_1": declaration})
+
+        assert next_state.beat is PhaseBeat.RESOLUTION
+        assert next_state.pending_declarations == {"player_1": declaration}
+
 
 class TestOutOfCombatCastUnaffected:
-    async def test_cast_spell_out_of_combat_still_deducts_focus_and_pushes_hud(self, dev_db_pool) -> None:
-        """AC3: cast_spell remains the out-of-combat entry — it still deducts Focus and pushes the
-        Resonance HUD update (the in-combat path does not regress the out-of-combat one)."""
+    @pytest.mark.parametrize(
+        ("ability_id", "player_class", "spell_id"),
+        [
+            ("mage_arcane_bolt", "mage", "arcane_bolt"),
+            ("cleric_heal_wounds", "cleric", "divine_heal_wounds"),
+        ],
+    )
+    async def test_spell_backed_ability_uses_real_cast_path(
+        self, dev_db_pool, ability_id, player_class, spell_id
+    ) -> None:
         pool = dev_db_pool
-        player_id = "s007_ooc_player"
-        spell_id = "arcane_shield_spell"
+        player_id = f"s055_ooc_{player_class}"
         spell = spells.get_spell(spell_id)
         generated = spell.resonance_by_source[spell.source]
 
-        await _seed_player(pool, player_id, focus=10, resonance=0)
-        await character_spells.record_learned(player_id, spell_id, "discovery", conn=pool)
+        await _seed_player(pool, player_id, player_class=player_class, focus=10, resonance=0)
 
         session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
         ctx = MagicMock()
         ctx.userdata = session
         events = MagicMock()
         events.publish_resonance_changed = AsyncMock()
+        cast_mod = MagicMock()
+
+        async def real_cast(context, routed_spell_id, **targets):
+            return await spell_casting._cast_spell_impl(
+                context, routed_spell_id, resonance_events_mod=events, **targets
+            )
+
+        cast_mod._cast_spell_impl = AsyncMock(side_effect=real_cast)
 
         try:
-            raw = await spell_casting._cast_spell_impl(ctx, spell_id, resonance_events_mod=events)
+            raw = await activate_tools._activate_impl(ctx, ability_id, cast_spell_mod=cast_mod)
             packet = json.loads(raw)
             assert packet["resonance_generated"] == generated
+            assert packet["effect"] == spell.mechanics
 
             row = await db_queries.get_player(player_id, conn=pool)
             assert row is not None
             assert row["focus"]["current"] == 10 - spell.focus_cost
-            # Out of combat the cast pushes its own RESONANCE_CHANGED (no phase WRAP to own it).
-            events.publish_resonance_changed.assert_awaited_once()
+            assert session.resonance.current == generated
+            if generated:
+                events.publish_resonance_changed.assert_awaited_once()
+            else:
+                events.publish_resonance_changed.assert_not_awaited()
         finally:
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

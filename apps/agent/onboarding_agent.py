@@ -68,8 +68,8 @@ class OnboardingAgent(BaseGameAgent):
         self._publish_session_init_on_enter = publish_session_init
         self._background: OnboardingBackgroundProcess | None = None
 
-    async def on_enter(self) -> None:
-        await super().on_enter()
+    async def _enter(self) -> None:
+        await super()._enter()
         sd: SessionData = self.session.userdata
         sd.onboarding_beat = self._onboarding_beat
         if self._publish_session_init_on_enter:

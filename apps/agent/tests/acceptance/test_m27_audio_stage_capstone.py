@@ -129,7 +129,7 @@ async def test_creation_awakening_emits_wonder_resolve() -> None:
 
     with (
         patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-        # BaseGameAgent.on_enter starts an affect-analyzer task and opens a TranscriptLogger
+        # BaseGameAgent's entry starts an affect-analyzer task and opens a TranscriptLogger
         # file handle; neither is under test and both would leak out of the run.
         patch("base_agent.TranscriptLogger"),
         patch.object(agent, "_affect_analyzer"),

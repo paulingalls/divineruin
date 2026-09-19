@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
-from combat._helpers import _make_combat_state
+from combat._helpers import _make_combat_state, _own_reaction
 from sample_fixtures import make_context
 
 import reaction_spend
@@ -106,6 +106,7 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
         assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
         for name in answered:
             state = _paused_state(_PRODUCIBLE[name])
+            _own_reaction(state, ability_id)
             try:
                 validate_reaction_activation(state, "player_1", ability_id)
             except ValueError:
@@ -128,6 +129,7 @@ async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_windo
     for ability_id, window in unreachable.items():
         for shape in _PRODUCIBLE.values():
             state = _paused_state(shape)
+            _own_reaction(state, ability_id)
             with pytest.raises(ValueError, match=window):
                 validate_reaction_activation(state, "player_1", ability_id)
 

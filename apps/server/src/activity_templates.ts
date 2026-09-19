@@ -1,5 +1,6 @@
 import type { ActivityType } from "@divineruin/shared";
 import { sql } from "./db.ts";
+import type { ActivityTypeConfig } from "./training_state_machine.ts";
 
 export interface ActivityTemplate {
   id: string;
@@ -42,7 +43,11 @@ export function setTrainingPrograms(map: ReadonlyMap<string, TrainingProgramConf
   trainingPrograms = map;
 }
 
-function parseProgramRow(id: string, raw: unknown): TrainingProgramConfig {
+function parseProgramRow(
+  id: string,
+  raw: unknown,
+  activityTypes: ReadonlyMap<string, ActivityTypeConfig>,
+): TrainingProgramConfig {
   if (!raw || typeof raw !== "object") {
     throw new Error(`training_programs[${id}].data is not an object`);
   }
@@ -56,6 +61,11 @@ function parseProgramRow(id: string, raw: unknown): TrainingProgramConfig {
   if (typeof name !== "string") throw new Error(`${ctx}.name is not a string`);
   if (typeof trainingActivityType !== "string")
     throw new Error(`${ctx}.training_activity_type is not a string`);
+  if (!activityTypes.has(trainingActivityType)) {
+    throw new Error(
+      `${ctx}.training_activity_type does not name an authored activity type: ${JSON.stringify(trainingActivityType)}`,
+    );
+  }
   if (typeof stat !== "string") throw new Error(`${ctx}.stat is not a string`);
   if (typeof dc !== "number") throw new Error(`${ctx}.dc is not a number`);
   if (typeof mentorId !== "string") throw new Error(`${ctx}.mentor_id is not a string`);
@@ -70,14 +80,27 @@ function parseProgramRow(id: string, raw: unknown): TrainingProgramConfig {
   };
 }
 
-export async function loadTrainingPrograms(): Promise<void> {
+export function parseProgramRows(
+  rows: readonly { id: string; data: unknown }[],
+  activityTypes: ReadonlyMap<string, ActivityTypeConfig>,
+): ReadonlyMap<string, TrainingProgramConfig> {
+  if (rows.length === 0) throw new Error("training_programs produced no rows");
+  if (activityTypes.size === 0) throw new Error("training_activity_types produced no rows");
+  const map = new Map<string, TrainingProgramConfig>();
+  for (const row of rows) {
+    if (map.has(row.id)) throw new Error(`duplicate training_programs row ${row.id}`);
+    map.set(row.id, parseProgramRow(row.id, row.data, activityTypes));
+  }
+  return map;
+}
+
+export async function loadTrainingPrograms(
+  activityTypes: ReadonlyMap<string, ActivityTypeConfig>,
+): Promise<void> {
   const rows = await sql<{ id: string; data: unknown }[]>`
     SELECT id, data FROM training_programs
   `;
-  const map = new Map<string, TrainingProgramConfig>();
-  for (const row of rows) {
-    map.set(row.id, parseProgramRow(row.id, row.data));
-  }
+  const map = parseProgramRows(rows, activityTypes);
   trainingPrograms = map;
   console.log(`Loaded ${map.size} training programs`);
 }

@@ -1,15 +1,102 @@
-import { test, expect } from "bun:test";
+import { test, expect, spyOn } from "bun:test";
 import {
   activeText,
   errandBusyLabel,
   errandDestinationPrompt,
   formatTimeRemaining,
   getActivityGroupState,
+  getActivityTemplatesState,
+  getLaunchIntent,
   isStartVisible,
   mode,
   trainingBusyLabel,
 } from "@/components/activity-launcher-strings";
-import type { ActiveStatus, TemplateGroup } from "@divineruin/shared";
+import type { ActiveStatus, TemplateGroup, TemplateItem } from "@divineruin/shared";
+
+const templateResponse = (groups: TemplateGroup[], status = 200) =>
+  new Response(JSON.stringify({ groups }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const EMPTY_STATE = { kind: "empty", message: "No activities are available right now." } as const;
+const ERROR_STATE = {
+  kind: "error",
+  message: "Activities are unavailable right now. Tap to retry.",
+} as const;
+
+test("a successful empty template response has a visible empty state", async () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    expect(await getActivityTemplatesState(() => Promise.resolve(templateResponse([])))).toEqual(
+      EMPTY_STATE,
+    );
+    // Legitimate emptiness is not a defect: it must stay out of the log.
+    expect(warn.mock.calls).toEqual([]);
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+test("a failed or rejected template request has a distinct visible error state", async () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const failed = await getActivityTemplatesState(() =>
+      Promise.resolve(templateResponse([], 500)),
+    );
+    const rejected = await getActivityTemplatesState(() => Promise.reject(new Error("offline")));
+
+    expect(failed).toEqual(ERROR_STATE);
+    expect(rejected).toEqual(failed);
+    expect(rejected).not.toEqual(EMPTY_STATE);
+    // Each failure names its own cause: one sentence on screen, the distinction in the log.
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] templates request failed:", "response status", 500],
+      ["[activity-launcher] templates request failed:", "request threw", new Error("offline")],
+    ]);
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+test("a request that throws before it is sent is an error, never a blank HUD", async () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const state = await getActivityTemplatesState(() => {
+      throw new TypeError("Failed to parse URL");
+    });
+
+    expect(state).toEqual(ERROR_STATE);
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+test("a populated template response preserves its groups", async () => {
+  const groups: TemplateGroup[] = [{ type: "training", label: "Training", items: [] }];
+
+  expect(await getActivityTemplatesState(() => Promise.resolve(templateResponse(groups)))).toEqual({
+    kind: "ready",
+    groups,
+  });
+});
+
+test("a malformed successful template response is an error", async () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const response = new Response(JSON.stringify({ groups: "not-an-array" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    expect(await getActivityTemplatesState(() => Promise.resolve(response))).toEqual(ERROR_STATE);
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] templates request failed:", "groups is not an array", "not-an-array"],
+    ]);
+  } finally {
+    warn.mockRestore();
+  }
+});
 
 test("errand strings name the assigned companion", () => {
   expect(errandBusyLabel("Sable", "Scouting Run")).toBe("Sable is on a Scouting Run");
@@ -114,4 +201,87 @@ test("a running training program hides every start action", () => {
   const state = getActivityGroupState(runningTrainingGroup);
 
   expect(runningTrainingGroup.items.every((item) => !isStartVisible(item, state))).toBe(true);
+});
+
+const trainingItem = (params: Record<string, unknown>): TemplateItem => ({
+  ...inactive,
+  id: "arcane_study",
+  name: "Arcane Study",
+  params: { program_id: "arcane_study", ...params },
+});
+
+test("launch policy preserves ordinary training and crafting payloads", () => {
+  expect(getLaunchIntent("training", trainingItem({}))).toEqual({
+    kind: "ready",
+    params: { program_id: "arcane_study" },
+  });
+  expect(
+    getLaunchIntent("crafting", {
+      ...trainingItem({ recipe_id: "iron_sword" }),
+      id: "iron_sword",
+    }),
+  ).toEqual({ kind: "ready", params: { recipe_id: "iron_sword" } });
+});
+
+test("spell training chooses before posting and preserves the canonical id", () => {
+  const item = trainingItem({ studiiable_typo: [], studiable_spell_ids: ["arcane_hold_person"] });
+  expect(getLaunchIntent("training", item)).toEqual({
+    kind: "choose-spell",
+    spellIds: ["arcane_hold_person"],
+  });
+  expect(getLaunchIntent("training", item, "arcane_hold_person")).toEqual({
+    kind: "ready",
+    params: { program_id: "arcane_study", spell_id: "arcane_hold_person" },
+  });
+  expect(() => getLaunchIntent("training", item, "Hold Person")).toThrow(/not available/);
+});
+
+test("empty spell choices disable launch with a stable reason", () => {
+  expect(getLaunchIntent("training", trainingItem({ studiable_spell_ids: [] }))).toEqual({
+    kind: "disabled",
+    reason: "No spells available to study.",
+  });
+});
+
+test("each malformed spell choice row is disabled without blocking its sibling", () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  for (const malformedSpellIds of ["arcane_hold_person", ["arcane_hold_person", 42], [""]]) {
+    const items = [
+      trainingItem({ studiable_spell_ids: malformedSpellIds }),
+      {
+        ...trainingItem({}),
+        id: "combat_basics",
+        name: "Combat Fundamentals",
+        params: { program_id: "combat_basics" },
+      },
+    ];
+
+    const intents = items.map((item) => getLaunchIntent("training", item));
+
+    expect(intents).toHaveLength(2);
+    expect(intents[0]).toEqual({
+      kind: "disabled",
+      reason: "Spell choices are unavailable.",
+    });
+    expect(intents[1]).toEqual({
+      kind: "ready",
+      params: { program_id: "combat_basics" },
+    });
+  }
+  warn.mockRestore();
+});
+
+test("a malformed row names itself in the log, not just on screen", () => {
+  const warn = spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    getLaunchIntent("training", trainingItem({ studiable_spell_ids: 42 }));
+    getLaunchIntent("training", trainingItem({ studiable_spell_ids: [] }));
+
+    // The empty catalog is a legitimate payload, not a defect: it must stay out of the log.
+    expect(warn.mock.calls).toEqual([
+      ["[activity-launcher] malformed studiable_spell_ids:", "arcane_study", 42],
+    ]);
+  } finally {
+    warn.mockRestore();
+  }
 });

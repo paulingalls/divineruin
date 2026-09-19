@@ -10,15 +10,12 @@ from typing import TYPE_CHECKING, cast
 
 import abilities
 import ability_persistence
-import check_resolution_save
 import combat_ability_save
 import combat_enhancers
-import concentration_break
 import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
 from condition_produce import resolve_effective_targets
-from condition_restrictions import cannot_act
 from mentor_variants import MentorVariant
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
@@ -226,96 +223,6 @@ def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declara
             "reason": f"{target.name} already fell",
         }
     return target, None
-
-
-async def _resolve_enemy_condition_packet(
-    session: SessionData,
-    attacker: CombatParticipant,
-    decl: "Declaration",
-    action: dict,
-    *,
-    state,
-    conn,
-    save_resolver=check_resolution_save,
-    concentration_break_mod=concentration_break,
-    reaction_save_advantage: bool = False,
-) -> dict:
-    """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
-    carries applies_condition/save/dc; the dispatch (combat_packet._resolve_one_packet) routes here
-    for an ATTACK **or** ABILITY declaration whose action has applies_condition — the DM declares
-    enemy pool actions as ATTACK, so routing on the field (not the type) is what makes the feature
-    fire in real play. Roll the TARGET's save vs (dc + the attacker's role dc_mod), honoring the
-    target's save proficiency; on FAILURE land the condition via the apply_condition SSOT
-    (immunity-gated through _land_condition_on_one), on SUCCESS it's resisted. Enemies have no
-    Focus/Stamina pool — nothing is deducted. The mutation rides the phase save_combat_state; no
-    client event (M12's Beat-4 wrap emit surfaces the applied condition).
-
-    Save-based, no to-hit: M13 condition actions are save-gated (Hollow Shriek is a fear shriek,
-    damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
-    (to-hit + save + damage combined) is a follow-up (debt 69132c5d)."""
-    cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
-    # allow_self=False: a hostile inflict must never self-target (an ABILITY-declared enemy condition
-    # action can arrive with target_id=None, which the helper would otherwise fall back to the caster).
-    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
-    if waste is not None:
-        return waste
-    assert target is not None  # waste is None => a live target was resolved
-    # dc_mod threads the attacker's role overlay (Boss +2 / Elite +1 / Minion -1) into the target's
-    # DC. bonus_dice_eligible=False keeps the engine-adjacent interim (concern 9ff840717590): a
-    # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
-    # consumed_conditions plumbing the attack path has; deferred, not what bfe4bac441d0 prescribes.
-    result = save_resolver.roll_participant_save(
-        target,
-        action["save"],
-        action["dc"],
-        cond_type,
-        dc_mod=attacker.dc_mod,
-        bonus_dice_eligible=False,
-        advantage=reaction_save_advantage,
-    )
-    # The HOSTILE inflict uses its OWN summary keys (condition_inflicted / condition_resisted /
-    # condition_immune) + the target's name — NOT the beneficial `condition_applied`, which the DM
-    # system prompt narrates as a boon ("a Blessed/Inspired glow"). A distinct key lets the DM voice
-    # the affliction landing on the TARGET (fear/charm/poison), never inverted as a buff.
-    summary = {
-        "actor_id": attacker.id,
-        "resolved": True,
-        "declaration_type": str(decl.type),
-        "action": decl.action,
-        "target": target.name,
-    }
-    if reaction_save_advantage and result.advantage_applied:
-        summary["save_advantage"] = True
-    item_save_source = target.save_advantages.get(result.save_type)
-    if item_save_source and result.advantage_applied:
-        summary["save_advantage_source"] = item_save_source
-    if result.success:
-        summary["condition_resisted"] = cond_type
-    # Reuse the public single-target landing wrapper (the same call the player ability-condition path
-    # uses) so the target-id/self-fallback + immunity wiring lives in one place.
-    elif land_condition_on_participant(
-        state,
-        attacker,
-        decl,
-        cond_type,
-        source=decl.action or "",
-        packet=summary,
-    ):
-        summary["condition_inflicted"] = cond_type
-        if target.type == "player" and cannot_act(({"type": cond_type},)):
-            broken = await concentration_break_mod.break_concentration_on_incapacitation(
-                session, target.id, combat_state=state, conn=conn
-            )
-            if broken is not None:
-                summary["concentration_broken"] = broken
-    else:
-        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed, a prone master) or off-state
-        item_immunity = target.condition_immunities.get(cond_type)
-        if item_immunity:
-            summary["condition_immunity_source"] = item_immunity
-        if cond_type == "prone" and target.prone_immunity:
-            summary["prone_immunity"] = target.prone_immunity
-    return summary
 
 
 @dataclass

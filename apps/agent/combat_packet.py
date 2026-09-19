@@ -30,7 +30,6 @@ from combat_ability import (
     _gate_ability_condition,
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
-    _resolve_enemy_condition_packet,
     condition_ability,
 )
 from combat_ability_gate import declared_ability
@@ -38,6 +37,13 @@ from combat_deescalation import (
     _gate_deescalation,
     _resolve_deescalation_packet,
     _validate_argument_type,
+)
+from combat_enemy_action import (
+    _resolve_enemy_condition_packet,
+    is_combined_attack_action,
+    is_save_damage_action,
+    resolve_combined_attack_action,
+    resolve_save_damage_action,
 )
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
@@ -97,7 +103,7 @@ async def _prevalidate_ability_focus(
     The per-player locks are taken in initiative order within the phase tx (adv.packets is ordered),
     once per player — the deterministic ordering story-008's caster-vs-target locking builds on."""
     player_ability_packets = [
-        (p.actor_id, p.declaration)
+        (p.actor_id, p.declaration, actor)
         for p in adv.packets
         if p.declaration.type is DeclarationType.ABILITY
         and p.declaration.action
@@ -108,7 +114,7 @@ async def _prevalidate_ability_focus(
         return {}
     players_by_id: dict[str, dict] = {}
     known_spell_ids_by_player: dict[str, frozenset[str]] = {}
-    for actor_id, decl in player_ability_packets:
+    for actor_id, decl, actor in player_ability_packets:
         player = players_by_id.get(actor_id)
         if player is None:
             # Lock this member's row once (a member with two ability declarations reuses the lock).
@@ -126,13 +132,11 @@ async def _prevalidate_ability_focus(
                 else False
             )
             if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
-                actor = state.get_participant(actor_id)
-                actor_name = actor.name if actor is not None else actor_id
-                raise ToolError(f"{actor_name} hasn't learned {ability.name}.")
+                raise ToolError(f"{actor.name} hasn't learned {ability.name}.")
             if variant is not None:
                 active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
                 if active_variant_id != variant.id:
-                    raise ToolError(f"{variant.id} is not your active variant for {ability.name}.")
+                    raise ToolError(f"{actor.name} does not have {variant.id} active for {ability.name}.")
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
@@ -245,9 +249,57 @@ async def _resolve_one_packet(
         else None
     )
 
-    # Enemy condition-infliction (M13): a HOSTILE actor (is_ally False — enemy or temporary_hollowed,
-    # never a player/companion ally) whose action_pool entry carries applies_condition inflicts a
-    # save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
+    if not attacker.is_ally and action is not None and is_save_damage_action(action):
+        return await resolve_save_damage_action(
+            session,
+            attacker,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+
+    if not attacker.is_ally and action is not None and is_combined_attack_action(action):
+        target = state.get_participant(decl.target_id) if decl.target_id else None
+        if target is None:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
+        if target.is_fallen:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+        summary = await resolve_combined_attack_action(
+            session,
+            attacker,
+            target,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+            shield_reaction=shield_reaction,
+            enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
+            is_first_attack_of_combat=not state.first_attack_resolved,
+            reaction_save_advantage=reaction_save_advantage,
+            publish_roll=publish_roll,
+        )
+        if summary.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, summary["consumed_conditions"])
+        state.first_attack_resolved = True
+        summary["actor_id"] = packet.actor_id
+        summary["resolved"] = True
+        return _attach_riders(summary, attacker, decl)
+
+    # Remaining save-only enemy condition actions (M13): a HOSTILE actor (is_ally False — enemy or
+    # temporary_hollowed, never a player/companion ally) whose action_pool entry carries
+    # applies_condition inflicts a save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
     # enemy pool actions as ATTACK (system_prompts.py:235 — "Ability" is a spell/ability id the
     # caster knows, which pool actions are not), so gating this on ABILITY alone made the whole
     # feature a no-op in real play. Deterministic mechanics: the engine, not the LLM's type choice,
@@ -322,14 +374,13 @@ async def _resolve_one_packet(
     # A hostile mark action resolves without a roll (encounter_actions).
     if not attacker.is_ally and action_kind(action) in combat_marks.MARK_KINDS:
         kind = action_kind(action)
-        combat_marks.resolve_mark_action(state, attacker, target, kind, cancelled=mark_cancelled)
+        outcome = combat_marks.resolve_mark_action(state, attacker, target, kind, cancelled=mark_cancelled)
         return {
             "actor_id": packet.actor_id,
-            "resolved": True,
             "declaration_type": str(decl.type),
-            "kind": kind,
             "action": decl.action,
             "target": target.name,
+            **outcome,
         }
 
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
