@@ -494,4 +494,5 @@ fi
 ! grep -q 'down -v' "$record" || fail "unproven liveness reached destructive Docker"
 ok "a worktree still on disk with unreadable Git metadata stops the sweep"
 
+bash "$ROOT/scripts/test-worktree-liveness.sh"
 echo "All worktree ownership tests passed."

@@ -199,7 +199,9 @@ or legacy labels fail closed without adoption or deletion.
 Back up and migrate or remove legacy data manually. CI service Postgres requires
 the explicit GitHub Actions marker and cannot run Compose. Sweep deletes only
 consistently labeled stale checkouts from the current clone and rejects empty or
-unreadable enumeration.
+unreadable enumeration. An unavailable registered worktree blocks sweep, including
+locked worktrees on unmounted volumes. Remove or prune only registrations known
+to be abandoned before sweeping their resources.
 The pre-push per-run Postgres and Valkey belong to the server and E2E lanes.
 Acceptance and Python enter without those sibling-lane DSNs so their Python
 lifecycle can validate checkout-owned settings; acceptance then loads the
