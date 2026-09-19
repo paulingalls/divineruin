@@ -315,4 +315,29 @@ for inspector_status in 1 2 127; do
 done
 ok "warm provisioning accepts confirmed vacancy and propagates inspection failures"
 
+# 19. An existing port key must agree with the derived settings even when the
+# coupled service URLs already match, so the URL check cannot stand in for it.
+settings_root="$(mktemp -d -t test-wt-settings)"
+git -C "$settings_root" init -q
+settings_authority() {  # the real CLI, in a fixture checkout, with no ambient settings
+  ( unset DATABASE_URL REDIS_URL WT_PORT_OFFSET COMPOSE_PROJECT_NAME \
+      POSTGRES_HOST_PORT VALKEY_HOST_PORT
+    cd "$settings_root" && bash "$SCRIPT_DIR/worktree-common.sh" "$@" )
+}
+settings_authority expected-env > "$settings_root/.env"
+settings_authority authorize settings || fail "the fixture's own generated settings were rejected"
+for key in POSTGRES_HOST_PORT VALKEY_HOST_PORT; do
+  sed -E "s/^${key}=([0-9]+)$/${key}=9\1/" "$settings_root/.env" > "$settings_root/.env.stale"
+  if cmp -s "$settings_root/.env" "$settings_root/.env.stale"; then
+    fail "the generated settings carry no $key line to make stale"
+  fi
+  mv "$settings_root/.env.stale" "$settings_root/.env"
+  if settings_authority authorize settings >/dev/null 2>&1; then
+    fail "a stale $key was accepted alongside matching service URLs"
+  fi
+  settings_authority expected-env > "$settings_root/.env"
+done
+rm -rf "$settings_root"
+ok "a stale port key is refused even when the coupled service URLs agree"
+
 echo "All init-worktree tests passed."

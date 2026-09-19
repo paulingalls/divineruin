@@ -33,10 +33,6 @@ else
     # Validate the per-worktree host-port-offset derivation (worktree-common.sh).
     echo "  Worktree bootstrap offset self-test..."
     bash "$(dirname "$0")/../scripts/test-init-worktree.sh"
-    echo "  Worktree ownership self-test..."
-    bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
-    echo "  Worktree listener ownership self-test..."
-    bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
 
     # Typecheck + lint backstop. The pre-commit hook SKIPS the TS/ESLint/Prettier/ruff suite on a
     # fresh worktree (no node_modules), so without this block lint/typecheck errors could reach a
@@ -55,6 +51,14 @@ else
       echo "ERROR: Docker must be running for pre-push acceptance tests." >&2
       exit 1
     fi
+
+    # Both stand up real Compose stacks, so they sit BELOW the Docker gate (a
+    # Docker-less host gets the message above, not a raw compose error) and
+    # below the lint backstop, which is what keeps a typo cheap.
+    echo "  Worktree ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
+    echo "  Worktree listener ownership self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
 
     # Reap orphaned per-run test containers from earlier runs that were SIGKILL'd
     # (or SIGTERM'd before teardown finished) so they don't accumulate. PID-aware:

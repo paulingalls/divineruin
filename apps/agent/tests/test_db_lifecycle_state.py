@@ -9,6 +9,11 @@ def _isolated_lock_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
     monkeypatch.setattr(dbl, "_authorize", lambda intent: None)
     monkeypatch.setattr(dbl, "_authorize_runtime", lambda database_url, redis_url: None)
+    # CI exports REDIS_URL and the service markers, and `bun run test:python`
+    # is documented to export the URLs too; read ambiently they change which
+    # branch ensure_db_up/stop_if_started take. Cases that need them set them.
+    for leaked in ("REDIS_URL", "GITHUB_ACTIONS", "DIVINERUIN_CI_SERVICE_DB"):
+        monkeypatch.delenv(leaked, raising=False)
 
 
 def test_parse_host_port_reads_host_and_port():

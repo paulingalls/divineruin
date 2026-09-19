@@ -153,6 +153,16 @@ if (cd "${ROOTS[0]}" && bash scripts/worktree-common.sh authorize connect >/dev/
 fi
 ok "stopped owned resources remain inspectable but do not authorize a connection"
 
+# The adapters branch on this exact status: 78 is an ownership refusal they must
+# raise at once, anything else is pg_isready's own answer they may retry until
+# the readiness timeout. Both sides mocking 78 would agree about nothing.
+refusal_status=0
+(cd "${ROOTS[0]}" && bash scripts/worktree-common.sh compose connect \
+  exec -T postgres pg_isready -U divineruin >/dev/null 2>&1) || refusal_status=$?
+[ "$refusal_status" -eq 78 ] \
+  || fail "a refused Compose intent exited $refusal_status; the adapters read only 78 as ownership"
+ok "a refused Compose intent exits 78, so readiness raises instead of retrying to timeout"
+
 compose 1 create up -d --wait --wait-timeout 60 >/dev/null
 
 set +e

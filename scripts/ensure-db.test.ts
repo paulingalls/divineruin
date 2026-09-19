@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +14,12 @@ import {
 } from "./ensure-db.ts";
 
 const originalEnv = { ...process.env };
+// A caller with the CI service markers exported (an `act` run, a CI shell) would
+// otherwise steer ensureDbUp down its ci branch. Cases that need them set them.
+beforeEach(() => {
+  delete process.env.GITHUB_ACTIONS;
+  delete process.env.DIVINERUIN_CI_SERVICE_DB;
+});
 afterEach(() => {
   process.env = { ...originalEnv };
 });
