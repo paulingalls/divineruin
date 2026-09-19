@@ -3,5 +3,5 @@ name = "divineruin-scripts"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "asyncpg>=0.30.0",
+    "asyncpg>=0.31.0",
 ]

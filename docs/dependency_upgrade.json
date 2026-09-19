@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "scope": "python",
+  "registry_snapshot_date": "2026-09-18",
+  "python_version": "3.14.7",
+  "uv_version": "0.10.6",
+  "projects": [
+    "apps/agent",
+    "scripts"
+  ],
+  "dependencies": [
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-agents",
+      "requested": "~=1.8.2",
+      "resolved": "1.8.2",
+      "installed": "1.8.2",
+      "latest_stable": "1.8.2",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-anthropic",
+      "requested": "~=1.8.2",
+      "resolved": "1.8.2",
+      "installed": "1.8.2",
+      "latest_stable": "1.8.2",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-deepgram",
+      "requested": "~=1.8.2",
+      "resolved": "1.8.2",
+      "installed": "1.8.2",
+      "latest_stable": "1.8.2",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-inworld",
+      "requested": "~=1.8.2",
+      "resolved": "1.8.2",
+      "installed": "1.8.2",
+      "latest_stable": "1.8.2",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "asyncpg",
+      "requested": ">=0.31.0",
+      "resolved": "0.31.0",
+      "installed": "0.31.0",
+      "latest_stable": "0.31.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "redis",
+      "requested": ">=8.1.0",
+      "resolved": "8.1.0",
+      "installed": "8.1.0",
+      "latest_stable": "8.1.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "anthropic",
+      "requested": ">=0.125.0,<1",
+      "resolved": "0.125.0",
+      "installed": "0.125.0",
+      "latest_stable": "1.7.0",
+      "held_back_by": {
+        "package": "livekit-plugins-anthropic",
+        "version": "1.8.2",
+        "specifier": "<1,>=0.41",
+        "reason": "Anthropic 1.7.0 is outside the plugin's published constraint; the project mirrors the same <1 cap."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "httpx",
+      "requested": ">=0.28.1",
+      "resolved": "0.28.1",
+      "installed": "0.28.1",
+      "latest_stable": "0.28.1",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "docker",
+      "requested": ">=7.2.0",
+      "resolved": "7.2.0",
+      "installed": "7.2.0",
+      "latest_stable": "7.2.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pillow",
+      "requested": ">=12.3.0",
+      "resolved": "12.3.0",
+      "installed": "12.3.0",
+      "latest_stable": "12.3.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pyright",
+      "requested": ">=1.1.414",
+      "resolved": "1.1.414",
+      "installed": "1.1.414",
+      "latest_stable": "1.1.414",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pytest",
+      "requested": ">=9.1.1",
+      "resolved": "9.1.1",
+      "installed": "9.1.1",
+      "latest_stable": "9.1.1",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pytest-asyncio",
+      "requested": ">=1.4.0",
+      "resolved": "1.4.0",
+      "installed": "1.4.0",
+      "latest_stable": "1.4.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pytest-bdd",
+      "requested": ">=8.1.0",
+      "resolved": "8.1.0",
+      "installed": "8.1.0",
+      "latest_stable": "8.1.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pytest-cov",
+      "requested": ">=7.1.0",
+      "resolved": "7.1.0",
+      "installed": "7.1.0",
+      "latest_stable": "7.1.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "pytest-xdist",
+      "requested": ">=3.8.0",
+      "resolved": "3.8.0",
+      "installed": "3.8.0",
+      "latest_stable": "3.8.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "ruff",
+      "requested": ">=0.16.8",
+      "resolved": "0.16.8",
+      "installed": "0.16.8",
+      "latest_stable": "0.16.8",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "testcontainers",
+      "requested": ">=4.15.0",
+      "resolved": "4.15.0",
+      "installed": "4.15.0",
+      "latest_stable": "4.15.0",
+      "held_back_by": null
+    },
+    {
+      "project": "scripts",
+      "group": "runtime",
+      "name": "asyncpg",
+      "requested": ">=0.31.0",
+      "resolved": "0.31.0",
+      "installed": "0.31.0",
+      "latest_stable": "0.31.0",
+      "held_back_by": null
+    }
+  ]
+}
