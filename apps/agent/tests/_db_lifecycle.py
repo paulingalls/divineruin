@@ -50,7 +50,6 @@ from urllib.parse import unquote, urlparse
 
 # apps/agent/tests/_db_lifecycle.py -> repo root is three parents up.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_COMPOSE_FILE = _REPO_ROOT / "docker-compose.yml"
 _OWNER_HELPER = _REPO_ROOT / "scripts" / "worktree-common.sh"
 
 # Last resort ONLY: this names the PRIMARY checkout's stack, so a worktree
@@ -221,8 +220,8 @@ def _start_compose(host: str, port: int, user: str) -> None:
     auto-names `<project>-postgres-1` per project and restarts a stopped
     container of the same project, so the old "container name already in use"
     class cannot arise. The real post-fold failure is a host-port BIND conflict
-    (two checkouts' offsets collide) — genuinely fatal; the compose error names
-    the port, and WT_PORT_OFFSET can force a distinct offset.
+    (two checkouts' offsets collide) — genuinely fatal; the ownership helper
+    refuses before compose runs and names the occupied port.
     """
     print(f"\n[db-lifecycle] Postgres not reachable at {host}:{port} — starting docker compose...")
     result = _compose("up", "-d", "--remove-orphans")

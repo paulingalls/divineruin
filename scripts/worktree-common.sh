@@ -217,7 +217,12 @@ wt_live_checkout_ids() {
   [ -n "$paths" ] || { wt_die "Git worktree enumeration produced nothing usable."; return 1; }
   while IFS= read -r path; do
     [ -d "$path" ] || continue
-    git_dir="$(git -C "$path" rev-parse --absolute-git-dir 2>/dev/null)" || continue
+    # A directory that is still on disk is a checkout we cannot prove is dead:
+    # Git calls it prunable the moment its metadata goes missing, and sweeping
+    # on that would turn unreadable liveness information into permission to
+    # delete. Only a vanished directory counts as gone.
+    git_dir="$(git -C "$path" rev-parse --absolute-git-dir 2>/dev/null)" \
+      || { wt_die "worktree $path is still on disk but its Git metadata is unreadable; refusing sweep."; return 1; }
     wt_hash "$(wt_realpath "$git_dir")"
     count=$((count + 1))
   done <<< "$paths"
@@ -253,7 +258,7 @@ wt_sweep_candidates() {
 
 wt_destroy_candidate() {
   local project="$1" checkout="$2"
-  wt_identity || wt_die "cannot identify this Git clone."
+  wt_identity || { wt_die "cannot identify this Git clone."; return 1; }
   wt_validate_resources "$project" "$WT_CLONE_ID" "$checkout" "" || return 1
   DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$checkout" DR_CHECKOUT_ROOT="stale" \
     COMPOSE_PROJECT_NAME="$project" docker compose -f "$WT_ROOT/docker-compose.yml" -p "$project" down -v

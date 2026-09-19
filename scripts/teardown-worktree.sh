@@ -29,7 +29,7 @@ main() {
     echo "usage: teardown-worktree.sh [--sweep|--force]" >&2
     return 2
   fi
-  wt_identity || wt_die "cannot identify this Git checkout."
+  wt_identity || { wt_die "cannot identify this Git checkout."; return 1; }
   if [ "$WT_GIT_DIR" = "$WT_COMMON_DIR" ] && [ "$force" -ne 1 ]; then
     wt_die "refusing to destroy the primary checkout. Re-run --force from this proven primary checkout."
     return 1

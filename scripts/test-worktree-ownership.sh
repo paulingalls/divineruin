@@ -3,8 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d -t dr-ownership)"
-REAL_DIR=""; REAL_PROJECT=""; REAL_STARTED=0
+REAL_DIR=""; REAL_PROJECT=""; REAL_STARTED=0; HOLDER_PID=""
 cleanup() {
+  [ -n "$HOLDER_PID" ] && kill "$HOLDER_PID" 2>/dev/null || true
   if [ "$REAL_STARTED" -eq 1 ] && [ -d "$REAL_DIR" ]; then
     docker compose -f "$REAL_DIR/docker-compose.yml" -p "$REAL_PROJECT" down -v >/dev/null 2>&1 || true
   fi
@@ -284,5 +285,98 @@ if (cd "$primary" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$sweep_fixture"
 fi
 grep -q 'down -v' "$record" && fail "empty enumeration reached destructive Docker"
 ok "empty Docker enumeration fails closed"
+
+
+url_fixture="$TMP/url-docker"; mkdir -p "$url_fixture"
+printf '[]\n' > "$url_fixture/projects.json"
+refuse_url() {  # <sed-expression> <label>
+  local record="$TMP/url-$2.calls"; : > "$record"
+  printf '%s\n' "$env_a" | sed -E "$1" > "$valid/.env"
+  if (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
+    PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
+    fail "$2 aimed at another checkout's endpoint was accepted"
+  fi
+  [ ! -s "$record" ] || fail "$2 conflict reached Docker"
+}
+refuse_url 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://divineruin:divineruin_dev@localhost:55432/divineruin#' DATABASE_URL
+refuse_url 's#^REDIS_URL=.*#REDIS_URL=redis://localhost:56379#' REDIS_URL
+printf '%s\n' "$env_a" > "$valid/.env"
+ok "a service URL aimed at another checkout's endpoint is refused before Docker"
+
+record="$TMP/ci-marker.calls"; : > "$record"
+if (cd "$primary" && DOCKER_RECORD="$record" PATH="$primary/bin:$PATH" \
+  env -u GITHUB_ACTIONS -u DIVINERUIN_CI_SERVICE_DB \
+  bash scripts/worktree-common.sh authorize ci >/dev/null 2>&1); then
+  fail "CI service mode was granted without the GitHub Actions marker"
+fi
+[ ! -s "$record" ] || fail "CI marker refusal reached Docker"
+ok "CI service mode requires the explicit GitHub Actions marker"
+
+meta_fixture="$TMP/metadata-docker"; mkdir -p "$meta_fixture/resources"
+printf '[{"Name":"%s"}]\n' "$primary_project" > "$meta_fixture/projects.json"
+refuse_force() {  # <label>
+  local record="$TMP/force-$1.calls"; : > "$record"
+  if (cd "$primary" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$meta_fixture" \
+    PATH="$primary/bin:$PATH" bash scripts/teardown-worktree.sh --force >/dev/null 2>&1); then
+    fail "--force destroyed a project with $1"
+  fi
+  ! grep -q 'down -v' "$record" || fail "$1 reached destructive Docker"
+}
+refuse_force no-ownership-metadata
+ok "a project whose ownership cannot be enumerated is never destroyed"
+
+# working_dir and config_files are checked independently: each case satisfies
+# the other's expectation so neither guard can hide behind its neighbour.
+printf 'primary-container\n' > "$meta_fixture/resources/$primary_project.ps"
+make_labels "$meta_fixture" primary-container "$clone_id" "$checkout_id" \
+  "$TMP/elsewhere" "$primary_real/docker-compose.yml"
+refuse_force foreign-working-dir
+make_labels "$meta_fixture" primary-container "$clone_id" "$checkout_id" \
+  "$primary_real" "$TMP/elsewhere/docker-compose.yml"
+refuse_force foreign-compose-config
+ok "labels from another directory or Compose file are refused under --force"
+
+cat > "$TMP/hold-port.py" <<'HOLDER'
+import socket, sys, time
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(("127.0.0.1", int(sys.argv[1])))
+sock.listen(1)
+open(sys.argv[2], "w").write("ready")
+time.sleep(120)
+HOLDER
+python3 "$TMP/hold-port.py" "$port_a" "$TMP/holder.ready" &
+HOLDER_PID=$!
+for _ in $(seq 1 100); do [ -f "$TMP/holder.ready" ] && break; sleep 0.1; done
+[ -f "$TMP/holder.ready" ] || fail "port holder never bound $port_a"
+record="$TMP/occupied.calls"; : > "$record"
+if (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose create up -d >/dev/null 2>&1); then
+  fail "creation was allowed while an unowned process held the derived port"
+fi
+! grep -q 'up -d' "$record" || fail "occupied-port refusal reached Compose startup"
+kill "$HOLDER_PID" 2>/dev/null || true
+HOLDER_PID=""
+ok "creation refuses an occupied host port with no owned project"
+
+# The worktree lives outside the repo, as this project's do: a nested one would
+# resolve its identity from the enclosing checkout instead of failing.
+mkdir -p "$TMP/ghost-clone/scripts"
+cp "$ROOT/scripts/worktree-common.sh" "$TMP/ghost-clone/scripts/"
+git -C "$TMP/ghost-clone" init -q
+git -C "$TMP/ghost-clone" config user.email test@example.invalid
+git -C "$TMP/ghost-clone" config user.name Test
+git -C "$TMP/ghost-clone" commit -q --allow-empty -m fixture
+git -C "$TMP/ghost-clone" worktree add -q "$TMP/ghost-worktree"
+rm -f "$TMP/ghost-worktree/.git"
+ghost_fixture="$TMP/ghost-docker"; mkdir -p "$ghost_fixture"
+printf '[{"Name":"dr-anything"}]\n' > "$ghost_fixture/projects.json"
+record="$TMP/ghost.calls"; : > "$record"
+if (cd "$TMP/ghost-clone" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$ghost_fixture" \
+  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh sweep-candidates >/dev/null 2>&1); then
+  fail "sweep proceeded while a live worktree's Git metadata was unreadable"
+fi
+! grep -q 'down -v' "$record" || fail "unproven liveness reached destructive Docker"
+ok "a worktree still on disk with unreadable Git metadata stops the sweep"
 
 echo "All worktree ownership tests passed."

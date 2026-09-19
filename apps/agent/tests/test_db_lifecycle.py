@@ -135,15 +135,11 @@ def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
     assert calls == [("up", "-d", "--remove-orphans")]
 
 
-def test_lockfile_paths_keyed_on_host_port_not_compose_file(monkeypatch, tmp_path):
-    """Two different `_COMPOSE_FILE` values (i.e. two worktrees) resolve to the
-    SAME lock/state paths as long as host:port match — the whole point of
-    keying on the shared singleton rather than the per-checkout path."""
-    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-a" / "docker-compose.yml")
-    paths_a = dbl._lockfile_paths("localhost", 55432)
-    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-b" / "docker-compose.yml")
-    paths_b = dbl._lockfile_paths("localhost", 55432)
-    assert paths_a == paths_b
+def test_lockfile_paths_are_keyed_on_host_port():
+    """One host:port is one physical container, so every caller reaching it must
+    share a lock; a different port is a different checkout's stack and must not."""
+    assert dbl._lockfile_paths("localhost", 55432) == dbl._lockfile_paths("localhost", 55432)
+    assert dbl._lockfile_paths("localhost", 55432) != dbl._lockfile_paths("localhost", 56852)
 
 
 def test_read_state_missing_file_returns_zero_state(tmp_path):

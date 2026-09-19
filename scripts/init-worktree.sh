@@ -298,9 +298,9 @@ PY
 }
 
 # ── docker stack ──────────────────────────────────────────────────────────────
-# Bring up THIS worktree's isolated Postgres+Valkey. Guard against a foreign
-# holder of our offset host ports (a rare basename-hash collision) with a
-# loud, actionable failure rather than compose's cryptic bind error.
+# Bring up THIS worktree's isolated Postgres+Valkey. `wt_compose create` proves
+# ownership first: an existing project must carry this checkout's labels, and an
+# absent one must find its host ports vacant.
 start_stack() {
   echo "==> docker stack: project=$COMPOSE_PROJECT_NAME pg=$POSTGRES_HOST_PORT valkey=$VALKEY_HOST_PORT"
   wt_compose create up -d --remove-orphans --wait --wait-timeout 120
