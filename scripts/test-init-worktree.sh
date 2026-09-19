@@ -251,4 +251,76 @@ case "$propagated" in
 esac
 ok "a fatal reservation status aborts the scan"
 
+# 18. Tool mismatches fail before any install command can run.
+if mismatch="$(assert_tool_version Bun 1.4.2 0.0.0 2>&1)"; then
+  fail "a wrong Bun version passed the bootstrap guard"
+fi
+case "$mismatch" in
+  *"Bun 1.4.2 is required; found 0.0.0"*) ;;
+  *) fail "wrong-version diagnostic was not actionable: $mismatch" ;;
+esac
+ok "tool version mismatches fail loud"
+
+# 19. Every independent graph is installed frozen, and Chromium comes from the
+# e2e lock before the scripts-owned seed can run.
+TEST_BOOTSTRAP_LOG="$(mktemp -t test-bootstrap-log)"
+bun() { printf 'bun %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+bunx() { printf 'bunx %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+uv() { printf 'uv %s cwd=%s\n' "$*" "$PWD" >> "$TEST_BOOTSTRAP_LOG"; }
+verify_project_python() { printf 'python %s\n' "$1" >> "$TEST_BOOTSTRAP_LOG"; }
+install_locked_dependencies
+unset -f bun bunx uv verify_project_python
+for expected in \
+  "bun install --frozen-lockfile cwd=$REPO_ROOT" \
+  "bun install --frozen-lockfile cwd=$REPO_ROOT/e2e" \
+  "bunx playwright install chromium cwd=$REPO_ROOT/e2e" \
+  "uv sync --project $REPO_ROOT/apps/agent --frozen cwd=$REPO_ROOT" \
+  "uv sync --project $REPO_ROOT/scripts --frozen cwd=$REPO_ROOT" \
+  "python $REPO_ROOT/apps/agent" \
+  "python $REPO_ROOT/scripts"; do
+  grep -qxF "$expected" "$TEST_BOOTSTRAP_LOG" || fail "locked bootstrap stage missing: $expected"
+done
+rm -f "$TEST_BOOTSTRAP_LOG"
+ok "bootstrap installs all four locks and the matched browser"
+
+# 20. Stack ports are free or owned by this exact compose project and service.
+COMPOSE_PROJECT_NAME=dr-story-210
+lsof() { return 1; }
+docker() { fail "Docker queried for a free port: $*"; }
+assert_compose_port_owner 61234 postgres || fail "free port was rejected"
+unset -f lsof docker
+
+lsof() { return 0; }
+docker() {
+  case "$1" in
+    ps) printf '%s\n' owned123 ;;
+    inspect) printf '%s\n' "dr-story-210 postgres" ;;
+    *) return 1 ;;
+  esac
+}
+assert_compose_port_owner 61234 postgres || fail "owned Postgres listener was rejected"
+
+docker() {
+  case "$1" in
+    ps) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+if assert_compose_port_owner 61234 postgres >/dev/null 2>&1; then
+  fail "foreign non-Docker listener was accepted"
+fi
+
+docker() {
+  case "$1" in
+    ps) printf '%s\n' sibling123 ;;
+    inspect) printf '%s\n' "dr-sibling postgres" ;;
+    *) return 1 ;;
+  esac
+}
+if assert_compose_port_owner 61234 postgres >/dev/null 2>&1; then
+  fail "sibling compose project listener was accepted"
+fi
+unset -f lsof docker
+ok "stack ports reject foreign and sibling listeners"
+
 echo "All init-worktree tests passed."

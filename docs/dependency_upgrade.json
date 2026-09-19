@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "scope": "python-and-workspace",
+  "schema_version": 3,
+  "scope": "all-direct-dependencies",
   "registry_snapshot_date": "2026-09-19",
   "python_version": "3.14.7",
   "uv_version": "0.10.6",
@@ -1160,9 +1160,6 @@
       "reason": "Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4."
     }
   ],
-  "exclusions": {
-    "e2e": "Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort."
-  },
   "mobile_baseline": {
     "expo": "57.0.24",
     "react_native": "0.86.3",
@@ -1257,5 +1254,157 @@
         "device": "missing: adb devices returned no attached device"
       }
     }
-  }
+  },
+  "e2e_dependencies": [
+    {
+      "group": "devDependencies",
+      "name": "@axe-core/playwright",
+      "requested": "^4.13.0",
+      "locked": "4.13.0",
+      "installed": "4.13.0",
+      "candidate": "4.13.0",
+      "registry_latest": "4.13.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "@eslint/js",
+      "requested": "^10.0.1",
+      "locked": "10.0.1",
+      "installed": "10.0.1",
+      "candidate": "10.0.1",
+      "registry_latest": "10.0.1",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "@playwright/test",
+      "requested": "^1.63.0",
+      "locked": "1.63.0",
+      "installed": "1.63.0",
+      "candidate": "1.63.0",
+      "registry_latest": "1.63.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "@types/bun",
+      "requested": "1.4.2",
+      "locked": "1.4.2",
+      "installed": "1.4.2",
+      "candidate": "1.4.2",
+      "registry_latest": "1.4.2",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "@types/pg",
+      "requested": "^8.23.1",
+      "locked": "8.23.1",
+      "installed": "8.23.1",
+      "candidate": "8.23.1",
+      "registry_latest": "8.23.1",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "eslint",
+      "requested": "^10.11.0",
+      "locked": "10.11.0",
+      "installed": "10.11.0",
+      "candidate": "10.11.0",
+      "registry_latest": "10.11.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "eslint-config-prettier",
+      "requested": "^10.1.8",
+      "locked": "10.1.8",
+      "installed": "10.1.8",
+      "candidate": "10.1.8",
+      "registry_latest": "10.1.8",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "lighthouse",
+      "requested": "^13.5.0",
+      "locked": "13.5.0",
+      "installed": "13.5.0",
+      "candidate": "13.5.0",
+      "registry_latest": "13.5.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "pg",
+      "requested": "^8.23.0",
+      "locked": "8.23.0",
+      "installed": "8.23.0",
+      "candidate": "8.23.0",
+      "registry_latest": "8.23.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "playwright-lighthouse",
+      "requested": "^4.0.0",
+      "locked": "4.0.0",
+      "installed": "4.0.0",
+      "candidate": "4.0.0",
+      "registry_latest": "4.0.0",
+      "reason": null
+    },
+    {
+      "group": "devDependencies",
+      "name": "typescript",
+      "requested": "^6.0.3",
+      "locked": "6.0.3",
+      "installed": "6.0.3",
+      "candidate": "6.0.3",
+      "registry_latest": "7.0.2",
+      "reason": "typescript-eslint 8.70.0 declares TypeScript >=4.8.4 <6.1.0; 7.0.2 is outside that peer range."
+    },
+    {
+      "group": "devDependencies",
+      "name": "typescript-eslint",
+      "requested": "^8.70.0",
+      "locked": "8.70.0",
+      "installed": "8.70.0",
+      "candidate": "8.70.0",
+      "registry_latest": "8.70.0",
+      "reason": null
+    }
+  ],
+  "e2e_release_age_exceptions": [
+    {
+      "name": "eslint",
+      "version": "10.11.0",
+      "published_at": "2026-09-18T20:15:36.485Z",
+      "command": "bun add --cwd e2e --dev --minimum-release-age=0 eslint@^10.11.0",
+      "evidence": "ESLint 10.11.0 passes the e2e TypeScript and ESLint lane with @eslint/js 10.0.1 and typescript-eslint 8.70.0."
+    },
+    {
+      "name": "lighthouse",
+      "version": "13.5.0",
+      "published_at": "2026-09-18T14:13:55.261Z",
+      "command": "bun add --cwd e2e --dev --minimum-release-age=0 lighthouse@^13.5.0",
+      "evidence": "Lighthouse 13.5.0 satisfies playwright-lighthouse 4.0.0's >=10 peer range and passes the production audit thresholds."
+    }
+  ],
+  "infrastructure_holds": [
+    {
+      "name": "PostgreSQL container",
+      "reference": "postgres:16-alpine",
+      "status": "held outside this card",
+      "reason": "A database major migration requires separate application and data migration work."
+    },
+    {
+      "name": "Valkey container",
+      "reference": "valkey/valkey:8-alpine",
+      "status": "held outside this card",
+      "reason": "Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade."
+    }
+  ]
 }

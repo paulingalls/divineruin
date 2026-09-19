@@ -1,0 +1,135 @@
+import json
+import shutil
+from pathlib import Path
+
+import pytest
+
+from dependency_upgrade_report import validate_ci_toolchain
+
+ROOT = Path(__file__).resolve().parents[4]
+
+
+def _copy_scope(tmp_path: Path) -> Path:
+    for relative in (
+        ".github/workflows/ci.yml",
+        ".python-version",
+        "package.json",
+        "docs/dependency_upgrade.json",
+    ):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, target)
+    return tmp_path
+
+
+def _report(root: Path) -> dict:
+    return json.loads((root / "docs/dependency_upgrade.json").read_text())
+
+
+def test_ci_uses_declared_tools_and_all_four_frozen_locks(tmp_path):
+    root = _copy_scope(tmp_path)
+    validate_ci_toolchain(root, _report(root))
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "diagnostic"),
+    [
+        ("bun-version: 1.4.2", "bun-version: 0.0.0", "setup-bun"),
+        ("version: 0.10.6", "version: 0.0.0", "setup-uv"),
+        ("python-version: 3.14.7", "python-version: 0.0.0", "Python"),
+        ("bun install --frozen-lockfile", "bun install", "frozen Bun install"),
+        ("uv sync --project apps/agent --frozen", "uv sync --project apps/agent", "frozen uv sync"),
+        ("bun install --cwd e2e --frozen-lockfile", "bun install --cwd e2e", "frozen Bun install"),
+        ("uv sync --project scripts --frozen", "uv sync --project scripts", "frozen uv sync"),
+    ],
+)
+def test_ci_tool_or_lock_drift_fails(tmp_path, original, replacement, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    assert original in text
+    path.write_text(text.replace(original, replacement, 1))
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "diagnostic"),
+    [
+        (
+            "- run: bun install --cwd e2e --frozen-lockfile",
+            "- name: Install browser graph\n        run: bun install --cwd e2e",
+            "frozen Bun install",
+        ),
+        (
+            "- run: bun install --cwd e2e --frozen-lockfile",
+            "- name: Install browser graph\n        run: |\n          bun install --cwd e2e",
+            "frozen Bun install",
+        ),
+    ],
+)
+def test_named_and_multiline_mutable_installs_fail(tmp_path, original, replacement, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    assert original in text
+    path.write_text(text.replace(original, replacement, 1))
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
+@pytest.mark.parametrize(
+    ("job_name", "consumer", "diagnostic"),
+    [
+        ("lint-and-typecheck", "bun run lint:e2e", "lint-and-typecheck.*without a frozen e2e install"),
+        ("test-python", "cd apps/agent && uv run pytest tests/ -q", "test-python.*without a frozen e2e install"),
+    ],
+)
+def test_each_consumer_job_requires_its_own_e2e_install(tmp_path, job_name, consumer, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    job_start = text.index(f"  {job_name}:")
+    consumer_at = text.index(consumer, job_start)
+    install = "      - run: bun install --cwd e2e --frozen-lockfile\n"
+    install_at = text.rfind(install, job_start, consumer_at)
+    assert install_at >= job_start
+    path.write_text(text[:install_at] + text[install_at + len(install) :])
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
+@pytest.mark.parametrize(
+    ("consumer", "diagnostic"),
+    [
+        ("      - run: bun run lint:e2e\n", "lint:e2e consumer corpus is empty"),
+        (
+            "      - run: cd apps/agent && uv run pytest tests/ -q\n",
+            "Python dependency report tests consumer corpus is empty",
+        ),
+    ],
+)
+def test_consumer_walks_require_a_nonempty_floor(tmp_path, consumer, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    assert consumer in text
+    path.write_text(text.replace(consumer, "", 1))
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
+def test_workflow_requires_jobs_and_job_steps(tmp_path):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    path.write_text("name: CI\njobs: {}\n")
+    with pytest.raises(ValueError, match="job corpus is empty"):
+        validate_ci_toolchain(root, _report(root))
+
+    path.write_text("name: CI\njobs:\n  empty:\n    runs-on: ubuntu-latest\n    steps: []\n")
+    with pytest.raises(ValueError, match="job has no steps: empty"):
+        validate_ci_toolchain(root, _report(root))

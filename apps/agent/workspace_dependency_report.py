@@ -141,8 +141,8 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
     baseline = report.get("mobile_baseline")
     if not isinstance(baseline, dict):
         raise ValueError("mobile baseline is missing")
-    if report.get("schema_version") != 2:
-        raise ValueError("mobile baseline requires schema_version 2")
+    if report.get("schema_version") != 3:
+        raise ValueError("complete dependency inventory requires schema_version 3")
 
     mobile = {name: row for (project, _, name), row in rows.items() if project == "apps/mobile"}
     for field, package in (("expo", "expo"), ("react_native", "react-native")):
@@ -315,5 +315,3 @@ def validate_workspace_report(root: Path, report: dict, installed: dict[tuple[st
         ):
             raise ValueError(f"apps/web React hold requires producer: {name}")
     _validate_mobile_baseline(root, report, actual)
-    if "story 210" not in report.get("exclusions", {}).get("e2e", ""):
-        raise ValueError("e2e exclusion must name story 210")

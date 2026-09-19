@@ -166,7 +166,7 @@ def test_mobile_baseline_block_is_required(tmp_path):
         _validate(root, report)
 
 
-def test_mobile_holds_and_e2e_exclusions_are_required(tmp_path):
+def test_mobile_holds_are_required(tmp_path):
     root = _copy_scope(tmp_path)
     report = _validate(root)
     held = next(
@@ -176,9 +176,4 @@ def test_mobile_holds_and_e2e_exclusions_are_required(tmp_path):
     )
     held["held_by"] = None
     with pytest.raises(ValueError, match=r"mobile hold requires producer.*"):
-        _validate(root, report)
-
-    report = _report(root)
-    report["exclusions"].pop("e2e")
-    with pytest.raises(ValueError, match=r"e2e.*story 210"):
         _validate(root, report)

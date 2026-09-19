@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from ci_toolchain_validation import validate_ci_toolchain
 from dependency_report_render import render_markdown
+from e2e_dependency_report import probe_installed as probe_e2e_installed
+from e2e_dependency_report import validate_e2e_report
 from workspace_dependency_report import probe_installed as probe_workspace_installed
 from workspace_dependency_report import validate_workspace_report
 
@@ -245,7 +248,7 @@ def validate_markdown(root: Path, report: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
-    parser.add_argument("--scope", choices=("python", "workspace"), required=True)
+    parser.add_argument("--scope", choices=("python", "workspace", "e2e", "all"), required=True)
     parser.add_argument("--environment", action="append", default=[], metavar="PROJECT=PATH")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
@@ -261,8 +264,12 @@ def main() -> int:
     report = json.loads(report_path.read_text())
     snapshots = probe_scope(root, mappings or None)
     validate_report(root=root, report=report, snapshots=snapshots)
-    if args.scope == "workspace":
+    if args.scope in {"workspace", "all"}:
         validate_workspace_report(root, report, probe_workspace_installed(root, report))
+    if args.scope in {"e2e", "all"}:
+        validate_e2e_report(root, report, probe_e2e_installed(root, report))
+    if args.scope == "all":
+        validate_ci_toolchain(root, report)
     validate_markdown(root, report)
     print(f"{args.scope.capitalize()} dependency upgrade report is valid.")
     return 0

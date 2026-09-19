@@ -119,6 +119,28 @@ Release age policy: 604800 seconds.
 | packages/shared | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 
+## Independent browser toolchain
+
+| Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
+|---|---|---|---|---|---|---|
+| devDependencies | @axe-core/playwright | `^4.13.0` | 4.13.0 / 4.13.0 | 4.13.0 | 4.13.0 | Current |
+| devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
+| devDependencies | @playwright/test | `^1.63.0` | 1.63.0 / 1.63.0 | 1.63.0 | 1.63.0 | Current |
+| devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| devDependencies | @types/pg | `^8.23.1` | 8.23.1 / 8.23.1 | 8.23.1 | 8.23.1 | Current |
+| devDependencies | eslint | `^10.11.0` | 10.11.0 / 10.11.0 | 10.11.0 | 10.11.0 | Current |
+| devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
+| devDependencies | lighthouse | `^13.5.0` | 13.5.0 / 13.5.0 | 13.5.0 | 13.5.0 | Current |
+| devDependencies | pg | `^8.23.0` | 8.23.0 / 8.23.0 | 8.23.0 | 8.23.0 | Current |
+| devDependencies | playwright-lighthouse | `^4.0.0` | 4.0.0 / 4.0.0 | 4.0.0 | 4.0.0 | Current |
+| devDependencies | typescript | `^6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | typescript-eslint 8.70.0 declares TypeScript >=4.8.4 <6.1.0; 7.0.2 is outside that peer range. |
+| devDependencies | typescript-eslint | `^8.70.0` | 8.70.0 / 8.70.0 | 8.70.0 | 8.70.0 | Current |
+
+| Release-age exception | Published | Command | Evidence |
+|---|---|---|---|
+| eslint@10.11.0 | 2026-09-18T20:15:36.485Z | `bun add --cwd e2e --dev --minimum-release-age=0 eslint@^10.11.0` | ESLint 10.11.0 passes the e2e TypeScript and ESLint lane with @eslint/js 10.0.1 and typescript-eslint 8.70.0. |
+| lighthouse@13.5.0 | 2026-09-18T14:13:55.261Z | `bun add --cwd e2e --dev --minimum-release-age=0 lighthouse@^13.5.0` | Lighthouse 13.5.0 satisfies playwright-lighthouse 4.0.0's >=10 peer range and passes the production audit thresholds. |
+
 ### Mobile SDK 57 baseline
 
 - Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
@@ -160,6 +182,9 @@ Compatibility exceptions:
 |---|---|---|
 | dnssd-advertise | `1.1.4` | Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4. |
 
-E2E exclusion: Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort.
+### Infrastructure holds
 
-The committed `uv.lock` and root `bun.lock` files are the exact transitive dependency records.
+- `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
+- `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
+
+The committed agent/scripts `uv.lock` files and root/e2e `bun.lock` files are the exact transitive dependency records.

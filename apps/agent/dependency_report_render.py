@@ -45,6 +45,30 @@ def render_markdown(report: dict) -> str:
         lines.append(
             f"| {row['project']} | {row['group']} | {row['name']} | `{row['requested']}` | {row['locked']} / {row['installed']} | {row['candidate']} | {row['registry_latest']} | {decision} |"
         )
+    lines.extend(
+        [
+            "",
+            "## Independent browser toolchain",
+            "",
+            "| Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |",
+            "|---|---|---|---|---|---|---|",
+        ]
+    )
+    for row in report["e2e_dependencies"]:
+        lines.append(
+            f"| {row['group']} | {row['name']} | `{row['requested']}` | {row['locked']} / {row['installed']} | {row['candidate']} | {row['registry_latest']} | {row.get('reason') or 'Current'} |"
+        )
+    lines.extend(
+        [
+            "",
+            "| Release-age exception | Published | Command | Evidence |",
+            "|---|---|---|---|",
+        ]
+    )
+    for exception in report["e2e_release_age_exceptions"]:
+        lines.append(
+            f"| {exception['name']}@{exception['version']} | {exception['published_at']} | `{exception['command']}` | {exception['evidence']} |"
+        )
     mobile = report["mobile_baseline"]
     minimums = mobile["platform_minimums"]
     lines.extend(
@@ -120,12 +144,17 @@ def render_markdown(report: dict) -> str:
         )
         for row in overrides:
             lines.append(f"| {row['name']} | `{row['requested']}` | {row['reason']} |")
+    lines.extend(["", "### Infrastructure holds", ""])
+    for hold in report["infrastructure_holds"]:
+        lines.append(f"- `{hold['reference']}` ({hold['name']}): {hold['status']}. {hold['reason']}")
+    if report.get("validation_outcomes"):
+        lines.extend(["", "## Validation outcomes", "", "| Lane | Outcome | Evidence |", "|---|---|---|"])
+        for outcome in report["validation_outcomes"]:
+            lines.append(f"| {outcome['lane']} | {outcome['status']} | {outcome['evidence']} |")
     lines.extend(
         [
             "",
-            f"E2E exclusion: {report['exclusions']['e2e']}",
-            "",
-            "The committed `uv.lock` and root `bun.lock` files are the exact transitive dependency records.",
+            "The committed agent/scripts `uv.lock` files and root/e2e `bun.lock` files are the exact transitive dependency records.",
             "",
         ]
     )
