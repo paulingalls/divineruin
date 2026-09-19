@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from dependency_upgrade_report import validate_outcomes
+from dependency_upgrade_report import validate_infrastructure_holds, validate_outcomes
 from e2e_dependency_report import probe_installed, validate_e2e_report
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -129,3 +129,30 @@ def test_platform_and_real_llm_statuses_reject_unverified_success(lane, status, 
     row["status"] = status
     with pytest.raises(ValueError, match=diagnostic):
         validate_outcomes(report)
+
+
+def test_recorded_infrastructure_holds_are_the_running_images():
+    validate_infrastructure_holds(ROOT, _report(ROOT))
+
+
+def test_missing_compose_file_fails(tmp_path):
+    with pytest.raises(ValueError, match="missing compose file"):
+        validate_infrastructure_holds(tmp_path, _report(ROOT))
+
+
+@pytest.mark.parametrize(
+    ("mutate", "diagnostic"),
+    [
+        (lambda report: report["infrastructure_holds"].clear(), "infrastructure hold corpus is empty"),
+        (lambda report: report["infrastructure_holds"][0].update(reason=""), "infrastructure hold reason is empty"),
+        (
+            lambda report: report["infrastructure_holds"][0].update(reference="postgres:18-alpine"),
+            "not a running image",
+        ),
+    ],
+)
+def test_stale_or_incomplete_infrastructure_holds_fail(mutate, diagnostic):
+    report = _report(ROOT)
+    mutate(report)
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_infrastructure_holds(ROOT, report)

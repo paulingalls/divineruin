@@ -150,6 +150,32 @@ def test_consumer_walks_require_a_nonempty_floor(tmp_path, consumer, diagnostic)
         validate_ci_toolchain(root, _report(root))
 
 
+@pytest.mark.parametrize(
+    ("original", "replacement", "diagnostic"),
+    [
+        (
+            "      - run: bun run lint:e2e\n",
+            '      - run: echo "bun run lint:e2e"\n',
+            "lint:e2e consumer corpus is empty",
+        ),
+        (
+            "      - run: cd apps/agent && uv run pytest tests/ -q\n",
+            '      - run: echo "uv run pytest tests/ -q"\n',
+            "Python dependency report tests consumer corpus is empty",
+        ),
+    ],
+)
+def test_echoed_consumers_do_not_fill_their_floor(tmp_path, original, replacement, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    assert original in text
+    path.write_text(text.replace(original, replacement, 1))
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
 def test_workflow_requires_jobs_and_job_steps(tmp_path):
     root = _copy_scope(tmp_path)
     path = root / ".github/workflows/ci.yml"

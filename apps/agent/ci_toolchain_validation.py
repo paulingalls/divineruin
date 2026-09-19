@@ -98,14 +98,23 @@ def _is_frozen_uv_sync(command: str, project: str) -> bool:
     return tokens is not None and "--frozen" in tokens and _flag_value(tokens, "--project") == project
 
 
+# Consumers are matched on argv for the same reason installs are: matching the
+# text of a run block accepts `echo "bun run lint:e2e"` as the lane itself, so a
+# deleted consumer keeps its corpus non-empty and the floor certifies nothing.
 def _runs_playwright(command: str) -> bool:
     return shlex.split(command)[:2] == ["bunx", "playwright"]
 
 
+def _runs_lint_e2e(command: str) -> bool:
+    tokens = shlex.split(command)
+    return tokens[:1] == ["bun"] and "lint:e2e" in tokens
+
+
 def _runs_python_report_tests(command: str) -> bool:
-    return bool(re.search(r"\bpytest\b", command)) and (
-        "dependency_upgrade" in command or bool(re.search(r"(?:^|\s)tests/(?:\s|$)", command))
-    )
+    tokens = shlex.split(command)
+    if tokens[:1] != ["pytest"] and not (tokens[:2] == ["uv", "run"] and "pytest" in tokens):
+        return False
+    return any(t == "tests" or t.startswith("tests/") or "dependency_upgrade" in t for t in tokens)
 
 
 def validate_ci_toolchain(root: Path, report: dict) -> None:
@@ -153,7 +162,7 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
 
     consumers = (
         ("e2e environment tests", lambda c: shlex.split(c) == ["bun", "test", "e2e/require-environment.test.ts"]),
-        ("lint:e2e", lambda c: "bun run lint:e2e" in c),
+        ("lint:e2e", _runs_lint_e2e),
         ("Playwright", _runs_playwright),
         ("Python dependency report tests", _runs_python_report_tests),
     )

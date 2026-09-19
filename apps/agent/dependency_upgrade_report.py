@@ -273,6 +273,28 @@ def validate_markdown(root: Path, report: dict) -> None:
         raise ValueError("rendered documentation mismatch: docs/dependency_upgrade.md")
 
 
+IMAGE_RE = re.compile(r"^\s*image:\s*(\S+)", re.MULTILINE)
+
+
+def validate_infrastructure_holds(root: Path, report: dict) -> None:
+    """A hold is a claim about a running container, so it is checked against the compose file."""
+    holds = report.get("infrastructure_holds")
+    if not isinstance(holds, list) or not holds:
+        raise ValueError("infrastructure hold corpus is empty")
+    compose = root / "docker-compose.yml"
+    if not compose.is_file():
+        raise ValueError("missing compose file: docker-compose.yml")
+    images = set(IMAGE_RE.findall(compose.read_text()))
+    if not images:
+        raise ValueError("docker-compose image corpus is empty")
+    for hold in holds:
+        for field in ("name", "reference", "status", "reason"):
+            if not hold.get(field):
+                raise ValueError(f"infrastructure hold {field} is empty: {hold.get('name', '')}")
+        if hold["reference"] not in images:
+            raise ValueError(f"infrastructure hold is not a running image: {hold['reference']}")
+
+
 def validate_outcomes(report: dict) -> None:
     rows = report.get("validation_outcomes")
     if not isinstance(rows, list) or not rows:
@@ -326,6 +348,7 @@ def main() -> int:
         validate_e2e_report(root, report, probe_e2e_installed(root, report))
     if args.scope == "all":
         validate_ci_toolchain(root, report)
+        validate_infrastructure_holds(root, report)
         validate_outcomes(report)
     validate_markdown(root, report)
     print(f"Dependency upgrade report is valid ({args.scope}).")
