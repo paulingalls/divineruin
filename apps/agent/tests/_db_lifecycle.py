@@ -50,13 +50,14 @@ from urllib.parse import unquote, urlparse
 
 # apps/agent/tests/_db_lifecycle.py -> repo root is three parents up.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_COMPOSE_FILE = _REPO_ROOT / "docker-compose.yml"
+_OWNER_HELPER = _REPO_ROOT / "scripts" / "worktree-common.sh"
 
 # Last resort ONLY: this names the PRIMARY checkout's stack, so a worktree
 # reaching it is a bug (see resolve_database_url).
 _DEFAULT_DATABASE_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin"
 
 _READY_TIMEOUT_SECONDS = 60
+_OWNERSHIP_REFUSAL_EXIT = 78
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -121,13 +122,67 @@ def is_reachable(host: str, port: int, timeout: float = 1.0) -> bool:
         return False
 
 
-def _compose(*args: str) -> subprocess.CompletedProcess[str]:
-    """Run `docker compose -f <repo>/docker-compose.yml <args>`."""
-    return subprocess.run(
-        ["docker", "compose", "-f", str(_COMPOSE_FILE), *args],
+def _is_ci_service_mode() -> bool:
+    return os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("DIVINERUIN_CI_SERVICE_DB") == "1"
+
+
+def _authority_env() -> dict[str, str]:
+    """Child environment for an ownership call, with the caller's DSNs stripped.
+
+    The DSN under authorization is the one ensure_db_up/stop_if_started pinned at
+    session start and already submitted through `_authorize_runtime`. By session
+    END os.environ no longer holds it — the acceptance bdd fixture reassigns
+    DATABASE_URL to its testcontainer and never restores it — so leaving the
+    ambient value in place makes the shared authority refuse this checkout's own
+    teardown.
+    """
+    child_env = os.environ.copy()
+    child_env.pop("DATABASE_URL", None)
+    child_env.pop("REDIS_URL", None)
+    return child_env
+
+
+def _authorize(intent: str) -> None:
+    result = subprocess.run(
+        ["bash", str(_OWNER_HELPER), "authorize", intent],
         capture_output=True,
         text=True,
         check=False,
+        cwd=_REPO_ROOT,
+        env=_authority_env(),
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"ownership check failed ({result.returncode})")
+
+
+def _authorize_runtime(database_url: str, redis_url: str | None) -> None:
+    result = subprocess.run(
+        ["bash", str(_OWNER_HELPER), "authorize-runtime", database_url, redis_url or ""],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=_REPO_ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"runtime ownership check failed ({result.returncode})")
+
+
+def _compose(*args: str) -> subprocess.CompletedProcess[str]:
+    intent = (
+        "create"
+        if args[:1] == ("up",)
+        else "destroy"
+        if args[:1] in (("down",), ("stop",))
+        else "connect"
+        if args[:1] == ("exec",)
+        else "reuse"
+    )
+    return subprocess.run(
+        ["bash", str(_OWNER_HELPER), "compose", intent, *args],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=_authority_env(),
     )
 
 
@@ -191,7 +246,10 @@ def is_accepting_queries(user: str) -> bool:
     rejects queries with 'the database system is starting up'. pg_isready inside
     the container reports actual query-readiness, closing that race.
     """
-    return _compose("exec", "-T", "postgres", "pg_isready", "-U", user).returncode == 0
+    result = _compose("exec", "-T", "postgres", "pg_isready", "-U", user)
+    if result.returncode == _OWNERSHIP_REFUSAL_EXIT:
+        raise RuntimeError(result.stderr.strip() or "ownership check failed during Postgres readiness")
+    return result.returncode == 0
 
 
 def _start_compose(host: str, port: int, user: str) -> None:
@@ -205,8 +263,8 @@ def _start_compose(host: str, port: int, user: str) -> None:
     auto-names `<project>-postgres-1` per project and restarts a stopped
     container of the same project, so the old "container name already in use"
     class cannot arise. The real post-fold failure is a host-port BIND conflict
-    (two checkouts' offsets collide) — genuinely fatal; the compose error names
-    the port, and WT_PORT_OFFSET can force a distinct offset.
+    (two checkouts' offsets collide) — genuinely fatal; the ownership helper
+    refuses before compose runs and names the occupied port.
     """
     print(f"\n[db-lifecycle] Postgres not reachable at {host}:{port} — starting docker compose...")
     result = _compose("up", "-d", "--remove-orphans")
@@ -242,11 +300,18 @@ def ensure_db_up(database_url: str | None = None) -> bool:
     database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
+    ci_mode = _is_ci_service_mode()
+    if ci_mode:
+        _authorize("ci")
+    else:
+        _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     lock_path, state_path = _lockfile_paths(host, port)
 
     with _locked(lock_path):
         state = _read_state(state_path)
         if is_reachable(host, port):
+            if not ci_mode:
+                _authorize("connect")
             # Reachable while holding the lock -> nobody else can be
             # mid-startup right now, so this call did not start it.
             state["count"] += 1
@@ -256,6 +321,8 @@ def ensure_db_up(database_url: str | None = None) -> bool:
         # Unreachable: any refcount on disk is stale (e.g. a prior run was
         # SIGKILLed before it could tear down) since the DB is actually down
         # right now. Rebuild from zero rather than trust it.
+        if ci_mode:
+            raise RuntimeError(f"CI service Postgres is not reachable at {host}:{port}; Compose mutation is disabled")
         state = {"count": 0, "harness_started": True}
         _start_compose(host, port, user)
         state["count"] += 1
@@ -281,6 +348,11 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     decrement a state file the dev DB's count never went into.
     """
     database_url = database_url or resolve_database_url()
+    if _is_ci_service_mode():
+        if started:
+            raise RuntimeError("CI service mode cannot stop Compose resources")
+        return
+    _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)
 
@@ -288,6 +360,7 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
         if not state_path.exists():
             if started:
                 print("[db-lifecycle] Tearing down docker compose services this run started...")
+                _authorize("destroy")
                 _compose("down")
             return
 
@@ -295,6 +368,7 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
         state["count"] = max(0, state["count"] - 1)
         if state["count"] == 0 and state.get("harness_started"):
             print("[db-lifecycle] Tearing down docker compose services this run started...")
+            _authorize("destroy")
             _compose("down")
             state = {"count": 0, "harness_started": False}
         _write_state(state_path, state)

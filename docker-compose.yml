@@ -1,6 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
+    labels:
+      com.divineruin.clone: ${DR_CLONE_ID:?run through scripts/worktree-common.sh}
+      com.divineruin.checkout: ${DR_CHECKOUT_ID:?run through scripts/worktree-common.sh}
     # No container_name: compose namespaces containers by COMPOSE_PROJECT_NAME
     # (= checkout basename) so parallel git worktrees don't collide on the name.
     # Host port is offset per worktree (POSTGRES_HOST_PORT, derived in
@@ -21,6 +24,9 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
+    labels:
+      com.divineruin.clone: ${DR_CLONE_ID:?run through scripts/worktree-common.sh}
+      com.divineruin.checkout: ${DR_CHECKOUT_ID:?run through scripts/worktree-common.sh}
     # No container_name (see postgres). Host port offset per worktree
     # (VALKEY_HOST_PORT, scripts/worktree-common.sh); primary defaults to 56379.
     ports:
@@ -33,3 +39,12 @@ services:
 
 volumes:
   pgdata:
+    labels:
+      com.divineruin.clone: ${DR_CLONE_ID:?run through scripts/worktree-common.sh}
+      com.divineruin.checkout: ${DR_CHECKOUT_ID:?run through scripts/worktree-common.sh}
+
+networks:
+  default:
+    labels:
+      com.divineruin.clone: ${DR_CLONE_ID:?run through scripts/worktree-common.sh}
+      com.divineruin.checkout: ${DR_CHECKOUT_ID:?run through scripts/worktree-common.sh}
