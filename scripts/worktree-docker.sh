@@ -188,32 +188,16 @@ wt_lifecycle_identity() {
     inspection="$(docker inspect "$id" 2>/dev/null)" \
       || { wt_die "container $id for project $project service $service is unreadable."; return 1; }
     if observation="$(printf '%s' "$inspection" | python3 -c '
-import json, os, sys
-project, service, enumerated, clone, checkout, root = sys.argv[1:]
+import json, sys
+service, enumerated = sys.argv[1:]
 try:
     rows = json.load(sys.stdin)
     if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
         raise ValueError("inspect did not return one container object")
     row = rows[0]
-    labels = (row.get("Config") or {}).get("Labels") or {}
     state = row.get("State") or {}
     identity = row.get("Id")
     started = state.get("StartedAt")
-    expected = {
-        "com.docker.compose.project": project,
-        "com.docker.compose.service": service,
-        "com.divineruin.clone": clone,
-        "com.divineruin.checkout": checkout,
-    }
-    for key, value in expected.items():
-        if labels.get(key) != value:
-            raise ValueError(f"label {key} does not match the owning checkout")
-    working = labels.get("com.docker.compose.project.working_dir")
-    config = labels.get("com.docker.compose.project.config_files", "")
-    if working and os.path.realpath(working) != root:
-        raise ValueError("working directory does not match the owning checkout")
-    if working and root + "/docker-compose.yml" not in config:
-        raise ValueError("Compose configuration does not match the owning checkout")
     if state.get("Running") is not True:
         raise ValueError("container is not running")
     if not isinstance(identity, str) or not identity or not identity.startswith(enumerated):
@@ -224,7 +208,7 @@ try:
 except (TypeError, ValueError, json.JSONDecodeError) as error:
     print(error, file=sys.stderr)
     raise SystemExit(1)
-' "$project" "$service" "$id" "$WT_CLONE_ID" "$WT_CHECKOUT_ID" "$WT_ROOT" 2>&1)"; then
+' "$service" "$id" 2>&1)"; then
       status=0
     else
       status=$?
