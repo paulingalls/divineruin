@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "scope": "python-and-workspace",
-  "registry_snapshot_date": "2026-09-18",
+  "registry_snapshot_date": "2026-09-19",
   "python_version": "3.14.7",
   "uv_version": "0.10.6",
   "projects": [
@@ -345,8 +345,8 @@
       "installed": "15.0.2",
       "candidate": "15.0.2",
       "registry_latest": "15.0.2",
-      "held_by": "story 207/208",
-      "reason": "Config plugin 15 is the first release whose installed peer contract accepts Expo 56."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -357,8 +357,8 @@
       "installed": "workspace:packages/design-tokens",
       "candidate": "workspace:packages/design-tokens",
       "registry_latest": "workspace:packages/design-tokens",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -369,8 +369,8 @@
       "installed": "workspace:packages/shared",
       "candidate": "workspace:packages/shared",
       "registry_latest": "workspace:packages/shared",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -381,8 +381,8 @@
       "installed": "0.4.1",
       "candidate": "0.4.1",
       "registry_latest": "0.4.1",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -393,8 +393,8 @@
       "installed": "0.4.2",
       "candidate": "0.4.2",
       "registry_latest": "0.4.2",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -405,8 +405,8 @@
       "installed": "0.4.1",
       "candidate": "0.4.1",
       "registry_latest": "0.4.1",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -417,32 +417,32 @@
       "installed": "15.1.1",
       "candidate": "15.1.1",
       "registry_latest": "15.1.1",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/components-core",
-      "requested": "^0.12.13",
-      "locked": "0.12.13",
-      "installed": "0.12.13",
-      "candidate": "0.12.13",
+      "requested": "^0.12.15",
+      "locked": "0.12.15",
+      "installed": "0.12.15",
+      "candidate": "0.12.15",
       "registry_latest": "0.12.15",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/components-react",
-      "requested": "^2.9.20",
-      "locked": "2.9.20",
-      "installed": "2.9.20",
-      "candidate": "2.9.20",
+      "requested": "^2.9.24",
+      "locked": "2.9.24",
+      "installed": "2.9.24",
+      "candidate": "2.9.24",
       "registry_latest": "2.9.24",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -453,8 +453,8 @@
       "installed": "2.12.0",
       "candidate": "2.12.0",
       "registry_latest": "3.0.0",
-      "held_by": "story 207/208",
-      "reason": "The seven-day policy selects LiveKit React Native 2.12.0; its installed peers require WebRTC ^144.1.2 and livekit-client ^2.19.0."
+      "held_by": "@livekit/react-native-expo-plugin@1.0.2",
+      "reason": "The Expo plugin declares @livekit/react-native ^2.1.0; 2.12.0 is the newest compatible release and requires WebRTC ^144.1.2."
     },
     {
       "project": "apps/mobile",
@@ -465,20 +465,20 @@
       "installed": "1.0.2",
       "candidate": "1.0.2",
       "registry_latest": "1.0.2",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/react-native-webrtc",
-      "requested": "144.2.0",
-      "locked": "144.2.0",
-      "installed": "144.2.0",
-      "candidate": "144.2.0",
+      "requested": "144.1.2",
+      "locked": "144.1.2",
+      "installed": "144.1.2",
+      "candidate": "144.1.2",
       "registry_latest": "144.2.0",
-      "held_by": "story 207/208",
-      "reason": "LiveKit React Native 2.12 accepts this single installed WebRTC resolution."
+      "held_by": "@livekit/react-native@2.12.0",
+      "reason": "LiveKit React Native 2.12.0 declares WebRTC ^144.1.2; 144.1.2 retains the WebRTC-SDK framework required by that release."
     },
     {
       "project": "apps/mobile",
@@ -489,8 +489,8 @@
       "installed": "2.2.0",
       "candidate": "2.2.0",
       "registry_latest": "3.1.1",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects @react-native-async-storage/async-storage 2.2.0."
     },
     {
       "project": "apps/mobile",
@@ -501,104 +501,80 @@
       "installed": "5.2.0",
       "candidate": "5.2.0",
       "registry_latest": "5.2.1",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects @react-native-community/slider 5.2.0."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo",
-      "requested": "56.0.22",
-      "locked": "56.0.22",
-      "installed": "56.0.22",
-      "candidate": "56.0.22",
+      "requested": "57.0.24",
+      "locked": "57.0.24",
+      "installed": "57.0.24",
+      "candidate": "57.0.24",
       "registry_latest": "57.0.24",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo@~56.0.22 on 2026-09-18; expo@56.0.22 was published 2026-09-17T22:09:28.356Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-asset",
-      "requested": "56.0.24",
-      "locked": "56.0.24",
-      "installed": "56.0.24",
-      "candidate": "56.0.24",
+      "requested": "57.0.18",
+      "locked": "57.0.18",
+      "installed": "57.0.18",
+      "candidate": "57.0.18",
       "registry_latest": "57.0.18",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-audio",
-      "requested": "56.0.13",
-      "locked": "56.0.13",
-      "installed": "56.0.13",
-      "candidate": "56.0.13",
+      "requested": "57.0.5",
+      "locked": "57.0.5",
+      "installed": "57.0.5",
+      "candidate": "57.0.5",
       "registry_latest": "57.0.5",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
-    },
-    {
-      "project": "apps/mobile",
-      "group": "dependencies",
-      "name": "expo-build-properties",
-      "requested": "56.0.27",
-      "locked": "56.0.27",
-      "installed": "56.0.27",
-      "candidate": "56.0.27",
-      "registry_latest": "57.0.21",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 uses this config plugin to opt out of the documented Hermes V1 memory regression. Legacy Hermes requires React Native source builds on iOS and Android; story 208 owns removal with SDK 57."
-    },
-    {
-      "project": "apps/mobile",
-      "group": "dependencies",
-      "name": "expo-constants",
-      "requested": "56.0.26",
-      "locked": "56.0.26",
-      "installed": "56.0.26",
-      "candidate": "56.0.26",
-      "registry_latest": "57.0.19",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo-constants@~56.0.26 on 2026-09-18; expo-constants@56.0.26 was published 2026-09-17T22:10:15.391Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-crypto",
-      "requested": "56.0.5",
-      "locked": "56.0.5",
-      "installed": "56.0.5",
-      "candidate": "56.0.5",
+      "requested": "57.0.3",
+      "locked": "57.0.3",
+      "installed": "57.0.3",
+      "candidate": "57.0.3",
       "registry_latest": "57.0.3",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-dev-client",
-      "requested": "56.0.27",
-      "locked": "56.0.27",
-      "installed": "56.0.27",
-      "candidate": "56.0.27",
+      "requested": "57.0.19",
+      "locked": "57.0.19",
+      "installed": "57.0.19",
+      "candidate": "57.0.19",
       "registry_latest": "57.0.19",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo-dev-client@~56.0.27 on 2026-09-18; expo-dev-client@56.0.27 was published 2026-09-17T22:09:38.863Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-device",
-      "requested": "56.0.4",
-      "locked": "56.0.4",
-      "installed": "56.0.4",
-      "candidate": "56.0.4",
+      "requested": "57.0.2",
+      "locked": "57.0.2",
+      "installed": "57.0.2",
+      "candidate": "57.0.2",
       "registry_latest": "57.0.2",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -609,176 +585,176 @@
       "installed": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
       "candidate": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
       "registry_latest": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-font",
-      "requested": "56.0.7",
-      "locked": "56.0.7",
-      "installed": "56.0.7",
-      "candidate": "56.0.7",
+      "requested": "57.0.4",
+      "locked": "57.0.4",
+      "installed": "57.0.4",
+      "candidate": "57.0.4",
       "registry_latest": "57.0.4",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-glass-effect",
-      "requested": "56.0.4",
-      "locked": "56.0.4",
-      "installed": "56.0.4",
-      "candidate": "56.0.4",
+      "requested": "57.0.3",
+      "locked": "57.0.3",
+      "installed": "57.0.3",
+      "candidate": "57.0.3",
       "registry_latest": "57.0.3",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-haptics",
-      "requested": "56.0.3",
-      "locked": "56.0.3",
-      "installed": "56.0.3",
-      "candidate": "56.0.3",
+      "requested": "57.0.3",
+      "locked": "57.0.3",
+      "installed": "57.0.3",
+      "candidate": "57.0.3",
       "registry_latest": "57.0.3",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-image",
-      "requested": "56.0.13",
-      "locked": "56.0.13",
-      "installed": "56.0.13",
-      "candidate": "56.0.13",
+      "requested": "57.0.5",
+      "locked": "57.0.5",
+      "installed": "57.0.5",
+      "candidate": "57.0.5",
       "registry_latest": "57.0.5",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo-image@~56.0.13 on 2026-09-18; expo-image@56.0.13 was published 2026-09-17T22:11:43.001Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-linear-gradient",
-      "requested": "56.0.4",
-      "locked": "56.0.4",
-      "installed": "56.0.4",
-      "candidate": "56.0.4",
+      "requested": "57.0.2",
+      "locked": "57.0.2",
+      "installed": "57.0.2",
+      "candidate": "57.0.2",
       "registry_latest": "57.0.2",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-linking",
-      "requested": "56.0.18",
-      "locked": "56.0.18",
-      "installed": "56.0.18",
-      "candidate": "56.0.18",
+      "requested": "57.0.10",
+      "locked": "57.0.10",
+      "installed": "57.0.10",
+      "candidate": "57.0.10",
       "registry_latest": "57.0.10",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo-linking@~56.0.18 on 2026-09-18; expo-linking@56.0.18 was published 2026-09-17T22:08:50.571Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-notifications",
-      "requested": "56.0.25",
-      "locked": "56.0.25",
-      "installed": "56.0.25",
-      "candidate": "56.0.25",
+      "requested": "57.0.20",
+      "locked": "57.0.20",
+      "installed": "57.0.20",
+      "candidate": "57.0.20",
       "registry_latest": "57.0.20",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-router",
-      "requested": "56.2.21",
-      "locked": "56.2.21",
-      "installed": "56.2.21",
-      "candidate": "56.2.21",
+      "requested": "57.0.22",
+      "locked": "57.0.22",
+      "installed": "57.0.22",
+      "candidate": "57.0.22",
       "registry_latest": "57.0.22",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI required expo-router@~56.2.21 on 2026-09-18; expo-router@56.2.21 was published 2026-09-17T22:09:04.327Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-secure-store",
-      "requested": "56.0.4",
-      "locked": "56.0.4",
-      "installed": "56.0.4",
-      "candidate": "56.0.4",
+      "requested": "57.0.4",
+      "locked": "57.0.4",
+      "installed": "57.0.4",
+      "candidate": "57.0.4",
       "registry_latest": "57.0.4",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-splash-screen",
-      "requested": "56.0.15",
-      "locked": "56.0.15",
-      "installed": "56.0.15",
-      "candidate": "56.0.15",
+      "requested": "57.0.9",
+      "locked": "57.0.9",
+      "installed": "57.0.9",
+      "candidate": "57.0.9",
       "registry_latest": "57.0.9",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-status-bar",
-      "requested": "56.0.4",
-      "locked": "56.0.4",
-      "installed": "56.0.4",
-      "candidate": "56.0.4",
+      "requested": "57.0.1",
+      "locked": "57.0.1",
+      "installed": "57.0.1",
+      "candidate": "57.0.1",
       "registry_latest": "57.0.1",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-symbols",
-      "requested": "56.0.7",
-      "locked": "56.0.7",
-      "installed": "56.0.7",
-      "candidate": "56.0.7",
+      "requested": "57.0.3",
+      "locked": "57.0.3",
+      "installed": "57.0.3",
+      "candidate": "57.0.3",
       "registry_latest": "57.0.3",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-system-ui",
-      "requested": "56.0.5",
-      "locked": "56.0.5",
-      "installed": "56.0.5",
-      "candidate": "56.0.5",
+      "requested": "57.0.4",
+      "locked": "57.0.4",
+      "installed": "57.0.4",
+      "candidate": "57.0.4",
       "registry_latest": "57.0.4",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-web-browser",
-      "requested": "56.0.6",
-      "locked": "56.0.6",
-      "installed": "56.0.6",
-      "candidate": "56.0.6",
+      "requested": "57.0.3",
+      "locked": "57.0.3",
+      "installed": "57.0.3",
+      "candidate": "57.0.3",
       "registry_latest": "57.0.3",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -789,8 +765,8 @@
       "installed": "2.22.3",
       "candidate": "2.22.3",
       "registry_latest": "2.22.3",
-      "held_by": "story 207/208",
-      "reason": "LiveKit React Native 2.12 requires livekit-client ^2.19.0."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -801,8 +777,8 @@
       "installed": "19.2.6",
       "candidate": "19.2.6",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom."
+      "held_by": "react-native@0.86.3 and the shared web runtime",
+      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
     },
     {
       "project": "apps/mobile",
@@ -813,44 +789,44 @@
       "installed": "19.2.6",
       "candidate": "19.2.6",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom."
+      "held_by": "react-native@0.86.3 and the shared web runtime",
+      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native",
-      "requested": "0.85.3",
-      "locked": "0.85.3",
-      "installed": "0.85.3",
-      "candidate": "0.85.3",
+      "requested": "0.86.3",
+      "locked": "0.86.3",
+      "installed": "0.86.3",
+      "candidate": "0.86.3",
       "registry_latest": "0.87.1",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native 0.86.3."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-gesture-handler",
-      "requested": "2.31.1",
-      "locked": "2.31.1",
-      "installed": "2.31.1",
-      "candidate": "2.31.1",
+      "requested": "2.32.0",
+      "locked": "2.32.0",
+      "installed": "2.32.0",
+      "candidate": "2.32.0",
       "registry_latest": "3.3.0",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-gesture-handler 2.32.0."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-reanimated",
-      "requested": "4.3.1",
-      "locked": "4.3.1",
-      "installed": "4.3.1",
-      "candidate": "4.3.1",
+      "requested": "4.5.1",
+      "locked": "4.5.1",
+      "installed": "4.5.1",
+      "candidate": "4.5.1",
       "registry_latest": "4.7.0",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 requires this version. SDK 56 has a known Hermes V1 memory regression affecting Reanimated and Worklets, so the app uses the supported legacy Hermes opt-out; story 208 owns the SDK 57 resolution."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-reanimated 4.5.1."
     },
     {
       "project": "apps/mobile",
@@ -861,8 +837,8 @@
       "installed": "5.7.0",
       "candidate": "5.7.0",
       "registry_latest": "5.10.0",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-safe-area-context 5.7.0."
     },
     {
       "project": "apps/mobile",
@@ -873,20 +849,20 @@
       "installed": "4.26.0",
       "candidate": "4.26.0",
       "registry_latest": "4.28.0",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-screens 4.26.0."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-url-polyfill",
-      "requested": "^3.0.0",
-      "locked": "3.0.0",
-      "installed": "3.0.0",
-      "candidate": "3.0.0",
+      "requested": "4.0.0",
+      "locked": "4.0.0",
+      "installed": "4.0.0",
+      "candidate": "4.0.0",
       "registry_latest": "4.0.0",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -897,32 +873,32 @@
       "installed": "0.21.2",
       "candidate": "0.21.2",
       "registry_latest": "0.21.2",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-worklets",
-      "requested": "0.8.3",
-      "locked": "0.8.3",
-      "installed": "0.8.3",
-      "candidate": "0.8.3",
+      "requested": "0.10.1",
+      "locked": "0.10.1",
+      "installed": "0.10.1",
+      "candidate": "0.10.1",
       "registry_latest": "0.12.2",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 requires this version. SDK 56 has a known Hermes V1 memory regression affecting Reanimated and Worklets, so the app uses the supported legacy Hermes opt-out; story 208 owns the SDK 57 resolution."
+      "held_by": "expo@57.0.24",
+      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-worklets 0.10.1."
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "zustand",
-      "requested": "^5.0.12",
-      "locked": "5.0.12",
-      "installed": "5.0.12",
-      "candidate": "5.0.12",
+      "requested": "^5.0.15",
+      "locked": "5.0.15",
+      "installed": "5.0.15",
+      "candidate": "5.0.15",
       "registry_latest": "5.0.15",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": null,
+      "reason": null
     },
     {
       "project": "apps/mobile",
@@ -933,8 +909,8 @@
       "installed": "19.2.14",
       "candidate": "19.2.14",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
+      "held_by": "react@19.2.6 shared cohort",
+      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
     },
     {
       "project": "apps/mobile",
@@ -945,20 +921,8 @@
       "installed": "19.2.3",
       "candidate": "19.2.3",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "Expo-managed mobile dependency cohort is selected by stories 207/208."
-    },
-    {
-      "project": "apps/mobile",
-      "group": "devDependencies",
-      "name": "typescript",
-      "requested": "6.0.3",
-      "locked": "6.0.3",
-      "installed": "6.0.3",
-      "candidate": "6.0.3",
-      "registry_latest": "7.0.2",
-      "held_by": "story 207/208",
-      "reason": "Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort."
+      "held_by": "react@19.2.6 shared cohort",
+      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
     },
     {
       "project": "apps/mobile",
@@ -969,8 +933,20 @@
       "installed": "0.2.4",
       "candidate": "0.2.4",
       "registry_latest": "0.2.4",
-      "held_by": "story 207/208",
-      "reason": "Installed with `bun expo install expo-mcp --dev` for the Expo local MCP server. Run `bun expo whoami`, then `bun run start:mcp`; reconnect or restart the MCP client after the Expo server starts or stops."
+      "held_by": null,
+      "reason": null
+    },
+    {
+      "project": "apps/mobile",
+      "group": "devDependencies",
+      "name": "typescript",
+      "requested": "6.0.3",
+      "locked": "6.0.3",
+      "installed": "6.0.3",
+      "candidate": "6.0.3",
+      "registry_latest": "7.0.2",
+      "held_by": "expo@57.0.24",
+      "reason": "TypeScript 6.0.3 is the verified workspace compiler for the SDK 57 cohort."
     },
     {
       "project": "apps/server",
@@ -1077,8 +1053,8 @@
       "installed": "19.2.6",
       "candidate": "19.2.6",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom."
+      "held_by": "react-native@0.86.3 and the shared web runtime",
+      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
     },
     {
       "project": "apps/web",
@@ -1089,8 +1065,8 @@
       "installed": "19.2.6",
       "candidate": "19.2.6",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom."
+      "held_by": "react-native@0.86.3 and the shared web runtime",
+      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
     },
     {
       "project": "apps/web",
@@ -1113,8 +1089,8 @@
       "installed": "19.2.14",
       "candidate": "19.2.14",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "Web React and type versions stay aligned with the Expo cohort selected by stories 207/208."
+      "held_by": "react@19.2.6 shared cohort",
+      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
     },
     {
       "project": "apps/web",
@@ -1125,8 +1101,8 @@
       "installed": "19.2.3",
       "candidate": "19.2.3",
       "registry_latest": "19.3.0",
-      "held_by": "story 207/208",
-      "reason": "Web React and type versions stay aligned with the Expo cohort selected by stories 207/208."
+      "held_by": "react@19.2.6 shared cohort",
+      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
     },
     {
       "project": "packages/design-tokens",
@@ -1181,25 +1157,90 @@
     {
       "name": "dnssd-advertise",
       "requested": "1.1.4",
-      "reason": "Root resolution override retained unchanged."
-    },
-    {
-      "name": "expo-constants",
-      "requested": "56.0.26",
-      "reason": "Aligns expo-asset with the Expo SDK 56 CLI-selected direct native module version."
-    },
-    {
-      "name": "hermes-compiler",
-      "requested": "0.15.0",
-      "reason": "expo-build-properties requires this compiler for the supported SDK 56 legacy Hermes opt-out."
-    },
-    {
-      "name": "react-native-screens",
-      "requested": "4.26.0",
-      "reason": "Aligns Expo Router with the Expo SDK 56 CLI-selected direct native module version."
+      "reason": "Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4."
     }
   ],
   "exclusions": {
     "e2e": "Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort."
+  },
+  "mobile_baseline": {
+    "expo": "57.0.24",
+    "react_native": "0.86.3",
+    "engine": "Hermes V1 (SDK 57 default)",
+    "platform_minimums": {
+      "android": "7+",
+      "compile_sdk": 36,
+      "target_sdk": 36,
+      "ios": "16.4+",
+      "xcode": "26.4+"
+    },
+    "plugins": [
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc",
+      "expo-router",
+      "expo-splash-screen",
+      "expo-disable-pods-indexing",
+      "expo-audio",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-image"
+    ],
+    "git_sources": [
+      {
+        "name": "expo-disable-pods-indexing",
+        "requested": "github:paulingalls/expo-disable-pods-indexing",
+        "locked": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
+        "commit": "fdd8959"
+      }
+    ],
+    "patches": [],
+    "release_age_exceptions": [
+      {
+        "name": "expo",
+        "version": "57.0.24",
+        "published_at": "2026-09-18T08:07:12.211Z",
+        "command": "bun install --minimum-release-age=0",
+        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
+      },
+      {
+        "name": "expo-asset",
+        "version": "57.0.18",
+        "published_at": "2026-09-18T08:10:13.973Z",
+        "command": "bun install --minimum-release-age=0",
+        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
+      },
+      {
+        "name": "expo-notifications",
+        "version": "57.0.20",
+        "published_at": "2026-09-18T08:09:56.492Z",
+        "command": "bun install --minimum-release-age=0",
+        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
+      },
+      {
+        "name": "expo-router",
+        "version": "57.0.22",
+        "published_at": "2026-09-18T08:09:25.131Z",
+        "command": "bun install --minimum-release-age=0",
+        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
+      }
+    ],
+    "compatibility_exceptions": [],
+    "native_validation": {
+      "ios": {
+        "prebuild": "passed",
+        "build": "passed",
+        "install": "passed",
+        "launch_flow": "passed",
+        "auth_flow": "passed",
+        "simulator_udid": "DC457949-200B-479A-95FD-611E33210F12",
+        "runtime": "iOS 26.5 on story-208-sdk57"
+      },
+      "android": {
+        "prebuild": "passed",
+        "export": "passed",
+        "build": "missing: no Android device was attached, so no native Android build is claimed",
+        "device": "missing: adb devices returned no attached device"
+      }
+    }
   }
 }

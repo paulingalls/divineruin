@@ -7,6 +7,15 @@ appId: com.divineruin.app
 # scripts/maestro-acceptance.ts.
 - launchApp:
     clearState: true
+- openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Continue"
+    optional: true
+# Expo's first-run tutorial opens the developer menu after Continue.
+- swipe:
+    start: 50%,20%
+    end: 50%,90%
+    duration: 400
 - extendedWaitUntil:
     visible: "Listen to the dark"
     timeout: 15000

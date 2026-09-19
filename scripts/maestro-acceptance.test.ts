@@ -1,170 +1,192 @@
-// Tests for the Maestro REQUIRE_EMULATOR gate.
-//
-// The gate is a pure function `runGate({env, runSimctl, runAdb, runMaestro})`.
-// Tests inject fakes so they are hermetic — no real Maestro / Xcode / Android
-// SDK on the test runner. Mirrors the REQUIRE_DOCKER pattern in
-// apps/agent/tests/acceptance/conftest.py: absent prerequisites skip cleanly
-// (exit 0) by default; hard-fail (exit 1) when REQUIRE_EMULATOR=1.
+import { describe, expect, test } from "bun:test";
 
-import { test, expect, describe } from "bun:test";
+import { type GateDeps, maestroCommand, runGate } from "./maestro-acceptance";
 
-import { runGate } from "./maestro-acceptance";
-
-// adb's "List of devices attached" header word "devices" must NOT match the
-// device-presence regex, or every absent-device run is treated as present.
+const TARGET_UDID = "A2080000-0000-0000-0000-000000000001";
 const ADB_EMPTY = "List of devices attached\n\n";
 const ADB_ANDROID = "List of devices attached\nemulator-5554\tdevice\n";
 const SIMCTL_NONE_BOOTED =
-  "== Devices ==\n-- iOS 17.0 --\n    iPhone 15 (UUID) (Shutdown)\n";
-const SIMCTL_BOOTED =
-  "== Devices ==\n-- iOS 17.0 --\n    iPhone 15 (UUID) (Booted)\n";
+  "== Devices ==\n-- iOS 26.5 --\n    story-208-sdk57 (TARGET) (Shutdown)\n";
+const SIMCTL_SIBLINGS_BOOTED =
+  "== Devices ==\n-- iOS 26.5 --\n" +
+  "    story-045-legacy3-e2e (SIBLING-1) (Booted)\n" +
+  "    story-058-legacy3-e2e (SIBLING-2) (Booted)\n";
 
-const constResult = <T>(v: T) => () => Promise.resolve(v);
+const result =
+  <T>(value: T) =>
+  () =>
+    Promise.resolve(value);
 const enoent = () => Promise.reject(new Error("ENOENT"));
-// runMaestro now takes flows; ignore them in fakes that only care about the
-// resolved exit code. Cast through unknown so a Promise<null> (signal-kill
-// simulation) can flow through the number-typed signature without `any`.
-const maestroExit = (code: number | null) =>
-  ((): Promise<number> => Promise.resolve(code) as unknown as Promise<number>);
+
+function deps(overrides: Partial<GateDeps> = {}): GateDeps {
+  return {
+    env: {},
+    runSimctl: result(SIMCTL_NONE_BOOTED),
+    runAdb: result(ADB_EMPTY),
+    probeRequestedIos: result(false),
+    runMaestro: () => Promise.resolve(0),
+    ...overrides,
+  };
+}
 
 describe("runGate", () => {
-  test("exits 0 with skip message when no device and REQUIRE_EMULATOR unset", async () => {
-    const r = await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_NONE_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: constResult(0),
-    });
-    expect(r.exitCode).toBe(0);
-    expect(r.stdout).toMatch(/skip/i);
-    expect(r.maestroInvoked).toBe(false);
+  test("skips a non-strict lane with no device", async () => {
+    const gate = await runGate(deps());
+    expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
+    expect(gate.stdout).toMatch(/skip/i);
   });
 
-  test("exits 1 when no device and REQUIRE_EMULATOR=1", async () => {
-    const r = await runGate({
-      env: { REQUIRE_EMULATOR: "1" },
-      runSimctl: constResult(SIMCTL_NONE_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: constResult(0),
-    });
-    expect(r.exitCode).toBe(1);
-    expect(r.stderr).toMatch(/xcrun simctl|adb devices|REQUIRE_EMULATOR/);
-    expect(r.maestroInvoked).toBe(false);
+  test("strict lane requires an explicit iOS simulator UDID", async () => {
+    let probed = false;
+    let invoked = false;
+    const gate = await runGate(
+      deps({
+        env: { REQUIRE_EMULATOR: "1" },
+        runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+        runAdb: result(ADB_ANDROID),
+        probeRequestedIos: () => {
+          probed = true;
+          return Promise.resolve(true);
+        },
+        runMaestro: () => {
+          invoked = true;
+          return Promise.resolve(0);
+        },
+      }),
+    );
+    expect(gate.exitCode).toBe(1);
+    expect(gate.stderr).toMatch(/IOS_SIMULATOR_UDID/);
+    expect(probed).toBe(false);
+    expect(invoked).toBe(false);
   });
 
-  test("invokes maestro when an iOS simulator is Booted", async () => {
-    const r = await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: constResult(0),
-    });
-    expect(r.maestroInvoked).toBe(true);
-    expect(r.exitCode).toBe(0);
+  test("booted siblings and Android cannot satisfy an unavailable requested target", async () => {
+    let invoked = false;
+    const gate = await runGate(
+      deps({
+        env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: TARGET_UDID },
+        runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+        runAdb: result(ADB_ANDROID),
+        probeRequestedIos: (udid) => {
+          expect(udid).toBe(TARGET_UDID);
+          return Promise.resolve(false);
+        },
+        runMaestro: () => {
+          invoked = true;
+          return Promise.resolve(0);
+        },
+      }),
+    );
+    expect(gate.exitCode).toBe(1);
+    expect(gate.stderr).toContain(TARGET_UDID);
+    expect(invoked).toBe(false);
   });
 
-  test("invokes maestro when adb shows an attached device", async () => {
-    const r = await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_NONE_BOOTED),
-      runAdb: constResult(ADB_ANDROID),
-      runMaestro: constResult(0),
-    });
-    expect(r.maestroInvoked).toBe(true);
-    expect(r.exitCode).toBe(0);
+  test("passes the exact requested target and both strict flows to Maestro", async () => {
+    const calls: Array<{ udid: string | undefined; flows: string[] }> = [];
+    const gate = await runGate(
+      deps({
+        env: {
+          REQUIRE_EMULATOR: "1",
+          REQUIRE_BACKEND: "1",
+          IOS_SIMULATOR_UDID: TARGET_UDID,
+        },
+        probeRequestedIos: result(true),
+        runMaestro: (udid, flows) => {
+          calls.push({ udid, flows });
+          return Promise.resolve(0);
+        },
+      }),
+    );
+    expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: true });
+    expect(calls).toEqual([{ udid: TARGET_UDID, flows: ["launch.yaml", "auth-form.yaml"] }]);
   });
 
-  test("propagates maestro exit code on failure", async () => {
-    const r = await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: constResult(7),
-    });
-    expect(r.maestroInvoked).toBe(true);
-    expect(r.exitCode).toBe(7);
+  test("passes the requested app launch URL to Maestro", () => {
+    const command = maestroCommand(
+      TARGET_UDID,
+      ["launch.yaml"],
+      "/repo/apps/mobile/.maestro",
+      "exp+divineruin://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A18082",
+    );
+    expect(command).toContain("-e");
+    expect(command).toContain(
+      "APP_LAUNCH_URL=exp+divineruin://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A18082",
+    );
   });
 
-  test("treats ENOENT on detection commands as device absent", async () => {
-    // Linux dev machines have neither xcrun nor adb — Bun.spawn throws ENOENT.
-    // Detection should treat this as 'no device' rather than crashing the gate.
-    const r = await runGate({
-      env: {},
-      runSimctl: enoent,
-      runAdb: enoent,
-      runMaestro: constResult(0),
-    });
-    expect(r.exitCode).toBe(0);
-    expect(r.stdout).toMatch(/skip/i);
-    expect(r.maestroInvoked).toBe(false);
+  test("fails rather than invoke Maestro when the selected flow set is empty", async () => {
+    let invoked = false;
+    const gate = await runGate(
+      deps({
+        env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: TARGET_UDID },
+        probeRequestedIos: result(true),
+        flowNames: { offlineSafe: [], backendRequired: [] },
+        runMaestro: () => {
+          invoked = true;
+          return Promise.resolve(0);
+        },
+      }),
+    );
+    expect(gate.exitCode).toBe(1);
+    expect(gate.stderr).toMatch(/flow/i);
+    expect(invoked).toBe(false);
   });
 
-  test("hard-fails with REQUIRE_EMULATOR=1 when detection tools are missing", async () => {
-    const r = await runGate({
-      env: { REQUIRE_EMULATOR: "1" },
-      runSimctl: enoent,
-      runAdb: enoent,
-      runMaestro: constResult(0),
-    });
-    expect(r.exitCode).toBe(1);
-    expect(r.maestroInvoked).toBe(false);
+  test("keeps broad device detection for the non-strict developer lane", async () => {
+    for (const available of [
+      { runSimctl: result(SIMCTL_SIBLINGS_BOOTED), runAdb: result(ADB_EMPTY) },
+      { runSimctl: result(SIMCTL_NONE_BOOTED), runAdb: result(ADB_ANDROID) },
+    ]) {
+      const gate = await runGate(deps(available));
+      expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: true });
+    }
   });
 
-  test("coerces null exit (signal-killed maestro) to non-zero", async () => {
-    // Bun.spawn .exited resolves to null when the child terminates via signal
-    // (e.g. SIGINT). Coercing to 0 via process.exit(null) would mask a Ctrl-C
-    // mid-run as a passing acceptance lane — see code-review finding 2.
-    const r = await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: maestroExit(null),
-    });
-    expect(r.maestroInvoked).toBe(true);
-    expect(r.exitCode).not.toBe(0);
-  });
-
-  test("REQUIRE_BACKEND=1 adds backend-required flows; default omits them", async () => {
-    // Default: only offline-safe flows (auth-form needs apps/server, so it's
-    // gated behind REQUIRE_BACKEND to honor the skip-cleanly philosophy.)
+  test("defaults to launch only and adds auth when the backend is required", async () => {
     const seen: string[][] = [];
-    const capture = (flows: string[]): Promise<number> => {
-      seen.push(flows);
-      return Promise.resolve(0);
-    };
-
-    await runGate({
-      env: {},
-      runSimctl: constResult(SIMCTL_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: capture,
-    });
-    await runGate({
-      env: { REQUIRE_BACKEND: "1" },
-      runSimctl: constResult(SIMCTL_BOOTED),
-      runAdb: constResult(ADB_EMPTY),
-      runMaestro: capture,
-    });
-
-    expect(seen[0]).toEqual(["launch.yaml"]);
-    expect(seen[1]).toContain("launch.yaml");
-    expect(seen[1]).toContain("auth-form.yaml");
+    for (const env of [{}, { REQUIRE_BACKEND: "1" }]) {
+      await runGate(
+        deps({
+          env,
+          runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+          runMaestro: (_udid, flows) => {
+            seen.push(flows);
+            return Promise.resolve(0);
+          },
+        }),
+      );
+    }
+    expect(seen).toEqual([["launch.yaml"], ["launch.yaml", "auth-form.yaml"]]);
   });
 
-  test("surfaces detection-tool diagnostic under REQUIRE_EMULATOR=1", async () => {
-    // Wedged adb daemon exits non-zero with a real error; spawnText throws
-    // rather than returning empty output, so the gate can distinguish 'tool
-    // broken' from 'no device' instead of blaming the user generically.
-    const adbBroken = () =>
-      Promise.reject(new Error("adb exited 1: daemon not running"));
-    const r = await runGate({
-      env: { REQUIRE_EMULATOR: "1" },
-      runSimctl: enoent,
-      runAdb: adbBroken,
-      runMaestro: constResult(0),
-    });
-    expect(r.exitCode).toBe(1);
-    expect(r.stderr).toMatch(/adb devices probe failed/);
-    expect(r.stderr).toMatch(/daemon not running/);
+  test("propagates Maestro failures and signal-like null exits", async () => {
+    for (const exit of [7, null]) {
+      const gate = await runGate(
+        deps({
+          runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+          runMaestro: () => Promise.resolve(exit) as unknown as Promise<number>,
+        }),
+      );
+      expect(gate.exitCode).not.toBe(0);
+      expect(gate.maestroInvoked).toBe(true);
+    }
+  });
+
+  test("treats missing detector tools as absent in the non-strict lane", async () => {
+    const gate = await runGate(deps({ runSimctl: enoent, runAdb: enoent }));
+    expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
+  });
+
+  test("surfaces requested-device probe diagnostics without invoking Maestro", async () => {
+    const gate = await runGate(
+      deps({
+        env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: TARGET_UDID },
+        probeRequestedIos: () => Promise.reject(new Error("simctl service unavailable")),
+      }),
+    );
+    expect(gate.exitCode).toBe(1);
+    expect(gate.stderr).toMatch(/simctl service unavailable/);
+    expect(gate.maestroInvoked).toBe(false);
   });
 });
