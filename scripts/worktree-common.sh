@@ -113,3 +113,22 @@ wt_export_env() {
   export DATABASE_URL="postgresql://divineruin:divineruin_dev@localhost:${POSTGRES_HOST_PORT}/divineruin"
   export REDIS_URL="redis://localhost:${VALKEY_HOST_PORT}"
 }
+
+assert_tool_version() {
+  local name="$1" expected="$2" observed="$3"
+  if [ "$observed" != "$expected" ]; then
+    echo "init-worktree: $name $expected is required; found $observed." >&2
+    return 1
+  fi
+}
+
+declared_json_version() {
+  local path="$1" field="$2"
+  python3 - "$path" "$field" <<'PY'
+import json
+import sys
+
+value = json.load(open(sys.argv[1]))[sys.argv[2]]
+print(value)
+PY
+}

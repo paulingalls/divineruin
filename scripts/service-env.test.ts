@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -53,10 +53,52 @@ test("ambient variables win over the env file, and a missing file is not fatal",
   });
   expect(shadowed).toEqual({ marker: "from-ambient", exitCode: 0 });
 
-  const absent = await probe(["--env-file=../../absent.env", "run", "--cwd", "apps/server", "probe"], {
-    [MARKER]: "from-ambient",
-  });
+  const absent = await probe(
+    ["--env-file=../../absent.env", "run", "--cwd", "apps/server", "probe"],
+    {
+      [MARKER]: "from-ambient",
+    },
+  );
   expect(absent).toEqual({ marker: "from-ambient", exitCode: 0 });
+});
+
+test("the scripts-owned seed consumes its caller's database without a root env file", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seed-env-"));
+  try {
+    await mkdir(join(root, "scripts"), { recursive: true });
+    const sourcePackage = (await Bun.file(join(REPO_ROOT, "package.json")).json()) as {
+      scripts: Record<string, string>;
+    };
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ private: true, scripts: { seed: sourcePackage.scripts.seed } }),
+    );
+    await copyFile(
+      join(REPO_ROOT, "scripts", "pyproject.toml"),
+      join(root, "scripts", "pyproject.toml"),
+    );
+    await copyFile(join(REPO_ROOT, "scripts", "uv.lock"), join(root, "scripts", "uv.lock"));
+    await writeFile(
+      join(root, "scripts", "seed_content.py"),
+      'import os\nprint(os.environ.get("DATABASE_URL", "missing"))\n',
+    );
+    const databaseUrl = "postgresql://caller@127.0.0.1:61234/story210";
+    const child = Bun.spawn(["bun", "run", "seed"], {
+      cwd: root,
+      env: { ...Bun.env, DATABASE_URL: databaseUrl, UV_PROJECT_ENVIRONMENT: join(root, ".venv") },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect(exitCode, stderr).toBe(0);
+    expect(stdout).toContain(databaseUrl);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 // A command that opens Postgres or Valkey. Anything matching this must name an
@@ -117,7 +159,9 @@ function testSuiteDir(segment: string, manifestDir: string): string | null {
 function isServiceCommand(segment: string, manifestDir: string): boolean {
   if (SERVICE_ENTRYPOINTS.some((pattern) => pattern.test(segment))) return true;
   const suite = testSuiteDir(segment, manifestDir);
-  return suite !== null && SERVICE_TEST_DIRS.some((dir) => suite === dir || suite.startsWith(`${dir}/`));
+  return (
+    suite !== null && SERVICE_TEST_DIRS.some((dir) => suite === dir || suite.startsWith(`${dir}/`))
+  );
 }
 
 test("every service command loads the repo-root .env explicitly", async () => {

@@ -119,6 +119,28 @@ Release age policy: 604800 seconds.
 | packages/shared | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 
+## Independent browser toolchain
+
+| Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
+|---|---|---|---|---|---|---|
+| devDependencies | @axe-core/playwright | `^4.13.0` | 4.13.0 / 4.13.0 | 4.13.0 | 4.13.0 | Current |
+| devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
+| devDependencies | @playwright/test | `^1.63.0` | 1.63.0 / 1.63.0 | 1.63.0 | 1.63.0 | Current |
+| devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| devDependencies | @types/pg | `^8.23.1` | 8.23.1 / 8.23.1 | 8.23.1 | 8.23.1 | Current |
+| devDependencies | eslint | `^10.11.0` | 10.11.0 / 10.11.0 | 10.11.0 | 10.11.0 | Current |
+| devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
+| devDependencies | lighthouse | `^13.5.0` | 13.5.0 / 13.5.0 | 13.5.0 | 13.5.0 | Current |
+| devDependencies | pg | `^8.23.0` | 8.23.0 / 8.23.0 | 8.23.0 | 8.23.0 | Current |
+| devDependencies | playwright-lighthouse | `^4.0.0` | 4.0.0 / 4.0.0 | 4.0.0 | 4.0.0 | Current |
+| devDependencies | typescript | `^6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | typescript-eslint 8.70.0 declares TypeScript >=4.8.4 <6.1.0; 7.0.2 is outside that peer range. |
+| devDependencies | typescript-eslint | `^8.70.0` | 8.70.0 / 8.70.0 | 8.70.0 | 8.70.0 | Current |
+
+| Release-age exception | Published | Command | Evidence |
+|---|---|---|---|
+| eslint@10.11.0 | 2026-09-18T20:15:36.485Z | `bun add --cwd e2e --dev --minimum-release-age=0 eslint@^10.11.0` | ESLint 10.11.0 passes the e2e TypeScript and ESLint lane with @eslint/js 10.0.1 and typescript-eslint 8.70.0. |
+| lighthouse@13.5.0 | 2026-09-18T14:13:55.261Z | `bun add --cwd e2e --dev --minimum-release-age=0 lighthouse@^13.5.0` | Lighthouse 13.5.0 satisfies playwright-lighthouse 4.0.0's >=10 peer range and passes the production audit thresholds. |
+
 ### Mobile SDK 57 baseline
 
 - Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
@@ -160,6 +182,40 @@ Compatibility exceptions:
 |---|---|---|
 | dnssd-advertise | `1.1.4` | Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4. |
 
-E2E exclusion: Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort.
+### Infrastructure holds
 
-The committed `uv.lock` and root `bun.lock` files are the exact transitive dependency records.
+- `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
+- `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
+
+## Validation outcomes
+
+| Lane | Outcome | Evidence |
+|---|---|---|
+| bun install --frozen-lockfile | passed | Bun 1.4.2 accepted the root frozen lock without changes. |
+| bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.2 accepted the independent e2e frozen lock without changes. |
+| uv sync --project apps/agent --frozen | passed | uv 0.10.6 installed the agent lock under CPython 3.14.7. |
+| uv sync --project scripts --frozen | passed | uv 0.10.6 installed the scripts lock under CPython 3.14.7. |
+| dependency report --scope all | passed | All nine manifests, four locks, installed trees, CI, and rendered Markdown validated. |
+| dependency report tests | passed | Fault suite passed, including named YAML steps and missing e2e inputs. |
+| worktree bootstrap tests | passed | Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed. |
+| required e2e environment tests | passed | Six subprocess tests passed, including independent auth/config guard removals. |
+| bun run lint | passed | TypeScript, ESLint, Prettier, Ruff, Pyright, and Python format checks passed. |
+| bun run lint:e2e | passed | Independent frozen install, TypeScript, and ESLint passed. |
+| bun run test:python | passed | 7000 non-acceptance Python tests passed. |
+| bun run test:server | passed | Server unit and database/Redis integration lanes passed. |
+| Bun scripts/shared/design-tokens tests | passed | All three explicitly selected Bun test corpora passed. |
+| Bun mobile tests | passed | 508 mobile tests passed. |
+| Bun web tests | passed | 204 web tests passed. |
+| full Playwright suite | passed | Full upgraded browser suite passed after the final app/server graph. |
+| mobile verify:upgrade | passed | Expo doctor passed 21/21 checks and iOS, Android, and web exports completed. |
+| mobile verify:native-build | passed | Clean iOS build succeeded; launch and auth flows passed 2/2 on the owned simulator. |
+| mobile verify:native-transport | passed | Owned-simulator audio, microphone, event/HUD, and fault runs passed. |
+| bun run test:acceptance:nollm | passed | 270 acceptance tests passed; 9 real-LLM tests were deselected. |
+| Playwright web project | passed | 40 production marketing tests passed. |
+| Playwright web-lighthouse project | passed | 4 tests passed; performance, SEO, and accessibility each scored 100. |
+| Playwright chromium project | passed | 40 authenticated mobile-web tests passed. |
+| clean-worktree bootstrap | passed | Detached 89d5efff proof installed four frozen locks and Chromium, migrated and seeded isolated ports 56032/56979, and passed report, seed, environment, and aggregate checks; owned containers and worktree cleaned. |
+| Android device check | missing | adb devices returned no attached device. |
+| real-LLM acceptance | required at sprint close | Credentialed cost-bearing lane was not run by the story executor. |
+
+The committed agent/scripts `uv.lock` files and root/e2e `bun.lock` files are the exact transitive dependency records.

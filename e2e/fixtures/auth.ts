@@ -1,9 +1,8 @@
 import { test as base, type Page } from "@playwright/test";
 import pg from "pg";
+import { requireEnvironment } from "../require-environment.js";
 
 const { Pool } = pg;
-
-export const DEFAULT_DB_URL = "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 
 export interface TestUser {
   email: string;
@@ -13,7 +12,7 @@ export interface TestUser {
 }
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
+  connectionString: requireEnvironment("DATABASE_URL"),
   max: 5,
 });
 

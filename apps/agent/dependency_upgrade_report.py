@@ -9,13 +9,44 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from ci_toolchain_validation import validate_ci_toolchain
 from dependency_report_render import render_markdown
+from e2e_dependency_report import probe_installed as probe_e2e_installed
+from e2e_dependency_report import validate_e2e_report
 from workspace_dependency_report import probe_installed as probe_workspace_installed
 from workspace_dependency_report import validate_workspace_report
 
 PROJECTS = ("apps/agent", "scripts")
 NAME_RE = re.compile(r"[-_.]+")
 REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(.*)$")
+VERIFY_LANES = (
+    "bun install --frozen-lockfile",
+    "bun install --cwd e2e --frozen-lockfile",
+    "uv sync --project apps/agent --frozen",
+    "uv sync --project scripts --frozen",
+    "dependency report --scope all",
+    "dependency report tests",
+    "worktree bootstrap tests",
+    "required e2e environment tests",
+    "bun run lint",
+    "bun run lint:e2e",
+    "bun run test:python",
+    "bun run test:server",
+    "Bun scripts/shared/design-tokens tests",
+    "Bun mobile tests",
+    "Bun web tests",
+    "full Playwright suite",
+    "mobile verify:upgrade",
+    "mobile verify:native-build",
+    "mobile verify:native-transport",
+    "bun run test:acceptance:nollm",
+)
+EXTRA_REQUIRED_LANES = (
+    "Playwright web project",
+    "Playwright web-lighthouse project",
+    "Playwright chromium project",
+    "clean-worktree bootstrap",
+)
 
 
 @dataclass
@@ -242,10 +273,60 @@ def validate_markdown(root: Path, report: dict) -> None:
         raise ValueError("rendered documentation mismatch: docs/dependency_upgrade.md")
 
 
+IMAGE_RE = re.compile(r"^\s*image:\s*(\S+)", re.MULTILINE)
+
+
+def validate_infrastructure_holds(root: Path, report: dict) -> None:
+    """Compare documented image holds with the repository compose declarations."""
+    holds = report.get("infrastructure_holds")
+    if not isinstance(holds, list) or not holds:
+        raise ValueError("infrastructure hold corpus is empty")
+    compose = root / "docker-compose.yml"
+    if not compose.is_file():
+        raise ValueError("missing compose file: docker-compose.yml")
+    images = set(IMAGE_RE.findall(compose.read_text()))
+    if not images:
+        raise ValueError("docker-compose image corpus is empty")
+    for hold in holds:
+        for field in ("name", "reference", "status", "reason"):
+            if not hold.get(field):
+                raise ValueError(f"infrastructure hold {field} is empty: {hold.get('name', '')}")
+        if hold["reference"] not in images:
+            raise ValueError(f"infrastructure hold is not a declared compose image: {hold['reference']}")
+
+
+def validate_outcomes(report: dict) -> None:
+    rows = report.get("validation_outcomes")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("validation outcome corpus is empty")
+    outcomes = {}
+    for row in rows:
+        lane = row.get("lane", "")
+        if lane in outcomes:
+            raise ValueError(f"duplicate validation outcome: {lane}")
+        if not lane or not row.get("status") or not row.get("evidence"):
+            raise ValueError(f"validation outcome is incomplete: {lane}")
+        outcomes[lane] = row
+    for lane in (*VERIFY_LANES, *EXTRA_REQUIRED_LANES):
+        if outcomes.get(lane, {}).get("status") != "passed":
+            raise ValueError(f"required validation outcome is not passed: {lane}")
+    android = outcomes.get("Android device check")
+    if android is None or android["status"] not in {"passed", "missing"}:
+        raise ValueError("Android device outcome is missing")
+    real_llm = outcomes.get("real-LLM acceptance")
+    if real_llm is None:
+        raise ValueError("real-LLM acceptance outcome is missing")
+    if real_llm["status"] == "passed":
+        if "REQUIRE_REAL_LLM=1" not in real_llm["evidence"] or "bun run test:acceptance" not in real_llm["evidence"]:
+            raise ValueError("real-LLM pass lacks executed command evidence")
+    elif real_llm["status"] != "required at sprint close":
+        raise ValueError("real-LLM acceptance must remain required at sprint close")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
-    parser.add_argument("--scope", choices=("python", "workspace"), required=True)
+    parser.add_argument("--scope", choices=("python", "workspace", "e2e", "all"), required=True)
     parser.add_argument("--environment", action="append", default=[], metavar="PROJECT=PATH")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
@@ -261,10 +342,16 @@ def main() -> int:
     report = json.loads(report_path.read_text())
     snapshots = probe_scope(root, mappings or None)
     validate_report(root=root, report=report, snapshots=snapshots)
-    if args.scope == "workspace":
+    if args.scope in {"workspace", "all"}:
         validate_workspace_report(root, report, probe_workspace_installed(root, report))
+    if args.scope in {"e2e", "all"}:
+        validate_e2e_report(root, report, probe_e2e_installed(root, report))
+    if args.scope == "all":
+        validate_ci_toolchain(root, report)
+        validate_infrastructure_holds(root, report)
+        validate_outcomes(report)
     validate_markdown(root, report)
-    print(f"{args.scope.capitalize()} dependency upgrade report is valid.")
+    print(f"Dependency upgrade report is valid ({args.scope}).")
     return 0
 
 

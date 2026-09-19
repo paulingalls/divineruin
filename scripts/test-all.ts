@@ -16,7 +16,7 @@ type Result = { name: string; stdout: string; stderr: string; exitCode: number }
 const HEARTBEAT_MS = 15_000;
 
 const lanes: Lane[] = [
-  { name: "bun (shared + server + mobile + web)", cmd: ["bun", "run", "test"] },
+  { name: "bun (every workspace lane in `bun run test`)", cmd: ["bun", "run", "test"] },
   { name: "python", cmd: ["bun", "run", "test:python"] },
 ];
 
