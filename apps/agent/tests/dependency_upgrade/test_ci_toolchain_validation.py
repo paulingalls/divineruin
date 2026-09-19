@@ -176,3 +176,68 @@ def test_repository_tool_pins_must_match_the_measured_report(tmp_path, relative,
 
     with pytest.raises(ValueError, match=diagnostic):
         validate_ci_toolchain(root, _report(root))
+
+
+E2E_CONSUMER = (
+    "      - run: bun install --cwd e2e --frozen-lockfile\n      - run: bun test e2e/require-environment.test.ts\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "diagnostic"),
+    [
+        (
+            "      - run: bun install --frozen-lockfile\n      - run: bun install --cwd e2e --frozen-lockfile\n",
+            "      - run: bun i\n      - run: bun install --cwd e2e --frozen-lockfile\n",
+            "frozen Bun install",
+        ),
+        (
+            E2E_CONSUMER,
+            "      - run: bun install --cwd e2e --frozen-lockfile --dry-run\n"
+            "      - run: bun test e2e/require-environment.test.ts\n",
+            "frozen Bun install",
+        ),
+        (
+            E2E_CONSUMER,
+            '      - run: echo "bun install --cwd e2e --frozen-lockfile"\n'
+            "      - run: bun test e2e/require-environment.test.ts\n",
+            "without a frozen e2e install",
+        ),
+        (
+            E2E_CONSUMER,
+            "      - run: bun test e2e/require-environment.test.ts\n"
+            "      - run: bun install --cwd e2e --frozen-lockfile\n",
+            "without a frozen e2e install",
+        ),
+        (
+            "      - run: bun install --cwd e2e --frozen-lockfile\n      - run: cd e2e && bunx playwright install",
+            "      - run: cd e2e && bunx playwright install",
+            "test-e2e.*without a frozen e2e install",
+        ),
+    ],
+)
+def test_only_a_real_preceding_frozen_install_certifies_a_graph(tmp_path, original, replacement, diagnostic):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    assert original in text
+    path.write_text(text.replace(original, replacement, 1))
+
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_ci_toolchain(root, _report(root))
+
+
+def test_playwright_consumer_walk_requires_a_nonempty_floor(tmp_path):
+    root = _copy_scope(tmp_path)
+    path = root / ".github/workflows/ci.yml"
+    text = path.read_text()
+    for consumer in (
+        "      - run: cd e2e && bunx playwright install --with-deps chromium\n",
+        "      - run: cd e2e && bunx playwright test\n",
+    ):
+        assert consumer in text
+        text = text.replace(consumer, "", 1)
+    path.write_text(text)
+
+    with pytest.raises(ValueError, match="Playwright consumer corpus is empty"):
+        validate_ci_toolchain(root, _report(root))

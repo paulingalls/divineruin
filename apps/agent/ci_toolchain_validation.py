@@ -60,8 +60,46 @@ def _job_runs(job_name: str, job: dict) -> list[str]:
     ]
 
 
-def _has_frozen_e2e_install(commands: list[str]) -> bool:
-    return any("bun install --cwd e2e --frozen-lockfile" in command for command in commands)
+# `bun i` is Bun's own alias for `bun install`, so a guard that only recognises
+# the long form waves through a mutable install.
+BUN_INSTALL_SUBCOMMANDS = frozenset({"install", "i"})
+
+
+def _flag_value(tokens: list[str], flag: str) -> str | None:
+    if flag not in tokens:
+        return None
+    index = tokens.index(flag) + 1
+    return tokens[index] if index < len(tokens) else None
+
+
+def _subcommand_tokens(command: str, program: str, subcommands: frozenset[str]) -> list[str] | None:
+    tokens = shlex.split(command)
+    if len(tokens) < 2 or tokens[0] != program or tokens[1] not in subcommands:
+        return None
+    return tokens
+
+
+def _is_frozen_bun_install(command: str) -> bool:
+    tokens = _subcommand_tokens(command, "bun", BUN_INSTALL_SUBCOMMANDS)
+    # --dry-run resolves the lock and writes no node_modules, so it installs nothing.
+    return tokens is not None and "--frozen-lockfile" in tokens and "--dry-run" not in tokens
+
+
+def _is_frozen_root_install(command: str) -> bool:
+    return _is_frozen_bun_install(command) and _flag_value(shlex.split(command), "--cwd") is None
+
+
+def _is_frozen_e2e_install(command: str) -> bool:
+    return _is_frozen_bun_install(command) and _flag_value(shlex.split(command), "--cwd") == "e2e"
+
+
+def _is_frozen_uv_sync(command: str, project: str) -> bool:
+    tokens = _subcommand_tokens(command, "uv", frozenset({"sync"}))
+    return tokens is not None and "--frozen" in tokens and _flag_value(tokens, "--project") == project
+
+
+def _runs_playwright(command: str) -> bool:
+    return shlex.split(command)[:2] == ["bunx", "playwright"]
 
 
 def _runs_python_report_tests(command: str) -> bool:
@@ -97,38 +135,37 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
         raise ValueError(f"every CI setup-uv step must select Python {expected_python}")
 
     runs = [command for commands in runs_by_job.values() for command in commands]
-    bun_installs = [command for command in runs if shlex.split(command)[:2] == ["bun", "install"]]
-    uv_syncs = [command for command in runs if shlex.split(command)[:2] == ["uv", "sync"]]
-    if not bun_installs or any("--frozen-lockfile" not in shlex.split(command) for command in bun_installs):
-        raise ValueError("every CI Bun install must be a frozen Bun install")
+    bun_installs = [command for command in runs if _subcommand_tokens(command, "bun", BUN_INSTALL_SUBCOMMANDS)]
+    uv_syncs = [command for command in runs if _subcommand_tokens(command, "uv", frozenset({"sync"}))]
+    if not bun_installs or not all(_is_frozen_bun_install(command) for command in bun_installs):
+        raise ValueError("every CI Bun install must be a frozen Bun install that actually installs")
     if not uv_syncs or any("--frozen" not in shlex.split(command) for command in uv_syncs):
         raise ValueError("every CI uv sync must be a frozen uv sync")
     required = {
-        "root Bun": lambda command: command.startswith("bun install --frozen-lockfile"),
-        "e2e Bun": lambda command: "bun install --cwd e2e --frozen-lockfile" in command,
-        "agent uv": lambda command: "uv sync --project apps/agent --frozen" in command,
-        "scripts uv": lambda command: "uv sync --project scripts --frozen" in command,
+        "root Bun": _is_frozen_root_install,
+        "e2e Bun": _is_frozen_e2e_install,
+        "agent uv": lambda command: _is_frozen_uv_sync(command, "apps/agent"),
+        "scripts uv": lambda command: _is_frozen_uv_sync(command, "scripts"),
     }
     for graph, matches in required.items():
         if not any(matches(command) for command in runs):
             raise ValueError(f"CI does not install the {graph} lock")
 
-    consumers = {
-        "e2e environment tests": [
-            name
-            for name, commands in runs_by_job.items()
-            if any(shlex.split(run) == ["bun", "test", "e2e/require-environment.test.ts"] for run in commands)
-        ],
-        "lint:e2e": [
-            name for name, commands in runs_by_job.items() if any("bun run lint:e2e" in run for run in commands)
-        ],
-        "Python dependency report tests": [
-            name for name, commands in runs_by_job.items() if any(_runs_python_report_tests(run) for run in commands)
-        ],
-    }
-    for consumer, job_names in consumers.items():
-        if not job_names:
-            raise ValueError(f"CI {consumer} consumer corpus is empty")
-        for job_name in job_names:
-            if not _has_frozen_e2e_install(runs_by_job[job_name]):
+    consumers = (
+        ("e2e environment tests", lambda c: shlex.split(c) == ["bun", "test", "e2e/require-environment.test.ts"]),
+        ("lint:e2e", lambda c: "bun run lint:e2e" in c),
+        ("Playwright", _runs_playwright),
+        ("Python dependency report tests", _runs_python_report_tests),
+    )
+    for consumer, matches in consumers:
+        consuming_jobs = 0
+        for job_name, commands in runs_by_job.items():
+            reached = next((index for index, command in enumerate(commands) if matches(command)), None)
+            if reached is None:
+                continue
+            consuming_jobs += 1
+            # Only an install the job runs BEFORE the consumer has populated e2e/node_modules.
+            if not any(_is_frozen_e2e_install(command) for command in commands[:reached]):
                 raise ValueError(f"CI job {job_name} runs {consumer} without a frozen e2e install")
+        if not consuming_jobs:
+            raise ValueError(f"CI {consumer} consumer corpus is empty")

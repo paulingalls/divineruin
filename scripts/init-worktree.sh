@@ -319,11 +319,14 @@ assert_compose_port_owner() {
   containers="$(docker ps --filter "publish=$port" --format '{{.ID}}')"
   if [ -z "$containers" ] || [ "$(printf '%s\n' "$containers" | wc -l | tr -d ' ')" != "1" ]; then
     echo "init-worktree: host port $port ($service) has a listener not owned by one Docker container" >&2
+    echo "               Set WT_PORT_OFFSET to a distinct value and re-run." >&2
     return 1
   fi
   labels="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }} {{ index .Config.Labels "com.docker.compose.service" }}' "$containers")"
   if [ "$labels" != "$COMPOSE_PROJECT_NAME $service" ]; then
     echo "init-worktree: host port $port ($service) belongs to '$labels', not '$COMPOSE_PROJECT_NAME $service'" >&2
+    echo "               Never reuse a sibling's database. Set WT_PORT_OFFSET to a" >&2
+    echo "               distinct value and re-run." >&2
     return 1
   fi
 }
@@ -350,6 +353,10 @@ require_declared_toolchain() {
 
 install_locked_dependencies() {
   ( cd "$REPO_ROOT" && bun install --frozen-lockfile )
+  # e2e/ is NOT a workspace member (root package.json lists only apps/* and
+  # packages/*) and carries its own lockfile, so the root install reaches none of
+  # its deps: without this, `bun run lint:e2e`, the pre-push Playwright lane and
+  # the installed-tree dependency report all die in a fresh worktree.
   ( cd "$REPO_ROOT/e2e" && bun install --frozen-lockfile )
   ( cd "$REPO_ROOT/e2e" && bunx playwright install chromium )
   uv sync --project "$REPO_ROOT/apps/agent" --frozen
