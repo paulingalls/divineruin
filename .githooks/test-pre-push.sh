@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Test harness for .githooks/pre-push docs-only-skip logic.
+# Test harness for .githooks/pre-push.
 #
-# Runs 5 cases against the hook via BASH_TEST=1 + BASH_TEST_DIFF=<changed-files>
+# Runs 7 cases against the hook via BASH_TEST=1 + BASH_TEST_DIFF=<changed-files>
 # stubs (which the hook honors to bypass `git diff` and the real test runners).
 # Without the BASH_TEST shim in the hook, this harness would invoke the real
 # test suite — so it aborts early if the shim isn't present.
@@ -128,6 +128,14 @@ snapshot_case
 echo ""
 echo "Sweep harness:"
 if bash "$(cd "$(dirname "$0")" && pwd)/../scripts/test-sweep-test-containers.sh"; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1))
+fi
+
+echo ""
+echo "Lane environment harness:"
+if bash "$(cd "$(dirname "$0")" && pwd)/../scripts/test-prepush-environment.sh"; then
   PASS=$((PASS + 1))
 else
   FAIL=$((FAIL + 1))
