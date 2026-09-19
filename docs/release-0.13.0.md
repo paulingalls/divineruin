@@ -4,9 +4,9 @@ Combat sound events now resolve to bundled playable assets, including a dedicate
 
 Training narration follows the returned tool state and remaining time. Spell-study offers come from the actual eligible choices; unavailable spells are not offered, and an existing cycle prevents a second cycle. Real-agent scenarios and positive/negative judge calibration cover these behaviors.
 
-Development lifecycle operations validate clone and checkout identity, resource labels, live service publication and listener ownership before connecting or changing resources. Pre-push acceptance uses checkout-owned settings while server/E2E retain their per-run services. Unit lanes mask external credentials. The release includes main's v0.12.0 dependency upgrades with the overlapping lifecycle changes reconciled.
+Development lifecycle operations validate clone and checkout identity, resource labels, live service publication and listener ownership before connecting or changing resources. Pre-push acceptance uses checkout-owned settings while server/E2E retain their per-run services. Unit lanes mask external credentials. Failed teardown reports its error and retains retryable ownership for unchanged services; manually restarted or recreated stacks are protected by service-lifetime checks. Worktree creation now invokes the configured bootstrap script. The release includes main's v0.12.0 dependency upgrades with the overlapping lifecycle changes reconciled.
 
-Validation before sprint review: 7,106 Python tests, all workspace unit suites, 84 Playwright tests, 270 non-LLM acceptance tests, 300 full acceptance tests with one unrelated measurement skip, a real Expo web export, and the retained sprint-close falsifier batch. Final release remains subject to sprint review and its shipping-tree acceptance check.
+Validation: 7,141 Python tests, all workspace unit suites, 84 Playwright tests, 270 non-LLM acceptance tests, 300 full acceptance tests with one unrelated measurement skip, a real Expo web export, and the retained sprint-close falsifier batch.
 
 ## Operational handoff
 
