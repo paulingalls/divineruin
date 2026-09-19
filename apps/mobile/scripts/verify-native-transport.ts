@@ -4,6 +4,8 @@ import { join, resolve } from "node:path";
 
 import {
   assertTransportResult,
+  isPositiveCount,
+  isZeroCount,
   type TransportResult,
 } from "../src/audio/native-transport-observation";
 
@@ -43,15 +45,23 @@ export function validateScenarioResult(raw: unknown, runId: string, fault: Fault
   if (!result.peer_ready || !result.mobile_identity || !result.publisher_identity) {
     throw new Error("native result is missing peer identities or readiness");
   }
-  if (result.microphone_frames <= 0) throw new Error("native result has no microphone frames");
+  if (!isPositiveCount(result.microphone_frames)) {
+    throw new Error("native result has no microphone frames");
+  }
   if (fault === "none") return assertTransportResult(result, runId);
   const expected = fault === "withhold-audio" ? "received-audio" : "session-init-hud";
   if (result.guard_failed !== expected || result.expected_guard !== expected) {
     throw new Error(`native result did not fail the ${expected} guard`);
   }
   if (fault === "withhold-audio") {
-    if (result.packets_received > 0 || result.bytes_received > 0 || result.audio_track_sid) {
-      throw new Error("withhold-audio unexpectedly received publisher audio");
+    if (
+      !isZeroCount(result.packets_received) ||
+      !isZeroCount(result.bytes_received) ||
+      result.audio_track_sid
+    ) {
+      throw new Error(
+        "withhold-audio unexpectedly received publisher audio or omitted its counters",
+      );
     }
     if (
       !result.event_received ||
@@ -61,7 +71,11 @@ export function validateScenarioResult(raw: unknown, runId: string, fault: Fault
       throw new Error("withhold-audio did not preserve SESSION_INIT and HUD evidence");
     }
   } else {
-    if (result.packets_received <= 0 || result.bytes_received <= 0 || !result.audio_track_sid) {
+    if (
+      !isPositiveCount(result.packets_received) ||
+      !isPositiveCount(result.bytes_received) ||
+      !result.audio_track_sid
+    ) {
       throw new Error("withhold-event did not preserve received audio evidence");
     }
     if (result.event_received || result.hud_character || result.hud_location) {

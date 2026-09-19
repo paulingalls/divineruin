@@ -143,6 +143,34 @@ test("audio observation rejects absent tracks and empty or zero real stats", asy
       ),
     /nonzero/,
   );
+  await expectAsyncError(
+    () =>
+      observeRemoteAudio(
+        subscription(new Map([["absent", { type: "inbound-rtp", kind: "audio" }]])),
+        "python",
+      ),
+    /nonzero/,
+  );
+  await expectAsyncError(
+    () =>
+      observeRemoteAudio(
+        subscription(
+          new Map([
+            [
+              "nan",
+              {
+                type: "inbound-rtp",
+                kind: "audio",
+                packetsReceived: Number.NaN,
+                bytesReceived: 640,
+              },
+            ],
+          ]),
+        ),
+        "python",
+      ),
+    /not a finite number/,
+  );
 });
 
 test("shared SESSION_INIT fixture crosses the production initializer", () => {
@@ -183,6 +211,15 @@ test("transport result requires every current-run observation and emits no token
     expect(() => assertTransportResult({ ...good, [field]: value }, "run-current")).toThrow(
       message,
     );
+  }
+  for (const field of ["packets_received", "bytes_received", "microphone_frames"] as const) {
+    const { [field]: _dropped, ...missing } = good;
+    expect(() => assertTransportResult(missing, "run-current")).toThrow(/audio|microphone/);
+    for (const malformed of [Number.NaN, Infinity, "4", null]) {
+      expect(() => assertTransportResult({ ...good, [field]: malformed }, "run-current")).toThrow(
+        /audio|microphone/,
+      );
+    }
   }
   expect(() => assertTransportResult({ ...good, token: "leak" }, "run-current")).toThrow(
     /credential/,

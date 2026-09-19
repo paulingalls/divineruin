@@ -74,6 +74,13 @@ def test_mobile_result_guards_each_transport_claim_and_redacts_credentials() -> 
         with pytest.raises(ValueError, match=message):
             assert_mobile_result({**good, field: value}, "run-one", "python-one")
 
+    for field in ("packets_received", "bytes_received"):
+        with pytest.raises(ValueError, match="audio"):
+            assert_mobile_result({k: v for k, v in good.items() if k != field}, "run-one", "python-one")
+        for malformed in (None, "4", 1.5, True):
+            with pytest.raises(ValueError, match="audio"):
+                assert_mobile_result({**good, field: malformed}, "run-one", "python-one")
+
     with pytest.raises(ValueError, match="credential"):
         safe_result({**good, "nested": {"token": "secret"}})
     assert safe_result(good) == good

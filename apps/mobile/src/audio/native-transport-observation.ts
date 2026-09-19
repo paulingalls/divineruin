@@ -74,6 +74,24 @@ export async function fetchTransportFixture(
   return { endpoint: safeEndpoint, fixture: parseTransportFixture(await response.json(), runId) };
 }
 
+export function isPositiveCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+export function isZeroCount(value: unknown): value is number {
+  return typeof value === "number" && value === 0;
+}
+
+/** An absent stat is 0; a present non-finite one is malformed vendor data, not 0. */
+function readCounter(row: Record<string, unknown>, field: string): number {
+  const value = row[field];
+  if (value === undefined || value === null) return 0;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`RTC inbound audio ${field} is not a finite number`);
+  }
+  return value;
+}
+
 export async function observeRemoteAudio(
   subscriptions: AudioSubscription[],
   expectedPublisherIdentity: string,
@@ -97,11 +115,11 @@ export async function observeRemoteAudio(
     const mediaKind = row.kind ?? row.mediaType;
     if (row.type !== "inbound-rtp" || mediaKind !== "audio") return;
     rows += 1;
-    packetsReceived += typeof row.packetsReceived === "number" ? row.packetsReceived : 0;
-    bytesReceived += typeof row.bytesReceived === "number" ? row.bytesReceived : 0;
+    packetsReceived += readCounter(row, "packetsReceived");
+    bytesReceived += readCounter(row, "bytesReceived");
   });
   if (rows === 0) throw new Error("RTC stats report has no inbound audio records");
-  if (packetsReceived <= 0 || bytesReceived <= 0) {
+  if (!isPositiveCount(packetsReceived) || !isPositiveCount(bytesReceived)) {
     throw new Error("RTC inbound audio must have nonzero packets and bytes");
   }
   return { trackSid: subscription.trackSid, packetsReceived, bytesReceived };
@@ -146,12 +164,14 @@ export function assertTransportResult(raw: unknown, expectedRunId: string): Tran
   if (
     result.subscribed_publisher_identity !== result.publisher_identity ||
     !result.audio_track_sid ||
-    result.packets_received <= 0 ||
-    result.bytes_received <= 0
+    !isPositiveCount(result.packets_received) ||
+    !isPositiveCount(result.bytes_received)
   ) {
     throw new Error("transport result is missing received audio evidence");
   }
-  if (result.microphone_frames <= 0) throw new Error("transport result has no microphone frames");
+  if (!isPositiveCount(result.microphone_frames)) {
+    throw new Error("transport result has no microphone frames");
+  }
   if (!result.event_received || result.event_sender_identity !== result.publisher_identity) {
     throw new Error("transport result is missing current-run SESSION_INIT evidence");
   }

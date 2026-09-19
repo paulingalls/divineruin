@@ -50,6 +50,18 @@ test("success requires every observation from the current run", () => {
   }
 });
 
+test("success rejects absent or malformed counters, not only zero ones", () => {
+  for (const field of ["packets_received", "bytes_received", "microphone_frames"] as const) {
+    const { [field]: _dropped, ...missing } = good;
+    expect(() => validateScenarioResult(missing, "run-one", "none")).toThrow(/audio|microphone/);
+    for (const malformed of [Number.NaN, Infinity, "4", null]) {
+      expect(() =>
+        validateScenarioResult({ ...good, [field]: malformed }, "run-one", "none"),
+      ).toThrow(/audio|microphone/);
+    }
+  }
+});
+
 test("withhold-audio accepts only its guard after unaffected evidence", () => {
   const result = {
     ...good,
@@ -71,6 +83,20 @@ test("withhold-audio accepts only its guard after unaffected evidence", () => {
       "withhold-audio",
     ),
   ).toThrow(/received-audio/);
+  // The withheld-audio counters are still evidence: absent is not the same as 0.
+  for (const field of ["packets_received", "bytes_received"] as const) {
+    const { [field]: _dropped, ...missing } = result;
+    expect(() => validateScenarioResult(missing, "run-one", "withhold-audio")).toThrow(
+      /unexpectedly/,
+    );
+    expect(() =>
+      validateScenarioResult({ ...result, [field]: Number.NaN }, "run-one", "withhold-audio"),
+    ).toThrow(/unexpectedly/);
+  }
+  const { microphone_frames: _mic, ...noMicrophone } = result;
+  expect(() => validateScenarioResult(noMicrophone, "run-one", "withhold-audio")).toThrow(
+    /microphone/,
+  );
 });
 
 test("withhold-event accepts only its guard after audio evidence", () => {
@@ -90,4 +116,13 @@ test("withhold-event accepts only its guard after audio evidence", () => {
   expect(() =>
     validateScenarioResult({ ...result, hud_character: "stale" }, "run-one", "withhold-event"),
   ).toThrow(/unexpectedly/);
+  for (const field of ["packets_received", "bytes_received", "microphone_frames"] as const) {
+    const { [field]: _dropped, ...missing } = result;
+    expect(() => validateScenarioResult(missing, "run-one", "withhold-event")).toThrow(
+      /audio|microphone/,
+    );
+    expect(() =>
+      validateScenarioResult({ ...result, [field]: Number.NaN }, "run-one", "withhold-event"),
+    ).toThrow(/audio|microphone/);
+  }
 });

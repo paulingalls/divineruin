@@ -71,6 +71,10 @@ def mint_probe_token(api_key: str, api_secret: str, room_name: str, identity: st
     )
 
 
+def _positive_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def assert_mobile_result(result: dict[str, Any], run_id: str, publisher_identity: str) -> None:
     if result.get("run_id") != run_id:
         raise ValueError("mobile result run ID is stale")
@@ -80,7 +84,7 @@ def assert_mobile_result(result: dict[str, Any], run_id: str, publisher_identity
         raise ValueError("mobile result names the wrong publisher")
     if result.get("subscribed_publisher_identity") != publisher_identity or not result.get("audio_track_sid"):
         raise ValueError("mobile result is missing the publisher audio subscription")
-    if result.get("packets_received", 0) <= 0 or result.get("bytes_received", 0) <= 0:
+    if not _positive_count(result.get("packets_received")) or not _positive_count(result.get("bytes_received")):
         raise ValueError("mobile result has no received audio packets or bytes")
     if not result.get("event_received") or result.get("event_sender_identity") != publisher_identity:
         raise ValueError("mobile result has no current-run SESSION_INIT event")
