@@ -300,4 +300,19 @@ case "$real_error" in
 esac
 ok "real lsof vacancy and error results remain distinct"
 
+for inspector_status in 1 2 127; do
+  if ! (
+    wt_port_listeners() { return "$inspector_status"; }
+    wt_service_observation() { exit 99; }
+    outcome=0
+    wt_validate_occupied_service fixture postgres 5432 55432 || outcome=$?
+    expected="$inspector_status"
+    [ "$inspector_status" -ne 1 ] || expected=0
+    [ "$outcome" -eq "$expected" ]
+  ); then
+    fail "warm provisioning converted port inspection status $inspector_status into permission"
+  fi
+done
+ok "warm provisioning accepts confirmed vacancy and propagates inspection failures"
+
 echo "All init-worktree tests passed."
