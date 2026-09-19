@@ -66,11 +66,31 @@ const expectedCommands = [
 ];
 
 describe("runUpgradeVerification", () => {
+  test("runs the SDK baseline before command stages", async () => {
+    const projectRoot = await fixture();
+    const calls: string[] = [];
+
+    await runUpgradeVerification({
+      projectRoot,
+      verifyBaseline: () => {
+        calls.push("SDK 57 baseline");
+        return Promise.resolve();
+      },
+      runCommand: successfulRunner(projectRoot, calls),
+    });
+
+    expect(calls[0]).toBe("SDK 57 baseline");
+  });
+
   test("runs every compatibility, type, and export stage in order", async () => {
     const projectRoot = await fixture();
     const calls: string[] = [];
 
-    await runUpgradeVerification({ projectRoot, runCommand: successfulRunner(projectRoot, calls) });
+    await runUpgradeVerification({
+      projectRoot,
+      verifyBaseline: () => Promise.resolve(),
+      runCommand: successfulRunner(projectRoot, calls),
+    });
 
     expect(calls).toEqual(expectedCommands);
   });
@@ -82,6 +102,7 @@ describe("runUpgradeVerification", () => {
       let index = 0;
       const options: VerificationOptions = {
         projectRoot,
+        verifyBaseline: () => Promise.resolve(),
         runCommand: async (command) => {
           const current = index++;
           if (current === failedIndex) return { exitCode: 23 };
@@ -103,6 +124,7 @@ describe("runUpgradeVerification", () => {
     const projectRoot = await fixture();
     const result = runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: () => Promise.resolve({ exitCode: null, signal: "SIGTERM" }),
     });
     expect(await failureMessage(result)).toContain("SIGTERM");
@@ -112,6 +134,7 @@ describe("runUpgradeVerification", () => {
     const projectRoot = await fixture();
     const result = runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: () => Promise.reject(new Error("ENOENT")),
     });
     expect(await failureMessage(result)).toContain("Expo dependency check failed to start: ENOENT");
@@ -121,6 +144,7 @@ describe("runUpgradeVerification", () => {
     const projectRoot = await fixture();
     const result = runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: () => Promise.resolve({ exitCode: 0 }),
     });
     expect(await failureMessage(result)).toContain("generated route types");
@@ -132,6 +156,7 @@ describe("runUpgradeVerification", () => {
     await writeFile(join(projectRoot, ".expo", "types", "router.d.ts"), "stale\n");
     const result = runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: () => Promise.resolve({ exitCode: 0 }),
     });
     expect(await failureMessage(result)).toContain("generated route types");
@@ -143,6 +168,7 @@ describe("runUpgradeVerification", () => {
       const projectRoot = await fixture();
       const result = runUpgradeVerification({
         projectRoot,
+        verifyBaseline: () => Promise.resolve(),
         runCommand: async (command) => {
           if (command[2] === "customize") {
             const directory = join(projectRoot, ".expo", "types");
@@ -162,6 +188,7 @@ describe("runUpgradeVerification", () => {
     const projectRoot = await fixture();
     const result = runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: async (command) => {
         if (command.join(" ") === "bun expo customize tsconfig.json") {
           await writeFile(join(projectRoot, "tsconfig.json"), "{}\n");
@@ -184,6 +211,7 @@ describe("runUpgradeVerification", () => {
 
     await runUpgradeVerification({
       projectRoot,
+      verifyBaseline: () => Promise.resolve(),
       runCommand: async (command) => {
         const platform = command[4];
         if (command[2] === "export") {

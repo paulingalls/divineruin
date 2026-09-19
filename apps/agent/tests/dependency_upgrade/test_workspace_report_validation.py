@@ -14,7 +14,13 @@ def _report(root: Path) -> dict:
 
 
 def _copy_scope(tmp_path: Path) -> Path:
-    paths = ["package.json", "bun.lock", "bunfig.toml", "docs/dependency_upgrade.json"]
+    paths = [
+        "package.json",
+        "bun.lock",
+        "bunfig.toml",
+        "docs/dependency_upgrade.json",
+        "apps/mobile/app.json",
+    ]
     report = _report(ROOT)
     paths.extend(f"{project}/package.json" for project in report["workspace_projects"] if project != ".")
     for relative in paths:
@@ -152,12 +158,24 @@ def test_candidate_latest_difference_requires_reason(tmp_path):
         _validate(root, report)
 
 
-def test_mobile_react_and_e2e_exclusions_are_required(tmp_path):
+def test_mobile_baseline_block_is_required(tmp_path):
+    root = _copy_scope(tmp_path)
+    report = _report(root)
+    report.pop("mobile_baseline", None)
+    with pytest.raises(ValueError, match="mobile baseline"):
+        _validate(root, report)
+
+
+def test_mobile_holds_and_e2e_exclusions_are_required(tmp_path):
     root = _copy_scope(tmp_path)
     report = _validate(root)
-    mobile = next(item for item in report["workspace_dependencies"] if item["project"] == "apps/mobile")
-    mobile["held_by"] = None
-    with pytest.raises(ValueError, match=r"apps/mobile.*story 207/208"):
+    held = next(
+        item
+        for item in report["workspace_dependencies"]
+        if item["project"] == "apps/mobile" and item["candidate"] != item["registry_latest"]
+    )
+    held["held_by"] = None
+    with pytest.raises(ValueError, match=r"mobile hold requires producer.*"):
         _validate(root, report)
 
     report = _report(root)

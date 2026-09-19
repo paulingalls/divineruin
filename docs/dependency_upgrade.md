@@ -1,6 +1,6 @@
 # Dependency upgrade
 
-Registry snapshot: 2026-09-18  
+Registry snapshot: 2026-09-19  
 Toolchain: CPython 3.14.7; uv 0.10.6; Bun 1.4.2
 
 ## Python environments
@@ -50,59 +50,57 @@ Release age policy: 604800 seconds.
 | . | devDependencies | typescript-eslint | `^8.70.0` | 8.70.0 / 8.70.0 | 8.70.0 | 8.70.0 | Current |
 | . | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 | . | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
-| apps/mobile | dependencies | @config-plugins/react-native-webrtc | `15.0.2` | 15.0.2 / 15.0.2 | 15.0.2 | 15.0.2 | Held by story 207/208: Config plugin 15 is the first release whose installed peer contract accepts Expo 56. |
-| apps/mobile | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @expo-google-fonts/cormorant-garamond | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @expo-google-fonts/crimson-pro | `^0.4.2` | 0.4.2 / 0.4.2 | 0.4.2 | 0.4.2 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @expo-google-fonts/ibm-plex-mono | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @expo/vector-icons | `^15.0.2` | 15.1.1 / 15.1.1 | 15.1.1 | 15.1.1 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @livekit/components-core | `^0.12.13` | 0.12.13 / 0.12.13 | 0.12.13 | 0.12.15 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @livekit/components-react | `^2.9.20` | 2.9.20 / 2.9.20 | 2.9.20 | 2.9.24 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @livekit/react-native | `2.12.0` | 2.12.0 / 2.12.0 | 2.12.0 | 3.0.0 | Held by story 207/208: The seven-day policy selects LiveKit React Native 2.12.0; its installed peers require WebRTC ^144.1.2 and livekit-client ^2.19.0. |
-| apps/mobile | dependencies | @livekit/react-native-expo-plugin | `^1.0.2` | 1.0.2 / 1.0.2 | 1.0.2 | 1.0.2 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @livekit/react-native-webrtc | `144.2.0` | 144.2.0 / 144.2.0 | 144.2.0 | 144.2.0 | Held by story 207/208: LiveKit React Native 2.12 accepts this single installed WebRTC resolution. |
-| apps/mobile | dependencies | @react-native-async-storage/async-storage | `2.2.0` | 2.2.0 / 2.2.0 | 2.2.0 | 3.1.1 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | @react-native-community/slider | `5.2.0` | 5.2.0 / 5.2.0 | 5.2.0 | 5.2.1 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo | `56.0.22` | 56.0.22 / 56.0.22 | 56.0.22 | 57.0.24 | Held by story 207/208: Expo SDK 56 CLI required expo@~56.0.22 on 2026-09-18; expo@56.0.22 was published 2026-09-17T22:09:28.356Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-asset | `56.0.24` | 56.0.24 / 56.0.24 | 56.0.24 | 57.0.18 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-audio | `56.0.13` | 56.0.13 / 56.0.13 | 56.0.13 | 57.0.5 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-build-properties | `56.0.27` | 56.0.27 / 56.0.27 | 56.0.27 | 57.0.21 | Held by story 207/208: Expo SDK 56 uses this config plugin to opt out of the documented Hermes V1 memory regression. Legacy Hermes requires React Native source builds on iOS and Android; story 208 owns removal with SDK 57. |
-| apps/mobile | dependencies | expo-constants | `56.0.26` | 56.0.26 / 56.0.26 | 56.0.26 | 57.0.19 | Held by story 207/208: Expo SDK 56 CLI required expo-constants@~56.0.26 on 2026-09-18; expo-constants@56.0.26 was published 2026-09-17T22:10:15.391Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-crypto | `56.0.5` | 56.0.5 / 56.0.5 | 56.0.5 | 57.0.3 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-dev-client | `56.0.27` | 56.0.27 / 56.0.27 | 56.0.27 | 57.0.19 | Held by story 207/208: Expo SDK 56 CLI required expo-dev-client@~56.0.27 on 2026-09-18; expo-dev-client@56.0.27 was published 2026-09-17T22:09:38.863Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-device | `56.0.4` | 56.0.4 / 56.0.4 | 56.0.4 | 57.0.2 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | github:paulingalls/expo-disable-pods-indexing#fdd8959 / github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | expo-font | `56.0.7` | 56.0.7 / 56.0.7 | 56.0.7 | 57.0.4 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-glass-effect | `56.0.4` | 56.0.4 / 56.0.4 | 56.0.4 | 57.0.3 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-haptics | `56.0.3` | 56.0.3 / 56.0.3 | 56.0.3 | 57.0.3 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-image | `56.0.13` | 56.0.13 / 56.0.13 | 56.0.13 | 57.0.5 | Held by story 207/208: Expo SDK 56 CLI required expo-image@~56.0.13 on 2026-09-18; expo-image@56.0.13 was published 2026-09-17T22:11:43.001Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-linear-gradient | `56.0.4` | 56.0.4 / 56.0.4 | 56.0.4 | 57.0.2 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-linking | `56.0.18` | 56.0.18 / 56.0.18 | 56.0.18 | 57.0.10 | Held by story 207/208: Expo SDK 56 CLI required expo-linking@~56.0.18 on 2026-09-18; expo-linking@56.0.18 was published 2026-09-17T22:08:50.571Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-notifications | `56.0.25` | 56.0.25 / 56.0.25 | 56.0.25 | 57.0.20 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-router | `56.2.21` | 56.2.21 / 56.2.21 | 56.2.21 | 57.0.22 | Held by story 207/208: Expo SDK 56 CLI required expo-router@~56.2.21 on 2026-09-18; expo-router@56.2.21 was published 2026-09-17T22:09:04.327Z and Bun's seven-day release-age policy rejected it, so story 207 used the authorized command-scoped exception for that exact version. Story 208 owns SDK 57. |
-| apps/mobile | dependencies | expo-secure-store | `56.0.4` | 56.0.4 / 56.0.4 | 56.0.4 | 57.0.4 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-splash-screen | `56.0.15` | 56.0.15 / 56.0.15 | 56.0.15 | 57.0.9 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-status-bar | `56.0.4` | 56.0.4 / 56.0.4 | 56.0.4 | 57.0.1 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-symbols | `56.0.7` | 56.0.7 / 56.0.7 | 56.0.7 | 57.0.3 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-system-ui | `56.0.5` | 56.0.5 / 56.0.5 | 56.0.5 | 57.0.4 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | expo-web-browser | `56.0.6` | 56.0.6 / 56.0.6 | 56.0.6 | 57.0.3 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | livekit-client | `^2.19.0` | 2.22.3 / 2.22.3 | 2.22.3 | 2.22.3 | Held by story 207/208: LiveKit React Native 2.12 requires livekit-client ^2.19.0. |
-| apps/mobile | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by story 207/208: React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom. |
-| apps/mobile | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by story 207/208: React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom. |
-| apps/mobile | dependencies | react-native | `0.85.3` | 0.85.3 / 0.85.3 | 0.85.3 | 0.87.1 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | react-native-gesture-handler | `2.31.1` | 2.31.1 / 2.31.1 | 2.31.1 | 3.3.0 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | react-native-reanimated | `4.3.1` | 4.3.1 / 4.3.1 | 4.3.1 | 4.7.0 | Held by story 207/208: Expo SDK 56 requires this version. SDK 56 has a known Hermes V1 memory regression affecting Reanimated and Worklets, so the app uses the supported legacy Hermes opt-out; story 208 owns the SDK 57 resolution. |
-| apps/mobile | dependencies | react-native-safe-area-context | `5.7.0` | 5.7.0 / 5.7.0 | 5.7.0 | 5.10.0 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | react-native-screens | `4.26.0` | 4.26.0 / 4.26.0 | 4.26.0 | 4.28.0 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | dependencies | react-native-url-polyfill | `^3.0.0` | 3.0.0 / 3.0.0 | 3.0.0 | 4.0.0 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | react-native-web | `~0.21.0` | 0.21.2 / 0.21.2 | 0.21.2 | 0.21.2 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | dependencies | react-native-worklets | `0.8.3` | 0.8.3 / 0.8.3 | 0.8.3 | 0.12.2 | Held by story 207/208: Expo SDK 56 requires this version. SDK 56 has a known Hermes V1 memory regression affecting Reanimated and Worklets, so the app uses the supported legacy Hermes opt-out; story 208 owns the SDK 57 resolution. |
-| apps/mobile | dependencies | zustand | `^5.0.12` | 5.0.12 / 5.0.12 | 5.0.12 | 5.0.15 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by story 207/208: Expo-managed mobile dependency cohort is selected by stories 207/208. |
-| apps/mobile | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by story 207/208: Expo SDK 56 CLI selected this compatible mobile dependency; story 208 owns the SDK 57 cohort. |
-| apps/mobile | devDependencies | expo-mcp | `~0.2.1` | 0.2.4 / 0.2.4 | 0.2.4 | 0.2.4 | Held by story 207/208: Installed with `bun expo install expo-mcp --dev` for the Expo local MCP server. Run `bun expo whoami`, then `bun run start:mcp`; reconnect or restart the MCP client after the Expo server starts or stops. |
+| apps/mobile | dependencies | @config-plugins/react-native-webrtc | `15.0.2` | 15.0.2 / 15.0.2 | 15.0.2 | 15.0.2 | Current |
+| apps/mobile | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Current |
+| apps/mobile | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Current |
+| apps/mobile | dependencies | @expo-google-fonts/cormorant-garamond | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Current |
+| apps/mobile | dependencies | @expo-google-fonts/crimson-pro | `^0.4.2` | 0.4.2 / 0.4.2 | 0.4.2 | 0.4.2 | Current |
+| apps/mobile | dependencies | @expo-google-fonts/ibm-plex-mono | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Current |
+| apps/mobile | dependencies | @expo/vector-icons | `^15.0.2` | 15.1.1 / 15.1.1 | 15.1.1 | 15.1.1 | Current |
+| apps/mobile | dependencies | @livekit/components-core | `^0.12.15` | 0.12.15 / 0.12.15 | 0.12.15 | 0.12.15 | Current |
+| apps/mobile | dependencies | @livekit/components-react | `^2.9.24` | 2.9.24 / 2.9.24 | 2.9.24 | 2.9.24 | Current |
+| apps/mobile | dependencies | @livekit/react-native | `2.12.0` | 2.12.0 / 2.12.0 | 2.12.0 | 3.0.0 | Held by @livekit/react-native-expo-plugin@1.0.2: The Expo plugin declares @livekit/react-native ^2.1.0; 2.12.0 is the newest compatible release and requires WebRTC ^144.1.2. |
+| apps/mobile | dependencies | @livekit/react-native-expo-plugin | `^1.0.2` | 1.0.2 / 1.0.2 | 1.0.2 | 1.0.2 | Current |
+| apps/mobile | dependencies | @livekit/react-native-webrtc | `144.1.2` | 144.1.2 / 144.1.2 | 144.1.2 | 144.2.0 | Held by @livekit/react-native@2.12.0: LiveKit React Native 2.12.0 declares WebRTC ^144.1.2; 144.1.2 retains the WebRTC-SDK framework required by that release. |
+| apps/mobile | dependencies | @react-native-async-storage/async-storage | `2.2.0` | 2.2.0 / 2.2.0 | 2.2.0 | 3.1.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects @react-native-async-storage/async-storage 2.2.0. |
+| apps/mobile | dependencies | @react-native-community/slider | `5.2.0` | 5.2.0 / 5.2.0 | 5.2.0 | 5.2.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects @react-native-community/slider 5.2.0. |
+| apps/mobile | dependencies | expo | `57.0.24` | 57.0.24 / 57.0.24 | 57.0.24 | 57.0.24 | Current |
+| apps/mobile | dependencies | expo-asset | `57.0.18` | 57.0.18 / 57.0.18 | 57.0.18 | 57.0.18 | Current |
+| apps/mobile | dependencies | expo-audio | `57.0.5` | 57.0.5 / 57.0.5 | 57.0.5 | 57.0.5 | Current |
+| apps/mobile | dependencies | expo-crypto | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
+| apps/mobile | dependencies | expo-dev-client | `57.0.19` | 57.0.19 / 57.0.19 | 57.0.19 | 57.0.19 | Current |
+| apps/mobile | dependencies | expo-device | `57.0.2` | 57.0.2 / 57.0.2 | 57.0.2 | 57.0.2 | Current |
+| apps/mobile | dependencies | expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | github:paulingalls/expo-disable-pods-indexing#fdd8959 / github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | Current |
+| apps/mobile | dependencies | expo-font | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
+| apps/mobile | dependencies | expo-glass-effect | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
+| apps/mobile | dependencies | expo-haptics | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
+| apps/mobile | dependencies | expo-image | `57.0.5` | 57.0.5 / 57.0.5 | 57.0.5 | 57.0.5 | Current |
+| apps/mobile | dependencies | expo-linear-gradient | `57.0.2` | 57.0.2 / 57.0.2 | 57.0.2 | 57.0.2 | Current |
+| apps/mobile | dependencies | expo-linking | `57.0.10` | 57.0.10 / 57.0.10 | 57.0.10 | 57.0.10 | Current |
+| apps/mobile | dependencies | expo-notifications | `57.0.20` | 57.0.20 / 57.0.20 | 57.0.20 | 57.0.20 | Current |
+| apps/mobile | dependencies | expo-router | `57.0.22` | 57.0.22 / 57.0.22 | 57.0.22 | 57.0.22 | Current |
+| apps/mobile | dependencies | expo-secure-store | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
+| apps/mobile | dependencies | expo-splash-screen | `57.0.9` | 57.0.9 / 57.0.9 | 57.0.9 | 57.0.9 | Current |
+| apps/mobile | dependencies | expo-status-bar | `57.0.1` | 57.0.1 / 57.0.1 | 57.0.1 | 57.0.1 | Current |
+| apps/mobile | dependencies | expo-symbols | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
+| apps/mobile | dependencies | expo-system-ui | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
+| apps/mobile | dependencies | expo-web-browser | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
+| apps/mobile | dependencies | livekit-client | `^2.19.0` | 2.22.3 / 2.22.3 | 2.22.3 | 2.22.3 | Current |
+| apps/mobile | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
+| apps/mobile | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
+| apps/mobile | dependencies | react-native | `0.86.3` | 0.86.3 / 0.86.3 | 0.86.3 | 0.87.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native 0.86.3. |
+| apps/mobile | dependencies | react-native-gesture-handler | `2.32.0` | 2.32.0 / 2.32.0 | 2.32.0 | 3.3.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-gesture-handler 2.32.0. |
+| apps/mobile | dependencies | react-native-reanimated | `4.5.1` | 4.5.1 / 4.5.1 | 4.5.1 | 4.7.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-reanimated 4.5.1. |
+| apps/mobile | dependencies | react-native-safe-area-context | `5.7.0` | 5.7.0 / 5.7.0 | 5.7.0 | 5.10.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-safe-area-context 5.7.0. |
+| apps/mobile | dependencies | react-native-screens | `4.26.0` | 4.26.0 / 4.26.0 | 4.26.0 | 4.28.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-screens 4.26.0. |
+| apps/mobile | dependencies | react-native-url-polyfill | `4.0.0` | 4.0.0 / 4.0.0 | 4.0.0 | 4.0.0 | Current |
+| apps/mobile | dependencies | react-native-web | `~0.21.0` | 0.21.2 / 0.21.2 | 0.21.2 | 0.21.2 | Current |
+| apps/mobile | dependencies | react-native-worklets | `0.10.1` | 0.10.1 / 0.10.1 | 0.10.1 | 0.12.2 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-worklets 0.10.1. |
+| apps/mobile | dependencies | zustand | `^5.0.15` | 5.0.15 / 5.0.15 | 5.0.15 | 5.0.15 | Current |
+| apps/mobile | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
+| apps/mobile | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
+| apps/mobile | devDependencies | expo-mcp | `~0.2.1` | 0.2.4 / 0.2.4 | 0.2.4 | 0.2.4 | Current |
+| apps/mobile | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by expo@57.0.24: TypeScript 6.0.3 is the verified workspace compiler for the SDK 57 cohort. |
 | apps/server | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Current |
 | apps/server | dependencies | @google/genai | `^2.22.0` | 2.22.0 / 2.22.0 | 2.22.0 | 2.23.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
 | apps/server | dependencies | @livekit/protocol | `^1.51.0` | 1.51.0 / 1.51.0 | 1.51.0 | 1.52.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
@@ -111,24 +109,47 @@ Release age policy: 604800 seconds.
 | apps/server | dependencies | sharp | `^0.35.4` | 0.35.4 / 0.35.4 | 0.35.4 | 0.35.4 | Current |
 | apps/server | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | apps/web | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Current |
-| apps/web | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by story 207/208: React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom. |
-| apps/web | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by story 207/208: React 19.2.6 stays aligned across mobile and web. React Native 0.85.3 accepts ^19.2.3 and React DOM 19.2.6 accepts ^19.2.6; mobile and web runtime suites, builds, and exports pass, so Expo validation excludes only react and react-dom. |
+| apps/web | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
+| apps/web | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
 | apps/web | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
-| apps/web | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by story 207/208: Web React and type versions stay aligned with the Expo cohort selected by stories 207/208. |
-| apps/web | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by story 207/208: Web React and type versions stay aligned with the Expo cohort selected by stories 207/208. |
+| apps/web | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
+| apps/web | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
 | packages/design-tokens | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | packages/design-tokens | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 | packages/shared | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
 | packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 
+### Mobile SDK 57 baseline
+
+- Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
+- Platform minimums: Android 7+ (compile/target SDK 36/36); iOS 16.4+; Xcode 26.4+.
+- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-audio, expo-secure-store, expo-asset, expo-image.
+- Patch files: none.
+
+| Git dependency | Requested | Locked commit |
+|---|---|---|
+| expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | `fdd8959` |
+
+| Release-age exception | Published | Command | Evidence |
+|---|---|---|---|
+| expo@57.0.24 | 2026-09-18T08:07:12.211Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
+| expo-asset@57.0.18 | 2026-09-18T08:10:13.973Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
+| expo-notifications@57.0.20 | 2026-09-18T08:09:56.492Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
+| expo-router@57.0.22 | 2026-09-18T08:09:25.131Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
+
+Compatibility exceptions:
+- none
+
+| Platform | Prebuild | Build | Device/install | Acceptance |
+|---|---|---|---|---|
+| iOS | passed | passed | passed on iOS 26.5 on story-208-sdk57 (`DC457949-200B-479A-95FD-611E33210F12`) | launch: passed; auth: passed |
+| Android | passed | missing: no Android device was attached, so no native Android build is claimed | missing: adb devices returned no attached device | export: passed |
+
 ### Root resolution overrides
 
 | Override | Requested | Reason |
 |---|---|---|
-| dnssd-advertise | `1.1.4` | Root resolution override retained unchanged. |
-| expo-constants | `56.0.26` | Aligns expo-asset with the Expo SDK 56 CLI-selected direct native module version. |
-| hermes-compiler | `0.15.0` | expo-build-properties requires this compiler for the supported SDK 56 legacy Hermes opt-out. |
-| react-native-screens | `4.26.0` | Aligns Expo Router with the Expo SDK 56 CLI-selected direct native module version. |
+| dnssd-advertise | `1.1.4` | Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4. |
 
 E2E exclusion: Independent manifest, lock, and default service DSNs are owned by story 210; its browser surface is rerun after stories 207/208 land the shared React cohort.
 

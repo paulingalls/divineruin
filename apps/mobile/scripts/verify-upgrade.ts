@@ -1,6 +1,8 @@
 import { readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+import { verifySdk57Baseline } from "./sdk-baseline";
+
 export interface CommandResult {
   exitCode: number | null;
   signal?: string;
@@ -8,6 +10,7 @@ export interface CommandResult {
 
 export interface VerificationOptions {
   projectRoot: string;
+  verifyBaseline: () => Promise<void>;
   runCommand?: (command: string[], cwd: string) => Promise<CommandResult>;
 }
 
@@ -106,6 +109,7 @@ function exportStage(platform: "ios" | "android" | "web"): Stage {
 
 export async function runUpgradeVerification(options: VerificationOptions): Promise<void> {
   const runCommand = options.runCommand ?? defaultRunCommand;
+  await options.verifyBaseline();
   await executeStage(stages.dependencyCheck, options.projectRoot, runCommand);
   await executeStage(stages.doctor, options.projectRoot, runCommand);
   await generateRouteTypes(options.projectRoot, runCommand);
@@ -121,5 +125,10 @@ export async function runUpgradeVerification(options: VerificationOptions): Prom
 }
 
 if (import.meta.main) {
-  await runUpgradeVerification({ projectRoot: join(import.meta.dir, "..") });
+  const projectRoot = join(import.meta.dir, "..");
+  const repoRoot = join(projectRoot, "../..");
+  await runUpgradeVerification({
+    projectRoot,
+    verifyBaseline: () => verifySdk57Baseline({ repoRoot }),
+  });
 }

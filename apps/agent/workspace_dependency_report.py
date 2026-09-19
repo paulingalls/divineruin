@@ -113,6 +113,121 @@ def probe_installed(root: Path, report: dict) -> dict[tuple[str, str], str]:
     return installed
 
 
+def _configured_plugins(root: Path) -> list[str]:
+    path = root / "apps/mobile/app.json"
+    if not path.is_file():
+        raise ValueError("missing mobile config: apps/mobile/app.json")
+    plugins = json.loads(path.read_text()).get("expo", {}).get("plugins", [])
+    return [plugin[0] if isinstance(plugin, list) else plugin for plugin in plugins]
+
+
+# Vendored trees ship their own .patch files (uv wheels under .venv, Expo caches
+# under .expo), and none of them is a mobile patch this baseline claims to inventory.
+_UNWALKED = {".git", "node_modules", ".venv", ".expo"}
+
+
+def _patch_inventory(root: Path) -> list[str]:
+    files = [
+        path for path in root.rglob("*") if path.is_file() and not _UNWALKED.intersection(path.relative_to(root).parts)
+    ]
+    if not files:
+        raise ValueError("repository file corpus is empty while checking patches")
+    return sorted(path.relative_to(root).as_posix() for path in files if path.suffix == ".patch")
+
+
+def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, str, str], dict]) -> None:
+    baseline = report.get("mobile_baseline")
+    if not isinstance(baseline, dict):
+        raise ValueError("mobile baseline is missing")
+    if report.get("schema_version") != 2:
+        raise ValueError("mobile baseline requires schema_version 2")
+
+    mobile = {name: row for (project, _, name), row in rows.items() if project == "apps/mobile"}
+    for field, package in (("expo", "expo"), ("react_native", "react-native")):
+        if baseline.get(field) != mobile.get(package, {}).get("locked"):
+            raise ValueError(f"mobile baseline {field} differs from lock")
+    if baseline.get("engine") != "Hermes V1 (SDK 57 default)":
+        raise ValueError("mobile baseline engine must be the SDK 57 Hermes V1 default")
+    expected_minimums = {
+        "android": "7+",
+        "compile_sdk": 36,
+        "target_sdk": 36,
+        "ios": "16.4+",
+        "xcode": "26.4+",
+    }
+    if baseline.get("platform_minimums") != expected_minimums:
+        raise ValueError("mobile baseline platform minimums differ from SDK 57")
+    if baseline.get("plugins") != _configured_plugins(root):
+        raise ValueError("mobile baseline plugin inventory differs from app.json")
+
+    git_sources = baseline.get("git_sources")
+    expected_git = []
+    for name, row in mobile.items():
+        if row["requested"].startswith(("github:", "git+")):
+            expected_git.append(
+                {
+                    "name": name,
+                    "requested": row["requested"],
+                    "locked": row["locked"],
+                    "commit": row["locked"].rsplit("#", 1)[-1],
+                }
+            )
+    if git_sources != expected_git:
+        raise ValueError("mobile baseline git source inventory differs from manifest and lock")
+    if baseline.get("patches") != _patch_inventory(root):
+        raise ValueError("mobile baseline patch inventory differs from repository")
+
+    expected_livekit = {
+        "@livekit/react-native": "2.12.0",
+        "@livekit/react-native-webrtc": "144.1.2",
+    }
+    for name, expected in expected_livekit.items():
+        if mobile.get(name, {}).get("locked") != expected:
+            raise ValueError(f"mobile baseline incompatible LiveKit graph: {name}")
+
+    exceptions = baseline.get("release_age_exceptions")
+    if not isinstance(exceptions, list) or {row.get("name") for row in exceptions} != {
+        "expo",
+        "expo-asset",
+        "expo-notifications",
+        "expo-router",
+    }:
+        raise ValueError("mobile baseline release-age exceptions are incomplete")
+    for exception in exceptions:
+        name = exception["name"]
+        if exception.get("version") != mobile.get(name, {}).get("locked"):
+            raise ValueError(f"release-age exception differs from lock: {name}")
+        for field in ("published_at", "command", "evidence"):
+            if not exception.get(field):
+                raise ValueError(f"release-age exception {field} is empty: {name}")
+
+    compatibility = baseline.get("compatibility_exceptions")
+    if not isinstance(compatibility, list):
+        raise ValueError("mobile baseline compatibility exceptions are missing")
+    for exception in compatibility:
+        for field in ("producer", "declared_peer", "selected", "evidence"):
+            if not exception.get(field):
+                raise ValueError(f"compatibility exception {field} is empty")
+    if compatibility:
+        raise ValueError("mobile baseline compatibility exceptions must be empty for the in-range graph")
+
+    native = baseline.get("native_validation", {})
+    ios = native.get("ios", {})
+    for field in ("prebuild", "build", "install", "launch_flow", "auth_flow"):
+        if ios.get(field) != "passed":
+            raise ValueError(f"iOS native validation is not passed: {field}")
+    if not ios.get("simulator_udid") or not ios.get("runtime"):
+        raise ValueError("iOS native validation device evidence is empty")
+    android = native.get("android", {})
+    for field in ("prebuild", "export"):
+        if android.get(field) != "passed":
+            raise ValueError(f"Android validation is not passed: {field}")
+    for field in ("build", "device"):
+        value = android.get(field, "")
+        if value != "passed" and not value.startswith("missing:"):
+            raise ValueError(f"Android validation must report passed or missing: {field}")
+
+
 def validate_workspace_report(root: Path, report: dict, installed: dict[tuple[str, str], str]) -> None:
     for field in ("bun_version", "minimum_release_age"):
         if report.get(field) is None:
@@ -171,13 +286,15 @@ def validate_workspace_report(root: Path, report: dict, installed: dict[tuple[st
                 raise ValueError(f"{field} is empty: {project}/{name}")
         if row["candidate"] != row["registry_latest"] and not row.get("reason"):
             raise ValueError(f"candidate difference requires reason: {project}/{name}")
-        if project == "apps/mobile" and row.get("held_by") != "story 207/208":
-            raise ValueError(f"apps/mobile dependency must be held by story 207/208: {name}")
+        if project == "apps/mobile" and row["candidate"] != row["registry_latest"] and not row.get("held_by"):
+            raise ValueError(f"mobile hold requires producer: {name}")
         if (
             project == "apps/web"
             and name in {"react", "react-dom", "@types/react", "@types/react-dom"}
-            and row.get("held_by") != "story 207/208"
+            and row["candidate"] != row["registry_latest"]
+            and not row.get("held_by")
         ):
-            raise ValueError(f"apps/web React dependency must be held by story 207/208: {name}")
+            raise ValueError(f"apps/web React hold requires producer: {name}")
+    _validate_mobile_baseline(root, report, actual)
     if "story 210" not in report.get("exclusions", {}).get("e2e", ""):
         raise ValueError("e2e exclusion must name story 210")

@@ -45,6 +45,54 @@ def render_markdown(report: dict) -> str:
         lines.append(
             f"| {row['project']} | {row['group']} | {row['name']} | `{row['requested']}` | {row['locked']} / {row['installed']} | {row['candidate']} | {row['registry_latest']} | {decision} |"
         )
+    mobile = report["mobile_baseline"]
+    minimums = mobile["platform_minimums"]
+    lines.extend(
+        [
+            "",
+            "### Mobile SDK 57 baseline",
+            "",
+            f"- Expo {mobile['expo']}; React Native {mobile['react_native']}; {mobile['engine']}.",
+            f"- Platform minimums: Android {minimums['android']} (compile/target SDK {minimums['compile_sdk']}/{minimums['target_sdk']}); iOS {minimums['ios']}; Xcode {minimums['xcode']}.",
+            f"- Config plugins: {', '.join(mobile['plugins'])}.",
+            f"- Patch files: {', '.join(mobile['patches']) if mobile['patches'] else 'none'}.",
+            "",
+            "| Git dependency | Requested | Locked commit |",
+            "|---|---|---|",
+        ]
+    )
+    for source in mobile["git_sources"]:
+        lines.append(f"| {source['name']} | `{source['requested']}` | `{source['commit']}` |")
+    lines.extend(
+        [
+            "",
+            "| Release-age exception | Published | Command | Evidence |",
+            "|---|---|---|---|",
+        ]
+    )
+    for exception in mobile["release_age_exceptions"]:
+        lines.append(
+            f"| {exception['name']}@{exception['version']} | {exception['published_at']} | `{exception['command']}` | {exception['evidence']} |"
+        )
+    compatibility = mobile["compatibility_exceptions"]
+    lines.extend(["", "Compatibility exceptions:"])
+    if not compatibility:
+        lines.append("- none")
+    for exception in compatibility:
+        lines.append(
+            f"- {exception['producer']} declares `{exception['declared_peer']}`; selected `{exception['selected']}`. {exception['evidence']}"
+        )
+    ios = mobile["native_validation"]["ios"]
+    android = mobile["native_validation"]["android"]
+    lines.extend(
+        [
+            "",
+            "| Platform | Prebuild | Build | Device/install | Acceptance |",
+            "|---|---|---|---|---|",
+            f"| iOS | {ios['prebuild']} | {ios['build']} | {ios['install']} on {ios['runtime']} (`{ios['simulator_udid']}`) | launch: {ios['launch_flow']}; auth: {ios['auth_flow']} |",
+            f"| Android | {android['prebuild']} | {android['build']} | {android['device']} | export: {android['export']} |",
+        ]
+    )
     overrides = report.get("overrides", [])
     if overrides:
         lines.extend(
