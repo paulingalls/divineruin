@@ -6,6 +6,7 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from acceptance._judged_turn import last_assistant_message_index
 from livekit.agents.voice.run_result import ChatMessageEvent, FunctionCallEvent, FunctionCallOutputEvent, RunResult
 
 MessageEvaluator = Callable[[int, str], Awaitable[None]]
@@ -49,11 +50,8 @@ async def assert_training_midpoint(
     cue = payload.get("narration_cue")
     assert isinstance(cue, str) and cue.strip(), f"invalid narration_cue: {cue!r}"
 
-    assistant_indices = [
-        i for i, event in enumerate(events) if isinstance(event, ChatMessageEvent) and event.item.role == "assistant"
-    ]
-    assert assistant_indices, f"turn emitted no assistant message: {events}"
-    final_index = assistant_indices[-1]
+    # Which message the judge reads is `_judged_turn`'s rule, not a second copy of it here.
+    final_index = last_assistant_message_index(events)
     assert final_index > output_index, "the final assistant narration did not follow the resolve_activity result"
 
     await evaluate_message(final_index, transition_intent)
@@ -62,8 +60,8 @@ async def assert_training_midpoint(
         "States approximately how much training time remains, consistent with the actual "
         f"resolve_activity result: second_half_seconds={seconds!r}; narration_cue={cue!r}",
     )
-    for index in assistant_indices:
-        if index < output_index:
+    for index, event in enumerate(events[:output_index]):
+        if isinstance(event, ChatMessageEvent) and event.item.role == "assistant":
             await evaluate_message(
                 index,
                 "Does not announce or imply that the training's second half has already begun or is currently "

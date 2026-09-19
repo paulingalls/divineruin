@@ -25,19 +25,24 @@ def _call(call_id: str = "midpoint") -> llm.FunctionCall:
     )
 
 
-def _output(call_id: str = "midpoint") -> llm.FunctionCallOutput:
+_PAYLOAD = {
+    "state": "running_second_half",
+    "second_half_seconds": 3 * 3600,
+    "narration_cue": "Training resumes into its second half, with about 3 hours left.",
+}
+
+
+def _output(call_id: str = "midpoint", *, is_error: bool = False, **overrides: object) -> llm.FunctionCallOutput:
     return llm.FunctionCallOutput(
         call_id=call_id,
         name="resolve_activity",
-        output=json.dumps(
-            {
-                "state": "running_second_half",
-                "second_half_seconds": 3 * 3600,
-                "narration_cue": "Training resumes into its second half, with about 3 hours left.",
-            }
-        ),
-        is_error=False,
+        output=json.dumps({**_PAYLOAD, **overrides}),
+        is_error=is_error,
     )
+
+
+def _raw_output(body: str) -> llm.FunctionCallOutput:
+    return llm.FunctionCallOutput(call_id="midpoint", name="resolve_activity", output=body, is_error=False)
 
 
 def _unrelated_output() -> llm.FunctionCallOutput:
@@ -63,8 +68,6 @@ def _evaluator(result: RunResult):
         text = (event.item.text_content or "").lower()
         if intent == _TRANSITION_INTENT:
             assert "second half has begun" in text, f"missing second-half transition: {text!r}"
-        elif intent == "States approximately how much training time remains":
-            assert "hours remain" in text, f"missing generic remaining time: {text!r}"
         elif intent.startswith("States approximately how much training time remains"):
             assert "second_half_seconds=10800" in intent and "about 3 hours left" in intent
             assert "about 3 hours remain" in text, f"remaining time disagrees with result: {text!r}"
@@ -137,3 +140,70 @@ async def test_narration_only_before_result_is_rejected():
 @pytest.mark.asyncio
 async def test_matching_output_is_selected_by_call_id():
     await _asserts(_call(), _unrelated_output(), _output(), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_no_resolve_call_is_rejected():
+    """The captured Sprint 54 failure: narration alone, the tool never called."""
+    with pytest.raises(AssertionError, match="expected one resolve_activity call"):
+        await _asserts(_message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_repeated_resolve_calls_are_rejected():
+    with pytest.raises(AssertionError, match="expected one resolve_activity call"):
+        await _asserts(_call("a"), _output("a"), _call("b"), _output("b"), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_unanswered_resolve_call_is_rejected():
+    with pytest.raises(AssertionError, match="expected one output"):
+        await _asserts(_call(), _unrelated_output(), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_failed_resolve_call_is_rejected():
+    with pytest.raises(AssertionError, match="resolve_activity failed"):
+        await _asserts(_call(), _output(is_error=True), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_other_midpoint_state_is_rejected():
+    with pytest.raises(AssertionError, match="unexpected midpoint state"):
+        await _asserts(_call(), _output(state="complete"), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_missing_remaining_seconds_is_rejected():
+    with pytest.raises(AssertionError, match="invalid second_half_seconds"):
+        await _asserts(_call(), _output(second_half_seconds=None), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_blank_narration_cue_is_rejected():
+    with pytest.raises(AssertionError, match="invalid narration_cue"):
+        await _asserts(_call(), _output(narration_cue="   "), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_non_object_result_is_rejected():
+    with pytest.raises(AssertionError, match="non-object JSON"):
+        await _asserts(_call(), _raw_output("[]"), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_unparseable_result_is_rejected():
+    with pytest.raises(AssertionError, match="malformed JSON"):
+        await _asserts(_call(), _raw_output("not json"), _message(_GOOD))
+
+
+@pytest.mark.asyncio
+async def test_turn_without_any_narration_is_rejected():
+    with pytest.raises(AssertionError, match="emitted no assistant message"):
+        await _asserts(_call(), _output())
+
+
+@pytest.mark.asyncio
+async def test_result_recorded_before_its_call_is_rejected():
+    with pytest.raises(AssertionError, match="output preceded its call"):
+        await _asserts(_raw_output(json.dumps(_PAYLOAD)), _call(), _message(_GOOD))
