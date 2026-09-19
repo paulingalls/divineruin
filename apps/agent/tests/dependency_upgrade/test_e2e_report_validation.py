@@ -114,3 +114,18 @@ def test_real_llm_pass_requires_executed_command_evidence():
     outcome["evidence"] = "green"
     with pytest.raises(ValueError, match="real-LLM pass lacks executed command evidence"):
         validate_outcomes(report)
+
+
+@pytest.mark.parametrize(
+    ("lane", "status", "diagnostic"),
+    [
+        ("Android device check", "skipped", "Android device outcome"),
+        ("real-LLM acceptance", "skipped", "must remain required"),
+    ],
+)
+def test_platform_and_real_llm_statuses_reject_unverified_success(lane, status, diagnostic):
+    report = json.loads((ROOT / "docs/dependency_upgrade.json").read_text())
+    row = next(row for row in report["validation_outcomes"] if row["lane"] == lane)
+    row["status"] = status
+    with pytest.raises(ValueError, match=diagnostic):
+        validate_outcomes(report)

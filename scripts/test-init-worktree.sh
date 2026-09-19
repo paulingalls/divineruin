@@ -323,4 +323,49 @@ fi
 unset -f lsof docker
 ok "stack ports reject foreign and sibling listeners"
 
+read -r -d '' BOOTSTRAP_MAIN_PROBE <<'SH' || true
+set -euo pipefail
+source "$(dirname "$0")/init-worktree.sh"
+mode="$1"
+wt_export_env() { COMPOSE_PROJECT_NAME=probe; WT_OFFSET=1; echo 'TRACE env'; }
+require_declared_toolchain() {
+  echo 'TRACE versions'
+  if [ "$mode" = wrong-version ]; then return 23; fi
+}
+install_locked_dependencies() { echo 'TRACE locks'; }
+write_env_if_absent() { echo 'TRACE env-file'; }
+run_typegen() { echo 'TRACE types'; }
+start_stack() { echo 'TRACE stack'; }
+bun() { echo "TRACE bun $*"; }
+case "$mode" in
+  omit-versions)
+    body="$(declare -f main)"
+    eval "${body/require_declared_toolchain/:}"
+    ;;
+  omit-locks)
+    body="$(declare -f main)"
+    eval "${body/install_locked_dependencies/:}"
+    ;;
+esac
+main
+SH
+expected_trace=$(printf '%s\n' 'TRACE env' 'TRACE versions' 'TRACE locks' 'TRACE env-file' 'TRACE types' 'TRACE stack' 'TRACE bun run migrate' 'TRACE bun run seed')
+actual_trace=$(bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" baseline | grep '^TRACE ')
+[ "$actual_trace" = "$expected_trace" ] || fail "bootstrap main omitted or reordered a required stage"
+for mode in omit-versions omit-locks; do
+  actual_trace=$(bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" "$mode" | grep '^TRACE ')
+  [ "$actual_trace" != "$expected_trace" ] || fail "main wiring fault did not change its behavior: $mode"
+done
+probe_log="$(mktemp -t bootstrap-main)"
+if bash -c "$BOOTSTRAP_MAIN_PROBE" "$SCRIPT_DIR/test-init-worktree.sh" wrong-version >"$probe_log" 2>&1; then
+  rm -f "$probe_log"
+  fail "wrong tool version did not abort bootstrap main"
+fi
+if grep -q '^TRACE locks\|^TRACE stack\|^TRACE bun' "$probe_log"; then
+  rm -f "$probe_log"
+  fail "wrong tool version reached installation or services"
+fi
+rm -f "$probe_log"
+ok "bootstrap main calls its guards and stops before installs on version mismatch"
+
 echo "All init-worktree tests passed."

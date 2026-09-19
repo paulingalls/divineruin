@@ -74,6 +74,16 @@ def test_ci_tool_or_lock_drift_fails(tmp_path, original, replacement, diagnostic
         ),
         (
             "- run: bun install --frozen-lockfile",
+            "- run: |\n          bun install # --frozen-lockfile",
+            "frozen Bun install",
+        ),
+        (
+            "- run: bun install --frozen-lockfile",
+            "- run: bun install --frozen-lockfile=false",
+            "frozen Bun install",
+        ),
+        (
+            "- run: bun install --frozen-lockfile",
             "- run: bun install --frozen-lockfile && bun install --cwd e2e",
             "frozen Bun install",
         ),
@@ -98,6 +108,7 @@ def test_named_and_multiline_mutable_installs_fail(tmp_path, original, replaceme
 @pytest.mark.parametrize(
     ("job_name", "consumer", "diagnostic"),
     [
+        ("test-bun", "bun test e2e/require-environment.test.ts", "test-bun.*without a frozen e2e install"),
         ("lint-and-typecheck", "bun run lint:e2e", "lint-and-typecheck.*without a frozen e2e install"),
         ("test-python", "cd apps/agent && uv run pytest tests/ -q", "test-python.*without a frozen e2e install"),
     ],
@@ -120,6 +131,7 @@ def test_each_consumer_job_requires_its_own_e2e_install(tmp_path, job_name, cons
 @pytest.mark.parametrize(
     ("consumer", "diagnostic"),
     [
+        ("      - run: bun test e2e/require-environment.test.ts\n", "e2e environment tests consumer corpus is empty"),
         ("      - run: bun run lint:e2e\n", "lint:e2e consumer corpus is empty"),
         (
             "      - run: cd apps/agent && uv run pytest tests/ -q\n",

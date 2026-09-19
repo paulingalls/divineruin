@@ -1,5 +1,6 @@
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -26,15 +27,25 @@ def _workflow_jobs(path: Path) -> dict[str, dict]:
     return jobs
 
 
-# A `run:` block is a shell script, not one command: `a --frozen && b` and a multiline
-# block both hide a mutable install behind a frozen neighbour unless each is checked alone.
 CONTINUATION_RE = re.compile(r"\\\n")
-SEPARATOR_RE = re.compile(r"&&|\|+|;|\n")
 
 
 def _shell_commands(run: str) -> list[str]:
-    commands = SEPARATOR_RE.split(CONTINUATION_RE.sub(" ", run))
-    return [command.strip() for command in commands if command.strip()]
+    commands = []
+    for line in CONTINUATION_RE.sub(" ", run).splitlines():
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|")
+        lexer.whitespace_split = True
+        command: list[str] = []
+        for token in lexer:
+            if token and set(token) <= set(";&|"):
+                if command:
+                    commands.append(shlex.join(command))
+                    command = []
+            else:
+                command.append(token)
+        if command:
+            commands.append(shlex.join(command))
+    return commands
 
 
 def _job_runs(job_name: str, job: dict) -> list[str]:
@@ -86,11 +97,11 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
         raise ValueError(f"every CI setup-uv step must select Python {expected_python}")
 
     runs = [command for commands in runs_by_job.values() for command in commands]
-    bun_installs = [command for command in runs if re.search(r"\bbun install\b", command)]
-    uv_syncs = [command for command in runs if re.search(r"\buv sync\b", command)]
-    if not bun_installs or any("--frozen-lockfile" not in command for command in bun_installs):
+    bun_installs = [command for command in runs if shlex.split(command)[:2] == ["bun", "install"]]
+    uv_syncs = [command for command in runs if shlex.split(command)[:2] == ["uv", "sync"]]
+    if not bun_installs or any("--frozen-lockfile" not in shlex.split(command) for command in bun_installs):
         raise ValueError("every CI Bun install must be a frozen Bun install")
-    if not uv_syncs or any("--frozen" not in command for command in uv_syncs):
+    if not uv_syncs or any("--frozen" not in shlex.split(command) for command in uv_syncs):
         raise ValueError("every CI uv sync must be a frozen uv sync")
     required = {
         "root Bun": lambda command: command.startswith("bun install --frozen-lockfile"),
@@ -103,6 +114,11 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
             raise ValueError(f"CI does not install the {graph} lock")
 
     consumers = {
+        "e2e environment tests": [
+            name
+            for name, commands in runs_by_job.items()
+            if any(shlex.split(run) == ["bun", "test", "e2e/require-environment.test.ts"] for run in commands)
+        ],
         "lint:e2e": [
             name for name, commands in runs_by_job.items() if any("bun run lint:e2e" in run for run in commands)
         ],
