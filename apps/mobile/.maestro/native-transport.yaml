@@ -1,0 +1,27 @@
+appId: com.divineruin.app
+---
+- openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Continue"
+    optional: true
+- swipe:
+    start: 50%,20%
+    end: 50%,90%
+    duration: 400
+- openLink: ${ROUTE_URL}
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: ${EXPECTED_STATUS}
+    timeout: 50000
+- assertVisible: ${RUN_ID_TEXT}
+- assertVisible: ${MOBILE_IDENTITY_TEXT}
+- assertVisible: ${PUBLISHER_IDENTITY_TEXT}
+- takeScreenshot: ${SCREENSHOT_PATH}

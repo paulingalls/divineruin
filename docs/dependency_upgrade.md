@@ -145,6 +145,15 @@ Compatibility exceptions:
 | iOS | passed | passed | passed on iOS 26.5 on story-208-sdk57 (`DC457949-200B-479A-95FD-611E33210F12`) | launch: passed; auth: passed |
 | Android | passed | missing: no Android device was attached, so no native Android build is claimed | missing: adb devices returned no attached device | export: passed |
 
+### Native LiveKit transport
+
+- Status: passed on `DC457949-200B-479A-95FD-611E33210F12` with @livekit/react-native 2.12.0 / @livekit/react-native-webrtc 144.1.2.
+- Python to iOS audio: named Python publisher subscription with RTC inbound packets_received > 0 and bytes_received > 0.
+- iOS microphone to Python: named iOS microphone subscription with Python AudioStream frame count > 0.
+- Game event and HUD: production SESSION_INIT packet rendered Upgrade Test Hero at Upgrade Test Room.
+- Fault guards: received-audio, session-init-hud.
+- Evidence: per-run machine-readable JSON and simulator PNG under ignored test-results/native-transport; driver: maestro; Expo MCP: unavailable_in_tool_catalog.
+
 ### Root resolution overrides
 
 | Override | Requested | Reason |

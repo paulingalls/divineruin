@@ -1225,6 +1225,21 @@
       }
     ],
     "compatibility_exceptions": [],
+    "native_transport": {
+      "status": "passed",
+      "sdk": "@livekit/react-native 2.12.0 / @livekit/react-native-webrtc 144.1.2",
+      "simulator_udid": "DC457949-200B-479A-95FD-611E33210F12",
+      "received_audio": "named Python publisher subscription with RTC inbound packets_received > 0 and bytes_received > 0",
+      "microphone_audio": "named iOS microphone subscription with Python AudioStream frame count > 0",
+      "game_events_hud": "production SESSION_INIT packet rendered Upgrade Test Hero at Upgrade Test Room",
+      "fault_guards": [
+        "received-audio",
+        "session-init-hud"
+      ],
+      "artifact": "per-run machine-readable JSON and simulator PNG under ignored test-results/native-transport",
+      "tool": "maestro",
+      "expo_mcp": "unavailable_in_tool_catalog"
+    },
     "native_validation": {
       "ios": {
         "prebuild": "passed",
