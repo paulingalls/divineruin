@@ -43,15 +43,7 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun install --cwd e2e --frozen-lockfile
-      # Shared scripts, so this job cannot drift from the git hooks.
-      # Python stays in the lint-python job below — this runner has no uv.
-      #
-      # lint:ts brings the mobile typecheck to CI for the first time, but only
-      # PARTLY: apps/mobile/tsconfig.json includes .expo/types/**/*.ts and
-      # expo-env.d.ts, both gitignored and produced only by a running Expo dev
-      # server (init-worktree.sh regenerates them locally). Without them
-      # typed-route errors compile clean, so CI reports a mobile typecheck it
-      # does not fully perform. Concern 5c9d504cd504.
+      - run: cd apps/mobile && bun expo customize tsconfig.json
       - run: bun run lint:ts
       - run: bun run lint:e2e
 
@@ -89,6 +81,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
           version: 0.10.6
@@ -112,6 +107,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
           version: 0.10.6
@@ -164,6 +162,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
           version: 0.10.6
@@ -215,6 +216,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
           version: 0.10.6
