@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const e2eRoot = import.meta.dir;
 
 function runChild(source: string, databaseUrl?: string) {
-  const env = { ...process.env };
+  const env: NodeJS.ProcessEnv = { ...process.env, REDIS_URL: "redis://127.0.0.1:61235" };
   delete env.DATABASE_URL;
   if (databaseUrl !== undefined) env.DATABASE_URL = databaseUrl;
   return Bun.spawnSync({
@@ -57,6 +57,18 @@ describe("required e2e environment", () => {
       `await import(${JSON.stringify(config)}); console.log("REACHED_SENTINEL");`,
     );
     expectDatabaseGuard(result);
+  });
+
+  test("the Playwright config refuses an unspecified Valkey before startup", () => {
+    const config = resolve(e2eRoot, "playwright.config.ts");
+    const result = runChild(
+      `delete process.env.REDIS_URL; await import(${JSON.stringify(config)}); console.log("REACHED_SENTINEL");`,
+      "postgresql://story@127.0.0.1:61234/story_210",
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(output(result)).toContain("REDIS_URL is required");
+    expect(output(result)).not.toContain("REACHED_SENTINEL");
+    expect(output(result)).not.toContain("56379");
   });
 
   test("removing only the auth guard exposes the auth module", async () => {

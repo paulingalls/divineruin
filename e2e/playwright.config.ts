@@ -56,7 +56,7 @@ const serverWebServer = {
   stdout: "pipe" as const,
   env: {
     DATABASE_URL: requireEnvironment("DATABASE_URL"),
-    REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:56379",
+    REDIS_URL: requireEnvironment("REDIS_URL"),
     JWT_SECRET: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     NODE_ENV: "development",
     RATE_LIMIT_BYPASS: "1",

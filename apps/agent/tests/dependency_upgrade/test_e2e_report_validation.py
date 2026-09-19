@@ -131,7 +131,7 @@ def test_platform_and_real_llm_statuses_reject_unverified_success(lane, status, 
         validate_outcomes(report)
 
 
-def test_recorded_infrastructure_holds_are_the_running_images():
+def test_recorded_infrastructure_holds_are_declared_compose_images():
     validate_infrastructure_holds(ROOT, _report(ROOT))
 
 
@@ -147,7 +147,7 @@ def test_missing_compose_file_fails(tmp_path):
         (lambda report: report["infrastructure_holds"][0].update(reason=""), "infrastructure hold reason is empty"),
         (
             lambda report: report["infrastructure_holds"][0].update(reference="postgres:18-alpine"),
-            "not a running image",
+            "not a declared compose image",
         ),
     ],
 )

@@ -277,7 +277,7 @@ IMAGE_RE = re.compile(r"^\s*image:\s*(\S+)", re.MULTILINE)
 
 
 def validate_infrastructure_holds(root: Path, report: dict) -> None:
-    """A hold is a claim about a running container, so it is checked against the compose file."""
+    """Compare documented image holds with the repository compose declarations."""
     holds = report.get("infrastructure_holds")
     if not isinstance(holds, list) or not holds:
         raise ValueError("infrastructure hold corpus is empty")
@@ -292,7 +292,7 @@ def validate_infrastructure_holds(root: Path, report: dict) -> None:
             if not hold.get(field):
                 raise ValueError(f"infrastructure hold {field} is empty: {hold.get('name', '')}")
         if hold["reference"] not in images:
-            raise ValueError(f"infrastructure hold is not a running image: {hold['reference']}")
+            raise ValueError(f"infrastructure hold is not a declared compose image: {hold['reference']}")
 
 
 def validate_outcomes(report: dict) -> None:
