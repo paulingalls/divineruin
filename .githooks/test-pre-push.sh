@@ -97,6 +97,21 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+for override in PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
+  override_output=$(env "$override=/tmp/prepush-internal-fixture" bash "$HOOK" 2>&1 <<'EOF'
+refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123
+EOF
+  )
+  override_status=$?
+  if [ "$override_status" -ne 0 ] && echo "$override_output" | grep -q "$override"; then
+    echo "  PASS: production-refuses-$override"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: production-accepted-$override (rc=$override_status)"
+    FAIL=$((FAIL + 1))
+  fi
+done
+
 # --- Parallel-lane fail-loud collector (scripts/lane-utils.sh) ---
 # wait_all_lanes must be sourced + called IN THIS shell — `wait` reaps only the
 # current shell's children, so it can't be tested through the hook subprocess.

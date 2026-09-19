@@ -179,7 +179,13 @@ assert_cleaned() {
   want_absent "owned postgres marker removed" "$case_dir/owned-pg"
   want_absent "owned redis marker removed" "$case_dir/owned-redis"
   for lane in acceptance server mobile shared python e2e; do
-    pid="$(cat "$case_dir/$lane.pid")"
+    if ! pid="$(cat "$case_dir/$lane.pid" 2>/dev/null)"; then
+      fail "$lane child PID missing"
+      return
+    fi
+    case "$pid" in
+      ''|*[!0-9]*) fail "$lane child PID invalid"; return ;;
+    esac
     kill -0 "$pid" 2>/dev/null && running=$((running + 1))
   done
   want_eq "all lane children reaped" "$running" "0"

@@ -9,7 +9,7 @@ if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; the
 fi
 
 if [ "$PREPUSH_TEST_MODE" = production ]; then
-  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE; do
+  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
     value="${!name-}"
     if [ -n "$value" ]; then
       echo "ERROR: production pre-push refuses internal test override $name." >&2

@@ -140,6 +140,29 @@ run_bun_adapter 0
 run_python_adapter 0
 ok "the shared authority, warm provisioner, and both adapters accept the real owned listener"
 
+compose 0 destroy stop valkey >/dev/null
+# Deliberately place our second disposable fixture on A's freed Valkey port.
+# A normal provisioner refuses this collision before creating the test defect.
+(cd "${ROOTS[1]}" && source scripts/worktree-common.sh && wt_expected_env &&
+  wt_run_compose up -d --wait --wait-timeout 60 valkey >/dev/null)
+pong="$(docker compose -f "${ROOTS[1]}/docker-compose.yml" -p "${PROJECTS[1]}" exec -T valkey valkey-cli ping)"
+[ "$pong" = PONG ] || fail "foreign Valkey fixture is not serving requests"
+bun_valkey_status=0; python_valkey_status=0
+run_bun_adapter 0 >"$TMP/valkey-bun.log" 2>&1 || bun_valkey_status=$?
+run_python_adapter 0 >"$TMP/valkey-python.log" 2>&1 || python_valkey_status=$?
+if [ "$bun_valkey_status" -eq 0 ] || [ "$python_valkey_status" -eq 0 ]; then
+  fail "foreign Valkey accepted with owned Postgres (Bun=$bun_valkey_status, Python=$python_valkey_status)"
+fi
+for adapter in bun python; do
+  grep -q valkey "$TMP/valkey-$adapter.log" || fail "$adapter did not identify the Valkey refusal"
+done
+ok "both adapters refuse a real Valkey-only collision with owned Postgres still running"
+compose 1 destroy down >/dev/null
+compose 0 create up -d --wait --wait-timeout 60 >/dev/null
+run_bun_adapter 0
+run_python_adapter 0
+ok "both adapters accept the owned services after the Valkey collision is removed"
+
 compose 0 destroy down >/dev/null
 [ -n "$(docker volume ls -q --filter "label=com.docker.compose.project=${PROJECTS[0]}")" ] \
   || fail "stack A teardown did not preserve its owned volume"
