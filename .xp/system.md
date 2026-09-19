@@ -215,4 +215,6 @@ If land merges and then push fails, inspect HEAD and the close record before
 retrying: the story worktree may already be removed. Never reformat with stale
 tools to satisfy an upgraded lock.
 
+**Worktree bootstrap**: `bash scripts/init-worktree.sh`
+
 **Worktree teardown**: `bash scripts/teardown-worktree.sh`
