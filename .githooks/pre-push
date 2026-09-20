@@ -305,7 +305,9 @@ work_ref() {
 work_path() {
   case "$1" in
     *.md|docs/*|.claude/*|memory/*) return 0 ;;
-    apps/agent/tests/acceptance/*) return 1 ;;
+    # Story Verify runs focused acceptance; the sprint full tier runs the whole lane.
+    # A work-branch push should not repeat that lane for a test or recorded fixture edit.
+    apps/agent/tests/acceptance/*) return 0 ;;
     apps/agent/*.py|apps/agent/tests/*.py|apps/server/src/*.ts|apps/server/src/*.tsx|apps/mobile/src/*.ts|apps/mobile/src/*.tsx|apps/web/src/*.ts|apps/web/src/*.tsx|packages/shared/src/*.ts|packages/design-tokens/src/*.ts|content/*.json) return 0 ;;
     *) return 1 ;;
   esac

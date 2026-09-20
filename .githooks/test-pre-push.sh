@@ -74,7 +74,9 @@ for path in apps/agent/agent.py apps/server/src/index.ts apps/mobile/src/livekit
     run_case "source-family-$path" "$work_ref" "$path" lint
   fi
 done
-run_case "work-acceptance" "$work_ref" "apps/agent/tests/acceptance/test_magic.py" full
+run_case "work-acceptance" "$work_ref" "apps/agent/tests/acceptance/test_magic.py" lint
+run_case "work-acceptance-fixture" "$work_ref" "apps/agent/tests/acceptance/fixtures/player_voice.wav" lint
+run_case "work-acceptance-and-source" "$work_ref" $'apps/agent/tests/acceptance/test_magic.py\napps/agent/agent.py' lint
 run_case "work-manifest" "$work_ref" "package.json" full
 run_case "work-migration" "$work_ref" "apps/server/migrations/001.sql" full
 run_case "work-e2e" "$work_ref" "e2e/game.spec.ts" full
