@@ -45,12 +45,12 @@ async def test_transcription_tracks_mute_unpublish_disconnect_and_reconnect(
 
         await harness.drain()
         await harness.unpublish(harness.player_two_identity)
-        await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        await harness.await_marker(harness.player_one_identity, PLAYER_ONE_SPEECH.marker)
+        await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
+        await harness.await_marker(harness.player_one_identity, PLAYER_TWO_SPEECH.marker)
         await harness.assert_no_transcript(harness.player_two_identity, 2)
         await harness.republish(harness.player_two_identity)
-        await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
-        await harness.await_marker(harness.player_two_identity, PLAYER_TWO_SPEECH.marker)
+        await harness.play(harness.player_two_identity, PLAYER_ONE_SPEECH)
+        await harness.await_marker(harness.player_two_identity, PLAYER_ONE_SPEECH.marker)
 
         await harness.drain()
         await harness.disconnect_player_two()

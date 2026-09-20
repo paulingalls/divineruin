@@ -195,11 +195,19 @@ class MultiplayerVoiceHarness:
         return await asyncio.wait_for(self.manager.receive(), timeout)
 
     async def await_marker(self, identity: str, marker: str, timeout: float = 20) -> AuthenticatedTranscript:
-        async with asyncio.timeout(timeout):
-            while True:
-                transcript = await self.receive(timeout)
-                if transcript.participant_identity == identity and normalized(marker) in normalized(transcript.text):
-                    return transcript
+        seen: list[AuthenticatedTranscript] = []
+        try:
+            async with asyncio.timeout(timeout):
+                while True:
+                    transcript = await self.receive(timeout)
+                    if transcript.participant_identity == identity and normalized(marker) in normalized(
+                        transcript.text
+                    ):
+                        return transcript
+                    seen.append(transcript)
+        except TimeoutError as exc:
+            active = sorted(self.manager.active_identities) if self.manager is not None else []
+            raise TimeoutError(f"no {marker!r} transcript for {identity!r}; active={active}, seen={seen}") from exc
 
     async def drain(self) -> list[AuthenticatedTranscript]:
         assert self.manager is not None
