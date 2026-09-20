@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import re
 from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
-from voice_replay_audio import ReceivedFrame
+from voice_replay_audio import ReceivedFrame, find_phrase, normalized_words
 
 
 @dataclass(frozen=True)
@@ -22,11 +21,6 @@ class AudioMetrics:
     pre_outcome_words: list[str]
     outcome_words: list[str]
     result_boundary_sample: int | None
-
-
-def normalized_words(text: str) -> list[str]:
-    tokens = re.findall(r"[a-z0-9]+(?:['’][a-z0-9]+)*", text.casefold())
-    return [re.sub(r"[^a-z0-9]", "", token) for token in tokens]
 
 
 def _sample_window(word: TranscribedWord, sample_rate: int, sample_count: int) -> tuple[int, int]:
@@ -113,14 +107,10 @@ def compute_audio_metrics(
     anchor = normalized_words(outcome_anchor)
     if not anchor:
         raise ValueError("outcome anchor contains no words")
-    input_words = normalized_words(input_transcript)
-    if any(input_words[i : i + len(anchor)] == anchor for i in range(len(input_words) - len(anchor) + 1)):
+    if find_phrase(normalized_words(input_transcript), anchor) is not None:
         raise ValueError("outcome anchor is present in the input transcript")
 
-    anchor_index = next(
-        (i for i in range(len(word_tokens) - len(anchor) + 1) if word_tokens[i : i + len(anchor)] == anchor),
-        None,
-    )
+    anchor_index = find_phrase(word_tokens, anchor)
     if anchor_index is None:
         raise ValueError(f"outcome anchor {outcome_anchor!r} is missing from received audio words")
     anchor_sample = starts[anchor_index]
@@ -178,6 +168,9 @@ def summarize_provider_usage(
 
     def usage(provider: str, model: str, items: list[Any], unit: str, field: str) -> dict[str, Any]:
         records = list(map(record, items))
+        reported = {_reported_model(item) for item in records}
+        if reported != {model}:
+            raise ValueError(f"{provider} usage reports models {sorted(reported)}, not the pinned {model!r}")
         return {
             "provider": provider,
             "model": model,
@@ -192,6 +185,14 @@ def summarize_provider_usage(
         "tts": usage("inworld", inworld_model, tts_metrics, "characters", "characters_count"),
         "analysis_stt": usage("deepgram", "nova-3", analysis_metrics, "seconds", "audio_duration"),
     }
+
+
+def _reported_model(item: dict[str, Any]) -> str:
+    """The model the provider itself named for this call — LiveKit puts it on `metadata.model_name`
+    for per-request metrics and on `model` for session usage rows. Empty when the provider named none."""
+    metadata = item.get("metadata")
+    named = metadata.get("model_name") if isinstance(metadata, dict) else None
+    return str(named or item.get("model") or "")
 
 
 def _required_mapping(row: dict[str, Any], name: str) -> dict[str, Any]:

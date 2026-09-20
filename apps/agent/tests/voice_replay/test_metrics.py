@@ -1,3 +1,5 @@
+"""The checked-clip contract, audio-derived timing, and the timing row's completeness contract."""
+
 from __future__ import annotations
 
 import hashlib
@@ -7,8 +9,15 @@ from pathlib import Path
 
 import pytest
 from livekit.agents.metrics import LLMModelUsage, STTMetrics, STTModelUsage, TTSMetrics
+from livekit.agents.metrics.base import Metadata
 
-from voice_replay_audio import ReceivedFrame, audio_frames, load_checked_clip, publish_checked_audio
+from voice_replay_audio import (
+    ReceivedFrame,
+    audio_frames,
+    load_checked_clip,
+    publish_checked_audio,
+    write_wav,
+)
 from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summarize_provider_usage, validate_timing_row
 
 
@@ -43,6 +52,24 @@ def _fixture(tmp_path: Path, *, transcript: str = "Please gather herbs", final_v
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"clips": [entry]}))
     return clip, manifest, entry
+
+
+def _reclip(manifest: Path, clip: Path, entry: dict, *, samples: list[int], channels: int = 1, width: int = 2):
+    pcm = b"".join(sample.to_bytes(width, "little", signed=True) for sample in samples)
+    with wave.open(str(clip), "wb") as wav:
+        wav.setnchannels(channels)
+        wav.setsampwidth(width)
+        wav.setframerate(1_000)
+        wav.writeframes(pcm)
+    rewritten = {
+        **entry,
+        "channels": channels,
+        "sample_width_bytes": width,
+        "samples": len(samples) // channels,
+        "sha256": hashlib.sha256(clip.read_bytes()).hexdigest(),
+        "pcm_sha256": hashlib.sha256(pcm).hexdigest(),
+    }
+    manifest.write_text(json.dumps({"clips": [rewritten]}))
 
 
 def test_checked_clip_loads_closed_manifest(tmp_path: Path):
@@ -87,6 +114,38 @@ def test_checked_clip_loads_closed_manifest(tmp_path: Path):
             ),
             "anchor",
         ),
+        (
+            lambda manifest, clip, entry: manifest.write_text(
+                json.dumps({"clips": [{**entry, "filename": "other.wav"}]})
+            ),
+            "filename does not match",
+        ),
+        (lambda manifest, clip, entry: manifest.write_text("{not json"), "invalid JSON"),
+        (
+            lambda manifest, clip, entry: manifest.write_text(json.dumps({"clips": [{**entry, "transcript": "   "}]})),
+            "must be nonempty",
+        ),
+        (
+            lambda manifest, clip, entry: manifest.write_text(
+                json.dumps({"clips": [{**entry, "outcome_anchor": "!!!"}]})
+            ),
+            "anchor contains no words",
+        ),
+        (
+            lambda manifest, clip, entry: manifest.write_text(
+                json.dumps({"clips": [{**entry, "silence_threshold": -1}]})
+            ),
+            "threshold must be nonnegative",
+        ),
+        # a replaced clip: same manifest contract, different audio shape
+        (
+            lambda manifest, clip, entry: _reclip(manifest, clip, entry, samples=[0, 20, -30, 0, 0, 0], channels=2),
+            "PCM16 mono",
+        ),
+        (
+            lambda manifest, clip, entry: _reclip(manifest, clip, entry, samples=[0, 0, 0, 0, 0]),
+            "no voiced samples",
+        ),
     ],
 )
 def test_checked_clip_rejects_contract_drift(tmp_path: Path, mutation, match: str):
@@ -126,6 +185,12 @@ async def test_publisher_endpoint_includes_prequeue_depth_and_rejects_changed_by
         await publish_checked_audio(Source(), clip, queue_size_ms=100, max_queue_ms=100)
 
 
+@pytest.mark.parametrize("pcm", [b"", b"\0" * 3])
+def test_received_wav_refuses_empty_or_truncated_pcm(tmp_path: Path, pcm: bytes):
+    with pytest.raises(ValueError, match="empty or incomplete"):
+        write_wav(tmp_path / "received.wav", pcm, sample_rate=48_000)
+
+
 def _frames() -> list[ReceivedFrame]:
     return [
         ReceivedFrame(0, 500, 11.0),
@@ -151,17 +216,25 @@ def _pcm() -> bytes:
     return b"".join(sample.to_bytes(2, "little", signed=True) for sample in samples)
 
 
-def test_metrics_use_received_frame_clock_and_audio_words():
-    result = compute_audio_metrics(
-        pcm=_pcm(),
-        sample_rate=1_000,
-        frames=_frames(),
-        words=_words(),
-        source_speech_end_monotonic=10.0,
-        silence_threshold=10,
-        outcome_anchor="quality wood",
-        input_transcript="Please gather herbs",
+def _measure(**override):
+    """compute_audio_metrics over the shared received-audio fixture, with `override` swapped in."""
+    return compute_audio_metrics(
+        **{
+            "pcm": _pcm(),
+            "sample_rate": 1_000,
+            "frames": _frames(),
+            "words": _words(),
+            "source_speech_end_monotonic": 10.0,
+            "silence_threshold": 10,
+            "outcome_anchor": "quality wood",
+            "input_transcript": "Please gather herbs",
+            **override,
+        }
     )
+
+
+def test_metrics_use_received_frame_clock_and_audio_words():
+    result = _measure()
 
     assert result.first_meaningful_word == "I"
     assert result.first_meaningful_latency_ms == pytest.approx(1_100)
@@ -174,55 +247,60 @@ def test_metrics_use_received_frame_clock_and_audio_words():
 def test_pre_result_words_include_a_word_that_overlaps_the_silence_boundary():
     words = [*_words()]
     words[1] = TranscribedWord("found", 0.30, 0.55)
-    result = compute_audio_metrics(
-        pcm=_pcm(),
-        sample_rate=1_000,
-        frames=_frames(),
-        words=words,
-        source_speech_end_monotonic=10.0,
-        silence_threshold=10,
-        outcome_anchor="quality wood",
-        input_transcript="Please gather herbs",
-    )
+    result = _measure(words=words)
 
     assert result.pre_outcome_words == ["I", "found"]
 
 
+def _session_usage() -> list:
+    return [
+        STTModelUsage(provider="Deepgram", model="nova-3", audio_duration=5.0),
+        LLMModelUsage(
+            provider="api.openai.com",
+            model="gpt-5.6-luna",
+            input_tokens=1_000,
+            input_cached_tokens=750,
+            output_tokens=30,
+        ),
+    ]
+
+
+def _tts_metrics(model: str | None = "inworld-tts-2") -> list:
+    return [
+        TTSMetrics(
+            label="inworld",
+            request_id="tts-1",
+            timestamp=1.0,
+            ttfb=0.1,
+            duration=0.2,
+            audio_duration=2.0,
+            cancelled=False,
+            characters_count=42,
+            streamed=False,
+            metadata=Metadata(model_name=model, model_provider="Inworld") if model else None,
+        )
+    ]
+
+
+def _analysis_metrics() -> list:
+    return [
+        STTMetrics(
+            label="deepgram",
+            request_id="stt-1",
+            timestamp=2.0,
+            duration=0.2,
+            audio_duration=3.0,
+            streamed=False,
+            metadata=Metadata(model_name="nova-3", model_provider="Deepgram"),
+        )
+    ]
+
+
 def test_provider_usage_keeps_billable_counts_from_livekit_models():
     usage = summarize_provider_usage(
-        [
-            STTModelUsage(provider="Deepgram", model="nova-3", audio_duration=5.0),
-            LLMModelUsage(
-                provider="api.openai.com",
-                model="gpt-5.6-luna",
-                input_tokens=1_000,
-                input_cached_tokens=750,
-                output_tokens=30,
-            ),
-        ],
-        [
-            TTSMetrics(
-                label="inworld",
-                request_id="tts-1",
-                timestamp=1.0,
-                ttfb=0.1,
-                duration=0.2,
-                audio_duration=2.0,
-                cancelled=False,
-                characters_count=42,
-                streamed=False,
-            )
-        ],
-        [
-            STTMetrics(
-                label="deepgram",
-                request_id="stt-1",
-                timestamp=2.0,
-                duration=0.2,
-                audio_duration=3.0,
-                streamed=False,
-            )
-        ],
+        _session_usage(),
+        _tts_metrics(),
+        _analysis_metrics(),
         luna_model="gpt-5.6-luna",
         inworld_model="inworld-tts-2",
     )
@@ -232,6 +310,20 @@ def test_provider_usage_keeps_billable_counts_from_livekit_models():
     assert usage["llm"]["records"][0]["output_tokens"] == 30
     assert usage["tts"]["records"][0]["characters_count"] == 42
     assert usage["tts"]["units"] == 42
+
+
+@pytest.mark.parametrize("spoken", [None, "inworld-tts-1"])
+def test_row_model_is_the_model_the_provider_named_not_the_configured_constant(spoken):
+    """The card's whole TTS-2 claim rests on this field, so it must come off the wire: a run that
+    speaks another model, or names none, cannot be labelled inworld-tts-2."""
+    with pytest.raises(ValueError, match="not the pinned 'inworld-tts-2'"):
+        summarize_provider_usage(
+            _session_usage(),
+            _tts_metrics(spoken),
+            _analysis_metrics(),
+            luna_model="gpt-5.6-luna",
+            inworld_model="inworld-tts-2",
+        )
 
 
 @pytest.mark.parametrize(
@@ -261,46 +353,28 @@ def test_provider_usage_keeps_billable_counts_from_livekit_models():
             10.0,
             "do not cover",
         ),
+        ([*_words()[:2], TranscribedWord("quality wood", 0.65, 0.98)], _frames(), _pcm(), 10.0, "one word"),
+        (_words(), _frames(), b"", 10.0, "empty or incomplete"),
+        (_words(), _frames(), _pcm() + b"\0", 10.0, "empty or incomplete"),
     ],
 )
 def test_metrics_fail_loud_on_unusable_evidence(words, frames, pcm, source_end: float, match: str):
     with pytest.raises(ValueError, match=match):
-        compute_audio_metrics(
-            pcm=pcm,
-            sample_rate=1_000,
-            frames=frames,
-            words=words,
-            source_speech_end_monotonic=source_end,
-            silence_threshold=10,
-            outcome_anchor="quality wood",
-            input_transcript="Please gather herbs",
-        )
+        _measure(words=words, frames=frames, pcm=pcm, source_speech_end_monotonic=source_end)
+
+
+def test_metrics_reject_an_unusable_sample_rate_and_a_wordless_anchor():
+    for override, match in (({"sample_rate": 0}, "sample rate"), ({"outcome_anchor": "!!!"}, "anchor contains no")):
+        with pytest.raises(ValueError, match=match):
+            _measure(**override)
 
 
 def test_anchor_must_follow_a_pre_result_pause_and_stay_out_of_the_input():
     # The anchor opening the received audio leaves no pre-result speech to separate it from.
     with pytest.raises(ValueError, match="no pre-result speech boundary"):
-        compute_audio_metrics(
-            pcm=_pcm(),
-            sample_rate=1_000,
-            frames=_frames(),
-            words=_words()[2:],
-            source_speech_end_monotonic=10.0,
-            silence_threshold=10,
-            outcome_anchor="quality wood",
-            input_transcript="Please gather herbs",
-        )
+        _measure(words=_words()[2:])
     with pytest.raises(ValueError, match="present in the input transcript"):
-        compute_audio_metrics(
-            pcm=_pcm(),
-            sample_rate=1_000,
-            frames=_frames(),
-            words=_words(),
-            source_speech_end_monotonic=10.0,
-            silence_threshold=10,
-            outcome_anchor="quality wood",
-            input_transcript="Please find quality wood",
-        )
+        _measure(input_transcript="Please find quality wood")
 
 
 def _valid_row(scenario: str = "affected") -> dict:
@@ -370,6 +444,18 @@ def test_timing_row_rejects_duplicate_or_missing_grant_and_direct_mutation():
         (lambda row: row["provider_usage"]["tts"].update(units=0), "nonzero tts"),
         (lambda row: row.update(completion=""), "completion"),
         (lambda row: row["cleanup"].update(complete=False), "cleanup"),
+        (lambda row: row.update(scenario="other"), "affected or direct"),
+        (lambda row: row.update(repetition=-1), "nonnegative repetition"),
+        (lambda row: row.update(tool_count=2, tool_names=["check", "check"]), "exactly one check"),
+        (lambda row: row.update(tool_names=["stage"]), "exactly one check"),
+        (lambda row: row["tool_output"].update(materials=[]), "material multiset"),
+        (lambda row: row["metrics"].pop("outcome_latency_ms"), "audible outcome latency"),
+        (lambda row: row["metrics"].pop("first_meaningful_latency_ms"), "first meaningful speech"),
+        # a gather that granted something else entirely still has a self-consistent delta
+        (
+            lambda row: row.update(state_delta={"oak_wood": 2}, tool_output={"materials": ["oak_wood"] * 2}),
+            "quality_wood tool result",
+        ),
     ],
 )
 def test_timing_row_rejects_incomplete_labels_usage_and_cleanup(mutation, match: str):

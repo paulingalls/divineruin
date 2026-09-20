@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import math
+import re
 import time
 import wave
 from dataclasses import dataclass
@@ -61,8 +62,18 @@ def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _normal_words(text: str) -> list[str]:
-    return ["".join(c for c in word.casefold() if c.isalnum()) for word in text.split() if word]
+def normalized_words(text: str) -> list[str]:
+    tokens = re.findall(r"[a-z0-9]+(?:[\'\u2019][a-z0-9]+)*", text.casefold())
+    return [re.sub(r"[^a-z0-9]", "", token) for token in tokens]
+
+
+def find_phrase(words: list[str], phrase: list[str]) -> int | None:
+    """Index where `phrase` runs as whole words inside `words`, or None. The anchor-absence rule
+    is asked of the manifest transcript and of the received-audio words; one tokenizer answers both,
+    so a hyphenated or punctuated anchor cannot be absent on one side and present on the other."""
+    if not phrase:
+        return None
+    return next((i for i in range(len(words) - len(phrase) + 1) if words[i : i + len(phrase)] == phrase), None)
 
 
 def _require_int(entry: dict[str, Any], name: str) -> int:
@@ -133,11 +144,11 @@ def load_checked_clip(clip_path: Path, manifest_path: Path | None = None) -> Che
     voice_id = entry.get("voice_id")
     if not all(isinstance(item, str) and item.strip() for item in (transcript, anchor, model, voice_id)):
         raise ValueError("voice replay transcript, anchor, model and voice id must be nonempty")
-    anchor_words = _normal_words(anchor)
-    transcript_words = _normal_words(transcript)
-    for index in range(len(transcript_words) - len(anchor_words) + 1):
-        if transcript_words[index : index + len(anchor_words)] == anchor_words:
-            raise ValueError("voice replay outcome anchor must be absent from the input transcript")
+    anchor_words = normalized_words(anchor)
+    if not anchor_words:
+        raise ValueError("voice replay outcome anchor contains no words")
+    if find_phrase(normalized_words(transcript), anchor_words) is not None:
+        raise ValueError("voice replay outcome anchor must be absent from the input transcript")
 
     return CheckedClip(
         path=clip_path,

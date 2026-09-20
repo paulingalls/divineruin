@@ -40,51 +40,77 @@ async def _rooms(server: dict[str, str], identities: list[str]):
     return rooms
 
 
-async def _publish(room: rtc.Room, clip, *, name: str):
-    source = rtc.AudioSource(clip.sample_rate, clip.channels, queue_size_ms=100)
+async def _publish_track(room: rtc.Room, *, name: str, sample_rate: int, channels: int):
+    source = rtc.AudioSource(sample_rate, channels, queue_size_ms=100)
     track = rtc.LocalAudioTrack.create_audio_track(name, source)
     options = rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
-    publication = await room.local_participant.publish_track(track, options)
-    result = await publish_checked_audio(source, clip, queue_size_ms=100, max_queue_ms=150)
-    return source, publication, result
+    await room.local_participant.publish_track(track, options)
+    return source
 
 
-@pytest.mark.parametrize("repetition", [0, 1])
-async def test_checked_pcm_crosses_real_livekit_from_named_publisher(
-    livekit_server: dict[str, str], tmp_path: Path, repetition: int
-):
-    clip = load_checked_clip(_CLIP)
-    agent, player, decoy = await _rooms(livekit_server, ["voice-agent", "voice-player", "voice-decoy"])
-    sources: list[rtc.AudioSource] = []
-    try:
-        decoy_frame = rtc.AudioFrame(
-            data=b"\x40\0" * 4_800,
-            sample_rate=48_000,
-            num_channels=1,
-            samples_per_channel=4_800,
+async def _publish_silence(room: rtc.Room) -> rtc.AudioSource:
+    """A decoy audio track carrying only silence. A capture that takes whichever audio track it can
+    reach, rather than the named publisher's, comes back with this instead of the replayed speech."""
+    source = await _publish_track(room, name="decoy", sample_rate=48_000, channels=1)
+    for _ in range(5):
+        await source.capture_frame(
+            rtc.AudioFrame(data=b"\0" * 9_600, sample_rate=48_000, num_channels=1, samples_per_channel=4_800)
         )
-        decoy_source = rtc.AudioSource(48_000, 1)
-        sources.append(decoy_source)
-        decoy_track = rtc.LocalAudioTrack.create_audio_track("decoy", decoy_source)
-        await decoy.local_participant.publish_track(decoy_track, rtc.TrackPublishOptions())
-        await decoy_source.capture_frame(decoy_frame)
+    return source
 
-        stop = asyncio.Event()
+
+@pytest.mark.parametrize(("repetition", "already_subscribed"), [(0, False), (1, True)])
+async def test_checked_pcm_crosses_real_livekit_from_named_publisher(
+    livekit_server: dict[str, str], tmp_path: Path, repetition: int, already_subscribed: bool
+):
+    """`already_subscribed` picks which selector runs: the decoy reaches the player either before
+    the capture starts (the publication lookup) or after it (the subscription handler)."""
+    clip = load_checked_clip(_CLIP)
+    # the decoy joins first, so a selector that walks participants instead of naming one reaches it first
+    decoy, player, agent = await _rooms(livekit_server, ["voice-decoy", "voice-player", "voice-agent"])
+    sources: list[rtc.AudioSource] = []
+    stop = asyncio.Event()
+    capture: asyncio.Task | None = None
+    try:
+        if already_subscribed:
+            sources.append(await _publish_silence(decoy))
+            source = await _publish_track(
+                agent, name=f"checked-input-{repetition}", sample_rate=clip.sample_rate, channels=clip.channels
+            )
+            sources.append(source)
+            await asyncio.sleep(1.0)
+
         capture = asyncio.create_task(
             capture_received_audio(player, publisher_identity="voice-agent", stop=stop, timeout=20)
         )
-        source, _, published = await _publish(agent, clip, name=f"checked-input-{repetition}")
-        sources.append(source)
+        await asyncio.sleep(0.5)  # let the capture register its subscription handler
+
+        if not already_subscribed:
+            sources.append(await _publish_silence(decoy))
+            await asyncio.sleep(0.5)
+            source = await _publish_track(
+                agent, name=f"checked-input-{repetition}", sample_rate=clip.sample_rate, channels=clip.channels
+            )
+            sources.append(source)
+
+        published = await publish_checked_audio(source, clip, queue_size_ms=100, max_queue_ms=150)
         stop.set()
         received = await capture
         assert published.published_pcm_sha256 == clip.pcm_sha256
         assert published.published_bytes == len(clip.pcm)
         assert received.publisher_identity == "voice-agent"
+        samples = memoryview(received.pcm).cast("h")
+        # The named publisher's speech measures ~1670 mean amplitude here; the decoy's silence
+        # survives the Opus round trip at ~0.02, so this floor separates the two publishers.
+        assert sum(abs(sample) for sample in samples) / len(samples) > 100
         output = tmp_path / f"received-{repetition}.wav"
         write_wav(output, received.pcm, sample_rate=received.sample_rate)
         with wave.open(str(output), "rb") as wav:
             assert wav.getnframes() > 0 and wav.getnchannels() == 1
     finally:
+        stop.set()
+        if capture is not None:
+            await asyncio.gather(capture, return_exceptions=True)
         await asyncio.gather(*(aclose_audio(source) for source in sources))
         await asyncio.gather(*(aclose_room(room) for room in (agent, player, decoy)))
 

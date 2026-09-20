@@ -385,8 +385,7 @@ async def _run_row(
                 raise ValueError(f"affected check was not gather: {arguments!r}")
             delta = await assert_inventory_result(pool, PLAYER_ID, before, tool_output)
         else:
-            after_direct = await inventory_quantities(pool, PLAYER_ID)
-            if calls or after_direct != before:
+            if calls or await inventory_quantities(pool, PLAYER_ID) != before:
                 raise ValueError("direct row executed a tool or mutated inventory")
             delta = {}
         after = await inventory_quantities(pool, PLAYER_ID)
@@ -468,9 +467,10 @@ async def run(args: argparse.Namespace) -> None:
                         timeout=args.timeout,
                     )
                 except BaseException as exc:
-                    failures.append(f"{scenario}[{repetition}]: {type(exc).__name__}: {exc}")
-                    if args.require_live:
+                    # An interrupt must end the whole replay, not be filed as one row's failure.
+                    if args.require_live or isinstance(exc, asyncio.CancelledError | KeyboardInterrupt):
                         raise
+                    failures.append(f"{scenario}[{repetition}]: {type(exc).__name__}: {exc}")
     finally:
         await db.close_all()
     if failures:
