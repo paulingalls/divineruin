@@ -9,9 +9,18 @@ import time
 import wave
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from livekit import rtc
+
+
+class AudioFrameSource(Protocol):
+    @property
+    def queued_duration(self) -> float: ...
+
+    async def capture_frame(self, frame: rtc.AudioFrame) -> None: ...
+
+    async def wait_for_playout(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -83,6 +92,13 @@ def _require_int(entry: dict[str, Any], name: str) -> int:
     return value
 
 
+def _require_text(entry: dict[str, Any], name: str) -> str:
+    value = entry.get(name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("voice replay transcript, anchor, model and voice id must be nonempty")
+    return value
+
+
 def load_checked_clip(clip_path: Path, manifest_path: Path | None = None) -> CheckedClip:
     manifest_path = manifest_path or clip_path.with_name("manifest.json")
     if not manifest_path.is_file():
@@ -138,12 +154,10 @@ def load_checked_clip(clip_path: Path, manifest_path: Path | None = None) -> Che
     if _require_int(entry, "final_voiced_sample") != voiced[-1]:
         raise ValueError("voice replay final voiced sample does not match PCM")
 
-    transcript = entry.get("transcript")
-    anchor = entry.get("outcome_anchor")
-    model = entry.get("model")
-    voice_id = entry.get("voice_id")
-    if not all(isinstance(item, str) and item.strip() for item in (transcript, anchor, model, voice_id)):
-        raise ValueError("voice replay transcript, anchor, model and voice id must be nonempty")
+    transcript = _require_text(entry, "transcript")
+    anchor = _require_text(entry, "outcome_anchor")
+    model = _require_text(entry, "model")
+    voice_id = _require_text(entry, "voice_id")
     anchor_words = normalized_words(anchor)
     if not anchor_words:
         raise ValueError("voice replay outcome anchor contains no words")
@@ -194,7 +208,7 @@ def audio_frames(clip: CheckedClip, frame_ms: int = 20) -> list[rtc.AudioFrame]:
 
 
 async def publish_checked_audio(
-    source: rtc.AudioSource,
+    source: AudioFrameSource,
     clip: CheckedClip,
     *,
     queue_size_ms: int,
@@ -317,7 +331,7 @@ async def capture_received_audio(
             ),
             None,
         )
-        if publication is not None:
+        if publication is not None and publication.track is not None:
             track = publication.track
         else:
             track, publication, _ = await asyncio.wait_for(matched, timeout)

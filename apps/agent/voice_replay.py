@@ -11,7 +11,7 @@ from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -244,7 +244,7 @@ async def _transcribe(received: ReceivedAudio, metrics: list[Any]) -> tuple[str,
     alternative = event.alternatives[0]
     if not alternative.words:
         raise ValueError("Deepgram returned no words for received audio")
-    words = [TranscribedWord(str(word), float(word.start_time), float(word.end_time)) for word in alternative.words]
+    words = [TranscribedWord(str(w), cast(float, w.start_time), cast(float, w.end_time)) for w in alternative.words]
     return alternative.text, words
 
 

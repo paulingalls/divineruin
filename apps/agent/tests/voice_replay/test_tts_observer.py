@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
+
+from livekit.agents.tts import TTS
 
 from base_agent import BaseGameAgent
 from voices import VoiceConfig
@@ -31,10 +34,10 @@ def _segment(character: str) -> MagicMock:
 
 
 async def test_every_voice_switch_hands_its_tts_instance_to_the_observer():
-    observed: list[MagicMock] = []
+    observed: list[TTS] = []
     agent = BaseGameAgent(instructions="test", tools=[], tts_instance_callback=observed.append)
 
-    async def text() -> object:
+    async def text() -> AsyncIterator[str]:
         yield "unused"
 
     async def segments():

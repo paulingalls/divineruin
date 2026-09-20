@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any
+from typing import Any, cast
 
 from voice_replay_audio import ReceivedFrame, find_phrase, normalized_words
 
@@ -161,9 +161,9 @@ def summarize_provider_usage(
 
     def record(item: Any) -> dict[str, Any]:
         if is_dataclass(item):
-            return asdict(item)
+            return asdict(cast(Any, item))
         if callable(dump := getattr(item, "model_dump", None)):
-            return dump()
+            return cast(dict[str, Any], dump())
         raise TypeError(f"unsupported provider usage type: {type(item).__name__}")
 
     def usage(provider: str, model: str, items: list[Any], unit: str, field: str) -> dict[str, Any]:
