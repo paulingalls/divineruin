@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+# Git exports repository-local variables to hooks. Clear them so fixture repos
+# created by the test lanes do not write into the checkout being pushed.
+while IFS= read -r git_var; do unset "$git_var"; done \
+  < <(git rev-parse --local-env-vars)
+
 PREPUSH_TEST_MODE=production
 if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; then
   case "${3:-}" in
