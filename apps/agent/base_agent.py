@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator, AsyncIterable, Callable
 from typing import Any
 
 from livekit import agents, rtc
@@ -98,6 +98,7 @@ class BaseGameAgent(ReportingEntry):
         instructions: str,
         tools: list | None = None,
         chat_ctx: Any = None,
+        tts_instance_callback: Callable[[inworld.TTS], None] | None = None,
     ) -> None:
         init_kwargs: dict[str, Any] = {
             "instructions": instructions,
@@ -112,6 +113,7 @@ class BaseGameAgent(ReportingEntry):
         self._affect_analyzer = PlayerAffectAnalyzer()
         self._transcript: TranscriptLogger | None = None
         self._bg_tasks: set[asyncio.Task[None]] = set()
+        self._tts_instance_callback = tts_instance_callback
 
     def static_prompt(self, sd: SessionData) -> str:
         """This agent's own static prompt half — what the session's warm layer is appended to.
@@ -283,6 +285,8 @@ class BaseGameAgent(ReportingEntry):
             if cached_tts is None or voice_key != cached_voice_key:
                 cached_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
                 cached_voice_key = voice_key
+                if self._tts_instance_callback is not None:
+                    self._tts_instance_callback(cached_tts)
             marked_up = apply_markup(chunk, cfg.inworld_markup)
             async with cached_tts.synthesize(marked_up) as stream:
                 async for ev in stream:
