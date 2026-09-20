@@ -17,11 +17,11 @@ STATE_BRANCHES = {
     "exploration.enter_location": "enter_location",
     "exploration.query_inventory": "query_inventory",
     "exploration.check_gather": "gather",
-    "exploration.check_skill": "check_payload",
-    "exploration.check_social": "check_payload",
-    "exploration.check_discover": "check_payload",
-    "exploration.check_save": "check_payload",
-    "exploration.check_dice": "check_payload",
+    "exploration.check_skill": "check_skill",
+    "exploration.check_social": "check_social",
+    "exploration.check_discover": "check_discover",
+    "exploration.check_save": "check_save",
+    "exploration.check_dice": "check_dice",
     "exploration.travel": "travel",
     "exploration.activate_self": "activate_cost",
     "exploration.activate_single": "activate_cost",
@@ -63,6 +63,38 @@ def successful_output(events: list[Any], call_id: str) -> str:
     assert len(matches) == 1, f"expected one binder output for {call_id}, got {matches}"
     assert matches[0].is_error is False, f"tool binder rejected the call: {matches[0].output}"
     return matches[0].output
+
+
+def assert_check_payload(case_id: str, payload: Any) -> None:
+    assert isinstance(payload, dict), (case_id, payload)
+    if case_id == "exploration.check_dice":
+        assert payload["notation"] == "1d6", payload
+        assert len(payload["rolls"]) == 1 and 1 <= payload["rolls"][0] <= 6, payload
+        assert payload["dropped"] == [] and payload["total"] == payload["rolls"][0], payload
+        return
+    if case_id == "exploration.check_discover":
+        assert payload["skill"] == "perception" and payload["target"] == "notice_board", payload
+        assert payload["outcome"] == "discovered" and payload["element_id"] == "guild_notice_greyvale", payload
+    elif case_id == "exploration.check_skill":
+        assert payload["skill"] == "athletics", payload
+    elif case_id == "exploration.check_social":
+        assert payload["npc_id"] == "guildmaster_torin" and payload["skill"] == "persuasion", payload
+        assert payload["disposition_shift"] > 0, payload
+        assert payload["new_disposition"] != payload["previous_disposition"], payload
+    elif case_id == "exploration.check_save":
+        assert payload["save_type"] == "constitution" and payload["dc"] == 10, payload
+    else:
+        raise AssertionError(f"{case_id}: no check payload assertion")
+    assert 1 <= payload["roll"] <= 20, payload
+    if case_id == "exploration.check_discover":
+        assert payload["total"] >= payload["dc"], payload
+    else:
+        assert payload["outcome"] == ("success" if payload["total"] >= payload["dc"] else "failure"), payload
+    if case_id in {"exploration.check_skill", "exploration.check_save"}:
+        assert payload["total"] == payload["roll"] + payload["modifier"], payload
+        assert payload["margin"] == payload["total"] - payload["dc"], payload
+    if case_id == "exploration.check_social":
+        assert payload["margin"] == payload["total"] - payload["dc"], payload
 
 
 async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call: Any | None) -> None:
@@ -146,8 +178,29 @@ async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call:
         assert await _player_json(pool, sd.player_id) is not None
     elif branch == "enter_location":
         assert payload and await _player_json(pool, sd.player_id) == scenario.before["player"]
-    elif branch == "check_payload":
-        assert payload
+    elif branch in {"check_skill", "check_social", "check_discover", "check_save", "check_dice"}:
+        assert_check_payload(case_id, payload)
+        after_player = await _player_json(pool, sd.player_id)
+        if branch == "check_skill":
+            row = await pool.fetchrow(
+                "SELECT use_counter FROM skill_advancement WHERE player_id = $1 AND skill_id = 'athletics'",
+                sd.player_id,
+            )
+            assert row is not None and row["use_counter"] == scenario.before["athletics_uses"] + 1
+            assert after_player == scenario.before["player"]
+        elif branch == "check_social":
+            assert (
+                await db_queries.get_npc_disposition("guildmaster_torin", sd.player_id, conn=pool)
+                == payload["new_disposition"]
+            )
+            assert payload["new_disposition"] != scenario.before["disposition"]
+            assert after_player == scenario.before["player"]
+        elif branch == "check_discover":
+            assert after_player is not None and after_player["flags"]["guild_notice_greyvale.discovered"] is True
+            assert scenario.before["player"] is not None
+            assert not scenario.before["player"].get("flags", {}).get("guild_notice_greyvale.discovered")
+        else:
+            assert after_player == scenario.before["player"]
     elif branch == "query_unchanged":
         assert payload and await _player_json(pool, sd.player_id) == scenario.before["player"]
     else:

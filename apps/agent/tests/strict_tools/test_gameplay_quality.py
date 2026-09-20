@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from acceptance.strict_luna_assertions import STATE_BRANCHES, state_branch
+from acceptance.strict_luna_assertions import STATE_BRANCHES, assert_check_payload, state_branch
 from acceptance.strict_luna_fixtures import MANIFEST_PATH, REQUIRED_CASE_IDS, load_case_manifest
 from acceptance.strict_luna_runtime import _cost, grade_trace
 from livekit.agents import llm
@@ -68,6 +68,15 @@ def test_manifest_rejects_closed_set_faults(tmp_path: Path, mutation, message: s
 def test_manifest_rejects_missing_or_moved_file(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="manifest"):
         load_case_manifest(tmp_path / "moved.json")
+
+
+@pytest.mark.parametrize("field", ["seed", "assertion"])
+def test_manifest_rejects_cross_case_grading(tmp_path: Path, field: str) -> None:
+    rows = json.loads(MANIFEST_PATH.read_text())
+    rows[0][field] = rows[1]["id"]
+
+    with pytest.raises(ValueError, match=f"{field} does not match id"):
+        load_case_manifest(_write(tmp_path / "cases.json", rows))
 
 
 @pytest.mark.parametrize(
@@ -146,6 +155,21 @@ def test_every_required_case_routes_to_a_state_assertion() -> None:
 
     with pytest.raises(AssertionError, match="no persisted-state assertion"):
         state_branch("exploration.not_routed")
+
+
+@pytest.mark.parametrize(
+    ("case_id", "payload"),
+    [
+        ("exploration.check_skill", {"skill": "stealth", "outcome": "success"}),
+        ("exploration.check_social", {"npc_id": "wrong_npc", "skill": "persuasion"}),
+        ("exploration.check_discover", {"skill": "perception", "target": "wrong_target"}),
+        ("exploration.check_save", {"save_type": "wisdom", "dc": 10}),
+        ("exploration.check_dice", {"notation": "2d6", "rolls": [2, 3], "total": 5}),
+    ],
+)
+def test_check_rows_reject_wrong_semantic_output(case_id: str, payload: dict) -> None:
+    with pytest.raises(AssertionError):
+        assert_check_payload(case_id, payload)
 
 
 def test_luna_cost_separates_cached_input() -> None:

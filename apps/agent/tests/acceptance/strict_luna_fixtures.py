@@ -142,6 +142,10 @@ def _parse_row(raw: Any, index: int) -> LunaCase:
             raise ValueError(f"{case_id}: unknown {label} {value!r}")
     if profile != case_id.split(".", 1)[0]:
         raise ValueError(f"{case_id}: profile does not match id")
+    if seed != case_id:
+        raise ValueError(f"{case_id}: seed does not match id")
+    if assertion != case_id:
+        raise ValueError(f"{case_id}: assertion does not match id")
 
     return LunaCase(case_id, profile, seed, prompt, tool, variant, prerequisite, assertion, anchor)
 

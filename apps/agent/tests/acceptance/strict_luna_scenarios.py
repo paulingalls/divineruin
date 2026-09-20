@@ -220,4 +220,11 @@ async def prepare_case(case_id: str) -> Scenario:
     before: dict[str, Any] = {"player": await _player_json(pool, player_id)}
     if case_id == "exploration.check_gather":
         before["inventory"] = await db_queries.get_player_inventory(player_id, conn=pool)
+    elif case_id == "exploration.check_skill":
+        row = await pool.fetchrow(
+            "SELECT use_counter FROM skill_advancement WHERE player_id = $1 AND skill_id = 'athletics'", player_id
+        )
+        before["athletics_uses"] = row["use_counter"] if row else 0
+    elif case_id == "exploration.check_social":
+        before["disposition"] = await db_queries.get_npc_disposition("guildmaster_torin", player_id, conn=pool)
     return Scenario(sd, before)

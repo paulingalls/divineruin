@@ -187,7 +187,12 @@ async def run_luna_case(case) -> dict[str, Any]:
             else BaseGameAgent(instructions=instructions, tools=tools)
         )
         roll_context = nullcontext()
-        if case.id in {"exploration.check_gather", "exploration.travel"}:
+        if case.id in {
+            "exploration.check_gather",
+            "exploration.check_social",
+            "exploration.check_discover",
+            "exploration.travel",
+        }:
             import check_resolution
 
             resolve = check_resolution.resolve_skill_check_dc
