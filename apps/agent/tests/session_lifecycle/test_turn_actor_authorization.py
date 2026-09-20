@@ -10,6 +10,7 @@ from sample_fixtures import make_context, make_db_mod
 import abilities
 from ability_tools import _request_ability_activation_impl
 from inventory_tools import _transact_impl
+from spell_casting import _cast_spell_impl
 
 
 def _player(player_id: str) -> dict:
@@ -211,3 +212,30 @@ async def test_condition_caster_revocation_after_lock_cannot_produce() -> None:
 
     persistence.update_player_resources.assert_not_awaited()
     producer.produce_ooc_condition.assert_not_awaited()
+
+
+async def test_a_guest_turn_cannot_cast_for_the_primary_caster() -> None:
+    ctx = make_context(party_member_ids=["player_2"])
+    db_mod, _conn = make_db_mod()
+    queries = MagicMock(get_player=AsyncMock())
+
+    with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_args: None):
+        with pytest.raises(RuntimeError, match="cannot write for"):
+            await _cast_spell_impl(ctx, "firebolt", db_mod=db_mod, queries_mod=queries)
+
+    queries.get_player.assert_not_awaited()
+
+
+async def test_a_revoked_primary_turn_cannot_cast() -> None:
+    ctx = make_context()
+    db_mod, _conn = make_db_mod()
+    queries = MagicMock(get_player=AsyncMock())
+
+    def revoked(_player_id: str, _generation: int) -> None:
+        raise RuntimeError("stale authenticated actor")
+
+    with ctx.userdata._bind_authenticated_actor("player_1", 4, revoked):
+        with pytest.raises(RuntimeError, match="stale"):
+            await _cast_spell_impl(ctx, "firebolt", db_mod=db_mod, queries_mod=queries)
+
+    queries.get_player.assert_not_awaited()

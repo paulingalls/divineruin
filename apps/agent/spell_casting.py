@@ -173,6 +173,11 @@ async def _cast_spell_impl(
     context.disallow_interruptions()
     _validate_id(spell_id, "spell_id")
     session: SessionData = context.userdata
+    # The OOC caster below defaults to party.primary, so this verb is still primary-only while the
+    # actor-aware migration is owed. Gate it explicitly: without this call a guest's authenticated
+    # turn would debit the HOST's Focus/Resonance, and the only thing refusing it would be the
+    # player_id read inside the log line below — which any log tidy-up silently removes.
+    session.validate_acting_player(session.primary_player_id)
     logger.info("cast_spell called: spell=%s player=%s", spell_id, session.player_id)
     caster = session.member_state(caster_id) if caster_id else session.party.primary
 
