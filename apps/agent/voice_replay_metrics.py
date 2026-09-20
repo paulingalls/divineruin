@@ -140,7 +140,7 @@ def compute_audio_metrics(
     if not gaps:
         raise ValueError("received audio has no pre-result speech boundary before the outcome anchor")
     _, gap_start, boundary_sample = max(gaps)
-    pre_count = max(index for index, end in enumerate(ends) if end <= gap_start) + 1
+    pre_count = sum(start < gap_start for start in starts)
 
     outcome_time = _received_time(anchor_sample, frames, sample_rate)
     outcome_latency = (outcome_time - source_speech_end_monotonic) * 1_000
@@ -169,27 +169,28 @@ def summarize_provider_usage(
     if not stt or not llm or not tts_metrics or not analysis_metrics:
         raise ValueError("STT, Luna LLM, Inworld TTS and analysis STT usage must all be nonempty")
 
-    def units(items: list[Any]) -> float:
-        return sum(
-            float(
-                getattr(item, "audio_duration", 0)
-                or getattr(item, "characters_count", 0)
-                or getattr(item, "output_tokens", 0)
-            )
-            for item in items
-        )
-
     def record(item: Any) -> dict[str, Any]:
-        return asdict(item) if is_dataclass(item) else {"repr": repr(item)}
+        if is_dataclass(item):
+            return asdict(item)
+        if callable(dump := getattr(item, "model_dump", None)):
+            return dump()
+        raise TypeError(f"unsupported provider usage type: {type(item).__name__}")
 
-    def usage(provider: str, model: str, items: list[Any]) -> dict[str, Any]:
-        return {"provider": provider, "model": model, "units": units(items), "records": list(map(record, items))}
+    def usage(provider: str, model: str, items: list[Any], unit: str, field: str) -> dict[str, Any]:
+        records = list(map(record, items))
+        return {
+            "provider": provider,
+            "model": model,
+            "unit": unit,
+            "units": sum(float(item.get(field, 0)) for item in records),
+            "records": records,
+        }
 
     return {
-        "stt": usage("deepgram", "nova-3", stt),
-        "llm": usage("openai", luna_model, llm),
-        "tts": usage("inworld", inworld_model, tts_metrics),
-        "analysis_stt": usage("deepgram", "nova-3", analysis_metrics),
+        "stt": usage("deepgram", "nova-3", stt, "seconds", "audio_duration"),
+        "llm": usage("openai", luna_model, llm, "output_tokens", "output_tokens"),
+        "tts": usage("inworld", inworld_model, tts_metrics, "characters", "characters_count"),
+        "analysis_stt": usage("deepgram", "nova-3", analysis_metrics, "seconds", "audio_duration"),
     }
 
 

@@ -6,9 +6,10 @@ import wave
 from pathlib import Path
 
 import pytest
+from livekit.agents.metrics import LLMModelUsage, STTMetrics, STTModelUsage, TTSMetrics
 
 from voice_replay_audio import ReceivedFrame, audio_frames, load_checked_clip, publish_checked_audio
-from voice_replay_metrics import TranscribedWord, compute_audio_metrics, validate_timing_row
+from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summarize_provider_usage, validate_timing_row
 
 
 def _write_wav(path: Path, samples: list[int], sample_rate: int = 1_000) -> bytes:
@@ -168,6 +169,69 @@ def test_metrics_use_received_frame_clock_and_audio_words():
     assert result.pre_outcome_words == ["I", "found"]
     assert result.outcome_words == ["quality", "wood"]
     assert result.result_boundary_sample == 650
+
+
+def test_pre_result_words_include_a_word_that_overlaps_the_silence_boundary():
+    words = [*_words()]
+    words[1] = TranscribedWord("found", 0.30, 0.55)
+    result = compute_audio_metrics(
+        pcm=_pcm(),
+        sample_rate=1_000,
+        frames=_frames(),
+        words=words,
+        source_speech_end_monotonic=10.0,
+        silence_threshold=10,
+        outcome_anchor="quality wood",
+        input_transcript="Please gather herbs",
+    )
+
+    assert result.pre_outcome_words == ["I", "found"]
+
+
+def test_provider_usage_keeps_billable_counts_from_livekit_models():
+    usage = summarize_provider_usage(
+        [
+            STTModelUsage(provider="Deepgram", model="nova-3", audio_duration=5.0),
+            LLMModelUsage(
+                provider="api.openai.com",
+                model="gpt-5.6-luna",
+                input_tokens=1_000,
+                input_cached_tokens=750,
+                output_tokens=30,
+            ),
+        ],
+        [
+            TTSMetrics(
+                label="inworld",
+                request_id="tts-1",
+                timestamp=1.0,
+                ttfb=0.1,
+                duration=0.2,
+                audio_duration=2.0,
+                cancelled=False,
+                characters_count=42,
+                streamed=False,
+            )
+        ],
+        [
+            STTMetrics(
+                label="deepgram",
+                request_id="stt-1",
+                timestamp=2.0,
+                duration=0.2,
+                audio_duration=3.0,
+                streamed=False,
+            )
+        ],
+        luna_model="gpt-5.6-luna",
+        inworld_model="inworld-tts-2",
+    )
+
+    assert usage["llm"]["records"][0]["input_tokens"] == 1_000
+    assert usage["llm"]["records"][0]["input_cached_tokens"] == 750
+    assert usage["llm"]["records"][0]["output_tokens"] == 30
+    assert usage["tts"]["records"][0]["characters_count"] == 42
+    assert usage["tts"]["units"] == 42
 
 
 @pytest.mark.parametrize(
