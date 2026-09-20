@@ -174,12 +174,16 @@ async def publish_audio_frames(
     return source, track, publication
 
 
-async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float = 15.0) -> rtc.Track:
-    matched: asyncio.Future[rtc.Track] = asyncio.get_running_loop().create_future()
+async def wait_for_audio_track_details(
+    room: rtc.Room, *, identity: str, timeout: float = 15.0
+) -> tuple[rtc.Track, rtc.RemoteTrackPublication, rtc.RemoteParticipant]:
+    matched: asyncio.Future[tuple[rtc.Track, rtc.RemoteTrackPublication, rtc.RemoteParticipant]] = (
+        asyncio.get_running_loop().create_future()
+    )
 
     def consider(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant) -> None:
         if not matched.done() and participant.identity == identity and publication.kind == rtc.TrackKind.KIND_AUDIO:
-            matched.set_result(track)
+            matched.set_result((track, publication, participant))
 
     room.on("track_subscribed", consider)
     try:
@@ -187,13 +191,18 @@ async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float 
         if participant:
             for publication in participant.track_publications.values():
                 if publication.kind == rtc.TrackKind.KIND_AUDIO and publication.track is not None:
-                    return publication.track
+                    return publication.track, publication, participant
         try:
             return await asyncio.wait_for(matched, timeout)
         except TimeoutError as exc:
             raise TimeoutError(f"audio track from {identity!r} was not subscribed") from exc
     finally:
         room.off("track_subscribed", consider)
+
+
+async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float = 15.0) -> rtc.Track:
+    track, _, _ = await wait_for_audio_track_details(room, identity=identity, timeout=timeout)
+    return track
 
 
 async def count_audio_frames(track: rtc.Track, *, timeout: float = 10.0) -> int:
