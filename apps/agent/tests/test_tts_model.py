@@ -5,7 +5,10 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import aiohttp
 import pytest
+from aiohttp import web
+from aiohttp.test_utils import TestServer
 from livekit.plugins import inworld
 
 import tts_prerender
@@ -33,46 +36,46 @@ def test_livekit_character_voice_uses_tts2_and_preserves_voice_and_rate():
     assert actual._opts.speaking_rate == 0.85
 
 
-class _StreamingContent:
-    def __aiter__(self):
-        async def lines():
-            encoded = base64.b64encode(b"audio").decode()
-            yield f'{{"result": {{"audioContent": "{encoded}"}}}}\n'.encode()
-
-        return lines()
-
-
-class _Response:
-    status = 200
-    content = _StreamingContent()
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_args):
-        return None
-
-
-class _Session:
-    def post(self, url, **kwargs):
-        self.url = url
-        self.kwargs = kwargs
-        return _Response()
-
-
 @pytest.mark.asyncio
-async def test_rest_request_uses_tts2_and_preserves_voice_rate_and_format():
-    session = _Session()
-    with patch.dict("os.environ", {"INWORLD_API_KEY": "test-key"}):
-        audio = await inworld_tts(
-            "A test line.",
-            "rest-voice",
-            speaking_rate=0.87,
-            session=session,
-        )
+async def test_rest_request_uses_tts2_and_preserves_voice_rate_and_format(monkeypatch):
+    """Drive the real aiohttp client against a real server, not a stand-in for either.
+
+    A hand-written session double would also have to invent the chunked NDJSON
+    response ``inworld_tts`` parses, so both the request it builds and the reply it
+    reads would be checked against our own idea of aiohttp rather than aiohttp.
+    """
+    received: dict[str, object] = {}
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        received["body"] = await request.json()
+        received["authorization"] = request.headers["Authorization"]
+        response = web.StreamResponse()
+        await response.prepare(request)
+        encoded = base64.b64encode(b"audio").decode()
+        await response.write(json.dumps({"result": {"audioContent": encoded}}).encode() + b"\n")
+        await response.write_eof()
+        return response
+
+    app = web.Application()
+    app.router.add_post("/tts/v1/voice:stream", handler)
+    server = TestServer(app)
+    await server.start_server()
+    monkeypatch.setattr(tts_prerender, "INWORLD_BASE_URL", str(server.make_url("")).rstrip("/"))
+    monkeypatch.setenv("INWORLD_API_KEY", "test-key")
+    try:
+        async with aiohttp.ClientSession() as session:
+            audio = await inworld_tts(
+                "A test line.",
+                "rest-voice",
+                speaking_rate=0.87,
+                session=session,
+            )
+    finally:
+        await server.close()
 
     assert audio == b"audio"
-    assert session.kwargs["json"] == {
+    assert received["authorization"] == "Basic test-key"
+    assert received["body"] == {
         "text": "A test line.",
         "voiceId": "rest-voice",
         "modelId": "inworld-tts-2",
@@ -130,13 +133,17 @@ async def test_smoke_covers_every_markup_tag_with_factual_output(monkeypatch, ca
     assert tags, "voices.INWORLD_MARKUPS carries no markup tag for the smoke to submit"
 
     submitted = [call[0] for call in calls]
+    shared = calls[0][3]
+    assert isinstance(shared, aiohttp.ClientSession)
     neutral = get_voice_config("DM_NARRATOR", "neutral")
-    assert calls[0] == (tts_prerender.SMOKE_NEUTRAL_TEXT, neutral.voice, neutral.speaking_rate, None)
+    assert calls[0][:3] == (tts_prerender.SMOKE_NEUTRAL_TEXT, neutral.voice, neutral.speaking_rate)
     assert submitted[1:] == [apply_markup(tts_prerender.SMOKE_MARKED_TEXT, tag) for tag in tags]
     for (_text, voice, rate, session), tag in zip(calls[1:], tags, strict=True):
         emotion = next(e for e, markup in INWORLD_MARKUPS.items() if markup == tag)
         config = get_voice_config("DM_NARRATOR", emotion)
-        assert (voice, rate, session) == (config.voice, config.speaking_rate, None)
+        # same object every sample: a session per sample would bill each recorded
+        # latency a TLS handshake production never pays
+        assert (voice, rate, session) == (config.voice, config.speaking_rate, shared)
     assert decoded == [f"audio-{i}".encode() for i in range(1, len(calls) + 1)]
 
     output = capsys.readouterr().out

@@ -160,28 +160,36 @@ def _smoke_samples() -> list[tuple[str, str, VoiceConfig]]:
 
 
 async def run_tts2_smoke() -> None:
+    """Synthesize the smoke corpus live and print one factual record per sample.
+
+    Reuses one HTTP session across the corpus, as the callers whose latency these
+    records stand in for do; a session per sample would charge every number a fresh
+    TLS handshake that production never pays.
+    """
     records = []
-    for label, text, config in _smoke_samples():
-        started = time.perf_counter()
-        audio = await inworld_tts(
-            text,
-            config.voice,
-            speaking_rate=config.speaking_rate,
-        )
-        elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
-        if not audio:
-            raise RuntimeError(f"Inworld TTS returned no audio for {label} smoke sample")
-        record = {
-            "sample": label,
-            "model": INWORLD_MODEL,
-            "characters": len(text),
-            "elapsed_ms": elapsed_ms,
-            "audio_bytes": len(audio),
-            "decoder": _decode_audio(audio),
-            "estimated_usd": len(text) * INWORLD_PRICE_PER_MILLION_CHARACTERS / 1_000_000,
-        }
-        records.append(record)
-        print(json.dumps(record, sort_keys=True))
+    async with aiohttp.ClientSession() as session:
+        for label, text, config in _smoke_samples():
+            started = time.perf_counter()
+            audio = await inworld_tts(
+                text,
+                config.voice,
+                speaking_rate=config.speaking_rate,
+                session=session,
+            )
+            elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
+            if not audio:
+                raise RuntimeError(f"Inworld TTS returned no audio for {label} smoke sample")
+            record = {
+                "sample": label,
+                "model": INWORLD_MODEL,
+                "characters": len(text),
+                "elapsed_ms": elapsed_ms,
+                "audio_bytes": len(audio),
+                "decoder": _decode_audio(audio),
+                "estimated_usd": len(text) * INWORLD_PRICE_PER_MILLION_CHARACTERS / 1_000_000,
+            }
+            records.append(record)
+            print(json.dumps(record, sort_keys=True))
 
     total_characters = sum(record["characters"] for record in records)
     total = {
