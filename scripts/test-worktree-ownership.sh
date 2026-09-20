@@ -8,6 +8,10 @@ set -euo pipefail
 unset DATABASE_URL REDIS_URL
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Git exports these variables to hooks; they must not redirect fixture Git commands
+# back to the caller's repository.
+while IFS= read -r git_var; do unset "$git_var"; done \
+  < <(git -C "$ROOT" rev-parse --local-env-vars)
 TMP="$(mktemp -d -t dr-ownership)"
 REAL_DIR=""; REAL_PROJECT=""; REAL_STARTED=0; HOLDER_PID=""
 cleanup() {
