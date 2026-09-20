@@ -129,7 +129,7 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
         if ".venv" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.Call) or "AgentSession" not in ast.dump(node.func):
+            if not isinstance(node, ast.Call) or not _is_agent_session_call(node):
                 continue
             for kw in node.keywords:
                 if kw.arg == "llm" and isinstance(kw.value, ast.Call) and "LLM" in ast.dump(kw.value.func):
