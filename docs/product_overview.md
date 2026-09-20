@@ -222,11 +222,11 @@ Steps 1-3 are the MVP. Steps 4-7 scale it into the MMO. The architecture is desi
 
 What makes this worth building:
 
-**Voice pipeline latency.** The entire experience depends on sub-2-second voice-to-voice response. Every component streams into the next — partial STT results feed LLM processing, partial LLM output feeds TTS synthesis. The latency budget is specified down to the millisecond.
+**Voice pipeline latency.** The experience targets sub-2-second voice-to-voice response. Per-player transcription sends a completed utterance to the DM, then LLM output streams into TTS synthesis. The latency budget is specified down to the millisecond.
 
 **AI DM quality.** The DM must narrate, improvise, manage rules, voice multiple characters, maintain continuity across sessions, and adapt to player behavior — all in real time. A three-layer prompt architecture (static persona + world-aware warm context + per-turn hot injection) keeps the DM accurate without re-processing the full world state on every turn.
 
-**Multiplayer voice coordination.** Multiple humans and AI agents in one room, with VAD-based input, simultaneous speech handling, and a shared narrative that stays coherent. A 500ms collection buffer batches near-simultaneous inputs. No one has built this for a game before.
+**Multiplayer voice coordination.** Each human joins with an authenticated app and microphone. Per-track transcription preserves speaker identity, and one DM handles complete utterances as separate ordered turns, including near-simultaneous speech. Up to four completed turns can wait while the DM responds; an excess turn is dropped with an explicit overflow error. The shared narrative stays coherent without a fixed collection delay.
 
 **Shared world at scale.** Thousands of DM agents reading from and writing to the same world state, without conflicts, without stale data, without the world feeling fragmented. The event bus, the cache layer, and the simulation ticks must keep every DM's context accurate in near-real-time.
 

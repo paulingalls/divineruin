@@ -52,6 +52,14 @@ class SpeechFixture:
         )
 
 
+@dataclass(frozen=True)
+class PlayTrace:
+    identity: str
+    frame_seconds: float
+    started_at: float
+    speech_end: float
+
+
 # Source mirror revision: https://huggingface.co/datasets/hf-internal-testing/librispeech_asr_dummy/tree/5be91486e11a2d616f4ec5db8d3fd248585ac07a
 # Upstream corpus: https://huggingface.co/datasets/openslr/librispeech_asr, clean validation split.
 # License: CC BY 4.0. Both recordings are LibriSpeech speaker 1272, chapter 128104.
@@ -162,8 +170,12 @@ class MultiplayerVoiceHarness:
                 f"starting={sorted(self.manager._starting)}, failures={[str(e) for e in self.manager._failures]}"
             ) from exc
 
-    async def play(self, identity: str, fixture: SpeechFixture) -> None:
-        await play_audio_frames(self.audio[identity][0], fixture.frames())
+    async def play(self, identity: str, fixture: SpeechFixture) -> PlayTrace:
+        frames = fixture.frames()
+        frame_seconds = sum(frame.samples_per_channel / frame.sample_rate for frame in frames)
+        started_at = asyncio.get_running_loop().time()
+        await play_audio_frames(self.audio[identity][0], frames)
+        return PlayTrace(identity, frame_seconds, started_at, asyncio.get_running_loop().time())
 
     async def mute(self, identity: str, muted: bool) -> None:
         set_audio_muted(self.audio[identity][1], muted)
