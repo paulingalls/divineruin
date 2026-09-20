@@ -67,7 +67,7 @@ async def test_transcription_tracks_mute_unpublish_disconnect_and_reconnect(
         await harness.drain()
         await harness.disconnect_player_two()
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        await harness.await_marker(harness.player_one_identity, PLAYER_ONE_SPEECH.marker)
+        await harness.await_marker(harness.player_one_identity, "middle classes")
         await harness.reconnect_player_two()
         assert harness.manager.start_counts[harness.player_two_identity] == 2
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
