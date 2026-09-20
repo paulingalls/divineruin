@@ -66,9 +66,16 @@ class ReconnectionLifecycle:
         self.sleep = sleep
         self._deadline: asyncio.Task[None] | None = None
         self._tasks: set[asyncio.Task[None]] = set()
+        self.close_task: asyncio.Task[None] | None = None
+        self._closing_from_grace = False
         self._closed = False
         room.on("participant_disconnected", self._on_disconnect)
         room.on("participant_connected", self._on_reconnect)
+        session.on("close", self._on_session_close)
+
+    def _on_session_close(self, _event: object) -> None:
+        if self.close_task is None:
+            self.close_task = asyncio.create_task(self.aclose())
 
     def _on_disconnect(self, participant: rtc.RemoteParticipant) -> None:
         if participant.identity != self.userdata.player_id or self.userdata.player_disconnected:
@@ -108,7 +115,11 @@ class ReconnectionLifecycle:
     async def _grace_timeout(self) -> None:
         await self.sleep(RECONNECT_GRACE_S)
         logger.info("Reconnect grace period expired for %s", self.userdata.player_id)
-        await self.session.aclose()
+        self._closing_from_grace = True
+        try:
+            await self.session.aclose()
+        finally:
+            self._closing_from_grace = False
 
     async def aclose(self) -> None:
         if self._closed:
@@ -116,10 +127,19 @@ class ReconnectionLifecycle:
         self._closed = True
         self.room.off("participant_disconnected", self._on_disconnect)
         self.room.off("participant_connected", self._on_reconnect)
-        for task in self._tasks:
+        self.session.off("close", self._on_session_close)
+        current = asyncio.current_task()
+        # LiveKit emits close inside the grace task's session.aclose(); canceling that task
+        # here would cancel the session close that triggered this cleanup.
+        tasks = tuple(
+            task
+            for task in self._tasks
+            if task is not current and not (task is self._deadline and self._closing_from_grace)
+        )
+        for task in tasks:
             if not task.done():
                 task.cancel()
-        results = await asyncio.gather(*self._tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
         failures = [result for result in results if isinstance(result, Exception)]
         if failures:
             raise BaseExceptionGroup("reconnection cleanup failed", failures)

@@ -51,6 +51,67 @@ class ManualSleep:
         await asyncio.sleep(0)
 
 
+class ClosingSession:
+    def __init__(self):
+        self.handlers = {}
+        self.close_count = 0
+
+    def on(self, event, callback):
+        self.handlers[event] = callback
+
+    def off(self, event, callback):
+        assert self.handlers[event] == callback
+        del self.handlers[event]
+
+    async def aclose(self):
+        self.close_count += 1
+        self.handlers["close"](SimpleNamespace())
+        await asyncio.sleep(0)
+
+
+async def test_session_close_owns_and_joins_reconnect_cleanup():
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    room = Room()
+    session = ClosingSession()
+    clock = ManualSleep()
+    userdata = SessionData(player_id="player-one", location_id="loc")
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=clock)
+
+    assert "close" in session.handlers
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.sleep(0)
+    await session.aclose()
+    assert owner.close_task is not None
+    await asyncio.wait_for(owner.close_task, 1)
+    assert room.handlers == {}
+    assert session.handlers == {}
+    await clock.advance(RECONNECT_GRACE_S)
+    assert session.close_count == 1
+
+
+async def test_grace_expiry_closes_without_canceling_its_own_session_close():
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    room = Room()
+    session = ClosingSession()
+    clock = ManualSleep()
+    userdata = SessionData(player_id="player-one", location_id="loc")
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=clock)
+
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.sleep(0)
+    await clock.advance(RECONNECT_GRACE_S)
+    async with asyncio.timeout(1):
+        while owner.close_task is None:
+            await asyncio.sleep(0)
+    await asyncio.wait_for(owner.close_task, 1)
+    assert owner._deadline is not None
+    await asyncio.wait_for(owner._deadline, 1)
+    assert session.close_count == 1
+    assert room.handlers == {}
+
+
 class TestReconnectionSetup:
     """Test _setup_reconnection registers handlers for any agent type."""
 
@@ -92,7 +153,9 @@ class TestReconnectionSetup:
         participant = MagicMock()
         participant.identity = "p1"
 
-        session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+        session = SimpleNamespace(
+            aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()), on=MagicMock(), off=MagicMock()
+        )
         agent = SimpleNamespace(_fire_and_forget=MagicMock())
         owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, cast(Any, agent))
 
@@ -114,7 +177,7 @@ async def test_primary_closes_at_grace_expiry_while_secondary_disconnect_is_igno
 
     room = Room()
     clock = ManualSleep()
-    session = SimpleNamespace(aclose=AsyncMock())
+    session = SimpleNamespace(aclose=AsyncMock(), on=MagicMock(), off=MagicMock())
     userdata = SessionData(player_id="player-one", location_id="loc")
     owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=clock)
 
@@ -136,7 +199,9 @@ async def test_reconnect_cancels_old_deadline_and_resumes_once():
 
     room = Room()
     clock = ManualSleep()
-    session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+    session = SimpleNamespace(
+        aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()), on=MagicMock(), off=MagicMock()
+    )
     agent = SimpleNamespace(_fire_and_forget=MagicMock())
     userdata = SessionData(player_id="player-one", location_id="loc")
     userdata.background = MagicMock()
@@ -168,7 +233,9 @@ async def test_a_repeat_disconnect_neither_re_pauses_nor_rearms_the_grace():
 
     room = Room()
     clock = ManualSleep()
-    session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+    session = SimpleNamespace(
+        aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()), on=MagicMock(), off=MagicMock()
+    )
     userdata = SessionData(player_id="player-one", location_id="loc")
     userdata.background = MagicMock()
     owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=clock)
@@ -191,7 +258,9 @@ async def test_a_drop_while_the_reconnect_is_settling_keeps_the_new_grace_and_ne
 
     room = Room()
     clock = ManualSleep()
-    session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+    session = SimpleNamespace(
+        aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()), on=MagicMock(), off=MagicMock()
+    )
     agent = SimpleNamespace(_fire_and_forget=MagicMock())
     userdata = SessionData(player_id="player-one", location_id="loc")
     userdata.background = MagicMock()

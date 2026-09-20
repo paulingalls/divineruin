@@ -144,6 +144,14 @@ async def test_real_room_reconnect_grace_preserves_remaining_players(
         grace_close_started = asyncio.Event()
 
         class SessionBridge:
+            def on(self, event, callback):
+                assert dm_session is not None
+                dm_session.on(event, callback)
+
+            def off(self, event, callback):
+                assert dm_session is not None
+                dm_session.off(event, callback)
+
             async def aclose(self) -> None:
                 assert dm_session is not None
                 grace_close_started.set()
@@ -183,6 +191,10 @@ async def test_real_room_reconnect_grace_preserves_remaining_players(
         await aclose_room(primary)
         primary = None
         await wait_for(lambda: userdata.player_disconnected, "primary disconnect handler")
+        await wait_for(
+            lambda: sum(not future.done() for _, future in clock.waiters) == 1,
+            "first reconnect deadline armed",
+        )
         await clock.advance(RECONNECT_GRACE_S - 1)
         assert not closed.is_set()
 
@@ -209,8 +221,16 @@ async def test_real_room_reconnect_grace_preserves_remaining_players(
         await aclose_room(primary)
         primary = None
         await wait_for(lambda: userdata.player_disconnected, "second primary disconnect handler")
+        await wait_for(
+            lambda: sum(not future.done() for _, future in clock.waiters) == 1,
+            "second reconnect deadline armed",
+        )
         await clock.advance(RECONNECT_GRACE_S)
         await wait_for(grace_close_started.is_set, "session close after reconnect grace")
+        await wait_for(lambda: reconnect_owner.close_task is not None, "reconnect cleanup on DM close")
+        assert reconnect_owner.close_task is not None
+        await asyncio.wait_for(reconnect_owner.close_task, 10)
+        assert reconnect_owner._closed
     finally:
         if reconnect_owner is not None:
             await reconnect_owner.aclose()
