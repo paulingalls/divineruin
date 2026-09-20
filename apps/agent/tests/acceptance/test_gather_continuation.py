@@ -16,6 +16,7 @@ from uuid import uuid4
 import pytest
 from acceptance.seeds import seed_player
 from livekit.agents import llm
+from livekit.plugins import openai
 from sample_fixtures import FixedRng, make_context, make_mock_room
 
 import db
@@ -23,11 +24,6 @@ import db_queries
 import gathering_tools
 from exploration_agent import EXPLORATION_TOOLS
 from system_prompts import build_system_prompt
-
-openai = pytest.importorskip(
-    "livekit.plugins.openai",
-    reason="livekit-plugins-openai is installed ephemerally until story-213 pins it",
-)
 
 pytestmark = [
     pytest.mark.skipif(
