@@ -7,9 +7,12 @@ if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; the
     docs|lanes) PREPUSH_TEST_MODE="$3" ;;
   esac
 fi
+FULL_TIER=false
+if [ "${1:-}" = __xp_full_tier__ ] && [ "$#" -eq 1 ]; then FULL_TIER=true; fi
+if [ "$PREPUSH_TEST_MODE" = docs ] && [ "${4:-}" = full ]; then FULL_TIER=true; fi
 
 if [ "$PREPUSH_TEST_MODE" = production ]; then
-  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
+  for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV BASH_TEST_LINT_FAIL PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
     value="${!name-}"
     if [ -n "$value" ]; then
       echo "ERROR: production pre-push refuses internal test override $name." >&2
@@ -46,10 +49,25 @@ fi
 
 # The positional docs mode stubs the git diff source and heavy test runner.
 if [ "$PREPUSH_TEST_MODE" = docs ]; then
-  _get_diff() { printf '%s\n' "${BASH_TEST_DIFF:-}"; }
+  _get_diff() {
+    [ "${BASH_TEST_DIFF:-}" != __FAIL__ ] || return 1
+    while IFS= read -r path; do
+      [ -z "$path" ] && continue
+      if [[ "$path" == *$'\t'* ]]; then printf '%s\n' "$path"; else printf 'M\t%s\n' "$path"; fi
+    done <<< "${BASH_TEST_DIFF:-}"
+  }
+  _run_lint_only() {
+    echo "LINT_ONLY"
+    [ "${BASH_TEST_LINT_FAIL:-}" != 1 ]
+  }
   _run_tests() { echo "TESTS_RAN"; }
 else
-  _get_diff() { git diff --name-only "$1" "$2"; }
+  _get_diff() { git -c diff.renames=true diff --name-status --no-ext-diff "$1" "$2"; }
+  _run_lint_only() {
+    echo "  Full lint + typecheck for work branch..."
+    bun run lint
+    bun run lint:e2e
+  }
   _run_tests() {
     echo "Running pre-push test suite..."
 
@@ -63,15 +81,15 @@ else
     # Validate the pre-commit hook's worktree-skip + .env-guard precedence.
     echo "  Pre-commit hook self-test..."
     bash "$(dirname "$0")/../scripts/test-precommit-worktree-skip.sh"
+    echo "  Fast-tier selector self-test..."
+    bash "$(dirname "$0")/../scripts/test-fast-tier.sh"
 
     # Validate the per-worktree host-port-offset derivation (worktree-common.sh).
     echo "  Worktree bootstrap offset self-test..."
     bash "$(dirname "$0")/../scripts/test-init-worktree.sh"
 
-    # Typecheck + lint backstop. The pre-commit hook SKIPS the TS/ESLint/Prettier/ruff suite on a
-    # fresh worktree (no node_modules), so without this block lint/typecheck errors could reach a
-    # shared branch unchecked. The pre-push gate runs from the deps-installed checkout at merge-push
-    # time, so it is the genuine backstop the pre-commit notice promises. Fast-fail here (set -e),
+    # Typecheck + lint backstop. Pre-commit checks staged files and skips language
+    # tools in fresh worktrees without deps. Fast-fail here (set -e),
     # BEFORE standing up the Docker/testcontainer lanes below — a typo shouldn't cost minutes.
     echo "  Lint + typecheck (root, mobile, server, web, python)..."
     bun run lint
@@ -166,13 +184,13 @@ else
     acc_pid=$!
     bg_pids+=("$acc_pid")
 
-    # The four bun/python unit lanes are independent — server's db.test.ts uses
+    # The Bun/Python unit lanes are independent — server's db.test.ts uses
     # the provisioned DB, python unsets DB/REDIS and resolves this checkout's own
     # stack from .env, mobile/shared are env-light — so run them CONCURRENTLY,
     # each in its own env subshell so var scoping can't leak across siblings. Wall-clock drops from
     # sum-of-lanes to max-lane; wait_all_lanes fails the push loud if ANY lane
     # exits non-zero (never swallows an exit code).
-    echo "  Bun + Python unit lanes (parallel: server, mobile, shared, python)..."
+    echo "  Bun + Python unit lanes (parallel: scripts, server, mobile, web, shared, design tokens, e2e environment, python)..."
     unit_specs=()
     # Each lane tees to flake-artifacts/last-<lane>.log; `set -o pipefail` keeps the
     # subshell's exit the lane's real code (not tee's) so wait_all_lanes still sees
@@ -187,6 +205,14 @@ else
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
     ( set -o pipefail; run_pre_push_lane shared bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
+    ( set -o pipefail; run_pre_push_lane scripts bun --env-file=.env test ./scripts 2>&1 | tee "$ART/last-scripts.log" ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:scripts")
+    ( set -o pipefail; run_pre_push_lane design-tokens bun test --cwd packages/design-tokens 2>&1 | tee "$ART/last-design-tokens.log" ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:design-tokens")
+    ( set -o pipefail; run_pre_push_lane web bun test --cwd apps/web 2>&1 | tee "$ART/last-web.log" ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:web")
+    ( set -o pipefail; run_pre_push_lane e2e-environment bun test e2e/require-environment.test.ts 2>&1 | tee "$ART/last-e2e-environment.log" ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:e2e-environment")
     # Empty values prevent explicit env files from restoring unit-test credentials.
     ( set -o pipefail; mask_python_test_environment; \
       run_pre_push_lane python bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
@@ -198,7 +224,8 @@ else
     if [ "$unit_rc" -ne 0 ]; then
       snap="$(snap_dir)"
       snapshot_lane_logs "$snap" \
-        "$ART/last-server.log" "$ART/last-mobile.log" "$ART/last-shared.log" "$ART/last-python.log"
+        "$ART/last-server.log" "$ART/last-mobile.log" "$ART/last-shared.log" "$ART/last-scripts.log" \
+        "$ART/last-design-tokens.log" "$ART/last-web.log" "$ART/last-e2e-environment.log" "$ART/last-python.log"
       echo "ERROR: one or more unit lanes failed. Logs preserved at:" >&2
       echo "    $snap" >&2
       exit 1
@@ -263,13 +290,35 @@ else
   }
 fi
 
-# --- Docs-only short-circuit ---
+if [ "$FULL_TIER" = true ]; then
+  _run_tests
+  exit 0
+fi
+
+work_ref() {
+  case "$1" in
+    refs/heads/story-*|refs/heads/sprint-*|refs/heads/free-*|refs/heads/paulingalls/story-*|refs/heads/paulingalls/sprint-*|refs/heads/paulingalls/free-*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+work_path() {
+  case "$1" in
+    *.md|docs/*|.claude/*|memory/*) return 0 ;;
+    apps/agent/tests/acceptance/*) return 1 ;;
+    apps/agent/*.py|apps/agent/tests/*.py|apps/server/src/*.ts|apps/server/src/*.tsx|apps/mobile/src/*.ts|apps/mobile/src/*.tsx|apps/web/src/*.ts|apps/web/src/*.tsx|packages/shared/src/*.ts|packages/design-tokens/src/*.ts|content/*.json) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# --- Pushed-ref routing ---
 # Read pushed-ref list from stdin (pre-push hook protocol: one line per ref
 # as `local_ref local_sha remote_ref remote_sha`) and skip the test suite
 # when every changed file matches a docs-only pattern. Any error → fall
 # through to the full suite (fail-safe).
 ZERO_SHA="0000000000000000000000000000000000000000"
 DOCS_ONLY=true
+WORK_ONLY=true
 CHANGED=""
 SAW_REF=false        # any non-empty refspec line seen
 ALL_DELETIONS=true   # every seen ref is a deletion (local_sha = ZERO)
@@ -280,14 +329,22 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue
   fi
   SAW_REF=true
-  if [ -z "${local_sha:-}" ] || [ "${local_sha}" = "${ZERO_SHA}" ]; then
+  if [ -z "${local_ref:-}" ] || [ -z "${local_sha:-}" ] || [ -z "${remote_ref:-}" ] || [ -z "${remote_sha:-}" ]; then
+    ALL_DELETIONS=false
+    DOCS_ONLY=false
+    WORK_ONLY=false
+    break
+  fi
+  if [ "${local_sha}" = "${ZERO_SHA}" ]; then
     continue  # branch deletion — keeps ALL_DELETIONS true
   fi
   ALL_DELETIONS=false  # a real (non-deletion) ref
+  if ! work_ref "$remote_ref"; then WORK_ONLY=false; fi
   if [ "${remote_sha:-}" = "${ZERO_SHA}" ] || [ -z "${remote_sha:-}" ]; then
     # New branch: diff against the merge-base with origin/main.
     if ! BASE=$(git merge-base "${local_sha}" origin/main 2>/dev/null); then
       DOCS_ONLY=false
+      WORK_ONLY=false
       break
     fi
   else
@@ -295,9 +352,22 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   if ! REF_CHANGED=$(_get_diff "${BASE}" "${local_sha}"); then
     DOCS_ONLY=false
+    WORK_ONLY=false
     break
   fi
-  CHANGED="${CHANGED}${CHANGED:+$'\n'}${REF_CHANGED}"
+  while IFS=$'\t' read -r status source target; do
+    [ -z "$status" ] && continue
+    if [ -z "$source" ]; then DOCS_ONLY=false; WORK_ONLY=false; break; fi
+    case "$status" in
+      R*|C*)
+        if [ -z "$target" ]; then DOCS_ONLY=false; WORK_ONLY=false; break; fi
+        CHANGED="${CHANGED}${CHANGED:+$'\n'}${source}"$'\n'"${target}" ;;
+      A|M|D|T)
+        if [ -n "$target" ]; then DOCS_ONLY=false; WORK_ONLY=false; break; fi
+        CHANGED="${CHANGED}${CHANGED:+$'\n'}${source}" ;;
+      *) DOCS_ONLY=false; WORK_ONLY=false; break ;;
+    esac
+  done <<< "$REF_CHANGED"
 done
 
 # Pure branch-deletion push (every ref is a deletion) → nothing to test. Skip
@@ -311,6 +381,7 @@ fi
 # Empty stdin (no refs to consider) → run tests (safe fallback).
 if [ -z "$CHANGED" ]; then
   DOCS_ONLY=false
+  WORK_ONLY=false
 fi
 
 if [ "$DOCS_ONLY" = true ]; then
@@ -325,6 +396,18 @@ fi
 
 if [ "$DOCS_ONLY" = true ]; then
   echo "Docs-only push — skipping test suites."
+  exit 0
+fi
+
+if [ "$WORK_ONLY" = true ]; then
+  while IFS= read -r path; do
+    if ! work_path "$path"; then WORK_ONLY=false; break; fi
+  done <<< "$CHANGED"
+fi
+
+if [ "$WORK_ONLY" = true ]; then
+  echo "XP work-branch source push — running lint/typecheck only."
+  _run_lint_only
   exit 0
 fi
 
