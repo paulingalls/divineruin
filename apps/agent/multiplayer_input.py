@@ -35,7 +35,9 @@ class MultiplayerInput:
                     transcript.generation,
                 )
                 continue
-            with self.userdata._bind_actor(transcript.participant_identity):
+            identity = transcript.participant_identity
+            generation = transcript.generation
+            with self.userdata._bind_actor(identity):
                 # speech_delivery owns the generate_reply boundary, including the two
                 # RuntimeErrors a closing session raises — a turn in flight when the DM
                 # session closes must not take the whole consumer down with it.
@@ -43,7 +45,10 @@ class MultiplayerInput:
                     self.session,
                     transcript.text,
                     logger,
-                    f"DM turn for {transcript.participant_identity!r}",
+                    f"DM turn for {identity!r}",
+                    revoked=lambda identity=identity, generation=generation: self.lifecycle.wait_until_revoked(
+                        identity, generation
+                    ),
                 )
 
     async def aclose(self) -> None:

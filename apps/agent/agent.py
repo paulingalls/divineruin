@@ -18,7 +18,7 @@ import db_queries
 from participant_lifecycle import _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
-from session_startup import _make_agent_session, start_gameplay_session
+from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
 from speech_delivery import deliver_speech
 from voices import ROLE_VOICE_KEYS, VOICES
 
@@ -152,7 +152,7 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
     """Wait for the end-of-session recap to finish publishing before the room goes away.
 
     The job runner awaits this AFTER AgentSession.aclose() and BEFORE room.disconnect()
-    (ipc/job_proc_lazy_main.py:388-419) — the only awaitable point in between. The close
+    (ipc/job_proc_lazy_main.py:437-479) — the only awaitable point in between. The close
     event that spawns the recap is emitted synchronously (rtc/event_emitter.py), so the
     handler can only start a task; unjoined, that task races room.disconnect() and
     publish_game_event drops the recap with "Room disconnected, skipping".
@@ -161,10 +161,13 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
         sd = ctx.primary_session.userdata
     except RuntimeError:
         return  # no AgentSession was ever started for this job
-    if sd.session_end_task is not None:
-        await sd.session_end_task
-    if sd.multiplayer_close_task is not None:
-        await sd.multiplayer_close_task
+    tasks = [task for task in (sd.session_end_task, sd.multiplayer_close_task) if task is not None]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    failures = [result for result in results if isinstance(result, BaseException)]
+    if len(failures) == 1:
+        raise failures[0]
+    if failures:
+        raise BaseExceptionGroup("session end cleanup failed", failures)
 
 
 @server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
@@ -283,7 +286,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        await session.start(room=ctx.room, agent=prologue_agent)
+        await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
@@ -342,7 +345,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            await session.start(room=ctx.room, agent=onboarding_agent)
+            await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return
 

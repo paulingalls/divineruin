@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,13 +41,21 @@ async def deliver_player_turn(
     logger: logging.Logger,
     description: str,
     failure_level: int = logging.ERROR,
+    revoked: Callable[[], Awaitable[None]] | None = None,
 ) -> bool:
     """Answer one authenticated player turn; False when that player heard nothing.
 
     ERROR by default: unlike the background loops nothing re-offers a spoken turn, and the
     multiplayer consumer must keep serving the other players rather than die on one failure.
     """
-    return await _deliver(session, logger, description, failure_level, user_input=user_input)
+    return await _deliver(
+        session,
+        logger,
+        description,
+        failure_level,
+        revoked=revoked,
+        user_input=user_input,
+    )
 
 
 async def _deliver(
@@ -53,6 +63,7 @@ async def _deliver(
     logger: logging.Logger,
     description: str,
     failure_level: int,
+    revoked: Callable[[], Awaitable[None]] | None = None,
     **reply_kwargs: object,
 ) -> bool:
     try:
@@ -63,7 +74,29 @@ async def _deliver(
         logger.warning("%s skipped: %s", description, exc)
         return False
 
-    await handle
+    if revoked is None:
+        await handle
+    else:
+        handle_task = asyncio.ensure_future(handle)
+        revocation_task = asyncio.ensure_future(revoked())
+        try:
+            done, _pending = await asyncio.wait(
+                (handle_task, revocation_task),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if revocation_task in done and not handle_task.done():
+                handle.interrupt(force=True)
+            await handle_task
+            if revocation_task in done:
+                revocation_task.result()
+        except asyncio.CancelledError:
+            handle.interrupt(force=True)
+            handle_task.cancel()
+            await asyncio.gather(handle_task, return_exceptions=True)
+            raise
+        finally:
+            revocation_task.cancel()
+            await asyncio.gather(revocation_task, return_exceptions=True)
     if (failure := handle.exception()) is not None:
         logger.log(failure_level, "%s failed: %s", description, failure)
         return False

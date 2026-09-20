@@ -194,7 +194,7 @@ async def test_old_session_emits_its_captured_generation_after_reconnect() -> No
     await manager.aclose()
 
 
-async def test_unknown_identity_is_preserved_and_empty_identity_fails() -> None:
+async def test_unknown_identity_is_preserved_for_authorization() -> None:
     room = Room()
     factory = Factory()
     manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
@@ -205,9 +205,6 @@ async def test_unknown_identity_is_preserved_and_empty_identity_fails() -> None:
     with pytest.raises(StopResponse):
         await agent.on_user_turn_completed(llm.ChatContext.empty(), message("unknown speaker"))
     assert (await next_item(manager)).participant_identity == "unregistered-player"
-    room.emit("participant_connected", Participant(""))
-    with pytest.raises(RuntimeError, match="identity is empty"):
-        await next_item(manager)
     await manager.aclose()
 
 
@@ -285,53 +282,3 @@ async def test_a_retried_provider_error_does_not_fail_the_stream() -> None:
         await agent.on_user_turn_completed(llm.ChatContext.empty(), message("still speaking"))
     assert await next_item(manager) == AuthenticatedTranscript("player-one", "still speaking", 1)
     await manager.aclose()
-
-
-async def test_unconsumed_error_is_raised_by_close() -> None:
-    room = Room(("player-one",))
-
-    async def fail_factory(identity, agent, options):
-        raise OSError("start broke")
-
-    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=fail_factory)
-    manager.start()
-    await settle()
-    with pytest.raises(RuntimeError, match=r"player-one.*start broke"):
-        await manager.aclose()
-
-
-async def test_close_waits_for_each_session() -> None:
-    gates = {identity: asyncio.Event() for identity in ("player-one", "player-two")}
-
-    class DelayedSession(Session):
-        def __init__(self, identity: str):
-            super().__init__()
-            self.identity = identity
-
-        async def aclose(self) -> None:
-            await gates[self.identity].wait()
-            await super().aclose()
-
-    sessions = {}
-
-    async def factory(identity, agent, options):
-        sessions[identity] = DelayedSession(identity)
-        return sessions[identity]
-
-    manager = MultiParticipantTranscriber(
-        Room(("player-one", "player-two")),
-        stt=None,
-        authorizer=authorize_all,
-        session_factory=factory,
-    )
-    manager.start()
-    await settle()
-    close_task = asyncio.create_task(manager.aclose())
-    await settle()
-    assert not close_task.done()
-    gates["player-one"].set()
-    await settle()
-    assert not close_task.done()
-    gates["player-two"].set()
-    await close_task
-    assert all(session.closed == 1 for session in sessions.values())

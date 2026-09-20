@@ -71,6 +71,7 @@ class MultiParticipantTranscriber:
         self._consumed_failures: set[int] = set()
         self._start_counts: dict[str, int] = {}
         self._started = False
+        self._closed = False
 
     @property
     def active_identities(self) -> frozenset[str]:
@@ -81,6 +82,8 @@ class MultiParticipantTranscriber:
         return dict(self._start_counts)
 
     def start(self) -> None:
+        if self._closed:
+            raise RuntimeError("transcriber is closed")
         if self._started:
             return
         self._started = True
@@ -92,12 +95,6 @@ class MultiParticipantTranscriber:
 
     def _on_connected(self, participant: Any) -> None:
         identity = participant.identity
-        if not identity:
-            # rtc.EventEmitter.emit catches every Exception a handler raises and only logs it
-            # (livekit/rtc/event_emitter.py), so raising here would be silent in a real room.
-            # Route it to the consumer like every other failure.
-            self._record_failure("", ValueError("LiveKit participant identity is empty"))
-            return
         if identity in self._starting or identity in self._active:
             return
         task = asyncio.create_task(self._start_one(identity))
@@ -194,11 +191,17 @@ class MultiParticipantTranscriber:
         return item
 
     async def aclose(self) -> None:
-        if self._started:
-            self.room.off("participant_connected", self._on_connected)
-            self.room.off("participant_disconnected", self._on_disconnected)
-            self._started = False
+        if self._closed:
+            return
+        self._closed = True
+        # rtc.EventEmitter.off discards a callback it never registered, so an unstarted
+        # transcriber needs no gate here.
+        self.room.off("participant_connected", self._on_connected)
+        self.room.off("participant_disconnected", self._on_disconnected)
         starting = tuple(self._starting.values())
+        for task in starting:
+            if not task.done():
+                task.cancel()
         await asyncio.gather(*starting, return_exceptions=True)
         for identity, session in tuple(self._active.items()):
             self._schedule_close(identity, session)
@@ -206,6 +209,9 @@ class MultiParticipantTranscriber:
         await asyncio.gather(*closing, return_exceptions=True)
         self._starting.clear()
         self._active.clear()
-        unconsumed = next((failure for failure in self._failures if id(failure) not in self._consumed_failures), None)
-        if unconsumed is not None:
-            raise unconsumed
+        unconsumed = [failure for failure in self._failures if id(failure) not in self._consumed_failures]
+        self._consumed_failures.update(map(id, unconsumed))
+        if len(unconsumed) == 1:
+            raise unconsumed[0]
+        if unconsumed:
+            raise BaseExceptionGroup("transcription cleanup failed", unconsumed)
