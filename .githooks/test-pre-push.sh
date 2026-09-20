@@ -16,25 +16,8 @@ fi
 PASS=0
 FAIL=0
 
-run_case() {
-  local name="$1" stdin="$2" diff="$3" want="$4" want_text="${5:-}"
-  local out rc got
-  out=$(BASH_TEST_DIFF="$diff" bash "$HOOK" __prepush_harness__ __prepush_harness__ docs <<< "$stdin" 2>&1)
-  rc=$?
-  got=unknown
-  echo "$out" | grep -q "skipping test suites" && got=skip
-  echo "$out" | grep -q "Verified release tag" && got=tag-skip
-  echo "$out" | grep -q "LINT_ONLY" && got=lint
-  echo "$out" | grep -q "TESTS_RAN" && got=full
-  if [ "$rc" -eq 0 ] && [ "$got" = "$want" ] && { [ -z "$want_text" ] || echo "$out" | grep -Fq "$want_text"; }; then
-    echo "  PASS: $name"
-    PASS=$((PASS + 1))
-  else
-    echo "  FAIL: $name (rc=$rc want=$want got=$got)"
-    FAIL=$((FAIL + 1))
-  fi
-}
-
+# The tag-routing predicates read real refs, so cases that need a purpose-built
+# history run against $repo; the rest run against this checkout.
 run_repo_case() {
   local repo="$1" name="$2" stdin="$3" diff="$4" want="$5" want_text="${6:-}"
   local out rc got
@@ -53,6 +36,8 @@ run_repo_case() {
     FAIL=$((FAIL + 1))
   fi
 }
+
+run_case() { run_repo_case . "$@"; }
 
 # Format: name | stdin (refspecs, one per line) | BASH_TEST_DIFF (changed files, one per line) | want_skip
 run_case "docs-only"   "ref a b c"  $'docs/file.md\nREADME.md\n.claude/notes.md\nmemory/foo.md'  skip
@@ -113,6 +98,8 @@ tag_row="refs/tags/v1.2.3 $tag_object refs/tags/v1.2.3 $zero"
 
 run_repo_case "$tag_repo" "release-tag-annotated-merged" "$tag_row" "apps/server/src/x.ts" tag-skip "v1.2.3 at $tag_commit"
 run_case "release-tag-v0.14.0" "refs/tags/v0.14.0 33e8184acd1e89fa0f9ad4195c74f6d37d050460 refs/tags/v0.14.0 $zero" "docs/file.md" tag-skip "v0.14.0 at 33e8184acd1e89fa0f9ad4195c74f6d37d050460"
+run_repo_case "$tag_repo" "release-tag-pair" "refs/tags/v1.2.4 $tag_object refs/tags/v1.2.4 $zero"$'\n'"$tag_row" "docs/file.md" full
+run_repo_case "$tag_repo" "release-tag-and-work-branch" "$tag_row"$'\n'"refs/heads/story-095 aaa refs/heads/story-095 bbb" "apps/server/src/x.ts" full
 run_repo_case "$tag_repo" "release-tag-mixed-ref" "$tag_row"$'\n'"refs/heads/main $main_commit refs/heads/main $main_commit" "docs/file.md" full
 run_repo_case "$tag_repo" "release-tag-plus-malformed-row" "$tag_row"$'\n'"refs/heads/broken" "docs/file.md" full
 run_repo_case "$tag_repo" "release-tag-update" "refs/tags/v1.2.3 $tag_object refs/tags/v1.2.3 $tag_commit" "docs/file.md" full
@@ -242,20 +229,8 @@ else
   FAIL=$((FAIL + 1))
 fi
 
-override_output=$(env BASH_TEST_DIFF=docs/file.md bash "$HOOK" 2>&1 <<'EOF'
-refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123
-EOF
-)
-override_status=$?
-if [ "$override_status" -ne 0 ] && echo "$override_output" | grep -q "BASH_TEST_DIFF"; then
-  echo "  PASS: production-refuses-BASH_TEST_DIFF"
-  PASS=$((PASS + 1))
-else
-  echo "  FAIL: production-accepted-BASH_TEST_DIFF (rc=$override_status)"
-  FAIL=$((FAIL + 1))
-fi
-
-for override in PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
+for override in BASH_TEST BASH_TEST_DIFF BASH_TEST_LINT_FAIL \
+  PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
   override_output=$(env "$override=/tmp/prepush-internal-fixture" bash "$HOOK" 2>&1 <<'EOF'
 refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123
 EOF

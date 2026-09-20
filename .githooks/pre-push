@@ -353,7 +353,6 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   ALL_DELETIONS=false  # a real (non-deletion) ref
   if [[ "$remote_ref" == refs/tags/* ]]; then
     TAG_PUSH=true
-    WORK_ONLY=false
     if [[ "$remote_ref" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$remote_sha" = "$ZERO_SHA" ]; then
       RELEASE_TAG="${remote_ref#refs/tags/}"
       RELEASE_OBJECT="$local_sha"
@@ -399,6 +398,9 @@ if [ "$SAW_REF" = true ] && [ "$ALL_DELETIONS" = true ]; then
   exit 0
 fi
 
+# A new vMAJOR.MINOR.PATCH tag adds no source — its commit already merged through
+# main, where the full tier ran. Ancestry of origin/main proves that; the root
+# manifest pins the tag to the tree it names.
 if [ "$TAG_PUSH" = true ]; then
   DOCS_ONLY=false
   WORK_ONLY=false
