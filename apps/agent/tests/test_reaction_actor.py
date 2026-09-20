@@ -130,11 +130,22 @@ async def test_refused_second_speaker_does_not_change_the_first_or_spend_their_r
         participant = ctx.userdata.combat_state.get_participant("player_2")
         assert participant is not None
         participant.reaction_ids = []
+    db_mod, conn, queries, persistence = _deps(rows)
 
-    with pytest.raises(ToolError):
-        await _activate(ctx, rows)
+    with ctx.userdata._bind_authenticated_actor("player_2", 7, MagicMock()):
+        with pytest.raises(ToolError) as refusal:
+            await _request_ability_activation_impl(
+                ctx, "guardian_intercept", db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
+            )
 
-    assert rows["player_1"]["stamina"]["current"] == 10
+    # WHOSE refusal it is, not merely that one happened: a primary-player fallback ALSO raises
+    # ToolError here — player_1 already spent — so every assertion below except these two holds
+    # against the defect this test exists to catch.
+    if failure == "ownership":
+        assert "'player_2'" in str(refusal.value)
+    else:
+        queries.get_players_for_update.assert_awaited_once_with(["player_2"], conn=conn)
+    persistence.update_player_resources.assert_not_awaited()
     assert reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
     assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_2"])
 

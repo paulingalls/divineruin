@@ -76,13 +76,9 @@ async def _call(
     # own suite in test_ability_variant_override.py.
     persistence.get_active_variant = AsyncMock(return_value=None)
     persistence.owns_elective = AsyncMock(return_value=owns_elective)
-    known_ability = abilities._abilities.get(ability_id)
-    if known_ability is not None and known_ability.ability_type == "reaction":
-        with ctx.userdata._bind_authenticated_actor(ctx.userdata.player_id, 1, lambda *_args: None):
-            raw = await _request_ability_activation_impl(
-                ctx, ability_id, db_mod=mock_db, queries_mod=queries, persistence_mod=persistence
-            )
-    else:
+    # Bound unconditionally: only a reaction reads the binding, and branching on ability_type here
+    # would reach into the private catalog dict to ask a question the tool already asks.
+    with ctx.userdata._bind_authenticated_actor(ctx.userdata.player_id, 1, lambda *_args: None):
         raw = await _request_ability_activation_impl(
             ctx, ability_id, db_mod=mock_db, queries_mod=queries, persistence_mod=persistence
         )

@@ -140,7 +140,14 @@ async def _activate_impl(
         offered = reaction_gate.offered_reactions(session.combat_state) if session.combat_state is not None else []
         if not offered:
             raise
-        actor = session.require_reaction_actor()
+        try:
+            actor = session.require_reaction_actor()
+        except (RuntimeError, ValueError):
+            # HINT ONLY — no spend, no write. A turn with no live authenticated speaker (a reconnect
+            # or card-tap reply) has no id to filter by; tolerate exactly that by dropping the hint,
+            # because the unknown-id refusal still reaches the DM, whereas raising here would reach
+            # it as livekit's opaque "An internal error occurred". The spend paths still fail loud.
+            raise unknown from None
         valid = [reaction["id"] for reaction in offered if reaction["actor_id"] == actor.player_id]
         if not valid:
             raise

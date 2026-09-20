@@ -224,6 +224,33 @@ class TestReservedTokenRouting:
         fns["inner_fire"].assert_awaited_once_with(ctx)
 
 
+def _two_reactor_window():
+    """A paused post-roll window that offers player_1 and player_2 a DIFFERENT reaction each."""
+    state = _make_combat_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.has_reaction_ability = True
+    player.reaction_ids = ["rogue_uncanny_dodge", "rogue_slippery"]
+    state.open_window = reaction_windows.open_window_for(
+        round_number=1,
+        seq=0,
+        stage=reaction_windows.POST_ROLL,
+        actor_id="goblin_scout_1",
+        target_id="player_1",
+        action_kind="attack",
+        triggers=reaction_windows.post_roll_triggers({}, hit=True),
+    )
+    state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))
+    state.reactions_available = {"player_1": reaction_spend.unspent(), "player_2": reaction_spend.unspent()}
+    assert [reaction["id"] for reaction in reaction_gate.offered_reactions(state)] == [
+        "rogue_uncanny_dodge",
+        "guardian_intercept",
+    ]
+    ctx = make_context(party_member_ids=["player_2"])
+    ctx.userdata.combat_state = state
+    return ctx
+
+
 class TestUnknownId:
     async def test_unknown_id_raises_tool_error_before_any_dispatch(self):
         mods, fns = _mocks()
@@ -238,28 +265,7 @@ class TestUnknownId:
 
     async def test_unknown_id_at_an_open_window_names_the_reactions_that_would_fit(self):
         mods, fns = _mocks()
-        state = _make_combat_state()
-        player = state.get_participant("player_1")
-        assert player is not None
-        player.has_reaction_ability = True
-        player.reaction_ids = ["rogue_uncanny_dodge", "rogue_slippery"]
-        state.open_window = reaction_windows.open_window_for(
-            round_number=1,
-            seq=0,
-            stage=reaction_windows.POST_ROLL,
-            actor_id="goblin_scout_1",
-            target_id="player_1",
-            action_kind="attack",
-            triggers=reaction_windows.post_roll_triggers({}, hit=True),
-        )
-        state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))
-        state.reactions_available = {"player_1": reaction_spend.unspent(), "player_2": reaction_spend.unspent()}
-        assert [reaction["id"] for reaction in reaction_gate.offered_reactions(state)] == [
-            "rogue_uncanny_dodge",
-            "guardian_intercept",
-        ]
-        ctx = make_context(party_member_ids=["player_2"])
-        ctx.userdata.combat_state = state
+        ctx = _two_reactor_window()
 
         with ctx.userdata._bind_authenticated_actor("player_2", 7, lambda *_args: None):
             with pytest.raises(ToolError) as raised:
@@ -270,6 +276,23 @@ class TestUnknownId:
         assert "guardian_intercept" in message
         assert "rogue_slippery" not in message
         assert "rogue_uncanny_dodge" not in message
+        for fn in fns.values():
+            fn.assert_not_awaited()
+
+    async def test_unbound_turn_at_an_open_window_still_gets_the_plain_refusal(self):
+        """The hint is not a spend, so an unbound turn loses the hint, not the refusal.
+
+        A reconnect or card-tap reply drives the DM with no authenticated speaker. Raising the
+        binding's RuntimeError from here would reach the DM as livekit's "An internal error
+        occurred" (llm/utils.py make_function_call_output) instead of the id it got wrong.
+        """
+        mods, fns = _mocks()
+        ctx = _two_reactor_window()
+
+        with pytest.raises(ToolError) as raised:
+            await _activate_impl(ctx, "uncanny_dodge", **mods)
+
+        assert str(raised.value) == "'uncanny_dodge' is not an activatable capability."
         for fn in fns.values():
             fn.assert_not_awaited()
 

@@ -215,8 +215,12 @@ async def _request_ability_activation_unlocked(
         # value or None when its cost is 0. One write below applies both.
         new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
         new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
-        if reaction_actor is not None and session.require_reaction_actor() != reaction_actor:
-            raise RuntimeError("Authenticated reaction actor changed during activation")
+        # Revalidate the captured generation inside the tx that owns the debit: the row lock and
+        # the variant lookup above are awaits, and the speaker's connection can be revoked across
+        # them. The BINDING cannot change under this task, so re-reading it proves nothing — the
+        # validator call is the check, and it raises on a generation that is no longer live.
+        if reaction_actor is not None:
+            session.require_reaction_actor()
         if new_stamina is not None or new_focus is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 

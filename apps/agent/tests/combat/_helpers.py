@@ -287,9 +287,10 @@ async def _call(ctx, deps) -> dict:
 async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 10, focus: int = 10):
     """Drive the REAL activate impl, so the gate, the resource write and the spend all run.
 
-    The reactor is always ``session.player_id`` — activation is single-player (note 0f3945fa(c)) —
-    so a test of a reaction that guards an ALLY must make player_1 the REACTOR and retarget the
-    enemy at someone else.
+    The reactor is whoever the turn is bound to, and this helper binds the primary, so a test of a
+    reaction that guards an ALLY must make player_1 the REACTOR and retarget the enemy at someone
+    else. A reaction refuses outright without an authenticated binding (story-037), so the bind is
+    what stands in for the transcript consumer these tests do not run.
     """
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
@@ -309,9 +310,10 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     persistence.update_player_resources = AsyncMock()
     persistence.get_active_variant = AsyncMock(return_value=None)
     persistence.owns_elective = AsyncMock(return_value=False)
-    return await _request_ability_activation_impl(
-        ctx, ability_id, db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
-    )
+    with ctx.userdata._bind_authenticated_actor(ctx.userdata.player_id, 1, lambda *_args: None):
+        return await _request_ability_activation_impl(
+            ctx, ability_id, db_mod=db_mod, queries_mod=queries, persistence_mod=persistence
+        )
 
 
 def _ac_sensitive_resolver(attack_total, damage):
