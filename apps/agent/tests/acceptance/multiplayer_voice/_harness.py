@@ -237,13 +237,22 @@ class MultiplayerVoiceHarness:
 
     async def await_speech(self, identity: str, fixture: SpeechFixture, timeout: float = 20) -> AuthenticatedTranscript:
         seen: list[AuthenticatedTranscript] = []
+        fragments: list[str] = []
+        generation: int | None = None
         try:
             async with asyncio.timeout(timeout):
                 while True:
                     transcript = await self.receive(timeout)
-                    if transcript.participant_identity == identity and fixture.spoken_in(transcript.text):
-                        return transcript
                     seen.append(transcript)
+                    if transcript.participant_identity != identity:
+                        continue
+                    if transcript.generation != generation:
+                        fragments = []
+                        generation = transcript.generation
+                    fragments.append(transcript.text)
+                    combined = " ".join(fragments)
+                    if fixture.spoken_in(combined):
+                        return AuthenticatedTranscript(identity, combined, transcript.generation)
         except TimeoutError as exc:
             active = sorted(self.manager.active_identities) if self.manager is not None else []
             raise TimeoutError(

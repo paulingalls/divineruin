@@ -8,8 +8,20 @@ sides of it in the fast lane, against the transcripts those tests actually speak
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
-from acceptance.multiplayer_voice._harness import PLAYER_ONE_SPEECH, PLAYER_TWO_SPEECH, SpeechFixture
+from acceptance.multiplayer_voice._harness import (
+    PLAYER_ONE_SPEECH,
+    PLAYER_TWO_SPEECH,
+    MultiplayerVoiceHarness,
+    SpeechFixture,
+)
+
+from multiplayer_transcription import AuthenticatedTranscript
+
+_FIRST = "Mister Quilter is the apostle of the middle classes"
+_SECOND = "and we are glad to welcome his gospel."
 
 
 def _without(transcript: str, *words: str) -> str:
@@ -36,3 +48,38 @@ def test_recognition_still_refuses_the_wrong_speech_silence_and_a_fragment(
     assert not fixture.spoken_in("")
     words = fixture.transcript.split()
     assert not fixture.spoken_in(" ".join(words[: len(words) // 2]))
+
+
+async def _heard(fragments: list[AuthenticatedTranscript], monkeypatch: pytest.MonkeyPatch) -> AuthenticatedTranscript:
+    queue: asyncio.Queue[AuthenticatedTranscript] = asyncio.Queue()
+    for fragment in fragments:
+        queue.put_nowait(fragment)
+    harness = MultiplayerVoiceHarness({})
+
+    async def receive(_timeout: float = 20) -> AuthenticatedTranscript:
+        return await queue.get()
+
+    monkeypatch.setattr(harness, "receive", receive)
+    return await harness.await_speech("player-two", PLAYER_ONE_SPEECH, timeout=0.1)
+
+
+@pytest.mark.asyncio
+async def test_real_stt_split_is_recognized_as_one_recording(monkeypatch: pytest.MonkeyPatch) -> None:
+    heard = await _heard(
+        [AuthenticatedTranscript("player-two", _FIRST, 1), AuthenticatedTranscript("player-two", _SECOND, 1)],
+        monkeypatch,
+    )
+    assert heard == AuthenticatedTranscript("player-two", f"{_FIRST} {_SECOND}", 1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first_identity,first_generation", [("player-one", 1), ("player-two", 0)])
+async def test_fragments_cannot_join_across_players_or_generations(
+    monkeypatch: pytest.MonkeyPatch, first_identity: str, first_generation: int
+) -> None:
+    fragments = [
+        AuthenticatedTranscript(first_identity, _FIRST, first_generation),
+        AuthenticatedTranscript("player-two", _SECOND, 1),
+    ]
+    with pytest.raises(TimeoutError, match="no 1272-128104-0000 transcript"):
+        await _heard(fragments, monkeypatch)
