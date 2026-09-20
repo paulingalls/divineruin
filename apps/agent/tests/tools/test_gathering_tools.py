@@ -100,6 +100,7 @@ class TestAmbientForage:
         result = await _run(ctx, mocks, rng_val=20)
         assert result["outcome"] == "success"
         assert result["materials"]  # non-empty
+        assert result["inventory_updated"] is True
         mocks[1].add_inventory_item.assert_awaited()  # mutations
         dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
         assert dice.payload["roll_type"] == "gathering_check"
@@ -112,6 +113,7 @@ class TestAmbientForage:
         result = await _run(ctx, mocks, rng_val=1)
         assert result["outcome"] == "failure"
         assert result["materials"] == []
+        assert result["inventory_updated"] is False
         mocks[1].add_inventory_item.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -130,6 +132,7 @@ class TestNodeConsumer:
         result = await _run(ctx, mocks, rng_val=20)  # expert + nat20 vs dc10 -> rich_find
         assert result["discovery"] is True
         assert result["node_revealed"] == "n1"
+        assert result["inventory_updated"] is True
         mocks[3].mark_node_discovered.assert_awaited_once_with("n1", conn=ANY)
         mocks[3].deplete_node_quantity.assert_awaited_once()
         # node resource granted
