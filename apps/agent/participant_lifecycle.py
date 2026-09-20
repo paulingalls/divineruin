@@ -76,6 +76,21 @@ class ReconnectionLifecycle:
     def _on_session_close(self, _event: object) -> None:
         if self.close_task is None:
             self.close_task = asyncio.create_task(self.aclose())
+            self.close_task.add_done_callback(self._report_close)
+
+    def _report_close(self, task: asyncio.Task[None]) -> None:
+        # The job runner joins only the recap and the multiplayer inputs
+        # (agent._join_session_end), so nothing reads this task: an unread cleanup failure
+        # would reach the log as asyncio's GC-time "never retrieved" warning, or not at all.
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            logger.error(
+                "Reconnect cleanup failed for %r",
+                self.userdata.player_id,
+                exc_info=(type(error), error, error.__traceback__),
+            )
 
     def _on_disconnect(self, participant: rtc.RemoteParticipant) -> None:
         if participant.identity != self.userdata.player_id or self.userdata.player_disconnected:

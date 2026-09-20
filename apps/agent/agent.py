@@ -18,7 +18,7 @@ import db_queries
 from participant_lifecycle import _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
-from session_startup import _make_agent_session, gameplay_room_options, start_gameplay_session
+from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
 from speech_delivery import deliver_speech
 from voices import ROLE_VOICE_KEYS, VOICES
 
@@ -286,7 +286,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        await session.start(room=ctx.room, agent=prologue_agent, room_options=gameplay_room_options(userdata))
+        await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
@@ -345,7 +345,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            await session.start(room=ctx.room, agent=onboarding_agent, room_options=gameplay_room_options(userdata))
+            await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return
 

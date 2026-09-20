@@ -13,13 +13,26 @@ from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import SessionData
 
 
-def gameplay_room_options(userdata: SessionData) -> room_io.RoomOptions:
+def _primary_room_options(userdata: SessionData, *, audio_input: bool) -> room_io.RoomOptions:
+    """Link RoomIO to the primary player and leave a drop to _setup_reconnection's grace."""
     return room_io.RoomOptions(
         participant_identity=userdata.player_id,
-        audio_input=False,
+        audio_input=audio_input,
         text_input=False,
         close_on_disconnect=False,
     )
+
+
+def gameplay_room_options(userdata: SessionData) -> room_io.RoomOptions:
+    # Gameplay speech reaches the DM through MultiParticipantTranscriber's per-player sessions,
+    # so this session takes no room audio of its own — it would hear the primary twice.
+    return _primary_room_options(userdata, audio_input=False)
+
+
+def solo_room_options(userdata: SessionData) -> room_io.RoomOptions:
+    # Creation and onboarding run before any transcriber exists, so this session is the only
+    # thing listening: without room audio the player talks and the DM never answers.
+    return _primary_room_options(userdata, audio_input=True)
 
 
 @dataclass

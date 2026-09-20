@@ -1,6 +1,7 @@
 """Tests for primary-player reconnect grace and background pause/resume."""
 
 import asyncio
+import logging
 import time
 from types import SimpleNamespace
 from typing import Any, cast
@@ -110,6 +111,35 @@ async def test_grace_expiry_closes_without_canceling_its_own_session_close():
     await asyncio.wait_for(owner._deadline, 1)
     assert session.close_count == 1
     assert room.handlers == {}
+
+
+async def test_a_failed_reconnect_task_is_reported_rather_than_left_unretrieved(caplog) -> None:
+    """Nothing awaits close_task in production, so the cleanup failure has to reach the log here."""
+    from participant_lifecycle import _setup_reconnection
+
+    caplog.set_level(logging.ERROR, logger="divineruin.dm")
+    room = Room()
+    session = ClosingSession()
+    session.generate_reply = MagicMock(side_effect=OSError("reconnect greeting failed"))
+    userdata = SessionData(player_id="player-one", location_id="loc")
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=ManualSleep())
+
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.sleep(0)
+    room.emit("participant_connected", "player-one")
+    async with asyncio.timeout(1):
+        while not all(task.done() for task in owner._tasks):
+            await asyncio.sleep(0)
+
+    await session.aclose()
+    assert owner.close_task is not None
+    async with asyncio.timeout(1):
+        while not owner.close_task.done():
+            await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    assert owner.close_task.exception() is not None
+    assert [record.message for record in caplog.records] == ["Reconnect cleanup failed for 'player-one'"]
 
 
 class TestReconnectionSetup:

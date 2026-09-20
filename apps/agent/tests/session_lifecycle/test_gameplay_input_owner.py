@@ -9,7 +9,7 @@ from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.speech_handle import InputDetails
 
 from session_data import SessionData
-from session_startup import GameplayInputOwner, gameplay_room_options, start_gameplay_session
+from session_startup import GameplayInputOwner, gameplay_room_options, solo_room_options, start_gameplay_session
 from speech_delivery import deliver_player_turn
 
 
@@ -25,6 +25,18 @@ def test_gameplay_room_options_pin_primary_and_disable_vendor_close() -> None:
     assert options.text_input is False
     assert options.get_audio_input_options() is None
     assert options.get_text_input_options() is None
+
+
+def test_solo_room_options_keep_the_microphone_the_pre_gameplay_agents_are_the_only_ear_for() -> None:
+    """Creation and onboarding have no MultiParticipantTranscriber; room audio is their only input."""
+    sd = SessionData(player_id="player-one", location_id="loc")
+
+    options = solo_room_options(sd)
+
+    assert isinstance(options, room_io.RoomOptions)
+    assert options.participant_identity == "player-one"
+    assert options.close_on_disconnect is False
+    assert options.get_audio_input_options() is not None
 
 
 async def test_prologue_start_installs_primary_room_options() -> None:
@@ -47,6 +59,7 @@ async def test_prologue_start_installs_primary_room_options() -> None:
     assert isinstance(options, room_io.RoomOptions)
     assert options.participant_identity == "player_1"
     assert options.close_on_disconnect is False
+    assert options.get_audio_input_options() is not None
 
 
 async def test_revocation_force_interrupts_a_real_uninterruptible_speech_handle() -> None:
