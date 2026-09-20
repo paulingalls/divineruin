@@ -65,7 +65,7 @@ async def _request_ability_activation_impl(
 
     session: SessionData = context.userdata
     reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
-    player_id = reaction_actor.player_id if reaction_actor is not None else session.player_id
+    player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
     if session.in_combat and ability.ability_type != "reaction":
         # Only send the DM to declare_phase for an id that gate ACCEPTS. combat_phase's declare gate
         # takes a spell-backed ability by its spell_id and a non-spell condition ability by its own
@@ -148,7 +148,7 @@ async def _request_ability_activation_unlocked(
     for tid in target_ids or []:
         _validate_id(tid, "target_id")
     session: SessionData = context.userdata
-    player_id = session.player_id if player_id is None else player_id
+    player_id = session.acting_player_id if player_id is None else player_id
     logger.info("request_ability_activation called: ability=%s player=%s", ability_id, player_id)
 
     try:
@@ -219,9 +219,8 @@ async def _request_ability_activation_unlocked(
         # the variant lookup above are awaits, and the speaker's connection can be revoked across
         # them. The BINDING cannot change under this task, so re-reading it proves nothing — the
         # validator call is the check, and it raises on a generation that is no longer live.
-        if reaction_actor is not None:
-            session.require_reaction_actor()
         if new_stamina is not None or new_focus is not None:
+            session.validate_acting_player(player_id)
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
         # Beneficial-condition PRODUCER (M4.8 story-005), out-of-combat half. An ability carrying
@@ -241,6 +240,7 @@ async def _request_ability_activation_unlocked(
             # the single target_id, or the caster (self) — unifying the OOC ability path with the OOC
             # spell path. target_ids was already normalized/capped above.
             try:
+                session.validate_acting_player(player_id)
                 voiced = await condition_produce_mod.produce_ooc_condition(
                     ability.applies_condition,
                     ability_id,

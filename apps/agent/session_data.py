@@ -326,6 +326,20 @@ class SessionData:
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
 
+    def __getattribute__(self, name: str):
+        if name == "player_id":
+            values = object.__getattribute__(self, "__dict__")
+            primary_id = values.get("player_id")
+            binding = values.get("_actor_binding")
+            if primary_id is not None and binding is not None:
+                actor = binding.get()
+                if isinstance(actor, AuthenticatedActor) and actor.player_id != primary_id:
+                    raise RuntimeError(
+                        "The primary player id is unavailable during another authenticated player's turn; "
+                        "use acting_player_id and revalidate it at the write boundary"
+                    )
+        return super().__getattribute__(name)
+
     def __setattr__(self, name: str, value: object) -> None:
         # Per-member write contract (concern 3ec54e78cae8): resonance/veil_ward/concentration/
         # corruption_level are all @property read + setter write delegating to party.primary
@@ -392,6 +406,36 @@ class SessionData:
         if actor is None:
             raise RuntimeError("No actor is bound to the current DM turn")
         return actor.player_id if isinstance(actor, AuthenticatedActor) else actor
+
+    @property
+    def primary_player_id(self) -> str:
+        return object.__getattribute__(self, "__dict__")["player_id"]
+
+    @property
+    def acting_player_id(self) -> str:
+        actor = self._actor_binding.get()
+        if isinstance(actor, AuthenticatedActor):
+            self.member_state(actor.player_id)
+            actor.validator(actor.player_id, actor.generation)
+            return actor.player_id
+        if isinstance(actor, str):
+            self.member_state(actor)
+            return actor
+        return self.primary_player_id
+
+    def validate_acting_player(self, player_id: str) -> None:
+        actor = self._actor_binding.get()
+        if isinstance(actor, AuthenticatedActor):
+            if actor.player_id != player_id:
+                raise RuntimeError(f"Authenticated actor {actor.player_id!r} cannot write for {player_id!r}")
+            self.member_state(actor.player_id)
+            actor.validator(actor.player_id, actor.generation)
+        elif isinstance(actor, str):
+            if actor != player_id:
+                raise RuntimeError(f"Bound actor {actor!r} cannot write for {player_id!r}")
+            self.member_state(actor)
+        elif player_id != self.primary_player_id:
+            raise RuntimeError(f"No actor is bound for player {player_id!r}")
 
     @contextmanager
     def _bind_actor(self, player_id: str) -> Iterator[None]:

@@ -69,24 +69,35 @@ async def _transact_impl(
 
     logger.info("transact called: item_id=%s, delta=%d, source=%s", item_id, delta, source)
     session: SessionData = context.userdata
+    player_id = session.acting_player_id
     item = await content.get_item(item_id)
 
     if delta > 0:
-        return await _gain(session, item_id, delta, source, item, db_mod=db_mod, mutations=mutations, queries=queries)
+        return await _gain(
+            session, player_id, item_id, delta, source, item, db_mod=db_mod, mutations=mutations, queries=queries
+        )
     return await _lose(
-        session, item_id, delta, item, db_mod=db_mod, inventory_mutations=inventory_mutations, queries=queries
+        session,
+        player_id,
+        item_id,
+        delta,
+        item,
+        db_mod=db_mod,
+        inventory_mutations=inventory_mutations,
+        queries=queries,
     )
 
 
-async def _gain(session, item_id, delta, source, item, *, db_mod, mutations, queries) -> str:
+async def _gain(session, player_id, item_id, delta, source, item, *, db_mod, mutations, queries) -> str:
     if item is None:
         raise ToolError(f"Item '{item_id}' not found.")
     item_name = item.get("name", item_id)
 
     async with db_mod.transaction() as conn:
-        await mutations.add_inventory_item(session.player_id, item_id, delta, conn=conn)
+        session.validate_acting_player(player_id)
+        await mutations.add_inventory_item(player_id, item_id, delta, conn=conn)
 
-    full_inventory = await queries.get_player_inventory(session.player_id)
+    full_inventory = await queries.get_player_inventory(player_id)
     await publish_game_event(
         session.room,
         E.INVENTORY_UPDATED,
@@ -103,7 +114,7 @@ async def _gain(session, item_id, delta, source, item, *, db_mod, mutations, que
         image_url=compute_item_image_url(item),
         quantity=delta,
         source=source,
-        player_id=session.player_id,
+        player_id=player_id,
     )
     await publish_game_event(
         session.room,
@@ -123,24 +134,25 @@ async def _gain(session, item_id, delta, source, item, *, db_mod, mutations, que
     )
 
 
-async def _lose(session, item_id, delta, item, *, db_mod, inventory_mutations, queries) -> str:
+async def _lose(session, player_id, item_id, delta, item, *, db_mod, inventory_mutations, queries) -> str:
     item_name = item.get("name", item_id) if item else item_id
     magnitude = -delta
 
     async with db_mod.transaction() as conn:
-        slot = await queries.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
+        slot = await queries.get_inventory_item(player_id, item_id, conn=conn, for_update=True)
         if slot is None:
             raise ToolError(f"Item '{item_id}' not in inventory.")
         if slot.get("equipped", False):
             raise ToolError(f"Item '{item_id}' is equipped. Unequip it first.")
 
-        remaining = await inventory_mutations.transact_inventory(session.player_id, item_id, delta, conn=conn)
+        session.validate_acting_player(player_id)
+        remaining = await inventory_mutations.transact_inventory(player_id, item_id, delta, conn=conn)
 
     # Publish AFTER commit so a rolled-back txn emits nothing. The full inventory array
     # is what drives the HUD refresh — the client re-renders only from event.inventory,
     # so a partial decrement (5->3) would otherwise leave the panel stale. Payload mirrors
     # _gain ({inventory} only); the DM-facing action/quantity live on the tool return below.
-    full_inventory = await queries.get_player_inventory(session.player_id)
+    full_inventory = await queries.get_player_inventory(player_id)
     await publish_game_event(
         session.room,
         E.INVENTORY_UPDATED,

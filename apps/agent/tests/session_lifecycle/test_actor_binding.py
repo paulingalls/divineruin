@@ -59,3 +59,20 @@ async def test_binding_refuses_an_identity_that_is_not_a_party_member() -> None:
             pass  # pragma: no cover - the bind must refuse before the body runs
     with pytest.raises(RuntimeError, match="No actor"):
         _ = sd.actor_player_id
+
+
+def test_authenticated_binding_refuses_an_identity_that_is_not_a_party_member() -> None:
+    sd = party_session()
+
+    with pytest.raises(ValueError, match="stranger"):
+        with sd._bind_authenticated_actor("stranger", 1, lambda *_args: None):
+            pass  # pragma: no cover - the bind must refuse before the body runs
+
+
+def test_authenticated_actor_refuses_membership_removed_after_binding() -> None:
+    sd = party_session()
+
+    with sd._bind_authenticated_actor("player-two", 1, lambda *_args: None):
+        sd.party.members = [sd.party.primary]
+        with pytest.raises(ValueError, match="player-two"):
+            sd.require_reaction_actor()
