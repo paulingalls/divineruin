@@ -15,7 +15,8 @@ plus an async worker. Everything else is TypeScript on Bun (never Node): Bun.ser
 REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
-Whole fast lane: `bun run test:all`. Python fast lane alone: `bun run test:python`
+Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
+Story tier: `bun run test:all`; Python lane: `bun run test:python`
 (parallel `-n 8`) — never a bare serial `uv run pytest`.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
@@ -31,7 +32,7 @@ its boundary.
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
-API cost) and runs at pre-push and sprint close only.
+API cost) and runs only at the comprehensive push or sprint-close boundary.
 
 **Layout**:
 - `apps/agent` — Python DM agent: LiveKit voice agents, `@function_tool` toolset,
@@ -95,8 +96,11 @@ API cost) and runs at pre-push and sprint close only.
   CONVENTION the xp release model enforces, not one the host enforces; don't cite
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
-  runs the FULL acceptance gate (Docker/testcontainers) — allow ~10 minutes for
-  any push or merge, or it is SIGTERM'd and fails silently. On a gate failure,
+  runs lint/typechecks for XP work-branch source pushes, and the complete
+  Docker/browser/acceptance gate for main, tags, unknown refs, or changes outside
+  the source allowlist. Sprint close also invokes that complete gate on the
+  merged release tree. Do not repeat an identical broad suite on an unchanged
+  tree during review without a concrete uncovered behavior. On a gate failure,
   read repo-root `flake-artifacts/` before calling anything a flake.
 
 **A falsifier is a path into a moving tree, and nothing re-checks it until it
@@ -169,10 +173,9 @@ lost review rounds to both halves of this, five times.
   RED Verify (6 of 7 cases failing) and a tests-only diff — the production fix
   was never written, and nothing in the handback said so. A red Verify is the one
   state a story cannot be handed over in.
-- RUN EVERY LANE THE CARD NAMES. A card carrying a `THE SLOW LANE` line means
-  `bun run test:acceptance:nollm` before finishing (constraint 7). Stories 073,
-  083, 084, 085 and 088 all skipped it silently and a reviewer ran it each time —
-  five for five, which means the gate was the review, not the executor.
+- RUN EVERY FOCUSED VERIFY THE CARD NAMES. Acceptance-related cards name a
+  relevant acceptance test in Verify. Whole Python unit coverage runs at story
+  close; whole real-LLM acceptance runs at the comprehensive release gate.
 - IF A COMMAND WILL NOT RUN, SAY WHICH AND WHY in the handback. A phantom red
   from the wrong command is worse than a missing run: story-087's handback
   claimed "infrastructure contamination" from 3 failures that `bun run

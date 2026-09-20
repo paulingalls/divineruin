@@ -17,41 +17,104 @@ PASS=0
 FAIL=0
 
 run_case() {
-  local name="$1" stdin="$2" diff="$3" want_skip="$4"
-  local out rc got_skip got_tests
+  local name="$1" stdin="$2" diff="$3" want="$4"
+  local out rc got
   out=$(BASH_TEST_DIFF="$diff" bash "$HOOK" __prepush_harness__ __prepush_harness__ docs <<< "$stdin" 2>&1)
   rc=$?
-  # Both short-circuit messages end in "skipping test suites." (docs-only and
-  # branch-deletion), so grep the common suffix to cover either skip path.
-  got_skip="no"; echo "$out" | grep -q "skipping test suites" && got_skip="yes"
-  got_tests="no"; echo "$out" | grep -q "TESTS_RAN" && got_tests="yes"
-
-  local expected_tests
-  if [ "$want_skip" = "yes" ]; then expected_tests="no"; else expected_tests="yes"; fi
-
-  if [ "$rc" -eq 0 ] && [ "$got_skip" = "$want_skip" ] && [ "$got_tests" = "$expected_tests" ]; then
+  got=unknown
+  echo "$out" | grep -q "skipping test suites" && got=skip
+  echo "$out" | grep -q "LINT_ONLY" && got=lint
+  echo "$out" | grep -q "TESTS_RAN" && got=full
+  if [ "$rc" -eq 0 ] && [ "$got" = "$want" ]; then
     echo "  PASS: $name"
     PASS=$((PASS + 1))
   else
-    echo "  FAIL: $name (rc=$rc want_skip=$want_skip got_skip=$got_skip got_tests=$got_tests)"
+    echo "  FAIL: $name (rc=$rc want=$want got=$got)"
     FAIL=$((FAIL + 1))
   fi
 }
 
 # Format: name | stdin (refspecs, one per line) | BASH_TEST_DIFF (changed files, one per line) | want_skip
-run_case "docs-only"   "ref a b c"  $'docs/file.md\nREADME.md\n.claude/notes.md\nmemory/foo.md'  "yes"
-run_case "mixed"       "ref a b c"  $'docs/file.md\napps/server/src/x.ts'  "no"
-run_case "code-only"   "ref a b c"  "apps/server/src/x.ts"  "no"
-run_case "empty-stdin" ""           ""  "no"
-run_case "hook-only"   "ref a b c"  ".githooks/pre-push"  "no"
+run_case "docs-only"   "ref a b c"  $'docs/file.md\nREADME.md\n.claude/notes.md\nmemory/foo.md'  skip
+run_case "mixed"       "ref a b c"  $'docs/file.md\napps/server/src/x.ts'  full
+run_case "code-only-unknown-ref" "ref a b c" "apps/server/src/x.ts" full
+run_case "empty-stdin" ""           ""  full
+run_case "malformed-ref" "refs/heads/story-095" "apps/server/src/x.ts" full
+run_case "hook-only"   "ref a b c"  ".githooks/pre-push"  full
 # Branch-deletion push: local_sha (2nd field) is the all-zero SHA. Must skip the
 # suite (a pure delete has nothing to test) — guards the prior bug where deleting
 # a remote branch ran the full gate and needed --no-verify.
-run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123"  ""  "yes"
+run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123"  ""  skip
 # Mixed push (a deletion ref AND a real code ref) must NOT skip: the real ref
 # flips ALL_DELETIONS=false so the deletion short-circuit doesn't fire. A code
 # change then runs the suite. Guards the ALL_DELETIONS=false transition.
-run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  "no"
+run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  full
+
+work_ref="refs/heads/story-095 aaa refs/heads/story-095 bbb"
+run_case "work-source" "$work_ref" "apps/server/src/x.ts" lint
+run_case "work-source-and-docs" "$work_ref" $'apps/server/src/x.ts\nREADME.md' lint
+lint_fail_out=$(BASH_TEST_DIFF=apps/server/src/x.ts BASH_TEST_LINT_FAIL=1 bash "$HOOK" \
+  __prepush_harness__ __prepush_harness__ docs <<< "$work_ref" 2>&1)
+lint_fail_rc=$?
+if [ "$lint_fail_rc" -ne 0 ] && echo "$lint_fail_out" | grep -q LINT_ONLY; then
+  echo "  PASS: work-branch lint failure blocks push"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: work-branch lint failure passed"
+  FAIL=$((FAIL + 1))
+fi
+run_case "work-content" "$work_ref" "content/spells.json" lint
+run_case "work-python" "$work_ref" "apps/agent/tests/test_magic.py" lint
+for path in apps/agent/agent.py apps/server/src/index.ts apps/mobile/src/livekit/index.ts \
+  apps/web/src/client.tsx packages/shared/src/index.ts packages/design-tokens/src/index.ts content/spells.json; do
+  if [ ! -f "$path" ]; then
+    echo "  FAIL: source allowlist corpus missing $path"
+    FAIL=$((FAIL + 1))
+  else
+    run_case "source-family-$path" "$work_ref" "$path" lint
+  fi
+done
+run_case "work-acceptance" "$work_ref" "apps/agent/tests/acceptance/test_magic.py" full
+run_case "work-manifest" "$work_ref" "package.json" full
+run_case "work-migration" "$work_ref" "apps/server/migrations/001.sql" full
+run_case "work-e2e" "$work_ref" "e2e/game.spec.ts" full
+run_case "work-gate" "$work_ref" "scripts/test-all.ts" full
+run_case "work-unknown" "$work_ref" "elsewhere/new.ts" full
+run_case "work-failing-diff" "$work_ref" "__FAIL__" full
+run_case "work-unknown-diff-status" "$work_ref" $'U\tapps/server/src/x.ts' full
+run_case "main-source" "refs/heads/main aaa refs/heads/main bbb" "apps/server/src/x.ts" full
+run_case "tag-source" "refs/tags/v1 aaa refs/tags/v1 bbb" "apps/server/src/x.ts" full
+run_case "main-docs" "refs/heads/main aaa refs/heads/main bbb" "README.md" skip
+run_case "mixed-refs" $'refs/heads/story-095 aaa refs/heads/story-095 bbb\nrefs/heads/main aaa refs/heads/main bbb' "apps/server/src/x.ts" full
+run_case "rename-out" "$work_ref" $'R100\tapps/server/src/old.ts\tpackage.json' full
+run_case "rename-in" "$work_ref" $'R100\tpackage.json\tapps/server/src/new.ts' full
+
+full_out=$(bash "$HOOK" __prepush_harness__ __prepush_harness__ docs full </dev/null 2>&1)
+if echo "$full_out" | grep -q TESTS_RAN; then
+  echo "  PASS: explicit full tier ignores pushed refs"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: explicit full tier did not run"
+  FAIL=$((FAIL + 1))
+fi
+
+rename_repo=$(mktemp -d)
+git -C "$rename_repo" init -q
+git -C "$rename_repo" config user.name Test
+git -C "$rename_repo" config user.email test@example.com
+mkdir -p "$rename_repo/apps/server/src"
+printf 'same\n' > "$rename_repo/package.json"
+printf 'same\n' > "$rename_repo/apps/server/src/old.ts"
+git -C "$rename_repo" add .
+git -C "$rename_repo" commit -qm initial
+git -C "$rename_repo" mv package.json apps/server/src/package.json
+rename_diff=$(git -C "$rename_repo" diff --cached --name-status -M HEAD)
+run_case "real-rename-in" "$work_ref" "$rename_diff" full
+git -C "$rename_repo" reset --hard -q HEAD
+git -C "$rename_repo" mv apps/server/src/old.ts bun.lock
+rename_diff=$(git -C "$rename_repo" diff --cached --name-status -M HEAD)
+run_case "real-rename-out" "$work_ref" "$rename_diff" full
+rm -rf "$rename_repo"
 
 mask_file=$(mktemp)
 cat > "$mask_file" <<'EOF'

@@ -134,7 +134,7 @@ if [ "$lane" = acceptance ]; then
   rc=$?
   [ "$rc" -eq 0 ] || exit "$rc"
 elif [ "$lane" = e2e ]; then
-  for unit in server mobile shared python; do
+  for unit in server mobile shared scripts design-tokens web e2e-environment python; do
     [ -f "$case_dir/$unit.done" ] || { echo "$unit was not collected before E2E" >&2; exit 41; }
   done
   if [ "${PREPUSH_FAIL_E2E:-}" = 1 ]; then
@@ -209,7 +209,7 @@ assert_cleaned() {
   want_eq "teardown once" "$(cat "$case_dir/teardown-count" 2>/dev/null)" "1"
   want_absent "owned postgres marker removed" "$case_dir/owned-pg"
   want_absent "owned redis marker removed" "$case_dir/owned-redis"
-  for lane in acceptance server mobile shared python e2e; do
+  for lane in acceptance server mobile shared scripts design-tokens web e2e-environment python e2e; do
     if ! pid="$(cat "$case_dir/$lane.pid" 2>/dev/null)"; then
       fail "$lane child PID missing"
       return
@@ -226,7 +226,7 @@ echo "Success routing case:"
 run_hook success 0
 S="$TMP/success"
 want_eq "hook succeeds" "$(cat "$S/rc")" "0"
-for lane in acceptance server mobile shared python e2e; do
+for lane in acceptance server mobile shared scripts design-tokens web e2e-environment python e2e; do
   want_file "$lane completed" "$S/$lane.done"
   want_file "$lane log exists" "$S/artifacts/last-$lane.log"
   want_line "$lane log records completion" "$S/artifacts/last-$lane.log" "$lane complete"
@@ -235,6 +235,10 @@ assert_argv "$S" acceptance "bun run test:acceptance"
 assert_argv "$S" server "bun run test:server"
 assert_argv "$S" mobile "bun test --cwd apps/mobile"
 assert_argv "$S" shared "bun test --cwd packages/shared"
+assert_argv "$S" scripts "bun --env-file=.env test ./scripts"
+assert_argv "$S" design-tokens "bun test --cwd packages/design-tokens"
+assert_argv "$S" web "bun test --cwd apps/web"
+assert_argv "$S" e2e-environment "bun test e2e/require-environment.test.ts"
 assert_argv "$S" python "bun run test:python"
 assert_argv "$S" e2e "bunx playwright test --reporter=list"
 want_line "server retains per-run database" "$S/server.env" "DATABASE_URL=postgresql://per-run@localhost:61001/per_run"
@@ -295,6 +299,15 @@ want_eq "unit failure teardown once" "$(cat "$U/teardown-count" 2>/dev/null)" "1
 want_absent "unit failure postgres marker removed" "$U/owned-pg"
 want_absent "unit failure redis marker removed" "$U/owned-redis"
 assert_pid_stopped "blocked acceptance child reaped" "$U/acceptance.pid"
+
+for lane in scripts design-tokens web e2e-environment; do
+  echo "Added unit lane failure case: $lane"
+  run_hook "failed-$lane" 0 0 "$lane" 1
+  case_dir="$TMP/failed-$lane"
+  if [ "$(cat "$case_dir/rc")" -ne 0 ]; then pass "$lane failure fails hook"; else fail "$lane failure fails hook"; fi
+  want_line "$lane failure preserved" "$case_dir/artifacts/last-$lane.log" "$lane-environment-failure-23"
+  assert_pid_stopped "$lane failure reaps acceptance" "$case_dir/acceptance.pid"
+done
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

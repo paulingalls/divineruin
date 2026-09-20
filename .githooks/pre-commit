@@ -38,25 +38,14 @@ if [ -f .xp/constraints.md ] || [ -f .xp/config.yml ]; then
   fi
 fi
 
-# The lint suite below (bun/tsc/eslint/prettier + the uv-driven ruff script) needs installed deps.
-# A fresh git worktree — a teammate checkout — has no node_modules, which previously forced
-# `git commit --no-verify`. Skip the suite there with a clear notice instead: the main-checkout hook
-# runs the full suite, and the pre-push gate (run from a deps-installed checkout) re-runs the full
-# typecheck + tests, so nothing reaches a shared branch unchecked.
+# The staged language checks below need installed deps.
+# A fresh worktree has no node_modules. The pre-push gate checks full lint and
+# typechecks before code reaches a shared branch.
 if [ ! -d node_modules ]; then
-  echo "  [pre-commit] node_modules absent (fresh worktree) — skipping TS/ESLint/Prettier/ruff lint suite."
-  echo "  [pre-commit] Full coverage is provided by the main-checkout hook and the pre-push gate."
+  echo "  [pre-commit] node_modules absent (fresh worktree) — skipping staged language checks."
+  echo "  [pre-commit] Full lint is provided by the pre-push gate and CI."
   exit 0
 fi
 
-echo "Running pre-commit lint checks..."
-
-# One script, shared with pre-push and CI, so the three gates cannot drift apart.
-#
-# `lint:e2e` is NOT in this lane: it installs e2e's separate dep tree (e2e is not
-# a workspace member), which on a checkout that has never run it means a full
-# network install mid-commit. pre-push and CI carry it. e2e *formatting* is
-# covered here — `lint:ts`'s prettier glob includes e2e/.
-bun run lint
-
-echo "All lint checks passed."
+echo "Running staged language checks..."
+bash scripts/test-fast.sh

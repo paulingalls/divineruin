@@ -48,16 +48,14 @@ roles:               # harness/model[/effort]; the lead overrides per story in p
                                # is judgment over an already-verified set.
 
 tests:
-  # fast is intentionally EMPTY: .githooks/pre-commit already runs `bun run lint`,
-  # and setup skipped xp's wall half because core.hooksPath=.githooks was live.
-  # A value here would never fire; one definition of "fast", in the hook.
-  fast:
-  # story/full earn their place by running on the tree MERGED with trunk
-  # (close/overlap.py) — the pre-push hook only ever sees the branch as-pushed.
+  # The installed pre-commit hook calls this same command for staged paths.
+  fast: bash scripts/test-fast.sh
+  # Story and full run on the tree merged with trunk at their close boundaries.
   story: bun run test:all          # TS + Python unit lanes; the old system's sole test_command
-  full: bun run test:acceptance    # the one lane test:all omits by design (ADR 0003, API cost)
+  full: bash .githooks/pre-push __xp_full_tier__
 
-# EMPTY on purpose: story (test:all) and full (test:acceptance) are disjoint lanes,
-# so neither tier's run covers a record declared against the other.
-tier_coverage:       # e.g. covered: covering
-tier_coverage_pins:  # e.g. tier: exact configured command
+tier_coverage:
+  story: full
+tier_coverage_pins:
+  story: bun run test:all
+  full: bash .githooks/pre-push __xp_full_tier__

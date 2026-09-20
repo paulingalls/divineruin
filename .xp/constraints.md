@@ -26,10 +26,12 @@ one is `.xp/system.md` → Constraint case law.
 7. **A cross-language AC names both sides.** Content and contracts are mirrored
    in Python and TypeScript; a guard on one side certifies nothing about the
    other. Verify names both files, or the DIRECTORY — never one file whose tests
-   a later split can silently narrow. `test:all` stays OUT of Verify (human
-   2026-09-06), BUT THE EXECUTOR RUNS `bun run test:python` BEFORE FINISHING,
-   and a card that edits an acceptance harness, a combat declaration or a band
-   also runs `bun run test:acceptance:nollm`.
+   a later split can silently narrow. Verify names focused, stable behavior
+   checks; broad suites belong to story/full tiers unless they cover a distinct
+   AC those tiers miss. `test:all` stays OUT of Verify (human 2026-09-06).
+   An acceptance harness, combat declaration or band card names focused
+   acceptance coverage in Verify. The story tier runs all Python unit tests;
+   the full tier runs acceptance.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
