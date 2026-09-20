@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -18,6 +19,28 @@ class AuthenticatedTranscript:
 
 class TranscriptionFailure(RuntimeError):
     pass
+
+
+MAX_PENDING_TRANSCRIPTS = 4
+COMPLETE_UTTERANCE_ENDPOINTING_SECONDS = 1.0
+
+
+class TranscriptionQueueOverflow(TranscriptionFailure):
+    def __init__(self, participant_identity: str, limit: int):
+        self.participant_identities = {participant_identity}
+        self.limit = limit
+        self.rejected_count = 1
+
+    def add_rejection(self, participant_identity: str) -> None:
+        self.participant_identities.add(participant_identity)
+        self.rejected_count += 1
+
+    def __str__(self) -> str:
+        identities = ", ".join(repr(identity) for identity in sorted(self.participant_identities))
+        return (
+            f"transcription queue overflow for {identities}: pending limit {self.limit}; "
+            f"rejected {self.rejected_count} turn(s)"
+        )
 
 
 class _TranscriberAgent(Agent):
@@ -50,6 +73,21 @@ SessionFactory = Callable[[str, Agent, room_io.RoomOptions], Awaitable[AgentSess
 Authorizer = Callable[[str], Awaitable[int | None]]
 
 
+def _input_session() -> AgentSession:
+    """Build the input-only session for one authorized player track.
+
+    No llm, so no tool chain — but every AgentSession site in this repo states its
+    ceiling rather than inheriting the plugin default (test_strict_tool_budget).
+    Endpointing overrides the SDK default because each committed turn is delivered
+    to the DM on its own: a mid-sentence pause that ends the turn early does not
+    merely delay the rest, it splits one utterance into two authenticated turns.
+    """
+    return AgentSession(
+        max_tool_steps=5,
+        turn_handling={"endpointing": {"min_delay": COMPLETE_UTTERANCE_ENDPOINTING_SECONDS}},
+    )
+
+
 class MultiParticipantTranscriber:
     def __init__(
         self,
@@ -63,7 +101,11 @@ class MultiParticipantTranscriber:
         self.stt = stt
         self._authorizer = authorizer
         self._session_factory = session_factory
-        self._queue: asyncio.Queue[AuthenticatedTranscript | BaseException] = asyncio.Queue()
+        self._queue: asyncio.Queue[AuthenticatedTranscript | BaseException] = asyncio.Queue(
+            maxsize=MAX_PENDING_TRANSCRIPTS
+        )
+        self._pending_failures: deque[BaseException] = deque()
+        self._pending_overflow: TranscriptionQueueOverflow | None = None
         self._active: dict[str, AgentSession] = {}
         self._starting: dict[str, asyncio.Task[None]] = {}
         self._closing: set[asyncio.Task[None]] = set()
@@ -113,7 +155,23 @@ class MultiParticipantTranscriber:
         failure = TranscriptionFailure(f"transcription failed for {identity!r}: {cause}")
         failure.__cause__ = cause
         self._failures.append(failure)
-        self._queue.put_nowait(failure)
+        try:
+            self._queue.put_nowait(failure)
+        except asyncio.QueueFull:
+            self._pending_failures.append(failure)
+
+    def _emit_transcript(self, transcript: AuthenticatedTranscript) -> None:
+        try:
+            self._queue.put_nowait(transcript)
+        except asyncio.QueueFull:
+            overflow = self._pending_overflow
+            if overflow is None:
+                overflow = TranscriptionQueueOverflow(transcript.participant_identity, self._queue.maxsize)
+                self._pending_overflow = overflow
+                self._pending_failures.append(overflow)
+                self._failures.append(overflow)
+            else:
+                overflow.add_rejection(transcript.participant_identity)
 
     def _schedule_close(self, identity: str, session: AgentSession) -> None:
         async def close() -> None:
@@ -143,14 +201,12 @@ class MultiParticipantTranscriber:
             agent = _TranscriberAgent(
                 identity,
                 generation,
-                self._queue.put_nowait,
+                self._emit_transcript,
                 functools.partial(self._record_failure, identity),
                 self.stt,
             )
             if self._session_factory is None:
-                # No llm, so no tool chain — but every AgentSession site in this repo states
-                # its ceiling rather than inheriting the plugin default (test_strict_tool_budget).
-                session = AgentSession(max_tool_steps=5)
+                session = _input_session()
                 await session.start(agent, room=self.room, room_options=options, session_host=False)
             else:
                 session = await self._session_factory(identity, agent, options)
@@ -184,8 +240,10 @@ class MultiParticipantTranscriber:
                 self._starting.pop(identity, None)
 
     async def receive(self) -> AuthenticatedTranscript:
-        item = await self._queue.get()
+        item = self._pending_failures.popleft() if self._pending_failures else await self._queue.get()
         if isinstance(item, BaseException):
+            if item is self._pending_overflow:
+                self._pending_overflow = None
             self._consumed_failures.add(id(item))
             raise item
         return item

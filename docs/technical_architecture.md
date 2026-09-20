@@ -835,36 +835,17 @@ This means TTS synthesis begins within tokens of the LLM generating each segment
 
 ### Multi-Player Input Arbitration
 
-When multiple players are in a session, their speech arrives on separate LiveKit audio tracks, each tagged with player identity. The orchestrator manages how these inputs are collected and presented to the LLM.
+When multiple players are in a session, each authorized LiveKit audio track has its own transcription stream. Every completed utterance enters a FIFO queue as a separate turn carrying the track identity and the connection generation captured when that stream started. Transcript text, volume and diarization labels do not grant authority.
 
-**The 500ms collection buffer:**
+One consumer sends a complete turn to the DM and awaits its full reply and tool chain before taking the next turn. Near-simultaneous speakers therefore receive separate ordered responses, and every tool in a response runs with only that turn's authenticated actor bound. Input sessions use a 1.0 s minimum endpointing delay so a natural pause does not split one utterance. Once endpointing completes, a solo utterance enters the consumer immediately; there is no multi-speaker collection window.
 
-When a player's turn completes (VAD + semantic turn detector confirm they're done speaking), a 500ms collection window opens. If another player speaks within that window, their input is collected into the same batch. When the window closes, all collected inputs go to the LLM as a single compound turn:
+The queue holds four pending items, sized against the MVP maximum of four human players. Surfaced stream failures share those slots with turns, so a pending failure lowers how many turns fit until the consumer drains it. When the queue is full, earlier turns retain their order and an excess turn produces an explicit transcription queue overflow error naming the rejected track and limit. Excess turns are never silently overwritten or prioritized by loudness.
 
-```
-[Kira]: "I search the body for clues."
-[Theron]: "I'll keep watch while she does that."
-```
-
-The LLM responds to both in one coherent response, addressing each player by character name. If only one player speaks, the window adds no perceptible latency — 500ms is within the normal STT + LLM processing time.
-
-**Interruption policy (anyone can interrupt, DM manages conversationally):**
-
-Any player can speak while the DM is talking. LiveKit's interruption handler stops the current TTS output. The new input is transcribed and sent to the LLM. The DM is prompted to handle interruptions naturally:
-
-```
-[System prompt instruction]:
-If a player interrupts you, acknowledge it gracefully. You might say
-"Hold on—" and address their interruption, or you might weave it into
-your narration: "—and just as the door creaks open, Theron, you wanted
-to say something?" Maintain conversational flow. Never ignore an interruption.
-```
-
-The LLM receives the interrupted context (what it was saying when interrupted) and the new player input, and generates a response that bridges both.
+Speech completed while the DM is answering remains queued. New speech does not interrupt the active response. Disconnecting or replacing the actor's authenticated connection generation deliberately force-interrupts that actor's in-flight response; owner shutdown also stops it.
 
 **Combat-specific arbitration:**
 
-During the declaration phase of combat, the collection window extends to match the declaration timer (configured in game settings, typically 10-15 seconds). All player declarations within the window are collected and processed as a batch:
+During combat, voice declarations still enter as separate serialized turns. The combat rules engine may hold accepted declarations until its configured phase ends, then resolve them in initiative order:
 
 ```
 [Kira]: "I attack the creature on the left with my sword."
@@ -872,7 +853,7 @@ During the declaration phase of combat, the collection window extends to match t
 [Lyra]: "I try to flank around behind them."
 ```
 
-The DM receives all declarations, resolves them through the mechanics tools in initiative order, and narrates the round as a cinematic sequence. This is the phase-based combat model from the Game Design doc, mapped to the voice pipeline.
+The declaration timer belongs to combat state, not voice arbitration. The DM resolves accepted declarations through mechanics tools and narrates the round as a cinematic sequence.
 
 ### Error Recovery
 
@@ -1019,9 +1000,9 @@ LiveKit already has production examples of this pattern: their push-to-talk exam
 
 By default, a LiveKit `AgentSession` creates a `RoomIO` that links the agent to one "linked participant" — typically the first person to join. The agent listens to and responds to that one person. This is the 1:1 pattern used in call center and customer support demos.
 
-**This is a default, not a constraint.** For our DM agent, we create a custom `RoomIO` that subscribes to ALL human player audio tracks. LiveKit provides full control: you can manually set which participants the agent listens to, dynamically switch the linked participant, or subscribe to all tracks simultaneously.
+Gameplay disables audio and text input on the DM session's `RoomIO`. The orchestration layer creates one input-only `AgentSession` for each authorized human track, pins that session to the participant identity, and captures the participant's current connection generation before starting STT. These sessions emit text only; the single DM input consumer serializes that text into the shared DM session.
 
-The push-to-talk pattern in LiveKit's examples demonstrates the underlying mechanism: audio input can be dynamically enabled/disabled per player track via RPC. Our VAD-first approach builds on this same infrastructure — instead of the player triggering `start_turn` manually, the client-side VAD triggers it automatically when speech is detected. The DM agent receives each player's audio on their individual track, so the transcription arrives inherently tagged with the speaker's identity — no diarization, no speaker ID model, no ambiguity. In tap-to-speak fallback mode, the flow reverts to the manual `start_turn` RPC pattern.
+The consumer rechecks identity and connection generation before generation, binds that authenticated identity for the full reply and tool chain, then clears it before the next turn. The STT provider's speaker or diarization label is transcript metadata only and cannot authorize a player or select a tool actor. Tap-to-speak can control publication, but it does not change this authority boundary.
 
 ### Architecture Summary
 
@@ -1170,16 +1151,16 @@ The flow for each player utterance:
 
 1. Player's client-side VAD detects speech onset → client starts publishing audio on their LiveKit track
 2. DM agent receives audio on that player's identified track (SFU keeps tracks separate — no diarization needed)
-3. Deepgram transcribes the audio stream, tagged with player identity
+3. A per-track input session asks Deepgram to transcribe the stream while retaining the authenticated track identity and connection generation
 4. Client-side VAD detects sustained silence → semantic turn detector on the agent confirms the thought is complete
-5. Orchestrator receives completed transcription: `{player: "Kira", text: "I search the body for clues"}`
-6. DM processes and responds, addressing the player by character name
+5. Orchestrator queues the completed transcription as `{player: "Kira", generation: 3, text: "I search the body for clues"}`
+6. After any active reply finishes, the DM processes this turn with Kira bound as its tool actor
 
-**During combat declarations:** Multiple players can speak in rapid succession (or even simultaneously — the SFU handles parallel tracks). The orchestrator collects declarations during the declaration phase window, then the DM processes them as a batch for resolution. The phase-based combat system (from the Game Design doc) maps naturally to this pattern — declarations are gathered, then resolved together, then narrated as a cinematic sequence.
+**During combat declarations:** Multiple players can speak in rapid succession or simultaneously because the SFU handles parallel tracks. Each utterance remains a separate authenticated DM turn. Combat state, rather than the voice layer, owns any declaration phase and initiative-ordered resolution.
 
-**Simultaneous speech:** Because LiveKit delivers each player's audio as a separate track, two players talking at the same time doesn't create a mixed-audio problem. The DM agent receives two separate transcription streams and can process both. The orchestrator queues them and the DM addresses both in its response. The LLM handles turn management conversationally — "Kira wants to search the body while Theron keeps watch. Let's resolve both." For sessions where this becomes disruptive, players can switch to tap-to-speak mode for explicit turn-taking.
+**Simultaneous speech:** Because LiveKit delivers each player's audio as a separate track, two players talking at the same time do not create a mixed-audio problem. The per-track sessions produce two complete authenticated transcripts. The bounded FIFO preserves completion order, and the DM finishes one complete response and tool chain before starting the next.
 
-**DM-is-speaking awareness:** While the DM is narrating, player VAD is still active. If a player interrupts, the agent's interruption handler stops the current TTS output and processes the new input. If no one speaks, the DM finishes naturally. The client can optionally show a subtle visual indicator when the DM is speaking (a glowing indicator on the HUD) so players know the DM hasn't finished — but this is a courtesy, not a gate. Players can always interrupt.
+**DM-is-speaking awareness:** Player transcription remains active while the DM narrates. A completed utterance waits in the queue until the current response finishes. The client can show a subtle DM-speaking indicator so players understand that their turn is waiting. A connection revocation can force-interrupt the response owned by that connection.
 
 ### Room Structure — Who's In the Room
 
@@ -1698,8 +1679,8 @@ The goal is that by the time external playtesters sit down, the experience has a
 - [x] ~~Proximity audio feasibility~~ — **Technically possible** via per-track volume control. Scoped as post-MVP.
 
 **Remaining open questions:**
-- [ ] **VAD tuning and endpointing** — Optimal silence threshold (starting point: 500-700ms), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
-- [ ] **Interruption UX** — When a player interrupts the DM, how quickly does the TTS stop? Does it feel natural or jarring? Should there be a brief overlap or an immediate cut? How does the DM handle being interrupted mid-narration gracefully in the LLM prompt?
+- [ ] **VAD tuning and endpointing** — Optimal silence threshold (player input sessions currently hold 1000ms, above the SDK default, to keep a mid-sentence pause from splitting one utterance into two turns; that whole second sits inside the 1500ms end-of-speech-to-first-audio budget and needs playtesting against it), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
+- [ ] **Queued-turn UX** — How should the client show that speech completed while the DM was answering and is waiting in the four-turn queue?
 - [ ] **LLM response quality at speed** — Can we get narrative quality AND low latency simultaneously? May need tiered model strategy.
 - [x] **Client-side audio mixing** — Resolved in Client Architecture section. Four independent channels (Voice, Ambience, Effects, UI Audio) with ducking behavior. iOS `.playAndRecord` with `.mixWithOthers` and `.duckOthers`. Ambient sounds triggered by `location_changed` events, effects by `play_sound` events. Prototyping priority to validate LiveKit + simultaneous local playback.
 - [x] **DM context portability** — Resolved by the three-layer prompt architecture. Static + warm layers in the system prompt (managed by background process), hot layer injected per-turn via `on_user_turn_completed`. Multiplayer context merging handled by the warm layer including party member state.
@@ -1709,7 +1690,7 @@ The goal is that by the time external playtesters sit down, the experience has a
 - [x] **Offline/poor connectivity** — Partially resolved in Client Architecture. Reconnection uses LiveKit's ICE restart within the 5-minute grace period. Client shows "Reconnecting..." overlay with ambient audio continuing. Remaining question: what audio does the player hear during a brief dropout (silence, ambient loop, or "connection unstable" notification)?
 - [ ] **God-agent coordination** — How do 10 autonomous god-agents avoid contradictory world state changes? The background process event bus is the integration point, but the god-agent arbitration logic is unspecified.
 - [x] **Content generation pipeline** — Resolved in *World Data & Simulation* document. Two-tier system: tier 1 authored (human-reviewed, ~35-40 entities for MVP), tier 2 AI-generated from templates and tags (~55-75 entities). On-demand generation fills gaps as players explore. JSON schemas for all entity types. Content loaded into PostgreSQL JSONB.
-- [x] **Multi-player combat declarations** — Resolved in Orchestration Design. The 500ms collection buffer extends to the full declaration timer (10-15s) during combat. All declarations are collected and processed as a batch in initiative order. The DM narrates the round as a cinematic sequence.
+- [x] **Multi-player combat declarations** — Voice inputs remain separate authenticated turns. Combat state owns the declaration timer and initiative-ordered resolution before the DM narrates the round.
 - [ ] **Tool count and LLM reliability** — Current design has ~20 tools. Need to test whether Claude reliably selects the right tool with this many options. May need to use dynamic tool sets via `update_tools()` — e.g., combat tools only available during combat, merchant tools only when talking to a merchant.
 - [ ] **Background process event bus implementation** — Redis pub/sub, PostgreSQL NOTIFY/LISTEN, or a dedicated message queue? Needs to be low-latency for critical events but reliable for important ones.
 - [ ] **Proactive speech feel** — Does the DM interrupting the player for urgent events feel natural or annoying? Needs playtesting to calibrate the priority thresholds.
