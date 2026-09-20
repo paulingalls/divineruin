@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _make_combat_state
-from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
+from livekit.agents.llm import ToolContext, ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import abilities
@@ -258,17 +258,18 @@ class TestUnknownId:
             "rogue_uncanny_dodge",
             "guardian_intercept",
         ]
-        ctx = make_context()
+        ctx = make_context(party_member_ids=["player_2"])
         ctx.userdata.combat_state = state
 
-        with pytest.raises(ToolError) as raised:
-            await _activate_impl(ctx, "uncanny_dodge", **mods)
+        with ctx.userdata._bind_authenticated_actor("player_2", 7, lambda *_args: None):
+            with pytest.raises(ToolError) as raised:
+                await _activate_impl(ctx, "uncanny_dodge", **mods)
 
         message = str(raised.value)
         assert "not an activatable capability" in message
-        assert "rogue_uncanny_dodge" in message
+        assert "guardian_intercept" in message
         assert "rogue_slippery" not in message
-        assert "guardian_intercept" not in message, "activate spends as the session player, not player_2"
+        assert "rogue_uncanny_dodge" not in message
         for fn in fns.values():
             fn.assert_not_awaited()
 
@@ -303,3 +304,8 @@ class TestToolRegistration:
     def test_activate_is_a_single_strict_function_tool(self):
         assert is_function_tool(activate)
         assert not is_raw_function_tool(activate)
+
+    def test_activate_schema_has_no_actor_input(self):
+        schema = ToolContext([activate]).parse_function_tools("anthropic", strict=True)[0]["input_schema"]
+
+        assert set(schema["properties"]) == {"id", "target_id", "target_ids"}

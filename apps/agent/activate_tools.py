@@ -138,8 +138,10 @@ async def _activate_impl(
     except ToolError as unknown:
         session = context.userdata
         offered = reaction_gate.offered_reactions(session.combat_state) if session.combat_state is not None else []
-        # activate always spends as the session's player, so another member's id would only buy a second refusal.
-        valid = [reaction["id"] for reaction in offered if reaction["actor_id"] == session.player_id]
+        if not offered:
+            raise
+        actor = session.require_reaction_actor()
+        valid = [reaction["id"] for reaction in offered if reaction["actor_id"] == actor.player_id]
         if not valid:
             raise
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
