@@ -182,7 +182,17 @@ jobs:
       - run: uv sync --project scripts --frozen && bun run seed
       - run: uv sync --project apps/agent --frozen
       - run: bun install --cwd e2e --frozen-lockfile
-      - run: cd apps/agent && uv run pytest tests/ -q
+      - name: Python tests
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+        run: |
+          cd apps/agent
+          if [ -n "$DEEPGRAM_API_KEY" ]; then
+            uv run pytest tests/ -q
+          else
+            echo "::notice::Real-room voice tests require DEEPGRAM_API_KEY; the sprint full tier runs them with a configured key."
+            uv run pytest tests/ -q --ignore=tests/acceptance/multiplayer_voice
+          fi
 
   test-e2e:
     runs-on: ubuntu-latest
