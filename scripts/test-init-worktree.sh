@@ -6,9 +6,9 @@ set -euo pipefail
 # non-zero exit on the first failure.
 #
 # These exercise the PURE helpers (offset math, name sanitizing, override), the
-# offset-resolution path, which is context-aware: from the primary it asserts
-# offset 0, from a linked worktree it asserts a non-zero offset — so the pre-push
-# gate stays green from any checkout — and the typegen port reservation, which
+# offset-resolution path, which is context-aware: a primary checkout may set an
+# offset in .env, while a linked worktree must use a non-zero offset — and the
+# typegen port reservation, which
 # holds a lock across the check-then-bind window. The full end-to-end bootstrap
 # is proved by the probe-worktree differential in the story's verification.
 
@@ -80,12 +80,14 @@ else
   ok "primary project keeps its established basename convention"
 fi
 
-# 8. Offset resolves per checkout context: the primary resolves to 0 (ports
-#    byte-identical to today); a linked worktree resolves to a real non-zero
-#    offset. Context-aware so the pre-push gate stays green from ANY checkout.
+# 8. Offset resolves per checkout context: a primary without a configured
+#    override resolves to 0, and a linked worktree uses a non-zero offset.
 if wt_is_primary; then
-  [ "$(wt_resolved_offset)" = "0" ] || fail "primary checkout offset not 0 (got $(wt_resolved_offset))"
-  ok "primary checkout -> offset 0 (ports byte-identical)"
+  configured_offset="$(wt_env_value WT_PORT_OFFSET "$WT_ROOT/.env" 2>/dev/null || printf '0')"
+  [ "$(wt_resolved_offset)" = "$configured_offset" ] \
+    || fail "primary checkout offset differs from its configured value $configured_offset (got $(wt_resolved_offset))"
+  [ "$(WT_PORT_OFFSET=0 wt_resolved_offset)" = "0" ] || fail "primary checkout rejected offset 0"
+  ok "primary checkout uses its configured offset ($configured_offset) and accepts offset 0"
 else
   off="$(wt_resolved_offset)"
   [ "$off" -ne 0 ] || fail "linked worktree resolved to offset 0 (expected non-zero, got $off)"
@@ -326,6 +328,14 @@ settings_authority() {  # the real CLI, in a fixture checkout, with no ambient s
 }
 settings_authority expected-env > "$settings_root/.env"
 settings_authority authorize settings || fail "the fixture's own generated settings were rejected"
+(
+  cd "$settings_root"
+  WT_PORT_OFFSET=2700 bash "$SCRIPT_DIR/worktree-common.sh" expected-env
+) > "$settings_root/.env"
+settings_authority authorize settings || fail "a primary checkout rejected its configured non-zero offset"
+[ "$(settings_authority expected-env | sed -n 's/^WT_PORT_OFFSET=//p')" = "2700" ] \
+  || fail "a primary checkout ignored its configured non-zero offset"
+settings_authority expected-env > "$settings_root/.env"
 for key in POSTGRES_HOST_PORT VALKEY_HOST_PORT; do
   sed -E "s/^${key}=([0-9]+)$/${key}=9\1/" "$settings_root/.env" > "$settings_root/.env.stale"
   if cmp -s "$settings_root/.env" "$settings_root/.env.stale"; then
