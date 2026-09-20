@@ -22,10 +22,10 @@ async def test_two_microphones_reach_the_transcription_seam_with_their_identitie
     try:
         await harness.start()
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        first = await harness.await_marker(harness.player_one_identity, PLAYER_ONE_SPEECH.marker)
+        first = await harness.await_speech(harness.player_one_identity, PLAYER_ONE_SPEECH)
         assert first.text
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
-        second = await harness.await_marker(harness.player_two_identity, PLAYER_TWO_SPEECH.marker)
+        second = await harness.await_speech(harness.player_two_identity, PLAYER_TWO_SPEECH)
         assert second.text
     finally:
         await harness.aclose()
@@ -46,31 +46,31 @@ async def test_transcription_tracks_mute_unpublish_disconnect_and_reconnect(
         await harness.mute(harness.player_two_identity, True)
         await harness.drain()
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        await harness.await_marker(harness.player_one_identity, PLAYER_ONE_SPEECH.marker)
+        await harness.await_speech(harness.player_one_identity, PLAYER_ONE_SPEECH)
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
         await harness.assert_no_transcript(harness.player_two_identity)
 
         await harness.mute(harness.player_two_identity, False)
         await harness.drain()
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
-        await harness.await_marker(harness.player_two_identity, PLAYER_TWO_SPEECH.marker)
+        await harness.await_speech(harness.player_two_identity, PLAYER_TWO_SPEECH)
 
         await harness.drain()
         await harness.unpublish(harness.player_two_identity)
         await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
-        await harness.await_marker(harness.player_one_identity, PLAYER_TWO_SPEECH.marker)
+        await harness.await_speech(harness.player_one_identity, PLAYER_TWO_SPEECH)
         await harness.assert_no_transcript(harness.player_two_identity, 2)
         await harness.republish(harness.player_two_identity)
         await harness.play(harness.player_two_identity, PLAYER_ONE_SPEECH)
-        await harness.await_marker(harness.player_two_identity, PLAYER_ONE_SPEECH.marker)
+        await harness.await_speech(harness.player_two_identity, PLAYER_ONE_SPEECH)
 
         await harness.drain()
         await harness.disconnect_player_two()
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        await harness.await_marker(harness.player_one_identity, "middle classes")
+        await harness.await_speech(harness.player_one_identity, PLAYER_ONE_SPEECH)
         await harness.reconnect_player_two()
         assert harness.manager.start_counts[harness.player_two_identity] == 2
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
-        await harness.await_marker(harness.player_two_identity, PLAYER_TWO_SPEECH.marker)
+        await harness.await_speech(harness.player_two_identity, PLAYER_TWO_SPEECH)
     finally:
         await harness.aclose()

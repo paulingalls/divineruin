@@ -7,7 +7,12 @@ from typing import Any
 
 import pytest
 from acceptance._live_voice import has_live_voice_key
-from acceptance.multiplayer_voice._harness import PLAYER_ONE_SPEECH, PLAYER_TWO_SPEECH, MultiplayerVoiceHarness
+from acceptance.multiplayer_voice._harness import (
+    PLAYER_ONE_SPEECH,
+    PLAYER_TWO_SPEECH,
+    MultiplayerVoiceHarness,
+    SpeechFixture,
+)
 from livekit import rtc
 from livekit.agents import Agent, AgentSession, RunContext, llm
 from livekit.agents.llm import ToolContext, function_tool
@@ -116,7 +121,7 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
         assert options.get_text_input_options() is None
         # A real STT on the DM session is what makes "the primary is not heard twice" a
         # BEHAVIOURAL claim: with linked audio input re-enabled this session would transcribe
-        # player one itself, and the one-user-message-per-marker assertions below would red.
+        # player one itself, and the one-user-message-per-recording assertions below would red.
         dm_session = AgentSession(
             llm=model,
             stt=deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300),
@@ -132,7 +137,7 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
             )
         return lifecycle.authorize
 
-    async def wait_for_turns(expected: int, marker: str) -> None:
+    async def wait_for_turns(expected: int, fixture: SpeechFixture) -> None:
         assert harness.manager is not None and dm_session is not None
         try:
             async with asyncio.timeout(30):
@@ -141,7 +146,7 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
                     if (
                         len(probes) >= expected
                         and model.completed_turns >= expected
-                        and sum(marker in text.lower() for text in users) == 1
+                        and sum(fixture.spoken_in(text) for text in users) == 1
                     ):
                         return
                     await asyncio.sleep(0.02)
@@ -160,13 +165,13 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
         multiplayer_input.start()
 
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
-        await wait_for_turns(1, PLAYER_TWO_SPEECH.marker)
+        await wait_for_turns(1, PLAYER_TWO_SPEECH)
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
-        await wait_for_turns(2, PLAYER_ONE_SPEECH.marker)
+        await wait_for_turns(2, PLAYER_ONE_SPEECH)
 
         users = [m.text_content or "" for m in dm_session.history.messages() if m.role == "user"]
-        assert sum(PLAYER_TWO_SPEECH.marker in text.lower() for text in users) == 1
-        assert sum(PLAYER_ONE_SPEECH.marker in text.lower() for text in users) == 1
+        assert sum(PLAYER_TWO_SPEECH.spoken_in(text) for text in users) == 1
+        assert sum(PLAYER_ONE_SPEECH.spoken_in(text) for text in users) == 1
         assert probes == [harness.player_two_identity, harness.player_one_identity]
         with pytest.raises(RuntimeError, match="No actor"):
             _ = userdata.actor_player_id

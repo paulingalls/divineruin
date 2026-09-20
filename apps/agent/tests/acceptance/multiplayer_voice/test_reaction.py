@@ -11,7 +11,7 @@ from acceptance.multiplayer_voice._harness import (
     PLAYER_ONE_SPEECH,
     PLAYER_TWO_SPEECH,
     MultiplayerVoiceHarness,
-    normalized,
+    word_overlap,
 )
 from acceptance.seeds import seed_player_with_pools
 from livekit import rtc
@@ -142,12 +142,6 @@ async def _stamina(pool, player_id: str) -> int:
     return row["stamina"]["current"]
 
 
-def _word_overlap(actual: str, expected: str) -> float:
-    expected_words = set(normalized(expected).split())
-    assert expected_words
-    return len(set(normalized(actual).split()) & expected_words) / len(expected_words)
-
-
 async def test_two_real_voices_spend_separately_in_one_reaction_window(
     livekit_server: dict[str, str], reset_db_pool: str
 ) -> None:
@@ -233,10 +227,10 @@ async def test_two_real_voices_spend_separately_in_one_reaction_window(
         spends = state.reactions_available
         assert {spends[one]["window_id"], spends[two]["window_id"]} == {original_window["id"]}
         assert {spends[one]["held_seq"], spends[two]["held_seq"]} == {3}
-        assert _word_overlap(model.user_turns[0], PLAYER_TWO_SPEECH.transcript) >= 0.75
-        assert _word_overlap(model.user_turns[1], PLAYER_ONE_SPEECH.transcript) >= 0.75
-        assert _word_overlap(model.user_turns[0], PLAYER_ONE_SPEECH.transcript) < 0.5
-        assert _word_overlap(model.user_turns[1], PLAYER_TWO_SPEECH.transcript) < 0.5
+        assert word_overlap(model.user_turns[0], PLAYER_TWO_SPEECH.transcript) >= 0.75
+        assert word_overlap(model.user_turns[1], PLAYER_ONE_SPEECH.transcript) >= 0.75
+        assert word_overlap(model.user_turns[0], PLAYER_ONE_SPEECH.transcript) < 0.5
+        assert word_overlap(model.user_turns[1], PLAYER_TWO_SPEECH.transcript) < 0.5
     finally:
         if multiplayer_input is not None:
             await multiplayer_input.aclose()

@@ -35,8 +35,11 @@ class SpeechFixture:
     filename: str
     utterance_id: str
     transcript: str
-    marker: str
     sha256: str
+
+    def spoken_in(self, text: str) -> bool:
+        """Is `text` a transcript of THIS recording, heard from a real STT that drops words?"""
+        return word_overlap(text, self.transcript) >= RECOGNIZED_OVERLAP
 
     @property
     def path(self) -> Path:
@@ -68,20 +71,33 @@ PLAYER_ONE_SPEECH = SpeechFixture(
     filename="player_one_voice.wav",
     utterance_id="1272-128104-0000",
     transcript="MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
-    marker="apostle",
     sha256="e846f8c9b1db13c8fa159b146cb6d797ee1861996d10b1dd3c387289ef5efd46",
 )
 PLAYER_TWO_SPEECH = SpeechFixture(
     filename="player_two_voice.wav",
     utterance_id="1272-128104-0001",
     transcript="NOR IS MISTER QUILTER'S MANNER LESS INTERESTING THAN HIS MATTER",
-    marker="manner",
     sha256="9b231162963f0f9c22b9c4d985b3e657d1445aaa231ae33b663cea14e3972d64",
 )
 
 
 def normalized(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def word_overlap(actual: str, expected: str) -> float:
+    """Share of `expected`'s distinct words that `actual` carries."""
+    expected_words = set(normalized(expected).split())
+    assert expected_words
+    return len(set(normalized(actual).split()) & expected_words) / len(expected_words)
+
+
+# Deepgram drops words: a full-gate run returned this speaker's whole sentence with only
+# "apostle" missing, and a match on that one chosen token read it as no transcript at all.
+# REJECTED: swapping in another literal — every remaining token is the same coin flip. So a
+# recording is recognized by the SHARE of it that came back. Measured on these two fixtures:
+# one dropped word scores 0.91-0.94, the OTHER fixture's speech 0.25-0.36, silence 0.0.
+RECOGNIZED_OVERLAP = 0.75
 
 
 class MultiplayerVoiceHarness:
@@ -219,20 +235,20 @@ class MultiplayerVoiceHarness:
         assert self.manager is not None
         return await asyncio.wait_for(self.manager.receive(), timeout)
 
-    async def await_marker(self, identity: str, marker: str, timeout: float = 20) -> AuthenticatedTranscript:
+    async def await_speech(self, identity: str, fixture: SpeechFixture, timeout: float = 20) -> AuthenticatedTranscript:
         seen: list[AuthenticatedTranscript] = []
         try:
             async with asyncio.timeout(timeout):
                 while True:
                     transcript = await self.receive(timeout)
-                    if transcript.participant_identity == identity and normalized(marker) in normalized(
-                        transcript.text
-                    ):
+                    if transcript.participant_identity == identity and fixture.spoken_in(transcript.text):
                         return transcript
                     seen.append(transcript)
         except TimeoutError as exc:
             active = sorted(self.manager.active_identities) if self.manager is not None else []
-            raise TimeoutError(f"no {marker!r} transcript for {identity!r}; active={active}, seen={seen}") from exc
+            raise TimeoutError(
+                f"no {fixture.utterance_id} transcript for {identity!r}; active={active}, seen={seen}"
+            ) from exc
 
     async def drain(self) -> list[AuthenticatedTranscript]:
         assert self.manager is not None
