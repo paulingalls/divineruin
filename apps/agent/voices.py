@@ -91,6 +91,11 @@ VOICES: dict[str, str] = {key: os.getenv(var, "") for key, var in VOICE_ENV_VARS
 
 DEFAULT_VOICE = "DM_NARRATOR"
 
+# Pinned explicitly on BOTH speech paths (base_agent's LiveKit plugin and tts_prerender's
+# REST calls): the plugin carries its own default model, so leaving this implicit follows
+# the vendor's choice rather than ours.
+INWORLD_MODEL = "inworld-tts-2"
+
 # Per-voice rate offset added to the emotion rate.
 # Compensates for inherent speed differences between Inworld voices.
 # Positive = faster, negative = slower. DM is the baseline.
@@ -137,7 +142,7 @@ EMOTION_RATES: dict[str, float] = {
 
 EMOTIONS: list[str] = sorted(EMOTION_RATES.keys())
 
-# Inworld TTS 1.5 audio markup tags, prepended to text per request.
+# Inworld audio markup tags, prepended to text per request.
 # One emotion/delivery tag per API call; empty = use voice's default delivery.
 INWORLD_MARKUPS: dict[str, str] = {
     "calm": "",

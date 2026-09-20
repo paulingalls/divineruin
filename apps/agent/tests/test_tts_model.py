@@ -2,7 +2,8 @@
 
 import base64
 import json
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from livekit.plugins import inworld
@@ -84,8 +85,25 @@ async def test_rest_request_uses_tts2_and_preserves_voice_rate_and_format():
     }
 
 
+class _FixedClock:
+    """Stands in for tts_prerender's ``time``: every measured interval is ``step``.
+
+    Replaces the module attribute rather than ``time.perf_counter`` itself, which
+    would mutate the stdlib clock for everything else sharing the process.
+    """
+
+    def __init__(self, step: float) -> None:
+        self._step = step
+        self._now = 0.0
+
+    def perf_counter(self) -> float:
+        now = self._now
+        self._now += self._step
+        return now
+
+
 @pytest.mark.asyncio
-async def test_smoke_synthesizes_neutral_and_current_markup_with_factual_output(monkeypatch, capsys):
+async def test_smoke_covers_every_markup_tag_with_factual_output(monkeypatch, capsys):
     monkeypatch.setitem(VOICES, "DM_NARRATOR", "narrator-voice")
     monkeypatch.setenv("INWORLD_API_KEY", "sentinel-secret")
     calls = []
@@ -94,71 +112,64 @@ async def test_smoke_synthesizes_neutral_and_current_markup_with_factual_output(
         calls.append((text, voice, speaking_rate, session))
         return f"audio-{len(calls)}".encode()
 
-    decoder_facts = [
-        {"codec": "mp3", "duration_seconds": 0.4, "sample_rate_hertz": 44100, "channels": 1},
-        {"codec": "mp3", "duration_seconds": 0.6, "sample_rate_hertz": 44100, "channels": 1},
-    ]
+    facts = {"codec": "mp3", "duration_seconds": 0.4, "sample_rate_hertz": 44100, "channels": 1}
     decoded = []
 
     def decode(audio):
         decoded.append(audio)
-        return len(audio), decoder_facts[len(decoded) - 1]
+        return facts
 
     with (
         patch.object(tts_prerender, "inworld_tts", synthesize),
         patch.object(tts_prerender, "_decode_audio", side_effect=decode),
-        patch.object(tts_prerender.time, "perf_counter", side_effect=[1.0, 1.1, 2.0, 2.25]),
+        patch.object(tts_prerender, "time", _FixedClock(step=0.1)),
     ):
         await tts_prerender.run_tts2_smoke()
 
-    nonempty_emotion = next(emotion for emotion, markup in INWORLD_MARKUPS.items() if markup)
+    tags = sorted({markup for markup in INWORLD_MARKUPS.values() if markup})
+    assert tags, "voices.INWORLD_MARKUPS carries no markup tag for the smoke to submit"
+
+    submitted = [call[0] for call in calls]
     neutral = get_voice_config("DM_NARRATOR", "neutral")
-    marked = get_voice_config("DM_NARRATOR", nonempty_emotion)
-    assert calls == [
-        (tts_prerender.SMOKE_NEUTRAL_TEXT, neutral.voice, neutral.speaking_rate, None),
-        (
-            apply_markup(tts_prerender.SMOKE_MARKED_TEXT, marked.inworld_markup),
-            marked.voice,
-            marked.speaking_rate,
-            None,
-        ),
-    ]
-    assert decoded == [b"audio-1", b"audio-2"]
+    assert calls[0] == (tts_prerender.SMOKE_NEUTRAL_TEXT, neutral.voice, neutral.speaking_rate, None)
+    assert submitted[1:] == [apply_markup(tts_prerender.SMOKE_MARKED_TEXT, tag) for tag in tags]
+    for (_text, voice, rate, session), tag in zip(calls[1:], tags, strict=True):
+        emotion = next(e for e, markup in INWORLD_MARKUPS.items() if markup == tag)
+        config = get_voice_config("DM_NARRATOR", emotion)
+        assert (voice, rate, session) == (config.voice, config.speaking_rate, None)
+    assert decoded == [f"audio-{i}".encode() for i in range(1, len(calls) + 1)]
 
     output = capsys.readouterr().out
     records = [json.loads(line) for line in output.splitlines()]
-    submitted = [call[0] for call in calls]
-    expected_characters = [len(text) for text in submitted]
-    assert records == [
-        {
-            "audio_bytes": 7,
-            "characters": expected_characters[0],
-            "decoder": decoder_facts[0],
+    labels = ["neutral"] + [f"marked:{tag}" for tag in tags]
+    assert len(records) == len(labels) + 1
+    for record, label, text, audio in zip(records[:-1], labels, submitted, decoded, strict=True):
+        assert record == {
+            "audio_bytes": len(audio),
+            "characters": len(text),
+            "decoder": facts,
             "elapsed_ms": 100.0,
-            "estimated_usd": expected_characters[0] * 25 / 1_000_000,
+            "estimated_usd": len(text) * 25 / 1_000_000,
             "model": "inworld-tts-2",
-            "sample": "neutral",
-        },
-        {
-            "audio_bytes": 7,
-            "characters": expected_characters[1],
-            "decoder": decoder_facts[1],
-            "elapsed_ms": 250.0,
-            "estimated_usd": expected_characters[1] * 25 / 1_000_000,
-            "model": "inworld-tts-2",
-            "sample": "marked",
-        },
-        {
-            "audio_bytes": 14,
-            "characters": sum(expected_characters),
-            "decoder": {"decoded_samples": 2},
-            "elapsed_ms": 350.0,
-            "estimated_usd": sum(expected_characters) * 25 / 1_000_000,
-            "model": "inworld-tts-2",
-            "sample": "total",
-        },
-    ]
+            "sample": label,
+        }
+    total_characters = sum(len(text) for text in submitted)
+    assert records[-1] == {
+        "audio_bytes": sum(len(audio) for audio in decoded),
+        "characters": total_characters,
+        "decoder": {"decoded_samples": len(labels)},
+        "elapsed_ms": round(100.0 * len(labels), 3),
+        "estimated_usd": total_characters * 25 / 1_000_000,
+        "model": "inworld-tts-2",
+        "sample": "total",
+    }
     assert "sentinel-secret" not in output
+
+
+def test_smoke_refuses_a_corpus_with_no_markup_tags(monkeypatch):
+    monkeypatch.setattr(tts_prerender, "INWORLD_MARKUPS", dict.fromkeys(INWORLD_MARKUPS, ""))
+    with pytest.raises(RuntimeError, match="No nonempty Inworld emotion markup"):
+        tts_prerender._smoke_samples()
 
 
 @pytest.mark.asyncio
@@ -192,7 +203,8 @@ def test_decoder_rejects_invalid_audio():
 
 @pytest.mark.parametrize("argv", [[], ["--unknown"]])
 def test_cli_rejects_missing_or_unknown_smoke_flag(argv):
-    with patch.object(tts_prerender.asyncio, "run") as run:
+    run = MagicMock()
+    with patch.object(tts_prerender, "asyncio", SimpleNamespace(run=run)):
         with pytest.raises(SystemExit):
             tts_prerender.main(argv)
     run.assert_not_called()

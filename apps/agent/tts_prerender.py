@@ -22,12 +22,12 @@ import aiohttp
 
 from dialogue_parser import Segment
 from tts_pauses import chunk_text_with_pauses
-from voices import INWORLD_MARKUPS, VoiceConfig, apply_markup, get_voice_config
+from voices import INWORLD_MARKUPS, INWORLD_MODEL, VoiceConfig, apply_markup, get_voice_config
 
 logger = logging.getLogger("divineruin.tts_prerender")
 
 INWORLD_BASE_URL = os.environ.get("INWORLD_BASE_URL", "https://api.inworld.ai")
-INWORLD_MODEL = "inworld-tts-2"
+# Inworld on-demand TTS 2 list price, quoted 2026-09-19.
 INWORLD_PRICE_PER_MILLION_CHARACTERS = 25
 SMOKE_NEUTRAL_TEXT = "The road ahead is clear."
 SMOKE_MARKED_TEXT = "The shadows gather at the old gate."
@@ -101,7 +101,8 @@ async def inworld_tts(
         return await _do_request(s)
 
 
-def _decode_audio(raw_mp3: bytes) -> tuple[int, dict[str, str | int | float]]:
+def _decode_audio(raw_mp3: bytes) -> dict[str, str | int | float]:
+    """Decode *raw_mp3* and return what the decoder actually found in it."""
     clean_mp3 = _reencode_mp3(raw_mp3)
     with tempfile.NamedTemporaryFile(suffix=".mp3") as audio_file:
         audio_file.write(clean_mp3)
@@ -133,7 +134,7 @@ def _decode_audio(raw_mp3: bytes) -> tuple[int, dict[str, str | int | float]]:
         raise RuntimeError("ffprobe returned malformed audio metadata") from exc
     if duration <= 0:
         raise RuntimeError("ffprobe returned non-positive audio duration")
-    return len(clean_mp3), {
+    return {
         "codec": stream["codec_name"],
         "duration_seconds": duration,
         "sample_rate_hertz": int(stream["sample_rate"]),
@@ -141,23 +142,26 @@ def _decode_audio(raw_mp3: bytes) -> tuple[int, dict[str, str | int | float]]:
     }
 
 
-async def run_tts2_smoke() -> None:
-    neutral_config = get_voice_config("DM_NARRATOR", "neutral")
-    marked_emotion = next(
-        (emotion for emotion, markup in INWORLD_MARKUPS.items() if markup),
-        None,
-    )
-    if marked_emotion is None:
-        raise RuntimeError("No nonempty Inworld emotion markup is configured")
-    marked_config = get_voice_config("DM_NARRATOR", marked_emotion)
-    marked_text = apply_markup(SMOKE_MARKED_TEXT, marked_config.inworld_markup)
-    samples = [
-        ("neutral", SMOKE_NEUTRAL_TEXT, neutral_config),
-        ("marked", marked_text, marked_config),
-    ]
+def _smoke_samples() -> list[tuple[str, str, VoiceConfig]]:
+    """One neutral line plus one line per DISTINCT markup tag the game can emit.
 
+    Keyed on the tag, not the emotion: several emotions share a tag, and it is the
+    tag the provider either accepts or rejects.
+    """
+    markups = sorted({markup for markup in INWORLD_MARKUPS.values() if markup})
+    if not markups:
+        raise RuntimeError("No nonempty Inworld emotion markup is configured")
+    samples = [("neutral", SMOKE_NEUTRAL_TEXT, get_voice_config("DM_NARRATOR", "neutral"))]
+    for markup in markups:
+        emotion = next(e for e, m in INWORLD_MARKUPS.items() if m == markup)
+        config = get_voice_config("DM_NARRATOR", emotion)
+        samples.append((f"marked:{markup}", apply_markup(SMOKE_MARKED_TEXT, markup), config))
+    return samples
+
+
+async def run_tts2_smoke() -> None:
     records = []
-    for label, text, config in samples:
+    for label, text, config in _smoke_samples():
         started = time.perf_counter()
         audio = await inworld_tts(
             text,
@@ -167,14 +171,13 @@ async def run_tts2_smoke() -> None:
         elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
         if not audio:
             raise RuntimeError(f"Inworld TTS returned no audio for {label} smoke sample")
-        audio_bytes, decoder = _decode_audio(audio)
         record = {
             "sample": label,
             "model": INWORLD_MODEL,
             "characters": len(text),
             "elapsed_ms": elapsed_ms,
-            "audio_bytes": audio_bytes,
-            "decoder": decoder,
+            "audio_bytes": len(audio),
+            "decoder": _decode_audio(audio),
             "estimated_usd": len(text) * INWORLD_PRICE_PER_MILLION_CHARACTERS / 1_000_000,
         }
         records.append(record)

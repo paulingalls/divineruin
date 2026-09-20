@@ -20,7 +20,7 @@ from transcript import TranscriptLogger
 from tts_pauses import PAUSE_DURATIONS as _PAUSE_DURATIONS
 from tts_pauses import PAUSE_PATTERN as _PAUSE_PATTERN
 from tts_pauses import SENTENCE_END_PAUSE
-from voices import apply_markup, get_voice_config
+from voices import INWORLD_MODEL, apply_markup, get_voice_config
 
 logger = logging.getLogger("divineruin.base")
 
@@ -40,7 +40,7 @@ def _silence(seconds: float) -> rtc.AudioFrame:
 
 def _make_tts(voice: str = "", speaking_rate: float = 1.0) -> inworld.TTS:
     kwargs: dict[str, Any] = {
-        "model": "inworld-tts-2",
+        "model": INWORLD_MODEL,
         "speaking_rate": speaking_rate,
     }
     if voice:
