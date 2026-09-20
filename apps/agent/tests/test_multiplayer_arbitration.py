@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 from livekit.agents import AgentSession, StopResponse, llm
@@ -138,11 +138,15 @@ def message(text: str) -> llm.ChatMessage:
     return llm.ChatMessage(role="user", content=[text], extra={"speaker": "speaker-0"})
 
 
+def fail_unexpected(error: BaseException) -> None:
+    pytest.fail(str(error))
+
+
 async def test_diarization_label_cannot_replace_authenticated_track_identity() -> None:
     emitted: list[AuthenticatedTranscript] = []
     agents = (
-        _TranscriberAgent("player-one", 1, emitted.append, pytest.fail, None),
-        _TranscriberAgent("player-two", 2, emitted.append, pytest.fail, None),
+        _TranscriberAgent("player-one", 1, emitted.append, fail_unexpected, None),
+        _TranscriberAgent("player-two", 2, emitted.append, fail_unexpected, None),
     )
 
     for agent, text in zip(agents, ("first marker", "second marker"), strict=True):
@@ -157,10 +161,7 @@ async def test_diarization_label_cannot_replace_authenticated_track_identity() -
 
 @dataclass
 class Room:
-    remote_participants: dict = None
-
-    def __post_init__(self) -> None:
-        self.remote_participants = self.remote_participants or {}
+    remote_participants: dict[str, object] = field(default_factory=dict)
 
     def on(self, _event: str, _callback) -> None:
         pass
@@ -184,7 +185,7 @@ async def emit(agent: _TranscriberAgent, text: str) -> None:
 
 async def test_queue_rejects_excess_speech_and_surfaces_failures_while_full() -> None:
     manager = MultiParticipantTranscriber(Room(), stt=None, authorizer=authorize)
-    agent = _TranscriberAgent("player-two", 7, manager._emit_transcript, pytest.fail, None)
+    agent = _TranscriberAgent("player-two", 7, manager._emit_transcript, fail_unexpected, None)
 
     for index in range(5):
         await emit(agent, f"turn-{index}")
@@ -205,7 +206,7 @@ async def test_queue_rejects_excess_speech_and_surfaces_failures_while_full() ->
 
 async def test_repeated_overflow_is_coalesced_and_unconsumed_overflow_fails_close() -> None:
     manager = MultiParticipantTranscriber(Room(), stt=None, authorizer=authorize)
-    agent = _TranscriberAgent("player-one", 3, manager._emit_transcript, pytest.fail, None)
+    agent = _TranscriberAgent("player-one", 3, manager._emit_transcript, fail_unexpected, None)
 
     for index in range(7):
         await emit(agent, f"turn-{index}")
@@ -220,5 +221,6 @@ async def test_input_sessions_require_a_full_second_of_silence_to_complete_a_tur
     # accepted in silence and the session keeps the SDK delay — only the resolved value
     # distinguishes the shipped setting from the default.
     resolved = transcription._input_session().options.endpointing
-    assert resolved["min_delay"] == transcription.COMPLETE_UTTERANCE_ENDPOINTING_SECONDS == 1.0
-    assert AgentSession(max_tool_steps=5).options.endpointing["min_delay"] < 1.0
+    assert resolved.get("min_delay") == transcription.COMPLETE_UTTERANCE_ENDPOINTING_SECONDS == 1.0
+    default_delay = AgentSession(max_tool_steps=5).options.endpointing.get("min_delay")
+    assert default_delay is not None and default_delay < 1.0

@@ -185,6 +185,7 @@ async def test_real_overlapping_speech_serializes_authenticated_tool_turns(
     try:
         await harness.start(prepare_listener)
         assert harness.manager is not None and dm_session is not None and lifecycle is not None
+        pending_queue = harness.manager._queue
         multiplayer_input = MultiplayerInput(harness.manager, lifecycle, dm_session, userdata)
         multiplayer_input.start()
 
@@ -210,7 +211,7 @@ async def test_real_overlapping_speech_serializes_authenticated_tool_turns(
         one_trace, two_trace = await asyncio.gather(first, second)
 
         await wait_until(gate_started.is_set, "first overlapping tool did not start")
-        await wait_until(lambda: harness.manager._queue.qsize() >= 1, "second overlapping turn was not queued")
+        await wait_until(lambda: pending_queue.qsize() >= 1, "second overlapping turn was not queued")
         overlap_starts = [entry for entry in model.starts if entry[0] == "overlap"]
         assert len(overlap_starts) == 1
         assert len(handles) == 2
