@@ -129,12 +129,19 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
         if ".venv" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.Call) or "AgentSession" not in ast.dump(node.func):
+            if not isinstance(node, ast.Call) or not _is_agent_session_call(node):
                 continue
             for kw in node.keywords:
                 if kw.arg == "llm" and isinstance(kw.value, ast.Call) and "LLM" in ast.dump(kw.value.func):
                     sites.append((str(path.relative_to(root)), kw.value))
     return sites
+
+
+def _is_agent_session_call(node: ast.Call) -> bool:
+    target = node.func
+    return (isinstance(target, ast.Name) and target.id == "AgentSession") or (
+        isinstance(target, ast.Attribute) and target.attr == "AgentSession"
+    )
 
 
 def _agent_session_sites() -> list[tuple[str, ast.Call]]:
@@ -145,9 +152,16 @@ def _agent_session_sites() -> list[tuple[str, ast.Call]]:
         if ".venv" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if isinstance(node, ast.Call) and "AgentSession" in ast.dump(node.func):
+            if isinstance(node, ast.Call) and _is_agent_session_call(node):
                 sites.append((str(path.relative_to(root)), node))
     return sites
+
+
+def test_agent_session_matcher_distinguishes_constructor_from_chained_calls():
+    tree = ast.parse("AgentSession().options.endpointing.get('min_delay')")
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+
+    assert [ast.unparse(call) for call in calls if _is_agent_session_call(call)] == ["AgentSession()"]
 
 
 def test_every_agent_session_chooses_its_max_tool_steps():

@@ -28,6 +28,9 @@ class Lifecycle:
     def is_authorized(self, _identity: str, _generation: int) -> bool:
         return True
 
+    def require_authorized(self, _identity: str, _generation: int) -> None:
+        pass
+
     async def wait_until_revoked(self, _identity: str, _generation: int) -> None:
         await asyncio.Future()
 
@@ -37,7 +40,7 @@ class ActorData:
         self.actor: str | None = None
 
     @contextmanager
-    def _bind_actor(self, identity: str):
+    def _bind_authenticated_actor(self, identity: str, _generation: int, _validator):
         assert self.actor is None
         self.actor = identity
         try:

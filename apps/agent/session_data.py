@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
@@ -26,6 +26,13 @@ if TYPE_CHECKING:
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
+
+
+@dataclass(frozen=True)
+class AuthenticatedActor:
+    player_id: str
+    generation: int
+    validator: Callable[[str, int], None] = field(repr=False, compare=False)
 
 
 @dataclass
@@ -224,7 +231,7 @@ class SessionData:
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
-    _actor_player_id: ContextVar[str | None] = field(
+    _actor_binding: ContextVar[str | AuthenticatedActor | None] = field(
         default_factory=lambda: ContextVar("actor_player_id", default=None),
         init=False,
         repr=False,
@@ -381,19 +388,39 @@ class SessionData:
 
     @property
     def actor_player_id(self) -> str:
-        actor = self._actor_player_id.get()
+        actor = self._actor_binding.get()
         if actor is None:
             raise RuntimeError("No actor is bound to the current DM turn")
-        return actor
+        return actor.player_id if isinstance(actor, AuthenticatedActor) else actor
 
     @contextmanager
     def _bind_actor(self, player_id: str) -> Iterator[None]:
         self.member_state(player_id)
-        token = self._actor_player_id.set(player_id)
+        token = self._actor_binding.set(player_id)
         try:
             yield
         finally:
-            self._actor_player_id.reset(token)
+            self._actor_binding.reset(token)
+
+    @contextmanager
+    def _bind_authenticated_actor(
+        self, player_id: str, generation: int, validator: Callable[[str, int], None]
+    ) -> Iterator[None]:
+        self.member_state(player_id)
+        actor = AuthenticatedActor(player_id, generation, validator)
+        token = self._actor_binding.set(actor)
+        try:
+            yield
+        finally:
+            self._actor_binding.reset(token)
+
+    def require_reaction_actor(self) -> AuthenticatedActor:
+        actor = self._actor_binding.get()
+        if not isinstance(actor, AuthenticatedActor):
+            raise RuntimeError("No authenticated actor is bound to the current DM turn")
+        self.member_state(actor.player_id)
+        actor.validator(actor.player_id, actor.generation)
+        return actor
 
     @property
     def in_onboarding(self) -> bool:

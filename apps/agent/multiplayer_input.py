@@ -37,7 +37,7 @@ class MultiplayerInput:
                 continue
             identity = transcript.participant_identity
             generation = transcript.generation
-            with self.userdata._bind_actor(identity):
+            with self.userdata._bind_authenticated_actor(identity, generation, self.lifecycle.require_authorized):
                 # speech_delivery owns the generate_reply boundary, including the two
                 # RuntimeErrors a closing session raises — a turn in flight when the DM
                 # session closes must not take the whole consumer down with it.

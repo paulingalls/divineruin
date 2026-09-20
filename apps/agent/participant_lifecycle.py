@@ -221,6 +221,10 @@ class PartyLifecycle:
     def is_authorized(self, identity: str, generation: int) -> bool:
         return self.userdata.party.contains(identity) and self._live.get(identity) == generation
 
+    def require_authorized(self, identity: str, generation: int) -> None:
+        if not self.is_authorized(identity, generation):
+            raise RuntimeError(f"Authenticated actor {identity!r} generation {generation} is stale")
+
     async def wait_until_revoked(self, identity: str, generation: int) -> None:
         if self._live.get(identity) != generation:
             return

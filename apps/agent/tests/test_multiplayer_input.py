@@ -31,6 +31,14 @@ class Gate:
     def is_authorized(self, identity, generation):
         return (identity, generation) in self.allowed
 
+    def require_authorized(self, identity, generation):
+        if not self.is_authorized(identity, generation):
+            raise RuntimeError(f"stale generation for {identity}")
+
+    def current_generation(self, identity):
+        generations = [generation for actor, generation in self.allowed if actor == identity]
+        return max(generations, default=None)
+
     async def wait_until_revoked(self, identity, generation):
         event = self.revocations.setdefault((identity, generation), asyncio.Event())
         await event.wait()
@@ -64,18 +72,21 @@ class ReplyHandle:
 class GatedHandle:
     """A reply that hangs until something interrupts it, like a real in-flight generation."""
 
-    def __init__(self, on_start=None) -> None:
+    def __init__(self, on_start=None, on_release=None) -> None:
         self.started = asyncio.Event()
         self.released = asyncio.Event()
         self.interrupt_calls: list[bool] = []
         self.acted = False
         self._on_start = on_start
+        self._on_release = on_release
 
     async def _wait(self):
         if self._on_start is not None:
             self._on_start()
         self.started.set()
         await self.released.wait()
+        if self._on_release is not None:
+            self._on_release()
         if not self.interrupt_calls:
             self.acted = True
 
@@ -206,6 +217,37 @@ async def test_disconnect_force_interrupts_in_flight_turn_before_actor_can_act()
     assert handle.acted is False
     with pytest.raises(RuntimeError, match="No actor"):
         _ = sd.actor_player_id
+    await owner.aclose()
+
+
+async def test_in_flight_turn_keeps_its_captured_generation_after_reconnect() -> None:
+    sd = party_session()
+    source = TranscriptSource()
+    gate = Gate({("player-two", 4)})
+    observed: list[BaseException] = []
+
+    def read_bound_generation() -> None:
+        try:
+            sd.require_reaction_actor()
+        except BaseException as exc:
+            observed.append(exc)
+
+    handle = GatedHandle(on_release=read_bound_generation)
+    session = RecordingSession(sd)
+    cast(Any, session).generate_reply = lambda **_kwargs: handle
+    owner = MultiplayerInput(source, gate, session, sd)
+    owner.start()
+
+    source.queue.put_nowait(AuthenticatedTranscript("player-two", "old connection", 4))
+    await asyncio.wait_for(handle.started.wait(), 1)
+    gate.revoke("player-two", 4)
+    gate.allowed.add(("player-two", 5))
+    async with asyncio.timeout(1):
+        while not observed:
+            await asyncio.sleep(0)
+
+    assert len(observed) == 1
+    assert "stale generation" in str(observed[0])
     await owner.aclose()
 
 

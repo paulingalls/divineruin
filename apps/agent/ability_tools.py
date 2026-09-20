@@ -35,7 +35,7 @@ import reaction_gate
 import spells
 from combat_ability import condition_ability
 from resource_costs import gate_pool
-from session_data import SessionData
+from session_data import AuthenticatedActor, SessionData
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -64,6 +64,8 @@ async def _request_ability_activation_impl(
         raise ToolError(str(e)) from e
 
     session: SessionData = context.userdata
+    reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
+    player_id = reaction_actor.player_id if reaction_actor is not None else session.player_id
     if session.in_combat and ability.ability_type != "reaction":
         # Only send the DM to declare_phase for an id that gate ACCEPTS. combat_phase's declare gate
         # takes a spell-backed ability by its spell_id and a non-spell condition ability by its own
@@ -89,6 +91,8 @@ async def _request_ability_activation_impl(
             conditions_mod=conditions_mod,
             conditions_mutations_mod=conditions_mutations_mod,
             condition_produce_mod=condition_produce_mod,
+            player_id=player_id,
+            reaction_actor=reaction_actor,
         )
 
     if ability.ability_type != "reaction":
@@ -105,15 +109,15 @@ async def _request_ability_activation_impl(
     async with session.combat_state_lock:
         state = session.combat_state
         try:
-            reaction_gate.validate_reaction_activation(state, session.player_id, ability_id)
-            spend = combat_hold.preflight_spend(state, session.player_id, ability_id)
+            reaction_gate.validate_reaction_activation(state, player_id, ability_id)
+            spend = combat_hold.preflight_spend(state, player_id, ability_id)
         except ValueError as e:
             raise ToolError(str(e)) from e
 
         result = await activate_unlocked()
         # The live state, not `state`: a reference taken before an await cannot see a replacement made
         # during it. combat_state_lock orders this process's writers; it is not a substitute for that rule.
-        combat_hold.record_spend(session.combat_state, session.player_id, spend)
+        combat_hold.record_spend(session.combat_state, player_id, spend)
         return result
 
 
@@ -132,6 +136,8 @@ async def _request_ability_activation_unlocked(
     conditions_mod=conditions,
     conditions_mutations_mod=db_mutations_conditions,
     condition_produce_mod=condition_produce,
+    player_id: str | None = None,
+    reaction_actor: AuthenticatedActor | None = None,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(ability_id, "ability_id")
@@ -142,7 +148,7 @@ async def _request_ability_activation_unlocked(
     for tid in target_ids or []:
         _validate_id(tid, "target_id")
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.player_id if player_id is None else player_id
     logger.info("request_ability_activation called: ability=%s player=%s", ability_id, player_id)
 
     try:
@@ -182,7 +188,6 @@ async def _request_ability_activation_unlocked(
             queries_mod=queries_mod,
             conn=conn,
         )
-
         # Own-the-base gate (story-006): reject an ability the player hasn't learned
         # BEFORE any resource deduction. Core/reaction are always-known for the
         # archetype; an elective needs a character_abilities row (queried only then).
@@ -210,6 +215,12 @@ async def _request_ability_activation_unlocked(
         # value or None when its cost is 0. One write below applies both.
         new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
         new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
+        # Revalidate the captured generation inside the tx that owns the debit: the row lock and
+        # the variant lookup above are awaits, and the speaker's connection can be revoked across
+        # them. The BINDING cannot change under this task, so re-reading it proves nothing — the
+        # validator call is the check, and it raises on a generation that is no longer live.
+        if reaction_actor is not None:
+            session.require_reaction_actor()
         if new_stamina is not None or new_focus is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 

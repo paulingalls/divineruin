@@ -147,14 +147,15 @@ class TestAbilityLockOrder:
         persistence.get_active_variant = AsyncMock(return_value=None)
         persistence.owns_elective = AsyncMock(return_value=False)
 
-        with pytest.raises(ToolError, match="queue head"):
-            await _request_ability_activation_impl(
-                ctx,
-                "rogue_uncanny_dodge",
-                db_mod=db_mod,
-                queries_mod=queries,
-                persistence_mod=persistence,
-            )
+        with ctx.userdata._bind_authenticated_actor(ctx.userdata.player_id, 1, lambda *_args: None):
+            with pytest.raises(ToolError, match="queue head"):
+                await _request_ability_activation_impl(
+                    ctx,
+                    "rogue_uncanny_dodge",
+                    db_mod=db_mod,
+                    queries_mod=queries,
+                    persistence_mod=persistence,
+                )
 
         queries.get_players_for_update.assert_not_called()
         persistence.update_player_resources.assert_not_called()
