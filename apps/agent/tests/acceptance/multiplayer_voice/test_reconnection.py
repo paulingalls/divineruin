@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from types import SimpleNamespace
 from typing import Any, cast
 
+import pytest
+from acceptance._live_voice import has_live_voice_key
 from acceptance._livekit_client import (
     aclose_audio,
     aclose_room,
@@ -22,6 +25,14 @@ from multiplayer_transcription import MultiParticipantTranscriber
 from participant_lifecycle import RECONNECT_GRACE_S, _setup_party_join, _setup_reconnection
 from session_data import SessionData
 from session_startup import gameplay_room_options
+
+# The skipif is the not-opted-in path (CI without the secret, a worktree carrying
+# .env.example's placeholder); REQUIRE_REAL_LLM=1 suppresses it so the conftest fixture
+# fails this lane LOUD rather than letting it absent itself from the boundary.
+pytestmark = pytest.mark.skipif(
+    not has_live_voice_key(os.environ) and not os.environ.get("REQUIRE_REAL_LLM"),
+    reason="live-voice acceptance drives the real Deepgram STT API and needs DEEPGRAM_API_KEY",
+)
 
 
 class Queries:

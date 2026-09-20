@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from typing import Any
 
+import pytest
+from acceptance._live_voice import has_live_voice_key
 from acceptance.multiplayer_voice._harness import (
     PLAYER_ONE_SPEECH,
     PLAYER_TWO_SPEECH,
@@ -28,6 +31,14 @@ from multiplayer_input import MultiplayerInput
 from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import CombatParticipant, CombatState, SessionData
 from session_startup import gameplay_room_options
+
+# The skipif is the not-opted-in path (CI without the secret, a worktree carrying
+# .env.example's placeholder); REQUIRE_REAL_LLM=1 suppresses it so the conftest fixture
+# fails this lane LOUD rather than letting it absent itself from the boundary.
+pytestmark = pytest.mark.skipif(
+    not has_live_voice_key(os.environ) and not os.environ.get("REQUIRE_REAL_LLM"),
+    reason="live-voice acceptance drives the real Deepgram STT API and needs DEEPGRAM_API_KEY",
+)
 
 
 class ActivateStream(llm.LLMStream):
