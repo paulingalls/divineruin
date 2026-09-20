@@ -131,6 +131,11 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
 
 
 async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str) -> None:
+    """AC3: the node depletion and the material grant share one transaction.
+
+    The injected failure fires *after* a successful add_inventory_item, so only a real
+    rollback leaves the node undiscovered at its original quantity and the item absent.
+    """
     pool = await db.get_pool()
     player_id = "cap_m46c_rollback"
     node_id = "cap_m46c_rollback_salvage"
