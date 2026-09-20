@@ -14,6 +14,7 @@ Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e
 | runtime | livekit-plugins-anthropic | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
 | runtime | livekit-plugins-deepgram | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
 | runtime | livekit-plugins-inworld | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
+| runtime | livekit-plugins-openai | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
 | runtime | asyncpg | `>=0.31.0` | 0.31.0 / 0.31.0 | 0.31.0 | — |
 | runtime | redis | `>=8.1.0` | 8.1.0 / 8.1.0 | 8.1.0 | — |
 | runtime | anthropic | `>=0.125.0,<1` | 0.125.0 / 0.125.0 | 1.7.0 | livekit-plugins-anthropic==1.8.2 requires anthropic<1,>=0.41: Anthropic 1.7.0 is outside the plugin's published constraint; the project mirrors the same <1 cap. |

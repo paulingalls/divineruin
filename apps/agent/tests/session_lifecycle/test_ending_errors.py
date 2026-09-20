@@ -2,10 +2,12 @@
 
 import asyncio
 import json
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from livekit.agents import ModelSettings, function_tool, llm
+from livekit.agents import Agent, AgentSession, ModelSettings, function_tool, llm
 from livekit.agents.llm import ChatChunk, ChoiceDelta, CompletionUsage, FunctionToolCall, ToolContext
 from livekit.agents.voice.generation import perform_llm_inference
 from livekit.agents.voice.speech_handle import SpeechHandle
@@ -19,6 +21,11 @@ UNRESOLVED = "threads of fate"
 
 def _usage() -> CompletionUsage:
     return CompletionUsage(completion_tokens=4, prompt_tokens=10, total_tokens=14)
+
+
+def _agent_with_speech(speech) -> Agent:
+    """An agent stub exposing only what the gate reads — no invented attributes."""
+    return cast(Agent, SimpleNamespace(session=SimpleNamespace(current_speech=speech)))
 
 
 def _pilot_session():
@@ -219,11 +226,21 @@ class TestLunaAtomicTurns:
     @pytest.mark.asyncio
     async def test_only_player_sources_are_interruptions(self, source, expected):
         speech = SpeechHandle.create().interrupt(source=source)
-        activity = MagicMock(_current_speech=speech)
-        agent = MagicMock()
-        agent._get_activity_or_raise.return_value = activity
 
-        assert _player_interrupted(agent) is expected
+        assert _player_interrupted(_agent_with_speech(speech)) is expected
+
+    def test_a_turn_with_no_speech_or_no_session_is_not_an_interruption(self):
+        class _Detached:
+            @property
+            def session(self):
+                raise RuntimeError("Agent isn't running")
+
+        assert _player_interrupted(_agent_with_speech(None)) is False
+        assert _player_interrupted(cast(Agent, _Detached())) is False
+
+    def test_the_speech_state_the_gate_reads_is_livekit_public_api(self):
+        """A rename of `current_speech` would otherwise read as green off the stub above."""
+        assert isinstance(AgentSession.current_speech, property)
 
     @pytest.mark.parametrize("preamble", [False, True], ids=["no-preamble", "preamble"])
     @pytest.mark.asyncio

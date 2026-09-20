@@ -230,6 +230,14 @@ def test_production_agent_session_routes_through_gameplay_factory():
     [("anthropic", False), ("openai-luna", True)],
 )
 async def test_gameplay_factory_strict_direction(monkeypatch, selection, expected):
+    """Each provider keeps the flag somewhere else; read the one the returned plugin owns.
+
+    A hasattr chain would fall through to the other provider's field the day a plugin grows
+    both spellings, and assert about a flag nothing sends.
+    """
+    from livekit.plugins import anthropic as anthropic_plugin
+    from livekit.plugins import openai as openai_plugin
+
     from gameplay_llm import create_gameplay_llm
 
     monkeypatch.setenv("GAMEPLAY_LLM", selection)
@@ -237,11 +245,11 @@ async def test_gameplay_factory_strict_direction(monkeypatch, selection, expecte
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     selected = create_gameplay_llm("claude-haiku-4-5-20251001")
     try:
-        actual = (
-            selected._opts.strict_tool_schema
-            if hasattr(selected._opts, "strict_tool_schema")
-            else selected._strict_tool_schema
-        )
+        if isinstance(selected, anthropic_plugin.LLM):
+            actual = selected._opts.strict_tool_schema
+        else:
+            assert isinstance(selected, openai_plugin.LLM)
+            actual = selected._strict_tool_schema
         assert actual is expected
     finally:
         await selected.aclose()

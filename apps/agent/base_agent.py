@@ -29,14 +29,16 @@ logger = logging.getLogger("divineruin.base")
 TTS_SAMPLE_RATE = 24000
 TTS_NUM_CHANNELS = 1
 UNRESOLVED_TURN_MESSAGE = "The threads of fate tangle for a moment... What were you saying?"
+PLAYER_INTERRUPT_SOURCES = {"audio_activity", "user_turn"}
 
 
 def _player_interrupted(agent: Agent) -> bool:
     try:
-        speech = agent._get_activity_or_raise()._current_speech
+        speech = agent.session.current_speech
     except RuntimeError:
         return False
-    return bool(speech and speech.interrupted and speech._interrupt_source in {"audio_activity", "user_turn"})
+    # `_interrupt_source` is the one read livekit exposes no public accessor for.
+    return bool(speech and speech.interrupted and speech._interrupt_source in PLAYER_INTERRUPT_SOURCES)
 
 
 def _silence(seconds: float) -> rtc.AudioFrame:
@@ -210,6 +212,13 @@ class BaseGameAgent(ReportingEntry):
         tools: list,
         model_settings: ModelSettings,
     ) -> AsyncGenerator:
+        """Release a turn only once the provider stream reaches terminal success.
+
+        livekit 1.8.2 forwards each generated call into `function_ch` as the chunk arrives
+        (`voice/generation.py`) and `agent_activity` may execute it before the stream ends, so
+        a provider error after a complete call chunk would leave a half-applied mutation.
+        Buffering is the price: story-215 measures it against the 1500ms first-audio budget.
+        """
         buffered = []
         has_output = False
         has_terminal_usage = False
@@ -239,7 +248,11 @@ class BaseGameAgent(ReportingEntry):
             return
 
         if not has_output or not has_terminal_usage:
-            logger.error("Luna gameplay turn ended without usable output and terminal usage")
+            logger.error(
+                "Luna gameplay turn ended without terminal success (output=%s, usage=%s)",
+                has_output,
+                has_terminal_usage,
+            )
             yield UNRESOLVED_TURN_MESSAGE
             return
 

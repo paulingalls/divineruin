@@ -7,6 +7,7 @@ import httpx
 import openai as openai_sdk
 import pytest
 from livekit.agents import llm
+from livekit.plugins import openai as openai_plugin
 
 from blacksmith_agent import BLACKSMITH_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
@@ -80,6 +81,7 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
     monkeypatch.setenv("GAMEPLAY_LLM", "openai-luna")
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     selected = create_gameplay_llm("unused-anthropic-model")
+    assert isinstance(selected, openai_plugin.LLM)
     owned_client = selected._client
     selected._client = sdk_client
     try:

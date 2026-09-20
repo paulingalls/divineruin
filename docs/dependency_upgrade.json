@@ -57,6 +57,16 @@
     {
       "project": "apps/agent",
       "group": "runtime",
+      "name": "livekit-plugins-openai",
+      "requested": "~=1.8.2",
+      "resolved": "1.8.2",
+      "installed": "1.8.2",
+      "latest_stable": "1.8.2",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
       "name": "asyncpg",
       "requested": ">=0.31.0",
       "resolved": "0.31.0",
