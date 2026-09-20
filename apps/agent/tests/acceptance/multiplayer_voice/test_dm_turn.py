@@ -11,6 +11,7 @@ from livekit.agents import Agent, AgentSession, RunContext, llm
 from livekit.agents.llm import ToolContext, function_tool
 from livekit.agents.testing import fake_job_context
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
+from livekit.plugins import deepgram
 
 from multiplayer_input import MultiplayerInput
 from participant_lifecycle import _setup_party_join
@@ -19,6 +20,10 @@ from session_startup import gameplay_room_options
 
 
 class ProbeLLMStream(llm.LLMStream):
+    def __init__(self, probe: ProbeLLM, **kwargs: Any) -> None:
+        super().__init__(probe, **kwargs)
+        self.probe = probe
+
     async def _run(self) -> None:
         last = self.chat_ctx.items[-1]
         request_id = uuid.uuid4().hex
@@ -30,7 +35,7 @@ class ProbeLLMStream(llm.LLMStream):
             )
             delta = llm.ChoiceDelta(role="assistant", tool_calls=[call])
         else:
-            self._llm.completed_turns += 1
+            self.probe.completed_turns += 1
             delta = llm.ChoiceDelta(role="assistant", content="Acknowledged.")
         self._event_ch.send_nowait(llm.ChatChunk(id=request_id, delta=delta))
 
@@ -99,7 +104,15 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
         options = gameplay_room_options()
         assert options.get_audio_input_options() is None
         assert options.get_text_input_options() is None
-        dm_session = AgentSession(llm=model, max_tool_steps=5, userdata=userdata)
+        # A real STT on the DM session is what makes "the primary is not heard twice" a
+        # BEHAVIOURAL claim: with linked audio input re-enabled this session would transcribe
+        # player one itself, and the one-user-message-per-marker assertions below would red.
+        dm_session = AgentSession(
+            llm=model,
+            stt=deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300),
+            max_tool_steps=5,
+            userdata=userdata,
+        )
         dm_session.output.set_audio_enabled(False)
         with fake_job_context(room=room):
             await dm_session.start(

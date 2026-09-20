@@ -27,7 +27,7 @@ class GameplayInputOwner:
         results = await asyncio.gather(self.input.aclose(), self.transcriber.aclose(), return_exceptions=True)
         failures = [result for result in results if isinstance(result, BaseException)]
         if failures:
-            raise ExceptionGroup("multiplayer input cleanup failed", failures)
+            raise BaseExceptionGroup("multiplayer input cleanup failed", failures)
 
 
 async def start_gameplay_session(

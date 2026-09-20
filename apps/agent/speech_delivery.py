@@ -30,8 +30,33 @@ async def deliver_speech(
     only opening and nothing will retry it. A session already shutting down stays a WARNING
     either way: no speech was owed.
     """
+    return await _deliver(session, logger, description, failure_level, instructions=instructions)
+
+
+async def deliver_player_turn(
+    session: AgentSession,
+    user_input: str,
+    logger: logging.Logger,
+    description: str,
+    failure_level: int = logging.ERROR,
+) -> bool:
+    """Answer one authenticated player turn; False when that player heard nothing.
+
+    ERROR by default: unlike the background loops nothing re-offers a spoken turn, and the
+    multiplayer consumer must keep serving the other players rather than die on one failure.
+    """
+    return await _deliver(session, logger, description, failure_level, user_input=user_input)
+
+
+async def _deliver(
+    session: AgentSession,
+    logger: logging.Logger,
+    description: str,
+    failure_level: int,
+    **reply_kwargs: object,
+) -> bool:
     try:
-        handle = session.generate_reply(instructions=instructions)
+        handle = session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
     except RuntimeError as exc:
         if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
             raise

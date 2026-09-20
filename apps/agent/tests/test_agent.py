@@ -453,6 +453,28 @@ class TestJoinSessionEnd:
         assert published is True
 
     @pytest.mark.asyncio
+    async def test_it_does_not_return_until_the_multiplayer_inputs_are_closed(self):
+        """The transcriber's own STT sessions are closed by that task; leaving it unawaited
+        races room.disconnect() exactly as the recap does."""
+        from agent import _join_session_end
+
+        closed = False
+
+        async def close_inputs():
+            nonlocal closed
+            await asyncio.sleep(0)
+            closed = True
+
+        sd = SessionData(player_id="p1", location_id="")
+        sd.multiplayer_close_task = asyncio.create_task(close_inputs())
+        ctx = MagicMock()
+        ctx.primary_session.userdata = sd
+
+        await _join_session_end(ctx)
+
+        assert closed is True
+
+    @pytest.mark.asyncio
     async def test_it_returns_quietly_when_there_is_nothing_to_join(self):
         from agent import _join_session_end
 

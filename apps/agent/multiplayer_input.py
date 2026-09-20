@@ -3,6 +3,7 @@ import logging
 from typing import Any
 
 from multiplayer_transcription import TranscriptionFailure
+from speech_delivery import deliver_player_turn
 
 logger = logging.getLogger("divineruin.dm")
 
@@ -35,11 +36,15 @@ class MultiplayerInput:
                 )
                 continue
             with self.userdata._bind_actor(transcript.participant_identity):
-                handle = self.session.generate_reply(user_input=transcript.text)
-                await handle
-                failure = handle.exception()
-                if failure is not None:
-                    raise failure
+                # speech_delivery owns the generate_reply boundary, including the two
+                # RuntimeErrors a closing session raises — a turn in flight when the DM
+                # session closes must not take the whole consumer down with it.
+                await deliver_player_turn(
+                    self.session,
+                    transcript.text,
+                    logger,
+                    f"DM turn for {transcript.participant_identity!r}",
+                )
 
     async def aclose(self) -> None:
         task = self._task

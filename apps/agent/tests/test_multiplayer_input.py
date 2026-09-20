@@ -1,11 +1,13 @@
 import asyncio
+import logging
+from typing import Any, cast
 
 import pytest
 
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import AuthenticatedTranscript, TranscriptionFailure
 from session_data import SessionData
-from session_startup import gameplay_room_options, start_gameplay_session
+from session_startup import GameplayInputOwner, gameplay_room_options, start_gameplay_session
 
 
 async def test_actor_binding_survives_await_and_clears_after_success_and_failure() -> None:
@@ -84,24 +86,24 @@ class ReplyHandle:
 
 
 class RecordingSession:
-    def __init__(self, userdata, *, handle_error=None, generate_error=None) -> None:
+    def __init__(self, userdata, *, handle_errors=(), generate_errors=()) -> None:
         self.userdata = userdata
-        self.handle_error = handle_error
-        self.generate_error = generate_error
+        self.handle_errors = list(handle_errors)
+        self.generate_errors = list(generate_errors)
         self.calls = []
         self.actors = []
         self.generated = asyncio.Event()
 
     def generate_reply(self, **kwargs):
-        if self.generate_error is not None:
-            raise self.generate_error
+        if self.generate_errors:
+            raise self.generate_errors.pop(0)
         self.calls.append(kwargs)
 
         def probe():
             self.actors.append(self.userdata.actor_player_id)
             self.generated.set()
 
-        return ReplyHandle(probe, error=self.handle_error)
+        return ReplyHandle(probe, error=self.handle_errors.pop(0) if self.handle_errors else None)
 
 
 def party_session() -> SessionData:
@@ -180,22 +182,59 @@ async def test_turns_rebind_actor_and_transcription_failure_does_not_stop_consum
     await owner.aclose()
 
 
-@pytest.mark.parametrize("failure_shape", ["generate", "handle"])
-async def test_reply_failures_are_loud_and_clear_actor(failure_shape) -> None:
+@pytest.mark.parametrize(
+    "generate_errors,handle_errors,expected_level",
+    [
+        ((), (LookupError("handle failed"),), logging.ERROR),
+        ((RuntimeError("AgentSession is closing, cannot use generate_reply()"),), (), logging.WARNING),
+    ],
+)
+async def test_one_failed_reply_is_logged_and_the_other_player_is_still_served(
+    generate_errors, handle_errors, expected_level, caplog
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="divineruin.dm")
     sd = party_session()
     source = TranscriptSource()
-    failure = LookupError(f"{failure_shape} failed")
-    session = RecordingSession(
-        sd,
-        generate_error=failure if failure_shape == "generate" else None,
-        handle_error=failure if failure_shape == "handle" else None,
-    )
+    session = RecordingSession(sd, generate_errors=generate_errors, handle_errors=handle_errors)
+    owner = MultiplayerInput(source, Gate({("player-two", 2), ("player-one", 1)}), session, sd)
+    worker = owner.start()
+
+    source.queue.put_nowait(AuthenticatedTranscript("player-two", "doomed", 2))
+    source.queue.put_nowait(AuthenticatedTranscript("player-one", "served", 1))
+    async with asyncio.timeout(1):
+        while not session.actors or session.actors[-1] != "player-one":
+            await asyncio.sleep(0)
+
+    assert not worker.done()
+    assert {"user_input": "served"} in session.calls
+    failed = [record for record in caplog.records if "DM turn for 'player-two'" in record.message]
+    assert [record.levelno for record in failed] == [expected_level]
+    assert not [record for record in caplog.records if "DM turn for 'player-one'" in record.message]
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+    await owner.aclose()
+
+
+async def test_an_unexpected_generate_reply_error_stops_the_consumer_loudly() -> None:
+    sd = party_session()
+    source = TranscriptSource()
+    session = RecordingSession(sd, generate_errors=(LookupError("generate broke"),))
     owner = MultiplayerInput(source, Gate({("player-two", 2)}), session, sd)
     worker = owner.start()
 
     source.queue.put_nowait(AuthenticatedTranscript("player-two", "turn", 2))
-    with pytest.raises(LookupError, match=f"{failure_shape} failed"):
+    with pytest.raises(LookupError, match="generate broke"):
         await worker
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+
+
+async def test_binding_refuses_an_identity_that_is_not_a_party_member() -> None:
+    sd = party_session()
+
+    with pytest.raises(ValueError, match="stranger"):
+        with sd._bind_actor("stranger"):
+            pass  # pragma: no cover - the bind must refuse before the body runs
     with pytest.raises(RuntimeError, match="No actor"):
         _ = sd.actor_player_id
 
@@ -233,14 +272,40 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
     session = Session()
     sd = SessionData(player_id="player-one", location_id="loc")
 
-    owner = await start_gameplay_session(room, session, object(), sd)
+    owner = await start_gameplay_session(room, cast(Any, session), object(), sd)
 
     assert sd.multiplayer_owner is owner
     assert events.index("room:participant_connected") < events.index("session:start")
+    assert session.start_kwargs is not None
     options = session.start_kwargs["room_options"]
     assert options.get_audio_input_options() is None
     assert options.get_text_input_options() is None
     session.listeners["close"](object())
-    assert sd.multiplayer_close_task is not None
-    await sd.multiplayer_close_task
+    close_task = sd.multiplayer_close_task
+    session.listeners["close"](object())
+    # LiveKit can emit "close" more than once; a second cleanup would aclose an already
+    # closed transcriber and re-raise its drained failures at the job's session-end join.
+    assert sd.multiplayer_close_task is close_task
+    assert close_task is not None
+    await close_task
     assert owner.input._task is None
+
+
+async def test_cleanup_failures_on_both_halves_are_raised_together() -> None:
+    class Failing:
+        def __init__(self, error) -> None:
+            self.error = error
+
+        async def aclose(self) -> None:
+            raise self.error
+
+    input_error = OSError("input cleanup failed")
+    transcriber_error = OSError("transcriber cleanup failed")
+    owner = GameplayInputOwner(
+        cast(Any, object()), cast(Any, Failing(transcriber_error)), cast(Any, Failing(input_error))
+    )
+
+    with pytest.raises(BaseExceptionGroup) as caught:
+        await owner.aclose()
+
+    assert set(caught.value.exceptions) == {input_error, transcriber_error}

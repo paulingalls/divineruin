@@ -7,7 +7,9 @@ Two setup functions register LiveKit ``room.on`` handlers over a live session's 
   type). A drop pauses the session's background process and arms a grace timeout; a reconnect
   within the grace window resumes and re-greets.
 - ``_setup_party_join`` — the live multi-PC trigger (M18 story-001): a SECOND participant joining
-  the room becomes a PartyMember with its own hydrated per-member state.
+  the room becomes a PartyMember with its own hydrated per-member state. It returns the
+  ``PartyLifecycle`` that owns the party roster AND the per-connection authorization gate the
+  transcription/input path asks before any player speech reaches the DM.
 
 Both are wired by agent.dm_session; the party-join trigger is wired at gameplay start only.
 """
@@ -15,6 +17,7 @@ Both are wired by agent.dm_session; the party-join trigger is wired at gameplay 
 import asyncio
 import logging
 import time
+from typing import Any
 
 from livekit import rtc
 from livekit.agents import Agent, AgentSession
@@ -91,14 +94,25 @@ def _setup_reconnection(
 
 
 class PartyLifecycle:
+    """The room's party membership, and the authorization gate over it (M18 story-001).
+
+    Membership is PERSISTENT: a PartyMember appended here survives a disconnect, because the
+    party is the campaign's roster, not the room's attendance. Authorization is not — each
+    live connection for an identity gets a monotonic *generation*, so a transcript captured
+    before a drop cannot speak for the identity that reconnected behind it.
+
+    ``queries`` + the read-helper modules are injectable so a MagicMock-room unit test can
+    supply AsyncMocks.
+    """
+
     def __init__(
         self,
         room: rtc.Room,
         userdata: SessionData,
         *,
-        queries,
-        resonance_mod,
-        concentration_mod,
+        queries: Any,
+        resonance_mod: Any,
+        concentration_mod: Any,
     ) -> None:
         self.room = room
         self.userdata = userdata
@@ -108,6 +122,12 @@ class PartyLifecycle:
         self._live: dict[str, int] = {}
         self._last_generation: dict[str, int] = {}
         self._pending_joins: dict[str, asyncio.Task[None]] = {}
+        # Retain a strong reference to EVERY spawned join task until it finishes. asyncio only
+        # holds a weak reference, so an unreferenced create_task() can be garbage-collected
+        # mid-await — silently dropping the member append/hydrate (a fail-silent violation of
+        # the fail-loud rule). _pending_joins alone is not that reference: a reconnect while a
+        # join is still in flight overwrites its entry under the same identity.
+        self._spawned_joins: set[asyncio.Task[None]] = set()
         self._join_failures: dict[str, tuple[int, BaseException]] = {}
 
         room.on("participant_connected", self._on_connected)
@@ -150,6 +170,8 @@ class PartyLifecycle:
             return
         task = asyncio.create_task(self._hydrate_member(identity, generation))
         self._pending_joins[identity] = task
+        self._spawned_joins.add(task)
+        task.add_done_callback(self._spawned_joins.discard)
         task.add_done_callback(lambda completed, pid=identity, gen=generation: self._join_finished(pid, gen, completed))
 
     def _on_disconnected(self, participant: rtc.RemoteParticipant) -> None:
@@ -172,10 +194,15 @@ class PartyLifecycle:
     async def _hydrate_member(self, identity: str, generation: int) -> None:
         row = await self.queries.get_player(identity)
         if row is None:
+            # Boundary/external-input case: a stray participant with no players row must NOT
+            # fail-loud the whole room (unlike combat_init's internal-SSOT fail-loud). Drop its
+            # live generation so nothing it says can ever be authorized, then log + skip.
             if self._live.get(identity) == generation:
                 self._live.pop(identity, None)
             logger.warning("Party-join: no players row for %r; skipping append", identity)
             return
+        # Race guard: a second participant_connected for the same identity may have appended
+        # during the await above.
         if self.userdata.party.contains(identity):
             return
         member = PartyMember(
@@ -183,14 +210,23 @@ class PartyLifecycle:
             resonance=ResonanceTrack(),
             concentration=ConcentrationState(),
         )
-        self.userdata.party.members.append(member)
+        self.userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
+
+        # Hydrate the per-member sub-states the same way session_hydration.hydrate_session_state
+        # applies them onto the primary. The veil ward is NOT among them (M24 story-004): it is
+        # scope-owned, so a joiner resolves the ward already covering the party's location and a
+        # per-member read could only ever disagree with the scope.
         res = await self.resonance_mod.read_player_resonance(identity)
         conc = await self.concentration_mod.read_player_concentration(identity)
         member.resonance.current = res["current"]
         member.resonance.flickering_bonus = res["flickering_bonus"]
         member.concentration.spell_id = conc["spell_id"]
+        # patron_id is per-member: read from the joiner's OWN row (mirrors dm_session's primary read).
         divine_favor = row.get("divine_favor") or {}
         member.patron_id = divine_favor.get("patron", "none")
+        # corruption_level is NOT DB-persisted — it is runtime location-derived (movement_tools.py's
+        # LOCATION_CORRUPTION). A joining player enters the party's room, so adopt the party's
+        # current location corruption rather than a default 0.
         member.corruption_level = self.userdata.party.primary.corruption_level
         logger.info("Party-join: appended %r; party now %s", identity, self.userdata.party.member_ids)
 
@@ -199,9 +235,9 @@ def _setup_party_join(
     room: rtc.Room,
     userdata: SessionData,
     *,
-    queries=db_queries,
-    resonance_mod=db_mutations_resonance,
-    concentration_mod=db_mutations_concentration,
+    queries: Any = db_queries,
+    resonance_mod: Any = db_mutations_resonance,
+    concentration_mod: Any = db_mutations_concentration,
 ) -> PartyLifecycle:
     return PartyLifecycle(
         room,

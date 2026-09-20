@@ -62,11 +62,11 @@ class Factory:
 
 async def settle() -> None:
     await asyncio.sleep(0)
+    await asyncio.sleep(0)
 
 
 async def authorize_all(_identity: str) -> int:
     return 1
-    await asyncio.sleep(0)
 
 
 async def next_item(manager: MultiParticipantTranscriber) -> AuthenticatedTranscript:
