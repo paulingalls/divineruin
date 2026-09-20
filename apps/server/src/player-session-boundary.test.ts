@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
-process.env.RATE_LIMIT_BYPASS = "1";
 import "./test-env.ts";
 import { mintedTokens, resetDispatchSpy, resetMintedTokens } from "./test-env.ts";
 

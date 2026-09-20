@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
-from livekit.agents import ErrorEvent, StopResponse, llm, room_io
+from livekit.agents import Agent, ErrorEvent, StopResponse, llm, room_io
 from livekit.agents import stt as stt_api
 
 from multiplayer_transcription import AuthenticatedTranscript, MultiParticipantTranscriber
@@ -52,7 +52,9 @@ class Factory:
     def __init__(self):
         self.calls: list[tuple[str, Any, room_io.RoomOptions, Session]] = []
 
-    async def __call__(self, identity, agent, options):
+    # Returns Any: Session stands in for AgentSession at our own session_factory seam,
+    # and the real one is constructed by the acceptance lane, not modelled here.
+    async def __call__(self, identity: str, agent: Agent, options: room_io.RoomOptions) -> Any:
         session = Session()
         self.calls.append((identity, agent, options, session))
         return session
@@ -144,8 +146,9 @@ async def test_unknown_identity_is_preserved_and_empty_identity_fails() -> None:
     with pytest.raises(StopResponse):
         await agent.on_user_turn_completed(llm.ChatContext.empty(), message("unknown speaker"))
     assert (await next_item(manager)).participant_identity == "unregistered-player"
-    with pytest.raises(ValueError, match="identity is empty"):
-        room.emit("participant_connected", Participant(""))
+    room.emit("participant_connected", Participant(""))
+    with pytest.raises(RuntimeError, match="identity is empty"):
+        await next_item(manager)
     await manager.aclose()
 
 

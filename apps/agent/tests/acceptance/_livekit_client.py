@@ -35,8 +35,9 @@ def mint_access_token(
 ) -> str:
     """Mint a LiveKit access token for `identity` to join `room_name`.
 
-    Mirrors the server-side player token for test participants, including
-    room join, microphone publishing, data publishing, and subscription.
+    Grants room join, track publishing, data publishing and subscription. Unlike
+    the server's player token it does not restrict publishable sources, so a test
+    participant can publish any track kind it needs.
     """
     grants = api.VideoGrants(
         room_join=True,

@@ -25,7 +25,12 @@ def _concrete_agent_types() -> tuple[type[Agent], ...]:
         found.extend(
             member
             for _, member in inspect.getmembers(module, inspect.isclass)
-            if member.__module__ == module.__name__ and issubclass(member, Agent)
+            if member.__module__ == module.__name__
+            and issubclass(member, Agent)
+            # on_enter is what this file tests; an Agent that never overrides it (the
+            # per-participant transcriber) has no entry to report and no no-arg ctor.
+            # The >= 7 floor below is what keeps this predicate from draining the walk.
+            and member.on_enter is not Agent.on_enter
         )
     return tuple(found)
 

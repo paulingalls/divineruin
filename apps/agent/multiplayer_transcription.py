@@ -77,7 +77,11 @@ class MultiParticipantTranscriber:
     def _on_connected(self, participant: Any) -> None:
         identity = participant.identity
         if not identity:
-            raise ValueError("LiveKit participant identity is empty")
+            # rtc.EventEmitter.emit catches every Exception a handler raises and only logs it
+            # (livekit/rtc/event_emitter.py), so raising here would be silent in a real room.
+            # Route it to the consumer like every other failure.
+            self._record_failure("", ValueError("LiveKit participant identity is empty"))
+            return
         if identity in self._starting or identity in self._active:
             return
         task = asyncio.create_task(self._start_one(identity))
@@ -127,7 +131,9 @@ class MultiParticipantTranscriber:
                 self.stt,
             )
             if self._session_factory is None:
-                session = AgentSession()
+                # No llm, so no tool chain — but every AgentSession site in this repo states
+                # its ceiling rather than inheriting the plugin default (test_strict_tool_budget).
+                session = AgentSession(max_tool_steps=5)
                 await session.start(agent, room=self.room, room_options=options, session_host=False)
             else:
                 session = await self._session_factory(identity, agent, options)
