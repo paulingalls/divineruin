@@ -839,7 +839,7 @@ When multiple players are in a session, each authorized LiveKit audio track has 
 
 One consumer sends a complete turn to the DM and awaits its full reply and tool chain before taking the next turn. Near-simultaneous speakers therefore receive separate ordered responses, and every tool in a response runs with only that turn's authenticated actor bound. Input sessions use a 1.0 s minimum endpointing delay so a natural pause does not split one utterance. Once endpointing completes, a solo utterance enters the consumer immediately; there is no multi-speaker collection window.
 
-The queue holds four pending turns, matching the MVP maximum of four human players. When it is full, earlier turns retain their order and an excess turn produces an explicit transcription queue overflow error naming the rejected track and limit. Excess turns are never silently overwritten or prioritized by loudness.
+The queue holds four pending items, sized against the MVP maximum of four human players. Surfaced stream failures share those slots with turns, so a pending failure lowers how many turns fit until the consumer drains it. When the queue is full, earlier turns retain their order and an excess turn produces an explicit transcription queue overflow error naming the rejected track and limit. Excess turns are never silently overwritten or prioritized by loudness.
 
 Speech completed while the DM is answering remains queued. New speech does not interrupt the active response. Disconnecting or replacing the actor's authenticated connection generation deliberately force-interrupts that actor's in-flight response; owner shutdown also stops it.
 
@@ -1679,7 +1679,7 @@ The goal is that by the time external playtesters sit down, the experience has a
 - [x] ~~Proximity audio feasibility~~ — **Technically possible** via per-track volume control. Scoped as post-MVP.
 
 **Remaining open questions:**
-- [ ] **VAD tuning and endpointing** — Optimal silence threshold (starting point: 500-700ms), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
+- [ ] **VAD tuning and endpointing** — Optimal silence threshold (player input sessions currently hold 1000ms, above the SDK default, to keep a mid-sentence pause from splitting one utterance into two turns; that whole second sits inside the 1500ms end-of-speech-to-first-audio budget and needs playtesting against it), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
 - [ ] **Queued-turn UX** — How should the client show that speech completed while the DM was answering and is waiting in the four-turn queue?
 - [ ] **LLM response quality at speed** — Can we get narrative quality AND low latency simultaneously? May need tiered model strategy.
 - [x] **Client-side audio mixing** — Resolved in Client Architecture section. Four independent channels (Voice, Ambience, Effects, UI Audio) with ducking behavior. iOS `.playAndRecord` with `.mixWithOthers` and `.duckOthers`. Ambient sounds triggered by `location_changed` events, effects by `play_sound` events. Prototyping priority to validate LiveKit + simultaneous local playback.

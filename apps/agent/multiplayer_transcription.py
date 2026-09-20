@@ -73,6 +73,21 @@ SessionFactory = Callable[[str, Agent, room_io.RoomOptions], Awaitable[AgentSess
 Authorizer = Callable[[str], Awaitable[int | None]]
 
 
+def _input_session() -> AgentSession:
+    """Build the input-only session for one authorized player track.
+
+    No llm, so no tool chain — but every AgentSession site in this repo states its
+    ceiling rather than inheriting the plugin default (test_strict_tool_budget).
+    Endpointing overrides the SDK default because each committed turn is delivered
+    to the DM on its own: a mid-sentence pause that ends the turn early does not
+    merely delay the rest, it splits one utterance into two authenticated turns.
+    """
+    return AgentSession(
+        max_tool_steps=5,
+        turn_handling={"endpointing": {"min_delay": COMPLETE_UTTERANCE_ENDPOINTING_SECONDS}},
+    )
+
+
 class MultiParticipantTranscriber:
     def __init__(
         self,
@@ -191,12 +206,7 @@ class MultiParticipantTranscriber:
                 self.stt,
             )
             if self._session_factory is None:
-                # No llm, so no tool chain — but every AgentSession site in this repo states
-                # its ceiling rather than inheriting the plugin default (test_strict_tool_budget).
-                session = AgentSession(
-                    max_tool_steps=5,
-                    turn_handling={"endpointing": {"min_delay": COMPLETE_UTTERANCE_ENDPOINTING_SECONDS}},
-                )
+                session = _input_session()
                 await session.start(agent, room=self.room, room_options=options, session_host=False)
             else:
                 session = await self._session_factory(identity, agent, options)

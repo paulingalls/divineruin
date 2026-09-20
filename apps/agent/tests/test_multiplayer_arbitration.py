@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 import pytest
-from livekit.agents import StopResponse, llm
+from livekit.agents import AgentSession, StopResponse, llm
 
 import multiplayer_transcription as transcription
 from multiplayer_input import MultiplayerInput
@@ -184,8 +184,7 @@ async def emit(agent: _TranscriberAgent, text: str) -> None:
 
 async def test_queue_rejects_excess_speech_and_surfaces_failures_while_full() -> None:
     manager = MultiParticipantTranscriber(Room(), stt=None, authorizer=authorize)
-    emit_transcript = getattr(manager, "_emit_transcript", manager._queue.put_nowait)
-    agent = _TranscriberAgent("player-two", 7, emit_transcript, pytest.fail, None)
+    agent = _TranscriberAgent("player-two", 7, manager._emit_transcript, pytest.fail, None)
 
     for index in range(5):
         await emit(agent, f"turn-{index}")
@@ -206,8 +205,7 @@ async def test_queue_rejects_excess_speech_and_surfaces_failures_while_full() ->
 
 async def test_repeated_overflow_is_coalesced_and_unconsumed_overflow_fails_close() -> None:
     manager = MultiParticipantTranscriber(Room(), stt=None, authorizer=authorize)
-    emit_transcript = getattr(manager, "_emit_transcript", manager._queue.put_nowait)
-    agent = _TranscriberAgent("player-one", 3, emit_transcript, pytest.fail, None)
+    agent = _TranscriberAgent("player-one", 3, manager._emit_transcript, pytest.fail, None)
 
     for index in range(7):
         await emit(agent, f"turn-{index}")
@@ -215,3 +213,12 @@ async def test_repeated_overflow_is_coalesced_and_unconsumed_overflow_fails_clos
     with pytest.raises(transcription.TranscriptionQueueOverflow, match=r"player-one.*limit 4") as overflow:
         await manager.aclose()
     assert overflow.value.rejected_count == 3
+
+
+async def test_input_sessions_require_a_full_second_of_silence_to_complete_a_turn() -> None:
+    # EndpointingOptions is a total=False TypedDict, so a dropped or misspelled key is
+    # accepted in silence and the session keeps the SDK delay — only the resolved value
+    # distinguishes the shipped setting from the default.
+    resolved = transcription._input_session().options.endpointing
+    assert resolved["min_delay"] == transcription.COMPLETE_UTTERANCE_ENDPOINTING_SECONDS == 1.0
+    assert AgentSession(max_tool_steps=5).options.endpointing["min_delay"] < 1.0
