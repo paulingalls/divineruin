@@ -329,6 +329,10 @@ WORK_ONLY=true
 CHANGED=""
 SAW_REF=false        # any non-empty refspec line seen
 ALL_DELETIONS=true   # every seen ref is a deletion (local_sha = ZERO)
+REF_COUNT=0
+TAG_PUSH=false
+RELEASE_TAG=""
+RELEASE_OBJECT=""
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   # A blank read (empty stdin yields one) is not a pushed ref — don't count it.
@@ -336,6 +340,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue
   fi
   SAW_REF=true
+  REF_COUNT=$((REF_COUNT + 1))
   if [ -z "${local_ref:-}" ] || [ -z "${local_sha:-}" ] || [ -z "${remote_ref:-}" ] || [ -z "${remote_sha:-}" ]; then
     ALL_DELETIONS=false
     DOCS_ONLY=false
@@ -346,6 +351,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue  # branch deletion — keeps ALL_DELETIONS true
   fi
   ALL_DELETIONS=false  # a real (non-deletion) ref
+  if [[ "$remote_ref" == refs/tags/* ]]; then
+    TAG_PUSH=true
+    if [[ "$remote_ref" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$remote_sha" = "$ZERO_SHA" ]; then
+      RELEASE_TAG="${remote_ref#refs/tags/}"
+      RELEASE_OBJECT="$local_sha"
+    fi
+    continue
+  fi
   if ! work_ref "$remote_ref"; then WORK_ONLY=false; fi
   if [ "${remote_sha:-}" = "${ZERO_SHA}" ] || [ -z "${remote_sha:-}" ]; then
     # New branch: diff against the merge-base with origin/main.
@@ -383,6 +396,27 @@ done
 if [ "$SAW_REF" = true ] && [ "$ALL_DELETIONS" = true ]; then
   echo "Branch-deletion push — skipping test suites."
   exit 0
+fi
+
+# A new vMAJOR.MINOR.PATCH tag adds no source — its commit already merged through
+# main, where the full tier ran. Ancestry of origin/main proves that; the root
+# manifest pins the tag to the tree it names.
+if [ "$TAG_PUSH" = true ]; then
+  DOCS_ONLY=false
+  WORK_ONLY=false
+  if [ "$REF_COUNT" -eq 1 ] && [ -n "$RELEASE_TAG" ]; then
+    if peeled=$(git rev-parse --verify "${RELEASE_OBJECT}^{commit}" 2>/dev/null) \
+      && git merge-base --is-ancestor "$peeled" origin/main 2>/dev/null \
+      && manifest_version=$(git show "${peeled}:package.json" 2>/dev/null | bun -e '
+        const parsed = JSON.parse(await Bun.stdin.text());
+        if (typeof parsed.version !== "string") process.exit(1);
+        process.stdout.write(parsed.version);
+      ' 2>/dev/null) \
+      && [ "$manifest_version" = "${RELEASE_TAG#v}" ]; then
+      echo "Verified release tag $RELEASE_TAG at $peeled — skipping test suites."
+      exit 0
+    fi
+  fi
 fi
 
 # Empty stdin (no refs to consider) → run tests (safe fallback).
