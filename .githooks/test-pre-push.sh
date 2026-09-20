@@ -156,6 +156,10 @@ run_case "work-failing-diff" "$work_ref" "__FAIL__" full
 run_case "work-unknown-diff-status" "$work_ref" $'U\tapps/server/src/x.ts' full
 run_case "main-source" "refs/heads/main aaa refs/heads/main bbb" "apps/server/src/x.ts" full
 run_case "tag-source" "refs/tags/v1 aaa refs/tags/v1 bbb" "apps/server/src/x.ts" full
+# An unverified tag riding with a docs-only work branch. The tag contributes no
+# paths (the loop skips diffing tags), so only the unconditional TAG_PUSH=true —
+# set for ANY tag, not just release-shaped ones — keeps this off the docs-only skip.
+run_case "unknown-tag-with-docs-branch" $'refs/tags/nightly aaa refs/tags/nightly '"$zero"$'\nrefs/heads/story-095 aaa refs/heads/story-095 bbb' "docs/file.md" full
 run_case "main-docs" "refs/heads/main aaa refs/heads/main bbb" "README.md" skip
 run_case "mixed-refs" $'refs/heads/story-095 aaa refs/heads/story-095 bbb\nrefs/heads/main aaa refs/heads/main bbb' "apps/server/src/x.ts" full
 run_case "rename-out" "$work_ref" $'R100\tapps/server/src/old.ts\tpackage.json' full

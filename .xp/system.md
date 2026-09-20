@@ -97,12 +97,13 @@ API cost) and runs only at the comprehensive push or sprint-close boundary.
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   runs lint/typechecks for XP work-branch source pushes, and the complete
-  Docker/browser/acceptance gate for main, unverified tags, unknown refs, or changes outside
-  the source allowlist. A new version tag at a commit already merged into `origin/main`
-  skips suites only when the tagged manifest declares that version. Sprint close invokes the
-  complete gate on the merged release tree. Do not repeat an identical broad suite
-  on an unchanged tree during review without a concrete uncovered behavior. On a gate failure,
-  read repo-root `flake-artifacts/` before calling anything a flake.
+  Docker/browser/acceptance gate for main, unverified tags, unknown refs, or
+  changes outside the source allowlist. A push of ONE new version tag ALONE
+  skips suites when that tag's commit is already merged into `origin/main` and
+  the manifest there declares that version. Sprint close invokes the complete
+  gate on the merged release tree. Do not repeat an identical broad suite on an
+  unchanged tree during review without a concrete uncovered behavior. On a gate
+  failure, read repo-root `flake-artifacts/` before calling anything a flake.
 
 **A falsifier is a path into a moving tree, and nothing re-checks it until it
 fires.** So it must run BEHAVIOUR — a test FILE or DIRECTORY, or a call — never
