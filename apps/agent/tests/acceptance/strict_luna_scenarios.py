@@ -199,6 +199,9 @@ async def prepare_case(case_id: str) -> Scenario:
         )
     elif case_id == "dispatch.begin_spell_training":
         await _set_level(pool, player_id, 3)
+    elif case_id == "dispatch.conclude":
+        # A stored caller the tool must clear: without one, "cleared" is the seeded value.
+        sd.pre_dispatch_agent_type = "wilderness"
     elif case_id == "onboarding.advance_beat":
         sd.onboarding_beat = 1
     elif case_id == "blacksmith.repair_item":
@@ -214,7 +217,7 @@ async def prepare_case(case_id: str) -> Scenario:
             json.dumps({"current_hits": 2}),
         )
 
-    before = {"player": await _player_json(pool, player_id)}
+    before: dict[str, Any] = {"player": await _player_json(pool, player_id)}
     if case_id == "exploration.check_gather":
         before["inventory"] = await db_queries.get_player_inventory(player_id, conn=pool)
     return Scenario(sd, before)

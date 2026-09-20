@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from acceptance.strict_luna_assertions import STATE_BRANCHES, state_branch
 from acceptance.strict_luna_fixtures import MANIFEST_PATH, REQUIRED_CASE_IDS, load_case_manifest
 from acceptance.strict_luna_runtime import _cost, grade_trace
 from livekit.agents import llm
@@ -126,6 +128,24 @@ def test_trace_rejects_missing_anchor_and_overlong_direct_reply() -> None:
             case,
             _events(call, llm.ChatMessage(role="assistant", content=['[INVENTED, calm]: "The satchel is ready."'])),
         )
+
+
+def test_trace_rejects_a_variant_no_check_covers() -> None:
+    case = replace(
+        next(case for case in load_case_manifest() if case.id == "exploration.activate_self"),
+        expected_variant="attack",
+    )
+    narration = llm.ChatMessage(role="assistant", content=["A second breath fills her lungs."])
+
+    with pytest.raises(AssertionError, match="no variant check"):
+        grade_trace(case, _events(_call("activate", '{"target_id":null,"target_ids":null}'), narration))
+
+
+def test_every_required_case_routes_to_a_state_assertion() -> None:
+    assert set(STATE_BRANCHES) == REQUIRED_CASE_IDS
+
+    with pytest.raises(AssertionError, match="no persisted-state assertion"):
+        state_branch("exploration.not_routed")
 
 
 def test_luna_cost_separates_cached_input() -> None:

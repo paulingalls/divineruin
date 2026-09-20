@@ -92,7 +92,8 @@ def _variant(call: Any, variant: str | None) -> bool:
             return (args.get("target_id") is not None) is (variant == "single") and args.get("target_ids") is None
         if variant == "multiple":
             return len(args.get("target_ids") or []) == 2 and args.get("target_id") is None
-    return variant in {"none", "attack", "training", "victory"}
+    # No check covers this tool/variant pair, so the row's variant column would grade nothing.
+    raise AssertionError(f"{call.name} has no variant check for {variant!r}")
 
 
 def grade_trace(case, events: list[Any]) -> tuple[Any | None, str]:

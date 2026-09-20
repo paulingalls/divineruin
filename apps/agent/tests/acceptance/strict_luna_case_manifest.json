@@ -80,12 +80,12 @@
     "id": "exploration.check_dice",
     "profile": "exploration",
     "seed": "exploration.check_dice",
-    "prompt": "Roll 1d6 for how many gulls cross the sky, then narrate and include the word gulls.",
+    "prompt": "Roll 1d6 for how many gulls cross the sky, then narrate and include the word gull.",
     "expected_tool": "check",
     "expected_variant": "dice",
     "prerequisite": null,
     "assertion": "exploration.check_dice",
-    "narration_anchor": "gulls"
+    "narration_anchor": "gull"
   },
   {
     "id": "exploration.travel",
