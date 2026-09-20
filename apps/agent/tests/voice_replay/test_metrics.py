@@ -160,13 +160,14 @@ def test_metrics_use_received_frame_clock_and_audio_words():
         silence_threshold=10,
         outcome_anchor="quality wood",
         input_transcript="Please gather herbs",
-        model_text="quality wood appeared earlier in model text",
     )
 
     assert result.first_meaningful_word == "I"
     assert result.first_meaningful_latency_ms == pytest.approx(1_100)
     assert result.outcome_latency_ms == pytest.approx(2_250)
     assert result.pre_outcome_words == ["I", "found"]
+    assert result.outcome_words == ["quality", "wood"]
+    assert result.result_boundary_sample == 650
 
 
 @pytest.mark.parametrize(
@@ -181,6 +182,21 @@ def test_metrics_use_received_frame_clock_and_audio_words():
         (_words()[:2], _frames(), _pcm(), 10.0, "anchor"),
         (_words(), [ReceivedFrame(0, 500, 11.0), ReceivedFrame(600, 1_500, 11.6)], _pcm(), 10.0, "contiguous"),
         (_words(), _frames(), _pcm(), 12.0, "negative"),
+        ([_words()[0], _words()[2], _words()[1], _words()[3]], _frames(), _pcm(), 10.0, "not monotonic"),
+        (
+            _words(),
+            [ReceivedFrame(0, 500, 11.0), ReceivedFrame(500, 600, 10.5), ReceivedFrame(600, 1_500, 12.2)],
+            _pcm(),
+            10.0,
+            "arrival times must be monotonic",
+        ),
+        (
+            _words(),
+            [ReceivedFrame(0, 500, 11.0), ReceivedFrame(500, 600, 11.5), ReceivedFrame(600, 1_000, 12.2)],
+            _pcm(),
+            10.0,
+            "do not cover",
+        ),
     ],
 )
 def test_metrics_fail_loud_on_unusable_evidence(words, frames, pcm, source_end: float, match: str):
@@ -197,8 +213,9 @@ def test_metrics_fail_loud_on_unusable_evidence(words, frames, pcm, source_end: 
         )
 
 
-def test_anchor_needs_nonempty_pre_result_floor_and_audio_not_model_text():
-    with pytest.raises(ValueError, match="pre-result"):
+def test_anchor_must_follow_a_pre_result_pause_and_stay_out_of_the_input():
+    # The anchor opening the received audio leaves no pre-result speech to separate it from.
+    with pytest.raises(ValueError, match="no pre-result speech boundary"):
         compute_audio_metrics(
             pcm=_pcm(),
             sample_rate=1_000,
@@ -209,17 +226,16 @@ def test_anchor_needs_nonempty_pre_result_floor_and_audio_not_model_text():
             outcome_anchor="quality wood",
             input_transcript="Please gather herbs",
         )
-    with pytest.raises(ValueError, match="anchor"):
+    with pytest.raises(ValueError, match="present in the input transcript"):
         compute_audio_metrics(
             pcm=_pcm(),
             sample_rate=1_000,
             frames=_frames(),
-            words=_words()[:2],
+            words=_words(),
             source_speech_end_monotonic=10.0,
             silence_threshold=10,
             outcome_anchor="quality wood",
-            input_transcript="Please gather herbs",
-            model_text="quality wood",
+            input_transcript="Please find quality wood",
         )
 
 

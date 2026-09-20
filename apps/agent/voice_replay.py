@@ -81,6 +81,7 @@ async def execute_with_evidence(
     owned_closers: list[Callable[[], Awaitable[None]]],
     evidence_path: Path,
     row: dict[str, Any],
+    validate: Callable[[dict[str, Any]], None] | None = None,
 ) -> None:
     row.setdefault("completion", "failed")
     error: BaseException | None = None
@@ -106,6 +107,13 @@ async def execute_with_evidence(
     if cleanup_errors:
         row["completion"] = "failed"
         row["diagnostic"] = row.get("diagnostic") or "owned cleanup failed"
+    if error is None and validate is not None:
+        try:
+            validate(row)
+        except BaseException as exc:
+            error = exc
+            row["completion"] = "failed"
+            row["diagnostic"] = f"{type(exc).__name__}: {exc}"
     append_evidence_row(evidence_path, row)
     if error is not None:
         raise error
@@ -423,7 +431,6 @@ async def _run_row(
             silence_threshold=clip.silence_threshold,
             outcome_anchor=clip.outcome_anchor if scenario == "affected" else None,
             input_transcript=clip.transcript,
-            model_text=" ".join(model_text),
         )
         row["metrics"] = {
             "first_meaningful_word": metrics.first_meaningful_word,
@@ -433,10 +440,9 @@ async def _run_row(
             "outcome_words": metrics.outcome_words,
             "result_boundary_sample": metrics.result_boundary_sample,
         }
-        row["cleanup"] = {"complete": True, "errors": []}
-        validate_timing_row(row)
+        row["model_text"] = " ".join(model_text)
 
-    await execute_with_evidence(operation, closers, evidence_path, row)
+    await execute_with_evidence(operation, closers, evidence_path, row, validate=validate_timing_row)
 
 
 async def run(args: argparse.Namespace) -> None:

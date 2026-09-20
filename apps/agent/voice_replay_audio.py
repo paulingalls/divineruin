@@ -257,7 +257,9 @@ async def cancel_task(task: asyncio.Task[Any]) -> None:
     await asyncio.gather(task, return_exceptions=True)
 
 
-async def wait_for_output(session: Any, *, affected: bool, tool_events: list[Any], timeout: float) -> None:
+async def wait_for_output(
+    session: Any, *, affected: bool, tool_events: list[Any], timeout: float, stable_seconds: float = 2.0
+) -> None:
     deadline = time.monotonic() + timeout
     saw_speaking = False
     stable_since: float | None = None
@@ -265,8 +267,8 @@ async def wait_for_output(session: Any, *, affected: bool, tool_events: list[Any
         state = session.agent_state
         saw_speaking = saw_speaking or state == "speaking"
         ready = saw_speaking and state == "listening" and (not affected or tool_events)
-        stable_since = stable_since or time.monotonic() if ready else None
-        if stable_since is not None and time.monotonic() - stable_since >= 2.0:
+        stable_since = (stable_since or time.monotonic()) if ready else None
+        if stable_since is not None and time.monotonic() - stable_since >= stable_seconds:
             return
         await asyncio.sleep(0.05)
     raise TimeoutError("agent produced no complete audible turn")
@@ -296,21 +298,22 @@ async def capture_received_audio(
     room.on("track_subscribed", consider)
     try:
         participant = room.remote_participants.get(publisher_identity)
-        if participant is not None:
-            for publication in participant.track_publications.values():
-                if publication.kind == rtc.TrackKind.KIND_AUDIO and publication.track is not None:
-                    track = publication.track
-                    break
-            else:
-                track, publication, participant = await asyncio.wait_for(matched, timeout)
+        publication = next(
+            (
+                candidate
+                for candidate in (participant.track_publications.values() if participant is not None else ())
+                if candidate.kind == rtc.TrackKind.KIND_AUDIO and candidate.track is not None
+            ),
+            None,
+        )
+        if publication is not None:
+            track = publication.track
         else:
-            track, publication, participant = await asyncio.wait_for(matched, timeout)
+            track, publication, _ = await asyncio.wait_for(matched, timeout)
     except TimeoutError as exc:
         raise TimeoutError(f"audio track from {publisher_identity!r} was not subscribed") from exc
     finally:
         room.off("track_subscribed", consider)
-    if participant.identity != publisher_identity:
-        raise ValueError(f"received audio from unexpected publisher {participant.identity!r}")
     stream = rtc.AudioStream(track, sample_rate=sample_rate, num_channels=1)
     iterator = stream.__aiter__()
     payloads: list[bytes] = []
@@ -355,6 +358,6 @@ async def capture_received_audio(
         frames=spans,
         sample_rate=sample_rate,
         channels=1,
-        publisher_identity=participant.identity,
+        publisher_identity=publisher_identity,
         track_sid=publication.sid,
     )

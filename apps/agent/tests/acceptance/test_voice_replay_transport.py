@@ -89,17 +89,16 @@ async def test_checked_pcm_crosses_real_livekit_from_named_publisher(
         await asyncio.gather(*(aclose_room(room) for room in (agent, player, decoy)))
 
 
-async def test_timeout_and_cancellation_persist_failure_and_close_only_owned(tmp_path: Path):
-    class Closer:
-        def __init__(self):
-            self.calls = 0
+def _recording_closer(sink: list[str], name: str):
+    async def close() -> None:
+        sink.append(name)
 
-        async def close(self):
-            self.calls += 1
+    return close
 
+
+async def test_timeout_and_cancellation_persist_failure_and_close_owned_newest_first(tmp_path: Path):
     for cancellation in (False, True):
-        owned = Closer()
-        sentinel = Closer()
+        closed: list[str] = []
         path = tmp_path / f"failure-{cancellation}.jsonl"
 
         async def operation(_row, *, cancel=cancellation):
@@ -108,12 +107,41 @@ async def test_timeout_and_cancellation_persist_failure_and_close_only_owned(tmp
             raise TimeoutError("no output")
 
         with pytest.raises((TimeoutError, asyncio.CancelledError)):
-            await execute_with_evidence(operation, [owned.close], path, {"scenario": "affected"})
+            await execute_with_evidence(
+                operation,
+                [_recording_closer(closed, "room"), _recording_closer(closed, "source")],
+                path,
+                {"scenario": "affected"},
+            )
         row = json.loads(path.read_text().strip())
         assert row["completion"] == "failed"
-        assert row["cleanup"]["complete"] is True
-        assert owned.calls == 1
-        assert sentinel.calls == 0
+        assert row["cleanup"] == {"complete": True, "errors": []}
+        # newest-first: the source publishing into a room is released before the room itself
+        assert closed == ["source", "room"]
+
+
+async def test_owned_cleanup_failure_reaches_the_row_and_its_validator(tmp_path: Path):
+    path = tmp_path / "cleanup.jsonl"
+    seen: list[dict] = []
+
+    async def stuck() -> None:
+        raise RuntimeError("audio source stuck")
+
+    async def operation(row) -> None:
+        row["repetition"] = 0
+
+    def validate(row) -> None:
+        seen.append(json.loads(json.dumps(row)))
+        raise ValueError("row rejected")
+
+    with pytest.raises(ValueError, match="row rejected"):
+        await execute_with_evidence(operation, [stuck], path, {"scenario": "affected"}, validate=validate)
+
+    # the validator judges the measured teardown, not a cleanup field the operation wrote for itself
+    assert seen[0]["cleanup"] == {"complete": False, "errors": ["RuntimeError: audio source stuck"]}
+    row = json.loads(path.read_text().strip())
+    assert row["completion"] == "failed"
+    assert row["diagnostic"] == "ValueError: row rejected"
 
 
 async def test_real_db_inventory_assertion_rejects_missing_and_duplicate_grant(reset_db_pool: str):

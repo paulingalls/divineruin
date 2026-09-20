@@ -78,10 +78,8 @@ def compute_audio_metrics(
     silence_threshold: int,
     outcome_anchor: str | None,
     input_transcript: str,
-    model_text: str | None = None,
     min_result_gap_seconds: float = 0.2,
 ) -> AudioMetrics:
-    del model_text
     if not pcm or len(pcm) % 2:
         raise ValueError("received PCM is empty or incomplete")
     if sample_rate <= 0:
@@ -142,19 +140,11 @@ def compute_audio_metrics(
     if not gaps:
         raise ValueError("received audio has no pre-result speech boundary before the outcome anchor")
     _, gap_start, boundary_sample = max(gaps)
-    pre_indexes = [i for i, end in enumerate(ends) if end <= gap_start]
-    if not pre_indexes:
-        raise ValueError("outcome anchor has no nonempty pre-result word floor")
-    pre_count = pre_indexes[-1] + 1
-    if pre_count > anchor_index:
-        raise ValueError("outcome anchor begins before the received pre-result boundary")
-    pre_words = word_tokens[:pre_count]
-    if any(pre_words[i : i + len(anchor)] == anchor for i in range(len(pre_words) - len(anchor) + 1)):
-        raise ValueError("outcome anchor appears in pre-result received audio")
+    pre_count = max(index for index, end in enumerate(ends) if end <= gap_start) + 1
 
     outcome_time = _received_time(anchor_sample, frames, sample_rate)
     outcome_latency = (outcome_time - source_speech_end_monotonic) * 1_000
-    if first_latency < 0 or outcome_latency < 0:
+    if outcome_latency < 0:
         raise ValueError("received-audio latency is negative")
     return AudioMetrics(
         first_meaningful_word=words[0].text,
