@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,10 @@ from livekit.agents import utils
 from livekit.plugins import deepgram
 
 from multiplayer_transcription import AuthenticatedTranscript, MultiParticipantTranscriber
+
+
+async def _authorize_transcription_fixture(_identity: str) -> int:
+    return 1
 
 
 @dataclass(frozen=True)
@@ -93,7 +98,10 @@ class MultiplayerVoiceHarness:
             identity=identity,
         )
 
-    async def start(self) -> None:
+    async def start(
+        self,
+        prepare_listener: Callable[[rtc.Room], Awaitable[Callable[[str], Awaitable[int | None]]]] | None = None,
+    ) -> None:
         self._http_context = utils.http_context.open()
         await self._http_context.__aenter__()
         self.player_one = await connect_room(self.server["ws_url"], self._token(self.player_one_identity))
@@ -103,7 +111,12 @@ class MultiplayerVoiceHarness:
         self.listener = await connect_room(self.server["ws_url"], self._token(f"transcriber-{uuid.uuid4().hex[:8]}"))
         await wait_for_peer(self.listener, identity=self.player_one_identity)
         stt = deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300)
-        self.manager = MultiParticipantTranscriber(self.listener, stt=stt)
+        authorizer = await prepare_listener(self.listener) if prepare_listener else _authorize_transcription_fixture
+        self.manager = MultiParticipantTranscriber(
+            self.listener,
+            stt=stt,
+            authorizer=authorizer,
+        )
         self.manager.start()
         self.player_two = await connect_room(self.server["ws_url"], self._token(self.player_two_identity))
         self.audio[self.player_two_identity] = await create_microphone_track(

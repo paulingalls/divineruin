@@ -13,6 +13,7 @@ from livekit.plugins import anthropic
 
 import activity_tools
 import agent
+import session_startup
 from session_data import SessionData
 from voices import VOICE_ENV_VARS
 
@@ -57,7 +58,7 @@ async def test_speech_end_tracks_every_transition_out_of_speaking(old_state, new
         max_tool_steps=5,
         userdata=SessionData(player_id="player", location_id="place", room=None),
     )
-    agent._register_speech_end_tracking(session)
+    session_startup._register_speech_end_tracking(session)
 
     session.emit(
         "agent_state_changed",

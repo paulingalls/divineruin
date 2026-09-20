@@ -62,6 +62,10 @@ class Factory:
 
 async def settle() -> None:
     await asyncio.sleep(0)
+
+
+async def authorize_all(_identity: str) -> int:
+    return 1
     await asyncio.sleep(0)
 
 
@@ -83,10 +87,36 @@ def provider_error(recoverable: bool) -> stt_api.STTError:
     )
 
 
+async def test_authorizes_before_stt_captures_generation_and_starts_once() -> None:
+    room = Room(("player-two", "divineruin-dm", "stranger"))
+    factory = Factory()
+    authorization_calls = []
+
+    async def authorize(identity: str) -> int | None:
+        authorization_calls.append(identity)
+        return 7 if identity == "player-two" else None
+
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize, session_factory=factory)
+    manager.start()
+    manager.start()
+    await settle()
+
+    assert authorization_calls == ["player-two", "divineruin-dm", "stranger"]
+    assert [identity for identity, *_ in factory.calls] == ["player-two"]
+    assert len(room.listeners["participant_connected"]) == 1
+    assert len(room.listeners["participant_disconnected"]) == 1
+
+    agent = factory.calls[0][1]
+    with pytest.raises(StopResponse):
+        await agent.on_user_turn_completed(llm.ChatContext.empty(), message("authenticated speech"))
+    assert await next_item(manager) == AuthenticatedTranscript("player-two", "authenticated speech", 7)
+    await manager.aclose()
+
+
 async def test_two_existing_participants_get_exact_room_options_and_bound_transcripts() -> None:
     room = Room(("player-one", "player-two"))
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     await settle()
 
@@ -106,15 +136,15 @@ async def test_two_existing_participants_get_exact_room_options_and_bound_transc
         await agents["player-two"].on_user_turn_completed(llm.ChatContext.empty(), message("second phrase"))
     with pytest.raises(StopResponse):
         await agents["player-one"].on_user_turn_completed(llm.ChatContext.empty(), message("first phrase"))
-    assert await next_item(manager) == AuthenticatedTranscript("player-two", "second phrase")
-    assert await next_item(manager) == AuthenticatedTranscript("player-one", "first phrase")
+    assert await next_item(manager) == AuthenticatedTranscript("player-two", "second phrase", 1)
+    assert await next_item(manager) == AuthenticatedTranscript("player-one", "first phrase", 1)
     await manager.aclose()
 
 
 async def test_join_duplicate_disconnect_and_reconnect_are_isolated() -> None:
     room = Room(("player-one",))
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     room.emit("participant_connected", Participant("player-two"))
     room.emit("participant_connected", Participant("player-two"))
@@ -135,10 +165,39 @@ async def test_join_duplicate_disconnect_and_reconnect_are_isolated() -> None:
     await manager.aclose()
 
 
+async def test_old_session_emits_its_captured_generation_after_reconnect() -> None:
+    room = Room(("player-one",))
+    factory = Factory()
+    generation = 1
+
+    async def authorize(_identity: str) -> int:
+        return generation
+
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize, session_factory=factory)
+    manager.start()
+    await settle()
+    old_agent = factory.calls[0][1]
+    room.emit("participant_disconnected", Participant("player-one"))
+    await settle()
+    generation = 2
+    room.emit("participant_connected", Participant("player-one"))
+    await settle()
+    new_agent = factory.calls[1][1]
+
+    with pytest.raises(StopResponse):
+        await old_agent.on_user_turn_completed(llm.ChatContext.empty(), message("late old speech"))
+    with pytest.raises(StopResponse):
+        await new_agent.on_user_turn_completed(llm.ChatContext.empty(), message("current speech"))
+
+    assert await next_item(manager) == AuthenticatedTranscript("player-one", "late old speech", 1)
+    assert await next_item(manager) == AuthenticatedTranscript("player-one", "current speech", 2)
+    await manager.aclose()
+
+
 async def test_unknown_identity_is_preserved_and_empty_identity_fails() -> None:
     room = Room()
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     room.emit("participant_connected", Participant("unregistered-player"))
     await settle()
@@ -155,7 +214,7 @@ async def test_unknown_identity_is_preserved_and_empty_identity_fails() -> None:
 async def test_empty_completed_transcript_reaches_the_consumer_instead_of_emitting() -> None:
     room = Room(("player-one",))
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     await settle()
     agent = factory.calls[0][1]
@@ -178,7 +237,7 @@ async def test_listener_precedes_inventory_and_snapshot_join_is_deduplicated() -
 
     room.remote_participants = Inventory(snapshot)
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     await settle()
     assert {identity for identity, *_ in factory.calls} == {"player-one", "player-two"}
@@ -192,7 +251,7 @@ async def test_start_and_session_errors_reach_consumer_with_identity_and_cause()
     async def fail_factory(identity, agent, options):
         raise OSError("provider unavailable")
 
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=fail_factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=fail_factory)
     manager.start()
     with pytest.raises(RuntimeError, match=r"bad-start.*provider unavailable") as caught:
         await next_item(manager)
@@ -201,7 +260,7 @@ async def test_start_and_session_errors_reach_consumer_with_identity_and_cause()
 
     room = Room(("bad-stream",))
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     await settle()
     factory.calls[0][3].emit_error(provider_error(recoverable=False))
@@ -217,14 +276,14 @@ async def test_start_and_session_errors_reach_consumer_with_identity_and_cause()
 async def test_a_retried_provider_error_does_not_fail_the_stream() -> None:
     room = Room(("player-one",))
     factory = Factory()
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=factory)
     manager.start()
     await settle()
     factory.calls[0][3].emit_error(provider_error(recoverable=True))
     agent = factory.calls[0][1]
     with pytest.raises(StopResponse):
         await agent.on_user_turn_completed(llm.ChatContext.empty(), message("still speaking"))
-    assert await next_item(manager) == AuthenticatedTranscript("player-one", "still speaking")
+    assert await next_item(manager) == AuthenticatedTranscript("player-one", "still speaking", 1)
     await manager.aclose()
 
 
@@ -234,7 +293,7 @@ async def test_unconsumed_error_is_raised_by_close() -> None:
     async def fail_factory(identity, agent, options):
         raise OSError("start broke")
 
-    manager = MultiParticipantTranscriber(room, stt=None, session_factory=fail_factory)
+    manager = MultiParticipantTranscriber(room, stt=None, authorizer=authorize_all, session_factory=fail_factory)
     manager.start()
     await settle()
     with pytest.raises(RuntimeError, match=r"player-one.*start broke"):
@@ -259,7 +318,12 @@ async def test_close_waits_for_each_session() -> None:
         sessions[identity] = DelayedSession(identity)
         return sessions[identity]
 
-    manager = MultiParticipantTranscriber(Room(("player-one", "player-two")), stt=None, session_factory=factory)
+    manager = MultiParticipantTranscriber(
+        Room(("player-one", "player-two")),
+        stt=None,
+        authorizer=authorize_all,
+        session_factory=factory,
+    )
     manager.start()
     await settle()
     close_task = asyncio.create_task(manager.aclose())

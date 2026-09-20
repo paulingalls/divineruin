@@ -132,9 +132,9 @@ class TestPromptCaching:
         import ast
         import inspect
 
-        import agent
+        import session_startup
 
-        source = inspect.getsource(agent)
+        source = inspect.getsource(session_startup)
         tree = ast.parse(source)
         # Find the anthropic.LLM(...) call in _make_agent_session
         found_caching = False
@@ -225,17 +225,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.anthropic.LLM"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -276,17 +276,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.anthropic.LLM"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player",
                                         new_callable=AsyncMock,
@@ -326,17 +326,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.anthropic.LLM"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -364,6 +364,11 @@ class TestDMSession:
                 assert start_call[1]["room"] == mock_ctx.room
                 assert isinstance(start_call[1]["agent"], ExplorationAgent)
                 assert start_call[1]["agent"]._agent_type == "city"
+                room_options = start_call[1]["room_options"]
+                assert room_options.audio_input is False
+                assert room_options.text_input is False
+                assert room_options.get_audio_input_options() is None
+                assert room_options.get_text_input_options() is None
 
     @pytest.mark.asyncio
     async def test_dm_session_generates_initial_greeting(self):
@@ -374,17 +379,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.anthropic.LLM"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):

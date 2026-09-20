@@ -27,15 +27,20 @@ from party_state import PartyMember
 from session_data import SessionData
 
 
-def _recording_room():
+def _recording_room(*identities):
     """A MagicMock room (pyright accepts it for the rtc.Room param, as test_reconnection does)
     whose .on(event) records the decorated handler into ``handlers`` by event name — so a test can
     invoke the registered participant_connected callback directly. A bare MagicMock's decorator
     return would replace the handler with another mock, hiding the real function."""
     room = MagicMock()
+    room.remote_participants = {identity: _participant(identity) for identity in identities}
     handlers: dict = {}
 
-    def _on(event):
+    def _on(event, callback=None):
+        if callback is not None:
+            handlers[event] = callback
+            return callback
+
         def _register(fn):
             handlers[event] = fn
             return fn
@@ -226,3 +231,125 @@ async def test_concurrent_joins_for_same_id_append_once():
     await _drain()
 
     assert sd.party.member_ids == ["player_1", "player_2"]  # appended exactly once
+
+
+@pytest.mark.asyncio
+async def test_existing_remote_is_hydrated_while_primary_and_non_player_are_rejected():
+    inventory = ("player_1", "player_2", "divineruin-dm")
+    assert inventory
+    mods = _make_mods(None)
+    mods[0].get_player.side_effect = lambda pid: {"player_id": pid} if pid == "player_2" else None
+    room, _handlers = _recording_room(*inventory)
+    sd = SessionData(player_id="player_1", location_id="loc")
+
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+
+    assert sd.party.member_ids == ["player_1", "player_2"]
+    assert lifecycle.current_generation("player_1") is not None
+    assert lifecycle.current_generation("player_2") is not None
+    assert lifecycle.current_generation("divineruin-dm") is None
+    assert [call.args[0] for call in mods[0].get_player.await_args_list] == ["player_2", "divineruin-dm"]
+
+
+@pytest.mark.asyncio
+async def test_duplicate_join_shares_lookup_and_live_generation():
+    lookup_started = asyncio.Event()
+    release_lookup = asyncio.Event()
+    mods = _make_mods(None)
+
+    async def delayed_lookup(pid):
+        lookup_started.set()
+        await release_lookup.wait()
+        return {"player_id": pid}
+
+    mods[0].get_player.side_effect = delayed_lookup
+    room, handlers = _recording_room()
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+
+    handlers["participant_connected"](_participant("player_2"))
+    handlers["participant_connected"](_participant("player_2"))
+    await lookup_started.wait()
+    generation = lifecycle.current_generation("player_2")
+    assert generation is not None
+    assert mods[0].get_player.await_count == 1
+    release_lookup.set()
+    await _drain()
+    handlers["participant_connected"](_participant("player_2"))
+    await _drain()
+
+    assert sd.party.member_ids == ["player_1", "player_2"]
+    assert lifecycle.current_generation("player_2") == generation
+    assert mods[0].get_player.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_disconnect_keeps_member_but_reconnect_advances_generation():
+    mods = _make_mods({"player_id": "player_2"})
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+    first = lifecycle.current_generation("player_2")
+    assert first is not None
+
+    handlers["participant_disconnected"](_participant("player_2"))
+    assert sd.party.contains("player_2")
+    assert lifecycle.current_generation("player_2") is None
+
+    handlers["participant_connected"](_participant("player_2"))
+    second = lifecycle.current_generation("player_2")
+    handlers["participant_connected"](_participant("player_2"))
+
+    assert second is not None and second > first
+    assert lifecycle.current_generation("player_2") == second
+    assert sd.party.member_ids == ["player_1", "player_2"]
+
+
+@pytest.mark.asyncio
+async def test_authorization_requires_membership_live_connection_and_exact_generation():
+    mods = _make_mods({"player_id": "player_2"})
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+    member = sd.party.member("player_2")
+    generation = lifecycle.current_generation("player_2")
+    assert member is not None and generation is not None
+    assert lifecycle.is_authorized("player_2", generation)
+
+    sd.party.members.remove(member)
+    assert not lifecycle.is_authorized("player_2", generation)
+    sd.party.members.append(member)
+    handlers["participant_disconnected"](_participant("player_2"))
+    assert not lifecycle.is_authorized("player_2", generation)
+    handlers["participant_connected"](_participant("player_2"))
+    current = lifecycle.current_generation("player_2")
+    assert current is not None and current > generation
+    assert not lifecycle.is_authorized("player_2", generation)
+    assert lifecycle.is_authorized("player_2", current)
