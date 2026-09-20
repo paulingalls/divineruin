@@ -31,14 +31,14 @@ async def test_transcription_tracks_mute_unpublish_disconnect_and_reconnect(
             harness.player_two_identity: 1,
         }
 
-        harness.mute(harness.player_two_identity, True)
+        await harness.mute(harness.player_two_identity, True)
         await harness.drain()
         await harness.play(harness.player_one_identity, PLAYER_ONE_SPEECH)
         await harness.await_marker(harness.player_one_identity, PLAYER_ONE_SPEECH.marker)
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
         await harness.assert_no_transcript(harness.player_two_identity)
 
-        harness.mute(harness.player_two_identity, False)
+        await harness.mute(harness.player_two_identity, False)
         await harness.drain()
         await harness.play(harness.player_two_identity, PLAYER_TWO_SPEECH)
         await harness.await_marker(harness.player_two_identity, PLAYER_TWO_SPEECH.marker)

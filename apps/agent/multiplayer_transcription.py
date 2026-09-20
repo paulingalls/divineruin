@@ -118,7 +118,7 @@ class MultiParticipantTranscriber:
                 text_input=False,
                 audio_output=False,
                 text_output=False,
-                close_on_disconnect=True,
+                close_on_disconnect=False,
             )
             agent = _TranscriberAgent(
                 identity,

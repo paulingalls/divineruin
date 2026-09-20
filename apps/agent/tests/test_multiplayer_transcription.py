@@ -98,7 +98,7 @@ async def test_two_existing_participants_get_exact_room_options_and_bound_transc
         assert options.text_input is False
         assert options.audio_output is False
         assert options.text_output is False
-        assert options.close_on_disconnect is True
+        assert options.close_on_disconnect is False
 
     with pytest.raises(StopResponse):
         await agents["player-two"].on_user_turn_completed(llm.ChatContext.empty(), message("second phrase"))

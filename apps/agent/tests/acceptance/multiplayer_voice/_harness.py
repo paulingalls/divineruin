@@ -111,6 +111,30 @@ class MultiplayerVoiceHarness:
         )
         await wait_for_peer(self.listener, identity=self.player_two_identity)
         await self.wait_for_active({self.player_one_identity, self.player_two_identity})
+        await self.wait_for_microphone(self.player_one_identity, muted=False)
+        await self.wait_for_microphone(self.player_two_identity, muted=False)
+
+    async def wait_for_microphone(self, identity: str, *, muted: bool | None = None, published: bool = True) -> None:
+        assert self.listener is not None
+        async with asyncio.timeout(10):
+            while True:
+                participant = self.listener.remote_participants.get(identity)
+                publications = (
+                    [
+                        publication
+                        for publication in participant.track_publications.values()
+                        if publication.kind == rtc.TrackKind.KIND_AUDIO
+                    ]
+                    if participant is not None
+                    else []
+                )
+                if not published and not publications:
+                    return
+                if published and len(publications) == 1:
+                    publication = publications[0]
+                    if publication.track is not None and (muted is None or publication.muted is muted):
+                        return
+                await asyncio.sleep(0.02)
 
     async def wait_for_active(self, expected: set[str], timeout: float = 10) -> None:
         assert self.manager is not None
@@ -128,14 +152,16 @@ class MultiplayerVoiceHarness:
     async def play(self, identity: str, fixture: SpeechFixture) -> None:
         await play_audio_frames(self.audio[identity][0], fixture.frames())
 
-    def mute(self, identity: str, muted: bool) -> None:
+    async def mute(self, identity: str, muted: bool) -> None:
         set_audio_muted(self.audio[identity][1], muted)
+        await self.wait_for_microphone(identity, muted=muted)
 
     async def unpublish(self, identity: str) -> None:
         room = self.player_one if identity == self.player_one_identity else self.player_two
         assert room is not None
         source, _track, publication = self.audio.pop(identity)
         await unpublish_audio(room, source, publication)
+        await self.wait_for_microphone(identity, published=False)
 
     async def republish(self, identity: str) -> None:
         room = self.player_one if identity == self.player_one_identity else self.player_two
@@ -143,6 +169,7 @@ class MultiplayerVoiceHarness:
         self.audio[identity] = await create_microphone_track(
             room, sample_rate=16000, channels=1, name=f"{identity}-replacement-microphone"
         )
+        await self.wait_for_microphone(identity, muted=False)
 
     async def disconnect_player_two(self) -> None:
         assert self.player_two is not None
@@ -154,6 +181,7 @@ class MultiplayerVoiceHarness:
         async with asyncio.timeout(10):
             while self.manager is not None and self.manager._closing:
                 await asyncio.sleep(0.02)
+        await self.wait_for_microphone(self.player_one_identity, muted=False)
 
     async def reconnect_player_two(self) -> None:
         self.player_two = await connect_room(self.server["ws_url"], self._token(self.player_two_identity))
