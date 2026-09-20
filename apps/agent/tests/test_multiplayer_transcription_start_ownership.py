@@ -2,6 +2,9 @@
 
 import asyncio
 from dataclasses import dataclass
+from typing import cast
+
+from livekit.agents.voice import AgentSession
 
 from multiplayer_transcription import MultiParticipantTranscriber
 
@@ -59,7 +62,7 @@ async def test_superseded_start_cannot_replace_or_remove_the_reconnected_session
         except asyncio.CancelledError:
             first_cancelled.set()
             await gate.wait()
-        return session
+        return cast(AgentSession, session)
 
     async def authorize(_identity):
         return 1
