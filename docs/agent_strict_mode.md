@@ -402,3 +402,39 @@ tried to start PostgreSQL and collided with an allocated `127.0.0.1:55432` port.
 No pytest pass or end-to-end voice validation is claimed. The emitted-schema
 measurements, local vendor-validation observations, live compiler experiments,
 and two streaming tool-generation trials above did execute.
+
+## 10. Seeded Luna gameplay evidence
+
+On 2026-09-20, the real OpenAI Luna acceptance lane executed one seeded case for
+each of 27 representative actions across exploration, combat, dispatch,
+onboarding, blacksmith, and creation. The cases use the production Luna factory,
+strict schemas, LiveKit's real argument binder and tool executor, a migrated
+isolated PostgreSQL database, and the deterministic game engine. Handoff rows
+assert the resulting agent type. Mutation rows re-read persisted state; query and
+conversation rows assert that state did not change.
+
+The manifest is
+`apps/agent/tests/acceptance/strict_luna_case_manifest.json`. Its loader rejects a
+missing or moved file, an empty corpus, duplicate, missing or unknown IDs, and
+unknown seed, assertion, tool, variant, or prerequisite keys. The live run writes
+one JSON object per row to `/tmp/divineruin_strict_luna_gameplay.jsonl`, including
+completion, pass/failure, diagnostic, calls, request count, token usage, model,
+estimated cost, and pricing provenance. Failed rows are written in `finally` and
+retain `completion: "failed"` and `passed: false`.
+
+Run the closed matrix with:
+
+```sh
+uv run --project apps/agent --env-file .env pytest apps/agent/tests/strict_tools/test_gameplay_quality.py apps/agent/tests/acceptance/test_strict_luna_gameplay.py -q
+```
+
+The measured run passed all 27 rows and the report completeness guard: 56 model
+requests, 268,414 input tokens, 266,032 cached input tokens, and 1,896 output
+tokens. Estimated cost was **$0.00807224**. The estimate uses the OpenAI
+`gpt-5.6-luna` standard text rates retrieved 2026-09-20: $0.20 per million input
+tokens, $0.02 per million cached input tokens, and $1.20 per million output tokens.
+[The model page is the pricing source.](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
+
+This is single-model semantic gameplay evidence. It does not rank providers or
+approve production model selection. Player-facing voice latency remains a
+separate release decision.
