@@ -30,7 +30,7 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
     with (
         patch("agent.AgentSession", return_value=session) as session_factory,
         patch("agent.deepgram.STT"),
-        patch("agent.anthropic.LLM"),
+        patch("agent.create_gameplay_llm"),
         patch("agent._make_tts"),
         patch("agent.inference.VAD"),
         patch("agent.inference.TurnDetector"),

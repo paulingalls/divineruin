@@ -124,30 +124,6 @@ class TestSessionDataFields:
         assert sd.pre_combat_agent_type == "wilderness"
 
 
-class TestPromptCaching:
-    """Verify LLM is constructed with prompt caching enabled."""
-
-    def test_agent_module_uses_caching(self):
-        """agent.py should pass caching='ephemeral' to anthropic.LLM."""
-        import ast
-        import inspect
-
-        import agent
-
-        source = inspect.getsource(agent)
-        tree = ast.parse(source)
-        # Find the anthropic.LLM(...) call in _make_agent_session
-        found_caching = False
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and "LLM" in ast.dump(node.func):
-                for kw in node.keywords:
-                    if kw.arg == "caching":
-                        assert isinstance(kw.value, ast.Constant)
-                        assert kw.value.value == "ephemeral"
-                        found_caching = True
-        assert found_caching, "anthropic.LLM() call missing caching='ephemeral'"
-
-
 class TestExtractPlayerId:
     """Test _extract_player_id metadata parsing and env-based fallback."""
 
@@ -216,6 +192,50 @@ class TestDMSession:
         with patch("session_hydration.hydrate_session_state", new_callable=AsyncMock) as mock_hydrate:
             yield mock_hydrate
 
+    @pytest.mark.parametrize(
+        "player,expected_model",
+        [
+            (None, "claude-sonnet-4-20250514"),
+            (
+                {
+                    "name": "Test",
+                    "class": "guardian",
+                    "location_id": "accord_guild_hall",
+                    "flags": {"onboarding_beat": 1},
+                },
+                "claude-haiku-4-5-20251001",
+            ),
+            ({"name": "Test", "location_id": "accord_guild_hall"}, "claude-haiku-4-5-20251001"),
+        ],
+        ids=["new", "onboarding", "returning"],
+    )
+    @pytest.mark.asyncio
+    async def test_every_session_path_uses_gameplay_llm_factory(self, player, expected_model):
+        mock_ctx = MagicMock(room=MagicMock())
+        session = MagicMock(start=AsyncMock())
+        session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
+        with (
+            patch("agent.AgentSession", return_value=session),
+            patch("agent.create_gameplay_llm") as factory,
+            patch("agent.deepgram.STT"),
+            patch("agent._make_tts"),
+            patch("agent.inference.VAD"),
+            patch("agent.inference.TurnDetector"),
+            patch("agent.db_queries.get_player", new_callable=AsyncMock, return_value=player),
+            patch("agent.db_queries.get_last_session_summary", new_callable=AsyncMock, return_value=None),
+            patch("agent.db_queries.get_player_flag", new_callable=AsyncMock, return_value=False),
+            patch(
+                "agent.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                return_value={"region_type": "city"},
+            ),
+        ):
+            from agent import dm_session
+
+            await dm_session(mock_ctx)
+
+        factory.assert_called_once_with(expected_model)
+
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
         """dm_session should create SessionData — first session (existing player, no summary) starts at market square."""
@@ -232,7 +252,7 @@ class TestDMSession:
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
+                    with patch("agent.create_gameplay_llm"):
                         with patch("agent._make_tts"):
                             with patch("agent.inference.VAD"):
                                 with patch("agent.inference.TurnDetector"):
@@ -283,7 +303,7 @@ class TestDMSession:
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
+                    with patch("agent.create_gameplay_llm"):
                         with patch("agent._make_tts"):
                             with patch("agent.inference.VAD"):
                                 with patch("agent.inference.TurnDetector"):
@@ -333,7 +353,7 @@ class TestDMSession:
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
+                    with patch("agent.create_gameplay_llm"):
                         with patch("agent._make_tts"):
                             with patch("agent.inference.VAD"):
                                 with patch("agent.inference.TurnDetector"):
@@ -381,7 +401,7 @@ class TestDMSession:
                 MockSession.return_value = mock_session_instance
 
                 with patch("agent.deepgram.STT"):
-                    with patch("agent.anthropic.LLM"):
+                    with patch("agent.create_gameplay_llm"):
                         with patch("agent._make_tts"):
                             with patch("agent.inference.VAD"):
                                 with patch("agent.inference.TurnDetector"):

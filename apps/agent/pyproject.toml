@@ -7,6 +7,7 @@ dependencies = [
     "livekit-plugins-anthropic~=1.8.2",
     "livekit-plugins-deepgram~=1.8.2",
     "livekit-plugins-inworld~=1.8.2",
+    "livekit-plugins-openai~=1.8.2",
     "asyncpg>=0.31.0",
     "redis>=8.1.0",
     # livekit-plugins-anthropic 1.8.2 requires anthropic>=0.41,<1.
