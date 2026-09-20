@@ -163,6 +163,55 @@ async def test_reconnect_cancels_old_deadline_and_resumes_once():
     await owner.aclose()
 
 
+async def test_a_repeat_disconnect_neither_re_pauses_nor_rearms_the_grace():
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    room = Room()
+    clock = ManualSleep()
+    session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+    userdata = SessionData(player_id="player-one", location_id="loc")
+    userdata.background = MagicMock()
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, MagicMock(), sleep=clock)
+
+    room.emit("participant_disconnected", "player-one")
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.sleep(0)
+
+    userdata.background.pause.assert_called_once()
+    assert len(clock.waiters) == 1
+    await clock.advance(RECONNECT_GRACE_S)
+    session.aclose.assert_awaited_once()
+    await owner.aclose()
+
+
+async def test_a_drop_while_the_reconnect_is_settling_keeps_the_new_grace_and_never_resumes():
+    """The reconnect handler defers to a task, so the player can drop again before it runs; the
+    resume/re-greet it would have done belongs to a connection that is already gone."""
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    room = Room()
+    clock = ManualSleep()
+    session = SimpleNamespace(aclose=AsyncMock(), generate_reply=MagicMock(return_value=object()))
+    agent = SimpleNamespace(_fire_and_forget=MagicMock())
+    userdata = SessionData(player_id="player-one", location_id="loc")
+    userdata.background = MagicMock()
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), userdata, cast(Any, agent), sleep=clock)
+
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.sleep(0)
+    armed = set(owner._tasks)
+    room.emit("participant_connected", "player-one")
+    settling = (set(owner._tasks) - armed).pop()
+    room.emit("participant_disconnected", "player-one")
+    await asyncio.wait_for(settling, 1)
+
+    userdata.background.resume.assert_not_called()
+    session.generate_reply.assert_not_called()
+    await clock.advance(RECONNECT_GRACE_S)
+    session.aclose.assert_awaited_once()
+    await owner.aclose()
+
+
 class TestBackgroundProcessPauseResume:
     """Test pause/resume on BackgroundProcess."""
 

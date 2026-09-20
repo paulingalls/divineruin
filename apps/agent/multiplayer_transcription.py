@@ -95,7 +95,7 @@ class MultiParticipantTranscriber:
 
     def _on_connected(self, participant: Any) -> None:
         identity = participant.identity
-        if self._closed or identity in self._starting or identity in self._active:
+        if identity in self._starting or identity in self._active:
             return
         task = asyncio.create_task(self._start_one(identity))
         self._starting[identity] = task
@@ -194,10 +194,10 @@ class MultiParticipantTranscriber:
         if self._closed:
             return
         self._closed = True
-        if self._started:
-            self.room.off("participant_connected", self._on_connected)
-            self.room.off("participant_disconnected", self._on_disconnected)
-            self._started = False
+        # rtc.EventEmitter.off discards a callback it never registered, so an unstarted
+        # transcriber needs no gate here.
+        self.room.off("participant_connected", self._on_connected)
+        self.room.off("participant_disconnected", self._on_disconnected)
         starting = tuple(self._starting.values())
         for task in starting:
             if not task.done():

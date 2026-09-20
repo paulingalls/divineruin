@@ -210,7 +210,7 @@ class PartyLifecycle:
 
     def _on_connected(self, participant: rtc.RemoteParticipant) -> None:
         identity = participant.identity
-        if self._closed or identity in self._live:
+        if identity in self._live:
             return
         generation = self._last_generation.get(identity, 0) + 1
         self._last_generation[identity] = generation
@@ -222,6 +222,7 @@ class PartyLifecycle:
         task = asyncio.create_task(self._hydrate_member(identity, generation))
         self._pending_joins[identity] = task
         self._spawned_joins.add(task)
+        task.add_done_callback(self._spawned_joins.discard)
         task.add_done_callback(lambda completed, pid=identity, gen=generation: self._join_finished(pid, gen, completed))
 
     def _on_disconnected(self, participant: rtc.RemoteParticipant) -> None:

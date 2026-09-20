@@ -24,7 +24,10 @@ class Room:
         self.listeners.setdefault(event, []).append(callback)
 
     def off(self, event: str, callback) -> None:
-        self.listeners[event].remove(callback)
+        # rtc.EventEmitter.off discards a callback it never registered rather than raising.
+        listeners = self.listeners.get(event, [])
+        if callback in listeners:
+            listeners.remove(callback)
 
     def emit(self, event: str, participant: Participant) -> None:
         for callback in tuple(self.listeners.get(event, ())):
@@ -178,3 +181,13 @@ async def test_close_preserves_both_session_failures() -> None:
         await manager.aclose()
 
     assert {failure.__cause__ for failure in caught.value.exceptions} == set(errors.values())
+
+
+async def test_start_after_close_refuses_loudly() -> None:
+    manager = MultiParticipantTranscriber(
+        Room(("player-one",)), stt=None, authorizer=authorize_all, session_factory=Factory()
+    )
+    await manager.aclose()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        manager.start()

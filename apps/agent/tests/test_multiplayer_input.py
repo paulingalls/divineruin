@@ -1,11 +1,14 @@
 import asyncio
 import logging
+from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import AuthenticatedTranscript, TranscriptionFailure
+from participant_lifecycle import _setup_party_join
 from session_data import SessionData
 
 
@@ -56,6 +59,36 @@ class ReplyHandle:
     def interrupt(self, *, force=False):
         self.interrupt_calls.append(force)
         return self
+
+
+class GatedHandle:
+    """A reply that hangs until something interrupts it, like a real in-flight generation."""
+
+    def __init__(self, on_start=None) -> None:
+        self.started = asyncio.Event()
+        self.released = asyncio.Event()
+        self.interrupt_calls: list[bool] = []
+        self.acted = False
+        self._on_start = on_start
+
+    async def _wait(self):
+        if self._on_start is not None:
+            self._on_start()
+        self.started.set()
+        await self.released.wait()
+        if not self.interrupt_calls:
+            self.acted = True
+
+    def __await__(self):
+        return self._wait().__await__()
+
+    def interrupt(self, *, force=False):
+        self.interrupt_calls.append(force)
+        self.released.set()
+        return self
+
+    def exception(self):
+        return None
 
 
 class RecordingSession:
@@ -152,34 +185,11 @@ async def test_disconnect_force_interrupts_in_flight_turn_before_actor_can_act()
     sd = party_session()
     source = TranscriptSource()
     gate = Gate({("player-two", 4)})
-    action_ran = False
 
-    class GatedHandle:
-        def __init__(self):
-            self.started = asyncio.Event()
-            self.released = asyncio.Event()
-            self.interrupt_calls = []
+    def bound_to_the_speaker() -> None:
+        assert sd.actor_player_id == "player-two"
 
-        async def _wait(self):
-            nonlocal action_ran
-            assert sd.actor_player_id == "player-two"
-            self.started.set()
-            await self.released.wait()
-            if not self.interrupt_calls:
-                action_ran = True
-
-        def __await__(self):
-            return self._wait().__await__()
-
-        def interrupt(self, *, force=False):
-            self.interrupt_calls.append(force)
-            self.released.set()
-            return self
-
-        def exception(self):
-            return None
-
-    handle = GatedHandle()
+    handle = GatedHandle(on_start=bound_to_the_speaker)
     session = RecordingSession(sd)
     cast(Any, session).generate_reply = lambda **_kwargs: handle
     owner = MultiplayerInput(source, gate, session, sd)
@@ -193,7 +203,7 @@ async def test_disconnect_force_interrupts_in_flight_turn_before_actor_can_act()
             await asyncio.sleep(0)
 
     assert handle.interrupt_calls == [True]
-    assert action_ran is False
+    assert handle.acted is False
     with pytest.raises(RuntimeError, match="No actor"):
         _ = sd.actor_player_id
     await owner.aclose()
@@ -266,3 +276,50 @@ async def test_an_unexpected_generate_reply_error_stops_the_consumer_loudly() ->
         await worker
     with pytest.raises(RuntimeError, match="No actor"):
         _ = sd.actor_player_id
+
+
+async def test_the_real_party_gate_revokes_an_in_flight_turn_on_disconnect() -> None:
+    """MultiplayerInput and PartyLifecycle are the two halves of the revocation contract, and
+    every other test here supplies its own Gate — only the real lifecycle proves the wiring."""
+    handlers: dict = {}
+    room = MagicMock()
+    room.remote_participants = {}
+    room.on.side_effect = lambda event, callback: handlers.__setitem__(event, callback)
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={"player_id": "player-two"})
+    resonance = MagicMock()
+    resonance.read_player_resonance = AsyncMock(return_value={"current": 0, "flickering_bonus": 0})
+    concentration = MagicMock()
+    concentration.read_player_concentration = AsyncMock(return_value={"spell_id": None})
+
+    sd = SessionData(player_id="player-one", location_id="loc")
+    lifecycle = _setup_party_join(room, sd, queries=queries, resonance_mod=resonance, concentration_mod=concentration)
+    handlers["participant_connected"](SimpleNamespace(identity="player-two"))
+    await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}))
+    generation = lifecycle.current_generation("player-two")
+    assert generation is not None and sd.party.contains("player-two")
+
+    handle = GatedHandle()
+    session = RecordingSession(sd)
+    cast(Any, session).generate_reply = lambda **_kwargs: handle
+    source = TranscriptSource()
+    owner = MultiplayerInput(source, lifecycle, session, sd)
+    owner.start()
+
+    source.queue.put_nowait(AuthenticatedTranscript("player-two", "stale tool", generation))
+    await asyncio.wait_for(handle.started.wait(), 1)
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert handle.interrupt_calls == []  # a live speaker is never interrupted
+
+    handlers["participant_disconnected"](SimpleNamespace(identity="player-two"))
+    async with asyncio.timeout(1):
+        while not handle.interrupt_calls:
+            await asyncio.sleep(0)
+
+    assert handle.interrupt_calls == [True]
+    assert handle.acted is False
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+    await owner.aclose()
+    await lifecycle.aclose()

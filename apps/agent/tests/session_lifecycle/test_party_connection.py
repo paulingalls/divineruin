@@ -251,3 +251,38 @@ async def test_close_cancels_and_joins_in_flight_hydration():
     assert lifecycle.current_generation("player_2") is None
     room.off.assert_any_call("participant_connected", lifecycle._on_connected)
     room.off.assert_any_call("participant_disconnected", lifecycle._on_disconnected)
+
+
+async def test_cancelling_an_in_flight_join_reports_no_unhandled_error():
+    """_join_finished reads task.exception(), which RAISES on a cancelled task; aclose is what
+    cancels joins, so an unguarded read turns every shutdown into an unhandled-callback error."""
+    hold_lookup = asyncio.Event()
+    lookup_started = asyncio.Event()
+    mods = _make_mods(None)
+
+    async def delayed_lookup(_identity):
+        lookup_started.set()
+        await hold_lookup.wait()
+
+    mods[0].get_player.side_effect = delayed_lookup
+    room, _handlers = _recording_room("player_2")
+    loop = asyncio.get_running_loop()
+    reported: list[dict] = []
+    previous = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: reported.append(context))
+    try:
+        lifecycle = _setup_party_join(
+            room,
+            SessionData(player_id="player_1", location_id="loc"),
+            queries=mods[0],
+            resonance_mod=mods[1],
+            concentration_mod=mods[2],
+        )
+        await lookup_started.wait()
+        await lifecycle.aclose()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(previous)
+
+    assert [context["message"] for context in reported] == []
