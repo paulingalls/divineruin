@@ -130,7 +130,7 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
         await pool.execute("DELETE FROM gathering_nodes WHERE id = $1", node_id)
 
 
-async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str) -> None:
+async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """AC3: the node depletion and the material grant share one transaction.
 
     The injected failure fires *after* a successful add_inventory_item, so only a real
@@ -143,16 +143,18 @@ async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str) -> Non
     await _set_skill_tier(pool, player_id, "survival", "expert")
     await _insert_node(pool, node_id, location_id=_NODE_STAGE, resource_type="iron_ore", quantity=2)
 
-    class FailingMutations:
-        @staticmethod
-        async def add_inventory_item(*args, **kwargs):
-            await db_mutations.add_inventory_item(*args, **kwargs)
-            raise RuntimeError("injected post-grant failure")
+    add_inventory_item = db_mutations.add_inventory_item
+
+    async def fail_after_grant(*args, **kwargs):
+        await add_inventory_item(*args, **kwargs)
+        raise RuntimeError("injected post-grant failure")
+
+    monkeypatch.setattr(db_mutations, "add_inventory_item", fail_after_grant)
 
     try:
         ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
         with pytest.raises(RuntimeError, match="injected post-grant failure"):
-            await gathering_tools._check_gather_impl(ctx, "", mutations=FailingMutations, rng=FixedRng(20))
+            await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20))
 
         node = await _node_data(pool, node_id)
         assert node["discovered"] is False
