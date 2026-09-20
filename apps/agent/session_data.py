@@ -4,6 +4,9 @@ import asyncio
 import time
 import uuid
 from collections import deque
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
@@ -221,6 +224,12 @@ class SessionData:
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
+    _actor_player_id: ContextVar[str | None] = field(
+        default_factory=lambda: ContextVar("actor_player_id", default=None),
+        init=False,
+        repr=False,
+        compare=False,
+    )
     event_bus: EventBus = field(default_factory=EventBus)
     world_time: str = "evening"
     combat_state: CombatState | None = None
@@ -304,6 +313,8 @@ class SessionData:
     # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
     # races room.disconnect(), which makes publish_game_event drop the recap.
     session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
+    multiplayer_owner: object | None = field(default=None, repr=False, compare=False)
+    multiplayer_close_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
@@ -367,6 +378,22 @@ class SessionData:
         if member is None:
             raise ValueError(f"No party member with player_id {player_id!r}")
         return member
+
+    @property
+    def actor_player_id(self) -> str:
+        actor = self._actor_player_id.get()
+        if actor is None:
+            raise RuntimeError("No actor is bound to the current DM turn")
+        return actor
+
+    @contextmanager
+    def _bind_actor(self, player_id: str) -> Iterator[None]:
+        self.member_state(player_id)
+        token = self._actor_player_id.set(player_id)
+        try:
+            yield
+        finally:
+            self._actor_player_id.reset(token)
 
     @property
     def in_onboarding(self) -> bool:

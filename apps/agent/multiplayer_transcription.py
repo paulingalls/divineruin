@@ -13,6 +13,7 @@ from livekit.agents import Agent, AgentSession, StopResponse, llm, room_io
 class AuthenticatedTranscript:
     participant_identity: str
     text: str
+    generation: int
 
 
 class TranscriptionFailure(RuntimeError):
@@ -23,12 +24,14 @@ class _TranscriberAgent(Agent):
     def __init__(
         self,
         identity: str,
+        generation: int,
         emit: Callable[[AuthenticatedTranscript], None],
         fail: Callable[[BaseException], None],
         stt: Any,
     ):
         super().__init__(instructions="Transcribe the linked participant.", stt=stt)
         self.identity = identity
+        self.generation = generation
         self._emit = emit
         self._fail = fail
 
@@ -39,17 +42,26 @@ class _TranscriberAgent(Agent):
             # would leave the consumer with a healthy-looking silent stream.
             self._fail(ValueError(f"completed transcript for {self.identity!r} was empty"))
         else:
-            self._emit(AuthenticatedTranscript(self.identity, text))
+            self._emit(AuthenticatedTranscript(self.identity, text, self.generation))
         raise StopResponse()
 
 
 SessionFactory = Callable[[str, Agent, room_io.RoomOptions], Awaitable[AgentSession]]
+Authorizer = Callable[[str], Awaitable[int | None]]
 
 
 class MultiParticipantTranscriber:
-    def __init__(self, room: Any, *, stt: Any, session_factory: SessionFactory | None = None):
+    def __init__(
+        self,
+        room: Any,
+        *,
+        stt: Any,
+        authorizer: Authorizer,
+        session_factory: SessionFactory | None = None,
+    ):
         self.room = room
         self.stt = stt
+        self._authorizer = authorizer
         self._session_factory = session_factory
         self._queue: asyncio.Queue[AuthenticatedTranscript | BaseException] = asyncio.Queue()
         self._active: dict[str, AgentSession] = {}
@@ -58,6 +70,7 @@ class MultiParticipantTranscriber:
         self._failures: list[BaseException] = []
         self._consumed_failures: set[int] = set()
         self._start_counts: dict[str, int] = {}
+        self._started = False
 
     @property
     def active_identities(self) -> frozenset[str]:
@@ -68,6 +81,9 @@ class MultiParticipantTranscriber:
         return dict(self._start_counts)
 
     def start(self) -> None:
+        if self._started:
+            return
+        self._started = True
         self.room.on("participant_connected", self._on_connected)
         self.room.on("participant_disconnected", self._on_disconnected)
         participants = list(self.room.remote_participants.values())
@@ -116,6 +132,9 @@ class MultiParticipantTranscriber:
     async def _start_one(self, identity: str) -> None:
         session: AgentSession | None = None
         try:
+            generation = await self._authorizer(identity)
+            if generation is None:
+                return
             options = room_io.RoomOptions(
                 participant_identity=identity,
                 audio_input=True,
@@ -126,6 +145,7 @@ class MultiParticipantTranscriber:
             )
             agent = _TranscriberAgent(
                 identity,
+                generation,
                 self._queue.put_nowait,
                 functools.partial(self._record_failure, identity),
                 self.stt,
@@ -174,8 +194,10 @@ class MultiParticipantTranscriber:
         return item
 
     async def aclose(self) -> None:
-        self.room.off("participant_connected", self._on_connected)
-        self.room.off("participant_disconnected", self._on_disconnected)
+        if self._started:
+            self.room.off("participant_connected", self._on_connected)
+            self.room.off("participant_disconnected", self._on_disconnected)
+            self._started = False
         starting = tuple(self._starting.values())
         await asyncio.gather(*starting, return_exceptions=True)
         for identity, session in tuple(self._active.items()):

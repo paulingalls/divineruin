@@ -2,12 +2,14 @@
 PartyMember (M18 story-001). This is the trigger that makes a >1-member party reachable in
 prod — every session is solo (1 member) until a real 2nd participant joins.
 
-_setup_party_join registers its own participant_connected handler, distinct from
-_setup_reconnection (whose handler only handles the PRIMARY reconnecting). The sync handler
-early-returns for the primary identity and for an already-present member (idempotent), else
-spawns an async _join_member task that: fetches the joiner's players row (log+skip if absent —
-a stray participant must not fail-loud the room), appends a PartyMember IN PLACE (never
-reassigns session.party), and hydrates all FIVE per-member sub-states onto it.
+_setup_party_join builds a PartyLifecycle, which registers its own participant_connected and
+participant_disconnected handlers, distinct from _setup_reconnection (whose handler only handles
+the PRIMARY reconnecting). The sync handler stamps a live connection generation, early-returns
+for an already-present member (idempotent), else spawns an async _hydrate_member task that:
+fetches the joiner's players row (log+skip if absent — a stray participant must not fail-loud
+the room), appends a PartyMember IN PLACE (never reassigns session.party), and hydrates all FIVE
+per-member sub-states onto it. `authorize` is the async gate the transcription path asks before
+it opens an STT stream for an identity.
 
 Mirrors test_reconnection.py's MagicMock-room shape, but uses a recording-room stub so the
 registered handler can be invoked directly (a MagicMock decorator return would swallow it).
@@ -27,15 +29,20 @@ from party_state import PartyMember
 from session_data import SessionData
 
 
-def _recording_room():
+def _recording_room(*identities):
     """A MagicMock room (pyright accepts it for the rtc.Room param, as test_reconnection does)
     whose .on(event) records the decorated handler into ``handlers`` by event name — so a test can
     invoke the registered participant_connected callback directly. A bare MagicMock's decorator
     return would replace the handler with another mock, hiding the real function."""
     room = MagicMock()
+    room.remote_participants = {identity: _participant(identity) for identity in identities}
     handlers: dict = {}
 
-    def _on(event):
+    def _on(event, callback=None):
+        if callback is not None:
+            handlers[event] = callback
+            return callback
+
         def _register(fn):
             handlers[event] = fn
             return fn
@@ -226,3 +233,201 @@ async def test_concurrent_joins_for_same_id_append_once():
     await _drain()
 
     assert sd.party.member_ids == ["player_1", "player_2"]  # appended exactly once
+
+
+@pytest.mark.asyncio
+async def test_existing_remote_is_hydrated_while_primary_and_non_player_are_rejected():
+    inventory = ("player_1", "player_2", "divineruin-dm")
+    mods = _make_mods(None)
+    mods[0].get_player.side_effect = lambda pid: {"player_id": pid} if pid == "player_2" else None
+    room, _handlers = _recording_room(*inventory)
+    sd = SessionData(player_id="player_1", location_id="loc")
+
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+
+    assert sd.party.member_ids == ["player_1", "player_2"]
+    assert lifecycle.current_generation("player_1") is not None
+    assert lifecycle.current_generation("player_2") is not None
+    assert lifecycle.current_generation("divineruin-dm") is None
+    assert [call.args[0] for call in mods[0].get_player.await_args_list] == ["player_2", "divineruin-dm"]
+
+
+@pytest.mark.asyncio
+async def test_duplicate_join_shares_lookup_and_live_generation():
+    lookup_started = asyncio.Event()
+    release_lookup = asyncio.Event()
+    mods = _make_mods(None)
+
+    async def delayed_lookup(pid):
+        lookup_started.set()
+        await release_lookup.wait()
+        return {"player_id": pid}
+
+    mods[0].get_player.side_effect = delayed_lookup
+    room, handlers = _recording_room()
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+
+    handlers["participant_connected"](_participant("player_2"))
+    handlers["participant_connected"](_participant("player_2"))
+    await lookup_started.wait()
+    generation = lifecycle.current_generation("player_2")
+    assert generation is not None
+    assert mods[0].get_player.await_count == 1
+    release_lookup.set()
+    await _drain()
+    handlers["participant_connected"](_participant("player_2"))
+    await _drain()
+
+    assert sd.party.member_ids == ["player_1", "player_2"]
+    assert lifecycle.current_generation("player_2") == generation
+    assert mods[0].get_player.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_disconnect_keeps_member_but_reconnect_advances_generation():
+    mods = _make_mods({"player_id": "player_2"})
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+    first = lifecycle.current_generation("player_2")
+    assert first is not None
+
+    handlers["participant_disconnected"](_participant("player_2"))
+    assert sd.party.contains("player_2")
+    assert lifecycle.current_generation("player_2") is None
+
+    handlers["participant_connected"](_participant("player_2"))
+    second = lifecycle.current_generation("player_2")
+    handlers["participant_connected"](_participant("player_2"))
+
+    assert second is not None and second > first
+    assert lifecycle.current_generation("player_2") == second
+    assert sd.party.member_ids == ["player_1", "player_2"]
+
+
+@pytest.mark.asyncio
+async def test_authorization_requires_membership_live_connection_and_exact_generation():
+    mods = _make_mods({"player_id": "player_2"})
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(
+        room,
+        sd,
+        queries=mods[0],
+        resonance_mod=mods[1],
+        concentration_mod=mods[2],
+    )
+    await _drain()
+    member = sd.party.member("player_2")
+    generation = lifecycle.current_generation("player_2")
+    assert member is not None and generation is not None
+    assert lifecycle.is_authorized("player_2", generation)
+
+    sd.party.members.remove(member)
+    assert not lifecycle.is_authorized("player_2", generation)
+    sd.party.members.append(member)
+    handlers["participant_disconnected"](_participant("player_2"))
+    assert not lifecycle.is_authorized("player_2", generation)
+    handlers["participant_connected"](_participant("player_2"))
+    current = lifecycle.current_generation("player_2")
+    assert current is not None and current > generation
+    assert not lifecycle.is_authorized("player_2", generation)
+    assert lifecycle.is_authorized("player_2", current)
+
+
+@pytest.mark.asyncio
+async def test_authorize_refuses_an_identity_that_dropped_while_its_hydration_was_in_flight():
+    release_lookup = asyncio.Event()
+    lookup_started = asyncio.Event()
+    mods = _make_mods(None)
+
+    async def delayed_lookup(pid):
+        lookup_started.set()
+        await release_lookup.wait()
+        return {"player_id": pid}
+
+    mods[0].get_player.side_effect = delayed_lookup
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(room, sd, queries=mods[0], resonance_mod=mods[1], concentration_mod=mods[2])
+    await lookup_started.wait()
+
+    authorizing = asyncio.create_task(lifecycle.authorize("player_2"))
+    await asyncio.sleep(0)
+    handlers["participant_disconnected"](_participant("player_2"))
+    release_lookup.set()
+
+    assert await authorizing is None
+    assert sd.party.contains("player_2")  # membership persists; only the live connection went
+
+
+@pytest.mark.asyncio
+async def test_authorize_raises_for_a_generation_whose_hydration_failed():
+    mods = _make_mods(None)
+    mods[0].get_player.side_effect = OSError("players row unreachable")
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(room, sd, queries=mods[0], resonance_mod=mods[1], concentration_mod=mods[2])
+    await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}), return_exceptions=True)
+
+    assert not sd.party.contains("player_2")
+    with pytest.raises(RuntimeError, match="party hydration failed"):
+        await lifecycle.authorize("player_2")
+
+    # A fresh connection clears the failed generation, so a transient DB outage is not permanent.
+    mods[0].get_player.side_effect = None
+    mods[0].get_player.return_value = {"player_id": "player_2"}
+    handlers["participant_disconnected"](_participant("player_2"))
+    handlers["participant_connected"](_participant("player_2"))
+
+    assert await lifecycle.authorize("player_2") == lifecycle.current_generation("player_2")
+    assert sd.party.member_ids == ["player_1", "player_2"]
+
+
+@pytest.mark.asyncio
+async def test_reconnect_during_an_in_flight_hydration_still_appends_exactly_once():
+    release_lookup = asyncio.Event()
+    lookups: list[str] = []
+    mods = _make_mods(None)
+
+    async def delayed_lookup(pid):
+        lookups.append(pid)
+        await release_lookup.wait()
+        return {"player_id": pid}
+
+    mods[0].get_player.side_effect = delayed_lookup
+    room, handlers = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    lifecycle = _setup_party_join(room, sd, queries=mods[0], resonance_mod=mods[1], concentration_mod=mods[2])
+    await asyncio.sleep(0)
+
+    handlers["participant_disconnected"](_participant("player_2"))
+    handlers["participant_connected"](_participant("player_2"))
+    release_lookup.set()
+    await _drain()
+
+    generation = lifecycle.current_generation("player_2")
+    assert lookups == ["player_2", "player_2"]  # both connections really ran their own hydration
+    assert sd.party.member_ids == ["player_1", "player_2"]
+    assert generation is not None and lifecycle.is_authorized("player_2", generation)

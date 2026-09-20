@@ -7,7 +7,9 @@ Two setup functions register LiveKit ``room.on`` handlers over a live session's 
   type). A drop pauses the session's background process and arms a grace timeout; a reconnect
   within the grace window resumes and re-greets.
 - ``_setup_party_join`` — the live multi-PC trigger (M18 story-001): a SECOND participant joining
-  the room becomes a PartyMember with its own hydrated per-member state.
+  the room becomes a PartyMember with its own hydrated per-member state. It returns the
+  ``PartyLifecycle`` that owns the party roster AND the per-connection authorization gate the
+  transcription/input path asks before any player speech reaches the DM.
 
 Both are wired by agent.dm_session; the party-join trigger is wired at gameplay start only.
 """
@@ -15,6 +17,7 @@ Both are wired by agent.dm_session; the party-join trigger is wired at gameplay 
 import asyncio
 import logging
 import time
+from typing import Any
 
 from livekit import rtc
 from livekit.agents import Agent, AgentSession
@@ -90,68 +93,131 @@ def _setup_reconnection(
         await session.aclose()
 
 
-def _setup_party_join(
-    room: rtc.Room,
-    userdata: SessionData,
-    *,
-    queries=db_queries,
-    resonance_mod=db_mutations_resonance,
-    concentration_mod=db_mutations_concentration,
-) -> None:
-    """Register the live participant-join trigger: a SECOND player connecting to the room becomes
-    a PartyMember (M18 story-001). This is what makes a >1-member party reachable in prod — every
-    session starts solo (1 member) until a real 2nd participant joins.
+class PartyLifecycle:
+    """The room's party membership, and the authorization gate over it (M18 story-001).
 
-    Distinct from _setup_reconnection, whose participant_connected handler only handles the PRIMARY
-    reconnecting. The sync handler early-returns for the primary identity (reconnection's job) and
-    for an already-present member (idempotent — no double-add), else spawns the async DB work as a
-    task (a sync LiveKit handler can't await). queries + the read-helper modules are injectable so a
-    MagicMock-room unit test can supply AsyncMocks.
+    Membership is PERSISTENT: a PartyMember appended here survives a disconnect, because the
+    party is the campaign's roster, not the room's attendance. Authorization is not — each
+    live connection for an identity gets a monotonic *generation*, so a transcript captured
+    before a drop cannot speak for the identity that reconnected behind it.
+
+    ``queries`` + the read-helper modules are injectable so a MagicMock-room unit test can
+    supply AsyncMocks.
     """
 
-    # Retain a strong reference to each spawned join task until it finishes. asyncio only holds a
-    # weak reference to the task, so an unreferenced create_task() can be garbage-collected mid-await
-    # — silently dropping the member append/hydrate (a fail-silent violation of the fail-loud rule).
-    _pending_joins: set[asyncio.Task] = set()
+    def __init__(
+        self,
+        room: rtc.Room,
+        userdata: SessionData,
+        *,
+        queries: Any,
+        resonance_mod: Any,
+        concentration_mod: Any,
+    ) -> None:
+        self.room = room
+        self.userdata = userdata
+        self.queries = queries
+        self.resonance_mod = resonance_mod
+        self.concentration_mod = concentration_mod
+        self._live: dict[str, int] = {}
+        self._last_generation: dict[str, int] = {}
+        self._pending_joins: dict[str, asyncio.Task[None]] = {}
+        # Retain a strong reference to EVERY spawned join task until it finishes. asyncio only
+        # holds a weak reference, so an unreferenced create_task() can be garbage-collected
+        # mid-await — silently dropping the member append/hydrate (a fail-silent violation of
+        # the fail-loud rule). _pending_joins alone is not that reference: a reconnect while a
+        # join is still in flight overwrites its entry under the same identity.
+        self._spawned_joins: set[asyncio.Task[None]] = set()
+        self._join_failures: dict[str, tuple[int, BaseException]] = {}
 
-    @room.on("participant_connected")
-    def _on_join(participant: rtc.RemoteParticipant) -> None:
+        room.on("participant_connected", self._on_connected)
+        room.on("participant_disconnected", self._on_disconnected)
+        for participant in list(room.remote_participants.values()):
+            self._on_connected(participant)
+
+    def current_generation(self, identity: str) -> int | None:
+        return self._live.get(identity)
+
+    def is_authorized(self, identity: str, generation: int) -> bool:
+        return self.userdata.party.contains(identity) and self._live.get(identity) == generation
+
+    async def authorize(self, identity: str) -> int | None:
+        generation = self._live.get(identity)
+        if generation is None:
+            return None
+        pending = self._pending_joins.get(identity)
+        if pending is not None:
+            try:
+                await pending
+            except Exception as exc:
+                raise RuntimeError(f"party hydration failed for {identity!r}") from exc
+        failure = self._join_failures.get(identity)
+        if failure is not None and failure[0] == generation:
+            raise RuntimeError(f"party hydration failed for {identity!r}") from failure[1]
+        if self._live.get(identity) != generation or not self.userdata.party.contains(identity):
+            return None
+        return generation
+
+    def _on_connected(self, participant: rtc.RemoteParticipant) -> None:
         identity = participant.identity
-        # The primary (re)connecting is _setup_reconnection's job; an already-present member is a
-        # no-op. Both are cheap sync checks BEFORE spawning any DB work.
-        if identity == userdata.player_id or userdata.party.contains(identity):
+        if not identity or identity in self._live:
             return
-        task = asyncio.create_task(_join_member(identity))
-        _pending_joins.add(task)
-        task.add_done_callback(_pending_joins.discard)
+        generation = self._last_generation.get(identity, 0) + 1
+        self._last_generation[identity] = generation
+        self._join_failures.pop(identity, None)
+        self._live[identity] = generation
+        if self.userdata.party.contains(identity):
+            return
+        task = asyncio.create_task(self._hydrate_member(identity, generation))
+        self._pending_joins[identity] = task
+        self._spawned_joins.add(task)
+        task.add_done_callback(self._spawned_joins.discard)
+        task.add_done_callback(lambda completed, pid=identity, gen=generation: self._join_finished(pid, gen, completed))
 
-    async def _join_member(pid: str) -> None:
-        row = await queries.get_player(pid)
+    def _on_disconnected(self, participant: rtc.RemoteParticipant) -> None:
+        self._live.pop(participant.identity, None)
+
+    def _join_finished(self, identity: str, generation: int, task: asyncio.Task[None]) -> None:
+        if self._pending_joins.get(identity) is task:
+            self._pending_joins.pop(identity, None)
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            self._join_failures[identity] = (generation, error)
+            logger.error(
+                "Party-join hydration failed for %r",
+                identity,
+                exc_info=(type(error), error, error.__traceback__),
+            )
+
+    async def _hydrate_member(self, identity: str, generation: int) -> None:
+        row = await self.queries.get_player(identity)
         if row is None:
             # Boundary/external-input case: a stray participant with no players row must NOT
-            # fail-loud the whole room (unlike combat_init's internal-SSOT fail-loud). Log + skip.
-            logger.warning("Party-join: no players row for %r; skipping append", pid)
+            # fail-loud the whole room (unlike combat_init's internal-SSOT fail-loud). Drop its
+            # live generation so nothing it says can ever be authorized, then log + skip.
+            if self._live.get(identity) == generation:
+                self._live.pop(identity, None)
+            logger.warning("Party-join: no players row for %r; skipping append", identity)
             return
-        # Race guard: a second participant_connected for the same pid may have appended during the
-        # await above (both events passed the sync contains() check before either task ran).
-        if userdata.party.contains(pid):
+        # Race guard: a second participant_connected for the same identity may have appended
+        # during the await above.
+        if self.userdata.party.contains(identity):
             return
         member = PartyMember(
-            player_id=pid,
+            player_id=identity,
             resonance=ResonanceTrack(),
             concentration=ConcentrationState(),
         )
-        userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
+        self.userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
 
-        # Hydrate the per-member sub-states onto the new member: resonance/concentration are the
-        # player_id-parameterized read helpers, applied the same way
-        # session_hydration.hydrate_session_state applies them onto the primary.
-        #
-        # The veil ward is NOT among them (M24 story-004). It is scope-owned, so the joining
-        # member simply resolves the ward already covering the party's location — there is nothing
-        # per-member to read, and a per-member read could only ever disagree with the scope.
-        res = await resonance_mod.read_player_resonance(pid)
-        conc = await concentration_mod.read_player_concentration(pid)
+        # Hydrate the per-member sub-states the same way session_hydration.hydrate_session_state
+        # applies them onto the primary. The veil ward is NOT among them (M24 story-004): it is
+        # scope-owned, so a joiner resolves the ward already covering the party's location and a
+        # per-member read could only ever disagree with the scope.
+        res = await self.resonance_mod.read_player_resonance(identity)
+        conc = await self.concentration_mod.read_player_concentration(identity)
         member.resonance.current = res["current"]
         member.resonance.flickering_bonus = res["flickering_bonus"]
         member.concentration.spell_id = conc["spell_id"]
@@ -159,7 +225,24 @@ def _setup_party_join(
         divine_favor = row.get("divine_favor") or {}
         member.patron_id = divine_favor.get("patron", "none")
         # corruption_level is NOT DB-persisted — it is runtime location-derived (movement_tools.py's
-        # LOCATION_CORRUPTION). A joining player enters the party's room, so they are co-located;
-        # adopt the party's current location corruption rather than a default 0.
-        member.corruption_level = userdata.party.primary.corruption_level
-        logger.info("Party-join: appended %r; party now %s", pid, userdata.party.member_ids)
+        # LOCATION_CORRUPTION). A joining player enters the party's room, so adopt the party's
+        # current location corruption rather than a default 0.
+        member.corruption_level = self.userdata.party.primary.corruption_level
+        logger.info("Party-join: appended %r; party now %s", identity, self.userdata.party.member_ids)
+
+
+def _setup_party_join(
+    room: rtc.Room,
+    userdata: SessionData,
+    *,
+    queries: Any = db_queries,
+    resonance_mod: Any = db_mutations_resonance,
+    concentration_mod: Any = db_mutations_concentration,
+) -> PartyLifecycle:
+    return PartyLifecycle(
+        room,
+        userdata,
+        queries=queries,
+        resonance_mod=resonance_mod,
+        concentration_mod=concentration_mod,
+    )

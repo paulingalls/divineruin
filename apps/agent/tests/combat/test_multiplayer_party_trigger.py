@@ -29,7 +29,11 @@ def _recording_room():
     room = MagicMock()
     handlers: dict = {}
 
-    def _on(event):
+    def _on(event, callback=None):
+        if callback is not None:
+            handlers[event] = callback
+            return callback
+
         def _register(fn):
             handlers[event] = fn
             return fn

@@ -201,7 +201,7 @@ def test_every_agent_session_runs_strict_tool_schema_off():
     newly-added session red here instead of at the API.
     """
     sites = _agent_session_llm_calls()
-    assert "agent.py" in {f for f, _ in sites}, f"matcher found no production session: {sites}"
+    assert "session_startup.py" in {f for f, _ in sites}, f"matcher found no production session: {sites}"
     assert len(sites) >= 3, f"matcher drifted — only {len(sites)} AgentSession llm= sites found"
     for filename, call in sites:
         flags = [
