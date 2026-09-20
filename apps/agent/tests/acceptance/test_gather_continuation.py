@@ -1,17 +1,9 @@
 """Live OpenAI continuation after a committed gather result.
 
-This uses the provider-specific ``openai_real_llm`` marker so the no-LLM acceptance lane
-deselects it without applying the Anthropic test fixture's unrelated key requirement.
-
-WHAT THIS DOES NOT PROVE. Luna is not the model that ever duplicated the grant. The only saved
-Luna continuation rows -- strict-model-probe-2026-09-19, a two-request OpenAI Responses path,
-not this plugin path -- have Luna requesting no follow-up tool in 3/3 on the
-PRE-``inventory_updated`` result shape, while Terra requested ``transact(+1 medicinal_herb)``
-in 3/3; that probe's README records that the ``inventory_updated: true`` variant was never
-saved, so no row stands behind it either. So the assertions below pass equally against a tree
-without the new field: this is a no-regression floor over the real committed result, not
-evidence that ``inventory_updated`` suppresses a duplicate grant. The discriminating arm would
-be Terra, which the 2026-09-19 human redirect put out of scope (strict evaluation is Luna-only).
+The provider-specific marker excludes this from the no-LLM lane without requiring an
+Anthropic key. Saved pre-field Responses rows already had Luna make no follow-up call
+in 3/3 trials, so this checks the LiveKit plugin and actual result, not the field's
+effect on Luna's behavior.
 """
 
 from __future__ import annotations
