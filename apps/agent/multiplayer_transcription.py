@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -19,16 +20,26 @@ class TranscriptionFailure(RuntimeError):
 
 
 class _TranscriberAgent(Agent):
-    def __init__(self, identity: str, emit: Callable[[AuthenticatedTranscript], None], stt: Any):
+    def __init__(
+        self,
+        identity: str,
+        emit: Callable[[AuthenticatedTranscript], None],
+        fail: Callable[[BaseException], None],
+        stt: Any,
+    ):
         super().__init__(instructions="Transcribe the linked participant.", stt=stt)
         self.identity = identity
         self._emit = emit
+        self._fail = fail
 
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
         text = (new_message.text_content or "").strip()
         if not text:
-            raise ValueError(f"completed transcript for {self.identity!r} was empty")
-        self._emit(AuthenticatedTranscript(self.identity, text))
+            # AgentActivity logs and discards anything raised out of this hook, so raising here
+            # would leave the consumer with a healthy-looking silent stream.
+            self._fail(ValueError(f"completed transcript for {self.identity!r} was empty"))
+        else:
+            self._emit(AuthenticatedTranscript(self.identity, text))
         raise StopResponse()
 
 
@@ -109,7 +120,12 @@ class MultiParticipantTranscriber:
                 text_output=False,
                 close_on_disconnect=True,
             )
-            agent = _TranscriberAgent(identity, self._queue.put_nowait, self.stt)
+            agent = _TranscriberAgent(
+                identity,
+                self._queue.put_nowait,
+                functools.partial(self._record_failure, identity),
+                self.stt,
+            )
             if self._session_factory is None:
                 session = AgentSession()
                 await session.start(agent, room=self.room, room_options=options, session_host=False)
@@ -118,6 +134,11 @@ class MultiParticipantTranscriber:
 
             def on_error(event: Any) -> None:
                 error = event.error
+                # A recoverable provider error is one the SDK is already retrying (STTError /
+                # TTSError / LLMError carry the flag); it emits a non-recoverable one when the
+                # retries run out, so the stream still fails loud when it is really dead.
+                if getattr(error, "recoverable", False):
+                    return
                 cause = error if isinstance(error, BaseException) else RuntimeError(str(error))
                 self._record_failure(identity, cause)
 
