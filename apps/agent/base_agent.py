@@ -39,7 +39,10 @@ def _silence(seconds: float) -> rtc.AudioFrame:
 
 
 def _make_tts(voice: str = "", speaking_rate: float = 1.0) -> inworld.TTS:
-    kwargs: dict[str, Any] = {"speaking_rate": speaking_rate}
+    kwargs: dict[str, Any] = {
+        "model": "inworld-tts-2",
+        "speaking_rate": speaking_rate,
+    }
     if voice:
         kwargs["voice"] = voice
     return inworld.TTS(**kwargs)

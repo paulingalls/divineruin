@@ -5,6 +5,8 @@ the LiveKit plugin, so it works outside a LiveKit agent job context
 (e.g. from the async_worker process or offline scripts).
 """
 
+import argparse
+import asyncio
 import base64
 import contextlib
 import json
@@ -12,6 +14,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import time
 from collections.abc import AsyncIterator, Callable, Coroutine
 from functools import partial
 
@@ -19,12 +22,15 @@ import aiohttp
 
 from dialogue_parser import Segment
 from tts_pauses import chunk_text_with_pauses
-from voices import VoiceConfig, apply_markup, get_voice_config
+from voices import INWORLD_MARKUPS, VoiceConfig, apply_markup, get_voice_config
 
 logger = logging.getLogger("divineruin.tts_prerender")
 
 INWORLD_BASE_URL = os.environ.get("INWORLD_BASE_URL", "https://api.inworld.ai")
-INWORLD_MODEL = "inworld-tts-1.5-max"
+INWORLD_MODEL = "inworld-tts-2"
+INWORLD_PRICE_PER_MILLION_CHARACTERS = 25
+SMOKE_NEUTRAL_TEXT = "The road ahead is clear."
+SMOKE_MARKED_TEXT = "The shadows gather at the old gate."
 
 # Type alias for the TTS synthesizer function
 SynthesizeFn = Callable[[str, str], Coroutine[None, None, bytes]]
@@ -93,6 +99,107 @@ async def inworld_tts(
 
     async with aiohttp.ClientSession() as s:
         return await _do_request(s)
+
+
+def _decode_audio(raw_mp3: bytes) -> tuple[int, dict[str, str | int | float]]:
+    clean_mp3 = _reencode_mp3(raw_mp3)
+    with tempfile.NamedTemporaryFile(suffix=".mp3") as audio_file:
+        audio_file.write(clean_mp3)
+        audio_file.flush()
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "format=duration:stream=codec_name,sample_rate,channels",
+                "-of",
+                "json",
+                audio_file.name,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    if result.returncode != 0:
+        raise RuntimeError(f"ffprobe rejected audio: {result.stderr[-200:]}")
+    try:
+        metadata = json.loads(result.stdout)
+        stream = metadata["streams"][0]
+        duration = float(metadata["format"]["duration"])
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError("ffprobe returned malformed audio metadata") from exc
+    if duration <= 0:
+        raise RuntimeError("ffprobe returned non-positive audio duration")
+    return len(clean_mp3), {
+        "codec": stream["codec_name"],
+        "duration_seconds": duration,
+        "sample_rate_hertz": int(stream["sample_rate"]),
+        "channels": int(stream["channels"]),
+    }
+
+
+async def run_tts2_smoke() -> None:
+    neutral_config = get_voice_config("DM_NARRATOR", "neutral")
+    marked_emotion = next(
+        (emotion for emotion, markup in INWORLD_MARKUPS.items() if markup),
+        None,
+    )
+    if marked_emotion is None:
+        raise RuntimeError("No nonempty Inworld emotion markup is configured")
+    marked_config = get_voice_config("DM_NARRATOR", marked_emotion)
+    marked_text = apply_markup(SMOKE_MARKED_TEXT, marked_config.inworld_markup)
+    samples = [
+        ("neutral", SMOKE_NEUTRAL_TEXT, neutral_config),
+        ("marked", marked_text, marked_config),
+    ]
+
+    records = []
+    for label, text, config in samples:
+        started = time.perf_counter()
+        audio = await inworld_tts(
+            text,
+            config.voice,
+            speaking_rate=config.speaking_rate,
+        )
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
+        if not audio:
+            raise RuntimeError(f"Inworld TTS returned no audio for {label} smoke sample")
+        audio_bytes, decoder = _decode_audio(audio)
+        record = {
+            "sample": label,
+            "model": INWORLD_MODEL,
+            "characters": len(text),
+            "elapsed_ms": elapsed_ms,
+            "audio_bytes": audio_bytes,
+            "decoder": decoder,
+            "estimated_usd": len(text) * INWORLD_PRICE_PER_MILLION_CHARACTERS / 1_000_000,
+        }
+        records.append(record)
+        print(json.dumps(record, sort_keys=True))
+
+    total_characters = sum(record["characters"] for record in records)
+    total = {
+        "sample": "total",
+        "model": INWORLD_MODEL,
+        "characters": total_characters,
+        "elapsed_ms": round(sum(record["elapsed_ms"] for record in records), 3),
+        "audio_bytes": sum(record["audio_bytes"] for record in records),
+        "decoder": {"decoded_samples": len(records)},
+        "estimated_usd": total_characters * INWORLD_PRICE_PER_MILLION_CHARACTERS / 1_000_000,
+    }
+    print(json.dumps(total, sort_keys=True))
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--smoke-tts2", action="store_true")
+    args = parser.parse_args(argv)
+    if not args.smoke_tts2:
+        parser.error("--smoke-tts2 is required")
+    asyncio.run(run_tts2_smoke())
 
 
 @contextlib.asynccontextmanager
@@ -321,3 +428,7 @@ async def synthesize_with_pauses(
     filename = _write_mp3(output_path, combined)
     logger.info("Audio rendered with pauses: %s (%d bytes)", filename, len(combined))
     return filename
+
+
+if __name__ == "__main__":
+    main()

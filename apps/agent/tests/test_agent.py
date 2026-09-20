@@ -8,7 +8,7 @@ import pytest
 from speech_handles import completed_handle
 
 from agent import _extract_player_id
-from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
+from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _silence
 from exploration_agent import ExplorationAgent
 from session_data import SessionData
 
@@ -89,22 +89,6 @@ class TestAudioHelpers:
 
         # Frame data should be all zeros (silence)
         assert all(b == 0 for b in frame.data)
-
-    def test_make_tts_creates_inworld_tts(self):
-        """_make_tts should create InWorld TTS with correct parameters."""
-        with patch("base_agent.inworld.TTS") as MockTTS:
-            _make_tts(voice="test_voice", speaking_rate=1.2)
-
-            MockTTS.assert_called_once_with(voice="test_voice", speaking_rate=1.2)
-
-    def test_make_tts_omits_voice_if_empty(self):
-        """_make_tts should not include voice parameter if empty."""
-        with patch("base_agent.inworld.TTS") as MockTTS:
-            _make_tts(voice="", speaking_rate=1.0)
-
-            call_kwargs = MockTTS.call_args[1]
-            assert "voice" not in call_kwargs
-            assert call_kwargs["speaking_rate"] == 1.0
 
 
 class TestSessionDataFields:

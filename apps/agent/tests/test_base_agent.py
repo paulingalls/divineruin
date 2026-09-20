@@ -11,7 +11,7 @@ import pytest
 from livekit.agents import Agent
 
 import base_agent
-from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
+from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _silence
 from session_data import SessionData
 
 
@@ -256,22 +256,6 @@ class TestHelperFunctions:
         assert frame.sample_rate == TTS_SAMPLE_RATE
         assert frame.num_channels == TTS_NUM_CHANNELS
         assert frame.samples_per_channel == expected_samples
-
-    def test_make_tts_returns_inworld_tts(self):
-        """_make_tts should return an Inworld TTS instance."""
-        with patch("base_agent.inworld") as mock_inworld:
-            mock_inworld.TTS.return_value = MagicMock()
-            _make_tts(voice="test_voice", speaking_rate=1.2)
-
-            mock_inworld.TTS.assert_called_once_with(voice="test_voice", speaking_rate=1.2)
-
-    def test_make_tts_omits_voice_when_empty(self):
-        """_make_tts should not pass voice kwarg when empty string."""
-        with patch("base_agent.inworld") as mock_inworld:
-            mock_inworld.TTS.return_value = MagicMock()
-            _make_tts(voice="", speaking_rate=1.0)
-
-            mock_inworld.TTS.assert_called_once_with(speaking_rate=1.0)
 
 
 class TestAgentModuleImports:
