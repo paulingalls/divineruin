@@ -33,6 +33,18 @@ Can the unit economics of a voice-first AI RPG support a $15–20/month subscrip
 - **LiveKit** is open source. Cloud pricing shown; self-hosting eliminates connection fees and agent-session charges, leaving only server compute. At scale, self-hosting is substantially cheaper.
 - **Self-hosted TTS option:** Chatterbox-Turbo (MIT, 350M params, emotion exaggeration control, paralinguistic tags) eliminates per-character costs entirely. GPU cost only (~$0.75/hr per A10G). Viable at scale as a cost-elimination path.
 
+### Measured Multiplayer Transcription Trace (2026-09-20)
+
+The story-101 real-room acceptance trace ran against source revision `4eaec5cbee72a4dba650efca11e2074c467ba631` plus the story working tree. It used real LiveKit rooms, two published microphone tracks, Deepgram Nova-3 streaming STT, the production per-track transcriber and serialized DM input, and a deterministic local LLM/tool seam. Both WAV fixtures are LibriSpeech speaker 1272, so the actor result cannot come from voice similarity.
+
+| Fixture / track | Sent audio | Speech end → DM start | Queue status | STT cost at $0.0065/min |
+|---|---:|---:|---|---:|
+| `1272-128104-0001` / player two, solo | 4.815 s | 0.774001 s | Uncontended | $0.000521625 |
+| `1272-128104-0000` / player one, overlap | 5.855 s | 0.702163 s | First overlapping turn | $0.000634292 |
+| `1272-128104-0001` / player two, overlap | 4.815 s | 0.798963 s | Waited behind gated reply | $0.000521625 |
+
+Audio duration is the sum of frames sent. The latency boundary starts when the publisher finished sending the fixture's frames — not when the speaker's last word ended — and ends when the DM's LLM generation starts; it does not include LLM or TTS time to first audio. Both anchors matter: the input sessions hold a 1.0 s minimum endpointing delay measured from the STT's end of speech, so roughly 1.0 s of the real speech-end-to-DM-start interval is that configured floor, and the 0.70–0.80 s column reads lower only because each fixture ends with trailing silence the floor consumes. Read these figures as about 0.2–0.3 s of pipeline work on top of the endpointing floor, not as headroom under the architecture's 1.2–2.0 s speech-end-to-first-audio target: that target is end-to-end, and no audio was generated in this run. A queued turn intentionally includes time spent waiting for the preceding reply and tool chain; this trace released the gate immediately after verifying the wait. The STT column prices Deepgram minutes per track only; each per-track `AgentSession` additionally runs the SDK's default end-of-turn detector, which is not priced here. This is one diagnostic run, not a percentile or latency guarantee.
+
 ---
 
 ## Session Model Assumptions

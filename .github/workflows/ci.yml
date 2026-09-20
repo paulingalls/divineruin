@@ -160,6 +160,10 @@ jobs:
       DIVINERUIN_CI_SERVICE_DB: "1"
       DATABASE_URL: postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
       REDIS_URL: redis://localhost:56379
+      # Absent here, the live-voice acceptance lane skips itself (tests/acceptance/_live_voice.py);
+      # configured, the same run reaches the real Deepgram API. The lane's own gate owns that
+      # choice so every pytest invocation makes it, not this one workflow step.
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       # bun is required: the cross-language acceptance tests (_server.py) spawn

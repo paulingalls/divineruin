@@ -4,6 +4,9 @@ import asyncio
 import time
 import uuid
 from collections import deque
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
@@ -23,6 +26,13 @@ if TYPE_CHECKING:
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
+
+
+@dataclass(frozen=True)
+class AuthenticatedActor:
+    player_id: str
+    generation: int
+    validator: Callable[[str, int], None] = field(repr=False, compare=False)
 
 
 @dataclass
@@ -221,6 +231,12 @@ class SessionData:
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
+    _actor_binding: ContextVar[str | AuthenticatedActor | None] = field(
+        default_factory=lambda: ContextVar("actor_player_id", default=None),
+        init=False,
+        repr=False,
+        compare=False,
+    )
     event_bus: EventBus = field(default_factory=EventBus)
     world_time: str = "evening"
     combat_state: CombatState | None = None
@@ -304,9 +320,25 @@ class SessionData:
     # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
     # races room.disconnect(), which makes publish_game_event drop the recap.
     session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
+    multiplayer_owner: object | None = field(default=None, repr=False, compare=False)
+    multiplayer_close_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
+
+    def __getattribute__(self, name: str):
+        if name == "player_id":
+            values = object.__getattribute__(self, "__dict__")
+            primary_id = values.get("player_id")
+            binding = values.get("_actor_binding")
+            if primary_id is not None and binding is not None:
+                actor = binding.get()
+                if isinstance(actor, AuthenticatedActor) and actor.player_id != primary_id:
+                    raise RuntimeError(
+                        "The primary player id is unavailable during another authenticated player's turn; "
+                        "use acting_player_id and revalidate it at the write boundary"
+                    )
+        return super().__getattribute__(name)
 
     def __setattr__(self, name: str, value: object) -> None:
         # Per-member write contract (concern 3ec54e78cae8): resonance/veil_ward/concentration/
@@ -367,6 +399,72 @@ class SessionData:
         if member is None:
             raise ValueError(f"No party member with player_id {player_id!r}")
         return member
+
+    @property
+    def actor_player_id(self) -> str:
+        actor = self._actor_binding.get()
+        if actor is None:
+            raise RuntimeError("No actor is bound to the current DM turn")
+        return actor.player_id if isinstance(actor, AuthenticatedActor) else actor
+
+    @property
+    def primary_player_id(self) -> str:
+        return object.__getattribute__(self, "__dict__")["player_id"]
+
+    @property
+    def acting_player_id(self) -> str:
+        actor = self._actor_binding.get()
+        if isinstance(actor, AuthenticatedActor):
+            self.member_state(actor.player_id)
+            actor.validator(actor.player_id, actor.generation)
+            return actor.player_id
+        if isinstance(actor, str):
+            self.member_state(actor)
+            return actor
+        return self.primary_player_id
+
+    def validate_acting_player(self, player_id: str) -> None:
+        actor = self._actor_binding.get()
+        if isinstance(actor, AuthenticatedActor):
+            if actor.player_id != player_id:
+                raise RuntimeError(f"Authenticated actor {actor.player_id!r} cannot write for {player_id!r}")
+            self.member_state(actor.player_id)
+            actor.validator(actor.player_id, actor.generation)
+        elif isinstance(actor, str):
+            if actor != player_id:
+                raise RuntimeError(f"Bound actor {actor!r} cannot write for {player_id!r}")
+            self.member_state(actor)
+        elif player_id != self.primary_player_id:
+            raise RuntimeError(f"No actor is bound for player {player_id!r}")
+
+    @contextmanager
+    def _bind_actor(self, player_id: str) -> Iterator[None]:
+        self.member_state(player_id)
+        token = self._actor_binding.set(player_id)
+        try:
+            yield
+        finally:
+            self._actor_binding.reset(token)
+
+    @contextmanager
+    def _bind_authenticated_actor(
+        self, player_id: str, generation: int, validator: Callable[[str, int], None]
+    ) -> Iterator[None]:
+        self.member_state(player_id)
+        actor = AuthenticatedActor(player_id, generation, validator)
+        token = self._actor_binding.set(actor)
+        try:
+            yield
+        finally:
+            self._actor_binding.reset(token)
+
+    def require_reaction_actor(self) -> AuthenticatedActor:
+        actor = self._actor_binding.get()
+        if not isinstance(actor, AuthenticatedActor):
+            raise RuntimeError("No authenticated actor is bound to the current DM turn")
+        self.member_state(actor.player_id)
+        actor.validator(actor.player_id, actor.generation)
+        return actor
 
     @property
     def in_onboarding(self) -> bool:

@@ -25,7 +25,12 @@ def _concrete_agent_types() -> tuple[type[Agent], ...]:
         found.extend(
             member
             for _, member in inspect.getmembers(module, inspect.isclass)
-            if member.__module__ == module.__name__ and issubclass(member, Agent)
+            if member.__module__ == module.__name__
+            and issubclass(member, Agent)
+            # on_enter is what this file tests; an Agent that never overrides it (the
+            # per-participant transcriber) has no entry to report and no no-arg ctor.
+            # The >= 7 floor below is what keeps this predicate from draining the walk.
+            and member.on_enter is not Agent.on_enter
         )
     return tuple(found)
 
@@ -259,11 +264,11 @@ class TestHelperFunctions:
 
 
 class TestAgentModuleImports:
-    """Test that agent.py still imports _make_tts for session creation."""
+    """Test that the session factory still imports _make_tts for session creation."""
 
-    def test_agent_module_imports_make_tts(self):
-        """agent module should import _make_tts from base_agent (used in dm_session)."""
-        from agent import _make_tts as agent_make_tts
+    def test_session_startup_imports_make_tts(self):
+        """session_startup should import _make_tts from base_agent (used in _make_agent_session)."""
         from base_agent import _make_tts as base_make_tts
+        from session_startup import _make_tts as startup_make_tts
 
-        assert agent_make_tts is base_make_tts
+        assert startup_make_tts is base_make_tts

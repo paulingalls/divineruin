@@ -173,7 +173,10 @@ def _turn(harness: SimpleNamespace, utterance: str) -> Any:
 
     async def _run() -> Any:
         await _apply_hot_line(session.current_agent, utterance)
-        return await session.run(user_input=utterance)
+        # session.run bypasses the authenticated audio consumer; this synthetic solo turn
+        # supplies its actor at that seam while the real-room suite verifies connection identity.
+        with harness.state["sd"]._bind_authenticated_actor(_PLAYER_ID, 1, lambda *_args: None):
+            return await session.run(user_input=utterance)
 
     # session.run() builds its RunResult eagerly (needs a running loop), so it runs on the
     # loop thread rather than the main thread.

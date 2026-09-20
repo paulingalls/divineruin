@@ -9,17 +9,16 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from livekit import agents
-from livekit.agents import AgentServer, AgentSession, inference
+from livekit.agents import AgentServer
 from livekit.agents.__main__ import main as livekit_main
-from livekit.plugins import anthropic, deepgram
 
 import db
 import db_content_queries
 import db_queries
-from base_agent import _make_tts
-from participant_lifecycle import _setup_party_join, _setup_reconnection
+from participant_lifecycle import _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
+from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
 from speech_delivery import deliver_speech
 from voices import ROLE_VOICE_KEYS, VOICES
 
@@ -80,13 +79,6 @@ START_LOCATION = "accord_guild_hall"
 
 
 server = AgentServer()
-
-
-def _register_speech_end_tracking(session: AgentSession) -> None:
-    @session.on("agent_state_changed")
-    def _on_agent_state(ev):
-        if ev.old_state == "speaking":
-            session.userdata.last_agent_speech_end = time.time()
 
 
 def _livekit_cli_argv(argv: list[str], entrypoint: Path, environ: MutableMapping[str, str]) -> list[str]:
@@ -160,7 +152,7 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
     """Wait for the end-of-session recap to finish publishing before the room goes away.
 
     The job runner awaits this AFTER AgentSession.aclose() and BEFORE room.disconnect()
-    (ipc/job_proc_lazy_main.py:388-419) — the only awaitable point in between. The close
+    (ipc/job_proc_lazy_main.py:437-479) — the only awaitable point in between. The close
     event that spawns the recap is emitted synchronously (rtc/event_emitter.py), so the
     handler can only start a task; unjoined, that task races room.disconnect() and
     publish_game_event drops the recap with "Room disconnected, skipping".
@@ -169,8 +161,13 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
         sd = ctx.primary_session.userdata
     except RuntimeError:
         return  # no AgentSession was ever started for this job
-    if sd.session_end_task is not None:
-        await sd.session_end_task
+    tasks = [task for task in (sd.session_end_task, sd.multiplayer_close_task) if task is not None]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    failures = [result for result in results if isinstance(result, BaseException)]
+    if len(failures) == 1:
+        raise failures[0]
+    if failures:
+        raise BaseExceptionGroup("session end cleanup failed", failures)
 
 
 @server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
@@ -275,51 +272,6 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     needs_creation = player is None or not player.get("name")
 
-    def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
-        session = AgentSession(
-            stt=deepgram.STT(model="nova-3", language="en"),
-            # INTERIM, still: strict tool schemas OFF. ADR 0008's sum types fixed the two
-            # limits it measured — 16 union-typed parameters and the additionalProperties
-            # object — but story-019 then probed the live API with all six agents and found
-            # TWO MORE aggregate ceilings the design pass never saw: "The compiled grammar is
-            # too large" (exploration, combat, dispatch) and, once one verb is relaxed,
-            # "Schema is too complex." (exploration). Neither is driven by descriptions —
-            # stripping every one of them still 400s. Turning strict on here today puts three
-            # of six agents back to a 400 on every turn. See ADR 0008's "Not yet attainable"
-            # section for the measurements and the options.
-            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
-            tts=_make_tts(),
-            vad=inference.VAD(model="silero", min_silence_duration=0.5),
-            # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
-            # audio directly — intonation, pacing, trailing-off — instead of the STT transcript, so
-            # natural mid-thought pauses don't get misread as end-of-turn. Replaces the deprecated
-            # text MultilingualModel. Version auto-selects per environment (v1 over the inference gateway
-            # on LiveKit Cloud and under `agent.py dev`, v1-mini local CPU elsewhere, with automatic fallback).
-            turn_handling={
-                "turn_detection": inference.TurnDetector(),
-                "endpointing": {"min_delay": 0.5},
-                "interruption": {"enabled": True},
-            },
-            # Chosen, not inherited. livekit permits max_tool_steps + 1 consecutive tool
-            # steps (agent_activity.py:3073) and, on reaching the cap, does NOT raise: it
-            # logs and regenerates with tool_choice="none", so the agent silently stops
-            # calling tools and narrates anyway — a dropped death save the player hears as
-            # a plausible sentence (constraint 4, fail-quiet from inside a vendor library).
-            # The default 3 allowed four steps; today's longest chain is three
-            # (declare_phase -> resolve_phase -> request_death_save) and M29's restored
-            # Beat-3 loop needs five (declare -> resolve allies -> activate reaction ->
-            # resolve enemies -> death save). 5 permits six: one step of headroom over the
-            # longest chain the design calls for. This is a CEILING, not a target — it
-            # truncates long chains and never lengthens short ones, so it costs nothing on
-            # the two- and three-call turns that dominate the 1500ms budget.
-            max_tool_steps=5,
-            userdata=userdata,
-        )
-
-        _register_speech_end_tracking(session)
-
-        return session
-
     if needs_creation:
         # --- Character creation mode ---
         # PrologueAgent plays audio, hands off to CreationAgent,
@@ -334,7 +286,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        await session.start(room=ctx.room, agent=prologue_agent)
+        await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
@@ -393,7 +345,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            await session.start(room=ctx.room, agent=onboarding_agent)
+            await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return
 
@@ -406,16 +358,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
 
-        await session.start(
-            room=ctx.room,
-            agent=gameplay_agent,
-        )
+        await start_gameplay_session(ctx.room, session, gameplay_agent, userdata)
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
-        # Live multi-PC party trigger (M18 story-001) — a 2nd participant joining THIS room
-        # becomes a PartyMember. Wired at gameplay start ONLY: prologue/onboarding are single-PC
-        # flows, and reconnection (above) owns the primary re-joining.
-        _setup_party_join(ctx.room, userdata)
 
         # --- Initial greeting ---
         if is_first_session:

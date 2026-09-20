@@ -35,30 +35,6 @@ import { loadMilestones } from "./milestones.ts";
 import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
 
-// Load content-backed config at startup. Fail loud if any query fails — the
-// request handlers depend on these maps being populated before requests arrive.
-// Locations load first: the danger-level band map derives from them synchronously
-// (errand_risk.loadDestinationDangerLevels) rather than re-querying the table.
-await loadLocations();
-loadDestinationDangerLevels();
-// Spells load BEFORE the concurrent batch: spell-backed caster CORE abilities compose their
-// cast data (focus cost, mechanics, level) from the spell catalog at parse time, so
-// loadAbilities depends on the catalog already being populated (getSpell is fail-loud).
-await loadSpells();
-const trainingActivityTypes = await loadTrainingActivityTypes();
-await Promise.all([
-  loadTrainingPrograms(trainingActivityTypes),
-  loadErrandTemplates(),
-  loadRecipes(),
-  loadItems(),
-  loadArchetypes(),
-  loadAbilities(),
-  loadMentorVariants(),
-  loadRoleArchetypes(),
-  loadMilestones(),
-  loadPricing(),
-]);
-
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
@@ -69,206 +45,228 @@ const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
 const IMAGE_ASSET_RE = /^\/api\/assets\/images\/([a-zA-Z0-9_]+)$/;
 const GOD_WHISPER_PLAYED_RE = /^\/api\/god-whispers\/([a-zA-Z0-9_]+)\/played$/;
 
-const server = serve({
-  port: Number(process.env.PORT ?? 3001),
-  idleTimeout: 120,
-  async fetch(req) {
-    const url = new URL(req.url);
-    const path = url.pathname;
+export async function handleRequest(req: Request, ip: string): Promise<Response> {
+  const url = new URL(req.url);
+  const path = url.pathname;
 
-    if (req.method === "OPTIONS") {
-      return handlePreflight();
-    }
+  if (req.method === "OPTIONS") {
+    return handlePreflight();
+  }
 
-    console.log(`[${req.method}] ${path}`);
-    const ip = server.requestIP(req)?.address ?? "unknown";
-    const rateLimited = checkRateLimit(ip, path);
-    if (rateLimited) return rateLimited;
+  console.log(`[${req.method}] ${path}`);
+  const rateLimited = checkRateLimit(ip, path);
+  if (rateLimited) return rateLimited;
 
-    // --- Unauthenticated routes ---
+  // --- Unauthenticated routes ---
 
-    if (path === "/api/auth/request-code" && req.method === "POST") {
-      return withCors(await handleRequestCode(req));
-    }
-    if (path === "/api/auth/verify-code" && req.method === "POST") {
-      return withCors(await handleVerifyCode(req));
-    }
-    if (path === "/api/waitlist" && req.method === "POST") {
-      return withCors(await handleJoinWaitlist(req));
-    }
+  if (path === "/api/auth/request-code" && req.method === "POST") {
+    return withCors(await handleRequestCode(req));
+  }
+  if (path === "/api/auth/verify-code" && req.method === "POST") {
+    return withCors(await handleVerifyCode(req));
+  }
+  if (path === "/api/waitlist" && req.method === "POST") {
+    return withCors(await handleJoinWaitlist(req));
+  }
 
-    // --- Authenticated routes ---
+  // --- Authenticated routes ---
 
-    if (path === "/api/me" && req.method === "GET") {
-      return withCors(await handleGetMe(req));
-    }
+  if (path === "/api/me" && req.method === "GET") {
+    return withCors(await handleGetMe(req));
+  }
 
-    if (path === "/api/livekit/token" && req.method === "POST") {
+  if (path === "/api/livekit/token" && req.method === "POST") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleLivekitToken(req, auth.playerId));
+  }
+
+  if (path === "/api/livekit/invite" && req.method === "POST") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleCreateInvite(req, auth.playerId));
+  }
+
+  if (path === "/api/livekit/redeem" && req.method === "POST") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleRedeemInvite(req, auth.playerId));
+  }
+
+  if (path.startsWith("/api/character/") && req.method === "GET") {
+    const charMatch = path.match(CHARACTER_RE);
+    if (charMatch) {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleLivekitToken(req, auth.playerId));
+      return withCors(await handleGetCharacter(req, auth.playerId));
     }
+  }
 
-    if (path === "/api/livekit/invite" && req.method === "POST") {
+  // --- Repair quote (NPC blacksmith) ---
+
+  if (path.startsWith("/api/repair/") && req.method === "GET") {
+    const repairMatch = path.match(REPAIR_RE);
+    if (repairMatch) {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleCreateInvite(req, auth.playerId));
+      return withCors(await handleRepairQuote(req, auth.playerId, repairMatch[1]!));
     }
+  }
 
-    if (path === "/api/livekit/redeem" && req.method === "POST") {
+  // --- Catch-up feed ---
+
+  if (path === "/api/catchup" && req.method === "GET") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleGetCatchUpFeed(req, auth.playerId));
+  }
+
+  if (path.startsWith("/api/god-whispers/") && path.endsWith("/played") && req.method === "POST") {
+    const whisperMatch = path.match(GOD_WHISPER_PLAYED_RE);
+    if (whisperMatch) {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleRedeemInvite(req, auth.playerId));
-    }
-
-    if (path.startsWith("/api/character/") && req.method === "GET") {
-      const charMatch = path.match(CHARACTER_RE);
-      if (charMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        return withCors(await handleGetCharacter(req, auth.playerId));
-      }
-    }
-
-    // --- Repair quote (NPC blacksmith) ---
-
-    if (path.startsWith("/api/repair/") && req.method === "GET") {
-      const repairMatch = path.match(REPAIR_RE);
-      if (repairMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        return withCors(await handleRepairQuote(req, auth.playerId, repairMatch[1]!));
-      }
-    }
-
-    // --- Catch-up feed ---
-
-    if (path === "/api/catchup" && req.method === "GET") {
-      const auth = await requireAuth(req);
-      if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleGetCatchUpFeed(req, auth.playerId));
-    }
-
-    if (
-      path.startsWith("/api/god-whispers/") &&
-      path.endsWith("/played") &&
-      req.method === "POST"
-    ) {
-      const whisperMatch = path.match(GOD_WHISPER_PLAYED_RE);
-      if (whisperMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        try {
-          await sql`
+      try {
+        await sql`
             UPDATE god_whispers
             SET data = jsonb_set(data, '{status}', '"played"'::jsonb)
             WHERE id = ${whisperMatch[1]!} AND player_id = ${auth.playerId}
           `;
-          return withCors(Response.json({ ok: true }));
-        } catch {
-          return withCors(Response.json({ error: "Internal server error" }, { status: 500 }));
-        }
+        return withCors(Response.json({ ok: true }));
+      } catch {
+        return withCors(Response.json({ error: "Internal server error" }, { status: 500 }));
       }
     }
+  }
 
-    if (path === "/api/activity-templates" && req.method === "GET") {
+  if (path === "/api/activity-templates" && req.method === "GET") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleGetActivityTemplates(auth.playerId));
+  }
+
+  // Content catalogs (role-archetypes, archetypes, abilities, milestones): auth-gated
+  // read of a fail-loud-parsed boot catalog — the production consumer for loaders that
+  // were previously validation-only (debt e43ada4fac62).
+  if (path.startsWith("/api/content/") && req.method === "GET") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(handleGetContentCatalog(path.slice("/api/content/".length)));
+  }
+
+  // --- Push notifications ---
+
+  if (path === "/api/push-token" && req.method === "POST") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleStorePushToken(req, auth.playerId));
+  }
+
+  if (path === "/api/internal/push" && req.method === "POST") {
+    return withCors(await handleInternalPush(req));
+  }
+
+  if (path === "/api/images/generate" && req.method === "POST") {
+    return withCors(await handleGenerateImage(req));
+  }
+
+  // --- Activity routes (auth required) ---
+
+  if (path === "/api/activities" && req.method === "POST") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleCreateActivity(req, auth.playerId));
+  }
+
+  if (path === "/api/activities" && req.method === "GET") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleListActivities(req, auth.playerId));
+  }
+
+  if (path.startsWith("/api/activities/") && path.endsWith("/decide") && req.method === "POST") {
+    const decideMatch = path.match(ACTIVITY_DECIDE_RE);
+    if (decideMatch) {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleGetActivityTemplates(auth.playerId));
+      return withCors(await handleActivityDecision(req, auth.playerId, decideMatch[1]!));
     }
+  }
 
-    // Content catalogs (role-archetypes, archetypes, abilities, milestones): auth-gated
-    // read of a fail-loud-parsed boot catalog — the production consumer for loaders that
-    // were previously validation-only (debt e43ada4fac62).
-    if (path.startsWith("/api/content/") && req.method === "GET") {
+  if (path.startsWith("/api/activities/") && req.method === "GET") {
+    const actMatch = path.match(ACTIVITY_ID_RE);
+    if (actMatch) {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(handleGetContentCatalog(path.slice("/api/content/".length)));
+      return withCors(await handleGetActivity(req, auth.playerId, actMatch[1]!));
     }
+  }
 
-    // --- Push notifications ---
+  // --- File serving (unauthenticated) ---
 
-    if (path === "/api/push-token" && req.method === "POST") {
-      const auth = await requireAuth(req);
-      if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleStorePushToken(req, auth.playerId));
+  if (path.startsWith("/api/audio/") && req.method === "GET") {
+    const audioMatch = path.match(AUDIO_FILE_RE);
+    if (audioMatch) {
+      return withCors(await handleAudioFile(audioMatch[1]!));
     }
+  }
 
-    if (path === "/api/internal/push" && req.method === "POST") {
-      return withCors(await handleInternalPush(req));
+  if (path.startsWith("/api/assets/images/") && req.method === "GET") {
+    const imgMatch = path.match(IMAGE_ASSET_RE);
+    if (imgMatch) {
+      return withCors(await handleImageAsset(imgMatch[1]!));
     }
+  }
 
-    if (path === "/api/images/generate" && req.method === "POST") {
-      return withCors(await handleGenerateImage(req));
+  // --- Debug routes (dev-only, no auth) ---
+
+  if (enableDebug) {
+    const { handleDebugPage, handleDebugRooms, handleDebugSendEvent } = await import("./debug.ts");
+
+    if (path === "/debug" && req.method === "GET") {
+      return withCors(handleDebugPage());
     }
-
-    // --- Activity routes (auth required) ---
-
-    if (path === "/api/activities" && req.method === "POST") {
-      const auth = await requireAuth(req);
-      if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleCreateActivity(req, auth.playerId));
+    if (path === "/api/debug/rooms" && req.method === "GET") {
+      return withCors(await handleDebugRooms());
     }
-
-    if (path === "/api/activities" && req.method === "GET") {
-      const auth = await requireAuth(req);
-      if (auth instanceof Response) return withCors(auth);
-      return withCors(await handleListActivities(req, auth.playerId));
+    if (path === "/api/debug/event" && req.method === "POST") {
+      return withCors(await handleDebugSendEvent(req));
     }
+  }
 
-    if (path.startsWith("/api/activities/") && path.endsWith("/decide") && req.method === "POST") {
-      const decideMatch = path.match(ACTIVITY_DECIDE_RE);
-      if (decideMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        return withCors(await handleActivityDecision(req, auth.playerId, decideMatch[1]!));
-      }
-    }
+  return withCors(Response.json({ error: "Not found" }, { status: 404 }));
+}
 
-    if (path.startsWith("/api/activities/") && req.method === "GET") {
-      const actMatch = path.match(ACTIVITY_ID_RE);
-      if (actMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        return withCors(await handleGetActivity(req, auth.playerId, actMatch[1]!));
-      }
-    }
+export async function startServer() {
+  // Danger levels derive from the loaded locations; spell-backed abilities parse against
+  // the spell catalog. Keep those dependencies ahead of the concurrent loaders.
+  await loadLocations();
+  loadDestinationDangerLevels();
+  await loadSpells();
+  const trainingActivityTypes = await loadTrainingActivityTypes();
+  await Promise.all([
+    loadTrainingPrograms(trainingActivityTypes),
+    loadErrandTemplates(),
+    loadRecipes(),
+    loadItems(),
+    loadArchetypes(),
+    loadAbilities(),
+    loadMentorVariants(),
+    loadRoleArchetypes(),
+    loadMilestones(),
+    loadPricing(),
+  ]);
+  const server = serve({
+    port: Number(process.env.PORT ?? 3001),
+    idleTimeout: 120,
+    fetch(req, activeServer) {
+      return handleRequest(req, activeServer.requestIP(req)?.address ?? "unknown");
+    },
+  });
+  console.log(`Server running at ${server.url.href}`);
+  return server;
+}
 
-    // --- File serving (unauthenticated) ---
-
-    if (path.startsWith("/api/audio/") && req.method === "GET") {
-      const audioMatch = path.match(AUDIO_FILE_RE);
-      if (audioMatch) {
-        return withCors(await handleAudioFile(audioMatch[1]!));
-      }
-    }
-
-    if (path.startsWith("/api/assets/images/") && req.method === "GET") {
-      const imgMatch = path.match(IMAGE_ASSET_RE);
-      if (imgMatch) {
-        return withCors(await handleImageAsset(imgMatch[1]!));
-      }
-    }
-
-    // --- Debug routes (dev-only, no auth) ---
-
-    if (enableDebug) {
-      const { handleDebugPage, handleDebugRooms, handleDebugSendEvent } =
-        await import("./debug.ts");
-
-      if (path === "/debug" && req.method === "GET") {
-        return withCors(handleDebugPage());
-      }
-      if (path === "/api/debug/rooms" && req.method === "GET") {
-        return withCors(await handleDebugRooms());
-      }
-      if (path === "/api/debug/event" && req.method === "POST") {
-        return withCors(await handleDebugSendEvent(req));
-      }
-    }
-
-    return withCors(Response.json({ error: "Not found" }, { status: 404 }));
-  },
-});
-
-console.log(`Server running at ${server.url.href}`);
+if (import.meta.main) {
+  await startServer();
+}
