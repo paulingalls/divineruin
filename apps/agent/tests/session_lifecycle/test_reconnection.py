@@ -56,6 +56,7 @@ class ClosingSession:
     def __init__(self):
         self.handlers = {}
         self.close_count = 0
+        self.generate_reply = MagicMock()
 
     def on(self, event, callback):
         self.handlers[event] = callback
