@@ -45,19 +45,22 @@ describe("invite → redeem capstone", () => {
     const room = "divineruin-testroom";
 
     const hostRes = await handleLivekitToken(
-      jsonReq("/api/livekit/token", { room_name: room }),
+      jsonReq("/api/livekit/token", { room_name: room, player_id: guest }),
       host,
     );
     expect(hostRes.status).toBe(200);
 
     const inviteRes = await handleCreateInvite(
-      jsonReq("/api/livekit/invite", { room_name: room }),
+      jsonReq("/api/livekit/invite", { room_name: room, player_id: guest }),
       host,
     );
     expect(inviteRes.status).toBe(200);
     const { code } = (await inviteRes.json()) as { code: string };
 
-    const redeemRes = await handleRedeemInvite(jsonReq("/api/livekit/redeem", { code }), guest);
+    const redeemRes = await handleRedeemInvite(
+      jsonReq("/api/livekit/redeem", { code, player_id: host, room_name: "other-room" }),
+      guest,
+    );
     expect(redeemRes.status).toBe(200);
     const body = (await redeemRes.json()) as { room_name: string };
 

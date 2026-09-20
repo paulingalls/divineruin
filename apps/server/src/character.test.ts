@@ -2,10 +2,12 @@ import { test, expect, describe, mock } from "bun:test";
 
 // Default mock returns empty (player not found)
 let mockRows: unknown[] = [];
+let boundValues: unknown[] = [];
 
 void mock.module("./db.ts", () => {
   const mockSql = Object.assign(
-    (_strings: TemplateStringsArray, ..._values: unknown[]) => {
+    (_strings: TemplateStringsArray, ...values: unknown[]) => {
+      boundValues = values;
       return Promise.resolve(mockRows);
     },
     { close: () => Promise.resolve() },
@@ -43,7 +45,7 @@ describe("handleGetCharacter", () => {
       },
     ];
 
-    const res = await handleGetCharacter(makeRequest(), "player_1");
+    const res = await handleGetCharacter(makeRequest("player_attacker"), "player_1");
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.player_id).toBe("player_1");
@@ -53,6 +55,7 @@ describe("handleGetCharacter", () => {
     expect(body.location_name).toBe("Accord Guild Hall");
     expect(body.hp_current).toBe(25);
     expect(body.hp_max).toBe(25);
+    expect(boundValues).toEqual(["player_1"]);
   });
 
   test("returns 404 for player with empty data (no character created)", async () => {

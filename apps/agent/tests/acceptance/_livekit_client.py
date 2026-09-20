@@ -12,8 +12,11 @@ participant, so a single-room test silently no-ops.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import wave
 from collections.abc import Callable
 from datetime import timedelta
+from pathlib import Path
 
 from livekit import api, rtc
 
@@ -32,8 +35,9 @@ def mint_access_token(
 ) -> str:
     """Mint a LiveKit access token for `identity` to join `room_name`.
 
-    Mirrors the server-side pattern in apps/server/src/livekit.ts:98 but for
-    test participants. Grants room-join + publish-data, no track publishing.
+    Grants room join, track publishing, data publishing and subscription. Unlike
+    the server's player token it does not restrict publishable sources, so a test
+    participant can publish any track kind it needs.
     """
     grants = api.VideoGrants(
         room_join=True,
@@ -172,6 +176,80 @@ async def publish_audio_frames(
         await source.capture_frame(frame)
     await source.wait_for_playout()
     return source, track, publication
+
+
+def load_pcm_wav(
+    path: Path,
+    *,
+    sha256: str,
+    sample_rate: int,
+    channels: int,
+    sample_width: int,
+    frame_ms: int = 20,
+) -> list[rtc.AudioFrame]:
+    data = path.read_bytes()
+    actual_hash = hashlib.sha256(data).hexdigest()
+    if actual_hash != sha256:
+        raise ValueError(f"audio fixture hash mismatch for {path.name}: {actual_hash}")
+    with wave.open(str(path), "rb") as wav:
+        actual = (wav.getframerate(), wav.getnchannels(), wav.getsampwidth())
+        expected = (sample_rate, channels, sample_width)
+        if actual != expected:
+            raise ValueError(f"audio fixture format mismatch for {path.name}: {actual} != {expected}")
+        frame_count = wav.getnframes()
+        if frame_count <= 0:
+            raise ValueError(f"audio fixture is empty: {path.name}")
+        pcm = wav.readframes(frame_count)
+        if wav.readframes(1):
+            raise ValueError(f"audio fixture contains undeclared frames: {path.name}")
+    bytes_per_sample = channels * sample_width
+    if len(pcm) != frame_count * bytes_per_sample:
+        raise ValueError(f"audio fixture has incomplete PCM frames: {path.name}")
+    samples_per_frame = sample_rate * frame_ms // 1000
+    frames = []
+    for offset in range(0, frame_count, samples_per_frame):
+        samples = min(samples_per_frame, frame_count - offset)
+        start = offset * bytes_per_sample
+        end = start + samples * bytes_per_sample
+        frames.append(rtc.AudioFrame(pcm[start:end], sample_rate, channels, samples))
+    return frames
+
+
+async def create_microphone_track(
+    room: rtc.Room, *, sample_rate: int, channels: int, name: str
+) -> tuple[rtc.AudioSource, rtc.LocalAudioTrack, rtc.LocalTrackPublication]:
+    source = rtc.AudioSource(sample_rate, channels)
+    track = rtc.LocalAudioTrack.create_audio_track(name, source)
+    options = rtc.TrackPublishOptions()
+    options.source = rtc.TrackSource.SOURCE_MICROPHONE
+    publication = await room.local_participant.publish_track(track, options)
+    if publication.source != rtc.TrackSource.SOURCE_MICROPHONE:
+        raise ValueError(f"published track {publication.sid!r} is not a microphone")
+    return source, track, publication
+
+
+async def play_audio_frames(source: rtc.AudioSource, frames: list[rtc.AudioFrame]) -> None:
+    if not frames:
+        raise ValueError("audio fixture produced no frames")
+    for frame in frames:
+        await source.capture_frame(frame)
+    await source.wait_for_playout()
+
+
+def set_audio_muted(track: rtc.LocalAudioTrack, muted: bool) -> None:
+    if muted:
+        track.mute()
+    else:
+        track.unmute()
+
+
+async def unpublish_audio(
+    room: rtc.Room,
+    source: rtc.AudioSource,
+    publication: rtc.LocalTrackPublication,
+) -> None:
+    await room.local_participant.unpublish_track(publication.sid)
+    await aclose_audio(source)
 
 
 async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float = 15.0) -> rtc.Track:
