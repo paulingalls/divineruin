@@ -32,6 +32,14 @@ async def _player_json(pool, player_id: str) -> dict[str, Any] | None:
     return json.loads(row["data"]) if row else None
 
 
+async def inventory_quantities(pool, player_id: str) -> dict[str, int]:
+    """Read the persisted stack sizes. db_queries.get_player_inventory returns the
+    *item content* row, which carries no `quantity` — a before/after diff taken from
+    it reads every stack as zero."""
+    rows = await pool.fetch("SELECT item_id, data FROM player_inventory WHERE player_id = $1", player_id)
+    return {row["item_id"]: json.loads(row["data"]).get("quantity", 0) for row in rows}
+
+
 async def _set_level(pool, player_id: str, level: int) -> None:
     await pool.execute(
         "UPDATE players SET data = jsonb_set(data, '{level}', $2::jsonb) WHERE player_id = $1",
@@ -219,7 +227,7 @@ async def prepare_case(case_id: str) -> Scenario:
 
     before: dict[str, Any] = {"player": await _player_json(pool, player_id)}
     if case_id == "exploration.check_gather":
-        before["inventory"] = await db_queries.get_player_inventory(player_id, conn=pool)
+        before["inventory"] = await inventory_quantities(pool, player_id)
     elif case_id == "exploration.check_skill":
         row = await pool.fetchrow(
             "SELECT use_counter FROM skill_advancement WHERE player_id = $1 AND skill_id = 'athletics'", player_id

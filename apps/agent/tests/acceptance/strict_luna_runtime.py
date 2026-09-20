@@ -126,10 +126,7 @@ def grade_trace(case, events: list[Any]) -> tuple[Any | None, str]:
     assert case.narration_anchor.lower() in narration.lower(), (
         f"narration omitted anchor {case.narration_anchor!r}: {narration!r}"
     )
-    if case.id == "exploration.conversation" or case.id in {
-        "exploration.query_inventory",
-        "dispatch.query_training_programs",
-    }:
+    if case.id in {"exploration.conversation", "exploration.query_inventory", "dispatch.query_training_programs"}:
         sentences = [part for part in re.split(r"(?<=[.!?])\s+", narration) if part.strip()]
         assert 1 <= len(sentences) <= 4, f"voice response has {len(sentences)} sentences: {narration!r}"
         for voice, emotion in re.findall(r"\[([A-Z0-9_]+),\s*([a-z_]+)\]:", narration):

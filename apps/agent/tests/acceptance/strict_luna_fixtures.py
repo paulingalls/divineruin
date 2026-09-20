@@ -120,6 +120,8 @@ def _parse_row(raw: Any, index: int) -> LunaCase:
     if unknown_fields:
         raise ValueError(f"row {index}: unknown fields {unknown_fields}")
     case_id = _nonempty_string(raw, "id", f"row {index}")
+    if case_id not in REQUIRED_CASE_IDS:
+        raise ValueError(f"unknown Luna gameplay id {case_id!r}")
     profile = _nonempty_string(raw, "profile", case_id)
     seed = _nonempty_string(raw, "seed", case_id)
     prompt = _nonempty_string(raw, "prompt", case_id)
@@ -166,10 +168,7 @@ def load_case_manifest(path: Path | None = None) -> tuple[LunaCase, ...]:
     duplicates = sorted(case_id for case_id in set(ids) if ids.count(case_id) > 1)
     if duplicates:
         raise ValueError(f"duplicate Luna gameplay ids: {duplicates}")
-    unknown = sorted(set(ids) - REQUIRED_CASE_IDS)
     missing = sorted(REQUIRED_CASE_IDS - set(ids))
-    if unknown:
-        raise ValueError(f"unknown Luna gameplay ids: {unknown}")
     if missing:
         raise ValueError(f"missing Luna gameplay ids: {missing}")
     return cases

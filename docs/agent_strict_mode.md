@@ -420,7 +420,10 @@ unknown tool, variant, or prerequisite keys. Each seed and assertion must match
 its case id. Every id must also
 route to a named persisted-state branch — an unrouted row would be graded by
 nothing at all. Skill, social, discovery, save, and dice rows check their
-result fields and the expected persisted change or absence of change. The live run writes one JSON object per row to
+result fields and the expected persisted change or absence of change. The gather
+row compares the whole changed inventory set against the materials the tool
+reported, and the activation rows compare the persisted Stamina and Focus pools
+against the cost the tool reported. The live run writes one JSON object per row to
 `/tmp/divineruin_strict_luna_gameplay.jsonl`, including completion, pass/failure,
 diagnostic, calls, request count, token usage, model, estimated cost, and
 pricing provenance. Failed rows are written in `finally` and
@@ -433,8 +436,8 @@ uv run --project apps/agent --env-file .env pytest apps/agent/tests/strict_tools
 ```
 
 The measured run passed all 27 rows and the report completeness guard: 56 model
-requests, 268,408 input tokens, 266,552 cached input tokens, and 1,876 output
-tokens. Estimated cost was **$0.00795344**. The estimate uses the OpenAI
+requests, 268,411 input tokens, 266,296 cached input tokens, and 1,849 output
+tokens. Estimated cost was **$0.00796772**. The estimate uses the OpenAI
 `gpt-5.6-luna` standard text rates retrieved 2026-09-20: $0.20 per million input
 tokens, $0.02 per million cached input tokens, and $1.20 per million output tokens.
 [The model page is the pricing source.](https://developers.openai.com/api/docs/models/gpt-5.6-luna)

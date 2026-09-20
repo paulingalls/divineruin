@@ -55,7 +55,9 @@ def test_checked_in_manifest_is_exact_and_reachable() -> None:
         (lambda rows: [], "empty"),
         (lambda rows: rows[1:], "missing"),
         (lambda rows: [*rows, rows[0]], "duplicate"),
-        (lambda rows: [*rows, {**rows[0], "id": "exploration.unknown"}], "unknown"),
+        # The message is pinned: an id-shaped "unknown" also trips the seed-mismatch
+        # check, so a loose match would green with the id guard deleted.
+        (lambda rows: [*rows, {**rows[0], "id": "exploration.unknown"}], "unknown Luna gameplay id"),
     ],
 )
 def test_manifest_rejects_closed_set_faults(tmp_path: Path, mutation, message: str) -> None:

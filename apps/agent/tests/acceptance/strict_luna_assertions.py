@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from acceptance.strict_luna_scenarios import Scenario, _player_json
+from acceptance.strict_luna_scenarios import Scenario, _player_json, inventory_quantities
 from livekit.agents.voice.run_result import FunctionCallOutputEvent
 
 import db
@@ -112,18 +112,34 @@ async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call:
         after_player = await _player_json(pool, sd.player_id)
         assert after_player == scenario.before["player"], (scenario.before["player"], after_player)
     elif branch == "gather":
-        before = {row["id"]: row.get("quantity", 0) for row in scenario.before["inventory"]}
-        raw_after = await pool.fetch("SELECT item_id, data FROM player_inventory WHERE player_id = $1", sd.player_id)
-        after = {row["item_id"]: json.loads(row["data"]).get("quantity", 0) for row in raw_after}
+        before = scenario.before["inventory"]
+        after = await inventory_quantities(pool, sd.player_id)
         counts: dict[str, int] = {}
         for item_id in payload["materials"]:
             counts[item_id] = counts.get(item_id, 0) + 1
-        assert counts and all(after[item_id] - before.get(item_id, 0) == count for item_id, count in counts.items())
+        # The whole changed set, not just the reported ids: a grant the payload never
+        # named would otherwise land unseen.
+        changed = {
+            item_id: after.get(item_id, 0) - before.get(item_id, 0)
+            for item_id in set(after) | set(before)
+            if after.get(item_id, 0) != before.get(item_id, 0)
+        }
+        assert counts and changed == counts, (counts, changed)
     elif branch == "travel":
         assert (await _existing_player(pool, sd.player_id))["location_id"] == "greyvale_ruins_exterior"
     elif branch == "activate_cost":
-        assert payload["deducted"]
-        assert await _player_json(pool, sd.player_id) != scenario.before["player"]
+        # {"stamina": 0, "focus": 0} is a truthy dict, so the pools themselves are the check.
+        deducted = payload["deducted"]
+        assert deducted["stamina"] or deducted["focus"], payload
+        before_player = scenario.before["player"]
+        after_player = await _existing_player(pool, sd.player_id)
+        for name in ("stamina", "focus"):
+            assert after_player[name]["current"] == before_player[name]["current"] - deducted[name], (
+                name,
+                before_player[name],
+                after_player[name],
+                deducted,
+            )
     elif branch == "enter_combat":
         assert sd.combat_state is not None
         row = await pool.fetchrow("SELECT 1 FROM combat_instances WHERE combat_id = $1", sd.combat_state.combat_id)
@@ -153,7 +169,13 @@ async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call:
         assert row is None and sd.combat_state is None
     elif branch == "training_started":
         rows = await db_training.get_player_training_activities(sd.player_id, conn=pool)
-        assert len(rows) == 1 and rows[0]["state"] == "running_first_half"
+        assert len(rows) == 1 and rows[0]["state"] == "running_first_half", rows
+        expected_program = {
+            "dispatch.begin_physical_training": ("combat_basics", None),
+            "dispatch.begin_spell_training": ("arcane_study", "arcane_elemental_burst"),
+        }[case_id]
+        started = rows[0]["data"]
+        assert (started["program_id"], started.get("spell_id")) == expected_program, started
     elif branch == "training_midpoint":
         rows = await db_training.get_player_training_activities(sd.player_id, conn=pool)
         assert len(rows) == 1 and rows[0]["state"] == "running_second_half"
@@ -175,9 +197,13 @@ async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call:
     elif branch == "creation_choice":
         assert sd.creation_state is not None and sd.creation_state.race == "draethar"
     elif branch == "creation_finalized":
-        assert await _player_json(pool, sd.player_id) is not None
+        finalized = await _existing_player(pool, sd.player_id)
+        assert (finalized["name"], finalized["race"], finalized["class"]) == ("Luna Vale", "draethar", "warrior"), (
+            finalized
+        )
     elif branch == "enter_location":
-        assert payload and await _player_json(pool, sd.player_id) == scenario.before["player"]
+        assert payload["location"]["id"] == "accord_market_square", payload
+        assert await _player_json(pool, sd.player_id) == scenario.before["player"]
     elif branch in {"check_skill", "check_social", "check_discover", "check_save", "check_dice"}:
         assert_check_payload(case_id, payload)
         after_player = await _player_json(pool, sd.player_id)
