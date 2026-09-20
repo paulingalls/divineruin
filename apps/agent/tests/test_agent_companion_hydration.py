@@ -97,6 +97,9 @@ class TestReturningPlayerCompanion:
         hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=1)
         agent = session.start.call_args.kwargs["agent"]
         assert isinstance(agent, OnboardingAgent)
+        options = session.start.call_args.kwargs["room_options"]
+        assert options.participant_identity == "player_1"
+        assert options.close_on_disconnect is False
         # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
         # reconnect construction is the site the card names as the fault-injection target.
         instructions = agent._instructions

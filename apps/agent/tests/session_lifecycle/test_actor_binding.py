@@ -1,0 +1,61 @@
+import asyncio
+
+import pytest
+
+from session_data import SessionData
+
+
+def party_session() -> SessionData:
+    from caster_state import ConcentrationState, ResonanceTrack
+    from party_state import PartyMember
+
+    sd = SessionData(player_id="player-one", location_id="loc")
+    sd.party.members.append(
+        PartyMember(
+            player_id="player-two",
+            resonance=ResonanceTrack(),
+            concentration=ConcentrationState(),
+        )
+    )
+    return sd
+
+
+async def test_actor_binding_survives_await_and_clears_after_success_and_failure() -> None:
+    sd = SessionData(player_id="player-one", location_id="loc")
+    from caster_state import ConcentrationState, ResonanceTrack
+    from party_state import PartyMember
+
+    sd.party.members.append(
+        PartyMember(
+            player_id="player-two",
+            resonance=ResonanceTrack(),
+            concentration=ConcentrationState(),
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+    with sd._bind_actor("player-two"):
+        assert sd.actor_player_id == "player-two"
+        await asyncio.sleep(0)
+        assert sd.actor_player_id == "player-two"
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+
+    with pytest.raises(LookupError):
+        with sd._bind_actor("player-two"):
+            raise LookupError("tool failed")
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id
+    with sd._bind_actor("player-one"):
+        assert sd.actor_player_id == "player-one"
+
+
+async def test_binding_refuses_an_identity_that_is_not_a_party_member() -> None:
+    sd = party_session()
+
+    with pytest.raises(ValueError, match="stranger"):
+        with sd._bind_actor("stranger"):
+            pass  # pragma: no cover - the bind must refuse before the body runs
+    with pytest.raises(RuntimeError, match="No actor"):
+        _ = sd.actor_player_id

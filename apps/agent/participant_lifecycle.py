@@ -17,6 +17,7 @@ Both are wired by agent.dm_session; the party-join trigger is wired at gameplay 
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from livekit import rtc
@@ -48,49 +49,91 @@ def _build_reconnect_instruction(sd: SessionData) -> str:
     return " ".join(parts)
 
 
+class ReconnectionLifecycle:
+    def __init__(
+        self,
+        room: rtc.Room,
+        session: AgentSession,
+        userdata: SessionData,
+        agent: Agent,
+        *,
+        sleep: Callable[[float], Awaitable[None]],
+    ) -> None:
+        self.room = room
+        self.session = session
+        self.userdata = userdata
+        self.agent = agent
+        self.sleep = sleep
+        self._deadline: asyncio.Task[None] | None = None
+        self._tasks: set[asyncio.Task[None]] = set()
+        self._closed = False
+        room.on("participant_disconnected", self._on_disconnect)
+        room.on("participant_connected", self._on_reconnect)
+
+    def _on_disconnect(self, participant: rtc.RemoteParticipant) -> None:
+        if participant.identity != self.userdata.player_id or self.userdata.player_disconnected:
+            return
+        self.userdata.player_disconnected = True
+        self.userdata.disconnect_time = time.time()
+        if self.userdata.background:
+            self.userdata.background.pause()
+        self._deadline = asyncio.create_task(self._grace_timeout())
+        self._tasks.add(self._deadline)
+
+    def _on_reconnect(self, participant: rtc.RemoteParticipant) -> None:
+        if participant.identity != self.userdata.player_id or not self.userdata.player_disconnected:
+            return
+        self.userdata.player_disconnected = False
+        deadline = self._deadline
+        self._deadline = None
+        task = asyncio.create_task(self._finish_reconnect(deadline))
+        self._tasks.add(task)
+
+    async def _finish_reconnect(self, deadline: asyncio.Task[None] | None) -> None:
+        if deadline is not None:
+            deadline.cancel()
+            try:
+                await deadline
+            except asyncio.CancelledError:
+                pass
+        if self.userdata.player_disconnected:
+            return
+        if self.userdata.background:
+            self.userdata.background.resume()
+        reconnect_reply = self.session.generate_reply(instructions=_build_reconnect_instruction(self.userdata))
+        fire = getattr(self.agent, "_fire_and_forget", None)
+        if fire:
+            fire(reconnect_reply)
+
+    async def _grace_timeout(self) -> None:
+        await self.sleep(RECONNECT_GRACE_S)
+        logger.info("Reconnect grace period expired for %s", self.userdata.player_id)
+        await self.session.aclose()
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.room.off("participant_disconnected", self._on_disconnect)
+        self.room.off("participant_connected", self._on_reconnect)
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        results = await asyncio.gather(*self._tasks, return_exceptions=True)
+        failures = [result for result in results if isinstance(result, Exception)]
+        if failures:
+            raise BaseExceptionGroup("reconnection cleanup failed", failures)
+
+
 def _setup_reconnection(
     room: rtc.Room,
     session: AgentSession,
     userdata: SessionData,
     agent: Agent,
-) -> None:
-    """Register disconnect/reconnect handlers for any agent type."""
-    reconnect_task: asyncio.Task | None = None
-    player_id = userdata.player_id
-
-    @room.on("participant_disconnected")
-    def _on_disconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id:
-            return
-        userdata.player_disconnected = True
-        userdata.disconnect_time = time.time()
-        if userdata.background:
-            userdata.background.pause()
-        reconnect_task = asyncio.create_task(_grace_timeout())
-
-    @room.on("participant_connected")
-    def _on_reconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id or not userdata.player_disconnected:
-            return
-        userdata.player_disconnected = False
-        if reconnect_task and not reconnect_task.done():
-            reconnect_task.cancel()
-            reconnect_task = None
-        if userdata.background:
-            userdata.background.resume()
-        fire = getattr(agent, "_fire_and_forget", None)
-        reconnect_reply = session.generate_reply(instructions=_build_reconnect_instruction(userdata))
-        if fire:
-            fire(reconnect_reply)
-        else:
-            _handle = reconnect_reply  # SpeechHandle is already started
-
-    async def _grace_timeout():
-        await asyncio.sleep(RECONNECT_GRACE_S)
-        logger.info("Reconnect grace period expired for %s", player_id)
-        await session.aclose()
+    *,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> ReconnectionLifecycle:
+    return ReconnectionLifecycle(room, session, userdata, agent, sleep=sleep)
 
 
 class PartyLifecycle:
@@ -121,6 +164,7 @@ class PartyLifecycle:
         self.concentration_mod = concentration_mod
         self._live: dict[str, int] = {}
         self._last_generation: dict[str, int] = {}
+        self._revocations: dict[tuple[str, int], asyncio.Event] = {}
         self._pending_joins: dict[str, asyncio.Task[None]] = {}
         # Retain a strong reference to EVERY spawned join task until it finishes. asyncio only
         # holds a weak reference, so an unreferenced create_task() can be garbage-collected
@@ -129,6 +173,7 @@ class PartyLifecycle:
         # join is still in flight overwrites its entry under the same identity.
         self._spawned_joins: set[asyncio.Task[None]] = set()
         self._join_failures: dict[str, tuple[int, BaseException]] = {}
+        self._closed = False
 
         room.on("participant_connected", self._on_connected)
         room.on("participant_disconnected", self._on_disconnected)
@@ -140,6 +185,11 @@ class PartyLifecycle:
 
     def is_authorized(self, identity: str, generation: int) -> bool:
         return self.userdata.party.contains(identity) and self._live.get(identity) == generation
+
+    async def wait_until_revoked(self, identity: str, generation: int) -> None:
+        if self._live.get(identity) != generation:
+            return
+        await self._revocations[(identity, generation)].wait()
 
     async def authorize(self, identity: str) -> int | None:
         generation = self._live.get(identity)
@@ -160,22 +210,44 @@ class PartyLifecycle:
 
     def _on_connected(self, participant: rtc.RemoteParticipant) -> None:
         identity = participant.identity
-        if not identity or identity in self._live:
+        if self._closed or identity in self._live:
             return
         generation = self._last_generation.get(identity, 0) + 1
         self._last_generation[identity] = generation
         self._join_failures.pop(identity, None)
         self._live[identity] = generation
+        self._revocations[(identity, generation)] = asyncio.Event()
         if self.userdata.party.contains(identity):
             return
         task = asyncio.create_task(self._hydrate_member(identity, generation))
         self._pending_joins[identity] = task
         self._spawned_joins.add(task)
-        task.add_done_callback(self._spawned_joins.discard)
         task.add_done_callback(lambda completed, pid=identity, gen=generation: self._join_finished(pid, gen, completed))
 
     def _on_disconnected(self, participant: rtc.RemoteParticipant) -> None:
-        self._live.pop(participant.identity, None)
+        self._revoke(participant.identity)
+
+    def _revoke(self, identity: str) -> None:
+        generation = self._live.pop(identity, None)
+        if generation is not None:
+            self._revocations[(identity, generation)].set()
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.room.off("participant_connected", self._on_connected)
+        self.room.off("participant_disconnected", self._on_disconnected)
+        for identity in tuple(self._live):
+            self._revoke(identity)
+        for task in self._spawned_joins:
+            if not task.done():
+                task.cancel()
+        results = await asyncio.gather(*self._spawned_joins, return_exceptions=True)
+        self._spawned_joins.clear()
+        failures = [result for result in results if isinstance(result, Exception)]
+        if failures:
+            raise BaseExceptionGroup("party lifecycle cleanup failed", failures)
 
     def _join_finished(self, identity: str, generation: int, task: asyncio.Task[None]) -> None:
         if self._pending_joins.get(identity) is task:
@@ -198,7 +270,7 @@ class PartyLifecycle:
             # fail-loud the whole room (unlike combat_init's internal-SSOT fail-loud). Drop its
             # live generation so nothing it says can ever be authorized, then log + skip.
             if self._live.get(identity) == generation:
-                self._live.pop(identity, None)
+                self._revoke(identity)
             logger.warning("Party-join: no players row for %r; skipping append", identity)
             return
         # Race guard: a second participant_connected for the same identity may have appended

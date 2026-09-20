@@ -101,7 +101,7 @@ async def test_dm_turn_routes_each_real_microphone_once_with_authenticated_actor
             resonance_mod=Resonance(),
             concentration_mod=Concentration(),
         )
-        options = gameplay_room_options()
+        options = gameplay_room_options(userdata)
         assert options.get_audio_input_options() is None
         assert options.get_text_input_options() is None
         # A real STT on the DM session is what makes "the primary is not heard twice" a

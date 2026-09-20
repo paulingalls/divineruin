@@ -13,8 +13,13 @@ from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import SessionData
 
 
-def gameplay_room_options() -> room_io.RoomOptions:
-    return room_io.RoomOptions(audio_input=False, text_input=False)
+def gameplay_room_options(userdata: SessionData) -> room_io.RoomOptions:
+    return room_io.RoomOptions(
+        participant_identity=userdata.player_id,
+        audio_input=False,
+        text_input=False,
+        close_on_disconnect=False,
+    )
 
 
 @dataclass
@@ -24,7 +29,12 @@ class GameplayInputOwner:
     input: MultiplayerInput
 
     async def aclose(self) -> None:
-        results = await asyncio.gather(self.input.aclose(), self.transcriber.aclose(), return_exceptions=True)
+        results = await asyncio.gather(
+            self.input.aclose(),
+            self.transcriber.aclose(),
+            self.lifecycle.aclose(),
+            return_exceptions=True,
+        )
         failures = [result for result in results if isinstance(result, BaseException)]
         if failures:
             raise BaseExceptionGroup("multiplayer input cleanup failed", failures)
@@ -37,7 +47,7 @@ async def start_gameplay_session(
     userdata: SessionData,
 ) -> GameplayInputOwner:
     lifecycle = _setup_party_join(room, userdata)
-    await session.start(room=room, agent=agent, room_options=gameplay_room_options())
+    await session.start(room=room, agent=agent, room_options=gameplay_room_options(userdata))
     transcriber = MultiParticipantTranscriber(
         room,
         stt=deepgram.STT(model="nova-3", language="en"),
