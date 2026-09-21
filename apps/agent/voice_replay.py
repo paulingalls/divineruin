@@ -48,7 +48,7 @@ from voice_replay_metrics import (
     summarize_provider_usage,
     validate_timing_row,
 )
-from voice_replay_scope import REPLAY_INSTRUCTION, VOICE_REPLAY_SCOPE
+from voice_replay_scope import REPLAY_ENDPOINTING_SECONDS, REPLAY_INSTRUCTION, VOICE_REPLAY_SCOPE
 from voices import INWORLD_MODEL
 
 AGENT_IDENTITY = "voice-replay-agent"
@@ -300,7 +300,7 @@ async def _run_row(
             vad=inference.VAD(model="silero", min_silence_duration=0.5),
             turn_handling={
                 "turn_detection": inference.TurnDetector(),
-                "endpointing": {"min_delay": 0.5},
+                "endpointing": {"min_delay": REPLAY_ENDPOINTING_SECONDS},
                 "interruption": {"enabled": True},
             },
             max_tool_steps=5,

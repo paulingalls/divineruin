@@ -11,6 +11,7 @@ mock.module("react-native", () => ({
   // silencing them means modelling react-native-web's prop mapping. Assert on rendered TEXT only.
   View: "View",
   Text: "Text",
+  FlatList: "FlatList",
   // select() mirrors RN's resolution order: exact OS key, then native, then default.
   Platform: {
     OS: "ios",

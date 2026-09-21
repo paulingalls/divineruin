@@ -8,13 +8,21 @@ import { transcriptStore, type TranscriptEntry } from "@/stores/transcript-store
 import { characterStore } from "@/stores/character-store";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
-function TranscriptRow({ item, localPlayerId }: { item: TranscriptEntry; localPlayerId?: string }) {
+export function TranscriptRow({
+  item,
+  localPlayerId,
+}: {
+  item: TranscriptEntry;
+  localPlayerId?: string;
+}) {
   switch (item.speaker) {
     case "player":
       return (
         <View style={styles.row}>
           <ThemedText variant="system" style={styles.playerLabel}>
-            {item.playerId && item.playerId !== localPlayerId ? item.playerId : "You"}
+            {localPlayerId && item.playerId && item.playerId !== localPlayerId
+              ? item.playerId
+              : "You"}
           </ThemedText>
           <ThemedText variant="body" style={styles.playerText}>
             {item.text}

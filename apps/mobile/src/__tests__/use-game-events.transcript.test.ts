@@ -19,3 +19,17 @@ test("player transcript preserves the authenticated player id", () => {
     text: "I inspect the door.",
   });
 });
+
+test("a player entry with no id still reads as the local speaker", () => {
+  handleGameEvent({
+    type: "transcript_entry",
+    speaker: "player",
+    text: "I listen.",
+    timestamp: 124,
+  });
+
+  expect(transcriptStore.getState().entries[0]).toMatchObject({
+    speaker: "player",
+    playerId: null,
+  });
+});

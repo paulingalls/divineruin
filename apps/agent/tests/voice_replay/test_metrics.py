@@ -22,11 +22,15 @@ from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summari
 
 
 def test_voice_replay_scope_names_the_production_latency_it_excludes():
-    from voice_replay_scope import VOICE_REPLAY_SCOPE
+    from multiplayer_transcription import COMPLETE_UTTERANCE_ENDPOINTING_SECONDS
+    from voice_replay_scope import REPLAY_ENDPOINTING_SECONDS, VOICE_REPLAY_SCOPE
 
     assert VOICE_REPLAY_SCOPE["production_gameplay_equivalent"] is False
-    assert VOICE_REPLAY_SCOPE["input_endpointing_seconds"] == 0.5
-    assert VOICE_REPLAY_SCOPE["production_endpointing_seconds"] == 1.0
+    # Both sides read their live source, not a transcribed copy: a scope block that restated
+    # the two numbers would keep publishing 0.5-vs-1.0 after either one moved.
+    assert VOICE_REPLAY_SCOPE["input_endpointing_seconds"] == REPLAY_ENDPOINTING_SECONDS
+    assert VOICE_REPLAY_SCOPE["production_endpointing_seconds"] == COMPLETE_UTTERANCE_ENDPOINTING_SECONDS
+    assert REPLAY_ENDPOINTING_SECONDS < COMPLETE_UTTERANCE_ENDPOINTING_SECONDS
     assert VOICE_REPLAY_SCOPE["excluded_production_stages"] == [
         "multi_participant_transcriber_queue",
         "multiplayer_input_serialization",

@@ -1,9 +1,10 @@
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from livekit.agents import AgentSession, inference, room_io
+from livekit.agents import AgentSession, inference, room_io, stt
 from livekit.plugins import deepgram
 
 from base_agent import _make_tts
@@ -54,6 +55,20 @@ class GameplayInputOwner:
             raise BaseExceptionGroup("multiplayer input cleanup failed", failures)
 
 
+def _observe_through_current_agent(session: AgentSession) -> Callable[[tuple[stt.SpeechEvent, ...], str, str], None]:
+    """Fork player speech to whichever agent holds the floor, resolved per turn.
+
+    An enter_combat handoff swaps the agent, and on_exit closes the outgoing agent's
+    transcript logger and stops its affect analyzer: a bound method captured at startup
+    would keep writing player lines into a logger with no handlers for the rest of the fight.
+    """
+
+    def observe(events: tuple[stt.SpeechEvent, ...], player_id: str, transcript: str) -> None:
+        session.current_agent.observe_player_speech(events, player_id, transcript)
+
+    return observe
+
+
 async def start_gameplay_session(
     room: Any,
     session: AgentSession,
@@ -72,7 +87,7 @@ async def start_gameplay_session(
         lifecycle,
         session,
         userdata,
-        observe_player_speech=agent.observe_player_speech,
+        observe_player_speech=_observe_through_current_agent(session),
     )
     owner = GameplayInputOwner(lifecycle, transcriber, multiplayer_input)
     userdata.multiplayer_owner = owner

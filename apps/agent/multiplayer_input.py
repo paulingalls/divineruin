@@ -50,9 +50,13 @@ class MultiplayerInput:
             generation = transcript.generation
             with self.userdata._bind_authenticated_actor(identity, generation, self.lifecycle.require_authorized):
                 if self.observe_player_speech is not None:
-                    if not transcript.speech_events:
-                        raise RuntimeError(f"authenticated transcript from {identity!r} lost its STT event")
-                    self.observe_player_speech(transcript.speech_events, identity, transcript.text)
+                    if transcript.speech_events:
+                        self.observe_player_speech(transcript.speech_events, identity, transcript.text)
+                    else:
+                        # Tolerated: this turn reaches the DM unlogged and unanalyzed. Raising
+                        # here would kill the consumer task, and the whole party goes deaf until
+                        # aclose surfaces it — the same silent-input failure this fork exists to fix.
+                        logger.error("Authenticated transcript from %r lost its STT event", identity)
                 # speech_delivery owns the generate_reply boundary, including the two
                 # RuntimeErrors a closing session raises — a turn in flight when the DM
                 # session closes must not take the whole consumer down with it.

@@ -191,6 +191,31 @@ async def test_authenticated_raw_event_reaches_the_active_dm_observer() -> None:
     await owner.aclose()
 
 
+async def test_a_transcript_that_lost_its_stt_event_is_logged_and_still_reaches_the_dm(caplog) -> None:
+    """Observability is auxiliary: losing it must not silence the party's input consumer."""
+    sd = party_session()
+    source = TranscriptSource()
+    session = RecordingSession(sd)
+    observer = MagicMock()
+    owner = MultiplayerInput(source, Gate({("player-two", 4)}), session, sd, observe_player_speech=observer)
+    owner.start()
+
+    with caplog.at_level(logging.ERROR, logger="divineruin.dm"):
+        source.queue.put_nowait(AuthenticatedTranscript("player-two", "I inspect the door", 4, ()))
+        await asyncio.wait_for(session.generated.wait(), 1)
+        session.generated.clear()
+        event = stt.SpeechEvent(
+            type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+            alternatives=[stt.SpeechData(language=LanguageCode("en"), text="I swing")],
+        )
+        source.queue.put_nowait(AuthenticatedTranscript("player-two", "I swing", 4, (event,)))
+        await asyncio.wait_for(session.generated.wait(), 1)
+
+    observer.assert_called_once_with((event,), "player-two", "I swing")
+    assert "lost its STT event" in caplog.text
+    await owner.aclose()
+
+
 async def test_stranger_disconnected_and_stale_transcripts_stop_before_generation(caplog) -> None:
     sd = party_session()
     source = TranscriptSource()
