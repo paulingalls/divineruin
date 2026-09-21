@@ -36,6 +36,7 @@ REQUIRED_ENV_VARS = [
     "DATABASE_URL",
     "REDIS_URL",
     "INTERNAL_SECRET",
+    "ANTHROPIC_API_KEY",
 ]
 
 
@@ -56,7 +57,8 @@ def validate_env() -> None:
         provider_api_key = gameplay_llm_api_key()
     except ValueError as exc:
         raise OSError(str(exc)) from exc
-    missing = [v for v in (*REQUIRED_ENV_VARS, provider_api_key) if not os.getenv(v)]
+    required = dict.fromkeys((*REQUIRED_ENV_VARS, provider_api_key))
+    missing = [v for v in required if not os.getenv(v)]
     role_keys = set(ROLE_VOICE_KEYS)
     empty_voices = [k for k, v in VOICES.items() if not v and k not in role_keys]
     if empty_voices:

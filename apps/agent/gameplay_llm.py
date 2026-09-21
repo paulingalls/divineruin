@@ -1,13 +1,11 @@
 """Select the gameplay LLM without mixing provider-specific options."""
 
 import os
-from weakref import WeakSet
 
 from livekit.agents import llm
 from livekit.plugins import anthropic, openai
 
 LUNA_MODEL = "gpt-5.6-luna"
-_LUNA_INSTANCES: WeakSet[llm.LLM] = WeakSet()
 DEFAULT_GAMEPLAY_LLM = "openai-luna"
 PROVIDER_API_KEYS = {
     "anthropic": "ANTHROPIC_API_KEY",
@@ -38,15 +36,13 @@ def create_gameplay_llm(anthropic_model: str) -> llm.LLM:
             _strict_tool_schema=False,
         )
     if selection == "openai-luna":
-        selected = openai.LLM(
+        return openai.LLM(
             model=LUNA_MODEL,
             reasoning_effort="none",
             _strict_tool_schema=True,
         )
-        _LUNA_INSTANCES.add(selected)
-        return selected
     raise AssertionError(f"Unhandled GAMEPLAY_LLM selection: {selection!r}")
 
 
 def is_luna(selected: object) -> bool:
-    return selected in _LUNA_INSTANCES
+    return getattr(selected, "model", None) == LUNA_MODEL

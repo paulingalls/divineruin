@@ -452,7 +452,9 @@ On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout
 An unset `GAMEPLAY_LLM` selects `openai-luna`; `GAMEPLAY_LLM=anthropic` remains an
 explicit rollback. Luna uses `reasoning_effort="none"` and
 `_strict_tool_schema=True`. Startup requires `OPENAI_API_KEY` for the default and
-requires `ANTHROPIC_API_KEY` only for the rollback selection.
+requires `ANTHROPIC_API_KEY` independently for background narration, summaries,
+world news, companion idle writing, and god whispers; the rollback selection also
+uses that Anthropic key for gameplay.
 
 The decision accepts the measured player-received voice result: direct replies
 started in 0.994–1.395 seconds, while the constrained gather tool path started in

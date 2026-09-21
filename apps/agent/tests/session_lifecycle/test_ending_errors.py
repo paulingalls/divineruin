@@ -8,12 +8,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from livekit.agents import Agent, AgentSession, ModelSettings, function_tool, llm
-from livekit.agents.llm import ChatChunk, ChoiceDelta, CompletionUsage, FunctionToolCall, ToolContext
+from livekit.agents.llm import ChatChunk, ChoiceDelta, CompletionUsage, FallbackAdapter, FunctionToolCall, ToolContext
 from livekit.agents.voice.generation import perform_llm_inference
 from livekit.agents.voice.speech_handle import SpeechHandle
 from session_lifecycle._helpers import _make_context
 
 from base_agent import _player_interrupted
+from gameplay_llm import LUNA_MODEL, create_gameplay_llm
 from session_data import SessionData
 
 UNRESOLVED = "threads of fate"
@@ -28,19 +29,18 @@ def _agent_with_speech(speech) -> Agent:
     return cast(Agent, SimpleNamespace(session=SimpleNamespace(current_speech=speech)))
 
 
-def _pilot_session():
+def _pilot_session(selected_llm=None):
     session = MagicMock()
     session.userdata = SessionData(player_id="player", location_id="place")
-    session.llm = object()
+    session.llm = selected_llm if selected_llm is not None else SimpleNamespace(model=LUNA_MODEL)
     return session
 
 
-async def _pilot_chunks(agent, stream, *, interrupted=False):
-    session = _pilot_session()
+async def _pilot_chunks(agent, stream, *, interrupted=False, selected_llm=None):
+    session = _pilot_session(selected_llm)
     with (
         patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
         patch("base_agent.Agent.default.llm_node", stream),
-        patch("base_agent.is_luna", return_value=True),
         patch("base_agent._player_interrupted", return_value=interrupted),
     ):
         chunks = [chunk async for chunk in agent.llm_node(MagicMock(), [], MagicMock())]
@@ -219,6 +219,47 @@ class TestLLMErrorHandling:
 
 
 class TestLunaAtomicTurns:
+    @pytest.mark.asyncio
+    async def test_factory_luna_wrapped_by_livekit_still_uses_atomic_gate(self, monkeypatch):
+        from creation_agent import CreationAgent
+
+        async def stream(_agent, _ctx, _tools, _settings):
+            yield ChatChunk(id="partial", delta=ChoiceDelta(content="The unfinished"))
+            raise RuntimeError("provider failed after output")
+
+        monkeypatch.setenv("GAMEPLAY_LLM", "openai-luna")
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        selected = create_gameplay_llm("unused")
+        wrapped = FallbackAdapter([selected])
+        try:
+            chunks, _ = await _pilot_chunks(CreationAgent(), stream, selected_llm=wrapped)
+        finally:
+            await selected._client.close()
+
+        assert len(chunks) == 1
+        assert UNRESOLVED in chunks[0].lower()
+
+    @pytest.mark.asyncio
+    async def test_agent_luna_override_takes_precedence_over_session_llm(self, monkeypatch):
+        from creation_agent import CreationAgent
+
+        async def stream(_agent, _ctx, _tools, _settings):
+            yield ChatChunk(id="partial", delta=ChoiceDelta(content="The unfinished"))
+            raise RuntimeError("provider failed after output")
+
+        monkeypatch.setenv("GAMEPLAY_LLM", "openai-luna")
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        selected = create_gameplay_llm("unused")
+        agent = CreationAgent()
+        agent.update_options(llm=selected)
+        try:
+            chunks, _ = await _pilot_chunks(agent, stream, selected_llm=SimpleNamespace(model="claude"))
+        finally:
+            await selected._client.close()
+
+        assert len(chunks) == 1
+        assert UNRESOLVED in chunks[0].lower()
+
     @pytest.mark.parametrize(
         "source,expected",
         [("user_turn", True), ("audio_activity", True), ("programmatic", False)],
@@ -343,7 +384,6 @@ class TestLunaAtomicTurns:
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
             patch("base_agent.Agent.default.llm_node", stream),
-            patch("base_agent.is_luna", return_value=True),
             patch("base_agent._player_interrupted", return_value=False),
         ):
             task, data = perform_llm_inference(

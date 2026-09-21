@@ -10,6 +10,7 @@ from livekit import agents, rtc
 from livekit.agents import Agent, ModelSettings, stt
 from livekit.agents.llm import ChatChunk
 from livekit.agents.stt import SpeechEventType
+from livekit.agents.utils import is_given
 from livekit.plugins import inworld
 
 from affect_analyzer import PlayerAffectAnalyzer
@@ -181,7 +182,7 @@ class BaseGameAgent(ReportingEntry):
         model_settings: ModelSettings,
     ) -> AsyncGenerator:
         try:
-            selected_llm = self.session.llm
+            selected_llm = self.llm if is_given(self.llm) else self.session.llm
         except RuntimeError:
             selected_llm = None
         if is_luna(selected_llm):

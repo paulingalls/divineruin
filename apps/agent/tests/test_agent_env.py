@@ -1,4 +1,4 @@
-"""validate_env — the startup gate on required env vars and voice configuration."""
+"""Startup gates for required environment variables and voice configuration."""
 
 import os
 from unittest.mock import patch
@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from agent import REQUIRED_ENV_VARS, validate_env
+from async_worker import validate_worker_env
 
 
 def _base_env() -> dict[str, str]:
@@ -36,14 +37,23 @@ class TestEnvironmentValidation:
 
                     assert REQUIRED_ENV_VARS[0] in str(exc_info.value)
 
-    def test_default_requires_openai_instead_of_anthropic(self):
+    def test_default_requires_openai_for_gameplay(self):
         with patch.dict(os.environ, _base_env(), clear=True):
             with patch("agent.VOICES", {"narrator": "voice_id"}):
                 with patch("agent.ROLE_VOICE_KEYS", ()):
                     with pytest.raises(EnvironmentError, match="OPENAI_API_KEY"):
                         validate_env()
 
-    def test_anthropic_override_requires_only_anthropic_provider_key(self):
+    def test_default_also_requires_anthropic_for_background_writers(self):
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
+        env.pop("ANTHROPIC_API_KEY", None)
+        with patch.dict(os.environ, env, clear=True):
+            with patch("agent.VOICES", {"narrator": "voice_id"}):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY"):
+                        validate_env()
+
+    def test_anthropic_override_does_not_require_openai(self):
         env = {**_base_env(), "GAMEPLAY_LLM": "anthropic", "ANTHROPIC_API_KEY": "test_anthropic"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"narrator": "voice_id"}):
@@ -128,3 +138,11 @@ class TestEnvironmentValidation:
                 with patch("agent.ROLE_VOICE_KEYS", ()):
                     with patch("agent.logger"):
                         validate_env()  # must not raise
+
+
+def test_async_worker_requires_anthropic_for_background_writers():
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY"):
+            validate_worker_env()
+    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test"}, clear=True):
+        validate_worker_env()

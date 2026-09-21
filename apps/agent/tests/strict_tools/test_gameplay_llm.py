@@ -38,7 +38,6 @@ def test_default_uses_strict_luna_without_anthropic_options(monkeypatch):
         reasoning_effort="none",
         _strict_tool_schema=True,
     )
-    assert is_luna(selected) is True
 
 
 def test_anthropic_override_keeps_anthropic_options(monkeypatch):
