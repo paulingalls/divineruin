@@ -5,7 +5,8 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from livekit.agents import Agent
+from livekit.agents import Agent, stt
+from livekit.agents.language import LanguageCode
 
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import AuthenticatedTranscript, TranscriptionFailure
@@ -163,6 +164,31 @@ async def test_current_transcript_generates_verbatim_with_bound_authenticated_ac
         _ = sd.actor_player_id
     await owner.aclose()
     assert worker.cancelled()
+
+
+async def test_authenticated_raw_event_reaches_the_active_dm_observer() -> None:
+    sd = party_session()
+    source = TranscriptSource()
+    session = RecordingSession(sd)
+    observer = MagicMock()
+    event = stt.SpeechEvent(
+        type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+        alternatives=[stt.SpeechData(language=LanguageCode("en"), text="I inspect the door")],
+    )
+    owner = MultiplayerInput(
+        source,
+        Gate({("player-two", 4)}),
+        session,
+        sd,
+        observe_player_speech=observer,
+    )
+    owner.start()
+
+    source.queue.put_nowait(AuthenticatedTranscript("player-two", "I inspect the door", 4, (event,)))
+    await asyncio.wait_for(session.generated.wait(), 1)
+
+    observer.assert_called_once_with((event,), "player-two", "I inspect the door")
+    await owner.aclose()
 
 
 async def test_stranger_disconnected_and_stale_transcripts_stop_before_generation(caplog) -> None:

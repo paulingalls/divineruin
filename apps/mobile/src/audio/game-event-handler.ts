@@ -296,6 +296,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
 
       transcriptStore.getState().addEntry({
         speaker,
+        playerId: typeof event.player_id === "string" ? event.player_id : null,
         character: characterName,
         emotion: (event.emotion as string | undefined) ?? null,
         text: typeof event.text === "string" ? event.text : "",

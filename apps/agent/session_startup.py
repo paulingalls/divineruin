@@ -67,7 +67,13 @@ async def start_gameplay_session(
         stt=deepgram.STT(model="nova-3", language="en"),
         authorizer=lifecycle.authorize,
     )
-    multiplayer_input = MultiplayerInput(transcriber, lifecycle, session, userdata)
+    multiplayer_input = MultiplayerInput(
+        transcriber,
+        lifecycle,
+        session,
+        userdata,
+        observe_player_speech=agent.observe_player_speech,
+    )
     owner = GameplayInputOwner(lifecycle, transcriber, multiplayer_input)
     userdata.multiplayer_owner = owner
     transcriber.start()

@@ -131,10 +131,12 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
     room = Room()
     session = Session()
     sd = SessionData(player_id="player-one", location_id="loc")
+    agent = MagicMock()
 
-    owner = await start_gameplay_session(room, cast(Any, session), object(), sd)
+    owner = await start_gameplay_session(room, cast(Any, session), agent, sd)
 
     assert sd.multiplayer_owner is owner
+    assert owner.input.observe_player_speech is agent.observe_player_speech
     assert events.index("room:participant_connected") < events.index("session:start")
     assert session.start_kwargs is not None
     options = session.start_kwargs["room_options"]

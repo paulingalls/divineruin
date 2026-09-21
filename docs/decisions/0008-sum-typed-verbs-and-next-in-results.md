@@ -219,6 +219,8 @@ Sprint 103 production decision below.
 GPT-5.6 Luna accepted the complete strict schemas and passed the closed 27-case
 seeded gameplay matrix. Production now defaults to Luna with
 `reasoning_effort="none"` and `_strict_tool_schema=True`; the Anthropic route is
-an explicit strict-off rollback. The measured tool path missed the 1.5-second
-first-audio target, which is retained as follow-up latency work rather than a
-schema correctness blocker.
+an explicit strict-off rollback. The direct-session diagnostic tool path missed the
+1.5-second first-audio target. It also excludes production's 1.0-second multiplayer
+endpointing floor, transcriber queue, and serialized input handoff, so it is not a
+production latency measurement. Production-path latency remains follow-up work rather
+than a schema correctness blocker.

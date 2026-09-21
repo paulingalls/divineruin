@@ -169,11 +169,25 @@ class BaseGameAgent(ReportingEntry):
     ) -> AsyncGenerator[stt.SpeechEvent | str, None]:
         """Override stt_node to fork STT events to the affect analyzer."""
         async for event in Agent.default.stt_node(self, audio, model_settings):
-            if isinstance(event, stt.SpeechEvent) and event.type == SpeechEventType.FINAL_TRANSCRIPT:
-                self._affect_analyzer.enqueue_event(event)
-                if self._transcript and event.alternatives:
-                    self._fire_and_forget(self._transcript.log_player(event.alternatives[0].text))
+            if (
+                isinstance(event, stt.SpeechEvent)
+                and event.type == SpeechEventType.FINAL_TRANSCRIPT
+                and event.alternatives
+            ):
+                sd: SessionData = self.session.userdata
+                self.observe_player_speech((event,), sd.player_id, event.alternatives[0].text)
             yield event
+
+    def observe_player_speech(
+        self,
+        events: tuple[stt.SpeechEvent, ...],
+        player_id: str,
+        transcript: str,
+    ) -> None:
+        for event in events:
+            self._affect_analyzer.enqueue_event(event)
+        if self._transcript:
+            self._fire_and_forget(self._transcript.log_player(transcript, player_id=player_id))
 
     async def llm_node(
         self,

@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from livekit.agents import Agent, AgentSession, StopResponse, llm, room_io
+from livekit.agents import Agent, AgentSession, StopResponse, llm, room_io, stt
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,7 @@ class AuthenticatedTranscript:
     participant_identity: str
     text: str
     generation: int
+    speech_events: tuple[stt.SpeechEvent, ...] = ()
 
 
 class TranscriptionFailure(RuntimeError):
@@ -57,6 +58,13 @@ class _TranscriberAgent(Agent):
         self.generation = generation
         self._emit = emit
         self._fail = fail
+        self._final_events: deque[stt.SpeechEvent] = deque()
+
+    async def stt_node(self, audio, model_settings):
+        async for event in Agent.default.stt_node(self, audio, model_settings):
+            if event.type == stt.SpeechEventType.FINAL_TRANSCRIPT and event.alternatives:
+                self._final_events.append(event)
+            yield event
 
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
         text = (new_message.text_content or "").strip()
@@ -65,7 +73,9 @@ class _TranscriberAgent(Agent):
             # would leave the consumer with a healthy-looking silent stream.
             self._fail(ValueError(f"completed transcript for {self.identity!r} was empty"))
         else:
-            self._emit(AuthenticatedTranscript(self.identity, text, self.generation))
+            events = tuple(self._final_events)
+            self._final_events.clear()
+            self._emit(AuthenticatedTranscript(self.identity, text, self.generation, events))
         raise StopResponse()
 
 

@@ -3,6 +3,7 @@ import { createStore } from "zustand/vanilla";
 export interface TranscriptEntry {
   id: string;
   speaker: "player" | "dm" | "npc" | "tool";
+  playerId?: string | null;
   character: string | null;
   emotion: string | null;
   text: string;

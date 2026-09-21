@@ -456,7 +456,11 @@ requires `ANTHROPIC_API_KEY` independently for background narration, summaries,
 world news, companion idle writing, and god whispers; the rollback selection also
 uses that Anthropic key for gameplay.
 
-The decision accepts the measured player-received voice result: direct replies
+The decision accepts the measured direct-session diagnostic: direct replies
 started in 0.994–1.395 seconds, while the constrained gather tool path started in
-1.813–3.460 seconds and missed the 1.5-second target. Stage-level latency work and
-real microphone testing remain follow-up optimization, not rollout gates.
+1.813–3.460 seconds and missed the 1.5-second target. This runner does not use the
+production multiplayer input path. It uses 0.5-second endpointing rather than the
+production 1.0-second floor and excludes the per-player transcriber queue and
+`MultiplayerInput` serialization. These values therefore cannot establish production
+end-to-end latency. Stage-level production measurement and real microphone testing
+remain follow-up optimization, not rollout gates.

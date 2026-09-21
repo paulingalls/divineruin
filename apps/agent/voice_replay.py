@@ -48,17 +48,13 @@ from voice_replay_metrics import (
     summarize_provider_usage,
     validate_timing_row,
 )
+from voice_replay_scope import REPLAY_INSTRUCTION, VOICE_REPLAY_SCOPE
 from voices import INWORLD_MODEL
 
 AGENT_IDENTITY = "voice-replay-agent"
 PLAYER_IDENTITY = "voice-replay-player"
 PLAYER_ID = "voice_replay_luna"
 QUEUE_SIZE_MS = 100
-REPLAY_INSTRUCTION = """
-VOICE REPLAY SCENARIO: Start by saying exactly “I'll look.” If the check tool is available, immediately call it
-once with roll.kind gather and roll.category any, then say each returned material id as ordinary spaced words.
-If the tool is unavailable, stop after the acknowledgement.
-"""
 
 
 class FixedRng(random.Random):
@@ -256,6 +252,7 @@ async def _run_row(
         "repetition": repetition,
         "temperature": "cold" if repetition == 0 else "warm",
         "completion": "failed",
+        "measurement_scope": dict(VOICE_REPLAY_SCOPE),
     }
     closers: list[Callable[[], Awaitable[None]]] = []
 

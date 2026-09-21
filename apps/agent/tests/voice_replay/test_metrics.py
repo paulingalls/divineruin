@@ -21,6 +21,18 @@ from voice_replay_audio import (
 from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summarize_provider_usage, validate_timing_row
 
 
+def test_voice_replay_scope_names_the_production_latency_it_excludes():
+    from voice_replay_scope import VOICE_REPLAY_SCOPE
+
+    assert VOICE_REPLAY_SCOPE["production_gameplay_equivalent"] is False
+    assert VOICE_REPLAY_SCOPE["input_endpointing_seconds"] == 0.5
+    assert VOICE_REPLAY_SCOPE["production_endpointing_seconds"] == 1.0
+    assert VOICE_REPLAY_SCOPE["excluded_production_stages"] == [
+        "multi_participant_transcriber_queue",
+        "multiplayer_input_serialization",
+    ]
+
+
 def _write_wav(path: Path, samples: list[int], sample_rate: int = 1_000) -> bytes:
     pcm = b"".join(sample.to_bytes(2, "little", signed=True) for sample in samples)
     with wave.open(str(path), "wb") as wav:
