@@ -1,12 +1,12 @@
 """Startup gates for required environment variables and voice configuration."""
 
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import async_worker
 from agent import REQUIRED_ENV_VARS, validate_env
-from async_worker import validate_worker_env
 
 
 def _base_env() -> dict[str, str]:
@@ -143,6 +143,20 @@ class TestEnvironmentValidation:
 def test_async_worker_requires_anthropic_for_background_writers():
     with patch.dict(os.environ, {}, clear=True):
         with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY"):
-            validate_worker_env()
+            async_worker.validate_worker_env()
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test"}, clear=True):
-        validate_worker_env()
+        async_worker.validate_worker_env()
+
+
+@pytest.mark.asyncio
+async def test_async_worker_main_rejects_a_missing_key_before_startup():
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch(
+            "async_worker.db.get_pool", new_callable=AsyncMock, side_effect=AssertionError("worker started")
+        ) as get_pool,
+    ):
+        with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY"):
+            await async_worker.main()
+
+    get_pool.assert_not_awaited()

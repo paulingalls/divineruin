@@ -234,7 +234,7 @@ class TestLunaAtomicTurns:
         try:
             chunks, _ = await _pilot_chunks(CreationAgent(), stream, selected_llm=wrapped)
         finally:
-            await selected._client.close()
+            await selected.aclose()
 
         assert len(chunks) == 1
         assert UNRESOLVED in chunks[0].lower()
@@ -255,7 +255,7 @@ class TestLunaAtomicTurns:
         try:
             chunks, _ = await _pilot_chunks(agent, stream, selected_llm=SimpleNamespace(model="claude"))
         finally:
-            await selected._client.close()
+            await selected.aclose()
 
         assert len(chunks) == 1
         assert UNRESOLVED in chunks[0].lower()
