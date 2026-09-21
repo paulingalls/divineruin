@@ -11,6 +11,10 @@ from speech_handles import in_flight_handle
 DM_LOGGER = "divineruin.dm"
 
 
+async def _start_gameplay(room, session, agent, _userdata):
+    await session.start(room=room, agent=agent)
+
+
 def _delivery_records(caplog, level: int | None = None):
     return [
         record
@@ -39,12 +43,12 @@ async def _run_gameplay_greeting(last_summary, generate_reply):
     }
 
     with (
-        patch("agent.AgentSession", return_value=session),
-        patch("agent.deepgram.STT"),
-        patch("agent.create_gameplay_llm"),
-        patch("agent._make_tts"),
-        patch("agent.inference.VAD"),
-        patch("agent.inference.TurnDetector"),
+        patch("session_startup.AgentSession", return_value=session),
+        patch("session_startup.deepgram.STT"),
+        patch("session_startup.create_gameplay_llm"),
+        patch("session_startup._make_tts"),
+        patch("session_startup.inference.VAD"),
+        patch("session_startup.inference.TurnDetector"),
         patch("agent.db_queries.get_player", new_callable=AsyncMock, return_value=player),
         patch(
             "agent.db_queries.get_last_session_summary",
@@ -59,7 +63,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply):
         patch("session_hydration.hydrate_session_state", new_callable=AsyncMock),
         patch("gameplay_agent.create_gameplay_agent", return_value=MagicMock()),
         patch("agent._setup_reconnection"),
-        patch("agent._setup_party_join"),
+        patch("agent.start_gameplay_session", new=_start_gameplay),
     ):
         await dm_session(ctx)
 

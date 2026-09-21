@@ -1,6 +1,5 @@
 """Tests for agent.py - main DM agent and session management."""
 
-import asyncio
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,7 +9,6 @@ from speech_handles import completed_handle
 from agent import _extract_player_id
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _silence
 from exploration_agent import ExplorationAgent
-from session_data import SessionData
 
 
 class _TestAgent(BaseGameAgent):
@@ -176,50 +174,6 @@ class TestDMSession:
         with patch("session_hydration.hydrate_session_state", new_callable=AsyncMock) as mock_hydrate:
             yield mock_hydrate
 
-    @pytest.mark.parametrize(
-        "player,expected_model",
-        [
-            (None, "claude-sonnet-4-20250514"),
-            (
-                {
-                    "name": "Test",
-                    "class": "guardian",
-                    "location_id": "accord_guild_hall",
-                    "flags": {"onboarding_beat": 1},
-                },
-                "claude-haiku-4-5-20251001",
-            ),
-            ({"name": "Test", "location_id": "accord_guild_hall"}, "claude-haiku-4-5-20251001"),
-        ],
-        ids=["new", "onboarding", "returning"],
-    )
-    @pytest.mark.asyncio
-    async def test_every_session_path_uses_gameplay_llm_factory(self, player, expected_model):
-        mock_ctx = MagicMock(room=MagicMock())
-        session = MagicMock(start=AsyncMock())
-        session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
-        with (
-            patch("agent.AgentSession", return_value=session),
-            patch("agent.create_gameplay_llm") as factory,
-            patch("agent.deepgram.STT"),
-            patch("agent._make_tts"),
-            patch("agent.inference.VAD"),
-            patch("agent.inference.TurnDetector"),
-            patch("agent.db_queries.get_player", new_callable=AsyncMock, return_value=player),
-            patch("agent.db_queries.get_last_session_summary", new_callable=AsyncMock, return_value=None),
-            patch("agent.db_queries.get_player_flag", new_callable=AsyncMock, return_value=False),
-            patch(
-                "agent.db_content_queries.get_location",
-                new_callable=AsyncMock,
-                return_value={"region_type": "city"},
-            ),
-        ):
-            from agent import dm_session
-
-            await dm_session(mock_ctx)
-
-        factory.assert_called_once_with(expected_model)
-
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
         """dm_session should create SessionData — first session (existing player, no summary) starts at market square."""
@@ -229,17 +183,18 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            MockSD.return_value.player_id = "player_1"
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.create_gameplay_llm"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.create_gameplay_llm"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -280,17 +235,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.create_gameplay_llm"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.create_gameplay_llm"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player",
                                         new_callable=AsyncMock,
@@ -330,17 +285,18 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            MockSD.return_value.player_id = "player_1"
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.create_gameplay_llm"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.create_gameplay_llm"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -368,6 +324,13 @@ class TestDMSession:
                 assert start_call[1]["room"] == mock_ctx.room
                 assert isinstance(start_call[1]["agent"], ExplorationAgent)
                 assert start_call[1]["agent"]._agent_type == "city"
+                room_options = start_call[1]["room_options"]
+                assert room_options.participant_identity == "player_1"
+                assert room_options.close_on_disconnect is False
+                assert room_options.audio_input is False
+                assert room_options.text_input is False
+                assert room_options.get_audio_input_options() is None
+                assert room_options.get_text_input_options() is None
 
     @pytest.mark.asyncio
     async def test_dm_session_generates_initial_greeting(self):
@@ -378,17 +341,17 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
-            with patch("agent.AgentSession") as MockSession:
+            with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
                 mock_session_instance.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
                 MockSession.return_value = mock_session_instance
 
-                with patch("agent.deepgram.STT"):
-                    with patch("agent.create_gameplay_llm"):
-                        with patch("agent._make_tts"):
-                            with patch("agent.inference.VAD"):
-                                with patch("agent.inference.TurnDetector"):
+                with patch("session_startup.deepgram.STT"):
+                    with patch("session_startup.create_gameplay_llm"):
+                        with patch("session_startup._make_tts"):
+                            with patch("session_startup.inference.VAD"):
+                                with patch("session_startup.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -416,51 +379,3 @@ class TestDMSession:
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
                 assert "market" in instructions.lower()
-
-
-class TestJoinSessionEnd:
-    """The end-of-session recap is spawned by a synchronous close handler, so something has
-    to wait for it. _join_session_end is that wait, and the job runner is what calls it —
-    after AgentSession.aclose() and before room.disconnect()
-    (ipc/job_proc_lazy_main.py:388-419).
-    """
-
-    def test_the_hook_is_registered_on_the_rtc_session(self):
-        """Without this, _join_session_end is a function nothing calls (constraint 6)."""
-        import agent
-
-        assert agent.server._session_end_fnc is agent._join_session_end
-
-    @pytest.mark.asyncio
-    async def test_it_does_not_return_until_the_recap_is_published(self):
-        from agent import _join_session_end
-
-        published = False
-
-        async def recap():
-            nonlocal published
-            await asyncio.sleep(0)
-            published = True
-
-        sd = SessionData(player_id="p1", location_id="")
-        sd.session_end_task = asyncio.create_task(recap())
-        ctx = MagicMock()
-        ctx.primary_session.userdata = sd
-
-        await _join_session_end(ctx)
-
-        assert published is True
-
-    @pytest.mark.asyncio
-    async def test_it_returns_quietly_when_there_is_nothing_to_join(self):
-        from agent import _join_session_end
-
-        no_session = MagicMock()
-        type(no_session).primary_session = property(
-            lambda _s: (_ for _ in ()).throw(RuntimeError("No AgentSession was started for this job"))
-        )
-        await _join_session_end(no_session)  # a job that never started a session
-
-        never_ended = MagicMock()
-        never_ended.primary_session.userdata = SessionData(player_id="p1", location_id="")
-        await _join_session_end(never_ended)

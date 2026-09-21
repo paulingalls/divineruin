@@ -17,6 +17,10 @@ def _fake_hydrated_companion(_player_id: str, companion_id: str, name: str, *, p
     return CompanionState(id=companion_id, name=name, player_level=player_level, session_count=1)
 
 
+async def _start_gameplay(room, session, agent, _userdata):
+    await session.start(room=room, agent=agent)
+
+
 async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionData]:
     from agent import dm_session
 
@@ -28,12 +32,12 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
     session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
 
     with (
-        patch("agent.AgentSession", return_value=session) as session_factory,
-        patch("agent.deepgram.STT"),
-        patch("agent.create_gameplay_llm"),
-        patch("agent._make_tts"),
-        patch("agent.inference.VAD"),
-        patch("agent.inference.TurnDetector"),
+        patch("session_startup.AgentSession", return_value=session) as session_factory,
+        patch("session_startup.deepgram.STT"),
+        patch("session_startup.create_gameplay_llm"),
+        patch("session_startup._make_tts"),
+        patch("session_startup.inference.VAD"),
+        patch("session_startup.inference.TurnDetector"),
         patch("agent.db_queries.get_player", new_callable=AsyncMock, return_value=player),
         patch("agent.db_queries.get_last_session_summary", new_callable=AsyncMock, return_value=None),
         patch(
@@ -43,7 +47,7 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
         ),
         patch("session_hydration.hydrate_session_state", new_callable=AsyncMock),
         patch("agent._setup_reconnection"),
-        patch("agent._setup_party_join"),
+        patch("agent.start_gameplay_session", new=_start_gameplay),
         patch(
             "companion_relationship_queries.hydrate_companion_state",
             new_callable=AsyncMock,
@@ -93,6 +97,11 @@ class TestReturningPlayerCompanion:
         hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=1)
         agent = session.start.call_args.kwargs["agent"]
         assert isinstance(agent, OnboardingAgent)
+        options = session.start.call_args.kwargs["room_options"]
+        assert options.participant_identity == "player_1"
+        assert options.close_on_disconnect is False
+        # Onboarding predates the transcriber: room audio is the only way it hears the player.
+        assert options.get_audio_input_options() is not None
         # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
         # reconnect construction is the site the card names as the fault-injection target.
         instructions = agent._instructions

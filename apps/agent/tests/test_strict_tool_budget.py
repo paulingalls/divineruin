@@ -129,12 +129,19 @@ def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
         if ".venv" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.Call) or "AgentSession" not in ast.dump(node.func):
+            if not isinstance(node, ast.Call) or not _is_agent_session_call(node):
                 continue
             for kw in node.keywords:
                 if kw.arg == "llm" and isinstance(kw.value, ast.Call) and "LLM" in ast.dump(kw.value.func):
                     sites.append((str(path.relative_to(root)), kw.value))
     return sites
+
+
+def _is_agent_session_call(node: ast.Call) -> bool:
+    target = node.func
+    return (isinstance(target, ast.Name) and target.id == "AgentSession") or (
+        isinstance(target, ast.Attribute) and target.attr == "AgentSession"
+    )
 
 
 def _agent_session_sites() -> list[tuple[str, ast.Call]]:
@@ -145,9 +152,16 @@ def _agent_session_sites() -> list[tuple[str, ast.Call]]:
         if ".venv" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if isinstance(node, ast.Call) and "AgentSession" in ast.dump(node.func):
+            if isinstance(node, ast.Call) and _is_agent_session_call(node):
                 sites.append((str(path.relative_to(root)), node))
     return sites
+
+
+def test_agent_session_matcher_distinguishes_constructor_from_chained_calls():
+    tree = ast.parse("AgentSession().options.endpointing.get('min_delay')")
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+
+    assert [ast.unparse(call) for call in calls if _is_agent_session_call(call)] == ["AgentSession()"]
 
 
 def test_every_agent_session_chooses_its_max_tool_steps():
@@ -185,15 +199,12 @@ def test_every_agent_session_chooses_its_max_tool_steps():
         )
 
 
-def test_every_agent_session_runs_strict_tool_schema_off():
-    """The Anthropic acceptance harnesses stay aligned with the default factory.
+def test_every_anthropic_acceptance_session_runs_strict_tool_schema_off():
+    """The Anthropic acceptance harnesses stay aligned with the rollback provider.
 
     ADR 0008's sum types fixed the two limits the design pass measured (16 union-typed
-    parameters, the additionalProperties object) — the budget walk above proves that much.
-    They were not sufficient: probed live 2026-09-05, exploration, combat and dispatch all
-    400 with "The compiled grammar is too large", and exploration then 400s with "Schema is
-    too complex." Neither ceiling is reachable from a schema this fast lane can inspect, so
-    this source pin is what keeps production off the flip until the surface actually fits.
+    parameters, the additionalProperties object), but Anthropic still rejected the larger
+    agents in the 2026-09-05 live probe. The Anthropic rollback therefore remains strict-off.
 
     A harness left on the plugin default 400s on every dispatch turn, so the one tier that
     reaches the API tests nothing. Production delegates its provider choice to the factory;
@@ -217,7 +228,7 @@ def test_every_agent_session_runs_strict_tool_schema_off():
 
 
 def test_production_agent_session_routes_through_gameplay_factory():
-    production = next(call for filename, call in _agent_session_sites() if filename == "agent.py")
+    production = next(call for filename, call in _agent_session_sites() if filename == "session_startup.py")
     llm_kw = next(kw.value for kw in production.keywords if kw.arg == "llm")
     assert isinstance(llm_kw, ast.Call)
     assert isinstance(llm_kw.func, ast.Name)
@@ -230,11 +241,6 @@ def test_production_agent_session_routes_through_gameplay_factory():
     [("anthropic", False), ("openai-luna", True)],
 )
 async def test_gameplay_factory_strict_direction(monkeypatch, selection, expected):
-    """Each provider keeps the flag somewhere else; read the one the returned plugin owns.
-
-    A hasattr chain would fall through to the other provider's field the day a plugin grows
-    both spellings, and assert about a flag nothing sends.
-    """
     from livekit.plugins import anthropic as anthropic_plugin
     from livekit.plugins import openai as openai_plugin
 

@@ -19,12 +19,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-OPT_IN_VAR = "REQUIRE_REAL_LLM"
-KEY_VAR = "ANTHROPIC_API_KEY"
+from acceptance._provider_keys import OPT_IN_VAR, PLACEHOLDER_PREFIX
 
-# .env.example:7's value. It is truthy, so `skipif(not os.environ.get(...))` does not
-# fire on it — every teammate worktree copies it and would 401 after booting Docker.
-_PLACEHOLDER_PREFIX = "your-"
+KEY_VAR = "ANTHROPIC_API_KEY"
 
 
 def require_real_llm_key(env: Mapping[str, str]) -> None:
@@ -37,7 +34,7 @@ def require_real_llm_key(env: Mapping[str, str]) -> None:
             f"{OPT_IN_VAR} is set but {KEY_VAR} is empty or absent: the real-LLM acceptance "
             f"scenarios would skip silently. Put a real key in .env, or unset {OPT_IN_VAR}."
         )
-    if key.startswith(_PLACEHOLDER_PREFIX):
+    if key.startswith(PLACEHOLDER_PREFIX):
         raise RuntimeError(
             f"{KEY_VAR} is the .env.example placeholder {key!r}, not a real key — the real-LLM "
             f"scenarios would 401. Copy a real key into this checkout's .env, or unset {OPT_IN_VAR}."

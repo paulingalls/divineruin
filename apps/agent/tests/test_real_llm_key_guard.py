@@ -23,12 +23,11 @@ appear in the scenario's own source. Strict there is safe in the way strict dete
 not — it can only ever cost a red, never green a scenario that skips.
 
 The walk's bound, stated rather than implied, because an earlier version of this docstring
-overstated it: a helper OUTSIDE apps/agent/tests can hide the construction, and production
-holds TWO Anthropic entry points, not one. `agent.py`'s `_make_agent_session` is nested
-inside `dm_session` and is genuinely unreachable — but `llm_config.client` is a
-module-level `anthropic.AsyncAnthropic()` that any test can import, and it imports cleanly
-with no key (it 401s at request time), which is how `narration.py` talks to the API. So the
-detector below names it alongside the plugin import.
+overstated it: a helper OUTSIDE apps/agent/tests can hide the construction. Production
+gameplay now chooses OpenAI or Anthropic through `gameplay_llm`, while `llm_config.client`
+remains a module-level `anthropic.AsyncAnthropic()` that any test can import. It imports
+cleanly with no key and 401s at request time, which is how `narration.py` talks to the API.
+The detector below therefore names that client alongside direct plugin imports.
 
 WHAT IS STILL NOT COVERED, and is the reason to read this before adding a scenario: the
 TRANSITIVE route. A module that imports a production helper which in turn drives
