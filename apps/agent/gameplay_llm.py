@@ -7,11 +7,27 @@ from livekit.agents import llm
 from livekit.plugins import anthropic, openai
 
 LUNA_MODEL = "gpt-5.6-luna"
-_LUNA_PILOTS: WeakSet[llm.LLM] = WeakSet()
+_LUNA_INSTANCES: WeakSet[llm.LLM] = WeakSet()
+DEFAULT_GAMEPLAY_LLM = "openai-luna"
+PROVIDER_API_KEYS = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai-luna": "OPENAI_API_KEY",
+}
+
+
+def gameplay_llm_selection() -> str:
+    selection = os.getenv("GAMEPLAY_LLM", DEFAULT_GAMEPLAY_LLM)
+    if selection not in PROVIDER_API_KEYS:
+        raise ValueError(f"Unsupported GAMEPLAY_LLM selection: {selection!r}")
+    return selection
+
+
+def gameplay_llm_api_key() -> str:
+    return PROVIDER_API_KEYS[gameplay_llm_selection()]
 
 
 def create_gameplay_llm(anthropic_model: str) -> llm.LLM:
-    selection = os.getenv("GAMEPLAY_LLM", "anthropic")
+    selection = gameplay_llm_selection()
     if selection == "anthropic":
         # Anthropic rejects three full profiles on aggregate compiled-grammar limits;
         # ADR 0008 records why its production route remains strict-off.
@@ -27,10 +43,10 @@ def create_gameplay_llm(anthropic_model: str) -> llm.LLM:
             reasoning_effort="none",
             _strict_tool_schema=True,
         )
-        _LUNA_PILOTS.add(selected)
+        _LUNA_INSTANCES.add(selected)
         return selected
-    raise ValueError(f"Unsupported GAMEPLAY_LLM selection: {selection!r}")
+    raise AssertionError(f"Unhandled GAMEPLAY_LLM selection: {selection!r}")
 
 
-def is_luna_pilot(selected: object) -> bool:
-    return selected in _LUNA_PILOTS
+def is_luna(selected: object) -> bool:
+    return selected in _LUNA_INSTANCES

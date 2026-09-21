@@ -20,11 +20,11 @@ def _fresh_report() -> None:
 
 
 @pytest.fixture(autouse=True)
-def _luna_key_and_selection(monkeypatch: pytest.MonkeyPatch) -> None:
+def _luna_key_and_default_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not key or key.lower().startswith("your-"):
         pytest.fail("OPENAI_API_KEY is absent, empty, or a your-... placeholder")
-    monkeypatch.setenv("GAMEPLAY_LLM", "openai-luna")
+    monkeypatch.delenv("GAMEPLAY_LLM", raising=False)
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)

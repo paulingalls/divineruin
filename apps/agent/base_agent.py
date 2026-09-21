@@ -14,7 +14,7 @@ from livekit.plugins import inworld
 
 from affect_analyzer import PlayerAffectAnalyzer
 from dialogue_parser import parse_dialogue_stream
-from gameplay_llm import is_luna_pilot
+from gameplay_llm import is_luna
 from latency import TurnTimer
 from session_data import SessionData
 from task_logging import log_task_failure
@@ -184,7 +184,7 @@ class BaseGameAgent(ReportingEntry):
             selected_llm = self.session.llm
         except RuntimeError:
             selected_llm = None
-        if is_luna_pilot(selected_llm):
+        if is_luna(selected_llm):
             async for chunk in self._atomic_llm_node(chat_ctx, tools, model_settings):
                 yield chunk
             return

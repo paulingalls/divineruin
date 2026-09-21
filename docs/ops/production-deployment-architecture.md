@@ -47,7 +47,7 @@ The only thing that changes between local and prod for the application code is *
 
 ## Environment & secrets
 
-All runtime config flows through environment variables (see `.env.example` for the full list). In production these are **platform-managed secrets** (DO App Platform env vars / droplet secret store) — never a committed `.env`. The canonical required set: `DATABASE_URL`, `REDIS_URL`, `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `INWORLD_API_KEY`, `JWT_SECRET`, `INTERNAL_SECRET`, plus the Spaces `S3_*` trio once the asset migration lands.
+All runtime config flows through environment variables (see `.env.example` for the full list). In production these are **platform-managed secrets** (DO App Platform env vars / droplet secret store) — never a committed `.env`. The canonical required set: `DATABASE_URL`, `REDIS_URL`, `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`, `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `INWORLD_API_KEY`, `JWT_SECRET`, `INTERNAL_SECRET`, plus the Spaces `S3_*` trio once the asset migration lands. `ANTHROPIC_API_KEY` is required only when `GAMEPLAY_LLM=anthropic` selects the rollback route.
 
 The agent validates its required env eagerly at startup (`apps/agent/agent.py`); the server reads lazily per-request (`apps/server/src/db.ts`) so no-DB unit tests run without config. Both behaviors are correct for their context and need no change for production.
 

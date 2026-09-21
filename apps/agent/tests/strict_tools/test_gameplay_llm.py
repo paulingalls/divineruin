@@ -14,7 +14,7 @@ from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
-from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna_pilot
+from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
 from onboarding_agent import ONBOARDING_TOOLS
 
 TOOL_PROFILES = [
@@ -27,8 +27,22 @@ TOOL_PROFILES = [
 ]
 
 
-def test_default_keeps_anthropic_options(monkeypatch):
+def test_default_uses_strict_luna_without_anthropic_options(monkeypatch):
     monkeypatch.delenv("GAMEPLAY_LLM", raising=False)
+    with patch("gameplay_llm.openai.LLM") as constructor:
+        selected = create_gameplay_llm("claude-haiku-4-5-20251001")
+
+    assert selected is constructor.return_value
+    constructor.assert_called_once_with(
+        model=LUNA_MODEL,
+        reasoning_effort="none",
+        _strict_tool_schema=True,
+    )
+    assert is_luna(selected) is True
+
+
+def test_anthropic_override_keeps_anthropic_options(monkeypatch):
+    monkeypatch.setenv("GAMEPLAY_LLM", "anthropic")
     with patch("gameplay_llm.anthropic.LLM") as constructor:
         selected = create_gameplay_llm("claude-haiku-4-5-20251001")
 
@@ -39,21 +53,7 @@ def test_default_keeps_anthropic_options(monkeypatch):
         caching="ephemeral",
         _strict_tool_schema=False,
     )
-    assert is_luna_pilot(selected) is False
-
-
-def test_luna_pilot_uses_strict_openai_without_anthropic_options(monkeypatch):
-    monkeypatch.setenv("GAMEPLAY_LLM", "openai-luna")
-    with patch("gameplay_llm.openai.LLM") as constructor:
-        selected = create_gameplay_llm("claude-haiku-4-5-20251001")
-
-    assert selected is constructor.return_value
-    constructor.assert_called_once_with(
-        model=LUNA_MODEL,
-        reasoning_effort="none",
-        _strict_tool_schema=True,
-    )
-    assert is_luna_pilot(selected) is True
+    assert is_luna(selected) is False
 
 
 def test_unknown_gameplay_llm_fails_loud(monkeypatch):
