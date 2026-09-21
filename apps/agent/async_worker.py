@@ -34,6 +34,11 @@ from world_news import generate_world_news
 logger = logging.getLogger("divineruin.async_worker")
 
 
+def validate_worker_env() -> None:
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise OSError("Missing required environment variable: ANTHROPIC_API_KEY")
+
+
 async def resolve_due_activities() -> int:
     """Find and resolve all due activities. Returns count resolved."""
     # Recover presumed-dead 'resolving' claims before fetching the due list.
@@ -299,6 +304,7 @@ async def check_god_whisper_triggers() -> int:
 
 async def main() -> None:
     """Main entry point for the async worker."""
+    validate_worker_env()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     logger.info("Async worker starting, poll interval: %ds", POLL_INTERVAL)
 

@@ -1,11 +1,12 @@
 # ADR 0008 — Verbs take sum types; state machines name their next verbs
 
-Status: **Accepted in mechanism, NOT in outcome** (2026-09-05) — sprint-047 story-019.
-Decisions 1-2 are realized in the repo and hold; decision 3's goal — strict back ON — is
-**not attainable today** and strict stays interim-OFF (see "Not yet attainable" below).
+Status: **Accepted and achieved on the GPT-5.6 Luna production route** (2026-09-20).
+Decisions 1-2 are realized in the repo and hold; decision 3's goal — strict back ON —
+is enabled through Luna. The Anthropic rollback remains strict-off because its
+provider limits still reject the full schemas.
 Decision 4 (`next` in results / the `NOW` block) is owed to Sprint 48.
-Was written to supersede the 2026-09-02 interim addendum of **ADR 0004**, and does NOT
-yet: that addendum stands, reaffirmed 2026-09-05 (see "Not yet attainable" below).
+It now supersedes the production-wide 2026-09-02 interim addendum of **ADR 0004**.
+That historical addendum still describes the Anthropic rollback route.
 Refines **ADR 0007**'s standard Act shape (`docs/agent_verbs_and_stages.md` §4). Realized by story-019
 (Sprint 47) and its follow-ons.
 Design source: `docs/agent_tool_surface.md`.
@@ -210,5 +211,16 @@ Two deviations, both deliberate:
 reproduces the compiler failures and demonstrates a fully strict request partition:
 selected verbs get their original typed arguments in a separate request. It retains
 the verb/noun contracts. Provider acceptance and a LiveKit streaming probe succeeded;
-voice latency remains unapproved. This is a proposal, not retirement of strict-off
-or a change to this ADR's accepted status.
+voice latency remained unapproved at that point. This was a proposal before the
+Sprint 103 production decision below.
+
+## Production outcome (2026-09-20)
+
+GPT-5.6 Luna accepted the complete strict schemas and passed the closed 27-case
+seeded gameplay matrix. Production now defaults to Luna with
+`reasoning_effort="none"` and `_strict_tool_schema=True`; the Anthropic route is
+an explicit strict-off rollback. The direct-session diagnostic tool path missed the
+1.5-second first-audio target. It also excludes production's 1.0-second multiplayer
+endpointing floor, transcriber queue, and serialized input handoff, so it is not a
+production latency measurement. Production-path latency remains follow-up work rather
+than a schema correctness blocker.

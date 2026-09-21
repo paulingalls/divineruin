@@ -28,9 +28,11 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, make_context, make_mock_room, published_payloads
 
 import db
+import db_mutations
 import db_queries
 import event_types as E
 import gathering_tools
+from check_tools import _check_impl
 
 # Ambient stage: wilderness with a resource_table and NO fixed node (story-002 content).
 _AMBIENT = "greyvale_south_road"
@@ -67,7 +69,9 @@ async def _node_data(pool, node_id: str) -> dict:
     return json.loads(row["data"])
 
 
-async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(reset_db_pool: str) -> None:
+async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
+    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """AC1: an ambient gather grants resource_table materials to inventory + emits the HUD roll."""
     pool = await db.get_pool()
     player_id = "cap_m46c_ambient"
@@ -75,11 +79,18 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(reset_db
     await _set_skill_tier(pool, player_id, "survival", "expert")
 
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
-    result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20)))
+    resolve = gathering_tools.check_resolution.resolve_skill_check_dc
+
+    def fixed_resolve(player, skill, dc, _rng=None):
+        return resolve(player, skill, dc, FixedRng(20))
+
+    monkeypatch.setattr(gathering_tools.check_resolution, "resolve_skill_check_dc", fixed_resolve)
+    result = json.loads(await _check_impl(ctx, "gather", target=""))
 
     assert result["outcome"] == "success"
     assert result["node_revealed"] is None  # no fixed node at the ambient stage
     assert result["materials"]  # a passing forage yields material
+    assert result["inventory_updated"] is True
 
     # Each granted material id is in player_inventory at the harvested count.
     counts: dict[str, int] = {}
@@ -107,13 +118,48 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
 
         assert result["discovery"] is True
         assert result["node_revealed"] == node_id
+        assert result["inventory_updated"] is True
 
         node = await _node_data(pool, node_id)
         assert node["discovered"] is True
         assert node["quantity"] == 1  # 2 - 1 depleted by the gather
 
         item = await db_queries.get_inventory_item(player_id, "iron_ore", conn=pool)
-        assert item is not None and item["quantity"] == 1
+        assert item is not None and item["quantity"] == result["materials"].count("iron_ore")
+    finally:
+        await pool.execute("DELETE FROM gathering_nodes WHERE id = $1", node_id)
+
+
+async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """AC3: the node depletion and the material grant share one transaction.
+
+    The injected failure fires *after* a successful add_inventory_item, so only a real
+    rollback leaves the node undiscovered at its original quantity and the item absent.
+    """
+    pool = await db.get_pool()
+    player_id = "cap_m46c_rollback"
+    node_id = "cap_m46c_rollback_salvage"
+    await seed_player(pool, player_id=player_id, location_id=_NODE_STAGE)
+    await _set_skill_tier(pool, player_id, "survival", "expert")
+    await _insert_node(pool, node_id, location_id=_NODE_STAGE, resource_type="iron_ore", quantity=2)
+
+    add_inventory_item = db_mutations.add_inventory_item
+
+    async def fail_after_grant(*args, **kwargs):
+        await add_inventory_item(*args, **kwargs)
+        raise RuntimeError("injected post-grant failure")
+
+    monkeypatch.setattr(db_mutations, "add_inventory_item", fail_after_grant)
+
+    try:
+        ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
+        with pytest.raises(RuntimeError, match="injected post-grant failure"):
+            await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20))
+
+        node = await _node_data(pool, node_id)
+        assert node["discovered"] is False
+        assert node["quantity"] == 2
+        assert await db_queries.get_inventory_item(player_id, "iron_ore", conn=pool) is None
     finally:
         await pool.execute("DELETE FROM gathering_nodes WHERE id = $1", node_id)
 

@@ -5,15 +5,24 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { transcriptStore, type TranscriptEntry } from "@/stores/transcript-store";
+import { characterStore } from "@/stores/character-store";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
-function TranscriptRow({ item }: { item: TranscriptEntry }) {
+export function TranscriptRow({
+  item,
+  localPlayerId,
+}: {
+  item: TranscriptEntry;
+  localPlayerId?: string;
+}) {
   switch (item.speaker) {
     case "player":
       return (
         <View style={styles.row}>
           <ThemedText variant="system" style={styles.playerLabel}>
-            You
+            {localPlayerId && item.playerId && item.playerId !== localPlayerId
+              ? item.playerId
+              : "You"}
           </ThemedText>
           <ThemedText variant="body" style={styles.playerText}>
             {item.text}
@@ -54,12 +63,17 @@ function TranscriptRow({ item }: { item: TranscriptEntry }) {
   }
 }
 
-const renderItem = ({ item }: ListRenderItemInfo<TranscriptEntry>) => <TranscriptRow item={item} />;
-
 const keyExtractor = (item: TranscriptEntry) => item.id;
 
 export function TranscriptView() {
   const entries = useStore(transcriptStore, (s) => s.entries);
+  const localPlayerId = useStore(characterStore, (s) => s.character?.playerId);
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<TranscriptEntry>) => (
+      <TranscriptRow item={item} localPlayerId={localPlayerId} />
+    ),
+    [localPlayerId],
+  );
   const listRef = useRef<FlatList<TranscriptEntry>>(null);
   const isScrolledUp = useRef(false);
 

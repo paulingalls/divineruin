@@ -77,6 +77,7 @@ class TranscriptLogger:
         text: str,
         character: str | None = None,
         emotion: str | None = None,
+        player_id: str | None = None,
     ) -> None:
         await publish_game_event(
             self._room,
@@ -85,16 +86,18 @@ class TranscriptLogger:
                 "speaker": speaker,
                 "character": character,
                 "emotion": emotion,
+                "player_id": player_id,
                 "text": text,
                 "timestamp": time.time(),
             },
             self._event_bus,
         )
 
-    async def log_player(self, text: str) -> None:
+    async def log_player(self, text: str, *, player_id: str | None = None) -> None:
         """Log player speech from STT."""
-        self._write(f"[{_ts()}] PLAYER: {text}")
-        await self._publish("player", text)
+        label = f"PLAYER({player_id})" if player_id else "PLAYER"
+        self._write(f"[{_ts()}] {label}: {text}")
+        await self._publish("player", text, player_id=player_id)
 
     async def log_dm(self, character: str, emotion: str, text: str) -> None:
         """Log DM/NPC speech from TTS segments."""

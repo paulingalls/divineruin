@@ -4,7 +4,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents import room_io
+from livekit.agents import Agent, room_io
 from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.speech_handle import InputDetails
 
@@ -70,6 +70,8 @@ async def test_revocation_force_interrupts_a_real_uninterruptible_speech_handle(
     )
     revoked = asyncio.Event()
     session = MagicMock()
+    # The real Agent, because deliver_player_turn runs its per-turn hook before replying.
+    session.current_agent = Agent(instructions="revocation double")
     session.generate_reply.return_value = handle
 
     async def finish_interrupted_handle() -> None:
@@ -117,10 +119,12 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
         def __init__(self):
             self.listeners = {}
             self.start_kwargs = None
+            self.current_agent = None
 
         async def start(self, **kwargs):
             events.append("session:start")
             self.start_kwargs = kwargs
+            self.current_agent = kwargs["agent"]
 
         def on(self, event, callback):
             self.listeners[event] = callback
@@ -129,10 +133,24 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
     room = Room()
     session = Session()
     sd = SessionData(player_id="player-one", location_id="loc")
+    agent = MagicMock()
 
-    owner = await start_gameplay_session(room, cast(Any, session), object(), sd)
+    owner = await start_gameplay_session(room, cast(Any, session), agent, sd)
 
     assert sd.multiplayer_owner is owner
+    observe_player_speech = owner.input.observe_player_speech
+    assert observe_player_speech is not None
+    observe_player_speech((), "player-one", "I inspect the door")
+    agent.observe_player_speech.assert_called_once_with((), "player-one", "I inspect the door")
+
+    # enter_combat hands the floor to a new agent and closes the outgoing agent's transcript
+    # logger and affect analyzer, so the fork has to follow the handoff, not the startup agent.
+    combat_agent = MagicMock()
+    session.current_agent = combat_agent
+    observe_player_speech((), "player-one", "I swing")
+
+    combat_agent.observe_player_speech.assert_called_once_with((), "player-one", "I swing")
+    agent.observe_player_speech.assert_called_once()
     assert events.index("room:participant_connected") < events.index("session:start")
     assert session.start_kwargs is not None
     options = session.start_kwargs["room_options"]

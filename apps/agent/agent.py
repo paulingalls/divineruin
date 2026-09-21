@@ -15,6 +15,7 @@ from livekit.agents.__main__ import main as livekit_main
 import db
 import db_content_queries
 import db_queries
+from gameplay_llm import gameplay_llm_api_key
 from participant_lifecycle import _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
@@ -51,7 +52,12 @@ def validate_env() -> None:
     it — .env.example is correct and has its own guard, while the live .env nothing reads is
     where the EMRIS/LIRA collision actually sat.
     """
-    missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+    try:
+        provider_api_key = gameplay_llm_api_key()
+    except ValueError as exc:
+        raise OSError(str(exc)) from exc
+    required = dict.fromkeys((*REQUIRED_ENV_VARS, provider_api_key))
+    missing = [v for v in required if not os.getenv(v)]
     role_keys = set(ROLE_VOICE_KEYS)
     empty_voices = [k for k, v in VOICES.items() if not v and k not in role_keys]
     if empty_voices:

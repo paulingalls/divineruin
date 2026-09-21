@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 import pytest
-from livekit.agents import AgentSession, StopResponse, llm
+from livekit.agents import Agent, AgentSession, StopResponse, llm
 
 import multiplayer_transcription as transcription
 from multiplayer_input import MultiplayerInput
@@ -84,9 +84,12 @@ class Session:
         self.calls: list[str] = []
         self.actors: list[str] = []
         self.handles: list[Reply] = []
+        # The real Agent, because deliver_player_turn runs its per-turn hook before replying.
+        self.current_agent = Agent(instructions="arbitration double")
 
-    def generate_reply(self, *, user_input: str) -> Reply:
-        self.calls.append(user_input)
+    def generate_reply(self, *, user_input: llm.ChatMessage, chat_ctx: llm.ChatContext) -> Reply:
+        assert chat_ctx is not None
+        self.calls.append(user_input.text_content or "")
         handle = Reply(self.actor_data, self.actors, gated=self.gate_first and not self.handles)
         self.handles.append(handle)
         return handle

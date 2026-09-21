@@ -7,6 +7,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
+from livekit.agents import StopResponse, llm
+
 if TYPE_CHECKING:
     from livekit.agents import AgentSession
 
@@ -14,6 +16,9 @@ GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS = frozenset(
     {
         ("AgentSession isn't running",),
         ("AgentSession is closing, cannot use generate_reply()",),
+        # `AgentSession.current_agent`'s wording for the same state, still spelled after the
+        # class livekit renamed away from.
+        ("VoiceAgent isn't running",),
     }
 )
 
@@ -47,14 +52,43 @@ async def deliver_player_turn(
 
     ERROR by default: unlike the background loops nothing re-offers a spoken turn, and the
     multiplayer consumer must keep serving the other players rather than die on one failure.
+
+    Runs the agent's ``on_user_turn_completed`` first, against a throwaway copy of its chat
+    context, exactly as ``agent_activity._user_turn_completed_impl`` does. livekit reaches
+    that hook only from ``audio_recognition``'s end-of-turn, and the gameplay session takes
+    no room audio of its own (``session_startup.gameplay_room_options``), so without this the
+    DM answers a delivered turn with no hot layer at all.
     """
+    try:
+        agent = session.current_agent
+        turn_ctx = agent.chat_ctx.copy()
+    except RuntimeError as exc:
+        if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
+            raise
+        logger.warning("%s skipped: %s", description, exc)
+        return False
+
+    message = llm.ChatMessage(role="user", content=[user_input])
+    try:
+        await agent.on_user_turn_completed(turn_ctx, message)
+    except StopResponse:
+        # A deliberate no-reply, not a defect: livekit answers this hook the same way
+        # (agent_activity._user_turn_completed_impl), so it must not enter the record at
+        # failure_level beside a hook that actually broke.
+        logger.info("%s declined by %s", description, agent.label)
+        return False
+    except Exception as exc:
+        logger.log(failure_level, "%s hot layer failed: %s", description, exc)
+        return False
+
     return await _deliver(
         session,
         logger,
         description,
         failure_level,
         revoked=revoked,
-        user_input=user_input,
+        user_input=message,
+        chat_ctx=turn_ctx,
     )
 
 

@@ -5,6 +5,8 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents import Agent, stt
+from livekit.agents.language import LanguageCode
 
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import AuthenticatedTranscript, TranscriptionFailure
@@ -108,13 +110,19 @@ class RecordingSession:
         self.handle_errors = list(handle_errors)
         self.generate_errors = list(generate_errors)
         self.calls = []
+        self.contexts = []
         self.actors = []
         self.generated = asyncio.Event()
+        # The real Agent, because deliver_player_turn runs its per-turn hook before replying.
+        self.current_agent = Agent(instructions="multiplayer input double")
 
     def generate_reply(self, **kwargs):
         if self.generate_errors:
             raise self.generate_errors.pop(0)
-        self.calls.append(kwargs)
+        # The verbatim text is what these tests are about; the per-turn hot context that
+        # rides alongside it has its own suite (tests/test_player_turn_hot_layer.py).
+        self.contexts.append(kwargs["chat_ctx"])
+        self.calls.append({"user_input": kwargs["user_input"].text_content})
 
         def probe():
             self.actors.append(self.userdata.actor_player_id)
@@ -156,6 +164,56 @@ async def test_current_transcript_generates_verbatim_with_bound_authenticated_ac
         _ = sd.actor_player_id
     await owner.aclose()
     assert worker.cancelled()
+
+
+async def test_authenticated_raw_event_reaches_the_active_dm_observer() -> None:
+    sd = party_session()
+    source = TranscriptSource()
+    session = RecordingSession(sd)
+    observer = MagicMock()
+    event = stt.SpeechEvent(
+        type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+        alternatives=[stt.SpeechData(language=LanguageCode("en"), text="I inspect the door")],
+    )
+    owner = MultiplayerInput(
+        source,
+        Gate({("player-two", 4)}),
+        session,
+        sd,
+        observe_player_speech=observer,
+    )
+    owner.start()
+
+    source.queue.put_nowait(AuthenticatedTranscript("player-two", "I inspect the door", 4, (event,)))
+    await asyncio.wait_for(session.generated.wait(), 1)
+
+    observer.assert_called_once_with((event,), "player-two", "I inspect the door")
+    await owner.aclose()
+
+
+async def test_a_transcript_that_lost_its_stt_event_is_logged_and_still_reaches_the_dm(caplog) -> None:
+    """Observability is auxiliary: losing it must not silence the party's input consumer."""
+    sd = party_session()
+    source = TranscriptSource()
+    session = RecordingSession(sd)
+    observer = MagicMock()
+    owner = MultiplayerInput(source, Gate({("player-two", 4)}), session, sd, observe_player_speech=observer)
+    owner.start()
+
+    with caplog.at_level(logging.ERROR, logger="divineruin.dm"):
+        source.queue.put_nowait(AuthenticatedTranscript("player-two", "I inspect the door", 4, ()))
+        await asyncio.wait_for(session.generated.wait(), 1)
+        session.generated.clear()
+        event = stt.SpeechEvent(
+            type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+            alternatives=[stt.SpeechData(language=LanguageCode("en"), text="I swing")],
+        )
+        source.queue.put_nowait(AuthenticatedTranscript("player-two", "I swing", 4, (event,)))
+        await asyncio.wait_for(session.generated.wait(), 1)
+
+    observer.assert_called_once_with((event,), "player-two", "I swing")
+    assert "lost its STT event" in caplog.text
+    await owner.aclose()
 
 
 async def test_stranger_disconnected_and_stale_transcripts_stop_before_generation(caplog) -> None:

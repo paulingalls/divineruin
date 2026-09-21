@@ -108,6 +108,7 @@ def _fake_agent_env() -> dict[str, str]:
             "LIVEKIT_API_KEY": "test",
             "LIVEKIT_API_SECRET": "test",
             "ANTHROPIC_API_KEY": "test",
+            "OPENAI_API_KEY": "test",
             "DEEPGRAM_API_KEY": "test",
             "INWORLD_API_KEY": "test",
             "DATABASE_URL": "postgresql://test:test@127.0.0.1:1/test",

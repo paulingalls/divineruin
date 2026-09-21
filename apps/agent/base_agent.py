@@ -3,16 +3,19 @@
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator, AsyncIterable, Callable
 from typing import Any
 
 from livekit import agents, rtc
 from livekit.agents import Agent, ModelSettings, stt
+from livekit.agents.llm import ChatChunk
 from livekit.agents.stt import SpeechEventType
+from livekit.agents.utils import is_given
 from livekit.plugins import inworld
 
 from affect_analyzer import PlayerAffectAnalyzer
 from dialogue_parser import parse_dialogue_stream
+from gameplay_llm import is_luna
 from latency import TurnTimer
 from session_data import SessionData
 from task_logging import log_task_failure
@@ -26,6 +29,17 @@ logger = logging.getLogger("divineruin.base")
 
 TTS_SAMPLE_RATE = 24000
 TTS_NUM_CHANNELS = 1
+UNRESOLVED_TURN_MESSAGE = "The threads of fate tangle for a moment... What were you saying?"
+PLAYER_INTERRUPT_SOURCES = {"audio_activity", "user_turn"}
+
+
+def _player_interrupted(agent: Agent) -> bool:
+    try:
+        speech = agent.session.current_speech
+    except RuntimeError:
+        return False
+    # `_interrupt_source` is the one read livekit exposes no public accessor for.
+    return bool(speech and speech.interrupted and speech._interrupt_source in PLAYER_INTERRUPT_SOURCES)
 
 
 def _silence(seconds: float) -> rtc.AudioFrame:
@@ -85,6 +99,7 @@ class BaseGameAgent(ReportingEntry):
         instructions: str,
         tools: list | None = None,
         chat_ctx: Any = None,
+        tts_instance_callback: Callable[[inworld.TTS], None] | None = None,
     ) -> None:
         init_kwargs: dict[str, Any] = {
             "instructions": instructions,
@@ -99,6 +114,7 @@ class BaseGameAgent(ReportingEntry):
         self._affect_analyzer = PlayerAffectAnalyzer()
         self._transcript: TranscriptLogger | None = None
         self._bg_tasks: set[asyncio.Task[None]] = set()
+        self._tts_instance_callback = tts_instance_callback
 
     def static_prompt(self, sd: SessionData) -> str:
         """This agent's own static prompt half — what the session's warm layer is appended to.
@@ -153,11 +169,25 @@ class BaseGameAgent(ReportingEntry):
     ) -> AsyncGenerator[stt.SpeechEvent | str, None]:
         """Override stt_node to fork STT events to the affect analyzer."""
         async for event in Agent.default.stt_node(self, audio, model_settings):
-            if isinstance(event, stt.SpeechEvent) and event.type == SpeechEventType.FINAL_TRANSCRIPT:
-                self._affect_analyzer.enqueue_event(event)
-                if self._transcript and event.alternatives:
-                    self._fire_and_forget(self._transcript.log_player(event.alternatives[0].text))
+            if (
+                isinstance(event, stt.SpeechEvent)
+                and event.type == SpeechEventType.FINAL_TRANSCRIPT
+                and event.alternatives
+            ):
+                sd: SessionData = self.session.userdata
+                self.observe_player_speech((event,), sd.player_id, event.alternatives[0].text)
             yield event
+
+    def observe_player_speech(
+        self,
+        events: tuple[stt.SpeechEvent, ...],
+        player_id: str,
+        transcript: str,
+    ) -> None:
+        for event in events:
+            self._affect_analyzer.enqueue_event(event)
+        if self._transcript:
+            self._fire_and_forget(self._transcript.log_player(transcript, player_id=player_id))
 
     async def llm_node(
         self,
@@ -165,6 +195,15 @@ class BaseGameAgent(ReportingEntry):
         tools: list,
         model_settings: ModelSettings,
     ) -> AsyncGenerator:
+        try:
+            selected_llm = self.llm if is_given(self.llm) else self.session.llm
+        except RuntimeError:
+            selected_llm = None
+        if is_luna(selected_llm):
+            async for chunk in self._atomic_llm_node(chat_ctx, tools, model_settings):
+                yield chunk
+            return
+
         max_retries = 2
         for attempt in range(max_retries + 1):
             yielded_any = False
@@ -185,7 +224,60 @@ class BaseGameAgent(ReportingEntry):
                 if attempt < max_retries:
                     await asyncio.sleep(0.5 * (attempt + 1))
                 else:
-                    yield "The threads of fate tangle for a moment... What were you saying?"
+                    yield UNRESOLVED_TURN_MESSAGE
+
+    async def _atomic_llm_node(
+        self,
+        chat_ctx: agents.llm.ChatContext,
+        tools: list,
+        model_settings: ModelSettings,
+    ) -> AsyncGenerator:
+        """Release a turn only once the provider stream reaches terminal success.
+
+        livekit 1.8.2 forwards each generated call into `function_ch` as the chunk arrives
+        (`voice/generation.py`) and `agent_activity` may execute it before the stream ends, so
+        a provider error after a complete call chunk would leave a half-applied mutation.
+        Buffering is the price: story-215 measures it against the 1500ms first-audio budget.
+        """
+        buffered = []
+        has_output = False
+        has_terminal_usage = False
+        try:
+            async for chunk in Agent.default.llm_node(self, chat_ctx, tools, model_settings):
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    self.session.userdata.tokens.on_usage(usage)
+                    has_terminal_usage = True
+                if isinstance(chunk, str):
+                    has_output = has_output or bool(chunk)
+                elif isinstance(chunk, ChatChunk):
+                    has_output = has_output or chunk.has_response()
+                buffered.append(chunk)
+        except asyncio.CancelledError:
+            if _player_interrupted(self):
+                return
+            task = asyncio.current_task()
+            if task is not None and task.cancelling():
+                task.uncancel()
+            logger.error("Luna gameplay turn cancelled before terminal success")
+            yield UNRESOLVED_TURN_MESSAGE
+            return
+        except Exception as exc:
+            logger.error("Luna gameplay turn failed before terminal success: %s", exc)
+            yield UNRESOLVED_TURN_MESSAGE
+            return
+
+        if not has_output or not has_terminal_usage:
+            logger.error(
+                "Luna gameplay turn ended without terminal success (output=%s, usage=%s)",
+                has_output,
+                has_terminal_usage,
+            )
+            yield UNRESOLVED_TURN_MESSAGE
+            return
+
+        for chunk in buffered:
+            yield chunk
 
     async def tts_node(
         self, text: AsyncIterable[str], model_settings: ModelSettings
@@ -208,6 +300,8 @@ class BaseGameAgent(ReportingEntry):
             if cached_tts is None or voice_key != cached_voice_key:
                 cached_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
                 cached_voice_key = voice_key
+                if self._tts_instance_callback is not None:
+                    self._tts_instance_callback(cached_tts)
             marked_up = apply_markup(chunk, cfg.inworld_markup)
             async with cached_tts.synthesize(marked_up) as stream:
                 async for ev in stream:

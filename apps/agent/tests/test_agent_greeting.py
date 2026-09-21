@@ -45,7 +45,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply):
     with (
         patch("session_startup.AgentSession", return_value=session),
         patch("session_startup.deepgram.STT"),
-        patch("session_startup.anthropic.LLM"),
+        patch("session_startup.create_gameplay_llm"),
         patch("session_startup._make_tts"),
         patch("session_startup.inference.VAD"),
         patch("session_startup.inference.TurnDetector"),

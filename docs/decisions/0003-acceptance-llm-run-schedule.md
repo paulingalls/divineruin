@@ -57,3 +57,12 @@ LLM is also Haiku (cheap, single provider). (sprint.json AC1 amended accordingly
   that matches its cost.
 - Determinism: assert tool calls strictly; judge narration semantically with an
   LLM judge (tolerant of phrasing, strict on intent).
+
+## Addendum (2026-09-20, Sprint 103) — production uses Luna
+
+The production gameplay default is now `gpt-5.6-luna`, with reasoning disabled
+and strict tool schemas enabled. The closed 27-case Luna matrix is the production
+model acceptance surface. Existing Anthropic-backed acceptance scenarios remain
+useful provider-specific integration checks and narration judges; they no longer
+define production model parity. `GAMEPLAY_LLM=anthropic` is retained as an
+explicit rollback route.

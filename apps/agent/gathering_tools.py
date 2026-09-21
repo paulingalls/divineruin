@@ -166,6 +166,7 @@ async def _check_gather_impl(
             "result": result.result,
             "skill": skill,
             "materials": granted,
+            "inventory_updated": bool(counts),
             "discovery": result.discovery,
             "node_revealed": node_revealed,
             "time_cost": result.time_cost,

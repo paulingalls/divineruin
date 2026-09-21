@@ -1,6 +1,6 @@
 # Strict gameplay tools without abandoning verbs and nouns
 
-Date: 2026-09-18. Status: **Proposed; provider acceptance demonstrated, voice latency not approved.**
+Date: 2026-09-18. Status: **Accepted for the GPT-5.6 Luna production route on 2026-09-20.**
 Measured at `ceef9573`, with LiveKit Agents / Anthropic plugin 1.8.1,
 Anthropic SDK 0.105.2, Pydantic 2.12.5, and `claude-haiku-4-5-20251001`.
 
@@ -8,7 +8,8 @@ This continues [the tool-surface design](agent_tool_surface.md) and
 [ADR 0008](decisions/0008-sum-typed-verbs-and-next-in-results.md).
 The verb/noun design stays. The proposed change is to **which schemas accompany
 each model request**, not the game's verbs, noun types, or deterministic engine.
-Production remains strict-off until the release gates below pass.
+Sections 1–9 preserve the Anthropic research that led to the provider evaluation.
+Section 11 records the production decision after the Luna release gates ran.
 
 The human's constraint for this design: an extra model call is acceptable **if
 measured voice latency is acceptable**. This is not permission to relax the
@@ -34,8 +35,9 @@ to a production switch. Do not enable strict globally as the first implementatio
 
 ## 2. What strict actually protects
 
-The production provider is Anthropic, through `livekit.plugins.anthropic.LLM`.
-`agent.py` explicitly passes `_strict_tool_schema=False`. Strict tool use constrains
+The provider under study in this section was Anthropic, through
+`livekit.plugins.anthropic.LLM`; that rollback route passes
+`_strict_tool_schema=False`. Strict tool use constrains
 the **model-generated tool name and input arguments**. It does not validate a
 Python tool's returned JSON or ensure that a mechanically valid action is legal.
 [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use)
@@ -402,3 +404,63 @@ tried to start PostgreSQL and collided with an allocated `127.0.0.1:55432` port.
 No pytest pass or end-to-end voice validation is claimed. The emitted-schema
 measurements, local vendor-validation observations, live compiler experiments,
 and two streaming tool-generation trials above did execute.
+
+## 10. Seeded Luna gameplay evidence
+
+On 2026-09-20, the real OpenAI Luna acceptance lane executed one seeded case for
+each of 27 representative actions across exploration, combat, dispatch,
+onboarding, blacksmith, and creation. The cases use the production Luna factory,
+strict schemas, LiveKit's real argument binder and tool executor, a migrated
+isolated PostgreSQL database, and the deterministic game engine. Handoff rows
+assert the resulting agent type. Mutation rows re-read persisted state; query and
+conversation rows assert that state did not change.
+
+The manifest is
+`apps/agent/tests/acceptance/strict_luna_case_manifest.json`. Its loader rejects a
+missing or moved file, an empty corpus, duplicate, missing or unknown IDs, and
+unknown tool, variant, or prerequisite keys. Each seed and assertion must match
+its case id. Every id must also
+route to a named persisted-state branch — an unrouted row would be graded by
+nothing at all. Skill, social, discovery, save, and dice rows check their
+result fields and the expected persisted change or absence of change. The gather
+row compares the whole changed inventory set against the materials the tool
+reported, and the activation rows compare the persisted Stamina and Focus pools
+against the cost the tool reported. The live run writes one JSON object per row to
+`/tmp/divineruin_strict_luna_gameplay.jsonl`, including completion, pass/failure,
+diagnostic, calls, request count, token usage, model, estimated cost, and
+pricing provenance. Failed rows are written in `finally` and
+retain `completion: "failed"` and `passed: false`.
+
+Run the closed matrix with:
+
+```sh
+uv run --project apps/agent --env-file .env pytest apps/agent/tests/strict_tools/test_gameplay_quality.py apps/agent/tests/acceptance/test_strict_luna_gameplay.py -q
+```
+
+The measured run passed all 27 rows and the report completeness guard: 56 model
+requests, 268,411 input tokens, 266,296 cached input tokens, and 1,849 output
+tokens. Estimated cost was **$0.00796772**. The estimate uses the OpenAI
+`gpt-5.6-luna` standard text rates retrieved 2026-09-20: $0.20 per million input
+tokens, $0.02 per million cached input tokens, and $1.20 per million output tokens.
+[The model page is the pricing source.](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
+
+This is single-model semantic gameplay evidence. It does not rank providers.
+
+## 11. Production decision
+
+On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout.
+An unset `GAMEPLAY_LLM` selects `openai-luna`; `GAMEPLAY_LLM=anthropic` remains an
+explicit rollback. Luna uses `reasoning_effort="none"` and
+`_strict_tool_schema=True`. Startup requires `OPENAI_API_KEY` for the default and
+requires `ANTHROPIC_API_KEY` independently for background narration, summaries,
+world news, companion idle writing, and god whispers; the rollback selection also
+uses that Anthropic key for gameplay.
+
+The decision accepts the measured direct-session diagnostic: direct replies
+started in 0.994–1.395 seconds, while the constrained gather tool path started in
+1.813–3.460 seconds and missed the 1.5-second target. This runner does not use the
+production multiplayer input path. It uses 0.5-second endpointing rather than the
+production 1.0-second floor and excludes the per-player transcriber queue and
+`MultiplayerInput` serialization. These values therefore cannot establish production
+end-to-end latency. Stage-level production measurement and real microphone testing
+remain follow-up optimization, not rollout gates.

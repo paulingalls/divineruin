@@ -11,25 +11,33 @@ import inspect
 from pathlib import Path
 
 import pytest
+from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
 from livekit.agents.llm import ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
 
-from blacksmith_agent import BLACKSMITH_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
-from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
 from llm_config import MAX_NULLABLE_PER_OBJECT, MAX_STRICT_TOOLS, MAX_UNION_PARAMS
-from onboarding_agent import ONBOARDING_TOOLS
 
-AGENT_TOOL_LISTS = [
-    ("exploration", EXPLORATION_TOOLS),
-    ("combat", COMBAT_AGENT_TOOLS),
-    ("training", DISPATCH_TOOLS),
-    ("creation", CREATION_TOOLS),
-    ("onboarding", ONBOARDING_TOOLS),
-    ("blacksmith", BLACKSMITH_TOOLS),
-]
+
+def test_every_agent_module_registers_its_tool_list():
+    """The one place a new gameplay agent is declared to the registry walks.
+
+    `AGENT_TOOL_LISTS` is discovered, so every walk parametrized on it widens to a new
+    agent on its own; this pins the set so ADDING or DROPPING one is a deliberate edit
+    rather than a silently narrower corpus underneath three absence guards.
+    """
+    assert {
+        "exploration",
+        "combat",
+        "dispatch",
+        "creation",
+        "onboarding",
+        "blacksmith",
+    } == AGENT_PROFILE_NAMES
+    for name, tools in AGENT_TOOL_LISTS:
+        assert tools, f"{name} registers an empty tool list"
 
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
@@ -107,7 +115,7 @@ def test_agent_within_strict_schema_budget(name, tools):
 EXPECTED_UNION_SPEND = {
     "exploration": 9,  # check 1, travel 2, activate 2, enter_mode 2, query_info 1, transact 1
     "combat": 6,  # declare_phase 1, check 1, activate 2, request_death_save 1, query_info 1
-    "training": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
+    "dispatch": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1
     "blacksmith": 1,  # query_info 1
@@ -116,13 +124,14 @@ EXPECTED_UNION_SPEND = {
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_agent_union_counts_are_pinned(name, tools):
+    assert name in EXPECTED_UNION_SPEND, f"{name} has no pinned union spend"
     facts = _agent_schema_facts(tools)
     spend = {tool: len(f.unions) for tool, f in facts.items() if f.unions}
     assert sum(spend.values()) == EXPECTED_UNION_SPEND[name], f"{name} union spend changed: {spend}"
 
 
 def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
-    """Every `AgentSession(llm=anthropic.LLM(...))` construction under apps/agent, as AST."""
+    """Every inline `AgentSession(llm=...LLM(...))` construction under apps/agent."""
     root = Path(__file__).resolve().parents[1]
     sites: list[tuple[str, ast.Call]] = []
     for path in sorted(root.rglob("*.py")):
@@ -199,24 +208,25 @@ def test_every_agent_session_chooses_its_max_tool_steps():
         )
 
 
-def test_every_agent_session_runs_strict_tool_schema_off():
-    """Strict is STILL interim-OFF after story-019, and this is the pin that says so.
+def test_every_anthropic_acceptance_session_runs_strict_tool_schema_off():
+    """The Anthropic acceptance harnesses stay aligned with the rollback provider.
 
     ADR 0008's sum types fixed the two limits the design pass measured (16 union-typed
-    parameters, the additionalProperties object) — the budget walk above proves that much.
-    They were not sufficient: probed live 2026-09-05, exploration, combat and dispatch all
-    400 with "The compiled grammar is too large", and exploration then 400s with "Schema is
-    too complex." Neither ceiling is reachable from a schema this fast lane can inspect, so
-    this source pin is what keeps production off the flip until the surface actually fits.
+    parameters, the additionalProperties object), but Anthropic still rejected the larger
+    agents in the 2026-09-05 live probe. The Anthropic rollback therefore remains strict-off.
 
-    Production and the real-LLM acceptance harnesses have to agree: a harness left on the
-    plugin default 400s on every dispatch turn, so the one tier that reaches the API tests
-    nothing. Scanning every site (not just agent.py) is what makes a forgotten or
-    newly-added session red here instead of at the API.
+    A harness left on the plugin default 400s on every dispatch turn, so the one tier that
+    reaches the API tests nothing. Production delegates its provider choice to the factory;
+    the four inline harnesses remain explicit and are the entire corpus this walk protects.
     """
     sites = _agent_session_llm_calls()
-    assert "session_startup.py" in {f for f, _ in sites}, f"matcher found no production session: {sites}"
-    assert len(sites) >= 3, f"matcher drifted — only {len(sites)} AgentSession llm= sites found"
+    expected = {
+        "tests/acceptance/test_combat_cache_prefix.py",
+        "tests/acceptance/test_m1_5_training_cycle.py",
+        "tests/acceptance/test_m1_6_companion_errands.py",
+        "tests/acceptance/test_m29_combat_reactions.py",
+    }
+    assert {filename for filename, _ in sites} == expected
     for filename, call in sites:
         flags = [
             kw.value.value
@@ -224,6 +234,40 @@ def test_every_agent_session_runs_strict_tool_schema_off():
             if kw.arg == "_strict_tool_schema" and isinstance(kw.value, ast.Constant)
         ]
         assert flags == [False], f"{filename}: AgentSession llm must pass _strict_tool_schema=False"
+
+
+def test_production_agent_session_routes_through_gameplay_factory():
+    production = next(call for filename, call in _agent_session_sites() if filename == "session_startup.py")
+    llm_kw = next(kw.value for kw in production.keywords if kw.arg == "llm")
+    assert isinstance(llm_kw, ast.Call)
+    assert isinstance(llm_kw.func, ast.Name)
+    assert llm_kw.func.id == "create_gameplay_llm"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "selection,expected",
+    [("anthropic", False), ("openai-luna", True)],
+)
+async def test_gameplay_factory_strict_direction(monkeypatch, selection, expected):
+    from livekit.plugins import anthropic as anthropic_plugin
+    from livekit.plugins import openai as openai_plugin
+
+    from gameplay_llm import create_gameplay_llm
+
+    monkeypatch.setenv("GAMEPLAY_LLM", selection)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    selected = create_gameplay_llm("claude-haiku-4-5-20251001")
+    try:
+        if isinstance(selected, anthropic_plugin.LLM):
+            actual = selected._opts.strict_tool_schema
+        else:
+            assert isinstance(selected, openai_plugin.LLM)
+            actual = selected._strict_tool_schema
+        assert actual is expected
+    finally:
+        await selected.aclose()
 
 
 def test_plugin_still_accepts_the_interim_strict_kwarg_and_defaults_on():
@@ -237,3 +281,8 @@ def test_plugin_still_accepts_the_interim_strict_kwarg_and_defaults_on():
 
     param = inspect.signature(anthropic.LLM.__init__).parameters["_strict_tool_schema"]
     assert param.default is True
+
+    from livekit.plugins import openai
+
+    openai_param = inspect.signature(openai.LLM.__init__).parameters["_strict_tool_schema"]
+    assert openai_param.default is True

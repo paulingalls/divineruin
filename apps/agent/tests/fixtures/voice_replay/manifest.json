@@ -1,0 +1,19 @@
+{
+  "clips": [
+    {
+      "filename": "gather_herbs.wav",
+      "transcript": "Say I will look and then use the gather check for any useful material and tell me exactly what you find",
+      "outcome_anchor": "quality wood",
+      "model": "inworld-tts-2",
+      "voice_id": "Clive",
+      "sample_rate": 16000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "samples": 106639,
+      "silence_threshold": 128,
+      "final_voiced_sample": 90617,
+      "sha256": "44d55a9b50f266a5d5e59baf2de4161a22709722ae7f4065a331fe8c533a3c57",
+      "pcm_sha256": "2f163aa5a4934534ea0242729efbb901b081eafeb51fcf47f3e878398a257039"
+    }
+  ]
+}

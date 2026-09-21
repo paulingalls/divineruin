@@ -10,7 +10,7 @@ the Sundering, and the Hollow corruption. Greyvale is the MVP region.
 
 **Stack**: Two languages, one database — no code crosses the boundary, only
 PostgreSQL + Valkey. Python 3.14.7 (uv; asyncpg, redis.asyncio, all-async, typed)
-runs the DM agent on LiveKit AgentSession: Deepgram STT → Claude → Inworld TTS,
+runs the DM agent on LiveKit AgentSession: Deepgram STT → GPT-5.6 Luna → Inworld TTS,
 plus an async worker. Everything else is TypeScript on Bun (never Node): Bun.serve
 REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
@@ -35,7 +35,8 @@ The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
 API cost) and runs only at the comprehensive push or sprint-close boundary.
 
 **Layout**:
-- `apps/agent` — Python DM agent: LiveKit voice agents, `@function_tool` toolset,
+- `apps/agent` — Python DM agent: LiveKit voice agents, OpenAI strict tool calls,
+  `@function_tool` toolset,
   `rules_engine.py` (pure deterministic math, zero IO, no LLM), `async_worker.py`
 - `apps/server/src` — Bun/TS REST API: auth, character, activities, LiveKit
   tokens, image-gen, push, email

@@ -1,9 +1,7 @@
 # ADR 0004 — Scaling agent tools past the strict-tool limit
 
-Status: **Accepted** (2026-05-20) — sprint-009 story-011; **amended 2026-09-02** —
-the Decision below is suspended in production while strict schemas are interim-OFF
-(see the sprint-046 addendum at the end, and its 2026-09-05 update: story-019 landed
-ADR 0008's mechanism and the interim STILL stands, for two further reasons).
+Status: **Accepted** (2026-05-20) — sprint-009 story-011; **production strict restored
+through GPT-5.6 Luna on 2026-09-20** (see the final addendum).
 Concerns: `4da5c6f4d298`
 
 ## Decision
@@ -156,3 +154,11 @@ relaxed, "Schema is too complex." (exploration). So `agent.py` keeps
 will return to. The measurements and the options are in ADR 0008's "Not yet attainable"
 section; the choice among them is the human's.
 
+## Addendum (2026-09-20, Sprint 103) — interim retired through Luna
+
+The Anthropic rollback route remains strict-off because its compiled grammar
+limits still reject three complete profiles. The production default now uses
+GPT-5.6 Luna, which accepted every complete emitted profile with strict schemas.
+The 27-case seeded matrix passed through the real LiveKit binder and deterministic
+engine. This retires the production-wide strict-off interim without pretending
+Anthropic's provider limits changed.

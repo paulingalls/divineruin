@@ -33,15 +33,15 @@ _SERVER_DIR = _REPO_ROOT / "apps" / "server"
 # Any 32-byte hex secret — shared between the spawned server and mint_server_jwt.
 _JWT_SECRET_HEX = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
 _BOOT_BUDGET_S = 60.0
+_BIND_ATTEMPTS = 3
 
 
 def _free_port() -> int:
     """Grab an ephemeral port the OS just confirmed is free.
 
-    bind-then-close is a TOCTOU: another process could claim the port before the
-    Bun server binds it. The acceptance lane runs single-process (no xdist -n), so
-    the only racer is this same process; an EADDRINUSE would surface as an early
-    exit in _wait_ready with the server's own bind error in the log tail.
+    bind-then-close is a TOCTOU: the parallel browser lane or another process
+    can claim the port before Bun binds it. start_server retries that specific
+    bind failure with a fresh port.
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -107,38 +107,53 @@ def _wait_ready(base_url: str, proc: subprocess.Popen, log_tail: deque[str]) -> 
     raise RuntimeError(f"Bun server not ready within {_BOOT_BUDGET_S}s: {last}\nserver output:\n{tail}")
 
 
+def _stop_server(proc: subprocess.Popen) -> None:
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
 def start_server(dsn: str) -> Iterator[dict[str, str]]:
     """Spawn `bun src/index.ts` against `dsn`; yield {base_url, jwt_secret_hex}.
 
     Generator body — wrap with @pytest.fixture in the test module so the scope is
     chosen there.
     """
-    port = _free_port()
-    env = {
-        **os.environ,
-        "DATABASE_URL": dsn,
-        "PORT": str(port),
-        "JWT_SECRET": _JWT_SECRET_HEX,
-        "NODE_ENV": "test",  # IS_TEST_ENV -> skip external (Resend) calls
-    }
-    base_url = f"http://127.0.0.1:{port}"
-    proc = subprocess.Popen(
-        ["bun", "src/index.ts"],
-        cwd=str(_SERVER_DIR),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    log_tail: deque[str] = deque(maxlen=200)
-    _drain_to(proc, log_tail)
-    try:
-        _wait_ready(base_url, proc, log_tail)
-        yield {"base_url": base_url, "jwt_secret_hex": _JWT_SECRET_HEX}
-    finally:
-        proc.terminate()
+    for attempt in range(_BIND_ATTEMPTS):
+        port = _free_port()
+        env = {
+            **os.environ,
+            "DATABASE_URL": dsn,
+            "PORT": str(port),
+            "JWT_SECRET": _JWT_SECRET_HEX,
+            "NODE_ENV": "test",  # IS_TEST_ENV -> skip external (Resend) calls
+        }
+        base_url = f"http://127.0.0.1:{port}"
+        proc = subprocess.Popen(
+            ["bun", "src/index.ts"],
+            cwd=str(_SERVER_DIR),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        log_tail: deque[str] = deque(maxlen=200)
+        _drain_to(proc, log_tail)
         try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+            _wait_ready(base_url, proc, log_tail)
+        except RuntimeError as exc:
+            _stop_server(proc)
+            if "EADDRINUSE" in str(exc) and attempt + 1 < _BIND_ATTEMPTS:
+                continue
+            raise
+        except BaseException:
+            _stop_server(proc)
+            raise
+        try:
+            yield {"base_url": base_url, "jwt_secret_hex": _JWT_SECRET_HEX}
+        finally:
+            _stop_server(proc)
+        return

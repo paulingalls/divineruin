@@ -1,6 +1,9 @@
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import Any
+
+from livekit.agents import stt
 
 from multiplayer_transcription import TranscriptionFailure
 from speech_delivery import deliver_player_turn
@@ -9,11 +12,19 @@ logger = logging.getLogger("divineruin.dm")
 
 
 class MultiplayerInput:
-    def __init__(self, transcriber: Any, lifecycle: Any, session: Any, userdata: Any) -> None:
+    def __init__(
+        self,
+        transcriber: Any,
+        lifecycle: Any,
+        session: Any,
+        userdata: Any,
+        observe_player_speech: Callable[[tuple[stt.SpeechEvent, ...], str, str], None] | None = None,
+    ) -> None:
         self.transcriber = transcriber
         self.lifecycle = lifecycle
         self.session = session
         self.userdata = userdata
+        self.observe_player_speech = observe_player_speech
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> asyncio.Task[None]:
@@ -38,6 +49,14 @@ class MultiplayerInput:
             identity = transcript.participant_identity
             generation = transcript.generation
             with self.userdata._bind_authenticated_actor(identity, generation, self.lifecycle.require_authorized):
+                if self.observe_player_speech is not None:
+                    if transcript.speech_events:
+                        self.observe_player_speech(transcript.speech_events, identity, transcript.text)
+                    else:
+                        # Tolerated: this turn reaches the DM unlogged and unanalyzed. Raising
+                        # here would kill the consumer task, and the whole party goes deaf until
+                        # aclose surfaces it — the same silent-input failure this fork exists to fix.
+                        logger.error("Authenticated transcript from %r lost its STT event", identity)
                 # speech_delivery owns the generate_reply boundary, including the two
                 # RuntimeErrors a closing session raises — a turn in flight when the DM
                 # session closes must not take the whole consumer down with it.

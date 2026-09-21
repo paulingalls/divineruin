@@ -1,12 +1,14 @@
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
-from livekit.agents import AgentSession, inference, room_io
-from livekit.plugins import anthropic, deepgram
+from livekit.agents import AgentSession, inference, room_io, stt
+from livekit.plugins import deepgram
 
-from base_agent import _make_tts
+from base_agent import BaseGameAgent, _make_tts
+from gameplay_llm import create_gameplay_llm
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import MultiParticipantTranscriber
 from participant_lifecycle import PartyLifecycle, _setup_party_join
@@ -53,6 +55,20 @@ class GameplayInputOwner:
             raise BaseExceptionGroup("multiplayer input cleanup failed", failures)
 
 
+def _observe_through_current_agent(session: AgentSession) -> Callable[[tuple[stt.SpeechEvent, ...], str, str], None]:
+    """Fork player speech to whichever agent holds the floor, resolved per turn.
+
+    An enter_combat handoff swaps the agent, and on_exit closes the outgoing agent's
+    transcript logger and stops its affect analyzer: a bound method captured at startup
+    would keep writing player lines into a logger with no handlers for the rest of the fight.
+    """
+
+    def observe(events: tuple[stt.SpeechEvent, ...], player_id: str, transcript: str) -> None:
+        cast(BaseGameAgent, session.current_agent).observe_player_speech(events, player_id, transcript)
+
+    return observe
+
+
 async def start_gameplay_session(
     room: Any,
     session: AgentSession,
@@ -66,7 +82,13 @@ async def start_gameplay_session(
         stt=deepgram.STT(model="nova-3", language="en"),
         authorizer=lifecycle.authorize,
     )
-    multiplayer_input = MultiplayerInput(transcriber, lifecycle, session, userdata)
+    multiplayer_input = MultiplayerInput(
+        transcriber,
+        lifecycle,
+        session,
+        userdata,
+        observe_player_speech=_observe_through_current_agent(session),
+    )
     owner = GameplayInputOwner(lifecycle, transcriber, multiplayer_input)
     userdata.multiplayer_owner = owner
     transcriber.start()
@@ -90,9 +112,7 @@ def _register_speech_end_tracking(session: AgentSession) -> None:
 def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="en"),
-        # Strict schemas remain disabled because the live Anthropic API rejects three of the
-        # six agents on aggregate grammar size even though their inspectable schemas fit.
-        llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral", _strict_tool_schema=False),
+        llm=create_gameplay_llm(model),
         tts=_make_tts(),
         vad=inference.VAD(model="silero", min_silence_duration=0.5),
         # LiveKit selects the full audio turn detector in cloud/dev and its local fallback

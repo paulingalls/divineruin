@@ -3,6 +3,7 @@
 import os
 import re
 import tempfile
+from unittest.mock import AsyncMock, patch
 
 from dialogue_parser import DEFAULT_CHARACTER
 from transcript import TranscriptLogger
@@ -27,6 +28,14 @@ class TestTranscriptLogger:
             assert len(lines) == 1
             assert "PLAYER: I want to explore the cave" in lines[0]
             assert TIMESTAMP_RE.match(lines[0])
+
+    async def test_log_player_publishes_authenticated_player_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            logger, _path = self._make_logger(tmp)
+            with patch.object(logger, "_publish", new_callable=AsyncMock) as publish:
+                await logger.log_player("I inspect the door", player_id="player-two")
+
+            publish.assert_awaited_once_with("player", "I inspect the door", player_id="player-two")
 
     async def test_log_dm_narrator(self):
         with tempfile.TemporaryDirectory() as tmp:
