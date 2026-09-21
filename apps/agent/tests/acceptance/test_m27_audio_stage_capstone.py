@@ -28,7 +28,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from acceptance.test_m5_verb_consolidation import AGENT_TOOL_LISTS, REMOVED_AUDIO_TOOLS
+from acceptance.test_m5_verb_consolidation import REMOVED_AUDIO_TOOLS
+from agent_tool_profiles import AGENT_TOOL_LISTS
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
@@ -70,8 +71,8 @@ def test_no_agent_registers_audio_tools(name: str, tools: list) -> None:
     milestone-exit net names it directly. This net's ASSERTION is independent of M5's
     combined-union check -- a re-added play_sound/set_music_state tool fails here even if
     M5's own test ever drops REMOVED_AUDIO_TOOLS from its union. It DOES share M5's
-    AGENT_TOOL_LISTS/REMOVED_AUDIO_TOOLS constants (one source of truth for the agent
-    registries), so narrowing or renaming those there narrows/breaks this net too."""
+    REMOVED_AUDIO_TOOLS set and the discovered AGENT_TOOL_LISTS corpus, so narrowing either
+    narrows this net too."""
     leaked = REMOVED_AUDIO_TOOLS & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed audio tool(s): {sorted(leaked)}"
 

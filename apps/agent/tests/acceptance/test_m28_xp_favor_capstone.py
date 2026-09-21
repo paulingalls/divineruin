@@ -39,7 +39,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from acceptance.seeds import seed_player
-from acceptance.test_m5_verb_consolidation import AGENT_TOOL_LISTS, REMOVED_PROGRESSION_TOOLS
+from acceptance.test_m5_verb_consolidation import REMOVED_PROGRESSION_TOOLS
+from agent_tool_profiles import AGENT_TOOL_LISTS
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
@@ -126,8 +127,8 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
     milestone-exit net names it directly. This net's ASSERTION is independent of M5's
     combined-union check — a re-added award_xp/award_divine_favor fails here even if M5's own
     test ever drops REMOVED_PROGRESSION_TOOLS from its union. It DOES share M5's
-    AGENT_TOOL_LISTS/REMOVED_PROGRESSION_TOOLS constants (one source of truth for the agent
-    registries), so narrowing or renaming those there narrows/breaks this net too."""
+    REMOVED_PROGRESSION_TOOLS set and the discovered AGENT_TOOL_LISTS corpus, so narrowing
+    either narrows this net too."""
     leaked = REMOVED_PROGRESSION_TOOLS & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed award tool(s): {sorted(leaked)}"
 

@@ -11,25 +11,33 @@ import inspect
 from pathlib import Path
 
 import pytest
+from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
 from livekit.agents.llm import ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
 
-from blacksmith_agent import BLACKSMITH_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
-from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
 from llm_config import MAX_NULLABLE_PER_OBJECT, MAX_STRICT_TOOLS, MAX_UNION_PARAMS
-from onboarding_agent import ONBOARDING_TOOLS
 
-AGENT_TOOL_LISTS = [
-    ("exploration", EXPLORATION_TOOLS),
-    ("combat", COMBAT_AGENT_TOOLS),
-    ("training", DISPATCH_TOOLS),
-    ("creation", CREATION_TOOLS),
-    ("onboarding", ONBOARDING_TOOLS),
-    ("blacksmith", BLACKSMITH_TOOLS),
-]
+
+def test_every_agent_module_registers_its_tool_list():
+    """The one place a new gameplay agent is declared to the registry walks.
+
+    `AGENT_TOOL_LISTS` is discovered, so every walk parametrized on it widens to a new
+    agent on its own; this pins the set so ADDING or DROPPING one is a deliberate edit
+    rather than a silently narrower corpus underneath three absence guards.
+    """
+    assert {
+        "exploration",
+        "combat",
+        "dispatch",
+        "creation",
+        "onboarding",
+        "blacksmith",
+    } == AGENT_PROFILE_NAMES
+    for name, tools in AGENT_TOOL_LISTS:
+        assert tools, f"{name} registers an empty tool list"
 
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
@@ -107,7 +115,7 @@ def test_agent_within_strict_schema_budget(name, tools):
 EXPECTED_UNION_SPEND = {
     "exploration": 9,  # check 1, travel 2, activate 2, enter_mode 2, query_info 1, transact 1
     "combat": 6,  # declare_phase 1, check 1, activate 2, request_death_save 1, query_info 1
-    "training": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
+    "dispatch": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1
     "blacksmith": 1,  # query_info 1
@@ -116,6 +124,7 @@ EXPECTED_UNION_SPEND = {
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_agent_union_counts_are_pinned(name, tools):
+    assert name in EXPECTED_UNION_SPEND, f"{name} has no pinned union spend"
     facts = _agent_schema_facts(tools)
     spend = {tool: len(f.unions) for tool, f in facts.items() if f.unions}
     assert sum(spend.values()) == EXPECTED_UNION_SPEND[name], f"{name} union spend changed: {spend}"

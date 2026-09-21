@@ -6,25 +6,11 @@ from unittest.mock import patch
 import httpx
 import openai as openai_sdk
 import pytest
+from agent_tool_profiles import AGENT_TOOL_LISTS
 from livekit.agents import llm
 from livekit.plugins import openai as openai_plugin
 
-from blacksmith_agent import BLACKSMITH_TOOLS
-from combat_agent import COMBAT_AGENT_TOOLS
-from creation_agent import CREATION_TOOLS
-from dispatch_agent import DISPATCH_TOOLS
-from exploration_agent import EXPLORATION_TOOLS
 from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
-from onboarding_agent import ONBOARDING_TOOLS
-
-TOOL_PROFILES = [
-    ("exploration", EXPLORATION_TOOLS),
-    ("combat", COMBAT_AGENT_TOOLS),
-    ("dispatch", DISPATCH_TOOLS),
-    ("creation", CREATION_TOOLS),
-    ("onboarding", ONBOARDING_TOOLS),
-    ("blacksmith", BLACKSMITH_TOOLS),
-]
 
 
 def test_default_uses_strict_luna_without_anthropic_options(monkeypatch):
@@ -61,7 +47,7 @@ def test_unknown_gameplay_llm_fails_loud(monkeypatch):
         create_gameplay_llm("claude-haiku-4-5-20251001")
 
 
-@pytest.mark.parametrize("profile,tools", TOOL_PROFILES)
+@pytest.mark.parametrize("profile,tools", AGENT_TOOL_LISTS)
 @pytest.mark.asyncio
 async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools):
     assert tools, f"{profile} tool profile is empty"

@@ -25,23 +25,18 @@ import json
 
 import pytest
 from acceptance.seeds import seed_player
+from agent_tool_profiles import AGENT_TOOL_LISTS
 from livekit.agents.llm import is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import db
 from activate_tools import activate
 from activity_tools import begin_activity, resolve_activity
-from blacksmith_agent import BLACKSMITH_TOOLS
 from check_tools import check
 from choice_tools import select
-from combat_agent import COMBAT_AGENT_TOOLS
-from creation_agent import CREATION_TOOLS
-from dispatch_agent import DISPATCH_TOOLS
-from exploration_agent import EXPLORATION_TOOLS
 from inventory_tools import _transact_impl, transact
 from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
-from onboarding_agent import ONBOARDING_TOOLS
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
 
@@ -104,16 +99,6 @@ REMOVED_AUDIO_TOOLS = frozenset({"play_sound", "set_music_state"})
 # a second grant path is a second rule waiting to drift from the first.
 REMOVED_PROGRESSION_TOOLS = frozenset({"award_xp", "award_divine_favor"})
 
-# Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
-# into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
-AGENT_TOOL_LISTS = [
-    ("exploration", EXPLORATION_TOOLS),
-    ("combat", COMBAT_AGENT_TOOLS),
-    ("dispatch", DISPATCH_TOOLS),
-    ("onboarding", ONBOARDING_TOOLS),
-    ("creation", CREATION_TOOLS),
-    ("blacksmith", BLACKSMITH_TOOLS),
-]
 
 # verb -> the EXACT set of agents that must hold it (grep-verified against the tool
 # lists). Updated for M7: the three region rows fold into "exploration". A future sprint
