@@ -197,7 +197,10 @@ async def run_luna_case(case) -> dict[str, Any]:
                 "check_resolution.resolve_skill_check_dc",
                 side_effect=lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
             )
-        with roll_context:
+        with (
+            roll_context,
+            scenario.session_data._bind_authenticated_actor(scenario.session_data.player_id, 1, lambda *_args: None),
+        ):
             await session.start(agent)
             result = await session.run(user_input=case.prompt)
             report["calls"] = [event.item.name for event in result.events if isinstance(event, FunctionCallEvent)]
