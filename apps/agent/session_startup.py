@@ -2,12 +2,12 @@ import asyncio
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from livekit.agents import AgentSession, inference, room_io, stt
 from livekit.plugins import deepgram
 
-from base_agent import _make_tts
+from base_agent import BaseGameAgent, _make_tts
 from gameplay_llm import create_gameplay_llm
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import MultiParticipantTranscriber
@@ -64,7 +64,7 @@ def _observe_through_current_agent(session: AgentSession) -> Callable[[tuple[stt
     """
 
     def observe(events: tuple[stt.SpeechEvent, ...], player_id: str, transcript: str) -> None:
-        session.current_agent.observe_player_speech(events, player_id, transcript)
+        cast(BaseGameAgent, session.current_agent).observe_player_speech(events, player_id, transcript)
 
     return observe
 
