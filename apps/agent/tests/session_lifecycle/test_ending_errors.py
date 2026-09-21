@@ -40,7 +40,7 @@ async def _pilot_chunks(agent, stream, *, interrupted=False):
     with (
         patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
         patch("base_agent.Agent.default.llm_node", stream),
-        patch("base_agent.is_luna_pilot", return_value=True),
+        patch("base_agent.is_luna", return_value=True),
         patch("base_agent._player_interrupted", return_value=interrupted),
     ):
         chunks = [chunk async for chunk in agent.llm_node(MagicMock(), [], MagicMock())]
@@ -343,7 +343,7 @@ class TestLunaAtomicTurns:
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: session)),
             patch("base_agent.Agent.default.llm_node", stream),
-            patch("base_agent.is_luna_pilot", return_value=True),
+            patch("base_agent.is_luna", return_value=True),
             patch("base_agent._player_interrupted", return_value=False),
         ):
             task, data = perform_llm_inference(

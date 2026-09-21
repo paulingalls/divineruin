@@ -22,7 +22,7 @@ from creation_agent import CREATION_TOOLS
 from creation_prompts import CREATION_SYSTEM_PROMPT
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
-from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna_pilot
+from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
 from onboarding_agent import ONBOARDING_TOOLS, OnboardingAgent
 from onboarding_prompt import build_onboarding_instructions
 from system_prompts import BLACKSMITH_SYSTEM_PROMPT, COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT, build_system_prompt
@@ -151,7 +151,7 @@ def append_report(row: dict[str, Any]) -> None:
 
 async def run_luna_case(case) -> dict[str, Any]:
     selected = create_gameplay_llm("unused-anthropic-model")
-    assert is_luna_pilot(selected) is True
+    assert is_luna(selected) is True
     assert selected.model == LUNA_MODEL
     scenario = await prepare_case(case.seed)
     if case.id == "exploration.enter_combat":

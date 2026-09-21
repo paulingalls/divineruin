@@ -26,7 +26,7 @@ import check_resolution
 import db
 from base_agent import BaseGameAgent, _make_tts
 from exploration_agent import EXPLORATION_TOOLS
-from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna_pilot
+from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
 from session_data import SessionData
 from system_prompts import build_system_prompt
 from voice_replay_audio import (
@@ -277,7 +277,7 @@ async def _run_row(
         await player_room.local_participant.publish_track(track, options)
 
         selected = create_gameplay_llm("unused")
-        if not is_luna_pilot(selected) or getattr(selected, "model", None) != LUNA_MODEL:
+        if not is_luna(selected) or getattr(selected, "model", None) != LUNA_MODEL:
             raise RuntimeError("voice replay gameplay model is not the pinned Luna model")
         session_stt = deepgram.STT(model="nova-3", language="en")
         configured_tts = _make_tts()

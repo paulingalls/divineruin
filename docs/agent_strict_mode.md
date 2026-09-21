@@ -1,6 +1,6 @@
 # Strict gameplay tools without abandoning verbs and nouns
 
-Date: 2026-09-18. Status: **Proposed; provider acceptance demonstrated, voice latency not approved.**
+Date: 2026-09-18. Status: **Accepted for the GPT-5.6 Luna production route on 2026-09-20.**
 Measured at `ceef9573`, with LiveKit Agents / Anthropic plugin 1.8.1,
 Anthropic SDK 0.105.2, Pydantic 2.12.5, and `claude-haiku-4-5-20251001`.
 
@@ -8,7 +8,8 @@ This continues [the tool-surface design](agent_tool_surface.md) and
 [ADR 0008](decisions/0008-sum-typed-verbs-and-next-in-results.md).
 The verb/noun design stays. The proposed change is to **which schemas accompany
 each model request**, not the game's verbs, noun types, or deterministic engine.
-Production remains strict-off until the release gates below pass.
+Sections 1–9 preserve the Anthropic research that led to the provider evaluation.
+Section 11 records the production decision after the Luna release gates ran.
 
 The human's constraint for this design: an extra model call is acceptable **if
 measured voice latency is acceptable**. This is not permission to relax the
@@ -34,8 +35,9 @@ to a production switch. Do not enable strict globally as the first implementatio
 
 ## 2. What strict actually protects
 
-The production provider is Anthropic, through `livekit.plugins.anthropic.LLM`.
-`agent.py` explicitly passes `_strict_tool_schema=False`. Strict tool use constrains
+The provider under study in this section was Anthropic, through
+`livekit.plugins.anthropic.LLM`; that rollback route passes
+`_strict_tool_schema=False`. Strict tool use constrains
 the **model-generated tool name and input arguments**. It does not validate a
 Python tool's returned JSON or ensure that a mechanically valid action is legal.
 [Anthropic strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use)
@@ -442,6 +444,17 @@ tokens. Estimated cost was **$0.00796772**. The estimate uses the OpenAI
 tokens, $0.02 per million cached input tokens, and $1.20 per million output tokens.
 [The model page is the pricing source.](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
 
-This is single-model semantic gameplay evidence. It does not rank providers or
-approve production model selection. Player-facing voice latency remains a
-separate release decision.
+This is single-model semantic gameplay evidence. It does not rank providers.
+
+## 11. Production decision
+
+On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout.
+An unset `GAMEPLAY_LLM` selects `openai-luna`; `GAMEPLAY_LLM=anthropic` remains an
+explicit rollback. Luna uses `reasoning_effort="none"` and
+`_strict_tool_schema=True`. Startup requires `OPENAI_API_KEY` for the default and
+requires `ANTHROPIC_API_KEY` only for the rollback selection.
+
+The decision accepts the measured player-received voice result: direct replies
+started in 0.994–1.395 seconds, while the constrained gather tool path started in
+1.813–3.460 seconds and missed the 1.5-second target. Stage-level latency work and
+real microphone testing remain follow-up optimization, not rollout gates.

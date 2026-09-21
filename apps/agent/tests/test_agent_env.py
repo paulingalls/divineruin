@@ -8,12 +8,16 @@ import pytest
 from agent import REQUIRED_ENV_VARS, validate_env
 
 
+def _base_env() -> dict[str, str]:
+    return {var: "test_value" for var in REQUIRED_ENV_VARS}
+
+
 class TestEnvironmentValidation:
     """Test environment variable validation."""
 
     def test_validate_env_passes_with_all_vars_set(self):
         """validate_env should pass when all required vars are set."""
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"narrator": "voice_id", "torin": "voice_id2"}):
                 with patch("agent.ROLE_VOICE_KEYS", ()):
@@ -23,6 +27,7 @@ class TestEnvironmentValidation:
         """validate_env should raise EnvironmentError if vars missing."""
         # Set all but one
         env = {var: "test_value" for var in REQUIRED_ENV_VARS[1:]}
+        env["OPENAI_API_KEY"] = "test_openai"
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"narrator": "voice_id"}):
                 with patch("agent.ROLE_VOICE_KEYS", ()):
@@ -31,9 +36,23 @@ class TestEnvironmentValidation:
 
                     assert REQUIRED_ENV_VARS[0] in str(exc_info.value)
 
+    def test_default_requires_openai_instead_of_anthropic(self):
+        with patch.dict(os.environ, _base_env(), clear=True):
+            with patch("agent.VOICES", {"narrator": "voice_id"}):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    with pytest.raises(EnvironmentError, match="OPENAI_API_KEY"):
+                        validate_env()
+
+    def test_anthropic_override_requires_only_anthropic_provider_key(self):
+        env = {**_base_env(), "GAMEPLAY_LLM": "anthropic", "ANTHROPIC_API_KEY": "test_anthropic"}
+        with patch.dict(os.environ, env, clear=True):
+            with patch("agent.VOICES", {"narrator": "voice_id"}):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    validate_env()
+
     def test_validate_env_warns_but_serves_on_an_empty_non_role_voice(self):
         """An empty NON-role voice stays a warning: COMPANION_SABLE is deliberately unset."""
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": ""}):
                 with patch("agent.ROLE_VOICE_KEYS", ()):
@@ -50,7 +69,7 @@ class TestEnvironmentValidation:
         beside COMPANION_SABLE would file it under the tolerated empties this gate exists
         to separate it from.
         """
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "ROLE_GUARD": ""}):
                 with patch("agent.ROLE_VOICE_KEYS", ("ROLE_GUARD",)):
@@ -63,7 +82,7 @@ class TestEnvironmentValidation:
 
     def test_validate_env_raises_when_a_role_voice_key_is_absent_entirely(self):
         """The gate must not be satisfiable by a MISSING key, only by a configured one."""
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive"}):
                 with patch("agent.ROLE_VOICE_KEYS", ("ROLE_GUARD",)):
@@ -79,7 +98,7 @@ class TestEnvironmentValidation:
         nothing on the committed files can detect it: .env.example was correct while the live
         .env, which nothing reads, was not.
         """
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch(
                 "agent.VOICES",
@@ -103,7 +122,7 @@ class TestEnvironmentValidation:
         checkout VOICES comes back 0-of-51 populated, so a distinctness check that did not
         skip empties would raise on all 50 of them sharing "".
         """
-        env = {var: "test_value" for var in REQUIRED_ENV_VARS}
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": "", "TAVERN_BRYN": ""}):
                 with patch("agent.ROLE_VOICE_KEYS", ()):
