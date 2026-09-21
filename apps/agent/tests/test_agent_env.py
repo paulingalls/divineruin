@@ -1,7 +1,10 @@
 """Startup gates for required environment variables and voice configuration."""
 
 import os
-from unittest.mock import AsyncMock, patch
+import runpy
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -160,3 +163,18 @@ async def test_async_worker_main_rejects_a_missing_key_before_startup():
             await async_worker.main()
 
     get_pool.assert_not_awaited()
+
+
+def test_agent_entrypoint_rejects_a_missing_key_before_starting_livekit(monkeypatch):
+    """The CLI gate, not validate_env itself: dropping agent.py's call must red here."""
+    import livekit.agents.__main__ as livekit_entry
+
+    livekit_start = MagicMock(side_effect=AssertionError("agent started"))
+    monkeypatch.setattr(livekit_entry, "main", livekit_start)
+    monkeypatch.setattr(sys, "argv", ["agent.py", "dev"])
+
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY"):
+            runpy.run_path(str(Path(__file__).resolve().parents[1] / "agent.py"), run_name="__main__")
+
+    livekit_start.assert_not_called()
