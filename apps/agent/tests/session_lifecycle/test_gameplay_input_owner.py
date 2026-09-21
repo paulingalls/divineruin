@@ -4,7 +4,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents import room_io
+from livekit.agents import Agent, room_io
 from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.speech_handle import InputDetails
 
@@ -70,6 +70,8 @@ async def test_revocation_force_interrupts_a_real_uninterruptible_speech_handle(
     )
     revoked = asyncio.Event()
     session = MagicMock()
+    # The real Agent, because deliver_player_turn runs its per-turn hook before replying.
+    session.current_agent = Agent(instructions="revocation double")
     session.generate_reply.return_value = handle
 
     async def finish_interrupted_handle() -> None:

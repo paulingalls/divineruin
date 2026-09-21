@@ -5,6 +5,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents import Agent
 
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import AuthenticatedTranscript, TranscriptionFailure
@@ -108,13 +109,19 @@ class RecordingSession:
         self.handle_errors = list(handle_errors)
         self.generate_errors = list(generate_errors)
         self.calls = []
+        self.contexts = []
         self.actors = []
         self.generated = asyncio.Event()
+        # The real Agent, because deliver_player_turn runs its per-turn hook before replying.
+        self.current_agent = Agent(instructions="multiplayer input double")
 
     def generate_reply(self, **kwargs):
         if self.generate_errors:
             raise self.generate_errors.pop(0)
-        self.calls.append(kwargs)
+        # The verbatim text is what these tests are about; the per-turn hot context that
+        # rides alongside it has its own suite (tests/test_player_turn_hot_layer.py).
+        self.contexts.append(kwargs["chat_ctx"])
+        self.calls.append({"user_input": kwargs["user_input"].text_content})
 
         def probe():
             self.actors.append(self.userdata.actor_player_id)
