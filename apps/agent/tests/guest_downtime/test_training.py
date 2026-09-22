@@ -1,6 +1,5 @@
 import json
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,6 +14,7 @@ from . import (
     module,
     revocable_context,
     revoke_after,
+    seam,
     transaction_probe,
 )
 
@@ -68,7 +68,7 @@ async def test_guest_training_resolve_owns_row():
                 "focus",
                 db_mod=make_db_mod()[0],
                 db_training_mod=training,
-                rules_mod=lambda *_: SimpleNamespace(
+                rules_mod=lambda *_: seam(
                     state="running_second_half", second_half_seconds=3600, micro_bonus=1, completes_at=datetime.now(UTC)
                 ),
             )
@@ -151,7 +151,7 @@ async def test_stale_training_update_activity():
                 "focus",
                 db_mod=tx_db,
                 db_training_mod=training,
-                rules_mod=lambda *_: SimpleNamespace(
+                rules_mod=lambda *_: seam(
                     state="running_second_half", second_half_seconds=3600, micro_bonus=1, completes_at=datetime.now(UTC)
                 ),
             )

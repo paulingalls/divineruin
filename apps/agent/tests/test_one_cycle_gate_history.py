@@ -3,10 +3,10 @@
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from guest_downtime import seam
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -49,7 +49,7 @@ async def activity_count(pool, player_id):
 @pytest.mark.asyncio
 async def test_training_gate_refuses_running_cycle_beyond_fifty_completed(player_with_long_history, dev_db_pool):
     player_id = player_with_long_history
-    content = SimpleNamespace(
+    content = seam(
         get_training_program=AsyncMock(
             return_value={"id": "combat_basics", "name": "Combat Basics", "training_activity_type": "technique_base"}
         )
@@ -69,7 +69,7 @@ async def test_training_gate_refuses_running_cycle_beyond_fifty_completed(player
 async def test_training_gate_allows_new_cycle_after_all_complete(player_with_long_history, dev_db_pool):
     player_id = player_with_long_history
     await dev_db_pool.execute("UPDATE training_activities SET state = 'complete' WHERE player_id = $1", player_id)
-    content = SimpleNamespace(
+    content = seam(
         get_training_program=AsyncMock(
             return_value={"id": "combat_basics", "name": "Combat Basics", "training_activity_type": "technique_base"}
         )
@@ -87,23 +87,19 @@ async def test_training_gate_allows_new_cycle_after_all_complete(player_with_lon
 @pytest.mark.asyncio
 async def test_variant_gate_refuses_running_cycle_beyond_fifty_completed(player_with_long_history, dev_db_pool):
     player_id = player_with_long_history
-    variant = SimpleNamespace(
-        ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian"
-    )
+    variant = seam(ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian")
     with pytest.raises(ToolError, match="already in progress"):
         await _learn_variant_impl(
             make_context(player_id=player_id),
             "cleaving_drathian",
             db_mod=db,
             db_training_mod=db_training,
-            variants_mod=SimpleNamespace(get_mentor_variant=lambda _: variant),
-            requirements_mod=SimpleNamespace(
-                check_mentor_requirements=AsyncMock(return_value=SimpleNamespace(met=True))
-            ),
-            preconditions_mod=SimpleNamespace(require_npc_present=AsyncMock()),
-            content_mod=SimpleNamespace(get_npc=AsyncMock(return_value={"mentor": {"training_cycles": 3}})),
-            progress_mod=SimpleNamespace(is_unlocked=AsyncMock(return_value=False), seed_progress=AsyncMock()),
-            persistence_mod=SimpleNamespace(owns_elective=AsyncMock(return_value=True)),
+            variants_mod=seam(get_mentor_variant=lambda _: variant),
+            requirements_mod=seam(check_mentor_requirements=AsyncMock(return_value=seam(met=True))),
+            preconditions_mod=seam(require_npc_present=AsyncMock()),
+            content_mod=seam(get_npc=AsyncMock(return_value={"mentor": {"training_cycles": 3}})),
+            progress_mod=seam(is_unlocked=AsyncMock(return_value=False), seed_progress=AsyncMock()),
+            persistence_mod=seam(owns_elective=AsyncMock(return_value=True)),
         )
     assert await activity_count(dev_db_pool, player_id) == 51
 
@@ -117,7 +113,7 @@ async def test_warm_layer_surfaces_running_cycle_beyond_fifty_completed(player_w
 
     player_id = player_with_long_history
     session = SessionData(player_id=player_id, location_id="accord_guild_hall")
-    process = BackgroundProcess(session=SimpleNamespace(), session_data=session)
+    process = BackgroundProcess(session=seam(), session_data=session)
     with (
         patch("background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=[]),
         patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
@@ -126,6 +122,7 @@ async def test_warm_layer_surfaces_running_cycle_beyond_fifty_completed(player_w
         patch.object(process, "_apply_warm", new_callable=AsyncMock),
     ):
         await process._rebuild_warm_layer()
+    assert build.await_args is not None
     active = build.await_args.kwargs["training"]
     assert len(active) == 1
     assert active[0]["state"] == "running_first_half"

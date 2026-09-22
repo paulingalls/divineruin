@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock
 
 from sample_fixtures import make_context
@@ -9,7 +10,11 @@ def guest_context(validator=lambda _player, _generation: None):
     return context, context.userdata._bind_authenticated_actor("player_2", 1, validator)
 
 
-def module(**methods):
+def seam(**attrs) -> Any:
+    return SimpleNamespace(**attrs)
+
+
+def module(**methods) -> Any:
     return SimpleNamespace(**{key: AsyncMock(return_value=value) for key, value in methods.items()})
 
 
@@ -81,4 +86,4 @@ def transaction_probe():
         else:
             state["committed"] = True
 
-    return SimpleNamespace(transaction=transaction), state
+    return seam(transaction=transaction), state

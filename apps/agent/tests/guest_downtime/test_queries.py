@@ -1,6 +1,5 @@
 import json
 from functools import partial
-from types import SimpleNamespace
 
 import pytest
 
@@ -8,7 +7,7 @@ from crafting_tools import _query_available_workspaces_impl
 from query_tools import _query_info_impl
 from training_tools import _query_training_programs_impl
 
-from . import guest_context, module, player_by_id
+from . import guest_context, module, player_by_id, seam
 
 
 @pytest.mark.asyncio
@@ -33,7 +32,7 @@ async def test_query_info_training_uses_guest_eligibility_progress_and_cycle():
         if player_id == "player_2"
         else []
     )
-    handler = SimpleNamespace(
+    handler = seam(
         _query_training_programs_impl=partial(
             _query_training_programs_impl,
             queries_mod=queries,
@@ -69,7 +68,7 @@ async def test_query_info_workspaces_uses_guest_access_and_quote():
     queries.get_npc_disposition.side_effect = lambda _npc, player_id, **_: (
         "trusted" if player_id == "player_2" else "neutral"
     )
-    crafting = SimpleNamespace(
+    crafting = seam(
         _query_available_workspaces_impl=partial(
             _query_available_workspaces_impl,
             queries_mod=queries,

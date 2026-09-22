@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -17,6 +16,7 @@ from . import (
     pricing,
     revocable_context,
     revoke_after,
+    seam,
     smith_queries,
     transaction_probe,
 )
@@ -56,10 +56,8 @@ async def test_guest_learns_spell_using_own_class():
     context, actor = guest_context()
     queries = module(get_player=None)
     queries.get_player.side_effect = player_by_id
-    spells = SimpleNamespace(
-        get_spell=lambda _: SimpleNamespace(
-            id="arcane_missile", name="Arcane Missile", source="arcane", spell_tier="cantrip"
-        )
+    spells = seam(
+        get_spell=lambda _: seam(id="arcane_missile", name="Arcane Missile", source="arcane", spell_tier="cantrip")
     )
     library = module(record_learned=None)
     with actor:
@@ -80,11 +78,9 @@ async def test_guest_learns_spell_using_own_class():
 @pytest.mark.asyncio
 async def test_guest_starts_mentor_variant_from_own_eligibility():
     context, actor = guest_context()
-    variant = SimpleNamespace(
-        ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian"
-    )
+    variant = seam(ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian")
     requirements = module(check_mentor_requirements=None)
-    requirements.check_mentor_requirements.side_effect = lambda player_id, *_: SimpleNamespace(
+    requirements.check_mentor_requirements.side_effect = lambda player_id, *_: seam(
         met=player_id == "player_2", unmet=[]
     )
     progress = module(is_unlocked=False, seed_progress=None)
@@ -97,15 +93,13 @@ async def test_guest_starts_mentor_variant_from_own_eligibility():
                 context,
                 "cleaving_drathian",
                 db_mod=make_db_mod()[0],
-                variants_mod=SimpleNamespace(get_mentor_variant=lambda _: variant),
+                variants_mod=seam(get_mentor_variant=lambda _: variant),
                 requirements_mod=requirements,
                 preconditions_mod=module(require_npc_present=None),
                 content_mod=module(get_npc={"mentor": {"training_cycles": 3}}),
                 progress_mod=progress,
                 persistence_mod=persistence,
-                abilities_mod=SimpleNamespace(
-                    get_ability=lambda _: SimpleNamespace(ability_type="elective", name="Cleaving Blow")
-                ),
+                abilities_mod=seam(get_ability=lambda _: seam(ability_type="elective", name="Cleaving Blow")),
                 db_training_mod=training,
             )
         )
@@ -193,10 +187,8 @@ async def test_stale_spell_record_learned():
     context, actor, revocation = revocable_context()
     queries = module(get_player=None)
     queries.get_player.side_effect = player_by_id
-    spells = SimpleNamespace(
-        get_spell=lambda _: SimpleNamespace(
-            id="arcane_missile", name="Arcane Missile", source="arcane", spell_tier="cantrip"
-        )
+    spells = seam(
+        get_spell=lambda _: seam(id="arcane_missile", name="Arcane Missile", source="arcane", spell_tier="cantrip")
     )
     library = module(record_learned=None)
     revoke_after(queries.get_player, revocation)
@@ -219,11 +211,9 @@ async def test_stale_spell_record_learned():
 @pytest.mark.asyncio
 async def test_stale_variant_create_activity():
     context, actor, revocation = revocable_context()
-    variant = SimpleNamespace(
-        ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian"
-    )
+    variant = seam(ability_id="warrior_cleaving_blow", mentor_id="guildmaster_torin", cultural_attribution="Drathian")
     requirements = module(check_mentor_requirements=None)
-    requirements.check_mentor_requirements.side_effect = lambda player_id, *_: SimpleNamespace(
+    requirements.check_mentor_requirements.side_effect = lambda player_id, *_: seam(
         met=player_id == "player_2", unmet=[]
     )
     progress = module(is_unlocked=False, seed_progress=None)
@@ -239,15 +229,13 @@ async def test_stale_variant_create_activity():
                 context,
                 "cleaving_drathian",
                 db_mod=tx_db,
-                variants_mod=SimpleNamespace(get_mentor_variant=lambda _: variant),
+                variants_mod=seam(get_mentor_variant=lambda _: variant),
                 requirements_mod=requirements,
                 preconditions_mod=module(require_npc_present=None),
                 content_mod=module(get_npc={"mentor": {"training_cycles": 3}}),
                 progress_mod=progress,
                 persistence_mod=persistence,
-                abilities_mod=SimpleNamespace(
-                    get_ability=lambda _: SimpleNamespace(ability_type="elective", name="Cleaving Blow")
-                ),
+                abilities_mod=seam(get_ability=lambda _: seam(ability_type="elective", name="Cleaving Blow")),
                 db_training_mod=training,
             )
         )
