@@ -23,6 +23,7 @@ from token_tracker import TokenTracker
 if TYPE_CHECKING:
     from background_process import BackgroundProcess
     from session_startup import GameplayInputOwner
+    from speaker_context import SpeakerSummary
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -71,7 +72,7 @@ class SessionData:
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
-    _actor_binding: ContextVar[str | AuthenticatedActor | None] = field(
+    _actor_binding: ContextVar[AuthenticatedActor | None] = field(
         default_factory=lambda: ContextVar("actor_player_id", default=None),
         init=False,
         repr=False,
@@ -120,7 +121,7 @@ class SessionData:
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""
     cached_npc_names: list[str] = field(default_factory=list)
-    cached_quest_summaries: list[str] = field(default_factory=list)
+    speaker_summaries: dict[str, SpeakerSummary] = field(default_factory=dict)
     # M6 reveal signal: element ids surfaced by check(discover) this turn, appended by the
     # E.HIDDEN_REVEALED handler. story-003's hot-layer assembly reads these to surface the
     # revealed target same-turn, then clears the list.
@@ -166,7 +167,9 @@ class SessionData:
             binding = values.get("_actor_binding")
             if primary_id is not None and binding is not None:
                 actor = binding.get()
-                if isinstance(actor, AuthenticatedActor) and actor.player_id != primary_id:
+                if actor is not None and not isinstance(actor, AuthenticatedActor):
+                    raise RuntimeError("Invalid actor binding")
+                if actor is not None and actor.player_id != primary_id:
                     raise RuntimeError(
                         "The primary player id is unavailable during another authenticated player's turn; "
                         "use acting_player_id and revalidate it at the write boundary"
@@ -238,7 +241,11 @@ class SessionData:
         actor = self._actor_binding.get()
         if actor is None:
             raise RuntimeError("No actor is bound to the current DM turn")
-        return actor.player_id if isinstance(actor, AuthenticatedActor) else actor
+        if not isinstance(actor, AuthenticatedActor):
+            raise RuntimeError("Invalid actor binding")
+        self.member_state(actor.player_id)
+        actor.validator(actor.player_id, actor.generation)
+        return actor.player_id
 
     @property
     def primary_player_id(self) -> str:
@@ -251,9 +258,8 @@ class SessionData:
             self.member_state(actor.player_id)
             actor.validator(actor.player_id, actor.generation)
             return actor.player_id
-        if isinstance(actor, str):
-            self.member_state(actor)
-            return actor
+        if actor is not None:
+            raise RuntimeError("Invalid actor binding")
         return self.primary_player_id
 
     def validate_acting_player(self, player_id: str) -> None:
@@ -263,21 +269,10 @@ class SessionData:
                 raise RuntimeError(f"Authenticated actor {actor.player_id!r} cannot write for {player_id!r}")
             self.member_state(actor.player_id)
             actor.validator(actor.player_id, actor.generation)
-        elif isinstance(actor, str):
-            if actor != player_id:
-                raise RuntimeError(f"Bound actor {actor!r} cannot write for {player_id!r}")
-            self.member_state(actor)
+        elif actor is not None:
+            raise RuntimeError("Invalid actor binding")
         elif player_id != self.primary_player_id:
             raise RuntimeError(f"No actor is bound for player {player_id!r}")
-
-    @contextmanager
-    def _bind_actor(self, player_id: str) -> Iterator[None]:
-        self.member_state(player_id)
-        token = self._actor_binding.set(player_id)
-        try:
-            yield
-        finally:
-            self._actor_binding.reset(token)
 
     @contextmanager
     def _bind_authenticated_actor(

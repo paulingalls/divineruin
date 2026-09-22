@@ -21,19 +21,21 @@ from session_data import CompanionState, SessionData
 @contextmanager
 def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None):
     """Mock the DB calls used by _rebuild_warm_layer."""
-    with patch(
-        "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []
+    with (
+        patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
+        patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
+        patch(
+            "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []
+        ),
+        patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=location),
+        patch("background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []),
+        patch(
+            "background_process.db_training.get_player_active_training_activities",
+            new_callable=AsyncMock,
+            return_value=training or [],
+        ),
     ):
-        with patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=location):
-            with patch(
-                "background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []
-            ):
-                with patch(
-                    "background_process.db_training.get_player_active_training_activities",
-                    new_callable=AsyncMock,
-                    return_value=training or [],
-                ):
-                    yield
+        yield
 
 
 class TestWarmLayerRebuild:
@@ -51,6 +53,7 @@ class TestWarmLayerRebuild:
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
+        mock_sd.primary_player_id = "p1"
         mock_sd.world_time = "evening"
         mock_sd.combat_state = None
         # A real CompanionState, not a MagicMock: the static layer renders the companion

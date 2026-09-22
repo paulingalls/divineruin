@@ -38,6 +38,7 @@ from reputation_tools import adjust_faction_reputation
 from scene_tools import enter_location
 from session_data import SessionData
 from session_tools import end_session, record_story_moment, update_npc_disposition
+from speaker_context import speaker_line
 from system_prompts import build_system_prompt
 from task_logging import log_task_failure
 from travel_tools import travel
@@ -127,7 +128,7 @@ class ExplorationAgent(BaseGameAgent):
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
-            payload = await db_session_queries.get_session_init_payload(sd.player_id)
+            payload = await db_session_queries.get_session_init_payload(sd.primary_player_id)
             await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
         except Exception:
             logger.exception("Failed to publish session_init")
@@ -173,9 +174,7 @@ class ExplorationAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
         sd.last_player_speech_time = time.time()
 
-        hot = self._build_hot_context(sd)
-        if hot:
-            turn_ctx.add_message(role="assistant", content=hot)
+        turn_ctx.add_message(role="assistant", content=speaker_line(sd) + " " + self._build_hot_context(sd))
 
         affect = self._affect_analyzer.get_current_vector()
         if affect:
@@ -210,7 +209,6 @@ class ExplorationAgent(BaseGameAgent):
         return build_system_prompt(sd.location_id, companion=sd.companion)
 
     def _build_hot_context(self, sd: SessionData) -> str:
-        """Build hot context from in-memory SessionData only — zero I/O."""
         parts: list[str] = []
 
         loc_name = sd.cached_location_name or sd.location_id
@@ -219,9 +217,6 @@ class ExplorationAgent(BaseGameAgent):
         combat = format_combat_hot_line(sd.combat_state)
         if combat:
             parts.append(combat)
-
-        if sd.cached_quest_summaries:
-            parts.append("[Quests: " + "; ".join(sd.cached_quest_summaries) + "]")
 
         if sd.recent_events:
             recent = list(sd.recent_events)[-3:]

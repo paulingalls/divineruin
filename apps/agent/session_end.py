@@ -33,7 +33,7 @@ async def run_session_end(sd: SessionData) -> None:
 
     results = await asyncio.gather(
         publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus),
-        db_mutations.save_session_summary(sd.player_id, sd.session_id, payload),
+        db_mutations.save_session_summary(sd.primary_player_id, sd.session_id, payload),
         return_exceptions=True,
     )
     for i, result in enumerate(results):

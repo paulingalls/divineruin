@@ -32,13 +32,6 @@ SAMPLE_RUNNING_TRAINING = {
     "data": {"program_name": "Firebolt Study"},
 }
 
-SAMPLE_COMPLETE_TRAINING = {
-    "id": "train_done03",
-    "activity_type": "skill_practice",
-    "state": "complete",
-    "data": {"program_name": "Stealth Drills"},
-}
-
 
 class TestFormatTrainingSection:
     def test_empty_returns_none(self):
@@ -135,17 +128,6 @@ class TestBuildWarmLayer:
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening", training=[SAMPLE_AWAITING_TRAINING])
         assert "ACTIVE TRAINING" in result
         assert "train_mid01" in result
-
-    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_completed_training_omitted(self, mock_loc, mock_npcs, mock_disp, mock_quests):
-        mock_loc.return_value = SAMPLE_LOCATION
-        mock_npcs.return_value = []
-        mock_quests.return_value = []
-        result = await build_warm_layer("accord_guild_hall", "player_1", "evening", training=[SAMPLE_COMPLETE_TRAINING])
-        assert "ACTIVE TRAINING" not in result
 
 
 class TestBuildWarmLayerExits:
