@@ -121,7 +121,7 @@ story-019. Answers "right information / right action at the right time" for the 
 
 ---
 
-## agent_strict_mode.md (404 lines)
+## agent_strict_mode.md (478 lines)
 
 Proposed continuation of ADR 0008: retain verbs and typed nouns, and generate selected
 complex arguments in separate strict requests. Live provider and LiveKit feasibility
@@ -136,6 +136,7 @@ probes succeeded; voice latency remains a release gate. Measured 2026-09-18.
 | Cache, latency, and cost | 242-293 | Measured preliminary timings, warmup, paired voice benchmark, go/no-go conditions |
 | Verification and rollout | 294-355 | Fault injections, implementation sequence, strict-off inventory, rollback |
 | Alternatives and reproduction | 356-404 | Rejected approaches, reproduction procedure, limits of the evidence |
+| Luna evidence and production route | 408-478 | Seeded 27-case Luna matrix, 2026-09-20 GPT-5.6 decision, 2026-09-22 GPT-6 Luna route and rates |
 
 ---
 

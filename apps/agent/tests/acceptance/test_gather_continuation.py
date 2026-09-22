@@ -35,7 +35,6 @@ pytestmark = [
 ]
 
 _LOCATION = "greyvale_south_road"
-_MODEL = LUNA_MODEL
 _USAGE_PATH = Path("/tmp/divineruin_gather_continuation_usage.json")
 
 
@@ -104,7 +103,7 @@ async def test_luna_narrates_committed_gather_without_duplicate_grant(reset_db_p
         ]
     )
 
-    model = openai.LLM(model=_MODEL, reasoning_effort="none", _strict_tool_schema=True)
+    model = openai.LLM(model=LUNA_MODEL, reasoning_effort="none", _strict_tool_schema=True)
     try:
         response = await model.chat(chat_ctx=chat_context, tools=EXPLORATION_TOOLS).collect()
     finally:
@@ -112,7 +111,7 @@ async def test_luna_narrates_committed_gather_without_duplicate_grant(reset_db_p
 
     assert response.usage is not None
     row = {
-        "model": _MODEL,
+        "model": LUNA_MODEL,
         "prompt_tokens": response.usage.prompt_tokens,
         "cached_tokens": response.usage.prompt_cached_tokens,
         "completion_tokens": response.usage.completion_tokens,
