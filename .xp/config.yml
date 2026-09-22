@@ -32,18 +32,18 @@ roles:               # harness/model[/effort]; the lead overrides per story in p
                      # SPRINT-049 OPEN: the write-and-fix roles moved to codex; the
                      # judgment roles stayed claude. The split is the experiment.
   lead: claude/opus/high
-  executor: codex/gpt-5.6-sol/high
+  executor: codex/gpt-6-sol/medium
   reviewer: claude/opus/high       # the wall. sprint-047 open: the shipped slate-reviewer
                                    # charter found a false construction premise, a vacuous
                                    # AC and an unusable grep gate that the lead's own pass
                                    # missed.
   plan-reviewer: claude/opus/high  # scripts/plan_review.py; a teammate runs it itself
-  planner: codex/gpt-5.6-sol/high  # read-only implementation plan for a multi-file story
-  slate-reviewer: codex/gpt-5.6-sol/high  # the fresh reader over the sprint slate
+  planner: codex/gpt-6-sol/medium  # read-only implementation plan for a multi-file story
+  slate-reviewer: codex/gpt-6-sol/medium  # the fresh reader over the sprint slate
   card-refresher: claude/opus      # rewrites a card's stale HEAD claims before it is minted
   finder: claude/opus/high     # the four round-1 stages of `close.py sprint <id> review`;
   verifier: claude/opus/high   # each falls back to `reviewer` when its key is absent, so
-  fixer: codex/gpt-5.6-sol/high  # an older config keeps working untouched.
+  fixer: codex/gpt-6-sol/medium  # an older config keeps working untouched.
   closer: claude/opus/medium   # verifier is adversarial (kills false positives); closer
                                # is judgment over an already-verified set.
 
