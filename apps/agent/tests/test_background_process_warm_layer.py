@@ -29,7 +29,7 @@ def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None
                 "background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []
             ):
                 with patch(
-                    "background_process.db_training.get_player_training_activities",
+                    "background_process.db_training.get_player_active_training_activities",
                     new_callable=AsyncMock,
                     return_value=training or [],
                 ):
