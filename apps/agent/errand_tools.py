@@ -76,7 +76,7 @@ async def _dispatch_companion_errand_impl(
     _validate_id(errand_type, "errand_type")
     _validate_id(destination, "destination")
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.acting_player_id
     # The errand is resolved for the ASSIGNED companion (errand_resolution.companion_errand_data,
     # the same archetype rule session start hydrates), so the blocked_companions gate must be
     # checked against that companion too — otherwise a caller naming Kael walks a Sable player
@@ -142,6 +142,7 @@ async def _dispatch_companion_errand_impl(
         "narration_audio_url": None,
         "decision_options": None,
     }
+    session.validate_acting_player(player_id)
     activity_id = await mutations_mod.create_async_activity(player_id, data)
 
     return json.dumps(
@@ -170,7 +171,7 @@ async def _resolve_companion_errand_impl(
     context.disallow_interruptions()
     _validate_id(errand_id, "errand_id")
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.acting_player_id
     logger.info("resolve_companion_errand: player=%s errand=%s", player_id, errand_id)
 
     sleep = sleep_fn or asyncio.sleep
@@ -197,6 +198,7 @@ async def _resolve_companion_errand_impl(
             # account matches the push.
             cached = activity.get("outcome")
             if cached is not None:
+                session.validate_acting_player(player_id)
                 return json.dumps(cached)
 
             if activity.get("status") != "resolving":
@@ -224,12 +226,14 @@ async def _resolve_companion_errand_impl(
                 )
                 outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
                 # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
+                session.validate_acting_player(player_id)
                 await companion_rel_mod.apply_errand_affinity(
                     player_id, companion_data["id"], outcome.get("relationship_change", 0), conn=conn
                 )
 
                 # Persist + mark resolved within the lock so the worker skips this
                 # row (get_due_activities filters status='in_progress').
+                session.validate_acting_player(player_id)
                 await mutations_mod.update_activity(
                     errand_id,
                     {

@@ -70,7 +70,7 @@ async def _learn_variant_impl(
     except ValueError as exc:
         raise ToolError(f"Unknown mentor variant: {variant_id}") from exc
 
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     now = (now_fn or _default_now)()
     start_fn = rules_mod or start_training_cycle
     try:
@@ -119,6 +119,7 @@ async def _learn_variant_impl(
         if not await persistence_mod.owns_elective(player_id, variant.ability_id, conn=conn):
             raise ToolError(f"You must own the base technique {base.name} before training a variant of it.")
 
+        context.userdata.validate_acting_player(player_id)
         await progress_mod.seed_progress(player_id, variant_id, cycles_required, conn=conn)
         data = {
             "variant_id": variant_id,
@@ -127,6 +128,7 @@ async def _learn_variant_impl(
             "cultural_attribution": variant.cultural_attribution,
             "first_half_seconds": cycle.first_half_seconds,
         }
+        context.userdata.validate_acting_player(player_id)
         activity_id = await db_training_mod.create_training_activity(
             player_id=player_id,
             activity_type=_VARIANT_ACTIVITY_TYPE,

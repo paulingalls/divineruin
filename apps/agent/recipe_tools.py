@@ -115,7 +115,7 @@ async def _learn_recipe_impl(
     _validate_id(recipe_id, "recipe_id")
     if learned_via not in LEARNED_VIA:
         raise ToolError(f"Invalid learned_via {learned_via!r}; expected one of {sorted(LEARNED_VIA)}.")
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     logger.info("learn recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
 
     # Cached reference reads — done BEFORE opening the txn so they don't acquire a
@@ -146,6 +146,7 @@ async def _learn_recipe_impl(
         if not capacity.allowed:
             raise ToolError(capacity.reason)
 
+        context.userdata.validate_acting_player(player_id)
         inserted = await mutations_mod.add_player_known_recipe(player_id, recipe_id, learned_via, conn=conn)
         if not inserted:
             raise ToolError(f"Player already knows recipe {recipe_id}.")

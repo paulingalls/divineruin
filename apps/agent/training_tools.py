@@ -51,9 +51,10 @@ async def _query_training_programs_impl(
     character_spells_mod=character_spells,
     spells_mod=spells,
     leveling_mod=leveling,
+    db_training_mod=db_training,
 ) -> str:
     logger.info("query_training_programs called")
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     player = await queries_mod.get_player(player_id)
     if player is None:
         raise ToolError(f"Unknown player: {player_id}")
@@ -96,7 +97,24 @@ async def _query_training_programs_impl(
                     studiable_spell_ids.append(spell.id)
         scoped_programs.append({**program, "studiable_spell_ids": sorted(studiable_spell_ids)})
 
-    return json.dumps({"programs": scoped_programs, "spell_learning_progress": learning_progress})
+    active_training = []
+    for state in ("initiated", "running_first_half", "awaiting_decision", "running_second_half"):
+        active_training.extend(await db_training_mod.get_player_training_activities(player_id, state=state))
+    return json.dumps(
+        {
+            "programs": scoped_programs,
+            "spell_learning_progress": learning_progress,
+            "active_training": [
+                {
+                    "id": row["id"],
+                    "activity_type": row["activity_type"],
+                    "state": row["state"],
+                    "program_id": row.get("data", {}).get("program_id"),
+                }
+                for row in active_training
+            ],
+        }
+    )
 
 
 async def _initiate_training_cycle_impl(
@@ -117,7 +135,7 @@ async def _initiate_training_cycle_impl(
     context.disallow_interruptions()
     _validate_id(program_id, "program_id")
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.acting_player_id
     logger.info("initiate_training_cycle called: player_id=%s program_id=%s", player_id, program_id)
 
     program = await db_content_mod.get_training_program(program_id)
@@ -193,6 +211,7 @@ async def _initiate_training_cycle_impl(
         }
         if is_spell_program:
             data["spell_id"] = spell_id
+        session.validate_acting_player(player_id)
         activity_id = await db_training_mod.create_training_activity(
             player_id=player_id,
             activity_type=activity_type,
@@ -226,7 +245,7 @@ async def _resolve_training_midpoint_impl(
     context.disallow_interruptions()
     _validate_id(training_id, "training_id")
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.acting_player_id
     logger.info(
         "resolve_training_midpoint called: player_id=%s training_id=%s decision_id=%s",
         player_id,
@@ -255,6 +274,7 @@ async def _resolve_training_midpoint_impl(
             "second_half_seconds": result.second_half_seconds,
             "micro_bonus": result.micro_bonus,
         }
+        session.validate_acting_player(player_id)
         await db_training_mod.update_training_activity(
             training_id,
             state=result.state,

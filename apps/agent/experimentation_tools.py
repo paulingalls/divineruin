@@ -61,7 +61,7 @@ async def _experiment_with_materials_impl(
     # recipe-sourced ids; this is the one untrusted-id surface).
     for mid in materials:
         _validate_id(mid, "material_id")
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     logger.info("experiment_with_materials: player=%s output=%s", player_id, intended_output)
 
     # Cached reference reads BEFORE the txn (pool-exhaustion guard, like _learn_recipe_impl).
@@ -92,9 +92,11 @@ async def _experiment_with_materials_impl(
             alloc = validation_mod.allocate_materials(match["materials"], available, catalog)
             if not alloc.satisfied:
                 raise ToolError(f"You can't spare the materials for that: {alloc.reason}")
+            context.userdata.validate_acting_player(player_id)
             await mutations_mod.consume_player_materials(player_id, alloc.by_id, conn=conn)
             outcome = experimentation.resolve_experimentation(player, match["crafting_dc"], rng=rng)
             if outcome.success:
+                context.userdata.validate_acting_player(player_id)
                 await mutations_mod.add_player_known_recipe(player_id, match["id"], "experimentation", conn=conn)
                 return json.dumps(
                     {
@@ -121,6 +123,8 @@ async def _experiment_with_materials_impl(
         short = {mid: qty for mid, qty in materials.items() if available.get(mid, 0) < qty}
         if short:
             raise ToolError("You don't have the materials you described.")
+        context.userdata.validate_acting_player(player_id)
         await mutations_mod.consume_player_materials(player_id, materials, conn=conn)
+        context.userdata.validate_acting_player(player_id)
         await exp_db_mod.record_failed_experiment(player_id, intended_output, combo_key, conn=conn)
         return json.dumps({"outcome": "no_match", "learned_recipe": None, "consumed": True})

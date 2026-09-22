@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import archetypes
+import db_training
 import spells
 from leveling import SPELL_TIERS, min_level_for_tier
 from training_tools import _initiate_training_cycle_impl, _query_training_programs_impl
@@ -17,6 +18,11 @@ ORDINARY_PROGRAM = {
     "name": "Combat Fundamentals",
     "training_activity_type": "technique_base",
 }
+
+
+@pytest.fixture(autouse=True)
+def training_activity_read(monkeypatch):
+    monkeypatch.setattr(db_training, "get_player_training_activities", AsyncMock(return_value=[]))
 
 
 def _spell_programs() -> list[dict[str, str]]:
