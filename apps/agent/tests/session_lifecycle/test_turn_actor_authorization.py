@@ -5,6 +5,7 @@ import dataclasses
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import abilities
@@ -220,8 +221,8 @@ async def test_a_guest_turn_cannot_cast_for_the_primary_caster() -> None:
     queries = MagicMock(get_player=AsyncMock())
 
     with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_args: None):
-        with pytest.raises(RuntimeError, match="cannot write for"):
-            await _cast_spell_impl(ctx, "firebolt", db_mod=db_mod, queries_mod=queries)
+        with pytest.raises(ToolError, match="caster"):
+            await _cast_spell_impl(ctx, "firebolt", caster_id="player_1", db_mod=db_mod, queries_mod=queries)
 
     queries.get_player.assert_not_awaited()
 

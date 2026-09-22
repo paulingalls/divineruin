@@ -4,7 +4,7 @@ _inner_fire_impl is the Draethar's once-per-encounter pressure valve (spec magic
 caster's skin flares and the inner fire purges Veil disturbance — reduce current Resonance by 3,
 but take 1d6 unpreventable self fire damage. The -3 / "1d6" values are read from the racial
 table (racial_resonance, story-001), not hardcoded. Unlike the passive racials this is an active
-combat action, gated to once per encounter via session.draethar_inner_fire_used (reset at
+combat action, gated to once per encounter via member.draethar_inner_fire_used (reset at
 encounter boundaries, beside the per-member weapon flags). It enters via activate_tools.activate —
 the reserved 'draethar_inner_fire' token (M25 Phase-5 story-002 folded the standalone inner_fire
 @function_tool wrapper into it).
@@ -79,14 +79,15 @@ async def _inner_fire_locked(
     concentration_break_mod=concentration_break,
 ) -> str:
     session: SessionData = context.userdata
-    player_id = session.player_id
+    player_id = session.acting_player_id
+    member = session.member_state(player_id)
     logger.info("inner_fire called: player=%s", player_id)
 
     # Gates FIRST, all before any write (ineligible use changes nothing). Combat gate first so the
     # player fetch is skipped when there's no encounter.
     if session.combat_state is None:
         raise ToolError("Inner Fire can only be used in combat.")
-    if session.draethar_inner_fire_used:
+    if member.draethar_inner_fire_used:
         raise ToolError("Inner Fire is already spent this encounter.")
 
     async with db_mod.transaction() as conn:
@@ -103,10 +104,13 @@ async def _inner_fire_locked(
         damage_dice = racial_mod.get_racial_resonance_modifier(_DRAETHAR, "inner_fire_self_damage")
         fire_damage = dice_mod.roll(damage_dice).total
 
-        new_resonance = max(0, session.resonance.current - reduction)
+        new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
         overkill = max(0, fire_damage - participant.hp_current)
         new_hp = max(0, participant.hp_current - fire_damage)
+        session.validate_acting_player(player_id)
+        await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
+        session.validate_acting_player(player_id)
         participant.hp_current = new_hp
 
         # The zero-HP transition has ONE owner. Self-damage knocks on the same door as a blow;
@@ -126,21 +130,21 @@ async def _inner_fire_locked(
                 sounds=sounds,
             )
 
-        await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         # A Hollowed rise flipped `type` off "player" above, and that flip is the gate: the echo's
         # HP is the monster's, not the player's, so neither players.data nor the caster's
         # concentration follows it down. Same suppression the attack path gets, same reason.
         if participant.type == "player":
+            session.validate_acting_player(player_id)
             await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
 
     # Transaction committed — sync the in-memory SSOTs and push the HUD state.
-    resonance_reduced = session.resonance.current - new_resonance
-    session.resonance.current = new_resonance
-    session.draethar_inner_fire_used = True
+    resonance_reduced = member.resonance.current - new_resonance
+    member.resonance.current = new_resonance
+    member.draethar_inner_fire_used = True
     # Persist the combat state so the participant's self-damage survives a mid-encounter crash,
     # mirroring combat_turn (participant HP lives in combat_instances, not just players.data).
     await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
-    await resonance_events_mod.publish_resonance_changed(session)
+    await resonance_events_mod.publish_resonance_changed(session, resonance_track=member.resonance, caster_id=player_id)
     await _publish_sounds(session, sounds)
 
     # The self-inflicted fire damage is still damage: a concentrating Draethar rolls the CON save
@@ -166,10 +170,10 @@ async def _inner_fire_locked(
             # to half its max, and that is what stands on the board.
             "hp_remaining": participant.hp_current,
             "rose_hollowed": rose_hollowed,
-            # Canonical band: ResonanceTrack.state derives from session.resonance.current (set
+            # Canonical band: ResonanceTrack.state derives from member.resonance.current (set
             # above to new_resonance) + flickering_bonus. For a Draethar the bonus is always 0,
             # so this equals the old get_resonance_state(new_resonance) — one SSOT for the band.
-            "state": session.resonance.state,
+            "state": member.resonance.state,
             "concentration_broken": concentration_broken,
         }
     )

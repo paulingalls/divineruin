@@ -10,6 +10,7 @@ a mock spells_mod so the arithmetic is independent of catalog tuning; pass the r
 """
 
 import json
+from contextlib import nullcontext
 from unittest.mock import AsyncMock, MagicMock
 
 from sample_fixtures import make_context, make_db_mod
@@ -257,21 +258,23 @@ async def _cast_racial(
     concentration.update_player_concentration = AsyncMock()
     spells_mod = MagicMock()
     spells_mod.get_spell = MagicMock(return_value=spell)
-    raw = await _cast_spell_impl(
-        ctx,
-        spell.id,
-        caster_id=caster_id,
-        db_mod=mock_db,
-        queries_mod=queries,
-        persistence_mod=persistence,
-        resonance_mutations_mod=mutations,
-        resonance_events_mod=events,
-        spells_mod=spells_mod,
-        dice_mod=_dice_seq(*d20s),
-        echo_events_mod=echo_events,
-        racial_mod=_racial_mod(),
-        vaelti_warning_mod=vaelti_warning or MagicMock(),
-        concentration_mutations_mod=concentration,
-        character_spells_mod=_known(spell.id),
-    )
+    actor = ctx.userdata._bind_actor(caster_id) if caster_id is not None else nullcontext()
+    with actor:
+        raw = await _cast_spell_impl(
+            ctx,
+            spell.id,
+            caster_id=caster_id,
+            db_mod=mock_db,
+            queries_mod=queries,
+            persistence_mod=persistence,
+            resonance_mutations_mod=mutations,
+            resonance_events_mod=events,
+            spells_mod=spells_mod,
+            dice_mod=_dice_seq(*d20s),
+            echo_events_mod=echo_events,
+            racial_mod=_racial_mod(),
+            vaelti_warning_mod=vaelti_warning or MagicMock(),
+            concentration_mutations_mod=concentration,
+            character_spells_mod=_known(spell.id),
+        )
     return json.loads(raw), ctx, mutations, concentration, echo_events

@@ -27,6 +27,7 @@ class PartyMember:
     # encounter (combat_init). Not long-lived state — persists only for a live combat's duration.
     weapon_used: bool = False
     weapon_crit_vs_heavy: bool = False
+    draethar_inner_fire_used: bool = False
 
 
 @dataclass
@@ -105,6 +106,7 @@ class PartyState:
                 # flags, so an old session loads clean rather than KeyError-ing.
                 weapon_used=m_data.get("weapon_used", False),
                 weapon_crit_vs_heavy=m_data.get("weapon_crit_vs_heavy", False),
+                draethar_inner_fire_used=m_data.get("draethar_inner_fire_used", False),
             )
             members.append(member)
         return cls(members=members)
