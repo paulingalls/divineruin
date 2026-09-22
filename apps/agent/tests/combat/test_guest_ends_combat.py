@@ -8,7 +8,7 @@ from combat._helpers import _ctx_at_resolution, _fake_db_mod, _make_combat_state
 from combat.test_combat_init_multiplayer import _add_second_member, _second_member_row
 from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import SAMPLE_PLAYER, make_context
 
 from combat_end import _end_combat_impl
 from combat_init import _start_combat_impl
@@ -42,6 +42,45 @@ async def test_guest_stance_gate_reads_guest_reputation():
             ctx, "ashmark_patrol", "A patrol approaches.", mutations=mutations, queries=queries, content=content
         )
     queries.get_player_faction_reputation.assert_awaited_once_with("player_2", "thornwatch")
+
+
+@pytest.mark.asyncio
+async def test_guest_revoked_before_combat_save_starts_nothing():
+    mutations, queries, content = _make_start_combat_mocks()
+    ctx = make_context()
+    _add_second_member(ctx)
+    queries.get_player = AsyncMock(return_value=_second_member_row())
+    queries.get_players_for_update = AsyncMock(return_value={"player_1": SAMPLE_PLAYER})
+    checks = []
+
+    def validate(*_):
+        checks.append(1)
+        if len(checks) > 1:
+            raise RuntimeError("stale")
+
+    with ctx.userdata._bind_authenticated_actor("player_2", 1, validate):
+        with pytest.raises(RuntimeError, match="stale"):
+            await _start_combat_impl(
+                ctx, "goblin_patrol", "A goblin patrol.", mutations=mutations, queries=queries, content=content
+            )
+    mutations.save_combat_state.assert_not_awaited()
+    assert ctx.userdata.combat_state is None
+
+
+@pytest.mark.asyncio
+async def test_guest_started_combat_scales_companion_to_its_owner():
+    mutations, queries, content = _make_start_combat_mocks()
+    ctx = make_context(companion_id="companion_kael")
+    _add_second_member(ctx)
+    queries.get_player = AsyncMock(return_value=_second_member_row())
+    queries.get_players_for_update = AsyncMock(return_value={"player_1": SAMPLE_PLAYER})
+    with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        await _start_combat_impl(
+            ctx, "goblin_patrol", "A goblin patrol.", mutations=mutations, queries=queries, content=content
+        )
+    state = mutations.save_combat_state.call_args.args[1]
+    kael = next(p for p in state["participants"] if p["id"] == "companion_kael")
+    assert kael["hp_max"] == 21
 
 
 @pytest.mark.asyncio

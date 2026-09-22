@@ -125,8 +125,6 @@ async def _start_combat_locked(
             return f"The {faction.get('name', faction_id)} recognizes you as an ally and stands down. No combat."
 
     # Build participant dicts for initiative rolling
-    player_hp = player.get("hp", {})
-
     # Multi-player combat build (M14 story-003): session.party.member_ids is the SSOT for
     # combat participation (not the mirrored session.player_id field). The speaker reuses the
     # already-fetched `player` row; every other member loads in ONE batched
@@ -183,8 +181,11 @@ async def _start_combat_locked(
             # whose damage/hit has no parseable term). Keep them inside the try so a catalog
             # inconsistency surfaces as a DM-narratable ToolError, just like an unknown id —
             # instead of a raw ValueError that crashes combat init.
+            # The companion was hydrated from the primary's row, so it scales to its owner, not
+            # to whichever member's turn opened the fight.
+            owner = dict(member_players)[session.primary_player_id]
             companion_scaled = scale_companion_stats_to_player_level(
-                profile, player_hp.get("max", 1), player.get("level", 1)
+                profile, owner.get("hp", {}).get("max", 1), owner.get("level", 1)
             )
             companion_action_pool = companion_attacks_to_action_pool(profile)
         except ValueError as e:

@@ -148,7 +148,6 @@ async def _end_combat_db(
     rng = rng or random.Random()
     actor_id = session.acting_player_id
     primary_id = session.primary_player_id
-    session.validate_acting_player(actor_id)
     # Loot, coin and XP live in combat_rewards (decision dcc9c1cc1221). All of it runs in THIS
     # transaction and buffers into ``sink``, so a rolled-back phase un-grants every reward and drops
     # the unflushed events. XP is a Resolve now (M28 story-001), not a "call an award tool with

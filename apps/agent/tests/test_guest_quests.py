@@ -174,3 +174,34 @@ async def test_guest_personal_effects_target_speaker():
         )
     assert reputation.adjust_player_faction_reputation.await_args.args[0] == "player_2"
     assert mutations.set_npc_disposition.await_args.args[1] == "player_2"
+
+
+def revoked_after(allowed_checks):
+    calls = 0
+
+    def validate(*_):
+        nonlocal calls
+        calls += 1
+        if calls > allowed_checks:
+            raise RuntimeError("stale")
+
+    return validate
+
+
+@pytest.mark.asyncio
+async def test_guest_revoked_before_quest_locks_takes_none():
+    case = quest_case([{"on_complete": {"rewards": [{"item": "relic"}]}}], {"player_1": 0, "player_2": 0})
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, revoked_after(1)):
+        with pytest.raises(RuntimeError, match="stale"):
+            await advance(case, 1)
+    case[5].get_player_quest.assert_not_awaited()
+    case[6].add_inventory_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_guest_revoked_before_quest_marker_writes_none():
+    case = quest_case([{"on_complete": {"rewards": [{"item": "relic"}]}}], {"player_1": 0, "player_2": 0})
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, revoked_after(2)):
+        with pytest.raises(RuntimeError, match="stale"):
+            await advance(case, 1)
+    case[6].set_player_quest.assert_not_awaited()
