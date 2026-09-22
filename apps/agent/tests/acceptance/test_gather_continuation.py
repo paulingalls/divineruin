@@ -23,6 +23,7 @@ import db
 import db_queries
 import gathering_tools
 from exploration_agent import EXPLORATION_TOOLS
+from gameplay_llm import LUNA_MODEL
 from system_prompts import build_system_prompt
 
 pytestmark = [
@@ -34,7 +35,7 @@ pytestmark = [
 ]
 
 _LOCATION = "greyvale_south_road"
-_MODEL = "gpt-5.6-luna"
+_MODEL = LUNA_MODEL
 _USAGE_PATH = Path("/tmp/divineruin_gather_continuation_usage.json")
 
 

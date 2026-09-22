@@ -464,3 +464,15 @@ production 1.0-second floor and excludes the per-player transcriber queue and
 `MultiplayerInput` serialization. These values therefore cannot establish production
 end-to-end latency. Stage-level production measurement and real microphone testing
 remain follow-up optimization, not rollout gates.
+
+## 12. GPT-6 Luna route (2026-09-22)
+
+The default gameplay route now names `gpt-6-luna`. It retains
+`reasoning_effort="none"`, strict tool schemas, and `GAMEPLAY_LLM=anthropic` as an
+explicit rollback. The current cost report uses the [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna)
+standard text rates retrieved 2026-09-22: $0.10 per million input tokens, $0.01
+per million cached input tokens, and $0.50 per million output tokens.
+
+The 2026-09-20 measurements above belong to GPT-5.6 Luna. The GPT-6 gather
+continuation and 27-case seeded matrix await approval for their paid runs. Their
+gameplay quality and latency are not yet measured.

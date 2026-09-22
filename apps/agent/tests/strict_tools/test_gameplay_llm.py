@@ -78,6 +78,8 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
         await sdk_client.close()
 
     assert len(requests) == 1
+    assert requests[0]["model"] == "gpt-6-luna"
+    assert requests[0]["reasoning_effort"] == "none"
     emitted = requests[0]["tools"]
     assert len(emitted) == len(tools)
     assert all(tool["function"]["strict"] is True for tool in emitted)
