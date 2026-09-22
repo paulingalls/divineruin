@@ -186,9 +186,8 @@ class ExplorationAgent(BaseGameAgent):
         )
         if player is None:
             raise RuntimeError(f"Missing speaker player {speaker_id!r}")
-        hot = self._build_speaker_context(player, quests, activities, training) + " " + self._build_hot_context(sd)
-        if hot:
-            turn_ctx.add_message(role="assistant", content=hot)
+        speaker = self._build_speaker_context(speaker_id, player, quests, activities, training)
+        turn_ctx.add_message(role="assistant", content=speaker + " " + self._build_hot_context(sd))
 
         affect = self._affect_analyzer.get_current_vector()
         if affect:
@@ -223,8 +222,9 @@ class ExplorationAgent(BaseGameAgent):
         return build_system_prompt(sd.location_id, companion=sd.companion)
 
     def _build_speaker_context(
-        self, player: dict, quests: list[dict], activities: list[dict], training: list[dict]
+        self, speaker_id: str, player: dict, quests: list[dict], activities: list[dict], training: list[dict]
     ) -> str:
+        # The id is what joins this block to the warm layer's "host player <id>" labels.
         name = sanitize_for_prompt(player["name"], max_len=100)
         hp = player["hp"]
         quest = next((f"{q['quest_name']}: {quest_objective(q)}" for q in quests if quest_objective(q)), "none")
@@ -234,7 +234,7 @@ class ExplorationAgent(BaseGameAgent):
         elif training:
             activity = training[0].get("data", {}).get("program_name") or training[0]["activity_type"]
         return (
-            f"[Speaker: {name}; HP {hp['current']}/{hp['max']}; "
+            f"[Speaker: {name} (player {speaker_id}); HP {hp['current']}/{hp['max']}; "
             f"quest step: {sanitize_for_prompt(quest, max_len=160)}; "
             f"activity: {sanitize_for_prompt(activity, max_len=80)}]"
         )

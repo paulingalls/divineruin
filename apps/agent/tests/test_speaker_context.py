@@ -70,11 +70,11 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
                 await agent.on_user_turn_completed(ctx, MagicMock())
                 contexts.append(" ".join(str(m.content) for m in ctx.items if isinstance(m, llm.ChatMessage)))
 
-    assert "Bryn" in contexts[0] and "4/12" in contexts[0]
+    assert "Speaker: Bryn (player guest)" in contexts[0] and "4/12" in contexts[0]
     assert "Find guest key" in contexts[0] and "companion_errand" in contexts[0]
     assert "Ada" not in contexts[0] and "Host Quest" not in contexts[0]
     assert "[NPCs nearby: Barkeep]" in contexts[0]
-    assert "Ada" in contexts[1] and "9/10" in contexts[1]
+    assert "Speaker: Ada (player host)" in contexts[1] and "9/10" in contexts[1]
     assert "Find host map" in contexts[1] and "crafting" in contexts[1]
     assert "Bryn" not in contexts[1] and "Guest Quest" not in contexts[1]
     assert "3/12" in contexts[2] and "Open guest door" in contexts[2]
@@ -85,8 +85,8 @@ def test_speaker_snapshot_handles_training_and_explicit_absence():
     agent = ExplorationAgent()
     player = {"name": "Bryn", "hp": {"current": 4, "max": 12}}
     training = [{"activity_type": "technique_base", "data": {"program_name": "Sword Drills"}}]
-    assert "activity: Sword Drills" in agent._build_speaker_context(player, [], [], training)
-    empty = agent._build_speaker_context(player, [], [], [])
+    assert "activity: Sword Drills" in agent._build_speaker_context("guest", player, [], [], training)
+    empty = agent._build_speaker_context("guest", player, [], [], [])
     assert "quest step: none" in empty and "activity: none" in empty
 
 
@@ -171,7 +171,7 @@ async def test_warm_facts_belong_to_host_during_guest_turn():
     dispositions.assert_awaited_once_with(["keeper"], "host")
     exit_check.assert_awaited_once_with("host_flag", "host")
     assert "AFFORDANCES — host player host" in warm
-    assert "Find host map" in warm and "Host Drill" in warm
+    assert "Find host map" in warm and "Host player host\nACTIVE TRAINING" in warm
     assert "friendly" in warm and "north (locked)" in warm
     assert "SESSION COMPANION — Kael (host player host)" in warm
     assert "guest" not in warm
