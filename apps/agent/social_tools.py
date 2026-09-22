@@ -63,16 +63,17 @@ async def _check_social_impl(
         raise ToolError(f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}")
 
     session: SessionData = context.userdata
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{player_id}' not found.")
     # Same read-boundary guard as the skill/save modes (M4.4 story-008): a corrupt conditions
     # row otherwise reaches get_condition_effects as a raw KeyError, not a DM-narratable error.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, player_id)
 
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
     roll = check_resolution.resolve_skill_check_dc(player, skill_lower, base_dc, rng)
-    current = await resolve_disposition(npc_id, session.player_id, queries_mod=queries, content_mod=content)
+    current = await resolve_disposition(npc_id, player_id, queries_mod=queries, content_mod=content)
     # The pure resolver fail-louds with ValueError on an off-ladder disposition (a corrupt
     # npc_dispositions row). db_tool only narrows ValueError-free errors, so convert it to a
     # DM-narratable ToolError here — the same boundary the skill/save modes apply to their resolvers.
@@ -104,22 +105,23 @@ async def _check_social_impl(
     # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
     # writes fire — the disposition shift AND the die-consume — so they commit atomically; a lone
     # write (shift-only, or consume-only on a no-shift outcome) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume helper
-    # is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     if shift and roll.consumed_conditions:
         async with db_mod.transaction() as conn:
+            session.validate_acting_player(player_id)
             await mutations.set_npc_disposition(
-                npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
+                npc_id, player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
             )
-            await consume_beneficial_conditions(
-                session.player_id, roll.consumed_conditions, conditions_mutations, conn=conn
-            )
+            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations, conn=conn)
     else:
         if shift:
+            session.validate_acting_player(player_id)
             await mutations.set_npc_disposition(
-                npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
+                npc_id, player_id, outcome.new_disposition, f"social_check: {skill_lower}"
             )
-        await consume_beneficial_conditions(session.player_id, roll.consumed_conditions, conditions_mutations)
+        if roll.consumed_conditions:
+            session.validate_acting_player(player_id)
+            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations)
 
     if shift:
         await publish_game_event(

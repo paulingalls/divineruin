@@ -26,7 +26,7 @@ class TestDiscoverLockoutOrdering:
                 await _check_discover_impl(
                     ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
                 )
-        assert "perception:secret_door" not in ctx.userdata.attempted_discoveries
+        assert "player_1:perception:secret_door" not in ctx.userdata.attempted_discoveries
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
@@ -37,4 +37,4 @@ class TestDiscoverLockoutOrdering:
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        assert "perception:secret_door" in ctx.userdata.attempted_discoveries
+        assert "player_1:perception:secret_door" in ctx.userdata.attempted_discoveries

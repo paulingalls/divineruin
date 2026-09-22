@@ -125,12 +125,13 @@ async def _check_skill_impl(
     if difficulty.lower() not in VALID_DIFFICULTIES:
         raise ToolError(f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}")
 
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{player_id}' not found.")
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, player_id)
 
     result = check_resolution.resolve_skill_check(player, skill, difficulty)
 
@@ -155,8 +156,9 @@ async def _check_skill_impl(
     # no-consume path keeps the single tx-free write exactly as before.
     if result.consumed_conditions:
         async with db_mod.transaction() as conn:
+            session.validate_acting_player(player_id)
             adv = await skill_persistence.apply_skill_use_with_persistence(
-                session.player_id,
+                player_id,
                 skill,
                 counter_increment=1,
                 initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
@@ -164,12 +166,11 @@ async def _check_skill_impl(
                 queries=queries,
                 mutations=mutations,
             )
-            await consume_beneficial_conditions(
-                session.player_id, result.consumed_conditions, conditions_mutations, conn=conn
-            )
+            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations, conn=conn)
     else:
+        session.validate_acting_player(player_id)
         adv = await skill_persistence.apply_skill_use_with_persistence(
-            session.player_id,
+            player_id,
             skill,
             counter_increment=1,
             initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
@@ -232,12 +233,13 @@ async def _check_save_impl(
         raise ToolError("DC must be between 1 and 30.")
     session: SessionData = context.userdata
 
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{player_id}' not found.")
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, player_id)
 
     try:
         result = check_resolution_save.resolve_saving_throw(player, save_type, dc, effect_on_fail)
@@ -247,7 +249,9 @@ async def _check_save_impl(
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
-    await consume_beneficial_conditions(session.player_id, result.consumed_conditions, conditions_mutations)
+    if result.consumed_conditions:
+        session.validate_acting_player(player_id)
+        await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
 
     await publish_game_event(
         session.room,

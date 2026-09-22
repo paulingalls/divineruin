@@ -61,11 +61,12 @@ async def _check_gather_impl(
 ) -> str:
     logger.info("check gather: material_type=%r", material_type)
     session: SessionData = context.userdata
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{player_id}' not found.")
     # Read-boundary guard (M4.4 story-008): a corrupt conditions row becomes a DM-narratable error.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, player_id)
 
     location = await content.get_location(session.location_id)
     if location is None:
@@ -117,21 +118,24 @@ async def _check_gather_impl(
     # materials not granted, or granted without depletion) would dupe or lose items in the
     # persistent economy. The conn= seams on both mutation modules thread the tx connection.
     async with db_mod.transaction() as conn:
+        session.validate_acting_player(player_id)
         if node is not None:
             await gather_mutations.mark_node_discovered(node["id"], conn=conn)
             # A persistent node (respawn_days == -1) never depletes — it's infinite by design
             # (gathering_respawn contract; e.g. the hollow residue pool). Still discoverable, so
             # mark_node_discovered fires, but skip the depletion write.
             if node.get("respawn_days") != -1:
+                session.validate_acting_player(player_id)
                 await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
         for material_id, qty in counts.items():
-            await mutations.add_inventory_item(session.player_id, material_id, qty, conn=conn)
+            session.validate_acting_player(player_id)
+            await mutations.add_inventory_item(player_id, material_id, qty, conn=conn)
         # The gather roll spends Blessed/Inspired's +1d4 (M4.8 story-009): remove + persist the
         # signalled conditions on the SAME tx connection, so the die-consume commits atomically
-        # with the node depletion + inventory grant. No-op when nothing was consumed.
-        await consume_beneficial_conditions(
-            session.player_id, roll.consumed_conditions, conditions_mutations, conn=conn
-        )
+        # with the node depletion + inventory grant.
+        if roll.consumed_conditions:
+            session.validate_acting_player(player_id)
+            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations, conn=conn)
 
     success = result.result != "nothing"
     await publish_game_event(
