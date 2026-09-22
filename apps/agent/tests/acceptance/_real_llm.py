@@ -1,9 +1,9 @@
 """Opt-in hard gate for the real-LLM acceptance tier (sprint-47 story-019 AC1).
 
-A tier that absents itself is a false green: the pre-push gate reported
-`5 skipped` for an unknown span while the only scenarios that reach the Anthropic
-API ran nowhere. Set REQUIRE_REAL_LLM=1 (the pre-push gate and `bun run
-test:acceptance` both do) and a missing or placeholder key fails the lane loud.
+Paid tiers run only in a human-approved invocation (ALLOW_PAID_TESTS=1, human
+2026-09-22 — tests/_paid_tests.py); no hook or package script approves them. Inside an
+approved run, REQUIRE_REAL_LLM=1 makes a missing or placeholder key fail the lane loud
+instead of skipping, so the run the human paid for cannot certify nothing.
 
 The CAUSE of those skips, measured 2026-09-05: `bun run <script>` does NOT put `.env`
 into the environment of the command it spawns (bun 1.3.14 — it loads `.env` for

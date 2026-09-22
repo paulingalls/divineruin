@@ -9,10 +9,13 @@ from acceptance.multiplayer_voice._harness import PLAYER_ONE_SPEECH, PLAYER_TWO_
 # The skipif is the not-opted-in path (CI without the secret, a worktree carrying
 # .env.example's placeholder); REQUIRE_REAL_LLM=1 suppresses it so the conftest fixture
 # fails this lane LOUD rather than letting it absent itself from the boundary.
-pytestmark = pytest.mark.skipif(
-    not has_live_voice_key(os.environ) and not os.environ.get("REQUIRE_REAL_LLM"),
-    reason="live-voice acceptance drives the real Deepgram STT API and needs DEEPGRAM_API_KEY",
-)
+pytestmark = [
+    pytest.mark.live_voice,
+    pytest.mark.skipif(
+        not has_live_voice_key(os.environ) and not os.environ.get("REQUIRE_REAL_LLM"),
+        reason="live-voice acceptance drives the real Deepgram STT API and needs DEEPGRAM_API_KEY",
+    ),
+]
 
 
 async def test_two_microphones_reach_the_transcription_seam_with_their_identities(

@@ -2,8 +2,8 @@
 
 TWO DIRECTIONS, and only one of them is cheap to get wrong. A missing skipif costs a red —
 the scenario fails in STT setup, loudly — so under-detection here is survivable. A missing
-LOUD path is the false green story-019 was written against: `6 skipped` at the pre-push
-boundary, where the only tier that reaches a real microphone certified nothing.
+LOUD path is the false green story-019 was written against: `6 skipped` in a human-approved
+paid run (ALLOW_PAID_TESTS=1), where the only tier that reaches a real microphone certified nothing.
 """
 
 import ast
@@ -103,6 +103,10 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
         assert "has_live_voice_key" in mark, (
             f"{path.name}'s pytestmark does not consult the live-voice gate, so it skips on "
             "some other condition than a usable Deepgram key"
+        )
+        assert "pytest.mark.live_voice" in mark, (
+            f"{path.name} reaches paid Deepgram STT but does not carry the live_voice marker, so "
+            "the ALLOW_PAID_TESTS approval gate (tests/_paid_tests.py) cannot skip it"
         )
         assert "REQUIRE_REAL_LLM" in mark, (
             f"{path.name}'s skipif does not know about REQUIRE_REAL_LLM — it would fire first and "

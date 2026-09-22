@@ -72,6 +72,9 @@ Write for the ear: short sentences, concrete sensory details, sound/smell before
 
 **Bun:** `bun test` with `import { test, expect } from "bun:test"`
 **Python:** `pytest` with `pytest-asyncio` for async tests
+
+**Never run paid tests without explicit human approval.** Tests that call a paid provider (Anthropic, OpenAI, Deepgram — markers `real_llm`, `openai_real_llm`, `live_voice`) are skipped everywhere: pre-push, the sprint full tier, CI, ad-hoc runs, even with keys in `.env`. Run one only when the human approves that specific run: `ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. A new test that reaches a paid provider must carry one of those markers (`tests/test_paid_test_gate.py` enforces it).
+
 Rules engine must be exhaustively tested (pure functions, deterministic).
 
 **Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`, ~6.5s), not a bare `uv run pytest -m "not acceptance"` (serial, ~3x slower).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop (sub-2s); use the script for any full-lane check so you exercise the same command CI and the pre-push gate use.

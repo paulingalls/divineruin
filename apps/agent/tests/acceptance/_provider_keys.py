@@ -10,9 +10,8 @@ then deselect a lane that never touches the LLM.
 
 from __future__ import annotations
 
-# The flag the pre-push gate and `bun run test:acceptance` set. It names the LLM tier and
-# means the wider thing at every gate below: this run must reach real providers, so a tier
-# that cannot must fail loud rather than absent itself (story-019 AC1).
+# Set only on a human-approved paid run, beside ALLOW_PAID_TESTS (tests/_paid_tests.py):
+# that run must reach real providers, so a tier that cannot fails loud rather than skipping.
 OPT_IN_VAR = "REQUIRE_REAL_LLM"
 
 # Every provider key in .env.example carries this prefix, and it is TRUTHY, so

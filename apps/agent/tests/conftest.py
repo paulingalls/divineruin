@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
+from _paid_tests import paid_skip_reason
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -63,6 +64,14 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     if _is_xdist_worker(session.config):
         return
     stop_if_started(_started_db, _db_url)
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip every paid provider test unless a human approved this run (see _paid_tests.py)."""
+    for item in items:
+        reason = paid_skip_reason((mark.name for mark in item.iter_markers()), os.environ)
+        if reason is not None:
+            item.add_marker(pytest.mark.skip(reason=reason))
 
 
 @pytest.fixture(autouse=True)

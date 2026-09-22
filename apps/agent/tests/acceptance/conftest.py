@@ -52,8 +52,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 def _real_llm_key_required(request: pytest.FixtureRequest) -> None:
     """Fail — never skip — a real-LLM scenario when REQUIRE_REAL_LLM=1 and no usable key.
 
-    Same idiom as REQUIRE_DOCKER=1 above: opt-in hard gate for the tiers that would
-    otherwise absent themselves from the pre-push gate (story-019 AC1).
+    Same idiom as REQUIRE_DOCKER=1 above: inside a human-approved paid run
+    (ALLOW_PAID_TESTS=1), a tier that cannot reach its provider fails loud.
     """
     if request.node.get_closest_marker("real_llm") is None:
         return

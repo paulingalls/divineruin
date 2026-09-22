@@ -73,7 +73,7 @@ def pytest_configure(config):
         "DATABASE_URL", "REDIS_URL", "LIVEKIT_URL", "LIVEKIT_API_KEY",
         "LIVEKIT_API_SECRET", "ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY",
         "INWORLD_API_KEY", "INWORLD_WORKSPACE_ID", "REQUIRE_DOCKER",
-        "REQUIRE_REAL_LLM", "TESTCONTAINERS_RYUK_DISABLED",
+        "REQUIRE_REAL_LLM", "ALLOW_PAID_TESTS", "TESTCONTAINERS_RYUK_DISABLED",
     ]
     Path(os.environ["PREPUSH_ACCEPTANCE_RECORD"]).write_text(
         json.dumps({key: os.environ.get(key, "<unset>") for key in keys})
@@ -105,6 +105,7 @@ case_dir="$PREPUSH_CASE_DIR"
   printf 'DEEPGRAM_API_KEY=%s\n' "${DEEPGRAM_API_KEY-<unset>}"
   printf 'REQUIRE_DOCKER=%s\n' "${REQUIRE_DOCKER-<unset>}"
   printf 'REQUIRE_REAL_LLM=%s\n' "${REQUIRE_REAL_LLM-<unset>}"
+  printf 'ALLOW_PAID_TESTS=%s\n' "${ALLOW_PAID_TESTS-<unset>}"
   printf 'TESTCONTAINERS_RYUK_DISABLED=%s\n' "${TESTCONTAINERS_RYUK_DISABLED-<unset>}"
 } > "$case_dir/$lane.env"
 printf '%s\n' "$@" > "$case_dir/$lane.argv"
@@ -172,7 +173,7 @@ run_hook() {
     PREPUSH_ACCEPTANCE_RECORD="$case_dir/pytest.json" \
     PYTHONPATH="$TMP/plugin:$ROOT/apps/agent:$ROOT/apps/agent/tests" \
     PYTEST_PLUGINS=prepush_probe UV_PROJECT_ENVIRONMENT="$ROOT/apps/agent/.venv" \
-    DEEPGRAM_API_KEY=parent-deepgram-key bash "$HOOK" \
+    ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 DEEPGRAM_API_KEY=parent-deepgram-key bash "$HOOK" \
     __prepush_harness__ __prepush_harness__ lanes </dev/null >"$case_dir/hook.log" 2>&1
   rc=$?
   printf '%s\n' "$rc" > "$case_dir/rc"
@@ -252,7 +253,8 @@ want_line "acceptance boundary redis is unset" "$S/acceptance.env" "REDIS_URL=<u
 want_line "server masks external APIs" "$S/server.env" "DEEPGRAM_API_KEY="
 want_line "Python masks external APIs" "$S/python.env" "DEEPGRAM_API_KEY="
 want_line "hook acceptance requires Docker" "$S/acceptance.env" "REQUIRE_DOCKER=1"
-want_line "hook acceptance requires real LLM" "$S/acceptance.env" "REQUIRE_REAL_LLM=1"
+want_line "hook acceptance does not require real LLM" "$S/acceptance.env" "REQUIRE_REAL_LLM=<unset>"
+want_line "hook acceptance strips paid-test approval" "$S/acceptance.env" "ALLOW_PAID_TESTS=<unset>"
 want_line "hook acceptance disables Ryuk" "$S/acceptance.env" "TESTCONTAINERS_RYUK_DISABLED=true"
 python3 - "$S/pytest.json" > "$S/pytest.env" <<'PY'
 import json, sys
@@ -271,7 +273,8 @@ for expected in \
 done
 want_line "acceptance preserves exported provider" "$S/pytest.env" "DEEPGRAM_API_KEY=parent-deepgram-key"
 want_line "acceptance requires Docker" "$S/pytest.env" "REQUIRE_DOCKER=1"
-want_line "acceptance requires real LLM" "$S/pytest.env" "REQUIRE_REAL_LLM=1"
+want_line "acceptance does not require real LLM" "$S/pytest.env" "REQUIRE_REAL_LLM=<unset>"
+want_line "acceptance never receives paid-test approval" "$S/pytest.env" "ALLOW_PAID_TESTS=<unset>"
 want_line "acceptance disables Ryuk" "$S/pytest.env" "TESTCONTAINERS_RYUK_DISABLED=true"
 assert_cleaned "$S"
 

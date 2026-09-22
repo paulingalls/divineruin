@@ -38,8 +38,9 @@ filterwarnings = [
 ]
 markers = [
     "acceptance: requires Docker (livekit dev-server testcontainer)",
-    "real_llm: reaches the Anthropic API; fails loud without a key when REQUIRE_REAL_LLM=1",
-    "openai_real_llm: reaches the OpenAI API; fails loud without a key when REQUIRE_REAL_LLM=1",
+    "real_llm: PAID - reaches the Anthropic API; skipped unless ALLOW_PAID_TESTS=1 (human-approved run)",
+    "openai_real_llm: PAID - reaches the OpenAI API; skipped unless ALLOW_PAID_TESTS=1 (human-approved run)",
+    "live_voice: PAID - reaches the Deepgram STT API; skipped unless ALLOW_PAID_TESTS=1 (human-approved run)",
 ]
 
 [tool.ruff]

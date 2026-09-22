@@ -179,12 +179,13 @@ else
     # durable log; `set -o pipefail` so the subshell's exit is pytest's real code,
     # not tee's (~always 0) — otherwise `wait $acc_pid` below would never see a
     # failure through the pipe.
-    # REQUIRE_REAL_LLM=1: the real-LLM scenarios must fail loud here, never skip
-    # (story-019 AC1). test:acceptance sets it too — the gate is not the only caller.
+    # Paid provider tests never run from a hook, the sprint full tier included (human
+    # 2026-09-22): ALLOW_PAID_TESTS is stripped so an exported approval cannot leak in, and
+    # the collection gate (apps/agent/tests/_paid_tests.py) skips every paid marker.
     # The per-run services belong to server/E2E. Acceptance reloads this checkout's
     # owned settings and provider credentials through test:acceptance's env file.
-    ( set -o pipefail; unset DATABASE_URL REDIS_URL; \
-      REQUIRE_DOCKER=1 REQUIRE_REAL_LLM=1 TESTCONTAINERS_RYUK_DISABLED=true \
+    ( set -o pipefail; unset DATABASE_URL REDIS_URL ALLOW_PAID_TESTS REQUIRE_REAL_LLM; \
+      REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
       run_pre_push_lane acceptance bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
     bg_pids+=("$acc_pid")

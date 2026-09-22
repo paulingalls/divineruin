@@ -1,8 +1,8 @@
 """Arms the live-voice credential gate for every scenario in this package.
 
 The modules' own `skipif` handles the not-opted-in run; this is the other half — when a
-boundary that may not skip (REQUIRE_REAL_LLM=1: the pre-push gate, `bun run
-test:acceptance`) meets a missing or placeholder key, the lane fails loud instead of
+human-approved paid run (ALLOW_PAID_TESTS=1 with REQUIRE_REAL_LLM=1) meets a missing or
+placeholder key, the lane fails loud instead of
 reporting a green that reached no microphone. Same shape as the `real_llm` fixture in the
 parent conftest.
 """

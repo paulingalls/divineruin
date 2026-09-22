@@ -1,9 +1,8 @@
 """The real-LLM tier must fail loud, not absent itself (sprint-47 story-019 AC1).
 
-`5 skipped` in the pre-push gate is a false green: the only tier that reaches the
-Anthropic API certified nothing. The guard is opt-in via REQUIRE_REAL_LLM so the
-GitHub CI job (ci.yml runs the whole suite with no key) keeps skipping — see the
-sprint-047 note on adding the secret.
+Paid tiers are skipped unless a human approves the run (ALLOW_PAID_TESTS=1,
+tests/_paid_tests.py). Within an approved run, REQUIRE_REAL_LLM=1 turns a missing key
+into a loud failure, so the approved run cannot report `5 skipped` and certify nothing.
 
 WHICH MODULES MUST CARRY THE MARKER IS DECIDED BY AN IMPORT-GRAPH WALK, NOT BY THE
 MODULE'S OWN TEXT. The first version of this guard grepped each acceptance module for

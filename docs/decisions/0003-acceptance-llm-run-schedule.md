@@ -66,3 +66,15 @@ model acceptance surface. Existing Anthropic-backed acceptance scenarios remain
 useful provider-specific integration checks and narration judges; they no longer
 define production model parity. `GAMEPLAY_LLM=anthropic` is retained as an
 explicit rollback route.
+
+## Addendum (2026-09-22) — paid tests never run without human approval
+
+Human decision: the pre-push hook had drifted to running every paid scenario on every push
+(`REQUIRE_REAL_LLM=1`, story-019), and Sprint 103 added the 27-case Luna matrix to that lane.
+Both directions of that drift are reversed and tightened past the original schedule: paid
+tests (`real_llm`, `openai_real_llm`, `live_voice`) are skipped at collection everywhere —
+pre-push, the sprint full tier, CI and ad-hoc runs — even when keys are present. They run
+only case by case, when a human approves a specific run for a legitimate concern:
+`ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. The hook strips both flags.
+Enforced by `apps/agent/tests/_paid_tests.py` and `tests/test_paid_test_gate.py`, and at the
+hook boundary by `scripts/test-prepush-environment.sh`.
