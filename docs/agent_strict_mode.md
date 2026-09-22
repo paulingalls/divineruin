@@ -473,6 +473,12 @@ explicit rollback. The current cost report uses the [GPT-6 Luna model page](http
 standard text rates retrieved 2026-09-22: $0.10 per million input tokens, $0.01
 per million cached input tokens, and $0.50 per million output tokens.
 
-The 2026-09-20 measurements above belong to GPT-5.6 Luna. The GPT-6 gather
-continuation and 27-case seeded matrix await approval for their paid runs. Their
-gameplay quality and latency are not yet measured.
+The 2026-09-20 measurements above belong to GPT-5.6 Luna. On 2026-09-22 the human
+approved one paid run of each GPT-6 acceptance. The gather continuation passed:
+narration with no follow-up call, 5,679 input and 26 output tokens. The 27-case
+seeded matrix passed all 27 rows and the completeness guard: 56 model requests,
+268,402 input tokens, 226,600 cached input tokens, 1,753 output tokens, and an
+estimated **$0.0073227**. The GPT-5.6 run cost $0.00796772, but 266,296 of its
+input tokens were cached; at GPT-5.6's cache hit rate, the GPT-6 rates would price
+this run near $0.0038. Cache warmth, not the model, explains most of the gap
+between the two runs. Voice latency was not measured for GPT-6.

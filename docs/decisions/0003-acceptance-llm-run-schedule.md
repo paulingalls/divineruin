@@ -86,6 +86,6 @@ strict tool schemas, and the explicit `GAMEPLAY_LLM=anthropic` rollback. The cos
 report uses the [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna)
 standard text rates retrieved 2026-09-22: $0.10 input, $0.01 cached input, and
 $0.50 output per million tokens. The 2026-09-20 GPT-5.6 Luna evidence above
-remains historical. The GPT-6 gather continuation and 27-case seeded matrix
-await approval for paid execution; no gameplay-quality or latency improvement is
-claimed yet.
+remains historical. A human-approved paid run on 2026-09-22 passed the GPT-6
+gather continuation and all 27 seeded matrix rows; `agent_strict_mode.md` §12
+records usage and cost. No latency improvement is claimed.
