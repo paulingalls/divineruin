@@ -10,7 +10,8 @@ from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_PLAYER, make_context
 
-from combat_end import _end_combat_impl
+from combat_end import _end_combat_db, _end_combat_impl
+from combat_events import EventSink
 from combat_init import _start_combat_impl
 from combat_rewards import EncounterSpoils
 
@@ -101,6 +102,37 @@ async def test_guest_end_combat_commits_and_cannot_pay_twice():
     assert ctx.userdata.combat_state is None
     mutations.delete_combat_state.assert_awaited_once()
     assert {call.args[0] for call in mutations.update_player_xp.await_args_list} == {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("speaker", ["player_1", "player_2"])
+@pytest.mark.parametrize("outcome,enemy_fallen", [("victory", True), ("deescalated", False)])
+async def test_combat_faction_outcome_reaches_each_member(speaker, outcome, enemy_fallen):
+    ctx = make_context()
+    _add_second_member(ctx)
+    cs = _make_combat_state(enemy_fallen=enemy_fallen)
+    guest = copy.deepcopy(cs.participants[0])
+    guest.id = "player_2"
+    cs.participants.insert(1, guest)
+    cs.faction_id = "thornwatch"
+    ctx.userdata.combat_state = cs
+    reputation = AsyncMock()
+    with patch("combat_end.db_mutations_reputation.adjust_player_faction_reputation", reputation):
+        with ctx.userdata._bind_authenticated_actor(speaker, 1, lambda *_: None):
+            if outcome == "deescalated":
+                await _end_combat_db(
+                    ctx.userdata,
+                    cs,
+                    outcome,
+                    conn=AsyncMock(),
+                    sink=EventSink(),
+                    mutations=combat_end_mutations(),
+                    queries=combat_end_queries(),
+                )
+            else:
+                await _end_combat_impl(ctx, outcome, mutations=combat_end_mutations(), db_mod=_fake_db_mod())
+    assert [call.args[0] for call in reputation.await_args_list] == ["player_1", "player_2"]
+    assert all(call.args[1] == "thornwatch" and call.kwargs["conn"] is not None for call in reputation.await_args_list)
 
 
 @pytest.mark.asyncio

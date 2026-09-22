@@ -3,8 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room
+from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room, published_events
 
+import event_types as E
 from quest_tools import _update_quest_impl
 from quest_world_effects import _apply_world_effects
 
@@ -123,10 +124,14 @@ async def test_guest_corruption_effect_changes_each_members_own_level():
     case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption +1"]}}], {"player_1": 0, "player_2": 0})
     case[0].userdata.member_state("player_1").corruption_level = 2
     case[0].userdata.member_state("player_2").corruption_level = 0
+    case[0].userdata.event_bus = MagicMock()
     with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
         await advance(case, 1)
     assert case[0].userdata.member_state("player_1").corruption_level == 3
     assert case[0].userdata.member_state("player_2").corruption_level == 1
+    events = [e.payload for e in published_events(case[0]) if e.event_type == E.HOLLOW_CORRUPTION_CHANGED]
+    assert len(events) == 2
+    assert {e["player_id"]: (e["previous"], e["level"]) for e in events} == {"player_1": (2, 3), "player_2": (0, 1)}
 
 
 @pytest.mark.asyncio
@@ -152,7 +157,8 @@ async def test_corruption_stays_unchanged_when_quest_write_fails():
 
 
 @pytest.mark.asyncio
-async def test_guest_personal_effects_target_speaker():
+@pytest.mark.parametrize("speaker", ["player_1", "player_2"])
+async def test_quest_standing_effects_reach_each_member(speaker):
     case = quest_case([{"on_complete": {}}], {"player_1": 0, "player_2": 0})
     ctx, _, conn, _, content, queries, mutations = case
     content.get_faction = AsyncMock(return_value={"id": "thornwatch"})
@@ -161,7 +167,7 @@ async def test_guest_personal_effects_target_speaker():
     mutations.set_npc_disposition = AsyncMock()
     events = []
     reputation = MagicMock(adjust_player_faction_reputation=AsyncMock(return_value=-5))
-    with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+    with ctx.userdata._bind_authenticated_actor(speaker, 1, lambda *_: None):
         await _apply_world_effects(
             ["torin_disposition +1", "thornwatch_reputation killed_faction_member"],
             ctx.userdata,
@@ -172,8 +178,12 @@ async def test_guest_personal_effects_target_speaker():
             mutations=mutations,
             reputation_mutations=reputation,
         )
-    assert reputation.adjust_player_faction_reputation.await_args.args[0] == "player_2"
-    assert mutations.set_npc_disposition.await_args.args[1] == "player_2"
+    assert [call.args[0] for call in reputation.adjust_player_faction_reputation.await_args_list] == [
+        "player_1",
+        "player_2",
+    ]
+    assert [call.args[1] for call in mutations.set_npc_disposition.await_args_list] == ["player_1", "player_2"]
+    assert all(call.kwargs["conn"] is conn for call in reputation.adjust_player_faction_reputation.await_args_list)
 
 
 def revoked_after(allowed_checks):

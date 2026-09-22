@@ -69,11 +69,15 @@ async def _apply_world_effects(
                 npc_id = session.companion.id
             else:
                 npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await resolve_disposition(npc_id, actor_id, conn=conn, queries_mod=queries, content_mod=content)
-            new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
-            await mutations.set_npc_disposition(npc_id, actor_id, new_disp, f"world_effect: {effect_str}", conn=conn)
-            pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
-            logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
+            for pid in party_ids:
+                current = await resolve_disposition(npc_id, pid, conn=conn, queries_mod=queries, content_mod=content)
+                new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
+                await mutations.set_npc_disposition(npc_id, pid, new_disp, f"world_effect: {effect_str}", conn=conn)
+                if pid == actor_id:
+                    pending_events.append(
+                        (E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp})
+                    )
+                logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
             continue
 
         m = _EFFECT_REPUTATION_RE.match(effect_str)
@@ -94,34 +98,41 @@ async def _apply_world_effects(
                 # whole quest-stage transaction over one bad effect string.
                 logger.warning("Unknown reputation event in world effect: %s", effect_str)
                 continue
-            new_value = await reputation_mutations.adjust_player_faction_reputation(
-                actor_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
-            )
-            session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
-            logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
+            for pid in party_ids:
+                new_value = await reputation_mutations.adjust_player_faction_reputation(
+                    pid, faction_id, delta, f"world_effect: {effect_str}", conn=conn
+                )
+                if pid == actor_id:
+                    session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
+                logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
             continue
 
         m = _EFFECT_CORRUPTION_RE.match(effect_str)
         if m:
             delta = int(m.group(1))
             levels_before = pending_corruption if pending_corruption is not None else {}
-            previous = levels_before.get(actor_id, session.member_state(actor_id).corruption_level)
-            levels = {
-                pid: max(0, min(3, levels_before.get(pid, session.member_state(pid).corruption_level) + delta))
-                for pid in party_ids
+            previous_levels = {
+                pid: levels_before.get(pid, session.member_state(pid).corruption_level) for pid in party_ids
             }
+            levels = {pid: max(0, min(3, previous_levels[pid] + delta)) for pid in party_ids}
             if pending_corruption is None:
                 for pid, level in levels.items():
                     session.member_state(pid).corruption_level = level
             else:
                 pending_corruption.update(levels)
-            pending_events.append(
-                (
-                    E.HOLLOW_CORRUPTION_CHANGED,
-                    {"level": levels[actor_id], "previous": previous, "location_id": session.location_id},
+            for pid in party_ids:
+                pending_events.append(
+                    (
+                        E.HOLLOW_CORRUPTION_CHANGED,
+                        {
+                            "player_id": pid,
+                            "level": levels[pid],
+                            "previous": previous_levels[pid],
+                            "location_id": session.location_id,
+                        },
+                    )
                 )
-            )
-            logger.info("World effect: corruption %d → %d", previous, levels[actor_id])
+            logger.info("World effect: corruption %d → %d", previous_levels[actor_id], levels[actor_id])
             continue
 
         m = _EFFECT_EVENT_RE.match(effect_str)

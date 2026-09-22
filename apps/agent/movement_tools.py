@@ -76,6 +76,7 @@ async def apply_arrival(
     # Sorted like every multi-row player write (condition_produce, quest_tools) so concurrent
     # party transactions take row locks in one order and cannot deadlock.
     async with db_mod.transaction() as conn:
+        session.validate_acting_player(speaker_id)
         for member_id in member_ids:
             await mutations.update_player_location(member_id, destination_id, conn=conn)
             await mutations.upsert_map_progress(member_id, destination_id, exit_connections, conn=conn)
@@ -116,16 +117,21 @@ async def apply_arrival(
 
     # Corruption tracking — location-based, resets on safe areas.
     new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
-    previous_corruption = session.member_state(speaker_id).corruption_level
     for member_id in member_ids:
+        previous_corruption = session.member_state(member_id).corruption_level
         session.member_state(member_id).corruption_level = new_corruption
-    if new_corruption != previous_corruption:
-        pending_events.append(
-            (
-                E.HOLLOW_CORRUPTION_CHANGED,
-                {"level": new_corruption, "previous": previous_corruption, "location_id": destination_id},
+        if new_corruption != previous_corruption:
+            pending_events.append(
+                (
+                    E.HOLLOW_CORRUPTION_CHANGED,
+                    {
+                        "player_id": member_id,
+                        "level": new_corruption,
+                        "previous": previous_corruption,
+                        "location_id": destination_id,
+                    },
+                )
             )
-        )
 
     # Ward tracking — scope-based, mirrors the corruption block above: compute, compare, append only
     # on change. `active` is the RESOLVED state (§3), which is exactly what resolve_scope_ward returns.

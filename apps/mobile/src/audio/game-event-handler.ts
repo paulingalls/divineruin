@@ -144,7 +144,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.HOLLOW_CORRUPTION_CHANGED:
-      if (typeof event.level === "number") {
+      if (isEventForLocalPlayer(event.player_id) && typeof event.level === "number") {
         sessionStore
           .getState()
           .setCorruptionLevel(Math.max(0, Math.min(3, Math.floor(event.level))));

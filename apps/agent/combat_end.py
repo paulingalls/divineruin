@@ -158,7 +158,7 @@ async def _end_combat_db(
         rewards = await combat_rewards.grant_victory_rewards(
             cs.participants,
             rng,
-            primary_id=actor_id,
+            recipient_id=actor_id,
             reason=f"Victory at {cs.location_id}",
             mutations=mutations,
             queries=queries,
@@ -261,13 +261,14 @@ async def _end_combat_db(
     faction_outcome_applies = combat_cleared if outcome == "victory" else (outcome == "deescalated" and bool(enemies))
     if cs.faction_id and faction_outcome_applies:
         rep_event = "deescalated_faction" if outcome == "deescalated" else "killed_faction_member"
-        await reputation_mutations.adjust_player_faction_reputation(
-            actor_id,
-            cs.faction_id,
-            reputation_shift(rep_event),
-            f"combat_{outcome}",
-            conn=conn,
-        )
+        for member_id in sorted(session.party.member_ids):
+            await reputation_mutations.adjust_player_faction_reputation(
+                member_id,
+                cs.faction_id,
+                reputation_shift(rep_event),
+                f"combat_{outcome}",
+                conn=conn,
+            )
 
     await emit_or_publish(
         sink,

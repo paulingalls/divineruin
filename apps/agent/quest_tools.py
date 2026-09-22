@@ -176,7 +176,7 @@ async def _update_quest_impl(
                 outcome = await combat_rewards.distribute_xp(
                     xp_reward,
                     eligible_ids,
-                    primary_id=actor_id,
+                    recipient_id=actor_id,
                     reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
                     mutations=mutations,
                     queries=queries,
