@@ -347,7 +347,7 @@ def _open(state, candidate: dict) -> None:
     logger.info(
         "beat 3: paused on %s window %s (%s -> %s)",
         candidate["stage"],
-        state.open_window["id"],
+        candidate["id"],
         candidate["actor_id"],
         candidate["target_id"],
     )

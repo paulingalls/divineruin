@@ -78,6 +78,8 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
     if blocked := cannot_act(actor.conditions):
         raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
 
+    # Before the window check: combat_hold never opens a window a non-owner can answer, so "no
+    # window is open" would send the DM waiting for one that cannot come.
     if actor.has_reaction_ability is not True:
         raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
     # Narrower than has_reaction_ability on purpose: reaction_ids is what offered_reactions
@@ -113,7 +115,8 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
 def offered_reactions(state: CombatState) -> list[dict]:
     """The reaction ids the DM may pass to activate at the open window (constraint 6).
 
-    Candidate and open windows use the same activation validator."""
+    Built from the activation validator itself, so the ids the DM is handed, and combat_hold's
+    decision to pause at all, match exactly what activate will accept."""
     return offers_for_window(state, state.open_window)
 
 
