@@ -7,6 +7,12 @@ import event_types as E
 from session_data import CombatParticipant
 
 
+def _participant(state, participant_id: str) -> CombatParticipant:
+    participant = state.get_participant(participant_id)
+    assert participant is not None
+    return participant
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("attack_total,expected_stage", [(18, "post_roll"), (1, None)])
 async def test_uncanny_dodge_skips_pre_roll_and_only_pauses_on_a_hit(attack_total, expected_stage):
@@ -81,7 +87,7 @@ async def test_self_reaction_follows_the_target():
 )
 async def test_social_subject_controls_the_pre_roll_pause(kind, reaction, offered):
     state = _resolution_state(enemy_hp=20)
-    enemy = state.get_participant("goblin_scout_1")
+    enemy = _participant(state, "goblin_scout_1")
     if kind != "attack":
         enemy.action_pool.append({"name": "Order", "kind": kind, "properties": []})
         state.pending_declarations[enemy.id]["action"] = "Order"
@@ -109,7 +115,7 @@ async def test_social_subject_controls_the_pre_roll_pause(kind, reaction, offere
 )
 async def test_social_identity_and_accused_subject(reaction, kind, target_other, hollow, pauses):
     state = _resolution_state(enemy_hp=20)
-    enemy = state.get_participant("goblin_scout_1")
+    enemy = _participant(state, "goblin_scout_1")
     enemy.action_pool.append({"name": "Order", "kind": kind, "properties": []})
     enemy.category = "hollow_rend" if hollow else ""
     state.pending_declarations[enemy.id]["action"] = "Order"
@@ -149,7 +155,7 @@ async def test_ally_targeted_reaction_binds_to_another_player():
 async def test_condition_reaction_requires_a_landed_grapple(grapple, hit, pauses):
     state = _resolution_state(enemy_hp=20)
     if grapple:
-        state.get_participant("goblin_scout_1").action_pool[0]["properties"] = ["grapple"]
+        _participant(state, "goblin_scout_1").action_pool[0]["properties"] = ["grapple"]
     ctx = _ctx_at_resolution(state=state, reaction_ids=("rogue_slippery",))
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(18 if hit else 1, 3)}
 

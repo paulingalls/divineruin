@@ -49,7 +49,9 @@ async def _step(ctx, deps):
 )
 async def test_roundtripped_ownership_controls_the_window(ownership, opens_window):
     state = _resolution_state()
-    state.get_participant("player_1").reaction_ids = ["skirmisher_sidestep"]
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = ["skirmisher_sidestep"]
     state.reactions_available = {"player_1": reaction_spend.unspent()}
     ctx = _context(_roundtrip_with_ownership(state, ownership))
     deps = _resolve_deps(damage=3)
