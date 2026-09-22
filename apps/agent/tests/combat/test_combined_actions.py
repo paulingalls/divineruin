@@ -157,6 +157,7 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
     enemy.action_pool = [ACTIONS["valid_combined_bite"]]
     player = _participant(state, "player_1")
     player.has_reaction_ability = True
+    player.reaction_ids = ["skirmisher_sidestep", "rogue_uncanny_dodge"]
     state.reactions_available[player.id] = reaction_spend.unspent()
     state.ac_modifiers[player.id] = 2
     state.pending_declarations[enemy.id] = {
@@ -217,6 +218,7 @@ async def test_only_a_combined_action_rolls_when_the_dm_declares_an_enemy_abilit
     enemy.action_pool = [action]
     player = _participant(state, "player_1")
     player.has_reaction_ability = True
+    player.reaction_ids = ["skirmisher_sidestep", "rogue_uncanny_dodge"]
     state.reactions_available[player.id] = reaction_spend.unspent()
     state.pending_declarations[enemy.id] = {
         "type": declaration_type,

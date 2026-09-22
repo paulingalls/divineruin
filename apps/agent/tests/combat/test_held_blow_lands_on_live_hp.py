@@ -48,7 +48,7 @@ class TestTheHeldBlowLandsOnLiveHp:
 
     @pytest.mark.asyncio
     async def test_hp_spent_during_the_pause_is_not_healed_back_by_the_held_blow(self):
-        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20)
+        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
         deps = _deps()
 
         await _call(ctx, deps)  # the ally commit; the enemy blow is held
@@ -77,7 +77,7 @@ class TestTheHeldBlowLandsOnLiveHp:
         action WASTED (``combat_hold._is_wasted``), which suppresses the apply for its own reason
         and would leave this guard passing whatever the apply half does.
         """
-        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20)
+        ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
         deps = _deps()
 
         for _ in range(3):

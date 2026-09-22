@@ -26,6 +26,7 @@ def _participant(pid: str, *, kind: str, reactions=(), category="", attributes=N
         attributes=attributes or {"charisma": 12, "wisdom": 12},
         category=category,
         reaction_ids=list(reactions),
+        has_reaction_ability=bool(reactions),
     )
 
 
@@ -87,7 +88,9 @@ def test_the_held_action_producer_puts_the_real_kind_on_the_window():
         "declaration": {"type": "attack", "action": "Rally", "target_id": "player_1"},
     }
 
-    combat_hold._open(state, head, reaction_windows.PRE_ROLL, reaction_windows.pre_roll_triggers({}))
+    combat_hold._open(
+        state, combat_hold._window(state, head, reaction_windows.PRE_ROLL, reaction_windows.pre_roll_triggers({}))
+    )
 
     assert state.open_window is not None
     assert state.open_window["action_kind"] == "command"

@@ -144,21 +144,20 @@ class TestTheInterruptLoop:
         """The acceptance half of `next.verbs`, EXECUTED. story-016 could only assert the engine
         REFUSED here (the gate was pinned to the RESOLUTION beat); story-017 rebound it, so this
         is the assertion that had to move with it."""
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
         r1 = await _call(ctx, deps)
 
         assert "on_targeted" in r1["next"]["waiting_on"]["triggers"]
         cs = ctx.userdata.combat_state
-        _own_reaction(cs, PRE_ROLL_REACTION)
         assert reaction_gate.validate_reaction_activation(cs, "player_1", PRE_ROLL_REACTION) is None
 
     @pytest.mark.asyncio
     async def test_a_reaction_for_the_other_stage_is_refused_at_this_window(self):
         """AC3 on the live loop: on_hit is not on offer before the roll, so Uncanny Dodge cannot
         be spent at the pre-roll pause — the outcome it answers does not exist yet."""
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
         await _call(ctx, deps)
@@ -172,7 +171,7 @@ class TestTheInterruptLoop:
         """D5: `verbs` names the move that ADVANCES the beat, and only resolve_phase does. The
         producer for activation is `next.waiting_on.reactions` — listing a
         non-advancing verb would contradict the "not a whitelist" reading in the same payload."""
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
         r1 = await _call(ctx, deps)
@@ -205,7 +204,7 @@ class TestTheSpendBindsToThePausedBlow:
         """The binding is to the QUEUE HEAD, and that is checked rather than assumed — a window
         naming a different actor means the pump popped past the blow this spend answers, and
         story-018 would halve the damage of the wrong one."""
-        ctx = _ctx_at_resolution()
+        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
         await _call(ctx, deps)

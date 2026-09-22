@@ -9,7 +9,6 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
 import check_resolution_attack
-import combat_hold
 import combat_phase
 import combat_wrap
 import reaction_gate
@@ -224,7 +223,6 @@ def test_stunned_player_is_not_offered_and_cannot_hold_the_beat():
     with pytest.raises(ValueError, match=r"Kael.*stunned.*cannot react"):
         reaction_gate.validate_reaction_activation(state, "player_1", "skirmisher_sidestep")
     assert reaction_gate.offered_reactions(state) == []
-    assert combat_hold.pause_allowed(state) is False
 
 
 @pytest.mark.asyncio

@@ -66,6 +66,10 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
     directly; it holds combat_state_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
+    _validate_for_window(state, actor_id, ability_id, state.open_window)
+
+
+def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, window: dict | None) -> None:
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ValueError("only players can activate reactions")
@@ -74,16 +78,15 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     if blocked := cannot_act(actor.conditions):
         raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
 
-    # Before the window check: pause_allowed never opens a window for a party that owns no reaction,
-    # so "no window is open" would send the DM waiting for one that cannot come.
-    if actor.has_reaction_ability is False:
+    # Before the window check: combat_hold never opens a window a non-owner can answer, so "no
+    # window is open" would send the DM waiting for one that cannot come.
+    if actor.has_reaction_ability is not True:
         raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
     # Narrower than has_reaction_ability on purpose: reaction_ids is what offered_reactions
     # surfaces, so the gate refuses exactly the ids the DM was never handed.
     if ability_id not in actor.reaction_ids:
         raise ValueError(f"player {actor_id!r} does not own reaction {ability_id!r}")
 
-    window = state.open_window
     if window is None:
         raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
 
@@ -112,15 +115,20 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
 def offered_reactions(state: CombatState) -> list[dict]:
     """The reaction ids the DM may pass to activate at the open window (constraint 6).
 
-    Every player's catalog ids go through validate_reaction_activation itself, not a copy of its
-    rule, so the ids the DM is handed are exactly the ones activation will accept."""
+    Built from the activation validator itself, so the ids the DM is handed, and combat_hold's
+    decision to pause at all, match exactly what activate will accept."""
+    return offers_for_window(state, state.open_window)
+
+
+def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
+    """Offer reactions for a candidate window without opening it."""
     offered = []
     for participant in state.participants:
         for ability_id in participant.reaction_ids:
             # Outside the try: a stored id the catalog no longer knows is a defect, not an ineligible reaction.
             ability = abilities.get_ability(ability_id)
             try:
-                validate_reaction_activation(state, participant.id, ability_id)
+                _validate_for_window(state, participant.id, ability_id, window)
             except ValueError:
                 continue
             offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})

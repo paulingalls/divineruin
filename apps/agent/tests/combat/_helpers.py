@@ -27,6 +27,7 @@ def _own_reaction(state, *ability_ids: str) -> None:
     player = state.get_participant("player_1")
     assert player is not None
     player.reaction_ids = list(ability_ids)
+    player.has_reaction_ability = bool(ability_ids)
 
 
 def _declarations():
