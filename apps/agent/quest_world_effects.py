@@ -49,8 +49,12 @@ async def _apply_world_effects(
     queries=db_queries,
     content=db_content_queries,
     reputation_mutations=db_mutations_reputation,
+    pending_corruption: dict[str, int] | None = None,
+    party_ids: tuple[str, ...] | None = None,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
+    actor_id = session.acting_player_id
+    party_ids = party_ids if party_ids is not None else tuple(session.party.member_ids)
     for effect_str in effects:
         m = _EFFECT_DISPOSITION_RE.match(effect_str)
         if m:
@@ -65,13 +69,9 @@ async def _apply_world_effects(
                 npc_id = session.companion.id
             else:
                 npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await resolve_disposition(
-                npc_id, session.player_id, conn=conn, queries_mod=queries, content_mod=content
-            )
+            current = await resolve_disposition(npc_id, actor_id, conn=conn, queries_mod=queries, content_mod=content)
             new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
-            await mutations.set_npc_disposition(
-                npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn
-            )
+            await mutations.set_npc_disposition(npc_id, actor_id, new_disp, f"world_effect: {effect_str}", conn=conn)
             pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
             logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
             continue
@@ -95,7 +95,7 @@ async def _apply_world_effects(
                 logger.warning("Unknown reputation event in world effect: %s", effect_str)
                 continue
             new_value = await reputation_mutations.adjust_player_faction_reputation(
-                session.player_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
+                actor_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
             )
             session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
             logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
@@ -104,15 +104,24 @@ async def _apply_world_effects(
         m = _EFFECT_CORRUPTION_RE.match(effect_str)
         if m:
             delta = int(m.group(1))
-            previous = session.corruption_level
-            session.corruption_level = max(0, min(3, session.corruption_level + delta))
+            levels_before = pending_corruption if pending_corruption is not None else {}
+            previous = levels_before.get(actor_id, session.member_state(actor_id).corruption_level)
+            levels = {
+                pid: max(0, min(3, levels_before.get(pid, session.member_state(pid).corruption_level) + delta))
+                for pid in party_ids
+            }
+            if pending_corruption is None:
+                for pid, level in levels.items():
+                    session.member_state(pid).corruption_level = level
+            else:
+                pending_corruption.update(levels)
             pending_events.append(
                 (
                     E.HOLLOW_CORRUPTION_CHANGED,
-                    {"level": session.corruption_level, "previous": previous, "location_id": session.location_id},
+                    {"level": levels[actor_id], "previous": previous, "location_id": session.location_id},
                 )
             )
-            logger.info("World effect: corruption %d → %d", previous, session.corruption_level)
+            logger.info("World effect: corruption %d → %d", previous, levels[actor_id])
             continue
 
         m = _EFFECT_EVENT_RE.match(effect_str)

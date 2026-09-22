@@ -84,6 +84,7 @@ async def _start_combat_locked(
 ) -> str | tuple:
     logger.info("start_combat called: encounter_id=%s", encounter_id)
     session: SessionData = context.userdata
+    actor_id = session.acting_player_id
 
     if session.in_combat:
         raise ToolError("Already in combat. End the current combat first.")
@@ -92,9 +93,9 @@ async def _start_combat_locked(
     if encounter is None:
         raise ToolError(f"Encounter template '{encounter_id}' not found.")
 
-    player = await queries.get_player(session.player_id)
+    player = await queries.get_player(actor_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{actor_id}' not found.")
 
     # Stance gate (story-008): a gated encounter resolves allied/hostile from the player's
     # reputation with the GATE faction. "allied" stands the encounter down (return a narration
@@ -109,7 +110,7 @@ async def _start_combat_locked(
         faction = await content.get_faction(faction_id)
         if faction is None:
             raise ToolError(f"Stance-gate faction '{faction_id}' not found.")
-        reputation = await queries.get_player_faction_reputation(session.player_id, faction_id)
+        reputation = await queries.get_player_faction_reputation(actor_id, faction_id)
         try:
             stance = resolve_encounter_stance(
                 stance_gate,
@@ -127,16 +128,16 @@ async def _start_combat_locked(
     player_hp = player.get("hp", {})
 
     # Multi-player combat build (M14 story-003): session.party.member_ids is the SSOT for
-    # combat participation (not the mirrored session.player_id field). The primary reuses the
-    # already-fetched `player` row; every NON-primary member loads in ONE batched
+    # combat participation (not the mirrored session.player_id field). The speaker reuses the
+    # already-fetched `player` row; every other member loads in ONE batched
     # get_players_for_update call (M18 story-001) rather than a serial get_player per member —
-    # the same id-ordered lock batch story-008 relies on. A solo party has an empty non-primary
+    # the same id-ordered lock batch story-008 relies on. A solo party has an empty other-member
     # set, so it skips the batch entirely and produces the same single participant as before.
-    non_primary_ids = [m for m in session.party.member_ids if m != session.player_id]
-    fetched = await queries.get_players_for_update(non_primary_ids) if non_primary_ids else {}
+    other_member_ids = [m for m in session.party.member_ids if m != actor_id]
+    fetched = await queries.get_players_for_update(other_member_ids) if other_member_ids else {}
     member_players: list[tuple[str, dict]] = []
     for member_id in session.party.member_ids:
-        row = player if member_id == session.player_id else fetched.get(member_id)
+        row = player if member_id == actor_id else fetched.get(member_id)
         if row is None:
             raise ToolError(f"Player '{member_id}' not found.")
         member_players.append((member_id, row))
@@ -351,6 +352,7 @@ async def _start_combat_locked(
     )
 
     # Persist and update session
+    session.validate_acting_player(actor_id)
     await mutations.save_combat_state(combat_id, combat_state.to_dict())
     session.combat_state = combat_state
 

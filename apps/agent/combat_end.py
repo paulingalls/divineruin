@@ -17,11 +17,10 @@ import db_mutations_veil_ward
 import db_queries
 import event_types as E
 import pricing_queries
-import resurrection
 from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
+from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
-from combat_phase import is_terminally_down
 from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
 from region_types import REGION_CITY
@@ -147,6 +146,9 @@ async def _end_combat_db(
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     rng = rng or random.Random()
+    actor_id = session.acting_player_id
+    primary_id = session.primary_player_id
+    session.validate_acting_player(actor_id)
     # Loot, coin and XP live in combat_rewards (decision dcc9c1cc1221). All of it runs in THIS
     # transaction and buffers into ``sink``, so a rolled-back phase un-grants every reward and drops
     # the unflushed events. XP is a Resolve now (M28 story-001), not a "call an award tool with
@@ -157,7 +159,7 @@ async def _end_combat_db(
         rewards = await combat_rewards.grant_victory_rewards(
             cs.participants,
             rng,
-            primary_id=session.player_id,
+            primary_id=actor_id,
             reason=f"Victory at {cs.location_id}",
             mutations=mutations,
             queries=queries,
@@ -173,8 +175,8 @@ async def _end_combat_db(
     # M18 story-003: EVERY player PARTICIPANT who swung accrues their OWN equipped weapon's
     # durability, keyed on their own corruption_level for the hollow-zone doubling. Iterates the
     # combat participants (uniform with the loot/currency/conditions/resurrection recipient sets),
-    # so a mid-combat joiner is excluded. The primary's result is surfaced in the response
-    # (single-session handoff); non-primary accrual lands in the DB.
+    # so a mid-combat joiner is excluded. The speaker's result is surfaced in the response
+    # (single-session handoff); other members' accrual lands in the DB.
     weapon_durability: dict = {}
     for p in cs.participants:
         if p.type != "player":
@@ -203,7 +205,7 @@ async def _end_combat_db(
             conn=conn,
             sink=sink,
         )
-        if member.player_id == session.player_id:
+        if member.player_id == actor_id:
             weapon_durability = member_durability
 
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
@@ -244,80 +246,9 @@ async def _end_combat_db(
             event_bus=session.event_bus,
         )
 
-    # Death, resurrection & stabilization (M4.4 story-003; M20 story-004/005; M15 story-003):
-    # - TRULY DEAD lives — an is_terminally_down player (is_dead overkill OR 3 failed death saves) and
-    #   ANY temporary_hollowed echo (a player who already died to rise as a Hollowed monster) — return
-    #   via Mortaen on ANY outcome (death always returns the character). trigger_character_death records
-    #   the death + escalating cost + nearest anchor + revive, and marks hollow_killed from an echo's
-    #   persisted Hollowed condition. Scoping this to victory/defeat would STRAND a destroyed
-    #   echo-primary on a fled/deescalated end — the character loss this saga exists to fix.
-    # - On a DEFEAT (party wipe) the merely-FALLEN also die — no ally was left to drag them clear.
-    # - On a FLED the merely-FALLEN also die — left behind when the party withdrew (M15 decision 498f0df12b14).
-    # - On a VICTORY (and only victory) a merely-fallen (savable) ally is instead STABILIZED by the
-    #   party (comes to at 1 HP; combat wrote their players.data HP to 0 per-hit, so this is a real
-    #   write). deescalated also stabilizes (peaceful win, party holds the field).
-    # combat_cleared (all enemies down) feeds the tier-1 cleared-battlefield anchor. Atomic with the tx.
     enemies = [p for p in cs.participants if p.type == "enemy"]
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
-
-    def _is_truly_dead(p) -> bool:
-        # A player is truly dead when terminally down; any echo already died to rise. Shares
-        # combat_phase.is_terminally_down so the wrap gate and this collector never disagree.
-        return (p.type == "player" and is_terminally_down(p)) or p.type == "temporary_hollowed"
-
-    def _fallen_savable(p) -> bool:
-        # Dying but still savable: fell to 0 (is_fallen) and NOT terminally down. A member who died on
-        # the grind or to overkill is _is_truly_dead, not savable.
-        return p.type == "player" and p.is_fallen and not is_terminally_down(p)
-
-    death_context: dict | None = None
-    # Dead-life collector (any outcome). Picks up the primary echo (id == player_id, temporary_hollowed)
-    # DIRECTLY — the Stage-2+ Hollowed rise flips the primary's type in place (combat_support), so no
-    # special-case primary rescue is needed — AND any non-primary echo. On defeat and fled the merely-fallen
-    # are added (party wipe/abandonment — nobody left to save them).
-    dead_lives = [
-        p for p in cs.participants if _is_truly_dead(p) or (outcome in ("defeat", "fled") and _fallen_savable(p))
-    ]
-    if dead_lives:
-        # Fail-loud on a missing row (concern 2a646ecf0b4b): a dead player participant with no
-        # players.data row is corruption — resurrection can't proceed and a silent skip would strand
-        # the character. Raise inside the tx so it rolls back atomically. Each member resurrects at
-        # its OWN 4-tier anchor (resurrect_party_on_defeat, M14 story-005/006).
-        rows = [(p.id, await queries.get_player(p.id, conn=conn)) for p in dead_lives]
-        missing = [pid for pid, row in rows if row is None]
-        if missing:
-            raise RuntimeError(f"Dead player participant(s) {missing} have no players.data row")
-        contexts = await resurrection.resurrect_party_on_defeat(
-            [row for _, row in rows], combat_cleared=combat_cleared, conn=conn
-        )
-        # The session follows the PRIMARY's anchor when the primary died (single-session handoff,
-        # synced in _end_combat_finish); it stays put on a clean win where the primary survived.
-        # Contexts align with `rows` by order (the engine iterates the list it was passed).
-        death_context = next(
-            (ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == session.player_id), None
-        )
-
-    # Standing-primary defeat (story-005 finding 4): a DM-declared defeat (end_combat(outcome='defeat'))
-    # can leave the primary standing — not collected above. Preserve the invariant that a defeat always
-    # returns the primary via Mortaen: resurrect it here when the collector didn't already.
-    if outcome == "defeat" and death_context is None:
-        primary_row = await queries.get_player(session.player_id, conn=conn)
-        if primary_row is None:
-            raise RuntimeError(f"Primary player {session.player_id!r} has no players.data row on defeat")
-        death_context = await resurrection.resurrect_on_defeat(primary_row, combat_cleared=combat_cleared, conn=conn)
-
-    # VICTORY and DEESCALATED: a merely-fallen (savable) ally is stabilized by the party (comes to at 1 HP);
-    # normal regen/rest handles the gradual recovery (M15 decision 498f0df12b14: deescalated stabilizes like victory,
-    # a peaceful win where the party holds the field). Fled and defeat do not stabilize.
-    if outcome in ("victory", "deescalated"):
-        for p in cs.participants:
-            if _fallen_savable(p):
-                # Fail-loud on a missing row (concern 2a646ecf0b4b), symmetric with the resurrection
-                # collector: a downed player with no players.data row is corruption — a blind UPDATE
-                # would silently no-op and strand the ally at 0 HP. Raise inside the tx (rollback).
-                if await queries.get_player(p.id, conn=conn) is None:
-                    raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
-                await mutations.update_player_hp(p.id, 1, conn=conn)
+    death_context = await settle_lives(cs, outcome, primary_id, combat_cleared, queries, mutations, conn)
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
     # faction's members (victory) lowers standing; talking them down (deescalated) raises it.
@@ -332,7 +263,7 @@ async def _end_combat_db(
     if cs.faction_id and faction_outcome_applies:
         rep_event = "deescalated_faction" if outcome == "deescalated" else "killed_faction_member"
         await reputation_mutations.adjust_player_faction_reputation(
-            session.player_id,
+            actor_id,
             cs.faction_id,
             reputation_shift(rep_event),
             f"combat_{outcome}",
@@ -404,13 +335,13 @@ def _end_combat_finish(
     session.record_event(f"Combat ended: {outcome}")
     # Folding award_xp onto the combat-exit Resolve (story-003) took its `record_event` with it,
     # so the DM's warm `[Recent: ...]` layer and the session-summary transcript fallback lost every
-    # XP grant (debt fb14dced76f6). The PRIMARY's own share, matching session_xp_earned above.
+    # XP grant (debt fb14dced76f6). The speaker's own share, matching session_xp_earned below.
     if xp_granted > 0:
         session.record_event(f"Awarded {xp_granted} XP: combat at {cs.location_id}")
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
-    # The session metric is the PRIMARY's own award (the same rule quest completion follows),
+    # The session metric is the speaker's own award (the same rule quest completion follows),
     # not the party total.
     session.session_xp_earned += xp_granted
 

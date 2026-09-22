@@ -1,0 +1,176 @@
+import json
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from livekit.agents.llm import ToolError
+from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room
+
+from quest_tools import _update_quest_impl
+from quest_world_effects import _apply_world_effects
+
+
+def quest_case(stages, progress=None):
+    ctx = make_context(room=make_mock_room(), party_member_ids=["player_2"])
+    db_mod, conn = make_db_mod()
+    rows = {pid: {"current_stage": stage} for pid, stage in (progress or {}).items()}
+    quest = {"name": "Guest Quest", "stages": stages}
+    content = MagicMock(get_quest=AsyncMock(return_value=quest), get_item=AsyncMock(return_value=None))
+    queries = MagicMock(
+        get_player_quest=AsyncMock(side_effect=lambda pid, *_args, **_kw: rows.get(pid)),
+        get_player=AsyncMock(side_effect=lambda pid, **_kw: {**GUILD_PLAYER, "player_id": pid}),
+    )
+    mutations = MagicMock(
+        set_player_quest=AsyncMock(side_effect=lambda pid, _qid, data, **_kw: rows.__setitem__(pid, data)),
+        add_inventory_item=AsyncMock(),
+        update_player_xp=AsyncMock(),
+        set_player_flag=AsyncMock(),
+    )
+    return ctx, db_mod, conn, rows, content, queries, mutations
+
+
+async def advance(case, stage, **extra):
+    ctx, db_mod, _, _, content, queries, mutations = case
+    return json.loads(
+        await _update_quest_impl(
+            ctx,
+            "guest_quest",
+            stage,
+            db_mod=db_mod,
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            **extra,
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_guest_advances_after_host_rewardless_stage():
+    case = quest_case([{"on_complete": {}}, {"on_complete": {}}])
+    with case[0].userdata._bind_authenticated_actor("player_1", 1, lambda *_: None):
+        await advance(case, 0)
+        await advance(case, 1)
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        result = await advance(case, 2)
+    assert result["completed"]
+    assert case[3]["player_1"]["current_stage"] == 2
+    assert "player_2" not in case[3]
+
+
+@pytest.mark.asyncio
+async def test_guest_item_only_completion_pays_and_marks_both_once():
+    case = quest_case(
+        [{"on_complete": {"rewards": [{"item": "relic", "quantity": 2}]}}], {"player_1": 0, "player_2": 0}
+    )
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        result = await advance(case, 1)
+    assert result["completed"]
+    assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1", "player_2"}
+    assert {call.args[0] for call in case[6].set_player_quest.await_args_list} == {"player_1", "player_2"}
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        with pytest.raises(ToolError, match="backward"):
+            await advance(case, 1)
+    assert case[6].add_inventory_item.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_guest_completion_pays_xp_favor_and_items_to_both():
+    case = quest_case(
+        [
+            {
+                "on_complete": {
+                    "xp": 200,
+                    "favor": 5,
+                    "rewards": [{"item": "relic"}],
+                }
+            }
+        ],
+        {"player_1": 0, "player_2": 0},
+    )
+    activities = MagicMock(
+        get_divine_favor=AsyncMock(
+            side_effect=lambda pid, **_kw: {
+                "patron": "kaelen" if pid == "player_1" else "solwyn",
+                "level": 10,
+                "max": 100,
+                "last_whisper_level": 0,
+            }
+        )
+    )
+    divine = MagicMock(update_divine_favor=AsyncMock())
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        result = await advance(case, 1, activities=activities, divine_mutations=divine)
+    assert {call.args[0] for call in case[6].update_player_xp.await_args_list} == {"player_1", "player_2"}
+    assert {call.args[0] for call in divine.update_divine_favor.await_args_list} == {"player_1", "player_2"}
+    assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1", "player_2"}
+    assert {reward["type"] for reward in result["rewards_applied"]} == {"xp", "favor", "item"}
+
+
+@pytest.mark.asyncio
+async def test_item_reward_skips_member_already_ahead():
+    case = quest_case(
+        [{"on_complete": {"rewards": [{"item": "relic"}]}}, {"on_complete": {}}], {"player_1": 0, "player_2": 2}
+    )
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        result = await advance(case, 1)
+    assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1"}
+    assert [call.args[0] for call in case[6].set_player_quest.await_args_list] == ["player_1"]
+    assert result["rewards_applied"] == []
+
+
+@pytest.mark.asyncio
+async def test_guest_corruption_effect_changes_each_members_own_level():
+    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption +1"]}}], {"player_1": 0, "player_2": 0})
+    case[0].userdata.member_state("player_1").corruption_level = 2
+    case[0].userdata.member_state("player_2").corruption_level = 0
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        await advance(case, 1)
+    assert case[0].userdata.member_state("player_1").corruption_level == 3
+    assert case[0].userdata.member_state("player_2").corruption_level == 1
+
+
+@pytest.mark.asyncio
+async def test_guest_corruption_decrease_clamps_each_member_at_floor():
+    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption -1"]}}], {"player_1": 0, "player_2": 0})
+    case[0].userdata.member_state("player_1").corruption_level = 0
+    case[0].userdata.member_state("player_2").corruption_level = 2
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        await advance(case, 1)
+    assert [case[0].userdata.member_state(pid).corruption_level for pid in ("player_1", "player_2")] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_corruption_stays_unchanged_when_quest_write_fails():
+    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption -1"]}}], {"player_1": 0, "player_2": 0})
+    case[0].userdata.member_state("player_1").corruption_level = 3
+    case[0].userdata.member_state("player_2").corruption_level = 1
+    case[6].set_player_quest.side_effect = RuntimeError("write failed")
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        with pytest.raises(RuntimeError, match="write failed"):
+            await advance(case, 1)
+    assert [case[0].userdata.member_state(pid).corruption_level for pid in ("player_1", "player_2")] == [3, 1]
+
+
+@pytest.mark.asyncio
+async def test_guest_personal_effects_target_speaker():
+    case = quest_case([{"on_complete": {}}], {"player_1": 0, "player_2": 0})
+    ctx, _, conn, _, content, queries, mutations = case
+    content.get_faction = AsyncMock(return_value={"id": "thornwatch"})
+    content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
+    queries.get_npc_disposition = AsyncMock(return_value="neutral")
+    mutations.set_npc_disposition = AsyncMock()
+    events = []
+    reputation = MagicMock(adjust_player_faction_reputation=AsyncMock(return_value=-5))
+    with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        await _apply_world_effects(
+            ["torin_disposition +1", "thornwatch_reputation killed_faction_member"],
+            ctx.userdata,
+            events,
+            conn=conn,
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            reputation_mutations=reputation,
+        )
+    assert reputation.adjust_player_faction_reputation.await_args.args[0] == "player_2"
+    assert mutations.set_npc_disposition.await_args.args[1] == "player_2"
