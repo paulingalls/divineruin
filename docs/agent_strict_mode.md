@@ -478,7 +478,7 @@ approved one paid run of each GPT-6 acceptance. The gather continuation passed:
 narration with no follow-up call, 5,679 input and 26 output tokens. The 27-case
 seeded matrix passed all 27 rows and the completeness guard: 56 model requests,
 268,402 input tokens, 226,600 cached input tokens, 1,753 output tokens, and an
-estimated **$0.0073227**. The GPT-5.6 run cost $0.00796772, but 266,296 of its
-input tokens were cached; at GPT-5.6's cache hit rate, the GPT-6 rates would price
-this run near $0.0038. Cache warmth, not the model, explains most of the gap
-between the two runs. Voice latency was not measured for GPT-6.
+estimated **$0.0073227**. The GPT-5.6 run cost $0.00796772 with 266,296 input
+tokens cached. At that cache hit rate, GPT-6 rates would price this run near
+$0.0038, about half; the colder prompt cache cancelled most of the rate cut.
+Voice latency was not measured for GPT-6.
