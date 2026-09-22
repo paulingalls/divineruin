@@ -94,8 +94,22 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
     a moved or renamed package is the failure mode this floor exists for."""
     modules = sorted(_VOICE_DIR.glob("test_*.py"))
     assert modules, f"no live-voice scenario found under {_VOICE_DIR} — the walk went vacuous"
+    microphone_modules = []
+    free_modules = []
     for path in modules:
+        source = path.read_text()
+        reaches_microphone = any(
+            token in source
+            for token in ("deepgram.STT(", "PLAYER_ONE_SPEECH", "PLAYER_TWO_SPEECH", "harness.play(", "SpeechFixture(")
+        )
         mark = _pytestmark_source(path)
+        if not reaches_microphone:
+            free_modules.append(path.name)
+            assert mark is None or (
+                "pytest.mark.live_voice" not in mark and "pytest.mark.openai_real_llm" not in mark
+            ), f"{path.name} does not reach a paid microphone and must remain free"
+            continue
+        microphone_modules.append(path.name)
         assert mark is not None, (
             f"{path.name} drives a real microphone and carries no pytestmark — a keyless run "
             "fails it in STT setup with a vendor error that names no cause"
@@ -112,6 +126,12 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
             f"{path.name}'s skipif does not know about REQUIRE_REAL_LLM — it would fire first and "
             "keep the silence the conftest gate is there to break"
         )
+        if "create_gameplay_llm(" in source:
+            assert "pytest.mark.openai_real_llm" in mark, (
+                f"{path.name} reaches the gameplay provider but lacks openai_real_llm"
+            )
+    assert microphone_modules, f"no microphone scenario found under {_VOICE_DIR}"
+    assert "test_guest_verbs.py" in free_modules
 
 
 def test_the_package_gate_still_arms_the_loud_path():
