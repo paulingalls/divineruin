@@ -104,6 +104,19 @@ test("hollow_corruption_changed updates session store corruptionLevel", () => {
   expect(sessionStore.getState().corruptionLevel).toBe(2);
 });
 
+test("hollow_corruption_changed only updates the local player's HUD", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  sessionStore.getState().setCorruptionLevel(1);
+  handleGameEvent({ type: "hollow_corruption_changed", player_id: "foreign-player", level: 3 });
+  expect(sessionStore.getState().corruptionLevel).toBe(1);
+  handleGameEvent({
+    type: "hollow_corruption_changed",
+    player_id: SAMPLE_CHARACTER.playerId,
+    level: 2,
+  });
+  expect(sessionStore.getState().corruptionLevel).toBe(2);
+});
+
 test("hollow_corruption_changed ignores non-number level", () => {
   sessionStore.getState().setCorruptionLevel(1);
   handleGameEvent({ type: "hollow_corruption_changed", level: "high" });

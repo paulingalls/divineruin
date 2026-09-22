@@ -287,7 +287,7 @@ async def test_item_acquired_serializes_to_fixture() -> None:
     await combat_rewards.distribute_loot(
         [{"item_id": expected["item_id"], "quantity": expected["quantity"]}],
         [expected["player_id"]],
-        primary_id=expected["player_id"],
+        recipient_id=expected["player_id"],
         mutations=mutations,
         content=content,
         conn=MagicMock(),

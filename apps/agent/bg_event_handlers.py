@@ -206,6 +206,8 @@ def handle_events(
                 )
 
         elif ev.event_type == E.HOLLOW_CORRUPTION_CHANGED:
+            if ev.payload.get("player_id", sd.primary_player_id) != sd.primary_player_id:
+                continue
             level = ev.payload.get("level", 0)
             if level > 0 and can_act and companion:
                 cue = CORRUPTION_COMPANION_CUES.get(level)

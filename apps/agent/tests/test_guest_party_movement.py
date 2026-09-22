@@ -1,4 +1,5 @@
 import json
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -127,6 +128,30 @@ async def test_move_fans_out_from_either_turn(speaker):
     assert ctx.userdata.location_id == DEST
     assert [ctx.userdata.member_state(pid).corruption_level for pid in IDS] == [3, 3]
     assert [e.event_type for e in published_events(ctx)].count(E.LOCATION_CHANGED) == 1
+    corruption = [e.payload for e in published_events(ctx) if e.event_type == E.HOLLOW_CORRUPTION_CHANGED]
+    assert len(corruption) == 2
+    assert {e["player_id"]: (e["previous"], e["level"]) for e in corruption} == {IDS[0]: (1, 3), IDS[1]: (2, 3)}
+
+
+async def test_revoked_at_arrival_transaction_writes_nothing():
+    ctx, m = _ctx(), _mocks()
+    revoked = False
+
+    @asynccontextmanager
+    async def transaction():
+        nonlocal revoked
+        revoked = True
+        yield m.conn
+
+    def validate(*_):
+        if revoked:
+            raise RuntimeError("revoked")
+
+    m.db_mod.transaction = transaction
+    with ctx.userdata._bind_authenticated_actor(IDS[1], 4, validate):
+        with pytest.raises(RuntimeError, match="revoked"):
+            await _move(ctx, m)
+    m.mutations.update_player_location.assert_not_awaited()
 
 
 @pytest.mark.parametrize("speaker", IDS)
