@@ -91,7 +91,7 @@ async def _travel_impl(
 
     session: SessionData = context.userdata
     speaker_id = session.acting_player_id
-    member_ids = tuple(session.party.member_ids)
+    member_ids = tuple(sorted(session.party.member_ids))
     player = await queries.get_player(speaker_id)
     if player is None:
         raise ToolError(f"Player '{speaker_id}' not found.")
@@ -139,7 +139,7 @@ async def _travel_impl(
     if result.exhaustion_delta > 0 or consumed:
         session.validate_acting_player(speaker_id)
         async with db_mod.transaction() as conn:
-            for member_id in sorted(member_ids if result.exhaustion_delta > 0 else (speaker_id,)):
+            for member_id in member_ids if result.exhaustion_delta > 0 else (speaker_id,):
                 locked = await queries.get_player(member_id, conn=conn, for_update=True)
                 if locked is None:
                     raise ToolError(f"Player '{member_id}' not found during travel.")

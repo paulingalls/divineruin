@@ -67,12 +67,14 @@ async def apply_arrival(
     location id. Does NOT do exit-requirement gating or scene-context build — callers own those."""
     previous_location_id = session.location_id
     speaker_id = session.acting_player_id
-    member_ids = tuple(session.party.member_ids)
+    member_ids = tuple(sorted(session.party.member_ids))
     pending_events: list[tuple[str, dict]] = []
 
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db_mod.extract_exit_connections(destination_exits)
 
+    # Sorted like every multi-row player write (condition_produce, quest_tools) so concurrent
+    # party transactions take row locks in one order and cannot deadlock.
     async with db_mod.transaction() as conn:
         for member_id in member_ids:
             await mutations.update_player_location(member_id, destination_id, conn=conn)

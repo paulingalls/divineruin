@@ -6,13 +6,16 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, make_context, mock_txn, published_events
 
+import conditions
 import event_types as E
 import movement_tools
 from movement_tools import _move_player_impl
 from scene_tools import _enter_location_impl
 from travel_tools import _travel_impl
 
-IDS = ("player_1", "player_2")
+# The guest sorts before the host, so party order and lock order differ.
+IDS = ("player_1", "player_0")
+LOCK_ORDER = sorted(IDS)
 START = "accord_guild_hall"
 DEST = "greyvale_ruins_inner"
 
@@ -66,10 +69,12 @@ def _mocks(*, terrain="established_road", requires=None, players=None):
 
 
 def _arrival_calls(m):
-    assert m.mutations.update_player_location.await_args_list == [call(pid, DEST, conn=m.conn) for pid in IDS]
-    assert m.mutations.upsert_map_progress.await_args_list == [call(pid, DEST, [START], conn=m.conn) for pid in IDS]
+    assert m.mutations.update_player_location.await_args_list == [call(pid, DEST, conn=m.conn) for pid in LOCK_ORDER]
+    assert m.mutations.upsert_map_progress.await_args_list == [
+        call(pid, DEST, [START], conn=m.conn) for pid in LOCK_ORDER
+    ]
     assert m.travel_mutations.update_player_travel_state.await_args_list == [
-        call(pid, None, conn=m.conn) for pid in IDS
+        call(pid, None, conn=m.conn) for pid in LOCK_ORDER
     ]
 
 
@@ -153,7 +158,7 @@ async def test_lost_travel_records_every_members_state(speaker):
         result = await _travel(ctx, m, rng=1)
     assert result["arrived"] is False
     assert m.travel_mutations.update_player_travel_state.await_args_list == [
-        call(pid, {"destination": DEST, "mode": "scenic", "wrong_area": True}, conn=m.conn) for pid in IDS
+        call(pid, {"destination": DEST, "mode": "scenic", "wrong_area": True}, conn=m.conn) for pid in LOCK_ORDER
     ]
     m.mutations.update_player_location.assert_not_awaited()
     m.mutations.upsert_map_progress.assert_not_awaited()
@@ -181,12 +186,12 @@ async def test_forced_march_uses_each_members_rules(speaker):
         result = await _travel(ctx, m, mode="dangerous", hours=12, forced_march=True, rng=1)
     assert result["arrived"] is False
     saves = m.conditions_mutations.save_player_conditions.await_args_list
-    assert [entry.args[0] for entry in saves] == list(IDS)
-    assert [next(c["stacks"] for c in entry.args[1] if c["type"] == "exhausted") for entry in saves] == [4, 3]
+    assert [entry.args[0] for entry in saves] == LOCK_ORDER
+    stacks = {entry.args[0]: next(c["stacks"] for c in entry.args[1] if c["type"] == "exhausted") for entry in saves}
+    assert stacks == {IDS[0]: 4, IDS[1]: 3}
     assert all(entry.kwargs["conn"] is m.conn for entry in saves)
-    assert [entry.args[0] for entry in m.queries.get_player.await_args_list if entry.kwargs.get("for_update")] == list(
-        IDS
-    )
+    locked = [entry.args[0] for entry in m.queries.get_player.await_args_list if entry.kwargs.get("for_update")]
+    assert locked == LOCK_ORDER
 
 
 async def test_forced_march_fails_loud_on_missing_member_row():
@@ -199,7 +204,7 @@ async def test_forced_march_fails_loud_on_missing_member_row():
 
     m.queries.get_player.side_effect = get_player
     with ctx.userdata._bind_authenticated_actor(IDS[0], 4, lambda *_: None):
-        with pytest.raises(ToolError, match=r"player_2.*not found"):
+        with pytest.raises(ToolError, match=rf"{IDS[1]}.*not found"):
             await _travel(ctx, m, mode="dangerous", hours=12, forced_march=True, rng=1)
 
 
@@ -237,4 +242,51 @@ async def test_revoked_guest_cannot_move_party():
             await _move(ctx, m)
     m.mutations.update_player_location.assert_not_awaited()
     m.mutations.upsert_map_progress.assert_not_awaited()
+    m.travel_mutations.update_player_travel_state.assert_not_awaited()
+
+
+@pytest.mark.parametrize("forced_march", [False, True])
+@pytest.mark.parametrize("speaker", IDS)
+async def test_only_the_speakers_inspired_die_is_spent(speaker, forced_march):
+    inspired = conditions.apply_condition([], "inspired")
+    players = {
+        pid: {"player_id": pid, "conditions": inspired, "attributes": {"wisdom": 12}, "proficiencies": []}
+        for pid in IDS
+    }
+    ctx, m = _ctx(), _mocks(terrain="unmarked_wilderness", players=players)
+    with ctx.userdata._bind_authenticated_actor(speaker, 4, lambda *_: None):
+        await _travel(ctx, m, hours=12, forced_march=forced_march, rng=20)
+    saved = {
+        entry.args[0]: [c["type"] for c in entry.args[1]]
+        for entry in m.conditions_mutations.save_player_conditions.await_args_list
+    }
+    assert sorted(saved) == sorted(IDS if forced_march else (speaker,))
+    assert {pid: "inspired" in types for pid, types in saved.items()} == {pid: pid != speaker for pid in saved}
+
+
+@pytest.mark.parametrize(
+    ("terrain", "forced_march"),
+    [("established_road", False), ("unmarked_wilderness", False), ("underground", True)],
+    ids=["arrival", "lost", "forced-march"],
+)
+async def test_revoked_guest_cannot_travel_party(terrain, forced_march):
+    ctx, m = _ctx(), _mocks(terrain=terrain)
+    revoked = False
+    locations = m.content.get_location.side_effect
+
+    async def get_location(loc):
+        nonlocal revoked
+        revoked = True
+        return locations(loc)
+
+    def validate(*_):
+        if revoked:
+            raise RuntimeError("revoked")
+
+    m.content.get_location.side_effect = get_location
+    with ctx.userdata._bind_authenticated_actor(IDS[1], 4, validate):
+        with pytest.raises(RuntimeError, match="revoked"):
+            await _travel(ctx, m, hours=12, forced_march=forced_march, rng=1)
+    m.conditions_mutations.save_player_conditions.assert_not_awaited()
+    m.mutations.update_player_location.assert_not_awaited()
     m.travel_mutations.update_player_travel_state.assert_not_awaited()
