@@ -71,6 +71,17 @@ async def get_player_training_activities(
     return [_to_dict(row) for row in rows]
 
 
+async def get_player_active_training_activities(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    _conn = conn or await db.get_pool()
+    rows = await _conn.fetch(
+        f"SELECT {_COLUMNS} FROM training_activities WHERE player_id = $1 AND state <> 'complete' ORDER BY created_at",
+        player_id,
+    )
+    return [_to_dict(row) for row in rows]
+
+
 async def get_due_training_transitions(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,

@@ -36,7 +36,7 @@ DB_SEAMS = (
     "background_process.db_queries.get_active_player_quests",
     "background_process.db_content_queries.get_location",
     "background_process.db_queries.get_npcs_at_location",
-    "background_process.db_training.get_player_training_activities",
+    "background_process.db_training.get_player_active_training_activities",
 )
 
 

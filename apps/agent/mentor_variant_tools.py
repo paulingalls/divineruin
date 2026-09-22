@@ -103,7 +103,7 @@ async def _learn_variant_impl(
         if await progress_mod.is_unlocked(player_id, variant_id, conn=conn):
             raise ToolError(f"Variant {variant_id} is already unlocked.")
         # One in-flight training cycle per player (mirrors initiate_training_cycle).
-        existing = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
+        existing = await db_training_mod.get_player_active_training_activities(player_id, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing):
             raise ToolError("A training cycle is already in progress.")
 
@@ -119,7 +119,6 @@ async def _learn_variant_impl(
         if not await persistence_mod.owns_elective(player_id, variant.ability_id, conn=conn):
             raise ToolError(f"You must own the base technique {base.name} before training a variant of it.")
 
-        context.userdata.validate_acting_player(player_id)
         await progress_mod.seed_progress(player_id, variant_id, cycles_required, conn=conn)
         data = {
             "variant_id": variant_id,

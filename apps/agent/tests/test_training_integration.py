@@ -294,8 +294,8 @@ class TestFullCycleViaFunctionTools:
         async def get_training_activity(activity_id, *, conn=None, for_update=False):
             return rows.get(activity_id)
 
-        async def get_player_training_activities(player_id, state=None, *, conn=None, limit=50):
-            return [r for r in rows.values() if r["player_id"] == player_id and (state is None or r["state"] == state)]
+        async def get_player_active_training_activities(player_id, *, conn=None):
+            return [r for r in rows.values() if r["player_id"] == player_id and r["state"] != "complete"]
 
         async def update_training_activity(activity_id, *, state, data_updates, transition_at=None, conn=None):
             row = rows[activity_id]
@@ -309,7 +309,9 @@ class TestFullCycleViaFunctionTools:
         mock_training = MagicMock()
         mock_training.create_training_activity = AsyncMock(side_effect=create_training_activity)
         mock_training.get_training_activity = AsyncMock(side_effect=get_training_activity)
-        mock_training.get_player_training_activities = AsyncMock(side_effect=get_player_training_activities)
+        mock_training.get_player_active_training_activities = AsyncMock(
+            side_effect=get_player_active_training_activities
+        )
         mock_training.update_training_activity = AsyncMock(side_effect=update_training_activity)
 
         initiate_cycle = TrainingCycleInit(

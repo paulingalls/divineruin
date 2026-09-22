@@ -123,7 +123,6 @@ async def _experiment_with_materials_impl(
         short = {mid: qty for mid, qty in materials.items() if available.get(mid, 0) < qty}
         if short:
             raise ToolError("You don't have the materials you described.")
-        context.userdata.validate_acting_player(player_id)
         await mutations_mod.consume_player_materials(player_id, materials, conn=conn)
         context.userdata.validate_acting_player(player_id)
         await exp_db_mod.record_failed_experiment(player_id, intended_output, combo_key, conn=conn)

@@ -314,7 +314,7 @@ class BackgroundProcess:
                 db_queries.get_active_player_quests(self._sd.player_id),
                 db_content_queries.get_location(self._sd.location_id),
                 db_queries.get_npcs_at_location(self._sd.location_id),
-                db_training.get_player_training_activities(self._sd.player_id, state=None),
+                db_training.get_player_active_training_activities(self._sd.player_id),
             )
             self._quest_cache = quests
 

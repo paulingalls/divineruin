@@ -32,8 +32,6 @@ logger = logging.getLogger("divineruin.tools")
 
 _TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
-# Queried per state: an unfiltered read is capped at the player's 50 OLDEST rows, which can hide a new cycle.
-_ACTIVE_STATES = tuple(state for state in get_args(TrainingState) if state != _TERMINAL_STATE)
 
 
 def _player_chassis(archetype: str) -> archetypes.Chassis:
@@ -99,9 +97,7 @@ async def _query_training_programs_impl(
                     studiable_spell_ids.append(spell.id)
         scoped_programs.append({**program, "studiable_spell_ids": sorted(studiable_spell_ids)})
 
-    active_training = []
-    for state in _ACTIVE_STATES:
-        active_training.extend(await db_training_mod.get_player_training_activities(player_id, state=state))
+    active_training = await db_training_mod.get_player_active_training_activities(player_id)
     return json.dumps(
         {
             "programs": scoped_programs,
@@ -195,7 +191,7 @@ async def _initiate_training_cycle_impl(
         raise ToolError(str(e)) from e
 
     async with db_mod.transaction() as conn:
-        existing_rows = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
+        existing_rows = await db_training_mod.get_player_active_training_activities(player_id, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing_rows):
             raise ToolError(
                 "A training cycle is already in progress. You cannot start another training cycle or switch programs "

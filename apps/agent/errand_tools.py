@@ -226,7 +226,6 @@ async def _resolve_companion_errand_impl(
                 )
                 outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
                 # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
-                session.validate_acting_player(player_id)
                 await companion_rel_mod.apply_errand_affinity(
                     player_id, companion_data["id"], outcome.get("relationship_change", 0), conn=conn
                 )

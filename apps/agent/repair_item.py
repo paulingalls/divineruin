@@ -141,7 +141,6 @@ async def _repair_item_impl(
             raise ToolError(f"Not enough gold: repairing {name} costs {price_gp:.1f}gp and you have {gold}gp.")
 
         # restore + debit
-        context.userdata.validate_acting_player(player_id)
         await inv_mutations_mod.update_item_durability(player_id, item_id, max_h, conn=conn)
         context.userdata.validate_acting_player(player_id)
         await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)

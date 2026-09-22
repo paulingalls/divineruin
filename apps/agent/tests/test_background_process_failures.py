@@ -67,7 +67,7 @@ def _background_data():
         )
         mocks.training = stack.enter_context(
             patch(
-                "background_process.db_training.get_player_training_activities",
+                "background_process.db_training.get_player_active_training_activities",
                 new_callable=AsyncMock,
                 return_value=[],
             )

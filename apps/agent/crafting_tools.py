@@ -226,7 +226,6 @@ async def _rent_workspace_impl(
         if gold < price_gp:
             raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
         if price_sp:
-            context.userdata.validate_acting_player(player_id)
             await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
         # One row per granted workspace, inside the debit's transaction: the stored
         # workspace_type must stay inside the four-member vocabulary the TS gate
@@ -234,12 +233,13 @@ async def _rent_workspace_impl(
         # token itself is never persisted.
         rental_ids = []
         for granted in offer.grants:
-            context.userdata.validate_acting_player(player_id)
             rental_ids.append(
                 await mutations_mod.create_workspace_rental(
                     player_id, location_id, granted.value, "rental", expires_at, conn=conn
                 )
             )
+
+        context.userdata.validate_acting_player(player_id)
 
     logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
     result = {
@@ -354,7 +354,6 @@ async def _start_crafting_project_impl(
         alloc = validation_mod.allocate_materials(recipe["materials"], available, catalog)
         if not alloc.satisfied:
             raise ToolError(f"Cannot craft {recipe['name']}: {alloc.reason}")
-        context.userdata.validate_acting_player(player_id)
         await mutations_mod.consume_player_materials(player_id, alloc.by_id, conn=conn)
 
         cycles = recipe["async_cycles"]

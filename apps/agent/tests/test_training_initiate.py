@@ -71,7 +71,7 @@ class TestInitiateTrainingCycle:
         mock_content = MagicMock()
         mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM)
         mock_training = MagicMock()
-        mock_training.get_player_training_activities = AsyncMock(return_value=[])
+        mock_training.get_player_active_training_activities = AsyncMock(return_value=[])
         mock_training.create_training_activity = AsyncMock(return_value="train_abc123")
         cycle = _make_cycle(first_half_seconds=8 * 3600)
         result = json.loads(
@@ -112,7 +112,7 @@ class TestInitiateTrainingCycle:
         mock_content = MagicMock()
         mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM_WITH_SKILL)
         mock_training = MagicMock()
-        mock_training.get_player_training_activities = AsyncMock(return_value=[])
+        mock_training.get_player_active_training_activities = AsyncMock(return_value=[])
         mock_training.create_training_activity = AsyncMock(return_value="train_skill")
         cycle = _make_cycle()
         await _initiate_training_cycle_impl(
@@ -175,7 +175,7 @@ class TestInitiateTrainingCycle:
         mock_content = MagicMock()
         mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM)
         mock_training = MagicMock()
-        mock_training.get_player_training_activities = AsyncMock(
+        mock_training.get_player_active_training_activities = AsyncMock(
             return_value=[{"id": "train_existing", "state": "running_first_half"}]
         )
         mock_training.create_training_activity = AsyncMock()
@@ -192,7 +192,7 @@ class TestInitiateTrainingCycle:
                 rules_mod=_stub_rules_factory(cycle),
                 now_fn=lambda: FIXED_NOW,
             )
-        mock_training.get_player_training_activities.assert_awaited_once_with("player_1", state=None, conn=mock_conn)
+        mock_training.get_player_active_training_activities.assert_awaited_once_with("player_1", conn=mock_conn)
         mock_training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -202,9 +202,7 @@ class TestInitiateTrainingCycle:
         mock_content = MagicMock()
         mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM)
         mock_training = MagicMock()
-        mock_training.get_player_training_activities = AsyncMock(
-            return_value=[{"id": "train_done", "state": "complete"}]
-        )
+        mock_training.get_player_active_training_activities = AsyncMock(return_value=[])
         mock_training.create_training_activity = AsyncMock(return_value="train_new")
         cycle = _make_cycle()
         result = json.loads(
@@ -253,7 +251,7 @@ class TestInitiateTrainingCycle:
         mock_content = MagicMock()
         mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM)
         mock_training = MagicMock()
-        mock_training.get_player_training_activities = AsyncMock(return_value=[])
+        mock_training.get_player_active_training_activities = AsyncMock(return_value=[])
         mock_training.create_training_activity = AsyncMock(return_value="train_xyz")
         cycle = _make_cycle(first_half_seconds=5 * 3600)
         await _initiate_training_cycle_impl(
@@ -392,7 +390,7 @@ class TestSpellTrainingStartWall:
         queries = MagicMock(get_player=AsyncMock(return_value={"class": "mage", "level": 3}))
         library = MagicMock(get_known=AsyncMock(return_value=[]))
         training = MagicMock(
-            get_player_training_activities=AsyncMock(return_value=[]),
+            get_player_active_training_activities=AsyncMock(return_value=[]),
             create_training_activity=AsyncMock(return_value="train_spell"),
         )
 
