@@ -4,13 +4,12 @@ decision 46 / game_mechanics_combat.md:182-187: the DM narrates each enemy actio
 reaction window, and the engine holds enemy damage until each window closes. Sprint 45 resolved
 every packet in one pass, so the blow was written before the DM spoke. This module is the hold.
 
-TWO WINDOWS PER ENEMY ATTACK, because story-018 needs both on the same blow: a PRE-ROLL window
+Two stages can offer windows on one attack: a PRE-ROLL window
 (on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
 (on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
 grapple). The window VOCABULARY is reaction_windows.py's — a pure function of the action. The
-PAUSE GATE is here, because it combines participant ownership with the round's reaction budget:
-gm_combat:131, "if the player has no reaction abilities, the DM doesn't pause — narration flows
-continuously." Without that gate a three-enemy round opens six unusable windows.
+pause decision uses reaction_gate's activation rules for each candidate stage, per
+gm_combat:131: narration flows when no player can react.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -24,6 +23,7 @@ import combat_marks
 import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
+import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
@@ -65,24 +65,6 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
         }
         for seq, packet in enumerate(packets)
     ]
-
-
-def pause_allowed(state) -> bool:
-    """Can ANY standing player still spend a reaction this round? (AC9, gm_combat:131.)
-
-    ``CombatParticipant.has_reaction_ability`` records ownership; ``reactions_available`` records
-    whether the round's one reaction is spent. A fallen player's stale unspent entry must not hold
-    the beat: a downed character cannot react.
-
-    Asks ``reaction_spend.is_spent``, never the entry's truthiness: since story-017 a spent
-    reaction is a truthy RECORD, so a boolean test would report it available and keep pausing on
-    windows the party can no longer consume.
-    """
-    return any(
-        not reaction_spend.is_spent(state.reactions_available.get(p.id))
-        for p in state.participants
-        if p.type == "player" and not p.is_fallen and not cannot_act(p.conditions) and p.has_reaction_ability is True
-    )
 
 
 def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
@@ -271,8 +253,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             if opens:
                 if PRE_ROLL not in head["opened"]:
                     head["opened"].append(PRE_ROLL)
-                    if pause_allowed(state):
-                        _open(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                    if reaction_gate.offers_for_window(state, candidate):
+                        _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
@@ -282,8 +265,11 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
 
                 if head["roll"] is not None and POST_ROLL not in head["opened"]:
                     head["opened"].append(POST_ROLL)
-                    if pause_allowed(state):
-                        hit = head["roll"]["attack_result"]["hit"]
+                    hit = head["roll"]["attack_result"]["hit"]
+                    candidate = _window(
+                        state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit)
+                    )
+                    if reaction_gate.offers_for_window(state, candidate):
                         attack_result, _effective_ac = deserialize_roll(head["roll"])
                         attacker = state.get_participant(head["actor_id"])
                         await packet_deps["sink"].emit(
@@ -293,7 +279,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                             event_bus=session.event_bus,
                         )
                         head["roll_published"] = True
-                        _open(state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit))
+                        _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
@@ -339,13 +325,13 @@ def _roll(state, head: dict, action: dict, resolver):
     )
 
 
-def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
+def _window(state, head: dict, stage: str, triggers: tuple[str, ...]) -> dict:
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
     if action is None:
         raise ValueError(f"held action {declaration.action!r} for {head['actor_id']!r} is unavailable")
-    state.open_window = reaction_windows.open_window_for(
+    return reaction_windows.open_window_for(
         round_number=state.round_number,
         seq=head["seq"],
         stage=stage,
@@ -354,12 +340,16 @@ def _open(state, head: dict, stage: str, triggers: tuple[str, ...]) -> None:
         action_kind=action_kind(action),
         triggers=triggers,
     )
+
+
+def _open(state, candidate: dict) -> None:
+    state.open_window = candidate
     logger.info(
         "beat 3: paused on %s window %s (%s -> %s)",
-        stage,
+        candidate["stage"],
         state.open_window["id"],
-        head["actor_id"],
-        declaration.target_id,
+        candidate["actor_id"],
+        candidate["target_id"],
     )
 
 

@@ -126,8 +126,6 @@ async def test_post_roll_pause_publishes_the_attack_once_before_the_hud():
     deps = _resolve_deps(damage=6)
     await _call(ctx, deps)
     ctx.userdata.event_bus.drain()
-    await _call(ctx, deps)
-    ctx.userdata.event_bus.drain()
 
     original = combat_hold.build_attack_dice_roll_payload
     builder = MagicMock(wraps=original)
@@ -162,7 +160,7 @@ async def test_post_roll_pause_publishes_the_attack_once_before_the_hud():
 
 @pytest.mark.asyncio
 async def test_rolled_back_post_roll_pause_publishes_neither_event():
-    ctx = _ctx_at_resolution()
+    ctx = _ctx_at_resolution(reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
     deps = _resolve_deps(damage=6)
     await _call(ctx, deps)
     ctx.userdata.event_bus.drain()

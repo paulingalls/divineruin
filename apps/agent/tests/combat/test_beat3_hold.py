@@ -35,6 +35,7 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, reactions=True):
     player = state.get_participant("player_1")
     assert player is not None
     player.has_reaction_ability = True
+    player.reaction_ids = ["skirmisher_sidestep", "rogue_uncanny_dodge", "skirmisher_riposte"]
     state.reactions_available = {"player_1": reaction_spend.unspent()} if reactions else {}
     ctx.userdata.combat_state = state
     return ctx
@@ -248,7 +249,7 @@ class TestTheReactionBudgetGate:
         reaction still holding the beat, opening a window the party cannot consume for the rest of
         the round. The gate has to read the record's spent-ness.
 
-        Fault-inject by reverting pause_allowed to `.get(p.id, False)` truthiness."""
+        Fault-inject by making is_spent return the entry's truthiness."""
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.reactions_available = {
@@ -269,8 +270,7 @@ class TestTheReactionBudgetGate:
         """A downed player cannot react, so their leftover True must not pause a whole round.
 
         The blow lands on a SECOND, standing player: felling the one the enemy swings at makes the
-        held action wasted, which suppresses the window for a different reason entirely and leaves
-        `pause_allowed`'s is_fallen clause certified by nothing (constraint 1)."""
+        held action wasted, which suppresses the window for a different reason entirely."""
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.participants.append(
@@ -283,9 +283,11 @@ class TestTheReactionBudgetGate:
                 hp_max=20,
                 ac=14,
                 has_reaction_ability=True,
+                reaction_ids=["skirmisher_sidestep"],
             )
         )
         cs.initiative_order.append("player_2")
+        cs.get_participant("player_1").reaction_ids = ["cleric_shield_of_faith"]
         cs.get_participant("player_1").is_fallen = True
         # player_1 is down carrying a stale unspent record; player_2 stands but has already spent.
         cs.reactions_available = {
@@ -399,9 +401,7 @@ class TestBandOrdering:
 
     @pytest.mark.asyncio
     async def test_the_first_attack_dramatic_promotion_now_falls_to_the_ally_band(self):
-        """The measurable consequence of the reorder (combat_packet.py:280-281 reads
-        `first_attack_resolved` fresh per packet, and :329 consumes the one-shot). Ally-first
-        means the opening strike of round 1 is an ALLY's, even when an enemy outrolled them."""
+        """The opening strike of round 1 is an ally's even when an enemy outrolled them."""
         ctx = _ctx_at_resolution(enemy_hp=20, reactions=False)
         cs = ctx.userdata.combat_state
         cs.get_participant("goblin_scout_1").initiative = 20

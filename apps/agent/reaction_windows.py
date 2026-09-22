@@ -7,8 +7,7 @@ window closes. Nothing in the tree mapped an enemy action to a member of
 (constraint 6). This is that map.
 
 Pure: a function of the action dict alone. It cannot see ownership or budget. The Beat-3 pump
-combines ``CombatParticipant.has_reaction_ability`` with ``CombatState.reactions_available``, per
-game_mechanics_combat.md:131 ("if the player has no reaction abilities, the DM doesn't pause").
+checks each candidate window against the activation rules before pausing.
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
 content/encounter_templates.json's action_pool entries — ranged, buff, grapple,

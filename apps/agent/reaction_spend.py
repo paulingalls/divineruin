@@ -51,7 +51,7 @@ def is_spent(entry: dict | None) -> bool:
 
     Read this rather than the entry's truthiness: a spend record is a truthy object, so a
     boolean test on it reports every spent reaction as still available — which would leave
-    combat_hold.pause_allowed holding the beat open for a player who has nothing left to spend.
+    an unusable combat window holding the beat open for a player with nothing left to spend.
     """
     if entry is None:
         return True
