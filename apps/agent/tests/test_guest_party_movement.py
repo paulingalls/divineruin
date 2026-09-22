@@ -82,17 +82,17 @@ async def _move(ctx, m):
     with patch.object(
         movement_tools.ward_resolution, "resolve_scope_ward_with_scope", AsyncMock(return_value=(None, None))
     ):
-        return json.loads(
-            await _move_player_impl(
-                ctx,
-                DEST,
-                db_mod=m.db_mod,
-                mutations=m.mutations,
-                travel_mutations=m.travel_mutations,
-                queries=m.queries,
-                content=m.content,
-            )
+        result = await _move_player_impl(
+            ctx,
+            DEST,
+            db_mod=m.db_mod,
+            mutations=m.mutations,
+            travel_mutations=m.travel_mutations,
+            queries=m.queries,
+            content=m.content,
         )
+    assert isinstance(result, str)
+    return json.loads(result)
 
 
 async def _travel(ctx, m, *, mode="scenic", hours=4, forced_march=False, rng=20):

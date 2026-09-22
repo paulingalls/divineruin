@@ -1,6 +1,7 @@
 import asyncio
 import json
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -216,14 +217,13 @@ async def test_guest_hud_tap_resolves_guest_fork():
         is_authorized=MagicMock(return_value=True),
         require_authorized=MagicMock(),
     )
-    ctx.userdata.multiplayer_owner = SimpleNamespace(lifecycle=lifecycle)
+    ctx.userdata.multiplayer_owner = cast(Any, SimpleNamespace(lifecycle=lifecycle))
     seams = choice_seams()
     session = MagicMock()
-    task = None
+    tasks: list[asyncio.Task[str]] = []
 
     def generate_reply(**_):
-        nonlocal task
-        task = asyncio.create_task(choose(ctx, seams))
+        tasks.append(asyncio.create_task(choose(ctx, seams)))
 
     session.generate_reply.side_effect = generate_reply
     handler = SpecializationTapHandler(room=MagicMock(), session=session, userdata=ctx.userdata)
@@ -231,5 +231,6 @@ async def test_guest_hud_tap_resolves_guest_fork():
         {"type": "specialization_choice_tap", "milestone_id": "warrior_identity", "specialization_id": "battle_master"},
         "player_2",
     )
-    assert json.loads(await task)["player_id"] == "player_2"
+    assert len(tasks) == 1
+    assert json.loads(await tasks[0])["player_id"] == "player_2"
     seams[3].set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=seams[1])

@@ -2,7 +2,7 @@
 
 import json
 import time
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -326,7 +326,7 @@ class TestSpecializationTapActor:
         seen = self._actor_seen_by_reply(handler, session)
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
         assert seen == ["player_2"]
-        handler._userdata.multiplayer_owner.lifecycle.is_authorized.assert_called_once_with("player_2", 4)
+        cast(Any, handler._userdata.multiplayer_owner).lifecycle.is_authorized.assert_called_once_with("player_2", 4)
 
     def test_no_identity_drops_the_tap(self):
         handler, session = _make_spec_handler()
@@ -345,13 +345,13 @@ class TestSpecializationTapActor:
 
     def test_unauthorized_sender_drops_the_tap(self):
         handler, session = _make_spec_handler()
-        handler._userdata.multiplayer_owner.lifecycle.is_authorized.return_value = False
+        cast(Any, handler._userdata.multiplayer_owner).lifecycle.is_authorized.return_value = False
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
         session.generate_reply.assert_not_called()
 
     def test_sender_with_no_current_generation_drops_the_tap(self):
         handler, session = _make_spec_handler()
-        lifecycle = handler._userdata.multiplayer_owner.lifecycle
+        lifecycle = cast(Any, handler._userdata.multiplayer_owner).lifecycle
         lifecycle.current_generation.return_value = None
         lifecycle.is_authorized.side_effect = lambda _pid, generation: generation is None
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))

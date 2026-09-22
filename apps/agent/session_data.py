@@ -22,6 +22,7 @@ from token_tracker import TokenTracker
 
 if TYPE_CHECKING:
     from background_process import BackgroundProcess
+    from session_startup import GameplayInputOwner
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -152,7 +153,7 @@ class SessionData:
     # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
     # races room.disconnect(), which makes publish_game_event drop the recap.
     session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
-    multiplayer_owner: object | None = field(default=None, repr=False, compare=False)
+    multiplayer_owner: GameplayInputOwner | None = field(default=None, repr=False, compare=False)
     multiplayer_close_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
