@@ -55,6 +55,7 @@ async def _adjust_faction_reputation_impl(
     logger.info("adjust_faction_reputation: faction=%s event=%s reason=%s", faction_id, event_type, reason)
     _cap_str(reason, 256, "reason")
     session: SessionData = context.userdata
+    player_id = session.acting_player_id
 
     faction = await content.get_faction(faction_id)
     if faction is None:
@@ -65,7 +66,8 @@ async def _adjust_faction_reputation_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    new_value = await mutations.adjust_player_faction_reputation(session.player_id, faction_id, delta, reason)
+    session.validate_acting_player(player_id)
+    new_value = await mutations.adjust_player_faction_reputation(player_id, faction_id, delta, reason)
 
     faction_name = faction.get("name", faction_id)
     session.record_event(f"{faction_name} reputation {delta:+d} -> {new_value} ({event_type}: {reason})")

@@ -179,7 +179,7 @@ class TestRecordStoryMoment:
         )
         assert result["recorded"] is True
 
-    async def test_enforces_max_per_session(self):
+    async def test_enforces_max_per_player(self):
         from session_tools import _record_story_moment_impl
 
         mock_mutations = MagicMock()

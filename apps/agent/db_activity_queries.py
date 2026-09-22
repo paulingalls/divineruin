@@ -186,12 +186,15 @@ async def get_session_story_moments(
     ]
 
 
-async def count_session_story_moments(session_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
-    """Count story moments in a session."""
+async def count_session_story_moments(
+    session_id: str, player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> int:
+    """Count a player's story moments in a session."""
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
-        "SELECT COUNT(*) AS cnt FROM story_moments WHERE session_id = $1",
+        "SELECT COUNT(*) AS cnt FROM story_moments WHERE session_id = $1 AND player_id = $2",
         session_id,
+        player_id,
     )
     return row["cnt"] if row else 0
 
