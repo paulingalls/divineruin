@@ -21,6 +21,7 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
+from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
 from system_prompts import build_companion_cue, is_companion_cue
 from task_logging import log_task_failure
@@ -335,6 +336,8 @@ class BackgroundProcess:
             logger.error("Warm layer data fetch failed", exc_info=True)
             return
 
+        await self._refresh_speakers(quests, training)
+
         try:
             # Update hot context caches on SessionData (read by voice loop, zero I/O)
             if location:
@@ -362,6 +365,34 @@ class BackgroundProcess:
             return
 
         await self._apply_warm(base)
+
+    async def _refresh_speakers(self, host_quests: list[dict], host_training: list[dict]) -> None:
+        member_ids = self._sd.party.member_ids
+        if not member_ids:
+            raise ValueError("Cannot refresh speakers for an empty party")
+        current = self._sd.speaker_summaries
+        refreshed = {pid: current[pid] for pid in member_ids if pid in current}
+        for pid in member_ids:
+            try:
+                player, activities = await asyncio.gather(
+                    db_queries.get_player(pid),
+                    db_activity_queries.get_player_activities(pid, status="in_progress"),
+                )
+                if player is None:
+                    logger.warning("Speaker player %s is missing", pid)
+                    continue
+                if pid == self._sd.primary_player_id:
+                    quests, training = host_quests, host_training
+                else:
+                    quests, training = await asyncio.gather(
+                        db_queries.get_active_player_quests(pid),
+                        db_training.get_player_active_training_activities(pid),
+                    )
+            except TRANSIENT_IO_ERRORS:
+                logger.warning("Speaker refresh failed for %s", pid, exc_info=True)
+                continue
+            refreshed[pid] = build_speaker_context(pid, player, quests, activities, training)
+        self._sd.speaker_summaries = refreshed
 
     async def _apply_warm(self, warm: str) -> None:
         # Every agent that can hold the floor while this process runs is a BaseGameAgent; one

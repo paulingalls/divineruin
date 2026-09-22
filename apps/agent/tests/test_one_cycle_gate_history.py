@@ -115,6 +115,8 @@ async def test_warm_layer_surfaces_running_cycle_beyond_fifty_completed(player_w
     session = SessionData(player_id=player_id, location_id="accord_guild_hall")
     process = BackgroundProcess(session=seam(), session_data=session)
     with (
+        patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
+        patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
         patch("background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=[]),
         patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[]),

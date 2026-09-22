@@ -6,8 +6,11 @@ from livekit.agents.llm import ChatContext, ChatMessage
 from prompt_fixtures import sample_combat_state
 
 from base_agent import BaseGameAgent
+from caster_state import ConcentrationState, ResonanceTrack
 from combat_agent import COMBAT_AGENT_TOOLS, COMBAT_SYSTEM_PROMPT, CombatAgent
+from party_state import PartyMember
 from session_data import SessionData
+from speaker_context import build_speaker_context
 
 
 class TestCombatAgentConfig:
@@ -339,10 +342,34 @@ class TestCombatHotContext:
         assert "Grosh(bloodied)" in text
         update.assert_not_called()
 
-    async def test_no_message_out_of_combat(self):
+    async def test_speaker_message_out_of_combat(self):
         agent, session = self._agent_and_session(None)
         turn_ctx = ChatContext.empty()
 
         await self._take_turn(agent, session, turn_ctx)
 
-        assert [item for item in turn_ctx.items if isinstance(item, ChatMessage) and item.role == "assistant"] == []
+        assert "[Speaker: player p1]" in " ".join(
+            str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage)
+        )
+
+    async def test_guest_speaker_uses_live_combat_hp(self):
+        state = sample_combat_state(round_number=3)
+        state.participants[0].id = "guest"
+        state.participants[0].hp_current = 3
+        state.participants[0].hp_max = 12
+        state.initiative_order[0] = "guest"
+        agent, session = self._agent_and_session(state)
+        sd = session.userdata
+        sd.party.members.append(
+            PartyMember(player_id="guest", resonance=ResonanceTrack(), concentration=ConcentrationState())
+        )
+        sd.speaker_summaries["guest"] = build_speaker_context(
+            "guest", {"name": "Bryn", "hp": {"current": 12, "max": 12}}, [], [], []
+        )
+        with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+            turn_ctx = ChatContext.empty()
+            await self._take_turn(agent, session, turn_ctx)
+        text = " ".join(str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage))
+        assert "Speaker: Bryn (player guest); HP 3/12" in text
+        assert "12/12" not in text
+        assert "Round 3" in text

@@ -19,10 +19,7 @@ from typing import Any
 
 from livekit import agents
 
-import db_activity_queries
-import db_queries
 import db_session_queries
-import db_training
 import event_types as E
 from activate_tools import activate
 from background_process import BackgroundProcess
@@ -38,14 +35,14 @@ from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
 from reputation_tools import adjust_faction_reputation
-from sanitize import sanitize_for_prompt
 from scene_tools import enter_location
 from session_data import SessionData
 from session_tools import end_session, record_story_moment, update_npc_disposition
+from speaker_context import speaker_line
 from system_prompts import build_system_prompt
 from task_logging import log_task_failure
 from travel_tools import travel
-from warm_prompts import format_affect_context, format_combat_hot_line, quest_objective
+from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
 
@@ -177,17 +174,7 @@ class ExplorationAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
         sd.last_player_speech_time = time.time()
 
-        speaker_id = sd.acting_player_id
-        player, quests, activities, training = await asyncio.gather(
-            db_queries.get_player(speaker_id),
-            db_queries.get_active_player_quests(speaker_id),
-            db_activity_queries.get_player_activities(speaker_id, status="in_progress"),
-            db_training.get_player_active_training_activities(speaker_id),
-        )
-        if player is None:
-            raise RuntimeError(f"Missing speaker player {speaker_id!r}")
-        speaker = self._build_speaker_context(speaker_id, player, quests, activities, training)
-        turn_ctx.add_message(role="assistant", content=speaker + " " + self._build_hot_context(sd))
+        turn_ctx.add_message(role="assistant", content=speaker_line(sd) + " " + self._build_hot_context(sd))
 
         affect = self._affect_analyzer.get_current_vector()
         if affect:
@@ -220,24 +207,6 @@ class ExplorationAgent(BaseGameAgent):
         # exploration static layer names the current location and companion, and both change
         # within one agent instance (move_player, a companion binding).
         return build_system_prompt(sd.location_id, companion=sd.companion)
-
-    def _build_speaker_context(
-        self, speaker_id: str, player: dict, quests: list[dict], activities: list[dict], training: list[dict]
-    ) -> str:
-        # The id is what joins this block to the warm layer's "host player <id>" labels.
-        name = sanitize_for_prompt(player["name"], max_len=100)
-        hp = player["hp"]
-        quest = next((f"{q['quest_name']}: {quest_objective(q)}" for q in quests if quest_objective(q)), "none")
-        activity = "none"
-        if activities:
-            activity = activities[0].get("activity_type", "activity")
-        elif training:
-            activity = training[0].get("data", {}).get("program_name") or training[0]["activity_type"]
-        return (
-            f"[Speaker: {name} (player {speaker_id}); HP {hp['current']}/{hp['max']}; "
-            f"quest step: {sanitize_for_prompt(quest, max_len=160)}; "
-            f"activity: {sanitize_for_prompt(activity, max_len=80)}]"
-        )
 
     def _build_hot_context(self, sd: SessionData) -> str:
         parts: list[str] = []

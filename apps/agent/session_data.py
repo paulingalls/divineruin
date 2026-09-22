@@ -120,6 +120,7 @@ class SessionData:
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""
     cached_npc_names: list[str] = field(default_factory=list)
+    speaker_summaries: dict = field(default_factory=dict)
     # M6 reveal signal: element ids surfaced by check(discover) this turn, appended by the
     # E.HIDDEN_REVEALED handler. story-003's hot-layer assembly reads these to surface the
     # revealed target same-turn, then clears the list.
