@@ -17,6 +17,7 @@ EOF
 cat > "$tmp/bin/uv" <<'EOF'
 #!/usr/bin/env bash
 echo "uv $*" >> "$FAST_TEST_LOG"
+if [ "$*" = "run pyright" ] && [ -f TYPE_ERROR ]; then exit 1; fi
 for arg in "$@"; do
   if [ -f "$arg" ] && grep -q BAD "$arg"; then exit 1; fi
 done
@@ -57,6 +58,22 @@ printf 'BAD\n' > apps/agent/tests/broken.py
 git add apps/agent/tests/broken.py
 expect_failure 'staged Python defect'
 grep -q 'ruff check.*tests/broken.py' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p apps/agent
+printf 'OK\n' > apps/agent/clean.py
+touch apps/agent/TYPE_ERROR
+git add apps/agent/clean.py
+expect_failure 'staged agent Python with a project type error'
+grep -q 'uv run pyright' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p apps/server/src
+printf 'OK\n' > apps/server/src/fine.ts
+git add apps/server/src/fine.ts
+bash scripts/test-fast.sh > "$tmp/output"
+! grep -q 'pyright' "$FAST_TEST_LOG"
+echo '  PASS: TypeScript-only commit skips pyright'
 
 reset_case
 mkdir -p scripts

@@ -40,6 +40,8 @@ if [ "${#ts_files[@]}" -gt 0 ]; then bunx eslint --max-warnings 0 "${ts_files[@]
 if [ "${#format_files[@]}" -gt 0 ]; then bunx prettier --check "${format_files[@]}"; fi
 if [ "${#agent_python_files[@]}" -gt 0 ]; then
   (cd apps/agent && uv run ruff check "${agent_python_files[@]}" && uv run ruff format --check "${agent_python_files[@]}")
+  # Whole project, not the staged files: a changed signature breaks its unchanged callers.
+  (cd apps/agent && uv run pyright)
 fi
 if [ "${#other_python_files[@]}" -gt 0 ]; then
   for path in "${other_python_files[@]}"; do
