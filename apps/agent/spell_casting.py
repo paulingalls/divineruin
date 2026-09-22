@@ -143,7 +143,6 @@ async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
-    caster_id: str | None = None,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     db_mod=db,
@@ -174,8 +173,6 @@ async def _cast_spell_impl(
     _validate_id(spell_id, "spell_id")
     session: SessionData = context.userdata
     player_id = session.acting_player_id
-    if caster_id is not None and caster_id != player_id:
-        raise ToolError("The caster must be the speaker on this turn.")
     caster = session.member_state(player_id)
     logger.info("cast_spell called: spell=%s player=%s", spell_id, player_id)
 

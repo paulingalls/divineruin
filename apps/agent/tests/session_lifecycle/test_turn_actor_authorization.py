@@ -5,7 +5,6 @@ import dataclasses
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import abilities
@@ -213,18 +212,6 @@ async def test_condition_caster_revocation_after_lock_cannot_produce() -> None:
 
     persistence.update_player_resources.assert_not_awaited()
     producer.produce_ooc_condition.assert_not_awaited()
-
-
-async def test_a_guest_turn_cannot_cast_for_the_primary_caster() -> None:
-    ctx = make_context(party_member_ids=["player_2"])
-    db_mod, _conn = make_db_mod()
-    queries = MagicMock(get_player=AsyncMock())
-
-    with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_args: None):
-        with pytest.raises(ToolError, match="caster"):
-            await _cast_spell_impl(ctx, "firebolt", caster_id="player_1", db_mod=db_mod, queries_mod=queries)
-
-    queries.get_player.assert_not_awaited()
 
 
 async def test_a_revoked_primary_turn_cannot_cast() -> None:

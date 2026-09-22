@@ -15,17 +15,6 @@ from veil_ward_tools import _activate_veil_ward_impl
 
 
 @pytest.mark.parametrize("speaker,other", [("player_1", "player_2"), ("player_2", "player_1")])
-async def test_spell_explicit_other_caster_refused_before_read_or_debit(speaker, other):
-    ctx = make_context(party_member_ids=["player_2"])
-    db_mod, _ = make_db_mod()
-    queries = MagicMock(get_players_for_update=AsyncMock(return_value={}))
-    with ctx.userdata._bind_authenticated_actor(speaker, 4, lambda *_: None):
-        with pytest.raises(ToolError, match=r"caster|speaker|turn"):
-            await _cast_spell_impl(ctx, "firebolt", caster_id=other, db_mod=db_mod, queries_mod=queries)
-    queries.get_players_for_update.assert_not_awaited()
-
-
-@pytest.mark.parametrize("speaker,other", [("player_1", "player_2"), ("player_2", "player_1")])
 async def test_ward_explicit_other_caster_refused_before_read_or_debit(speaker, other):
     ctx = make_context(party_member_ids=["player_2"])
     db_mod, _ = make_db_mod()

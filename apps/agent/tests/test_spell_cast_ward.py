@@ -198,12 +198,11 @@ class TestPartyWideWardedEncounter:
         events.publish_resonance_changed = AsyncMock()
         spells_mod = MagicMock()
         spells_mod.get_spell = MagicMock(return_value=spell)
-        # caster_id must be the speaker, so each member casts on their own authenticated turn.
+        # The caster is the speaker, so each member casts on their own authenticated turn.
         with ctx.userdata._bind_authenticated_actor(member_id, 1, lambda *_: None):
             raw = await _cast_spell_impl(
                 ctx,
                 spell.id,
-                caster_id=member_id,
                 db_mod=mock_db,
                 queries_mod=queries,
                 persistence_mod=persistence,

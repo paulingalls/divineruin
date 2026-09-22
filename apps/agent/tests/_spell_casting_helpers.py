@@ -229,7 +229,7 @@ async def _cast_racial(
 
     racial_mod is the seeded-spec stub; concentration_mutations_mod is mocked so the persist is
     asserted without touching the DB; dice_mod is a fixed sequence for deterministic echo rolls.
-    ``caster_id``/``party_member_ids`` (story-003) drive a non-primary caster through the same
+    ``caster_id``/``party_member_ids`` bind a non-primary member as the speaker through the same
     entry as the public tool, so the post-commit sync lands on that member, not the primary.
     Returns (parsed_packet, ctx, mutations_mock, concentration_mock, echo_events_mock).
     """
@@ -263,7 +263,6 @@ async def _cast_racial(
         raw = await _cast_spell_impl(
             ctx,
             spell.id,
-            caster_id=caster_id,
             db_mod=mock_db,
             queries_mod=queries,
             persistence_mod=persistence,

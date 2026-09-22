@@ -66,8 +66,8 @@ async def activate(
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
     triggers a Draethar's racial Inner Fire.
 
-    Pass target_id when the capability affects ONE other entity (a spell/ability target, or the
-    party member raising/dismissing a Veil Ward on their own behalf). Pass target_ids (a list)
+    Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
+    Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
     self-targeted or partyless capability.
 
