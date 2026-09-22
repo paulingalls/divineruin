@@ -86,29 +86,25 @@ async def test_stale_experiment_add_known_recipe():
     match = True
     revoke_after(mutations.consume_player_materials, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _experiment_with_materials_impl(
-                context,
-                {"iron_ingot": 2},
-                "iron_sword" if match else "unknown_sword",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                recipes_mod=module(list_recipes=[recipe]),
-                materials_mod=module(
-                    get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
-                ),
-                exp_db_mod=failed,
-                rng=random.Random(7),
-            )
+        await _experiment_with_materials_impl(
+            context,
+            {"iron_ingot": 2},
+            "iron_sword" if match else "unknown_sword",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            recipes_mod=module(list_recipes=[recipe]),
+            materials_mod=module(
+                get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
+            ),
+            exp_db_mod=failed,
+            rng=random.Random(7),
         )
     mutations.add_player_known_recipe.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     mutations.consume_player_materials.assert_awaited_once()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -134,29 +130,25 @@ async def test_stale_experiment_record_failure():
     match = False
     revoke_after(mutations.consume_player_materials, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _experiment_with_materials_impl(
-                context,
-                {"iron_ingot": 2},
-                "iron_sword" if match else "unknown_sword",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                recipes_mod=module(list_recipes=[recipe]),
-                materials_mod=module(
-                    get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
-                ),
-                exp_db_mod=failed,
-                rng=random.Random(7),
-            )
+        await _experiment_with_materials_impl(
+            context,
+            {"iron_ingot": 2},
+            "iron_sword" if match else "unknown_sword",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            recipes_mod=module(list_recipes=[recipe]),
+            materials_mod=module(
+                get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
+            ),
+            exp_db_mod=failed,
+            rng=random.Random(7),
         )
     failed.record_failed_experiment.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     mutations.consume_player_materials.assert_awaited_once()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -182,25 +174,21 @@ async def test_stale_experiment_failed_roll_consume():
     match = True
     revoke_after(queries.get_player_known_recipe_ids, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _experiment_with_materials_impl(
-                context,
-                {"iron_ingot": 2},
-                "iron_sword" if match else "unknown_sword",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                recipes_mod=module(list_recipes=[recipe]),
-                materials_mod=module(
-                    get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
-                ),
-                exp_db_mod=failed,
-                rng=random.Random(7),
-            )
+        await _experiment_with_materials_impl(
+            context,
+            {"iron_ingot": 2},
+            "iron_sword" if match else "unknown_sword",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            recipes_mod=module(list_recipes=[recipe]),
+            materials_mod=module(
+                get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
+            ),
+            exp_db_mod=failed,
+            rng=random.Random(7),
         )
     mutations.consume_player_materials.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
-    assert result is None

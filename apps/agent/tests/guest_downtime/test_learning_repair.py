@@ -162,24 +162,20 @@ async def test_stale_recipe_add_known():
     mutations = module(add_player_known_recipe=True)
     revoke_after(queries.count_player_known_recipes, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _learn_recipe_impl(
-                context,
-                "iron_sword",
-                "npc_teaching",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                recipes_mod=module(get_recipe=recipe),
-                slots_mod=module(get_recipe_slots=slots),
-            )
+        await _learn_recipe_impl(
+            context,
+            "iron_sword",
+            "npc_teaching",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            recipes_mod=module(get_recipe=recipe),
+            slots_mod=module(get_recipe_slots=slots),
         )
     mutations.add_player_known_recipe.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -192,20 +188,16 @@ async def test_stale_spell_record_learned():
     )
     library = module(record_learned=None)
     revoke_after(queries.get_player, revocation)
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _learn_spell_impl(
-                context,
-                "arcane_missile",
-                "discovery",
-                queries_mod=queries,
-                spells_mod=spells,
-                character_spells_mod=library,
-            )
+        await _learn_spell_impl(
+            context,
+            "arcane_missile",
+            "discovery",
+            queries_mod=queries,
+            spells_mod=spells,
+            character_spells_mod=library,
         )
     library.record_learned.assert_not_awaited()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -222,28 +214,24 @@ async def test_stale_variant_create_activity():
     training = module(get_player_active_training_activities=[], create_training_activity="guest_variant_cycle")
     revoke_after(progress.seed_progress, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _learn_variant_impl(
-                context,
-                "cleaving_drathian",
-                db_mod=tx_db,
-                variants_mod=seam(get_mentor_variant=lambda _: variant),
-                requirements_mod=requirements,
-                preconditions_mod=module(require_npc_present=None),
-                content_mod=module(get_npc={"mentor": {"training_cycles": 3}}),
-                progress_mod=progress,
-                persistence_mod=persistence,
-                abilities_mod=seam(get_ability=lambda _: seam(ability_type="elective", name="Cleaving Blow")),
-                db_training_mod=training,
-            )
+        await _learn_variant_impl(
+            context,
+            "cleaving_drathian",
+            db_mod=tx_db,
+            variants_mod=seam(get_mentor_variant=lambda _: variant),
+            requirements_mod=requirements,
+            preconditions_mod=module(require_npc_present=None),
+            content_mod=module(get_npc={"mentor": {"training_cycles": 3}}),
+            progress_mod=progress,
+            persistence_mod=persistence,
+            abilities_mod=seam(get_ability=lambda _: seam(ability_type="elective", name="Cleaving Blow")),
+            db_training_mod=training,
         )
     training.create_training_activity.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     progress.seed_progress.assert_awaited_once()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -269,23 +257,19 @@ async def test_stale_repair_gold_debit():
     inventory = module(update_item_durability=None)
     revoke_after(inventory.update_item_durability, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _repair_item_impl(
-                context,
-                "guest_blade",
-                "grimjaw",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                inv_mutations_mod=inventory,
-                pricing_mod=pricing(),
-                content_mod=module(get_npc=None),
-            )
+        await _repair_item_impl(
+            context,
+            "guest_blade",
+            "grimjaw",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            inv_mutations_mod=inventory,
+            pricing_mod=pricing(),
+            content_mod=module(get_npc=None),
         )
     mutations.update_player_gold.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     inventory.update_item_durability.assert_awaited_once()
-    assert result is None

@@ -205,22 +205,18 @@ async def test_stale_errand_create_activity():
     activity.count_active_by_slot.side_effect = lambda player_id: {"companion": 0 if player_id == "player_2" else 1}
     mutations = module(create_async_activity="guest_errand")
     revoke_after(activity.count_active_by_slot, revocation)
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _dispatch_companion_errand_impl(
-                context,
-                "companion_kael",
-                "scout",
-                "millhaven",
-                queries_mod=queries,
-                content_mod=content,
-                activity_mod=activity,
-                mutations_mod=mutations,
-            )
+        await _dispatch_companion_errand_impl(
+            context,
+            "companion_kael",
+            "scout",
+            "millhaven",
+            queries_mod=queries,
+            content_mod=content,
+            activity_mod=activity,
+            mutations_mod=mutations,
         )
     mutations.create_async_activity.assert_not_awaited()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -245,25 +241,21 @@ async def test_stale_errand_update_activity():
 
     revoke_after(relation.apply_errand_affinity, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _resolve_companion_errand_impl(
-                context,
-                "guest_errand",
-                db_mod=tx_db,
-                activity_mod=activity,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                companion_rel_mod=relation,
-                resolve_fn=outcome,
-            )
+        await _resolve_companion_errand_impl(
+            context,
+            "guest_errand",
+            db_mod=tx_db,
+            activity_mod=activity,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            companion_rel_mod=relation,
+            resolve_fn=outcome,
         )
     mutations.update_activity.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     relation.apply_errand_affinity.assert_awaited_once()
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -273,32 +265,28 @@ async def test_stale_workspace_last_rental():
     mutations = module(update_player_gold=None, create_workspace_rental="guest_rental")
     revoke_after(mutations.update_player_gold, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _rent_workspace_impl(
-                context,
-                "forge_laboratory",
-                "grimjaw",
-                2,
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                pricing_mod=pricing(),
-                content_mod=module(
-                    get_npc=None,
-                    get_location={
-                        "id": "accord_guild_hall",
-                        "settlement_tier": "city",
-                        "tags": ["forge", "laboratory"],
-                    },
-                ),
-            )
+        await _rent_workspace_impl(
+            context,
+            "forge_laboratory",
+            "grimjaw",
+            2,
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            pricing_mod=pricing(),
+            content_mod=module(
+                get_npc=None,
+                get_location={
+                    "id": "accord_guild_hall",
+                    "settlement_tier": "city",
+                    "tags": ["forge", "laboratory"],
+                },
+            ),
         )
     assert mutations.create_workspace_rental.await_count == 2
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -340,24 +328,20 @@ async def test_stale_crafting_create_activity():
     }
     revoke_after(mutations.consume_player_materials, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _start_crafting_project_impl(
-                context,
-                "iron_sword",
-                db_mod=tx_db,
-                queries_mod=queries,
-                mutations_mod=mutations,
-                activity_mod=activity,
-                recipes_mod=module(get_recipe=recipe),
-                materials_mod=module(
-                    get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
-                ),
-            )
+        await _start_crafting_project_impl(
+            context,
+            "iron_sword",
+            db_mod=tx_db,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            activity_mod=activity,
+            recipes_mod=module(get_recipe=recipe),
+            materials_mod=module(
+                get_materials_catalog={"iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1}}
+            ),
         )
     mutations.create_async_activity.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     mutations.consume_player_materials.assert_awaited_once()
-    assert result is None

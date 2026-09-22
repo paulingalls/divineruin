@@ -110,22 +110,17 @@ async def test_stale_training_create_activity():
     )
     revoke_after(training.get_player_active_training_activities, revocation)
     tx_db, tx_state = transaction_probe()
-    db_mod = tx_db
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _initiate_training_cycle_impl(
-                context,
-                "combat_basics",
-                db_mod=db_mod,
-                db_training_mod=training,
-                db_content_mod=content,
-            )
+        await _initiate_training_cycle_impl(
+            context,
+            "combat_basics",
+            db_mod=tx_db,
+            db_training_mod=training,
+            db_content_mod=content,
         )
     training.create_training_activity.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
-    assert result is None
 
 
 @pytest.mark.asyncio
@@ -142,21 +137,17 @@ async def test_stale_training_update_activity():
     )
     revoke_after(training.get_training_activity, revocation)
     tx_db, tx_state = transaction_probe()
-    result = None
     with actor, pytest.raises(RuntimeError, match="stale generation"):
-        result = json.loads(
-            await _resolve_training_midpoint_impl(
-                context,
-                "cycle",
-                "focus",
-                db_mod=tx_db,
-                db_training_mod=training,
-                rules_mod=lambda *_: seam(
-                    state="running_second_half", second_half_seconds=3600, micro_bonus=1, completes_at=datetime.now(UTC)
-                ),
-            )
+        await _resolve_training_midpoint_impl(
+            context,
+            "cycle",
+            "focus",
+            db_mod=tx_db,
+            db_training_mod=training,
+            rules_mod=lambda *_: seam(
+                state="running_second_half", second_half_seconds=3600, micro_bonus=1, completes_at=datetime.now(UTC)
+            ),
         )
     training.update_training_activity.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
-    assert result is None
