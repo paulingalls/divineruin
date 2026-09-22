@@ -10,7 +10,7 @@ import combat_turn
 
 
 async def test_moved_target_ac_drains_with_an_unresolved_summary_and_error_log(caplog):
-    ctx = _ctx_at_resolution(enemy_hp=20)
+    ctx = _ctx_at_resolution(enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
     deps = _resolve_deps(damage=3)
     caplog.set_level("ERROR", logger="divineruin.tools")
 
@@ -68,7 +68,7 @@ async def test_unrelated_resolver_error_propagates_and_rolls_the_phase_back(monk
 
 
 async def test_iteration_with_no_pop_unresolved_summary_or_new_window_raises(monkeypatch):
-    ctx = _ctx_at_resolution(enemy_hp=20)
+    ctx = _ctx_at_resolution(enemy_hp=20, reaction_ids=("skirmisher_sidestep",))
     deps = _resolve_deps(damage=3)
     await _call(ctx, deps)
     committed = ctx.userdata.combat_state

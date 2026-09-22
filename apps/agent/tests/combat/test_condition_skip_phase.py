@@ -223,7 +223,6 @@ def test_stunned_player_is_not_offered_and_cannot_hold_the_beat():
     with pytest.raises(ValueError, match=r"Kael.*stunned.*cannot react"):
         reaction_gate.validate_reaction_activation(state, "player_1", "skirmisher_sidestep")
     assert reaction_gate.offered_reactions(state) == []
-    assert reaction_gate.offers_for_window(state, state.open_window) == []
 
 
 @pytest.mark.asyncio

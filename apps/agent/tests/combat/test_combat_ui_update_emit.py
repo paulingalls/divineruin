@@ -131,7 +131,7 @@ async def test_ally_commit_emits_ui_update_with_the_ally_bands_damage():
 
 
 async def test_pre_roll_pause_emits_ui_update_with_the_ally_bands_damage():
-    ctx = _ctx_at_resolution(enemy_hp=20)
+    ctx = _ctx_at_resolution(enemy_hp=20, reaction_ids=("skirmisher_sidestep",))
     deps = _resolve_deps(damage=3)
 
     await _call(ctx, deps)
@@ -147,7 +147,7 @@ async def test_pre_roll_pause_emits_ui_update_with_the_ally_bands_damage():
 
 async def test_pause_ui_update_reads_damage_applied_in_the_pausing_call():
     state = _guarded_ally_state(enemy_ids=("goblin_scout_1", "goblin_scout_2"))
-    ctx = _ctx_at_resolution(state=state)
+    ctx = _ctx_at_resolution(state=state, reaction_ids=("cleric_shield_of_faith", "guardian_intercept"))
     deps = _resolve_deps(damage=3)
     packets: list[dict] = []
     await _pause_at(

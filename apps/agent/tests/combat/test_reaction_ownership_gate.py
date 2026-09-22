@@ -86,7 +86,9 @@ async def test_mixed_party_skips_non_owner_budget_and_one_owner_opens_window():
     )
     state.participants.append(owner)
     state.initiative_order.append(owner.id)
-    state.reactions_available = {non_owner.id: reaction_spend.unspent(), owner.id: reaction_spend.unspent()}
+    non_owner.reaction_ids = ["skirmisher_sidestep"]
+    # is_spent({}) raises KeyError, so a gate that consults the non-owner budget reds here.
+    state.reactions_available = {non_owner.id: {}, owner.id: reaction_spend.unspent()}
     ctx = _context(state)
 
     await _step(ctx, _resolve_deps())

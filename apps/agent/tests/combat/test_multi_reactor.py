@@ -36,6 +36,11 @@ def _with_third_player(*, target_id="player_3"):
     return state
 
 
+def _own(state, spends):
+    for actor_id, ability_id in spends:
+        state.get_participant(actor_id).reaction_ids.append(ability_id)
+
+
 def _spend_all(state, ordered):
     state.reactions_available.clear()
     for actor_id, ability_id in ordered:
@@ -53,12 +58,14 @@ def _reaction_packets(packets):
 @pytest.mark.asyncio
 async def test_two_shields_apply_one_maximum_bonus_and_emit_two_packets():
     state = _with_third_player()
+    spends = [("player_1", "cleric_shield_of_faith"), ("player_2", "oracle_shield_of_faith")]
+    _own(state, spends)
     ctx = _ctx_at_resolution(state=state)
     deps = {**_resolve_deps(), "resolver": _ac_sensitive_resolver(attack_total=15, damage=4)}
     packets = []
     await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
     state = ctx.userdata.combat_state
-    _spend_all(state, [("player_1", "cleric_shield_of_faith"), ("player_2", "oracle_shield_of_faith")])
+    _spend_all(state, spends)
     await _drain(ctx, deps, packets)
 
     blow = _enemy_blow(packets)
@@ -72,12 +79,13 @@ async def test_two_shields_apply_one_maximum_bonus_and_emit_two_packets():
 @pytest.mark.parametrize("reverse", [False, True])
 async def test_unwired_ally_spend_cannot_hide_targets_uncanny_dodge(reverse):
     state = _guarded_ally_state(target_id="player_1")
+    spends = [("player_2", "guardian_intercept"), ("player_1", "rogue_uncanny_dodge")]
+    _own(state, spends)
     ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps(damage=6)
     packets = []
     await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
     state = ctx.userdata.combat_state
-    spends = [("player_2", "guardian_intercept"), ("player_1", "rogue_uncanny_dodge")]
     _spend_all(state, list(reversed(spends)) if reverse else spends)
     await _drain(ctx, deps, packets)
 
@@ -119,13 +127,14 @@ def _hollow_shriek_state():
 @pytest.mark.parametrize("reverse", [False, True])
 async def test_countercharm_and_shield_apply_save_advantage_in_either_order(reverse):
     state = _hollow_shriek_state()
+    spends = [("player_1", "bard_countercharm"), ("player_2", "cleric_shield_of_faith")]
+    _own(state, spends)
     ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps()
     packets = []
     with patch("check_resolution.dice_roll", side_effect=_seeded_dice(1)):
         await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
         state = ctx.userdata.combat_state
-        spends = [("player_1", "bard_countercharm"), ("player_2", "cleric_shield_of_faith")]
         _spend_all(state, list(reversed(spends)) if reverse else spends)
         await _drain(ctx, deps, packets)
 
@@ -143,13 +152,15 @@ async def test_two_countercharms_apply_advantage_once():
     assert shrieker is not None and enemy is not None
     enemy.action_pool = shrieker.action_pool
     state.pending_declarations["goblin_scout_1"]["action"] = "Hollow Shriek"
+    spends = [("player_1", "bard_countercharm"), ("player_3", "diplomat_countercharm")]
+    _own(state, spends)
     ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps()
     packets = []
     with patch("check_resolution.dice_roll", side_effect=_seeded_dice(1)):
         await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
         state = ctx.userdata.combat_state
-        _spend_all(state, [("player_1", "bard_countercharm"), ("player_3", "diplomat_countercharm")])
+        _spend_all(state, spends)
         await _drain(ctx, deps, packets)
 
     summary = next(packet for packet in packets if packet.get("condition_resisted") == "frightened")
@@ -169,12 +180,13 @@ async def test_winning_objection_leaves_other_spends_null(reverse):
     assert reactor is not None and enemy is not None
     reactor.attributes = {"charisma": 16}
     enemy.attributes = {"wisdom": 16}
+    spends = [("player_1", "diplomat_objection"), ("player_2", "cleric_shield_of_faith")]
+    _own(state, spends)
     ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps(damage=4)
     packets = []
     await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
     state = ctx.userdata.combat_state
-    spends = [("player_1", "diplomat_objection"), ("player_2", "cleric_shield_of_faith")]
     _spend_all(state, list(reversed(spends)) if reverse else spends)
     before = state.get_participant("player_2").hp_current
     deps.pop("db_mod")

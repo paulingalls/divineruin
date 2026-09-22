@@ -406,7 +406,7 @@ async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
     story's own tests can see it — 016's never spend a resource at the pause, and 026's never hold
     a blow — so it needed a test that drives both.
     """
-    ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20)
+    ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
     deps = _resolve_deps(damage=3)
     deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
     session = ctx.userdata
