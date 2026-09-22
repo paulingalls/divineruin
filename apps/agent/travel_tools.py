@@ -60,7 +60,7 @@ async def travel(
     pick from the player's intent ('quickly'/'a careful trip'/'push through the wilds'). Rolls a
     Survival navigation check against the destination's terrain, may cost time or get the party
     lost, accrues Exhaustion on a forced march or a bad miss in harsh terrain, and on a successful
-    journey moves the player to the destination. Pass `forced_march=True` (and an `hours` estimate)
+    journey moves the party to the destination. Pass `forced_march=True` (and an `hours` estimate)
     when the party pushes on without rest."""
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
 
@@ -90,14 +90,16 @@ async def _travel_impl(
         raise ToolError(str(e)) from e
 
     session: SessionData = context.userdata
-    player = await queries.get_player(session.player_id)
+    speaker_id = session.acting_player_id
+    member_ids = tuple(session.party.member_ids)
+    player = await queries.get_player(speaker_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{speaker_id}' not found.")
     # Read-boundary guard (M4.4 story-008): the nav roll folds Inspired's +1d4 via
     # get_condition_effects, which raw-KeyErrors on a corrupt stored type. Validate up front (same as
     # the peer check tools) so corruption becomes a DM-narratable ToolError, not an unhandled stack —
     # the write-back's locked re-read does its own validation as the rebuild base.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, speaker_id)
 
     destination = await content.get_location(destination_id)
     if destination is None:
@@ -135,33 +137,41 @@ async def _travel_impl(
     # spends Inspired's +1d4, so remove the signalled conditions on the same rebuilt list.
     consumed = roll.consumed_conditions if roll else ()
     if result.exhaustion_delta > 0 or consumed:
+        session.validate_acting_player(speaker_id)
         async with db_mod.transaction() as conn:
-            locked = await queries.get_player(session.player_id, conn=conn, for_update=True)
-            # Read-boundary guard (M4.4 story-008): a corrupt conditions row becomes a DM-narratable
-            # error, and the validated list is the base the exhaustion producer applies onto.
-            new_conditions = validated_player_conditions(locked, session.player_id)
-            if result.exhaustion_delta > 0:
-                cap = rules_engine.exhaustion_stack_cap(player)
-                for _ in range(result.exhaustion_delta):
-                    new_conditions = conditions.apply_condition(
-                        new_conditions, "exhausted", source="travel", max_stacks=cap
-                    )
-            if consumed:
-                new_conditions = conditions.remove_conditions(new_conditions, consumed)
-            await conditions_mutations.save_player_conditions(session.player_id, new_conditions, conn=conn)
+            for member_id in sorted(member_ids if result.exhaustion_delta > 0 else (speaker_id,)):
+                locked = await queries.get_player(member_id, conn=conn, for_update=True)
+                if locked is None:
+                    raise ToolError(f"Player '{member_id}' not found during travel.")
+                new_conditions = validated_player_conditions(locked, member_id)
+                if result.exhaustion_delta > 0:
+                    cap = rules_engine.exhaustion_stack_cap(locked)
+                    for _ in range(result.exhaustion_delta):
+                        new_conditions = conditions.apply_condition(
+                            new_conditions, "exhausted", source="travel", max_stacks=cap
+                        )
+                if consumed and member_id == speaker_id:
+                    new_conditions = conditions.remove_conditions(new_conditions, consumed)
+                await conditions_mutations.save_player_conditions(member_id, new_conditions, conn=conn)
 
     arrived = result.success and not result.wrong_area
     if arrived:
         # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
         # corruption tracking) — not just the location setter — so a travelled arrival updates
         # the client exactly like a walked one.
-        await apply_arrival(session, destination_id, destination, db_mod=db_mod, mutations=mutations)
-        await travel_mutations.update_player_travel_state(session.player_id, None)
+        await apply_arrival(
+            session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
+        )
     else:
         # Lost: the party is off-course (no relocation); record the journey it was attempting.
-        await travel_mutations.update_player_travel_state(
-            session.player_id, {"destination": destination_id, "mode": mode_lower, "wrong_area": result.wrong_area}
-        )
+        session.validate_acting_player(speaker_id)
+        async with db_mod.transaction() as conn:
+            for member_id in member_ids:
+                await travel_mutations.update_player_travel_state(
+                    member_id,
+                    {"destination": destination_id, "mode": mode_lower, "wrong_area": result.wrong_area},
+                    conn=conn,
+                )
 
     if roll is not None:
         await publish_game_event(

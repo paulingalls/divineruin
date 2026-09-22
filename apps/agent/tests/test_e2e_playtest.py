@@ -65,7 +65,7 @@ class TestNewPlayerHandoffChain:
         }
 
         mock_db = MagicMock()
-        mock_conn = MagicMock()
+        mock_conn = AsyncMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
@@ -166,7 +166,7 @@ class TestNewPlayerHandoffChain:
         }
 
         mock_db = MagicMock()
-        mock_conn = MagicMock()
+        mock_conn = AsyncMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()

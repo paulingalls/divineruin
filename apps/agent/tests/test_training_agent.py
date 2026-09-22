@@ -46,7 +46,7 @@ def _make_context(location_id: str, current_agent: object) -> MagicMock:
 
 def _move_mocks(current_loc: dict, dest_loc: dict):
     mock_db = MagicMock()
-    mock_db.transaction = lambda: mock_txn(MagicMock())
+    mock_db.transaction = lambda: mock_txn(AsyncMock())
     mock_db.extract_exit_connections = MagicMock(return_value=[])
     mock_mutations = MagicMock()
     mock_mutations.update_player_location = AsyncMock()

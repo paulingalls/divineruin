@@ -51,7 +51,7 @@ SAMPLE_QUEST = {
 
 class TestMovePlayer:
     def _mocks(self, *, locations=None):
-        mock_conn = MagicMock()
+        mock_conn = AsyncMock()
         mock_db = MagicMock()
         mock_db.transaction = lambda: _mock_txn(mock_conn)
         from db import extract_exit_connections
