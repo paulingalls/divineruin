@@ -384,7 +384,7 @@ def _end_combat_finish(
     for member in session.party.members:
         member.weapon_used = False
         member.weapon_crit_vs_heavy = False
-    session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
+        member.draethar_inner_fire_used = False
     session.combat_state = None
 
     # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed

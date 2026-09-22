@@ -360,7 +360,7 @@ async def _start_combat_locked(
     for member in session.party.members:
         member.weapon_used = False
         member.weapon_crit_vs_heavy = False
-    session.draethar_inner_fire_used = False  # Inner Fire is once per encounter (M3.4)
+        member.draethar_inner_fire_used = False
 
     # Build initiative summary once for event + response
     initiative_summary = [

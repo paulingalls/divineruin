@@ -53,7 +53,8 @@ async def _deploy_veil_anchor_impl(
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
-    logger.info("deploy_veil_anchor called: item_id=%s player=%s", item_id, session.player_id)
+    player_id = session.acting_player_id
+    logger.info("deploy_veil_anchor called: item_id=%s player=%s", item_id, player_id)
 
     # item_id is untrusted LLM input. Fail loud on anything that is not an anchor rather than
     # silently warding nothing, or warding on behalf of an item that has no ward to give.
@@ -67,7 +68,7 @@ async def _deploy_veil_anchor_impl(
     async with db_mod.transaction() as conn:
         # Lock the stack before reading it, the same for_update read inventory_tools._lose does:
         # two concurrent deploys of one small anchor must not both consume it.
-        slot = await queries_mod.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
+        slot = await queries_mod.get_inventory_item(player_id, item_id, conn=conn, for_update=True)
         if slot is None:
             raise ToolError(f"Item '{item_id}' not in inventory.")
 
@@ -78,9 +79,11 @@ async def _deploy_veil_anchor_impl(
         if await resolution_mod.resolve_scope_ward(session, conn=conn, ward_mutations_mod=ward_mutations_mod):
             raise ToolError("A Veil Ward is already active.")
 
+        session.validate_acting_player(player_id)
         await ward_mutations_mod.write_ward(scope, ANCHOR_SOURCE, expires_at, dismissible=anchor.dismissible, conn=conn)
         if anchor.consumed:
-            await inventory_mutations_mod.transact_inventory(session.player_id, item_id, -1, conn=conn)
+            session.validate_acting_player(player_id)
+            await inventory_mutations_mod.transact_inventory(player_id, item_id, -1, conn=conn)
 
     # Committed — NOW sync the in-memory mirror and push, so a rolled-back deploy leaves the session
     # pristine and publishes nothing (story-005's phantom-ward contract).
