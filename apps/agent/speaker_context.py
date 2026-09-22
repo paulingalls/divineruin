@@ -1,9 +1,15 @@
 """Small background-refreshed speaker snapshot for uncached turn messages."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from sanitize import sanitize_for_prompt
 from warm_prompts import quest_objective
+
+if TYPE_CHECKING:
+    from session_data import SessionData
 
 
 @dataclass(frozen=True)
@@ -14,10 +20,9 @@ class SpeakerSummary:
     quest: str
     activity: str
 
-    def render(self, hp: str | None = None, *, omit_hp: bool = False) -> str:
-        health = "" if omit_hp else f"; HP {self.hp if hp is None else hp}"
+    def render(self, hp: str | None = None) -> str:
         return (
-            f"[Speaker: {self.name} (player {self.player_id}){health}; "
+            f"[Speaker: {self.name} (player {self.player_id}); HP {self.hp if hp is None else hp}; "
             f"quest step: {self.quest}; activity: {self.activity}]"
         )
 
@@ -49,14 +54,13 @@ def build_speaker_context(
     )
 
 
-def speaker_line(sd, *, combat: bool = False) -> str:
+def speaker_line(sd: SessionData, *, combat: bool = False) -> str:
     speaker_id = sd.acting_player_id
     summary = sd.speaker_summaries.get(speaker_id)
     if summary is None:
         return f"[Speaker: player {speaker_id}]"
     if combat and sd.combat_state is not None:
         participant = sd.combat_state.get_participant(speaker_id)
-        if participant is None:
-            return summary.render(omit_hp=True)
-        return summary.render(hp=f"{participant.hp_current}/{participant.hp_max}")
+        if participant is not None:
+            return summary.render(hp=f"{participant.hp_current}/{participant.hp_max}")
     return summary.render()

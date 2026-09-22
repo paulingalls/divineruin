@@ -373,3 +373,18 @@ class TestCombatHotContext:
         assert "Speaker: Bryn (player guest); HP 3/12" in text
         assert "12/12" not in text
         assert "Round 3" in text
+
+    async def test_speaker_outside_the_fight_keeps_cached_hp(self):
+        agent, session = self._agent_and_session(sample_combat_state(round_number=3))
+        sd = session.userdata
+        sd.party.members.append(
+            PartyMember(player_id="guest", resonance=ResonanceTrack(), concentration=ConcentrationState())
+        )
+        sd.speaker_summaries["guest"] = build_speaker_context(
+            "guest", {"name": "Bryn", "hp": {"current": 7, "max": 12}}, [], [], []
+        )
+        with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+            turn_ctx = ChatContext.empty()
+            await self._take_turn(agent, session, turn_ctx)
+        text = " ".join(str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage))
+        assert "Speaker: Bryn (player guest); HP 7/12" in text

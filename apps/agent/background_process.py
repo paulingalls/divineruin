@@ -368,8 +368,6 @@ class BackgroundProcess:
 
     async def _refresh_speakers(self, host_quests: list[dict], host_training: list[dict]) -> None:
         member_ids = self._sd.party.member_ids
-        if not member_ids:
-            raise ValueError("Cannot refresh speakers for an empty party")
         current = self._sd.speaker_summaries
         refreshed = {pid: current[pid] for pid in member_ids if pid in current}
         for pid in member_ids:
