@@ -79,15 +79,16 @@ async def _build_scene_context(
         raise ToolError(f"Location '{location_id}' not found.")
 
     location = apply_time_conditions(location, session.world_time)
+    speaker_id = session.acting_player_id
 
     npcs_raw, targets_raw, player = await asyncio.gather(
         queries.get_npcs_at_location(location_id),
         queries.get_targets_at_location(location_id),
-        queries.get_player(session.player_id),
+        queries.get_player(speaker_id),
     )
 
     npc_ids = [npc["id"] for npc in npcs_raw]
-    dispositions = await queries.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
+    dispositions = await queries.get_npc_dispositions(npc_ids, speaker_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
         disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))

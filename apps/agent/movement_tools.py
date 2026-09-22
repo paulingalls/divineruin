@@ -9,6 +9,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_travel
 import db_queries
 import event_types as E
 import ward_resolution
@@ -44,7 +45,7 @@ async def move_player(
     context: RunContext[SessionData],
     destination_id: str,
 ) -> str | tuple:
-    """Move the player to a connected location. Provide the destination
+    """Move the party to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
     context for the new location."""
     return await _move_player_impl(context, destination_id)
@@ -57,21 +58,28 @@ async def apply_arrival(
     *,
     db_mod=db,
     mutations=db_mutations,
+    travel_mutations=db_mutations_travel,
 ) -> str:
-    """Apply a player's arrival at `destination_id`: persist location + map progress (atomically),
+    """Apply party arrival at `destination_id`: persist location, map progress and travel state atomically,
     emit LOCATION_CHANGED + corruption tracking, sync session location/corruption, and record the
     visit + companion memory. Shared by move_player and the travel tool so both surface the same
     client-facing arrival side-effects (HUD location, visited-map, corruption). Returns the previous
     location id. Does NOT do exit-requirement gating or scene-context build — callers own those."""
     previous_location_id = session.location_id
+    speaker_id = session.acting_player_id
+    member_ids = tuple(sorted(session.party.member_ids))
     pending_events: list[tuple[str, dict]] = []
 
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db_mod.extract_exit_connections(destination_exits)
 
+    # Sorted like every multi-row player write (condition_produce, quest_tools) so concurrent
+    # party transactions take row locks in one order and cannot deadlock.
     async with db_mod.transaction() as conn:
-        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
-        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
+        for member_id in member_ids:
+            await mutations.update_player_location(member_id, destination_id, conn=conn)
+            await mutations.upsert_map_progress(member_id, destination_id, exit_connections, conn=conn)
+            await travel_mutations.update_player_travel_state(member_id, None, conn=conn)
 
         # The Veil Ward is scope-owned (M24), so moving can change it: a party that walks out of a
         # warded location is no longer warded, and one that walks into a Sacred site is. Nothing
@@ -108,8 +116,9 @@ async def apply_arrival(
 
     # Corruption tracking — location-based, resets on safe areas.
     new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
-    previous_corruption = session.corruption_level
-    session.corruption_level = new_corruption
+    previous_corruption = session.member_state(speaker_id).corruption_level
+    for member_id in member_ids:
+        session.member_state(member_id).corruption_level = new_corruption
     if new_corruption != previous_corruption:
         pending_events.append(
             (
@@ -141,6 +150,7 @@ async def _move_player_impl(
     *,
     db_mod=db,
     mutations=db_mutations,
+    travel_mutations=db_mutations_travel,
     queries=db_queries,
     content=db_content_queries,
 ) -> str | tuple:
@@ -168,7 +178,11 @@ async def _move_player_impl(
 
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
         requirement = exit_entry["requires"]
-        allowed = await _check_exit_requirement(requirement, session.player_id, queries=queries)
+        allowed = False
+        for member_id in tuple(session.party.member_ids):
+            if await _check_exit_requirement(requirement, member_id, queries=queries):
+                allowed = True
+                break
         if not allowed:
             # Return a narrative hint — do NOT expose raw flag names or DCs to the LLM
             hint = exit_entry.get(
@@ -192,7 +206,12 @@ async def _move_player_impl(
 
     # Shared arrival side-effects (location + map progress + LOCATION_CHANGED + corruption + visit).
     previous_location_id = await apply_arrival(
-        session, destination_id, destination_location, db_mod=db_mod, mutations=mutations
+        session,
+        destination_id,
+        destination_location,
+        db_mod=db_mod,
+        mutations=mutations,
+        travel_mutations=travel_mutations,
     )
     session.record_event(f"Moved to {destination_id}")
 

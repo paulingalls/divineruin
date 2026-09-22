@@ -19,7 +19,7 @@ from session_data import CompanionState, SessionData
 def _move_mocks(location_map: dict) -> dict:
     """Standard mocks for _move_player_impl, keyed off a {loc_id: loc_dict} map."""
     mock_db = MagicMock()
-    mock_db.transaction = lambda: mock_txn(MagicMock())
+    mock_db.transaction = lambda: mock_txn(AsyncMock())
     mock_db.extract_exit_connections = MagicMock(return_value=[])
     mock_mutations = MagicMock()
     mock_mutations.update_player_location = AsyncMock()
