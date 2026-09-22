@@ -30,7 +30,6 @@ from training_rules import TrainingState, resolve_midpoint_decision, start_train
 
 logger = logging.getLogger("divineruin.tools")
 
-_TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
 
 
@@ -107,7 +106,7 @@ async def _query_training_programs_impl(
                     "id": row["id"],
                     "activity_type": row["activity_type"],
                     "state": row["state"],
-                    "program_id": row.get("data", {}).get("program_id"),
+                    "program_id": row["data"].get("program_id"),
                 }
                 for row in active_training
             ],
@@ -192,7 +191,7 @@ async def _initiate_training_cycle_impl(
 
     async with db_mod.transaction() as conn:
         existing_rows = await db_training_mod.get_player_active_training_activities(player_id, conn=conn)
-        if any(row["state"] != _TERMINAL_STATE for row in existing_rows):
+        if existing_rows:
             raise ToolError(
                 "A training cycle is already in progress. You cannot start another training cycle or switch programs "
                 "until it completes. Tell the player this limit and offer to check their current cycle."

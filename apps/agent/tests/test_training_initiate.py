@@ -196,30 +196,6 @@ class TestInitiateTrainingCycle:
         mock_training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_completed_row_does_not_block(self):
-        ctx = make_context()
-        mock_db, _ = make_db_mod()
-        mock_content = MagicMock()
-        mock_content.get_training_program = AsyncMock(return_value=SAMPLE_PROGRAM)
-        mock_training = MagicMock()
-        mock_training.get_player_active_training_activities = AsyncMock(return_value=[])
-        mock_training.create_training_activity = AsyncMock(return_value="train_new")
-        cycle = _make_cycle()
-        result = json.loads(
-            await _initiate_training_cycle_impl(
-                ctx,
-                "combat_basics",
-                db_mod=mock_db,
-                db_training_mod=mock_training,
-                db_content_mod=mock_content,
-                rules_mod=_stub_rules_factory(cycle),
-                now_fn=lambda: FIXED_NOW,
-            )
-        )
-        assert result["activity_id"] == "train_new"
-        mock_training.create_training_activity.assert_awaited_once()
-
-    @pytest.mark.asyncio
     async def test_unknown_activity_type_returns_error(self):
         ctx = make_context()
         mock_db, _ = make_db_mod()

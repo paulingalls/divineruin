@@ -66,6 +66,25 @@ async def test_training_gate_refuses_running_cycle_beyond_fifty_completed(player
 
 
 @pytest.mark.asyncio
+async def test_training_gate_allows_new_cycle_after_all_complete(player_with_long_history, dev_db_pool):
+    player_id = player_with_long_history
+    await dev_db_pool.execute("UPDATE training_activities SET state = 'complete' WHERE player_id = $1", player_id)
+    content = SimpleNamespace(
+        get_training_program=AsyncMock(
+            return_value={"id": "combat_basics", "name": "Combat Basics", "training_activity_type": "technique_base"}
+        )
+    )
+    await _initiate_training_cycle_impl(
+        make_context(player_id=player_id),
+        "combat_basics",
+        db_mod=db,
+        db_training_mod=db_training,
+        db_content_mod=content,
+    )
+    assert await activity_count(dev_db_pool, player_id) == 52
+
+
+@pytest.mark.asyncio
 async def test_variant_gate_refuses_running_cycle_beyond_fifty_completed(player_with_long_history, dev_db_pool):
     player_id = player_with_long_history
     variant = SimpleNamespace(
