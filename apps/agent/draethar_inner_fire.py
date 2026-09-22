@@ -134,7 +134,6 @@ async def _inner_fire_locked(
         # HP is the monster's, not the player's, so neither players.data nor the caster's
         # concentration follows it down. Same suppression the attack path gets, same reason.
         if participant.type == "player":
-            session.validate_acting_player(player_id)
             await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
 
     # Transaction committed — sync the in-memory SSOTs and push the HUD state.

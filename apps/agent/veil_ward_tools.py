@@ -105,12 +105,6 @@ async def _activate_veil_ward_locked(
     pid = session.acting_player_id
     if caster_id is not None and caster_id != pid:
         raise ToolError("The caster must be the speaker on this turn.")
-    # caster_id is untrusted LLM input at the tool boundary; member_state fails loud (ValueError)
-    # on a non-party id — convert to the sanctioned narratable ToolError so the DM can recover.
-    try:
-        session.member_state(pid)  # validation only — the ward is scope-owned, not the caster's
-    except ValueError as e:
-        raise ToolError(f"Unknown party member: {pid}") from e
     logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
 
     if not active:
@@ -177,6 +171,7 @@ async def _activate_veil_ward_locked(
             session.validate_acting_player(pid)
             await persistence_mod.update_player_resources(pid, stamina=new_stamina, focus=new_focus, conn=conn)
 
+        session.validate_acting_player(pid)
         encounter_ward: dict | None = None
         if combat is not None:
             # rounds_remaining seeds the WRAP-beat clock story-006 ticks. Non-ROUNDS sources have

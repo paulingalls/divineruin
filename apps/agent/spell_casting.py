@@ -261,9 +261,8 @@ async def _resolve_cast(
     flush after commit (a rollback drops them, leaking nothing).
 
     ``caster`` is the PartyMember whose OWN pool (resonance/veil_ward/concentration) and player_id the
-    cast reads and writes — defaulting to ``session.party.primary`` so the OOC path (which passes none)
-    stays byte-identical to single-player. In multi-player combat the phase loop passes the declaring
-    member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
+    cast reads and writes — defaulting to ``session.party.primary``. ``cast_spell`` passes the bound
+    speaker; in multi-player combat the phase loop passes the declaring member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
     primary's (M14 story-004). ``session.resonance``/``session.concentration`` delegate to the primary,
     so for a solo party ``caster`` == the primary is the same objects. The ward does NOT: it is
     scope-owned, resolved from the DB per cast (ward_resolution.resolve_scope_ward).

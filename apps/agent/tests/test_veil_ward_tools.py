@@ -252,7 +252,7 @@ async def test_second_member_cannot_re_raise_a_warded_scope():
     ward_mut.write_ward.assert_not_awaited()
 
 
-# --- non-primary caster: resolves via member_state(caster_id), not the primary facade -----
+# --- non-primary caster: the bound speaker pays, not the primary -------------------------
 
 
 async def test_non_primary_member_raises_scope_ward_and_pays_alone():

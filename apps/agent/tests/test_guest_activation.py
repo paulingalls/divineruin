@@ -6,8 +6,9 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+from combat_participant import CombatParticipant
+from combat_state import CombatState
 from draethar_inner_fire import _inner_fire_impl
-from session_data import CombatParticipant, CombatState
 from spell_casting import _cast_spell_impl
 from veil_anchor_tools import _deploy_veil_anchor_impl
 from veil_ward_tools import _activate_veil_ward_impl
@@ -324,8 +325,8 @@ async def test_spell_revocation_at_each_write_refuses_and_rolls_back(revocation)
     assert ctx.userdata.party.members[1].concentration.spell_id is None
 
 
-@pytest.mark.parametrize("revocation", ["lock", "scope"])
-async def test_ward_revoked_after_await_refuses_before_resource_write(revocation):
+@pytest.mark.parametrize("revocation", ["lock", "scope", "resources"])
+async def test_ward_revoked_after_await_refuses_before_its_next_write(revocation):
     ctx = make_context(party_member_ids=["player_2"])
     db_mod, _ = make_db_mod()
     live = True
@@ -351,7 +352,9 @@ async def test_ward_revoked_after_await_refuses_before_resource_write(revocation
         return None
 
     queries = MagicMock(get_player=AsyncMock(side_effect=lock))
-    persistence = MagicMock(update_player_resources=AsyncMock())
+    persistence = MagicMock(
+        update_player_resources=AsyncMock(side_effect=revoke if revocation == "resources" else None)
+    )
     wards = MagicMock(write_ward=AsyncMock())
     resolution = MagicMock(resolve_scope_ward=AsyncMock(side_effect=scope))
     with ctx.userdata._bind_authenticated_actor("player_2", 4, validate):
@@ -364,8 +367,10 @@ async def test_ward_revoked_after_await_refuses_before_resource_write(revocation
                 ward_mutations_mod=wards,
                 resolution_mod=resolution,
             )
-    persistence.update_player_resources.assert_not_awaited()
+    if revocation != "resources":
+        persistence.update_player_resources.assert_not_awaited()
     wards.write_ward.assert_not_awaited()
+    assert ctx.userdata.location_ward is None
 
 
 @pytest.mark.parametrize("revocation", ["lock", "scope", "ward_write"])
