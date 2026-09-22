@@ -11,7 +11,6 @@ from card_tap_handler import SpecializationTapHandler
 from choice_tools import _select_impl
 from db_activity_queries import count_session_story_moments
 from reputation_tools import _adjust_faction_reputation_impl
-from session_data import SpecializationTap
 from session_tools import _record_story_moment_impl, _update_npc_disposition_impl
 
 
@@ -137,15 +136,6 @@ async def test_guest_select_resolves_only_guest_fork():
 
 async def test_host_cannot_resolve_guests_sole_pending_fork():
     ctx = party_context()
-    seams = choice_seams()
-    with pytest.raises(ToolError, match="your specialization"):
-        await choose(ctx, seams)
-    seams[3].set_player_specialization.assert_not_awaited()
-
-
-async def test_guest_ticket_cannot_redirect_host_turn():
-    ctx = party_context()
-    ctx.userdata.pending_specialization_tap = SpecializationTap("player_2", "warrior_identity", "battle_master")
     seams = choice_seams()
     with pytest.raises(ToolError, match="your specialization"):
         await choose(ctx, seams)

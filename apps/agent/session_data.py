@@ -63,38 +63,6 @@ class CreationState:
     backstory: str | None = None
 
 
-@dataclass(frozen=True)
-class SpecializationTap:
-    """A LiveKit-verified L5 specialization tap awaiting resolution by the ``select`` verb.
-
-    ``player_id`` comes from ``DataPacket.participant.identity``, which IS the player_id
-    (see participant_lifecycle, which compares it directly) — so the tap knows exactly whose
-    fork was tapped, with no mapping to build and no chance for a model to get it wrong.
-
-    It is carried here rather than rendered into the DM instruction (decision 5829eecd76eb):
-    in the tie this identity exists to break — two same-archetype L5 members, both unresolved —
-    a model that mis-copied the id would pass every validation check and permanently write one
-    member's choice onto the other's write-once row. ``select`` honours the ticket only when
-    BOTH the milestone and the option match the call, it is still FRESH, and clears it after the
-    commit.
-
-    ``created_at`` is what keeps the one-shot from latching. The only clear is a ``select`` that
-    both commits AND still matches, so a tap the DM never turned into a tool call — or one whose
-    call raised — would otherwise leave the ticket standing forever, and a DIFFERENT member's later
-    voice ``select`` naming the same milestone and option would be redirected onto the original
-    tapper's write-once row (concern fd1480a0ac96). The ticket only has to survive the single
-    ``generate_reply`` the tap triggers; past that window it is stale evidence, and falling back to
-    select's sole-claimant scan is strictly safer than honouring it.
-    """
-
-    player_id: str
-    milestone_id: str
-    specialization_id: str
-    # Monotonic, not wall clock: this measures elapsed time, and a clock step must not resurrect an
-    # expired ticket. compare=False so two tickets describing the same tap stay equal.
-    created_at: float = field(default_factory=time.monotonic, compare=False)
-
-
 @dataclass
 class SessionData:
     player_id: str
@@ -135,9 +103,6 @@ class SessionData:
     pre_combat_agent_type: str | None = None
     pre_dispatch_agent_type: str | None = None
     pre_blacksmith_agent_type: str | None = None
-    # One-shot owner ticket for the L5 specialization fork (M28 story-008): set by
-    # SpecializationTapHandler from the verified sender, consumed and cleared by select.
-    pending_specialization_tap: SpecializationTap | None = None
     # Serialises every path that saves or adopts a whole combat_state — start and end included — so
     # no holder writes back a snapshot that predates another holder's change. Readers do not take
     # it. Held for the WHOLE call and acquired BEFORE any DB transaction: an end released before its

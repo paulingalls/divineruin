@@ -23,7 +23,7 @@ import event_types as E
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
-from session_data import SessionData, SpecializationTap
+from session_data import SessionData
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.card_tap")
@@ -78,9 +78,9 @@ def build_specialization_instruction(milestone_id: str, specialization_id: str) 
     persists immutably — then voices it.
 
     Deliberately carries NO player identity (decision 5829eecd76eb). WHOSE fork this is
-    travels out-of-band on SessionData.pending_specialization_tap, because in the tie the
-    identity exists to break, a model that mis-copied an id into the argument would pass
-    every one of select's checks and permanently write one member's choice onto another's.
+    travels as the actor bound around the reply, because a model that mis-copied an id into
+    the argument would pass every one of select's checks and permanently write one member's
+    choice onto another's.
     """
     return (
         f"The player tapped to choose the {specialization_id} specialization. "
@@ -217,14 +217,11 @@ class SpecializationTapHandler(_PlayerHintsListener):
                 logger.warning("Specialization tap dropped: sender %r is not authorized", sender)
                 return False
             actor_scope = self._userdata._bind_authenticated_actor(sender, generation, lifecycle.require_authorized)
-        elif sender == self._userdata.primary_player_id and len(self._userdata.party.member_ids) == 1:
+        elif len(self._userdata.party.member_ids) == 1:
             actor_scope = nullcontext()
         else:
             logger.warning("Specialization tap dropped: no actor authorization for %r", sender)
             return False
-        # A new tap replaces the pending signal before the reply it triggers.
-        self._userdata.pending_specialization_tap = SpecializationTap(sender, milestone_id, specialization_id)
-
         logger.info("Specialization tap: %s -> %s", milestone_id, specialization_id)
         with actor_scope:
             self._session.generate_reply(

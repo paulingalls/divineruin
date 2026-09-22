@@ -9,7 +9,6 @@ Since M28 story-008 the fork can belong to any party member. The authenticated
 speaker resolves only their own fork."""
 
 import json
-import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,10 +16,8 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import _WARRIOR_MILESTONES, make_context, make_db_mod
 
-import choice_tools
 from choice_tools import _select_impl
 from milestones import Milestone
-from session_data import SpecializationTap
 
 # Patron-driven fork (Cleric/Paladin) — `select` rejects these pending Phase 8.
 _CLERIC_FORK = Milestone("cleric_identity", "cleric", "identity", 5, "specialization_fork", True, (), None, "cue")
@@ -197,11 +194,8 @@ async def test_blank_option_rejects_before_io():
 # ---------------------------------------------------------------------------
 
 
-def _party_ctx(*, tap=None):
-    ctx = make_context(party_member_ids=["player_2"])
-    if tap is not None:
-        ctx.userdata.pending_specialization_tap = tap
-    return ctx
+def _party_ctx():
+    return make_context(party_member_ids=["player_2"])
 
 
 @pytest.mark.asyncio
@@ -229,8 +223,8 @@ async def test_same_archetype_players_choose_for_themselves():
 @pytest.mark.asyncio
 async def test_guest_binding_chooses_guest_even_when_host_is_eligible():
     m = _make_mocks(
-        {**_player("player_1", class_="warrior", level=5), "name": "Bran"},
-        {**_player("player_2", class_="warrior", level=5), "name": "Sera"},
+        _player("player_1", class_="warrior", level=5),
+        _player("player_2", class_="warrior", level=5),
     )
     await _guest_select(m, "warrior_identity", "battle_master", ctx=_party_ctx())
     m.persistence.set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=m.conn)
@@ -248,147 +242,11 @@ async def test_no_eligible_member_refuses_without_writing():
 
 
 @pytest.mark.asyncio
-async def test_a_tap_landing_mid_transaction_neither_steals_nor_is_stolen():
-    # _on_data_received is a synchronous LiveKit callback, so a second tap can land at any
-    # await inside _select_impl. This call must resolve against the ticket it started with,
-    # and must leave the newcomer's ticket intact for its own resolution.
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5),
-    )
-    first = SpecializationTap("player_2", "warrior_identity", "battle_master")
-    later = SpecializationTap("player_1", "warrior_identity", "battle_master")
-    ctx = _party_ctx(tap=first)
-
-    rows = {"player_1": _player("player_1", class_="warrior", level=5), "player_2": _player("player_2", level=5)}
-
-    async def _swap_ticket_mid_await(_ids, **_kw):
-        ctx.userdata.pending_specialization_tap = later
-        return rows
-
-    m.queries.get_players_for_update = AsyncMock(side_effect=_swap_ticket_mid_await)
-
-    await _guest_select(m, "warrior_identity", "battle_master", ctx=ctx)
-
-    # Resolved for the bound speaker.
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=m.conn)
-    # The newcomer's ticket survives this commit.
-    assert ctx.userdata.pending_specialization_tap is later
-
-
-@pytest.mark.asyncio
-async def test_matching_ticket_breaks_the_tie():
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5),
-    )
-    ctx = _party_ctx(tap=SpecializationTap("player_2", "warrior_identity", "battle_master"))
-    await _guest_select(m, "warrior_identity", "battle_master", ctx=ctx)
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=m.conn)
-    assert "player_1" not in _persisted_ids(m)
-
-
-@pytest.mark.asyncio
-async def test_used_ticket_is_cleared_after_commit():
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5),
-    )
-    ctx = _party_ctx(tap=SpecializationTap("player_2", "warrior_identity", "battle_master"))
-    await _guest_select(m, "warrior_identity", "battle_master", ctx=ctx)
-    assert ctx.userdata.pending_specialization_tap is None
-
-
-@pytest.mark.asyncio
-async def test_ticket_survives_a_failed_resolution():
-    # A failed call leaves its matching ticket available for retry.
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5),
-    )
-    tap = SpecializationTap("player_2", "warrior_identity", "duelist")
-    ctx = _party_ctx(tap=tap)
-    with pytest.raises(ToolError, match="Invalid"):
-        await _guest_select(m, "warrior_identity", "duelist", ctx=ctx)
-    assert ctx.userdata.pending_specialization_tap is tap
-
-
-@pytest.mark.asyncio
-async def test_ticket_with_mismatched_option_is_ignored():
-    # A coincidental voice call must not consume someone else's ticket: honouring this
-    # one would raise "already chosen" for player_2 instead of resolving player_1's fork.
+async def test_bound_guest_who_already_chose_rejects_without_touching_the_host():
     m = _make_mocks(
         _player("player_1", class_="warrior", level=5),
         _player("player_2", class_="warrior", level=5, specialization="berserker"),
     )
-    ctx = _party_ctx(tap=SpecializationTap("player_2", "warrior_identity", "berserker"))
-    await _select(m, "warrior_identity", "battle_master", ctx=ctx)
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_1", "battle_master", conn=m.conn)
-
-
-@pytest.mark.asyncio
-async def test_ticket_naming_a_non_member_is_ignored():
-    # A stale ticket from a departed member cannot change the speaker's target.
-    m = _make_mocks(_player("player_1", class_="warrior", level=5))
-    ctx = make_context()
-    ctx.userdata.pending_specialization_tap = SpecializationTap("player_9", "warrior_identity", "battle_master")
-    await _select(m, "warrior_identity", "battle_master", ctx=ctx)
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_1", "battle_master", conn=m.conn)
-
-
-@pytest.mark.asyncio
-async def test_ticket_owner_with_nothing_pending_rejects():
-    # The bound member has already chosen.
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5, specialization="berserker"),
-    )
-    ctx = _party_ctx(tap=SpecializationTap("player_2", "warrior_identity", "battle_master"))
     with pytest.raises(ToolError, match="already"):
-        await _guest_select(m, "warrior_identity", "battle_master", ctx=ctx)
+        await _guest_select(m, "warrior_identity", "battle_master", ctx=_party_ctx())
     m.persistence.set_player_specialization.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_stale_ticket_does_not_redirect_a_later_voice_call():
-    """The one-shot must EXPIRE, not latch.
-
-    Its only clear is a select that commits and still matches, so a tap the DM never turned
-    into a tool call leaves the ticket standing. Minutes later a different member says the
-    same choice aloud: matching that stale ticket would write THEIR spoken choice onto the
-    original tapper's write-once row — irreversibly, and to the wrong player. Past the TTL the
-    ticket is discarded and select still targets the speaker.
-    """
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5, specialization="berserker"),
-    )
-    stale = SpecializationTap(
-        "player_2",
-        "warrior_identity",
-        "battle_master",
-        created_at=time.monotonic() - (choice_tools.SPECIALIZATION_TAP_TTL_S + 1),
-    )
-    ctx = _party_ctx(tap=stale)
-
-    await _select(m, "warrior_identity", "battle_master", ctx=ctx)
-
-    # The host call targets the host, regardless of the stale tapper.
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_1", "battle_master", conn=m.conn)
-    assert ctx.userdata.pending_specialization_tap is None
-
-
-@pytest.mark.asyncio
-async def test_a_fresh_ticket_is_still_honoured_within_the_ttl():
-    m = _make_mocks(
-        _player("player_1", class_="warrior", level=5),
-        _player("player_2", class_="warrior", level=5),
-    )
-    fresh = SpecializationTap(
-        "player_2",
-        "warrior_identity",
-        "battle_master",
-        created_at=time.monotonic() - (choice_tools.SPECIALIZATION_TAP_TTL_S - 5),
-    )
-    await _guest_select(m, "warrior_identity", "battle_master", ctx=_party_ctx(tap=fresh))
-    m.persistence.set_player_specialization.assert_awaited_once_with("player_2", "battle_master", conn=m.conn)
