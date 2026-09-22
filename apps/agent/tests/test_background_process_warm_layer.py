@@ -51,6 +51,7 @@ class TestWarmLayerRebuild:
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
+        mock_sd.primary_player_id = "p1"
         mock_sd.world_time = "evening"
         mock_sd.combat_state = None
         # A real CompanionState, not a MagicMock: the static layer renders the companion

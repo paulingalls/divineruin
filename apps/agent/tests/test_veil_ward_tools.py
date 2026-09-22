@@ -108,7 +108,11 @@ def _combat_mod():
 
 
 async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None, combat_mod=None):
-    actor = ctx.userdata._bind_actor(caster_id) if caster_id in ctx.userdata.party.member_ids else nullcontext()
+    actor = (
+        ctx.userdata._bind_authenticated_actor(caster_id, 1, lambda *_: None)
+        if caster_id in ctx.userdata.party.member_ids
+        else nullcontext()
+    )
     with actor, patch.object(veil_ward_events, "publish_game_event", AsyncMock()) as pub:
         raw = await _activate_veil_ward_impl(
             ctx,

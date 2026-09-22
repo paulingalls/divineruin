@@ -258,7 +258,11 @@ async def _cast_racial(
     concentration.update_player_concentration = AsyncMock()
     spells_mod = MagicMock()
     spells_mod.get_spell = MagicMock(return_value=spell)
-    actor = ctx.userdata._bind_actor(caster_id) if caster_id is not None else nullcontext()
+    actor = (
+        ctx.userdata._bind_authenticated_actor(caster_id, 1, lambda *_: None)
+        if caster_id is not None
+        else nullcontext()
+    )
     with actor:
         raw = await _cast_spell_impl(
             ctx,

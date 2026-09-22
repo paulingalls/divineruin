@@ -271,7 +271,7 @@ async def build_warm_layer(
             f"{d} (locked: {e['blocked_hint']})" if e.get("blocked_hint") else f"{d} (locked)" for d, e in locked_exits
         ]
 
-        affordances = ["AFFORDANCES"]
+        affordances = [f"AFFORDANCES — host player {player_id}"]
         if go_exits:
             affordances.append("  go: " + ", ".join(go_exits))
         if address_lines:
@@ -292,15 +292,15 @@ async def build_warm_layer(
 
     # Active training cycles (surfaces the cycle id so the DM can resolve midpoints)
     if training:
-        training_section = format_training_section([t for t in training if t.get("state") != "complete"])
+        training_section = format_training_section(training)
         if training_section:
-            sections.append(training_section)
+            sections.append(f"Host player {player_id}\n{training_section}")
 
     # Companion state
     if companion is not None and companion.is_present:
         conscious_str = "yes" if companion.is_conscious else "no"
         companion_lines = [
-            f"COMPANION — {companion.name}",
+            f"SESSION COMPANION — {companion.name} (host player {player_id})",
             f"Emotional state: {companion.emotional_state}",
             f"Relationship tier: {tier_name(effective_tier_rank(companion.session_count, companion.affinity))}",
             f"Conscious: {conscious_str}",
