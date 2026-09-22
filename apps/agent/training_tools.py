@@ -32,6 +32,8 @@ logger = logging.getLogger("divineruin.tools")
 
 _TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
+# Queried per state: an unfiltered read is capped at the player's 50 OLDEST rows, which can hide a new cycle.
+_ACTIVE_STATES = tuple(state for state in get_args(TrainingState) if state != _TERMINAL_STATE)
 
 
 def _player_chassis(archetype: str) -> archetypes.Chassis:
@@ -98,7 +100,7 @@ async def _query_training_programs_impl(
         scoped_programs.append({**program, "studiable_spell_ids": sorted(studiable_spell_ids)})
 
     active_training = []
-    for state in ("initiated", "running_first_half", "awaiting_decision", "running_second_half"):
+    for state in _ACTIVE_STATES:
         active_training.extend(await db_training_mod.get_player_training_activities(player_id, state=state))
     return json.dumps(
         {
