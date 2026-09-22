@@ -105,8 +105,7 @@ async def _check_social_impl(
     # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
     # writes fire — the disposition shift AND the die-consume — so they commit atomically; a lone
     # write (shift-only, or consume-only on a no-shift outcome) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume helper
-    # is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     if shift and roll.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)

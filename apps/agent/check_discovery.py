@@ -84,9 +84,10 @@ async def _check_discover_impl(
     validated_player_conditions(player, player_id)
 
     # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
-    # is keyed on the ELEMENT, not the free-text target, so re-searching the same secret under a
-    # reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the next
-    # one becomes reachable.
+    # is keyed on the player and ELEMENT, not the free-text target, so re-searching the same secret
+    # under a reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the
+    # next one becomes reachable. Per player because the discovered flag is per player: a guest's
+    # miss must not lock the host out of a secret the host has never found.
     flags = player.get("flags", {})
     skill_candidates = [
         elem
@@ -153,8 +154,7 @@ async def _check_discover_impl(
     # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
     # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a
     # lone write (success-only, or consume-only on a failed roll) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume
-    # helper is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     if result.success and result.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)
@@ -168,7 +168,7 @@ async def _check_discover_impl(
             session.validate_acting_player(player_id)
             await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
 
-    # Block re-rolling THIS element this session (keyed on the element, not the target) — added only
+    # Block re-rolling THIS element this session for this player (not keyed on the target) — added only
     # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
     # this line, so a rolled-back discovery flag leaves the element re-attemptable instead of locked
     # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus

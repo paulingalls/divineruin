@@ -47,6 +47,16 @@ def bind(ctx, validator=lambda _pid, _gen: None):
     return ctx.userdata._bind_authenticated_actor("player_2", 1, validator)
 
 
+NODE = {
+    "id": "vein",
+    "node_type": "ore_vein",
+    "resource_type": "ore",
+    "quantity": 2,
+    "respawn_days": 2,
+    "discovered": False,
+}
+
+
 def fixed_roll(n=15):
     return patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=n))
 
@@ -218,14 +228,7 @@ async def test_guest_gather_uses_own_tier_and_grants_own_materials():
     rows["player_2"]["conditions"] = apply_condition([], "inspired")
     ctx, queries = setup(rows)
     conditions_mutations = MagicMock(remove_player_conditions=AsyncMock())
-    node = {
-        "id": "vein",
-        "node_type": "ore_vein",
-        "resource_type": "ore",
-        "quantity": 2,
-        "respawn_days": 2,
-        "discovered": False,
-    }
+    node = dict(NODE)
     ctx.userdata.location_id = "woods"
     content = MagicMock(
         get_location=AsyncMock(
@@ -264,50 +267,6 @@ async def test_guest_gather_uses_own_tier_and_grants_own_materials():
     assert result["total"] > 20
     assert inventory["player_2"] == result["materials"]
     assert inventory["player_1"] == []
-
-
-@pytest.mark.asyncio
-async def test_revoked_guest_gather_cannot_grant_inventory():
-    rows = actors()
-    ctx, queries = setup(rows)
-    ctx.userdata.location_id = "woods"
-    live = True
-
-    def validate(_pid, _gen):
-        if not live:
-            raise RuntimeError("stale actor generation")
-
-    async def revoke(_node, _qty, **_kw):
-        nonlocal live
-        live = False
-
-    node = {
-        "id": "vein",
-        "node_type": "ore_vein",
-        "resource_type": "ore",
-        "quantity": 2,
-        "respawn_days": 2,
-        "discovered": False,
-    }
-    gather_mutations = MagicMock(mark_node_discovered=AsyncMock(), deplete_node_quantity=AsyncMock(side_effect=revoke))
-    content = MagicMock(
-        get_location=AsyncMock(return_value={"region": "greyvale", "resource_table": {"common": ["herb"]}}),
-        get_gathering_nodes_at_location=AsyncMock(return_value=[node]),
-    )
-    mutations = MagicMock(add_inventory_item=AsyncMock())
-    db_mod, _ = make_db_mod()
-    with bind(ctx, validate), pytest.raises(RuntimeError, match="stale"):
-        await _check_gather_impl(
-            ctx,
-            "",
-            queries=queries,
-            mutations=mutations,
-            content=content,
-            db_mod=db_mod,
-            gather_mutations=gather_mutations,
-            rng=FixedRng(19),
-        )
-    mutations.add_inventory_item.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -396,3 +355,95 @@ async def test_guest_discover_reads_own_flags():
     assert result["outcome"] == "discovered"
     assert result["roll"] == 15
     assert mutations.set_player_flag.await_args.args[:2] == ("player_2", "secret.discovered")
+
+
+WRITES = (
+    "update_skill_advancement",
+    "clear_narrative_moment",
+    "remove_player_conditions",
+    "set_npc_disposition",
+    "set_player_flag",
+    "mark_node_discovered",
+    "deplete_node_quantity",
+    "add_inventory_item",
+)
+STALE_CASES = [
+    # mode, d20, guest condition, call that revokes the guest, writes that must not land after it
+    ("skill", 15, "inspired", "get_player", ["update_skill_advancement", "remove_player_conditions"]),
+    ("skill", 15, None, "get_player", ["update_skill_advancement"]),
+    ("save", 15, "blessed", "get_player", ["remove_player_conditions"]),
+    ("social", 19, "inspired", "get_player", ["set_npc_disposition", "remove_player_conditions"]),
+    ("social", 19, None, "get_player", ["set_npc_disposition"]),
+    ("social", 1, "inspired", "get_player", ["remove_player_conditions"]),
+    ("discover", 15, "inspired", "get_player", ["set_player_flag", "remove_player_conditions"]),
+    ("discover", 15, None, "get_player", ["set_player_flag"]),
+    ("discover", 1, "inspired", "get_player", ["remove_player_conditions"]),
+    ("gather", 19, "inspired", "get_player", ["mark_node_discovered"]),
+    ("gather", 19, "inspired", "mark_node_discovered", ["deplete_node_quantity"]),
+    ("gather", 19, "inspired", "deplete_node_quantity", ["add_inventory_item"]),
+    ("gather", 19, "inspired", "add_inventory_item", ["remove_player_conditions"]),
+]
+
+
+def call_check(mode, d20, ctx, queries, db_writes):
+    content = MagicMock(
+        get_location=AsyncMock(
+            return_value={
+                "region": "greyvale",
+                "resource_table": {"common": ["herb"], "uncommon": ["root"], "rare": ["star"]},
+                "hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 19}],
+            }
+        ),
+        get_npc=AsyncMock(return_value={"default_disposition": "neutral"}),
+        # A star node makes the rich find one material id, so the grant is a single write and the
+        # consume guard, not the grant loop's next guard, is the one after it.
+        get_gathering_nodes_at_location=AsyncMock(return_value=[dict(NODE, resource_type="star")]),
+    )
+    db_mod, _ = make_db_mod()
+    io = dict(queries=queries, mutations=db_writes, conditions_mutations=db_writes)
+    if mode == "skill":
+        return _check_skill_impl(ctx, "athletics", "moderate", "climb", db_mod=db_mod, **io)
+    if mode == "save":
+        return _check_save_impl(ctx, "wisdom", 12, "fear", queries=queries, conditions_mutations=db_writes)
+    if mode == "social":
+        return _check_social_impl(
+            ctx, "merchant", "persuasion", "easy", content=content, db_mod=db_mod, rng=FixedRng(d20), **io
+        )
+    if mode == "discover":
+        return _check_discover_impl(ctx, "perception", "wall", content=content, db_mod=db_mod, **io)
+    return _check_gather_impl(
+        ctx, "", content=content, db_mod=db_mod, gather_mutations=db_writes, rng=FixedRng(d20), **io
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("mode", "d20", "condition", "revoke_on", "blocked"), STALE_CASES)
+async def test_stale_guest_generation_blocks_every_later_write(mode, d20, condition, revoke_on, blocked):
+    rows = actors()
+    if condition:
+        rows["player_2"]["conditions"] = apply_condition([], condition)
+    ctx, queries = setup(rows)
+    queries.get_single_skill_advancement = AsyncMock(
+        return_value={"tier": "expert", "use_counter": 2, "narrative_moment_ready": False}
+    )
+    queries.get_npc_disposition = AsyncMock(return_value="neutral")
+    writes = {name: AsyncMock() for name in WRITES}
+    live = True
+
+    def validate(_pid, _gen):
+        if not live:
+            raise RuntimeError("stale actor generation")
+
+    trigger = {"get_player": queries.get_player, **writes}[revoke_on]
+    inner = trigger.side_effect
+
+    def revoke(*args, **kwargs):
+        nonlocal live
+        live = False
+        return inner(*args, **kwargs) if inner else None
+
+    trigger.side_effect = revoke
+    with bind(ctx, validate), fixed_roll(d20), pytest.raises(RuntimeError, match="stale"):
+        await call_check(mode, d20, ctx, queries, MagicMock(**writes))
+    for name in blocked:
+        writes[name].assert_not_awaited()
