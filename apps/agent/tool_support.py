@@ -16,7 +16,7 @@ __all__ = [
     "DISPOSITION_ORDER",
     "DISPOSITION_TIERS",
     "LOCATION_CORRUPTION",
-    "MAX_STORY_MOMENTS_PER_SESSION",
+    "MAX_STORY_MOMENTS_PER_PLAYER",
     "SOUND_ATTACK_CRITICAL",
     "SOUND_ATTACK_HIT",
     "SOUND_ATTACK_MISS",
@@ -268,4 +268,4 @@ STORY_MOMENTS: dict[str, tuple[str, str]] = {
     "hollow_encounter": ("story_hollow_encounter", "story_hollow_encounter"),
     "god_contact": ("story_god_contact", "story_god_contact"),
 }
-MAX_STORY_MOMENTS_PER_SESSION = 3
+MAX_STORY_MOMENTS_PER_PLAYER = 3

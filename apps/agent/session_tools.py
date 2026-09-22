@@ -19,7 +19,7 @@ from game_events import publish_game_event
 from role_archetypes import shift_disposition
 from session_data import SessionData
 from tool_preconditions import require_npc_present
-from tool_support import MAX_STORY_MOMENTS_PER_SESSION, STORY_MOMENTS, _cap_str
+from tool_support import MAX_STORY_MOMENTS_PER_PLAYER, STORY_MOMENTS, _cap_str
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -52,6 +52,7 @@ async def _update_npc_disposition_impl(
     logger.info("update_npc_disposition called: npc_id=%s, delta=%d, reason=%s", npc_id, delta, reason)
     _cap_str(reason, 256, "reason")
     session: SessionData = context.userdata
+    player_id = session.acting_player_id
 
     delta = max(-2, min(2, delta))
 
@@ -67,13 +68,14 @@ async def _update_npc_disposition_impl(
     pending_events: list[tuple[str, dict]] = []
 
     async with db_mod.transaction() as conn:
-        current = await queries.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
+        current = await queries.get_npc_disposition(npc_id, player_id, conn=conn, for_update=True)
         if current is None:
             current = npc.get("default_disposition", "neutral")
 
         new_disposition = shift_disposition(current, delta, off_ladder="neutral")
 
-        await mutations.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
+        session.validate_acting_player(player_id)
+        await mutations.set_npc_disposition(npc_id, player_id, new_disposition, reason, conn=conn)
 
         pending_events.append(
             (
@@ -156,16 +158,18 @@ async def _record_story_moment_impl(
     _cap_str(description, 512, "description")
 
     sd: SessionData = context.userdata
+    player_id = sd.acting_player_id
     template_id, asset_id = STORY_MOMENTS[moment_key]
     image_url = slug_asset_url(asset_id)
 
-    count = await activities.count_session_story_moments(sd.session_id)
-    if count >= MAX_STORY_MOMENTS_PER_SESSION:
-        raise ToolError(f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session.")
+    count = await activities.count_session_story_moments(sd.session_id, player_id)
+    if count >= MAX_STORY_MOMENTS_PER_PLAYER:
+        raise ToolError(f"Maximum {MAX_STORY_MOMENTS_PER_PLAYER} story moments per player in this session.")
 
+    sd.validate_acting_player(player_id)
     await mutations.save_story_moment(
         session_id=sd.session_id,
-        player_id=sd.player_id,
+        player_id=player_id,
         moment_key=moment_key,
         description=description,
         template_id=template_id,

@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from contextlib import nullcontext
 
 from livekit import rtc
 from livekit.agents import AgentSession
@@ -183,8 +184,7 @@ class SpecializationTapHandler(_PlayerHintsListener):
     permanent pick, so the 2s window only suppresses accidental double-taps.
 
     Rewards are party-wide (M28 story-001), so the tapper is not necessarily the primary.
-    The tap records its verified sender on SessionData for select to consume, which is what
-    keeps a teammate's choice off the primary's write-once row (M28 story-008).
+    The tap binds its verified sender to the reply so select targets that speaker.
     """
 
     def _handle(self, payload: dict, sender: str) -> bool:
@@ -201,29 +201,36 @@ class SpecializationTapHandler(_PlayerHintsListener):
             logger.warning("Specialization tap dropped: invalid ids (%r / %r)", milestone_id, specialization_id)
             return False
 
-        # Record the verified sender as a one-shot ticket for select to consume, so a
-        # non-primary member's fork resolves onto THEIR row (M28 story-008). Its OWN try:
-        # a sender we cannot validate must cost only the ticket, never the tap — with no
-        # ticket select falls back to the sole-claimant party scan, which is exactly right
-        # for the solo session an identity-less tap comes from. Sharing the guard above
-        # would return False and swallow the tap entirely.
         try:
             _validate_id(sender, "sender")
-            ticket: SpecializationTap | None = SpecializationTap(sender, milestone_id, specialization_id)
         except ToolError:
-            logger.warning("Specialization tap: unusable sender %r; select will fall back to the party scan", sender)
-            ticket = None
-        # Always replace, never leave an earlier tap's ticket standing: this tap is the most
-        # recent statement of who is choosing, and a stale one could resolve THIS tap onto
-        # the earlier tapper's write-once row. Set before generate_reply — select consumes
-        # it during the reply this triggers.
-        self._userdata.pending_specialization_tap = ticket
+            logger.warning("Specialization tap dropped: unusable sender %r", sender)
+            return False
+        if not self._userdata.party.contains(sender):
+            logger.warning("Specialization tap dropped: sender %r is not in the party", sender)
+            return False
+        owner = self._userdata.multiplayer_owner
+        if owner is not None:
+            lifecycle = owner.lifecycle
+            generation = lifecycle.current_generation(sender)
+            if generation is None or not lifecycle.is_authorized(sender, generation):
+                logger.warning("Specialization tap dropped: sender %r is not authorized", sender)
+                return False
+            actor_scope = self._userdata._bind_authenticated_actor(sender, generation, lifecycle.require_authorized)
+        elif sender == self._userdata.primary_player_id and len(self._userdata.party.member_ids) == 1:
+            actor_scope = nullcontext()
+        else:
+            logger.warning("Specialization tap dropped: no actor authorization for %r", sender)
+            return False
+        # A new tap replaces the pending signal before the reply it triggers.
+        self._userdata.pending_specialization_tap = SpecializationTap(sender, milestone_id, specialization_id)
 
         logger.info("Specialization tap: %s -> %s", milestone_id, specialization_id)
-        self._session.generate_reply(
-            user_input=f"[The player chose the {specialization_id} specialization]",
-            instructions=build_specialization_instruction(milestone_id, specialization_id),
-        )
+        with actor_scope:
+            self._session.generate_reply(
+                user_input=f"[The player chose the {specialization_id} specialization]",
+                instructions=build_specialization_instruction(milestone_id, specialization_id),
+            )
         return True
 
 

@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sample_fixtures import make_context
 
 from card_tap_handler import (
     HINT_COOLDOWN_S,
@@ -218,7 +219,11 @@ def _make_spec_handler() -> tuple[SpecializationTapHandler, MagicMock]:
     room = MagicMock()
     session = MagicMock()
     session.generate_reply = MagicMock()
-    sd = SessionData(player_id="test", location_id="", room=room)
+    sd = make_context(player_id="test", party_member_ids=["player_2"]).userdata
+    lifecycle = MagicMock()
+    lifecycle.current_generation.return_value = 4
+    lifecycle.is_authorized.return_value = True
+    sd.multiplayer_owner = MagicMock(lifecycle=lifecycle)
     handler = SpecializationTapHandler(room=room, session=session, userdata=sd)
     return handler, session
 
@@ -328,32 +333,26 @@ class TestSpecializationTapTicket:
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
         assert seen == [SpecializationTap("player_2", "warrior_identity", "warrior_battle_master")]
 
-    def test_no_identity_still_dispatches_the_tap(self):
-        # A packet without a participant leaves no ticket, and select falls back to the
-        # sole-claimant party scan — exactly right for the solo session this happens in.
+    def test_no_identity_drops_the_tap(self):
         handler, session = _make_spec_handler()
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
         assert handler._userdata.pending_specialization_tap is None
-        session.generate_reply.assert_called_once()
+        session.generate_reply.assert_not_called()
 
-    def test_unusable_sender_costs_the_ticket_not_the_tap(self):
-        # Sender validation gets its OWN try (concern 95a6e9e64010): sharing the guard on
-        # milestone_id/specialization_id would return False and swallow the whole tap.
+    def test_unusable_sender_drops_the_tap(self):
         handler, session = _make_spec_handler()
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="not a valid id!"))
         assert handler._userdata.pending_specialization_tap is None
-        session.generate_reply.assert_called_once()
+        session.generate_reply.assert_not_called()
 
-    def test_unusable_sender_clears_a_previous_ticket(self):
-        # A tap is the most recent statement of who is choosing. Leaving an earlier
-        # tapper's ticket standing could resolve THIS tap onto their row.
+    def test_unusable_sender_does_not_consume_a_previous_ticket(self):
         handler, _ = _make_spec_handler()
         handler._userdata.pending_specialization_tap = SpecializationTap(
             "player_2", "warrior_identity", "warrior_battle_master"
         )
         handler._last_hint_time = 0.0
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
-        assert handler._userdata.pending_specialization_tap is None
+        assert handler._userdata.pending_specialization_tap.player_id == "player_2"
 
     def test_dropped_tap_records_nothing(self):
         handler, _ = _make_spec_handler()
