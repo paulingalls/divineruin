@@ -1,4 +1,5 @@
-import { test, expect, beforeEach, mock } from "bun:test";
+import { test, expect, beforeEach, jest, mock, spyOn } from "bun:test";
+import * as Haptics from "expo-haptics";
 import combatSounds from "../../../../content/combat_sounds.json";
 import gods from "../../../../content/gods.json";
 import spells from "../../../../content/spells.json";
@@ -40,10 +41,11 @@ void mock.module("expo-audio", () => ({
   setAudioModeAsync: async () => {},
 }));
 
-import { handleGameEvent } from "@/audio/game-event-handler";
+import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handler";
 import { lookupSound } from "@/audio/sound-registry";
 import { playSfx, releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
+import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(() => {
@@ -80,11 +82,68 @@ test("spell and god whisper content sounds reach the platform player", () => {
   for (const soundName of new Set(godStingers)) expectEventPlays(soundName);
 });
 
-test("dice_roll event triggers playback", () => {
-  handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14 });
-  expect(mockPlayers).toHaveLength(1);
-  expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
-  expect(mockPlayers[0].playCalls).toBe(1);
+test.each<[string, { success?: unknown }]>([
+  ["absent", {}],
+  ["null", { success: null }],
+  ["string", { success: "false" }],
+  ["number", { success: 0 }],
+])("narrative dice_roll with %s success has no result sting", (_, outcome) => {
+  jest.useFakeTimers();
+  const haptic = spyOn(Haptics, "impactAsync");
+  try {
+    handleGameEvent({ type: "dice_roll", roll_type: "narrative", roll: 14, ...outcome });
+    expect(mockPlayers).toHaveLength(1);
+    expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
+    expect(mockPlayers[0].playCalls).toBe(1);
+    expect(haptic).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light);
+    expect(hudStore.getState().overlays[0]).toMatchObject({
+      type: "dice_result",
+      payload: { roll: 14, rollType: "narrative", success: outcome.success },
+    });
+    expect(jest.getTimerCount()).toBe(0);
+    jest.advanceTimersByTime(DICE_STINGER_DELAY_MS + 1);
+    expect(mockPlayers).toHaveLength(1);
+  } finally {
+    haptic.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+test.each([
+  [true, "success_sting"],
+  [false, "fail_sting"],
+] as const)("dice_roll success %s plays %s after the delay", (success, sound) => {
+  jest.useFakeTimers();
+  try {
+    handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14, success });
+    expect(mockPlayers).toHaveLength(1);
+    expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
+    expect(jest.getTimerCount()).toBe(1);
+    jest.advanceTimersByTime(DICE_STINGER_DELAY_MS - 1);
+    expect(mockPlayers).toHaveLength(1);
+    jest.advanceTimersByTime(1);
+    expect(mockPlayers).toHaveLength(2);
+    expect(mockPlayers[1].source).toBe(lookupSound(sound) as number);
+    expect(mockPlayers[1].playCalls).toBe(1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("narrative dice_roll cancels an earlier result sting", () => {
+  jest.useFakeTimers();
+  try {
+    handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14, success: false });
+    expect(jest.getTimerCount()).toBe(1);
+    jest.advanceTimersByTime(DICE_STINGER_DELAY_MS - 1);
+    handleGameEvent({ type: "dice_roll", roll_type: "narrative", roll: 15 });
+    expect(jest.getTimerCount()).toBe(0);
+    jest.advanceTimersByTime(DICE_STINGER_DELAY_MS + 1);
+    expect(mockPlayers).toHaveLength(2);
+    expect(mockPlayers.every((player) => player.source === lookupSound("dice_roll"))).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("unknown event type does not crash", () => {
