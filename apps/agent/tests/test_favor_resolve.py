@@ -1,8 +1,10 @@
+import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import db_mutations_divine
 import event_types as E
 from progression_tools import _award_divine_favor_core
 
@@ -23,9 +25,7 @@ async def test_resolve_persists_real_delta_and_only_refreshes_on_gain(level, amo
             "last_served_at": prior,
         }
     )
-    mutations = MagicMock()
-    mutations.update_divine_favor = AsyncMock()
-    conn = MagicMock()
+    conn = AsyncMock()
     pending = []
     before = datetime.now(UTC)
 
@@ -35,20 +35,20 @@ async def test_resolve_persists_real_delta_and_only_refreshes_on_gain(level, amo
         "test",
         conn=conn,
         pending_events=pending,
-        mutations=mutations,
+        mutations=db_mutations_divine,
         activities=activities,
     )
 
     after = datetime.now(UTC)
     assert grant is not None and grant.new_level == expected
-    mutations.update_divine_favor.assert_awaited_once()
-    assert mutations.update_divine_favor.call_args.args == ("player_1", expected)
-    kwargs = mutations.update_divine_favor.call_args.kwargs
-    assert kwargs["conn"] is conn
+    conn.execute.assert_awaited_once()
+    sql, player, level_json, *served = conn.execute.call_args.args
+    assert player == "player_1" and json.loads(level_json) == expected
     if refresh:
-        assert before <= datetime.fromisoformat(kwargs["last_served_at"]) <= after
+        assert "{divine_favor,last_served_at}" in sql
+        assert before <= datetime.fromisoformat(json.loads(served[0])) <= after
     else:
-        assert "last_served_at" not in kwargs
+        assert "last_served_at" not in sql and served == []
     assert pending[0][0] == E.DIVINE_FAVOR_CHANGED
     payload = pending[0][1]
     assert set(payload) == {

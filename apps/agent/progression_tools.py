@@ -181,8 +181,9 @@ async def _award_divine_favor_core(
     mutations=db_mutations_divine,
     activities=db_activity_queries,
 ) -> "FavorGrant | None":
-    """The divine-favor Resolve: raise ``player_id``'s favor by ``amount``, clamped to their
-    patron's max, inside the CALLER's transaction.
+    """The divine-favor Resolve: change ``player_id``'s favor by ``amount``, clamped to
+    [0, their patron's max], inside the CALLER's transaction. Only a real gain restarts the
+    neglect clock (``last_served_at``).
 
     Mirrors ``_award_xp_core``: no transaction of its own and no publish — the
     DIVINE_FAVOR_CHANGED cue is buffered into the caller-owned ``pending_events`` and released
@@ -233,9 +234,9 @@ async def _award_divine_favor_core(
         )
     )
     logger.info(
-        "divine favor awarded: %s +%d → %d (patron=%s)",
+        "divine favor changed: %s %+d → %d (patron=%s)",
         player_id,
-        amount,
+        actual_delta,
         new_level,
         favor["patron"],
     )
