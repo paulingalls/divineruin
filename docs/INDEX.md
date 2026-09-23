@@ -3,9 +3,11 @@
 Run `uv run python scripts/doc_index.py --write` after editing docs. The test compares
 this file with the regenerated result. Scope: every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
-assets and source files are excluded. Detailed tables use `##` headings, or `###`
-headings when a document has one wrapping `##`. Ranges are inclusive.
-Empty descriptions in detailed entries need a human summary.
+assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
+`mockups/` are listed by path and line count only; every other doc gets a section
+table. A doc in a new top-level directory fails generation until it is given a group.
+Detailed tables use `##` headings, or `###` headings when a document has one wrapping
+`##`. Ranges are inclusive. Empty descriptions in detailed entries need a human summary.
 
 Start with `product_overview.md` for the vision, `game_design_doc.md` for player
 systems, and `milestones/README.md` for the implementation dependency graph.
@@ -20,12 +22,12 @@ Additional topics: Cosmology: The Veil, the Wellspring, the Sundering, the Hollo
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-18 | This is the living lore bible for **Divine Ruin: The Sundered Veil**. It contains the deep narrative, history, and world-building of Aethos — the |
+| About This Document | 3-18 | Purpose of the lore bible, related documents, implementation note |
 | The Core Mystery | 19-24 | A god broke the world trying to save it |
 | The Cosmology of Aethos | 25-299 | The Veil, Wellspring, Sundering, and Hollow |
 | Veythar, the Lorekeeper | 300-548 | The guilty god: Resonance Lattice, Attenuation Spheres, Invocation |
-| The Layers of the Mystery | 549-565 | The core mystery unfolds in layers, each reframing everything that came before: |
-| The Deep Future — The Wellspring Question | 566-581 | The long-term narrative potential of the Wellspring: |
+| The Layers of the Mystery | 549-565 | The mystery's reveal layers, from the breach to Veythar's guilt, and player reactions |
+| The Deep Future — The Wellspring Question | 566-581 | Endgame choice: reach for the Wellspring or seal the Veil |
 | The Pantheon of Aethos | 582-804 | Full profiles: domains, personalities, game governance |
 | The Geography of Aethos | 805-1146 | Voidmaw, Ashmark, major regions, Greyvale |
 | The Peoples of Aethos | 1147-1388 | Six races and their distinct histories and cultures |
@@ -63,17 +65,17 @@ Additional topics: Luna evidence and production route: Seeded 27-case Luna matri
 | Section | Lines | What's There |
 |---|---|---|
 | 1. Recommendation | 18-35 | Strict input guarantees, existing local validation, tool results as a separate contract |
-| 2. What strict actually protects | 36-71 | The provider under study in this section was Anthropic, through |
+| 2. What strict actually protects | 36-71 | Strict constrains tool names and arguments, not tool results or action legality |
 | 3. Diagnosis and fresh evidence | 72-132 | Current counts, live failures, production model mismatch, unsuccessful simplifications, successful request partition |
 | 4. The two requests | 133-195 | Fixed per-mode policy, selection and argument generation, LiveKit feasibility probe |
 | 5. Integration and execution invariants | 196-243 | Tool scoping, call IDs, batches, cancellation, visible failure, request accounting |
 | 6. Cache, latency, and cost | 244-295 | Measured preliminary timings, warmup, paired voice benchmark, go/no-go conditions |
 | 7. Verification and rollout | 296-357 | Fault injections, implementation sequence, strict-off inventory, rollback |
 | 8. Alternatives and boundaries | 358-376 | Rejected approaches, reproduction procedure, limits of the evidence |
-| 9. Reproducing the research | 377-407 | The current baseline is the existing command, run from `apps/agent`: |
-| 10. Seeded Luna gameplay evidence | 408-448 | On 2026-09-20, the real OpenAI Luna acceptance lane executed one seeded case for |
+| 9. Reproducing the research | 377-407 | Commands to rerun the probe and the request partition |
+| 10. Seeded Luna gameplay evidence | 408-448 | 27-case seeded Luna acceptance run, 2026-09-20, and its results |
 | 11. Production decision | 449-467 | On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout. |
-| 12. GPT-6 Luna route (2026-09-22) | 468-484 | The default gameplay route now names `gpt-6-luna`. It retains |
+| 12. GPT-6 Luna route (2026-09-22) | 468-484 | Default route moves to gpt-6-luna; rates and paid acceptance results |
 
 ---
 
@@ -91,7 +93,7 @@ Additional topics: Verbs take sum types: The schema rules + per-verb rewrites (c
 | 1. What trunk sends today | 55-95 | Per-agent tool + union counts; the bags of optionals |
 | 2. The limits, precisely | 96-136 | 20 strict tools, 16 unions (recursive), ~13-nullable object cliff, additionalProperties/enum-null/oneOf rejections, and what does vs doesn't traverse `$ref` |
 | 3. Diagnosis | 137-158 | Why folding nouns into verbs produced product-types-with-nulls |
-| 4. Design | 159-405 | These are the rules the budget test should enforce (section 5 has the pins). |
+| 4. Design | 159-405 | Schema rules for sum-typed verbs, growing verb sets, right information and action at the right time, plugin escape hatches |
 | 5. Sequencing | 406-463 | Order of work for story-019 (Sprint 47, ahead of the M29 restore) |
 | 6. Risks and how to measure them | 464-485 | Tool-selection eval, cache-read assertion |
 | 7. Open questions for the human | 486-500 | query_info shape, enter_mode, resolve_phase-as-advance-verb, creation agent model |
@@ -132,20 +134,20 @@ Additional topics: UI Sounds: Physical-feeling (wood, leather, parchment), dice 
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-17 | This is the audio design bible for Divine Ruin. In a voice-first game with no visuals, audio isn't a layer on top of the experience — it *is* the |
+| About This Document | 3-17 | Audio as the experience; creative guide and prompt reference; related documents |
 | Audio Philosophy | 18-47 | "Sound Is Sight", four channels, ducking rules |
-| The Audio Stack — What the Player Hears | 48-77 | At any given moment, the player's audio experience is a mix of up to seven simultaneous layers. These layers have a strict priority hierarchy — |
+| The Audio Stack — What the Player Hears | 48-77 | Seven-layer priority hierarchy and mixing rules |
 | Environmental Soundscapes | 78-178 | Layered ambient (foundation + detail + motion + seasonal), corruption audio |
 | The Sound of the Hollow | 179-229 | Hollow breaks rules: reversed sounds, impossible frequencies |
 | Voice Design | 230-326 | DM narrator, companion voices (Kael, Sable), god voices, NPC pools |
 | Combat Audio | 327-378 | Spatial positioning, intensity layers, boss fights, critical hits |
 | Music Design | 379-432 | Adaptive stems (8 types), crossfade rules, layering |
-| UI and Feedback Audio | 433-470 | Non-diegetic sounds that exist outside the game world — interface feedback, notifications, system confirmations. These should be minimal, consistent, |
-| Spatial Audio Design | 471-496 | Spatial audio is how the player navigates the world without visuals. Direction, distance, and environment are all communicated through how sound is |
+| UI and Feedback Audio | 433-470 | Non-diegetic UI sound principles and categories |
+| Spatial Audio Design | 471-496 | MVP stereo positioning and post-MVP binaural 3D audio |
 | Async Audio Design | 497-527 | The Catch-Up layer uses pre-rendered audio, not live voice. This audio has distinct design requirements from the real-time sync experience. |
 | Audio Asset Inventory — MVP Requirements | 528-669 | Complete asset list with IDs and generation prompts |
 | Audio Technical Requirements | 670-703 | Format, spatialization, mixing, and playback requirements. |
-| Open Audio Design Questions | 704-718 | 1. **Adaptive music middleware.** What technology handles the real-time mixing of music stems based on game state? Options include FMOD, Wwise, or a |
+| Open Audio Design Questions | 704-718 | Middleware, binaural library, generation consistency, accessibility and other open questions |
 
 ---
 
@@ -155,17 +157,17 @@ Investigation of Stable Audio 3 noise-only outputs and the resolved production p
 
 | Section | Lines | What's There |
 |---|---|---|
-| 1. Objective when this started | 13-26 | Sprint-038 / M22 "Audio Completeness", **story-003**: regenerate the 20 legacy |
-| 2. Expected vs. observed | 27-37 | `StableAudioModel.generate(...)` from the `stable_audio_3` package, loading |
-| 3. The core contradiction | 38-48 | Same machine, same day: |
+| 1. Objective when this started | 13-26 | M22 story-003 goal: regenerate 20 legacy SFX with the SA3 generator |
+| 2. Expected vs. observed | 27-37 | Expected recognizable SFX; every clip was noise, from wrapper and official CLI |
+| 3. The core contradiction | 38-48 | Same machine and package worked at M17 hours earlier |
 | 4. Environment facts (verified) | 49-92 | `git+https://github.com/Stability-AI/stable-audio-3.git@ea9ba361f9e58da6afed1304657e20fda701a9a4` |
-| 5. What was tried, and the result (all NOISE) | 93-108 | Therefore ruled out as the cause:** step count, cfg_scale, output |
-| 6. Dead ends explored | 109-124 | + `create_model_from_config` on the SA3 `model_config.json` throws |
-| 7. Strongest un-run lead (recommended first step next session) | 125-140 | The weights may not actually be binding to the model** → a randomly-initialized |
-| 8. Other un-run leads | 141-158 | (15:54) and now (22:00)?** CPU also fails, which argues against a pure-Metal |
+| 5. What was tried, and the result (all NOISE) | 93-108 | Five generation attempts, all noise; causes ruled out |
+| 6. Dead ends explored | 109-124 | Open 1.0 harness cannot load SA3; Open 1.0 presets do not apply |
+| 7. Strongest un-run lead (recommended first step next session) | 125-140 | Check whether checkpoint weights bind to the model |
+| 8. Other un-run leads | 141-158 | System updates, replaying committed takes, recovering the M17 invocation |
 | 9. Key paths / artifacts | 159-172 | `scripts/audio/generate_spell_sfx_stableaudio.py` |
-| 10. State of the working tree / sprint (so the next session isn't surprised) | 173-188 | story-001 (PROMPTS → 57 stems + parity/style guards) and story-002 (spell |
-| 11. Recommendation | 189-198 | Treat this as **environment/tooling forensics**, not application code. Start a |
+| 10. State of the working tree / sprint (so the next session isn't surprised) | 173-188 | Which stories are committed and which edits are uncommitted |
+| 11. Recommendation | 189-198 | Treat as environment forensics; verify weight binding first |
 | 12. RESOLUTION (follow-up session, 2026-07-05 ~22:50) | 199-242 | Every lead above was run to ground; the stack works again with **zero changes**. |
 
 ---
@@ -176,13 +178,13 @@ Sound-effect generation, asset keys, regeneration, and integration guidance.
 
 | Section | Lines | What's There |
 |---|---|---|
-| 1. Goal & Principle | 3-20 | Combat already emits `PLAY_SOUND` deterministically for weapon/status effects |
-| 2. Service Evaluation | 21-36 | Evaluated four options. Figures below were pulled from the vendors' live pages on |
-| 2.5 Existing Divine Ruin Audio Pipeline (prior work — the actual recommended path) | 37-170 | The project already built and ran a generation pipeline** at |
-| 3. Recommendation | 171-252 | Decision rule: quality is the gate; a single pipeline is a strong tiebreaker, |
-| 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-392 | `audio_cue` (free-text, director prose + generation prompt) and `sound_id` (new |
-| 5. Regenerate Recipe | 393-507 | This is the actual recommended generator (§2.5). Regenerate any spell-cast SFX |
-| 6. Integration Notes for Stories 002/003 | 508-547 | reserved-for-future `apps/audio/` directory) as the SSOT, then get copied/bundled |
+| 1. Goal & Principle | 3-20 | M17 goal: every spell cast plays an engine-emitted, generatable SFX |
+| 2. Service Evaluation | 21-36 | ElevenLabs, Stable Audio 3, AudioGen and procedural synth compared on cost, licensing, quality |
+| 2.5 Existing Divine Ruin Audio Pipeline (prior work — the actual recommended path) | 37-170 | Existing Stable Audio harness; SA3 Small SFX upgrade; one pipeline for all audio |
+| 3. Recommendation | 171-252 | Quality gates the choice; bake-off and SA3-medium spike findings |
+| 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-392 | sound_id keyed by effect family; 7-key MVP palette; all 87 spells mapped |
+| 5. Regenerate Recipe | 393-507 | Recommended Stable Audio path, ElevenLabs secondary, procedural fallback |
+| 6. Integration Notes for Stories 002/003 | 508-547 | Asset SSOT location, bundling, family coverage matrix |
 
 ---
 
@@ -210,7 +212,7 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 | Section | Lines | What's There |
 |---|---|---|
-| Purpose | 3-10 | Can the unit economics of a voice-first AI RPG support a $15–20/month subscription? This document models the per-session and per-subscriber costs |
+| Purpose | 3-10 | Can a $15–20/month subscription cover voice AI costs? Yes, after the Inworld switch |
 | Pricing Inputs (February 2026) | 11-49 | Current prices (Feb 2026): Deepgram, Inworld, Claude, LiveKit |
 | Session Model Assumptions | 50-82 | Solo vs party: speaking time, exchanges, output chars |
 | Per-Session Cost Breakdown | 83-122 | Solo $0.40, Party per-player $0.14 |
@@ -218,9 +220,9 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 | Cost Distribution | 156-175 | TTS 53%, STT 16%, LLM 16%, Transport 15% |
 | Optimization Paths | 176-209 | TTS Mini, caching, model tiering, self-host |
 | Projections at Scale | 210-239 | 10K subs: 84% margin. 100K: 89% |
-| Comparison: What Traditional MMOs Spend | 240-247 | For context, a traditional MMO's server infrastructure costs roughly $1–3 per subscriber per month at scale. Our AI costs are higher ($3–5 range), |
-| Risks and Uncertainties | 248-265 | 1. **TTS vendor concentration.** Inworld's pricing is exceptional but they're a startup. If they raise prices, pivot, or shut down, we need |
-| Verdict | 266-288 | The unit economics are strong.** A $17.50/month subscription supports the voice pipeline with healthy margins across all player profiles. Even the |
+| Comparison: What Traditional MMOs Spend | 240-247 | AI compute costs more per session; content production costs far less |
+| Risks and Uncertainties | 248-265 | TTS vendor concentration, session length creep, pricing trends, background costs |
+| Verdict | 266-288 | Unit economics are strong at $17.50/month; TTS provider evaluation summary |
 
 ---
 
@@ -245,21 +247,21 @@ Additional topics: Class System: 18 archetypes across 6 categories x 10 gods = 1
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-17 | This is the comprehensive game design document for **Divine Ruin: The Sundered Veil**. It defines every player-facing system: character creation, |
+| About This Document | 3-17 | Scope of the design document and related documents |
 | Character Creation — A Narrated Experience | 18-75 | Voice-conversation flow: Awakening → Origins → Calling → Devotion → Identity (10-15 min) |
-| Class System — Archetype + Divine Patronage | 76-201 | A player's **base archetype** determines their mechanical toolkit. Their **divine patronage** flavors those abilities with unique powers, quest |
+| Class System — Archetype + Divine Patronage | 76-201 | Archetype sets the toolkit, patron flavors it; six archetype categories |
 | Progression System | 202-245 | Archetype Mastery (XP), Divine Favor (alignment), World Reputation |
 | Game Mechanics | 246-331 | d20+mod vs DC, 15 skills in 3 groups, status effects, difficulty tiers |
 | Session Structure | 332-441 | 30-90 min sessions, 5 phases, fluid entry, DM behavioral modes |
 | Combat Design — Voice-First Combat | 442-496 | Phase-based rounds, declarations, interrupts, sound as tactics, boss fights |
-| Navigation — Moving Through a Voice-First World | 497-553 | Players express intent ("I want to find the blacksmith") rather than direction ("go north"). The DM interprets intent and narrates movement. Movement |
-| Player Guidance — Never Feeling Stuck | 554-622 | A player who feels lost in a voice game has no screen to scan for buttons. The system must proactively guide without breaking immersion. Confident |
-| NPC Design — Characters, Not Furniture | 623-679 | NPCs are the human texture of Aethos. The best tabletop DMs create NPCs that players remember for years — the gruff blacksmith with a soft spot, the |
-| The Companion — Your Other Voice in the Dark | 680-870 | In a voice game with no visual interface, a solo player is alone with a narrator. That's a podcast, not a game. The companion transforms the |
+| Navigation — Moving Through a Voice-First World | 497-553 | Intent-based movement, macro and micro navigation, audio compass, HUD fallback |
+| Player Guidance — Never Feeling Stuck | 554-622 | Always-available help, escalating guidance, companion as guide |
+| NPC Design — Characters, Not Furniture | 623-679 | NPC categories, companion system, relationship mechanics, voice and personality |
+| The Companion — Your Other Voice in the Dark | 680-870 | Why the companion exists, what it does, how it talks, across contexts and over time |
 | Asynchronous Play — The Living World Between Sessions | 871-1050 | Crafting, training, scouting, factions, god whispers, companion errands |
-| The Economy — Currency, Trade, and Value | 1051-1098 | The economy exists to make choices meaningful. Every purchase is a tradeoff. Every item found has a value the player understands. The economy should |
+| The Economy — Currency, Trade, and Value | 1051-1098 | Currency, pricing and trade, earning money, the sync/async economy loop |
 | Death and Resurrection — Consequences with Compassion | 1099-1142 | Fallen → death saves → Mortaen's domain → return with escalating cost |
-| PvP Design — Structured, Opt-In, Story-Driven | 1143-1203 | PvP serves the narrative, never undermines it. No open-world ganking. PvP exists as a meaningful story layer for players who want it, always |
+| PvP Design — Structured, Opt-In, Story-Driven | 1143-1203 | Opt-in faction PvP, structured modes, voice-specific toxicity guardrails |
 | Seasonal Arc Structure | 1204-1230 | Multi-season narrative with Veythar reveal |
 | Content Moderation — Layered Approach | 1231-1282 | 5 layers: DM, AI guardrails, voice analysis, reputation, party controls |
 | Monetization | 1283-1367 | Subscription, battle pass, voice cosmetics, property system |
@@ -276,10 +278,10 @@ Additional topics: What We're NOT Building: Explicit scope cuts
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-10 | This document defines the **minimum viable product** for playtesting Divine Ruin: The Sundered Veil. It scopes the smallest slice of the full game |
+| About This Document | 3-10 | What the MVP playtest must cover and where the full vision lives |
 | What the MVP Must Prove | 11-25 | Six core questions |
 | MVP Scope Summary | 26-41 | One culture, one city, one wilderness, one story arc |
-| MVP World | 42-108 | Not the full city — a single district with enough locations to feel real and test core systems: |
+| MVP World | 42-108 | Accord of Tides district and the Greyvale wilderness zone |
 | MVP Story Arc | 109-259 | Session-by-session (5 sessions): arrival → investigation → journey → ruins → revelation |
 | MVP Character Options | 260-296 | Playable character choices for the initial slice |
 | MVP Systems | 297-356 | Included gameplay systems and their MVP limits |
@@ -299,16 +301,16 @@ Additional topics: DM Behavioral Shifts: Affect→DM response mapping, Hollow in
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-12 | This document specifies the Player Resonance System: a real-time feedback loop that lets the DM agent perceive *how* the player is speaking, not just |
+| About This Document | 3-12 | Real-time read of how the player speaks, sitting between STT and the LLM |
 | The Problem | 13-18 | Claude is deaf to how the player speaks |
 | The Solution | 19-30 | Affect Analyzer: transcript metadata + raw audio + behavior |
 | Signal Sources — What We Already Have | 31-86 | Deepgram timestamps/confidence, AudioFrame RMS, transcript patterns |
 | The Affect Vector | 87-159 | JSON schema: engagement, energy, interaction_style, latency |
 | Architecture — Where It Lives | 160-290 | Parallel branch via asyncio.Queue, stt_node override, never adds latency |
-| What the DM Does With It | 291-345 | The affect vector is injected as natural language in the hot layer, not as structured data the LLM must parse. The DM's system prompt includes |
+| What the DM Does With It | 291-345 | Affect injected as hot-layer prose; DM behavior shifts; Hollow intensity |
 | Implementation Plan | 346-482 | 4 phases: transcript-only → audio → behavioral → tuning |
 | Cost Impact | 483-494 | ~$0.006 per session |
-| Future Extensions (Post-MVP) | 495-506 | These are not in scope but worth noting as the system matures: |
+| Future Extensions (Post-MVP) | 495-506 | Pitch tracking, cross-session baselines, multiplayer affect, companion mirroring |
 | Resolved Technical Questions | 507-570 | Deepgram capabilities, calibration, privacy |
 
 ---
@@ -329,7 +331,7 @@ Additional topics: What Makes This an MMO: Shared persistent world, player econo
 | Monetization | 176-193 | Subscription model, unit economics, red lines |
 | Where We Are | 194-220 | Current state, MVP to MMO path (7 steps) |
 | The Hard Problems | 221-240 | Six key technical challenges |
-| The Deeper Documents | 241-254 | If this sounds like something you want to build, let's talk. |
+| The Deeper Documents | 241-254 | Map of the design documents and what each covers |
 
 ---
 
@@ -339,7 +341,7 @@ Sprint 55 release notes and deployment handoff.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Operational handoff | 11-17 | Before deploying the agent, audit existing live spell-training cycles for missing, unknown or ineligible spell IDs under the new worker rules. This |
+| Operational handoff | 11-17 | Pre-deploy audit of spell-training cycles; lost local primary database volume |
 
 ---
 
@@ -352,7 +354,7 @@ Narrative fiction piece. Demonstrates Hollow creature taxonomy in action and the
 | Day One | 7-74 | Kael Thornridge's squad holds Greyhaven: shadelings → mawlings → hollowed knight → veilrender |
 | Day Seven | 75-130 | The shadelings came first. |
 | Day Fifteen | 131-166 | The mawlings arrived on Day Twelve. |
-| Day Twenty-Three | 167-200 | The trap was Mira's idea, refined by Jorin's scouting instincts and executed with the kind of desperate precision that only came from knowing you had |
+| Day Twenty-Three | 167-200 | The market-square deadfall trap destroys eight mawlings at a cost |
 | Day Thirty-One | 201-234 | Jorin died on Day Twenty-Eight. |
 | Day Thirty-Seven | 235-282 | The hollowed knight appeared on Day Thirty-Five. |
 | Day Forty | 283-326 | They didn't make it to Day Forty-One. |
@@ -368,7 +370,7 @@ Additional topics: Transport (LiveKit): SFU model, room capacity, multiple agent
 
 | Section | Lines | What's There |
 |---|---|---|
-| About This Document | 3-10 | This document defines the technical architecture for building the MVP of Divine Ruin: The Sundered Veil. It covers the client application, voice |
+| About This Document | 3-10 | Scope of the MVP technical architecture; last research update |
 | Architecture Overview | 11-25 | Eight major layers |
 | Language Architecture — Python + TypeScript Hybrid | 26-143 | Python (agent) + Bun/TS (everything else), monorepo structure |
 | Client Architecture — Expo React Native | 144-324 | Expo screens, HUD layers, data flow, audio mixing, performance targets |
@@ -376,14 +378,14 @@ Additional topics: Transport (LiveKit): SFU model, room capacity, multiple agent
 | DM Agent Architecture | 453-724 | Layer 1: Voice Agent, Layer 2: Background Process, Layer 3: Toolset. Prompt architecture (static/warm/hot) |
 | Orchestration Design | 725-969 | tts_node voice router, tag format, multi-player input arbitration, error recovery, session lifecycle |
 | Game Engine Layer | 970-1005 | Rules engine (pure functions), world state manager |
-| Agent Layer — Autonomous NPCs and World Simulation | 1006-1055 | You raised the right question about whether NPCs should have autonomous life loops. The answer depends on the tier of NPC. |
+| Agent Layer — Autonomous NPCs and World Simulation | 1006-1055 | How alive NPCs should be: NPC tiers from ambient to autonomous |
 | Multiplayer Architecture | 1056-1226 | Ventriloquism, multi-player input, room structure, DM merge/fork |
 | Authentication | 1227-1259 | Email + 6-digit verification code. No passwords, no OAuth. |
 | Infrastructure | 1260-1360 | MVP infrastructure, cloud platform, cost |
 | Development Priorities (Ordered by Dependency) | 1361-1383 | 18 ordered priorities |
 | Testing and Quality Strategy | 1384-1621 | Five tiers: Infrastructure, Rules Engine, DM Behavior, Experience, Content |
-| Open Technical Questions | 1622-1648 | Resolved by LiveKit research: |
-| Document Relationships | 1649-1666 | This document is living — it will be updated as technology choices are validated and development progresses. |
+| Open Technical Questions | 1622-1648 | Questions resolved by LiveKit research and those still open |
+| Document Relationships | 1649-1666 | Table of the design documents, their purpose and status |
 
 ---
 
@@ -393,14 +395,14 @@ Worktree bootstrap design brief and measured implementation outcome.
 
 | Section | Lines | What's There |
 |---|---|---|
-| 1. What this is for | 10-28 | The xp-agents plugin can run a project-declared setup command inside a freshly created teammate |
+| 1. What this is for | 10-28 | Why teammate worktrees need a declared bootstrap command |
 | 2. What is already true here — read this before writing anything | 29-96 | Three things already exist. Do not reinvent them. |
-| 3. The measured blockers | 97-142 | Baseline: in the **primary** checkout, `bun run test:all` → **exit 0** (all suites pass, including |
+| 3. The measured blockers | 97-142 | node_modules, the agent .venv, and global Docker container names |
 | 4. The decision you have to make (deliberately not made for you) | 143-166 | Two viable designs. Both are defensible; they differ in isolation vs cost. |
-| 5. What to write | 167-194 | A single idempotent entry point — `scripts/init-worktree.sh` is the conventional name and is what |
-| 6. How to know it worked — verify, don't assume | 195-226 | This is the part that matters.** A bootstrap command's own exit code proves nothing: measured on |
-| 7. Measured vs not | 227-245 | Measured here:** primary `test:all` exit 0; bare worktree exit 1; `bun install` exit 0 / 1871 |
-| 8. Resolution (implemented 2026-07-17, story-005) | 246-280 | Built as `scripts/init-worktree.sh` + `scripts/worktree-common.sh`, declared as |
+| 5. What to write | 167-194 | Requirements for an idempotent, fail-loud scripts/init-worktree.sh |
+| 6. How to know it worked — verify, don't assume | 195-226 | Verify per artifact, not by the bootstrap's exit code |
+| 7. Measured vs not | 227-245 | Which claims in this brief were measured and which were not |
+| 8. Resolution (implemented 2026-07-17, story-005) | 246-280 | Per-worktree stack chosen; corrections found by re-measuring |
 
 ---
 
@@ -412,13 +414,13 @@ Additional topics: Location Schema: Full JSON: conditions, hidden elements, exit
 
 | Section | Lines | What's There |
 |---|---|---|
-| Purpose | 3-10 | How is the game world authored, stored, and simulated? This document defines the content authoring format (JSON schemas for all game entities), the |
+| Purpose | 3-10 | Content authoring format, world simulation rules, and data model; sparse data, DM narrates |
 | Content Authoring Format | 11-461 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
 | Content Style Guide | 462-621 | Write for the ear, description limits, NPC content, Hollow wrongness |
 | World Simulation Rules | 622-811 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
 | Data Model | 812-909 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
 | MVP Content Scope | 910-938 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
-| Cross-References | 939-950 | Entity schemas and simulation rules defined February 2026. Schemas are intentionally flexible — JSONB storage allows field additions without |
+| Cross-References | 939-950 | Where these schemas and rules connect to the other design docs |
 
 ---
 
@@ -629,20 +631,20 @@ Additional topics: Async Activities: Decisions 58-61: errand models, concurrency
 | Bestiary & Materials (Decisions 24-29) | 79-94 | Decisions 24-29: tier system, material drops, harvesting |
 | NPCs, Mentors & Companions (Decisions 30-57) | 95-118 | Decisions 30-57: NPC templates, mentors, companions, death |
 | Crafting & Items (Decisions 36-43) | 119-139 | Decisions 36-43: recipe system, quality, durability |
-| Async Activities — Companion Errands & Concurrency (Decisions 58-61) | 140-150 | 58. **Companion errands use two different decision models based on narrative logic.** Reason: a scout deep in hostile territory wouldn't break cover |
+| Async Activities — Companion Errands & Concurrency (Decisions 58-61) | 140-150 | Errand decision models, companion unavailability, three activity slots, errand risk |
 | Racial Traits & Level Progression (Decisions 62-63) | 151-157 | Decisions 62-63: attribute bonuses, Thessyn adaptation |
 | Social Encounter Resolution (Decisions 64-67) | 158-168 | Decisions 64-67: social tiers, disposition mechanics |
 | Dramatic Dice System (Decision 68) | 169-173 | Decision 68: rare visible rolls, tension management |
 | Travel, Exploration & Gathering (Decisions 69-71) | 174-182 | Decisions 69-71: travel modes, gathering, node discovery |
 | Economy Reconciliation (Decision 72) | 183-187 | Decision 72: 1 gc = 10 sp, matching lore bible |
-| Encounter Roles (Decisions 73-81) | 188-209 | 73. **Encounter roles are modifiers on base stat blocks, not separate creature entries.** Reason: the bestiary should contain one canonical entry per |
-| Faction Reputation Pricing (Decisions 82-86) | 210-223 | 82. **Faction price modifiers are smaller than disposition modifiers.** Reason: disposition represents a personal relationship — a merchant who |
-| Merchant Inventory & Restock (Decisions 87-95) | 224-245 | 87. **Three-tier stock model balances frictionless basics with meaningful scarcity.** Reason: an inventory system where every item can deplete |
-| Supply & Demand Engine (Decisions 96-104) | 246-267 | 96. **Hard price bounds clamp final prices to [0.5×, 3.0×] of base.** Reason: without bounds, multiplicative stacking can produce pathological prices |
-| Gold Sinks & Economy Balance (Decisions 105-113) | 268-289 | 105. **Gold sinks fall into eight categories with distinct design intents.** Reason: the categorization |
-| Inflation Targets & Controls (Decisions 114-121) | 290-309 | 114. **Inflation control is a Phase 2+ primary concern; Phase 1 implements the data infrastructure only.** Reason: in a single-player game, |
-| Player-to-Player Trade (Decisions 122-128) | 310-325 | 122. **Player-to-player trade is Phase 2+ deferred; Phase 1 implements supporting infrastructure only.** Reason: Phase 1 is single-player; P2P trade |
-| Terrain (Decisions 129-132) | 326-351 | 129. **Terrain is a single closed enum authored on the `Location` entity; every terrain-gated rule derives from it rather than declaring its own |
+| Encounter Roles (Decisions 73-81) | 188-209 | Role modifiers on base stat blocks, minion/elite/boss rules, harvesting and drops |
+| Faction Reputation Pricing (Decisions 82-86) | 210-223 | Faction price modifiers, reputation from economic activity, exclusive items, detection |
+| Merchant Inventory & Restock (Decisions 87-95) | 224-245 | Three-tier stock, dawn restock, finite merchant gold, buyback limits, consignment |
+| Supply & Demand Engine (Decisions 96-104) | 246-267 | Price bounds, multiplicative event modifiers, tag matching, event phases and recovery |
+| Gold Sinks & Economy Balance (Decisions 105-113) | 268-289 | Eight sink categories, mitigations, death costs, endgame and lifestyle sinks, tolls, bribery |
+| Inflation Targets & Controls (Decisions 114-121) | 290-309 | Phase 2+ inflation control, wealth curve, per-session targets, hidden god-agent levers |
+| Player-to-Player Trade (Decisions 122-128) | 310-325 | Deferred P2P trade under world rules, voice-first, provenance, atomic transactions |
+| Terrain (Decisions 129-132) | 326-351 | One closed terrain enum on Location; ten values and their derived properties |
 
 ---
 
@@ -724,17 +726,17 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 |---|---|---|
 | Architecture | 11-22 | Each divine patron provides four mechanical layers. Any archetype can follow any god, but certain combinations have enhanced effects (Layer 4). |
 | Divine Favor Tiers | 23-36 | Favor thresholds and mechanical effects |
-| Veythar, the Lorekeeper | 37-66 | Domain: Knowledge, arcane arts, discovery, memory |
-| Kaelen, the Ironhand | 67-94 | Domain: War, conflict, valor, martial discipline, strategy |
-| Aelora, the Hearthkeeper | 95-122 | Domain: Civilization, commerce, crafting, community |
-| Thyra, the Wildmother | 123-150 | Domain: Nature, seasons, growth, ecosystems, weather |
-| Syrath, the Veilwatcher | 151-178 | Domain: Shadows, secrets, espionage, hidden knowledge |
-| Orenthel, the Dawnbringer | 179-206 | Domain: Light, healing, renewal, hope, restoration |
-| Valdris, the Scalebearer | 207-234 | Domain: Justice, law, truth, accountability |
-| Mortaen, the Threshold | 235-262 | Domain: Death, the afterlife, transition, the boundary between life and what follows |
-| Nythera, the Tidecaller | 263-290 | Domain: Sea, travel, exploration, boundaries, the unknown |
-| Zhael, the Fatespinner | 291-318 | Domain: Fate, time, prophecy, luck, the pattern of things |
-| The Unbound Path (No Patron) | 319-351 | Cosmological rationale: The Unbound don't channel through a god. Their magic is entirely self-sourced. In the post-Sundering world, this means no |
+| Veythar, the Lorekeeper | 37-66 | Knowledge and arcane arts; Lorekeeper's Insight, Arcane Amplification, favor tiers, archetype resonance |
+| Kaelen, the Ironhand | 67-94 | War and valor; Iron Resolve, Martial Focus, favor tiers, archetype resonance |
+| Aelora, the Hearthkeeper | 95-122 | Civilization and crafting; Hearthkeeper's Bond, Shared Burden, favor tiers, archetype resonance |
+| Thyra, the Wildmother | 123-150 | Nature and seasons; Nature's Pulse, Veil Grounding, favor tiers, archetype resonance |
+| Syrath, the Veilwatcher | 151-178 | Shadows and secrets; Shadow Veil, Hidden Casting, favor tiers, archetype resonance |
+| Orenthel, the Dawnbringer | 179-206 | Light and healing; Dawn's Resilience, Purifying Light, favor tiers, archetype resonance |
+| Valdris, the Scalebearer | 207-234 | Justice and truth; Weight of Truth, Ordered Magic, favor tiers, archetype resonance |
+| Mortaen, the Threshold | 235-262 | Death and transition; Death's Awareness, Threshold Magic, favor tiers, archetype resonance |
+| Nythera, the Tidecaller | 263-290 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
+| Zhael, the Fatespinner | 291-318 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
+| The Unbound Path (No Patron) | 319-351 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
 | Patron System Summary | 352-366 | Patron system mechanics and cross-patron comparison. |
 
 ---
@@ -764,13 +766,13 @@ Generation prompts for combat, music, interface, and environment sounds.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Combat Sound Effects | 7-136 | AI Generation Prompt — Sword Strike, Metal on Flesh: |
-| Dice Sounds | 137-152 | AI Generation Prompt — Dice Roll, Standard: |
-| Music Stems | 153-182 | AI Generation Prompt — Tension Theme: |
-| Stingers | 183-252 | AI Generation Prompt — Quest Stage Complete Stinger: |
-| UI Sounds | 253-303 | AI Generation Prompt — UI Cancel / Back Sound: |
-| Sable's Sound Palette | 304-324 | Sable is the silent companion — no voice, only sounds. These clips are her "vocabulary" and the player will learn to read them. Each should feel |
-| Additional Missing Prompts | 325-362 | AI Generation Prompt — Millhaven Village, Daytime: |
+| Combat Sound Effects | 7-136 | Sword, blunt, arrows, spells, hits, crits, status effects, enemy signatures (CMB-002–022) |
+| Dice Sounds | 137-152 | Standard roll, skill check |
+| Music Stems | 153-182 | Tension, combat boss, sorrow, title themes |
+| Stingers | 183-252 | Quest, level up, faction, god whisper variants, death, session (STG-001–009) |
+| UI Sounds | 253-303 | Cancel, error, async complete, menu, scroll, confirm (UI-002–010) |
+| Sable's Sound Palette | 304-324 | 5 emotional states as animal sounds |
+| Additional Missing Prompts | 325-362 | Millhaven variants, wilderness night (ENV-004–008) |
 
 ---
 
@@ -801,10 +803,10 @@ Additional topics: Prompt: Full map generation prompt: regions, corruption gradi
 
 | Section | Lines | What's There |
 |---|---|---|
-| Prompt for Image Generation AI | 7-57 | A fantasy world map in the style of classic hand-drawn cartography, aged parchment texture with weathered edges. The map shows the continent of |
+| Prompt for Image Generation AI | 7-57 | Full map prompt: regions north to south, map features, style, mood |
 | Usage Instructions | 58-68 | How to use with AI generators |
 | Variations to Try | 69-84 | Artistic, cartographic, darker, lighter |
-| Expected Output | 85-98 | The generated map should show: |
+| Expected Output | 85-98 | What a successful generated map shows |
 
 ---
 

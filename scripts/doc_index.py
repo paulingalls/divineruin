@@ -6,7 +6,6 @@ import argparse
 import re
 from pathlib import Path
 
-
 ENTRY = re.compile(r"^## ([\w./-]+\.md)(?: \([^\n]*\))?$", re.M)
 ROW = re.compile(r"^\| (.*?) \| (.*?) \| (.*?) \|$", re.M)
 LIST_DIRS = {"decisions", "ideas", "milestones", "mockups"}
@@ -15,9 +14,11 @@ HEADER = """# Documentation Index
 Run `uv run python scripts/doc_index.py --write` after editing docs. The test compares
 this file with the regenerated result. Scope: every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
-assets and source files are excluded. Detailed tables use `##` headings, or `###`
-headings when a document has one wrapping `##`. Ranges are inclusive.
-Empty descriptions in detailed entries need a human summary.
+assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
+`mockups/` are listed by path and line count only; every other doc gets a section
+table. A doc in a new top-level directory fails generation until it is given a group.
+Detailed tables use `##` headings, or `###` headings when a document has one wrapping
+`##`. Ranges are inclusive. Empty descriptions in detailed entries need a human summary.
 
 Start with `product_overview.md` for the vision, `game_design_doc.md` for player
 systems, and `milestones/README.md` for the implementation dependency graph.
@@ -77,7 +78,7 @@ def parse_authored(index: str) -> dict[str, tuple[str, dict[str, str]]]:
         path = match.group(1)
         if path in entries:
             raise ValueError(f"duplicate index entry: {path}")
-        body = index[match.end():matches[i + 1].start() if i + 1 < len(matches) else len(index)]
+        body = index[match.end() : matches[i + 1].start() if i + 1 < len(matches) else len(index)]
         body = re.split(r"\n(?:---|# [^\n]+)\n", body, maxsplit=1)[0]
         prose = body.split("| Section | Lines | What's There |", 1)[0].strip()
         rows = {}
@@ -87,9 +88,10 @@ def parse_authored(index: str) -> dict[str, tuple[str, dict[str, str]]]:
         for title, _range, description in ROW.findall(body):
             if title in {"Section", "---"}:
                 continue
+            title = title.replace("\\|", "|")
             if title in rows:
                 raise ValueError(f"duplicate index section in {path}: {title}")
-            rows[title.replace("\\|", "|")] = description
+            rows[title] = description
         entries[path] = (prose, rows)
     return entries
 
@@ -115,6 +117,9 @@ def render(docs: Path, index: str) -> str:
         ("Ideas", lambda p: p.startswith("ideas/")),
         ("Mockup notes", lambda p: p.startswith("mockups/")),
     ]
+    ungrouped = [p for p in sorted(paths) if not any(predicate(p) for _, predicate in groups)]
+    if ungrouped:
+        raise ValueError(f"no index group for: {', '.join(ungrouped)}")
     output = [HEADER.rstrip(), ""]
     for group, predicate in groups:
         members = [p for p in files if predicate(p.relative_to(docs).as_posix())]
@@ -132,7 +137,8 @@ def render(docs: Path, index: str) -> str:
                 if parts:
                     output += ["| Section | Lines | What's There |", "|---|---|---|"]
                     for title, first, last in parts:
-                        output.append(f"| {title.replace('|', r'\|')} | {first}-{last} | {descriptions.get(title, '')} |")
+                        cell = title.replace("|", r"\|")
+                        output.append(f"| {cell} | {first}-{last} | {descriptions.get(title, '')} |")
                     output.append("")
             output += ["---", ""]
     return "\n".join(output).rstrip() + "\n"

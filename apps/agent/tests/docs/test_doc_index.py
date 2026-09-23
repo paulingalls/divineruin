@@ -101,3 +101,21 @@ def test_malformed_authored_row_fails(tmp_path):
     malformed = original.replace("| Alpha | 1-2 |  |", "| Alpha | 1-2 | authored")
     with pytest.raises(ValueError, match="malformed index row"):
         render(docs, malformed)
+
+
+def test_doc_in_new_directory_fails_instead_of_vanishing(tmp_path):
+    docs = tmp_path / "docs"
+    (docs / "research").mkdir(parents=True)
+    (docs / "sample.md").write_text("## Alpha\na\n")
+    (docs / "research" / "new.md").write_text("# New\n")
+    with pytest.raises(ValueError, match=r"no index group for: research/new\.md$"):
+        render(docs, "")
+
+
+def test_detail_entry_without_blurb_is_flagged(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "sample.md").write_text("## Alpha\na\n")
+    authored = render(docs, "").replace("| Alpha | 1-2 |  |", "| Alpha | 1-2 | Described |")
+    with pytest.raises(ValueError, match=r"empty description for sample\.md$"):
+        validate_descriptions(authored)
