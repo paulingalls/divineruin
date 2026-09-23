@@ -30,14 +30,21 @@ from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from session_data import SessionData
-from world_regions import REGION_IDS
 
 logger = logging.getLogger("divineruin.tools")
 
 # Per-region gathering DC (spec §Regional Resource Tables, L1008-1018). Apply-site config: the
 # pure gathering.resolve_gathering takes the DC injected, so the region→DC mapping lives here,
 # not in the resolver. Fail-loud on an unmapped region (a content/caller bug).
-REGION_GATHERING_DC: dict[str, int] = dict(zip(REGION_IDS, (10, 12, 12, 12, 14, 16, 16), strict=True))
+REGION_GATHERING_DC: dict[str, int] = {
+    "greyvale": 10,
+    "thornveld": 12,
+    "drathian_steppe": 12,
+    "sunward_coast": 12,
+    "keldaran_mountains": 14,
+    "ashmark": 16,
+    "underground": 16,
+}
 
 
 async def _check_gather_impl(

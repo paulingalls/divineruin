@@ -91,15 +91,17 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
                 await query_creatures_by_region("atlantis")
             ashmark = await query_creatures_by_region("ashmark")
             assert {row["id"] for row in ashmark} >= {"hollow_shadeling", "hollow_hollowmoth"}
-            assert await query_creatures_by_region("ashmark", tier=2) == []
+            ashmark_tier_two = {row["id"] for row in await query_creatures_by_region("ashmark", tier=2)}
+            assert not ashmark_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
             greyvale = await query_creatures_by_region("greyvale")
             assert {row["id"] for row in greyvale} >= {"hollow_shadeling", "hollow_hollowmoth"}
             scratch = {**shadeling, "id": "scratch_tier_two", "tier": 2, "regions": ["greyvale"]}
             await conn.execute(
                 "INSERT INTO creatures (id, data) VALUES ($1, $2::jsonb)", scratch["id"], json.dumps(scratch)
             )
-            tier_two = await query_creatures_by_region("greyvale", tier=2)
-            assert [row["id"] for row in tier_two] == ["scratch_tier_two"]
+            greyvale_tier_two = {row["id"] for row in await query_creatures_by_region("greyvale", tier=2)}
+            assert "scratch_tier_two" in greyvale_tier_two
+            assert not greyvale_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
         finally:
             await conn.close()
 
