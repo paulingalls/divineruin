@@ -755,7 +755,7 @@ def calculate_currency_drop(creature_category: str, creature_tier: int, role: En
     if role == EncounterRole.MINION:
         return None  # Minions never drop currency
     
-    amount = roll_dice(base.dice_formula) * creature_tier
+    amount = roll(base.dice_formula).total * creature_tier
     
     if role == EncounterRole.ELITE:
         amount = ceil(amount * 1.5)

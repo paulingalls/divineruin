@@ -584,7 +584,7 @@ def attempt_purchase(player_id, merchant_id, item_id, quantity=1):
     merchant.current_gold += price  # merchant gold pool grows from sales
     if item.tier > 1:
         merchant.current_inventory[item_id] -= quantity
-    add_to_inventory(player_id, item_id, quantity)
+    add_inventory_item(player_id, item_id, quantity)
     
     return PurchaseResult(success=True, price=price)
 
@@ -613,7 +613,7 @@ def attempt_sale(player_id, merchant_id, item_id, quantity=1):
     # Execute transaction
     merchant.current_gold -= price
     player.gold += price
-    remove_from_inventory(player_id, item_id, quantity)
+    transact_inventory(player_id, item_id, -quantity)
     if item.tier > 1:
         merchant.current_inventory[item_id] = merchant.current_inventory.get(item_id, 0) + quantity
     merchant.buyback_history[item_id] = bought_today + 1

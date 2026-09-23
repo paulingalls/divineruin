@@ -203,8 +203,8 @@ Footprint: <10% of screen height. The player should be able to ignore it entirel
 These appear when the server pushes relevant events and disappear after a timeout or player dismissal. They're the "glance down, absorb, go back to listening" moments.
 
 - **Dice roll animation** — Appears when mechanics tools resolve. Shows the die, the roll, the modifier, and the result (hit/miss, success/fail). Distinct audio cue accompanies it. Auto-dismisses after 3-4 seconds. Driven by the `narrative_hint` field from tool results.
-- **Combat tracker** — Appears when combat starts (pushed by combat state tools). Shows turn order, enemy HP bars, active status effects. Stays visible during combat, auto-dismisses on combat end. Updated in real-time by `update_combat_ui` pushes.
-- **Item card** — Pops when the player receives an item (pushed by `add_to_inventory`). Shows item name, rarity border, brief description, key stats. Auto-dismisses after 5 seconds or on tap.
+- **Combat tracker** — Appears when combat starts (pushed by combat state tools). Shows turn order, enemy HP bars, active status effects. Stays visible during combat, auto-dismisses on combat end. Updated in real-time by combat state events.
+- **Item card** — Pops when the player receives an item (pushed by `transact`). Shows item name, rarity border, brief description, key stats. Auto-dismisses after 5 seconds or on tap.
 - **Quest update toast** — Brief notification when a quest advances (pushed by `update_quest`). "Quest Updated: The Greyvale Anomaly — Stage 3." Auto-dismisses after 3 seconds.
 - **XP / Level-up notification** — Pushed by the XP Resolve (`_award_xp_core`, reached on combat exit and quest completion). XP gains are subtle toasts. Level-ups get a larger, more celebratory overlay with haptic feedback.
 - **Character creation cards** — During character creation, the server pushes visual option cards (race illustrations, class descriptions, patron sigils) that appear as a horizontally scrollable row. The player speaks their choice; the selected card highlights and the rest dismiss.
@@ -253,7 +253,7 @@ The client manages four independent audio channels, mixed locally:
 |---|---|---|---|
 | **Voice** | LiveKit audio track | Master + voice slider | DM narration, NPC dialogue, all character voices. Always highest priority. |
 | **Ambience** | Local audio files | Master + ambience slider | Environmental soundscapes: tavern bustle, forest wind, rain, combat tension layer. Triggered by `location_changed` and `sound_effect` events. Crossfades on transitions (1-2 second linear fade). |
-| **Effects** | Local audio files | Master + effects slider | One-shot sounds: sword clash, spell cast, door creak, divine presence. Triggered by `play_sound` server events. Fire-and-forget, can overlap. |
+| **Effects** | Local audio files | Master + effects slider | One-shot sounds: sword clash, spell cast, door creak, divine presence. Triggered by game-state events. Fire-and-forget, can overlap. |
 | **UI Audio** | Local audio files | Master + UI slider | Dice roll sounds, notification chimes, level-up fanfare, menu interactions. Triggered by client-side events (overlay appearance, user actions). |
 
 **Ducking:** When the Voice channel is active (DM is speaking), Ambience ducks to ~40% volume automatically. Effects play at full volume over both (they're brief and add to the scene). UI Audio plays at full volume (it's informational).
@@ -262,7 +262,7 @@ The client manages four independent audio channels, mixed locally:
 
 **Ambient sound library:** A set of loopable audio files bundled with the app (or downloaded on first launch). Organized by environment tag matching the location schema's `ambient_sounds` field. Examples: `tavern_busy.mp3`, `forest_calm.mp3`, `rain_heavy.mp3`, `combat_tension.mp3`, `hollow_wrongness.mp3`. The server's `location_changed` event includes the ambient sound tag; the client crossfades to the matching file.
 
-**Sound effect library:** One-shot audio files, also bundled or downloaded. Named to match the `play_sound` tool's `effect_name` parameter: `sword_clash.mp3`, `critical_hit_sting.mp3`, `spell_cast_fire.mp3`, `divine_presence.mp3`, `door_creak.mp3`, etc. The server sends the effect name and intensity; the client looks up the file and plays it at the scaled volume.
+**Sound effect library:** One-shot audio files, also bundled or downloaded. Named to match the client effect IDs: `sword_clash.mp3`, `critical_hit_sting.mp3`, `spell_cast_fire.mp3`, `divine_presence.mp3`, `door_creak.mp3`, etc. The server sends the effect name and intensity; the client looks up the file and plays it at the scaled volume.
 
 ### Session Flow on the Client
 
@@ -456,25 +456,24 @@ The DM agent is the core of the game experience. It's not just a voice chatbot �
 
 ### Layer 1: The Voice Agent
 
-The DM is a LiveKit `Agent` subclass running inside an `AgentSession`. It uses the standard STT→LLM→TTS pipeline: Deepgram Nova-3 for speech recognition, Claude for reasoning and narration, Inworld TTS-1.5 for voice synthesis.
+The DM is a LiveKit `Agent` subclass running inside an `AgentSession`. It uses the standard STT→LLM→TTS pipeline: Deepgram Nova-3 for speech recognition, GPT-6 Luna for reasoning and narration, Inworld TTS-1.5 for voice synthesis.
 
 ```python
-class DungeonMasterAgent(Agent):
+class ExplorationAgent(Agent):
     def __init__(self, session_data: SessionData):
         super().__init__(
             instructions=build_system_prompt(session_data),  # static + warm layers
             tools=[
                 # World query tools
-                query_npc, query_location, query_lore, 
-                query_inventory, query_quest_log, query_character_sheet,
+                enter_location, query_info,
                 # Dice & mechanics tools
-                request_skill_check, request_attack, request_saving_throw, roll_dice,
+                check, activate,
                 # Game state mutation tools
-                move_player, add_to_inventory, remove_from_inventory,
-                update_quest, update_npc_disposition, apply_status_effect,
-                remove_status_effect, rest,
-                # Client effect tools
-                play_sound, show_item_card,
+                move_player, travel, transact, update_quest,
+                update_npc_disposition, adjust_faction_reputation,
+                record_story_moment, select, end_session,
+                # Mode handoff (combat, dispatch, blacksmith)
+                enter_mode,
             ],
         )
 ```
@@ -548,77 +547,27 @@ Tools are `@function_tool` decorated Python functions that the LLM calls to inte
 
 #### World Query Tools (read-only)
 
-The DM calls these when the player asks about something not already in the system prompt. These cover the "long tail" of game knowledge — the prompt contains the current scene, but not every NPC's backstory or every item's properties.
+**`query_info(kind, target_id)`** looks up current world information. The registered kinds include `"npc"`, `"location"`, `"lore"`, and `"inventory"`; inventory uses the acting player and needs no target ID. NPC results include relationship-filtered knowledge, while location and lore results provide scene details and authored background. The current prompt carries the active scene; the DM queries details on demand.
 
-**`query_npc(npc_id)`** — Returns personality, backstory, disposition toward this player, current location, shop inventory if merchant. Used when a player engages an NPC not in the active scene section of the prompt.
+#### Dice & Mechanics Tools
 
-**`query_location(location_id)`** — Description, exits, hidden elements, hazards, current occupants. For when the player asks about places beyond the current scene.
+**`check(roll)`** resolves uncertain actions through the deterministic rules engine. The roll payload selects `"skill"`, `"discover"`, `"save"`, `"dice"`, `"social"`, or `"gather"` and carries the fields for that kind. The tool returns the authoritative outcome and a narrative cue; the DM narrates it without changing the result.
 
-**`query_lore(topic)`** — Semantic search against the Aethos lore database. Player asks about the Hollow, a forgotten god, a historical event. Returns relevant passages for the DM to weave into narration.
+**`enter_mode(mode="combat", encounter_id=...)`** starts an encounter and establishes initiative. In combat, **`declare_phase(declarations)`** records one action for each acting combatant. **`resolve_phase()`** resolves the declared round in initiative order, applies damage and effects, and returns packets for narration. A spell or ability outside that declaration flow uses **`activate(id, target_id)`** where its rules allow it.
 
-**`query_inventory(player_id)`** — Full inventory list with item properties. The prompt has a summary; this gets details when the player asks "what potions do I have?" or "tell me about this sword."
+#### Game State Mutation Tools
 
-**`query_quest_log(player_id)`** — Active quests, objectives, progress, history. Summary lives in the prompt; details on demand.
+**`move_player`** validates a route and changes the player's location. **`transact(item_id, delta, source)`** changes inventory with a positive delta for gains and a negative delta for losses. **`update_quest`** and **`update_npc_disposition`** change quest and relationship state under their own validation rules. Combat effects are applied by the combat resolver, not by separate status-effect verbs.
 
-**`query_character_sheet(player_id)`** — Full stats, abilities, status effects, skill modifiers. For when the DM needs exact numbers to make a ruling.
+XP and divine favor are awarded by deterministic Resolves during the triggering action. They are not DM tools.
 
-#### Dice & Mechanics Tools (hybrid: LLM requests, rules engine validates and applies)
+#### Client Effects
 
-The DM has narrative judgment about *when* a check is needed. The rules engine determines *how it resolves*. These tools are atomic — they roll, validate, apply consequences, and return results in a single call. The DM cannot ignore or override outcomes.
-
-**`request_skill_check(player_id, skill, context)`** — The DM determines a check is warranted. The rules engine looks up the player's skill modifier, sets DC based on context and difficulty guidelines, rolls, applies modifiers, and returns the canonical result. The mutation (success/failure consequences) is applied immediately.
-
-Returns: `{outcome: "success", roll: 14, modifier: 3, total: 17, dc: 15, margin: 2, narrative_hint: "succeeded comfortably"}`
-
-The DM narrates the outcome but cannot change it. "You run your fingers along the stone wall and feel a faint draft — there's a hidden passage here" (for a successful perception check) is the DM's creative latitude. The *finding* is settled by the dice.
-
-**`request_attack(attacker_id, target_id, weapon_or_spell)`** — Resolves the full attack: to-hit roll against target AC, damage roll if hit, damage application to target HP. Returns the breakdown for narration. If the attack kills the target, that's resolved immediately too — the DM narrates a death, not a choice about whether something dies.
-
-Returns: `{hit: true, damage: 12, damage_type: "slashing", critical: false, target_hp_remaining: 23, target_killed: false, narrative_hint: "solid hit, target wounded but standing"}`
-
-**`request_saving_throw(player_id, save_type, dc, effect_on_fail)`** — Rolls the save, applies the consequence. Poison damage is dealt, status effects are applied, spell effects resolve. The DM narrates what it feels like, not whether it happened.
-
-Returns: `{outcome: "failure", roll: 8, modifier: 2, total: 10, dc: 14, effect_applied: "poisoned for 3 rounds", narrative_hint: "failed decisively, full effect"}`
-
-**`roll_dice(notation)`** — Raw dice roll for narrative moments with no mechanical consequence. "Roll a d100 for the loot table," "flip a coin for which path the NPC takes." Returns the result; the DM interprets it freely.
-
-**The `narrative_hint` field:** Every mechanics tool returns a brief hint about the drama level of the result — "barely succeeded," "critical failure," "overwhelming success." This gives the LLM a nudge about how dramatic to make the narration without dictating specific words.
-
-#### Game State Mutation Tools (smart — enforce game rules)
-
-These tools change the world. They validate inputs, enforce constraints, apply changes, and automatically push relevant UI updates to the client. The DM doesn't need to think about UI — when damage is applied, the combat UI updates automatically.
-
-**`move_player(player_id, destination_id)`** — Validates the path exists and is accessible (locked doors require keys, impassable terrain requires the right ability). Updates player location in the database. Triggers any enter-location events. Returns the new location description for narration. Auto-pushes: location change to client.
-
-**`add_to_inventory(player_id, item_id, source)`** — Checks weight/capacity limits, handles consumable stacking. Rejects with a reason if inventory is full ("your pack is too heavy to carry more"). Auto-pushes: item card popup to client.
-
-**`remove_from_inventory(player_id, item_id)`** — Validates item exists, handles equipped items (must unequip first). Auto-pushes: inventory update to client.
-
-**`update_quest(quest_id, player_id, action)`** — Advances, completes, or fails a quest. Validates prerequisites (can't complete step 3 before step 2). Triggers quest-completion rewards automatically (XP, items, reputation). Returns what changed for narration. Auto-pushes: quest log update to client.
-
-**`update_npc_disposition(npc_id, player_id, delta, reason)`** — Shifts NPC relationship within bounds. A merchant won't jump from hostile to friendly in one interaction — the tool clamps changes to reasonable ranges. Returns the new relationship level and any threshold crossings ("the merchant now trusts you enough to show you the back room inventory").
-
-**`apply_status_effect(target_id, effect, duration, source)`** — Validates the effect is legal, checks for immunities and resistances ("you can't poison an undead"), applies it. Auto-pushes: status effect indicator to combat UI.
-
-**`remove_status_effect(target_id, effect)`** — Validates removal is possible (some effects require specific spells or items to remove, others expire naturally). Auto-pushes: combat UI update.
-
-**XP is not a tool.** `_award_xp_core(player_id, amount, reason, ...)` is a *Resolve*, not a `@function_tool`: it applies XP, handles level-up if a threshold is crossed, and returns level-up details so the DM can make it a narrative moment ("you feel a surge of power as your understanding deepens"). It runs inside the caller's transaction on combat exit and quest completion — the LLM decides nothing about when or how much. Divine favor works the same way via `_award_divine_favor_core`. Auto-pushes: XP notification to client, post-commit.
-
-**`rest(player_id, rest_type)`** — Short or long rest. Applies healing, resets abilities, advances in-game time. Validates safety — can't long rest in combat or hostile territory without consequences (the tool returns a warning and the DM narrates the risk, but the rest still happens with potential interruption events).
-
-#### Client Effect Tools
-
-These push visual and audio feedback to the player's device via LiveKit RPC. Mutation tools auto-push where relevant, but the DM can also trigger effects explicitly for narrative moments.
-
-**`play_sound(effect_name, intensity)`** — Triggers sound effects and ambient audio shifts on the client. Named effect library: "sword_clash", "thunder", "tavern_ambience", "hollow_whisper", "critical_hit_sting", "door_creak", "spell_cast", "divine_presence", etc. Intensity controls volume and layering.
-
-**`show_item_card(item_id)`** — Pushes a visual card to the player's UI when they find, receive, or inspect an item. Displays the item's image, stats, description, and rarity. The DM narrates the discovery; the card gives the mechanical details.
-
-**`update_combat_ui(combat_state)`** — Pushes current HP bars, turn order, and active status effects to the client. This is auto-called by combat mutation tools, but the DM can also call it explicitly to refresh the display or highlight a specific element ("look at the turn order — you're up next").
+The client receives UI and audio events from state changes. Inventory and combat updates produce the corresponding item and combat display events; ambient sound follows scene state. The DM does not call a separate sound, item-card, or combat-UI verb.
 
 #### Tool Design Principles
 
-**Auto-push UI updates from mutations.** When `request_attack` deals damage, the combat UI updates, the hit sound plays, and the HP bar animates — all without the DM making separate tool calls. The DM focuses on narration; the system handles feedback.
+**Auto-push UI updates from mutations.** When `resolve_phase` applies damage, the combat UI updates, the hit sound plays, and the HP bar animates — all without the DM making separate tool calls. The DM focuses on narration; the system handles feedback.
 
 **Smart validation over thin pipes.** Tools enforce game rules: inventory capacity, movement path validity, status effect immunities, quest prerequisites. When a tool rejects an action, it returns a reason the DM can narrate naturally ("your pack is already full" becomes "you try to stuff the potion into your bag, but there's no room").
 
@@ -646,8 +595,8 @@ You are atmospheric, responsive to player choices, and never break character.
 [tone, style, and content boundary rules]
 
 [GAME MECHANICS REFERENCE]
-When a player attempts something risky or uncertain, call request_skill_check.
-When combat actions occur, call request_attack or request_saving_throw.
+When a player attempts something risky or uncertain, call check.
+When combat starts, call enter_mode; in combat, declare_phase then resolve_phase.
 You do not decide the outcomes of checks — the dice do. Narrate the results.
 [tool usage guidelines, combat flow summary, rest rules]
 
@@ -747,27 +696,27 @@ Here's what happens when a player says "I want to search the merchant's stall fo
 1. **STT:** Deepgram transcribes the speech to text
 2. **on_user_turn_completed fires:** Hot layer injection queries the database — injects Maren Thell's stall details, any hidden elements flagged for this location, the player's perception modifier
 3. **LLM processes:** Claude reads the full context (static prompt + warm prompt + hot injection + conversation history + player's statement) and decides:
-   - This requires a perception check → calls `request_skill_check("kira", "perception", "searching merchant stall for hidden compartments")`
+   - This requires a perception check → calls `check` with a discover roll targeting the stall
 4. **Tool executes:** Rules engine looks up Kira's perception (+3), sets DC 14 (moderate — the compartment exists but is well-hidden), rolls d20 → 11 + 3 = 14, exactly meets DC → success. Applies the discovery to game state. Returns `{outcome: "success", roll: 11, modifier: 3, total: 14, dc: 14, margin: 0, narrative_hint: "barely succeeded — found it at the last moment"}`
 5. **LLM narrates:** "You run your hands along the underside of the counter, finding nothing at first. Just as you're about to give up, your fingers catch on a seam in the wood. A hidden drawer, cleverly disguised. [MAREN]: 'Wait — don't touch that!'"
 6. **TTS processes:** The orchestrator parses the output. Narration goes to the DM narrator voice. Maren's line goes to her assigned voice (nervous, higher pitch). Both audio segments stream to the player.
-7. **Client updates:** If the hidden compartment contains items, `show_item_card` fires automatically. Sound effect "drawer_open" plays.
+7. **Client updates:** If the hidden compartment contains items, an item-card event is pushed automatically. Sound effect "drawer_open" plays.
 8. **Background process:** If this discovery is significant (quest-relevant, changes the scene), an event fires on the bus. The background process may update the warm layer to reflect the new state ("Maren is now agitated and defensive about the hidden compartment").
 
 ### Combat Flow
 
 Combat deserves special attention because it's the most tool-intensive interaction pattern.
 
-**Entering combat:** The DM (or a triggered event) calls `request_skill_check` for initiative. The rules engine rolls initiative for all participants, establishes turn order, and enters combat state. The combat UI auto-pushes to the client: HP bars, turn order display, status effects.
+**Entering combat:** The DM (or a triggered event) calls `enter_mode(mode="combat", encounter_id=...)`. The rules engine rolls initiative for all participants, establishes turn order, and enters combat state. The combat UI auto-pushes to the client: HP bars, turn order display, status effects.
 
 **During a player's turn:** The DM announces whose turn it is (from the hot layer's combat state). The player states their action verbally. The DM interprets the intent and calls the appropriate mechanics tool:
-- "I swing my sword at the creature" → `request_attack(kira, creature_1, longsword)`
-- "I try to dodge behind the pillar" → `request_skill_check(kira, acrobatics, "taking cover behind pillar")`
-- "I cast Flame Ward on Theron" → `request_attack(kira, theron, flame_ward)` (or a custom spell tool)
+- "I swing my sword at the creature" → `declare_phase` with Kira's attack declaration
+- "I try to dodge behind the pillar" → `declare_phase` with a maneuver declaration
+- "I cast Flame Ward on Theron" → `declare_phase` with an ability declaration
 
-Each tool call resolves atomically: roll, validate, apply, return, auto-push UI. The DM narrates the result using the narrative hint and the mechanical outcome.
+After declarations, `resolve_phase()` rolls, validates, applies effects, and returns packets for narration. The DM narrates the result using the narrative hint and the mechanical outcome.
 
-**NPC/monster turns:** The DM controls enemies. It calls the same mechanics tools for their actions — `request_attack(creature_1, kira, claw_attack)`. The rules engine resolves identically whether the attacker is a player or NPC. The DM narrates the monster's actions and the results.
+**NPC/monster turns:** The DM controls enemies. It calls the same mechanics tools for their actions — the creature's attack in `declare_phase`. The rules engine resolves identically whether the attacker is a player or NPC. The DM narrates the monster's actions and the results.
 
 **End of combat:** When the last enemy is defeated (or the encounter resolves otherwise), combat state is cleared, the combat UI is dismissed, and the background process updates the warm layer to reflect the post-combat scene.
 
@@ -1415,9 +1364,9 @@ Email + 6-digit verification code. No passwords, no OAuth.
 2. **STT + TTS pipeline.** Deepgram Nova-3 streaming in, Inworld TTS-1.5 Max streaming out. Prove voice quality and latency meet the ~1.2-2.0s target for first audio response.
 3. **DM Agent — basic voice loop.** Implement `DungeonMasterAgent(Agent)` with static system prompt, Claude LLM, and basic conversation. Prove the AI DM can hold a freeform conversation in voice with the DM persona.
 4. **DM ventriloquism via tts_node.** Implement the `tts_node` parser that splits LLM output into narrator segments and `[CHARACTER_NAME]: "dialogue"` segments, routing each to Inworld TTS with the appropriate voiceId. Prove that multiple characters sound distinct and transitions feel natural.
-5. **Tool system — world query tools.** Implement `query_npc`, `query_location`, `query_lore`, `query_inventory` as `@function_tool` functions backed by the database. Prove the DM can look up information mid-conversation and weave it into narration naturally.
-6. **Tool system — dice & mechanics.** Implement `request_skill_check`, `request_attack`, `request_saving_throw` with the hybrid model: LLM requests, rules engine validates, rolls, and applies atomically. Prove the DM calls for checks at appropriate moments and narrates outcomes using `narrative_hint`.
-7. **Tool system — game state mutation.** Implement `move_player`, `add_to_inventory`, `update_quest`, etc. with smart validation and auto-push client UI updates via LiveKit RPC. Prove mutations enforce game rules and client UI stays in sync.
+5. **Tool system — world query tools.** Use the `query_info` `@function_tool` backed by the database. Prove the DM can look up information mid-conversation and weave it into narration naturally.
+6. **Tool system — dice & mechanics.** Use `check`, `declare_phase`, and `resolve_phase` with the hybrid model: LLM requests, rules engine validates, rolls, and applies atomically. Prove the DM calls for checks at appropriate moments and narrates outcomes using `narrative_hint`.
+7. **Tool system — game state mutation.** Implement `move_player`, `transact`, `update_quest`, etc. with smart validation and auto-push client UI updates via LiveKit RPC. Prove mutations enforce game rules and client UI stays in sync.
 8. **Background process — prompt management.** Implement the async coroutine with event bus + timer fallback. Prove `update_instructions()` keeps the DM aware of world changes mid-session. Test proactive speech with priority classification (critical/important/routine).
 9. **Hot layer — per-turn context injection.** Implement `on_user_turn_completed` hook with combat state, pending events, and contextual detail injection. Prove ephemeral context improves DM response quality without bloating conversation history.
 10. **Multi-player room.** 2 humans + DM agent in a room. VAD-activated input from both players. DM addresses each by character name. Prove the SFU-based multi-player input model works with simultaneous VAD.
@@ -1478,19 +1427,19 @@ Standard software testing for the deterministic components. These run on every c
 The rules engine is the one system that must be provably correct. If the DM narrates a hit and the rules engine calculated a miss, player trust collapses. These tests are deterministic and should have near-complete coverage.
 
 **Mechanics tool tests (parameterized, hundreds of cases):**
-- `request_skill_check`: every skill × modifier range × DC range → verify correct roll, correct modifier application, correct success/failure determination, correct `narrative_hint` assignment
-- `request_attack`: weapon types × attacker stats × defender stats → verify to-hit calculation, damage roll, HP application, status effect triggers (critical hit, killing blow)
-- `request_saving_throw`: save types × DC range × status effects → verify roll, consequence application, effect interaction (e.g., advantage from a status cancels disadvantage from another)
-- `roll_dice`: all notation formats (d20, 2d6, d100, 4d6 drop lowest) → verify distribution properties over large sample sizes
+- `check`: every skill × modifier range × DC range → verify correct roll, correct modifier application, correct success/failure determination, correct `narrative_hint` assignment
+- `resolve_phase`: weapon types × attacker stats × defender stats → verify to-hit calculation, damage roll, HP application, status effect triggers (critical hit, killing blow)
+- `check`: save types × DC range × status effects → verify roll, consequence application, effect interaction (e.g., advantage from a status cancels disadvantage from another)
+- `check` with a dice roll: all notation formats (d20, 2d6, d100, 4d6 drop lowest) → verify distribution properties over large sample sizes
 
 **Game state mutation tests:**
 - `move_player`: valid paths succeed, invalid paths (locked, blocked, nonexistent) fail with correct error message
-- `add_to_inventory`: weight limits enforced, stacking works, full inventory rejected with reason
-- `remove_from_inventory`: can't remove nonexistent items, equipped items require unequip first
+- `transact`: weight limits enforced, stacking works, full inventory rejected with reason
+- `transact` with a negative delta: can't remove nonexistent items, equipped items require unequip first
 - `update_quest`: stage prerequisites enforced, completion triggers rewards, branching paths work
 - the XP Resolve (`_award_xp_core`): level-up thresholds correct, stat increases applied, level-up details returned, auto-grants applied at L10/15/20
-- `apply_status_effect`: immunities respected, duration tracking works, stacking rules enforced
-- `rest`: HP restoration correct, exhaustion reduction correct, status effect clearing follows rules
+- `resolve_phase`: immunities respected, duration tracking works, stacking rules enforced
+- Rest resolution: HP restoration correct, exhaustion reduction correct, status effect clearing follows rules
 
 **Edge cases and interactions:**
 - Status effect combinations: poisoned + blessed → verify both apply correctly to the same roll
@@ -1507,11 +1456,11 @@ The DM agent is an LLM, so its behavior is probabilistic. But many aspects of DM
 **Tool selection accuracy:**
 
 Build a scenario suite — 50-100 scripted situations with known-correct tool calls:
-- Player says "I search the room for traps" → should call `request_skill_check(player, "perception", ...)` or `request_skill_check(player, "investigation", ...)`
-- Player says "I attack the goblin with my sword" → should call `request_attack(player, goblin, sword)`
-- Player says "I want to buy a healing potion" → should call `query_inventory(merchant)` then possibly `remove_from_inventory` + `add_to_inventory`
-- Player says "let's head to the tavern" → should call `move_player(player, tavern_id)`
-- Player says "what does this symbol mean?" → should call `query_lore(...)` not `request_skill_check`
+- Player says "I search the room for traps" → should call `check` with a discover roll
+- Player says "I attack the goblin with my sword" → should call `declare_phase` with the player's attack declaration
+- Player says "I want to buy a healing potion" → should call `query_info(kind="inventory")` for the player, then `transact` for a purchase
+- Player says "let's head to the tavern" → should call `move_player` to the tavern
+- Player says "what does this symbol mean?" → should call `query_info(kind="lore", target_id=...)`
 
 Run each scenario N times (N=10-20). Measure: correct tool selected (%), correct parameters (%), tool called when it shouldn't have been (false positive rate), tool not called when it should have been (false negative rate). Target: >90% correct tool selection, <5% false positives.
 
@@ -1682,7 +1631,7 @@ The goal is that by the time external playtesters sit down, the experience has a
 - [ ] **VAD tuning and endpointing** — Optimal silence threshold (player input sessions currently hold 1000ms, above the SDK default, to keep a mid-sentence pause from splitting one utterance into two turns; that whole second sits inside the 1500ms end-of-speech-to-first-audio budget and needs playtesting against it), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
 - [ ] **Queued-turn UX** — How should the client show that speech completed while the DM was answering and is waiting in the four-turn queue?
 - [ ] **LLM response quality at speed** — Can we get narrative quality AND low latency simultaneously? May need tiered model strategy.
-- [x] **Client-side audio mixing** — Resolved in Client Architecture section. Four independent channels (Voice, Ambience, Effects, UI Audio) with ducking behavior. iOS `.playAndRecord` with `.mixWithOthers` and `.duckOthers`. Ambient sounds triggered by `location_changed` events, effects by `play_sound` events. Prototyping priority to validate LiveKit + simultaneous local playback.
+- [x] **Client-side audio mixing** — Resolved in Client Architecture section. Four independent channels (Voice, Ambience, Effects, UI Audio) with ducking behavior. iOS `.playAndRecord` with `.mixWithOthers` and `.duckOthers`. Ambient sounds triggered by `location_changed` events, effects by game-state events. Prototyping priority to validate LiveKit + simultaneous local playback.
 - [x] **DM context portability** — Resolved by the three-layer prompt architecture. Static + warm layers in the system prompt (managed by background process), hot layer injected per-turn via `on_user_turn_completed`. Multiplayer context merging handled by the warm layer including party member state.
 - [x] **Ventriloquism output parsing** — Fully specified in Orchestration Design. Strict `[CHARACTER, emotion]: "dialogue"` tags parsed by `tts_node` override. Emotion hints mapped to TTS temperature/speed settings. Streaming parse begins synthesis within tokens. Untagged text falls back to narrator voice gracefully.
 - [ ] **Companion extraction trigger** — At what point does ventriloquism become insufficient and an NPC needs its own agent? Metrics: response latency when the DM handles too many characters, player perception of companion "realness."

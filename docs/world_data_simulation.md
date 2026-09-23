@@ -220,7 +220,7 @@ Items have mechanical properties (for the rules engine), economic properties (fo
 ```
 
 **Key fields:**
-- `effects`: What the rules engine reads. The `apply_status_effect` and mechanics tools check these for resistance calculations, passive triggers, and stat modifications.
+- `effects`: What the rules engine reads. The rules engine and combat resolver check these for resistance calculations, passive triggers, and stat modifications.
 - `value_modifiers`: Context-dependent pricing. The economy simulation and merchant tools use these — the same amulet costs more near the Hollowmere where it's needed most.
 - `found_in`: Content authoring hint — where this item can be placed as loot or inventory. Not queried at runtime; used during content generation to populate locations and merchants.
 
@@ -576,7 +576,7 @@ Level 1 is a nudge. Level 2 is a suggestion. Level 3 is explicit direction. All 
 
 ### Writing Item Descriptions
 
-Item descriptions appear when the DM narrates loot discovery and when the `show_item_card` tool fires on the client. They must work in both contexts: spoken aloud by the DM and displayed as brief text on an item card.
+Item descriptions appear when the DM narrates loot discovery and when an inventory change pushes an item card to the client. They must work in both contexts: spoken aloud by the DM and displayed as brief text on an item card.
 
 **One sentence of flavor, one sentence of function.** That's the target length.
 
@@ -829,7 +829,7 @@ These hold the JSON entity schemas. Content changes only when authors update the
 | `quests` | `id` | Quest state machines with stages and branches |
 | `events` | `id` | Trigger conditions, effects, DM instructions |
 | `factions` | `id` | Reputation tiers, relationships |
-| `lore_entries` | `id` | Searchable lore passages (for `query_lore` tool) |
+| `lore_entries` | `id` | Searchable lore passages (for `query_info` tool) |
 | `encounter_templates` | `id` | Combat encounter definitions, difficulty scaling |
 | `inventory_pools` | `id` | Named item collections for merchant stocking |
 | `voice_registry` | `character_id` | Voice ID mappings for the ventriloquism system |
@@ -885,7 +885,7 @@ Redis is not durable — if it crashes, all data is rebuilt from PostgreSQL on r
 8. Assemble warm layer prompt string
 ```
 
-**DM tool `query_npc(npc_id)`:**
+**DM tool `query_info(kind="npc", target_id=npc_id)`:**
 ```
 1. Read NPC definition from content DB (or Redis cache): npcs WHERE id = npc_id
 2. Read per-player disposition: npc_dispositions WHERE npc_id = X AND player_id = Y

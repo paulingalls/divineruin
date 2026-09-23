@@ -179,7 +179,7 @@ Even though P2P trade doesn't exist in Phase 1, a few foundations should be in p
 
 1. **Item provenance tracking infrastructure.** Every item created or transferred logs its history. This costs little in Phase 1 but is enormously expensive to retrofit later.
 
-2. **Atomic transaction primitives.** The mechanics tools (`add_to_inventory`, `remove_from_inventory`) should be designed to support atomic multi-item, multi-currency transfers. Not used in Phase 1, but the API shape should accommodate Phase 2 trade execution.
+2. **Atomic transaction primitives.** The current `transact` verb changes one item by a signed delta. Phase 2 trade needs an atomic transfer across multiple items and currencies; the single-item verb alone cannot provide that guarantee.
 
 3. **Settlement-aware inventory APIs.** When P2P trade activates, the system must know "these two players are in the same settlement" or "these players are in different settlements." Settlement membership should be queryable infrastructure.
 
