@@ -1462,4 +1462,667 @@
       "sunward_coast"
     ]
   }
+,
+  {
+    "id": "umbral_crawler",
+    "name": "Umbral Crawler",
+    "category": "beast",
+    "tier": 2,
+    "description": "A ceiling-dwelling tunnel predator with paralytic mandibles.",
+    "level": 4,
+    "hp": 32,
+    "ac": 14,
+    "speed": 30,
+    "attributes": {
+      "STR": 14,
+      "DEX": 16,
+      "CON": 12,
+      "INT": 3,
+      "WIS": 12,
+      "CHA": 2
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d6+3",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "umbral_crawler_claw"
+      },
+      {
+        "name": "Mandible",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d8+3",
+        "damage_type": "piercing",
+        "special": "Only on grappled targets. Injects paralytic: DC 13 CON save or Paralyzed 1 minute",
+        "audio": "umbral_crawler_mandible"
+      }
+    ],
+    "multiattack": "2 Claw attacks",
+    "passives": [
+      {
+        "name": "Blindsight",
+        "description": "Blindsight 60 ft; hunts by vibration and scent. Climbs 30 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Sunlight Sensitivity",
+        "description": "Disadvantage in daylight.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Pack Ambush",
+        "description": "First attack from hidden has advantage and deals +1d6 damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Hunts in packs in deep tunnels. Drops from ceilings. Targets weakest-looking creature. Uses paralytic on downed prey.",
+      "morale": "Flees if 50% of pack killed.",
+      "group_size": "Pack of 3-5",
+      "environment": [
+        "Umbral Deep",
+        "Keldaran deep mines",
+        "underground ruins"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Chittering scratches descend from the ceiling.",
+      "attack_cue": "Claws scrape stone above you.",
+      "wounded_cue": "A thin hiss escapes its cracked chitin.",
+      "death_cue": "Its mandibles click once and fall silent.",
+      "ambient_cue": "Distant chittering rolls through the tunnel."
+    },
+    "audio": {
+      "ambient": "distant chittering rolls through the tunnel.",
+      "attack": "claws scrape stone above you.",
+      "hit": "a thin hiss escapes its cracked chitin.",
+      "death": "its mandibles click once and fall silent.",
+      "special": {}
+    },
+    "loot_table_id": "loot_umbral_crawler",
+    "xp_reward": 100,
+    "home_region": "underground",
+    "regions": [
+      "underground",
+      "keldaran_mountains"
+    ]
+  },
+  {
+    "id": "deepstone_guardian",
+    "name": "Deepstone Guardian",
+    "category": "construct",
+    "tier": 2,
+    "description": "An ancient stone sentry bound to defend buried halls.",
+    "level": 5,
+    "hp": 45,
+    "ac": 16,
+    "speed": 20,
+    "attributes": {
+      "STR": 18,
+      "DEX": 8,
+      "CON": 16,
+      "INT": 6,
+      "WIS": 10,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Stone Fist",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d10+4",
+        "damage_type": "bludgeoning",
+        "special": null,
+        "audio": "deepstone_guardian_stone_fist"
+      },
+      {
+        "name": "Guardian Pulse",
+        "type": "area",
+        "reach": 15,
+        "to_hit": 0,
+        "damage": "1d8",
+        "damage_type": "force",
+        "special": "CON save DC 14. Pushes all creatures 10 ft. Recharge 5-6",
+        "audio": "deepstone_guardian_guardian_pulse"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Damage Immunity",
+        "description": "Immune to poison and psychic damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Resistance",
+        "description": "Resists non-magical physical damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Sentry Protocol",
+        "description": "Cannot be surprised.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Tremorsense",
+        "description": "Detects creatures within 30 ft even through walls.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Lockdown",
+        "description": "All doors and passages within 60 ft seal for 1 minute; STR DC 16 to force open.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Guards ancient underground structures. Activates when intruders enter its zone. Will not pursue beyond its assigned area.",
+      "morale": "Fights to destruction within its zone.",
+      "group_size": "Solitary or pair (flanking a doorway)",
+      "environment": [
+        "Umbral Deep ruins",
+        "Keldaran ancient holds",
+        "pre-Sundering structures"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Stone grinds behind a sealed passage.",
+      "attack_cue": "A heavy thud shakes the floor.",
+      "wounded_cue": "A crack splits its grinding joints.",
+      "death_cue": "The grinding stops with a final stone thud.",
+      "ambient_cue": "A low stone hum echoes through the hall."
+    },
+    "audio": {
+      "ambient": "a low stone hum echoes through the hall.",
+      "attack": "a heavy thud shakes the floor.",
+      "hit": "a crack splits its grinding joints.",
+      "death": "the grinding stops with a final stone thud.",
+      "special": {}
+    },
+    "loot_table_id": "loot_deepstone_guardian",
+    "xp_reward": 150,
+    "home_region": "underground",
+    "regions": [
+      "underground",
+      "keldaran_mountains"
+    ]
+  },
+  {
+    "id": "dire_bear",
+    "name": "Dire Bear",
+    "category": "beast",
+    "tier": 2,
+    "description": "An enormous territorial bear that grapples prey.",
+    "level": 6,
+    "hp": 60,
+    "ac": 14,
+    "speed": 40,
+    "attributes": {
+      "STR": 20,
+      "DEX": 10,
+      "CON": 18,
+      "INT": 3,
+      "WIS": 12,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 8,
+        "damage": "1d8+5",
+        "damage_type": "slashing",
+        "special": "Reach 10 ft",
+        "audio": "dire_bear_claw"
+      },
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 8,
+        "damage": "2d6+5",
+        "damage_type": "piercing",
+        "special": "On hit: target grappled (escape DC 16). Can only bite grappled targets on subsequent rounds",
+        "audio": "dire_bear_bite"
+      },
+      {
+        "name": "Maul",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 0,
+        "damage": "2d8+5",
+        "damage_type": "piercing",
+        "special": "Auto-hit only against grappled targets. The full-body crush",
+        "audio": "dire_bear_maul"
+      }
+    ],
+    "multiattack": "2 attacks — one Claw and one Bite",
+    "passives": [
+      {
+        "name": "Keen Smell",
+        "description": "Advantage on Perception by smell.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Thick Hide",
+        "description": "Resists cold damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Territorial Rage",
+        "description": "Below 25% HP: advantage on all attacks and +2 damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Extremely territorial. Charges largest threat. Grapples and mauls. A dire bear in its rage state is one of the most dangerous natural encounters in the game.",
+      "morale": "Fights to death defending territory. Outside territory: retreats below 50% HP unless cubs nearby.",
+      "group_size": "Solitary or mother with 1-2 cubs (cubs are non-combatants)",
+      "environment": [
+        "Thornveld",
+        "Keldaran mountain forests",
+        "northern Greyvale"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A deep growl carries through the trees.",
+      "attack_cue": "A heavy snort precedes the charge.",
+      "wounded_cue": "A guttural groan rumbles from its chest.",
+      "death_cue": "One last breath rasps out among the leaves.",
+      "ambient_cue": "A rank scent drifts between broken branches."
+    },
+    "audio": {
+      "ambient": "a rank scent drifts between broken branches.",
+      "attack": "a heavy snort precedes the charge.",
+      "hit": "a guttural groan rumbles from its chest.",
+      "death": "one last breath rasps out among the leaves.",
+      "special": {}
+    },
+    "loot_table_id": "loot_dire_bear",
+    "xp_reward": 200,
+    "home_region": "multi_region",
+    "regions": [
+      "thornveld",
+      "keldaran_mountains",
+      "greyvale"
+    ]
+  },
+  {
+    "id": "troll",
+    "name": "Troll",
+    "category": "humanoid",
+    "tier": 2,
+    "description": "A regenerating brute that fears flame.",
+    "level": 6,
+    "hp": 65,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 18,
+      "DEX": 12,
+      "CON": 20,
+      "INT": 6,
+      "WIS": 8,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d6+4",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "troll_claw"
+      },
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d8+4",
+        "damage_type": "piercing",
+        "special": null,
+        "audio": "troll_bite"
+      }
+    ],
+    "multiattack": "3 attacks — one Bite and two Claw",
+    "passives": [
+      {
+        "name": "Regeneration",
+        "description": "Regains 5 HP at start of each turn; stops for 1 round after fire or acid damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Keen Smell",
+        "description": "Keen smell.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Loathsome Limbs",
+        "description": "Severed limbs act independently for 1 round; flavor only.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Aggressive but dim. Charges in, attacks whatever is closest. Does not use tactics. Will switch targets if current target deals fire damage.",
+      "morale": "Fights while regenerating. Flees if on fire.",
+      "group_size": "Solitary or pair",
+      "environment": [
+        "Thornveld",
+        "mountain passes",
+        "marshes",
+        "ruins"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A wet grunt comes from beyond the marsh.",
+      "attack_cue": "Claws scrape rock as it lunges.",
+      "wounded_cue": "A pained growl turns to a hiss.",
+      "death_cue": "A final groan bubbles into silence.",
+      "ambient_cue": "A foul stink hangs over the path."
+    },
+    "audio": {
+      "ambient": "a foul stink hangs over the path.",
+      "attack": "claws scrape rock as it lunges.",
+      "hit": "a pained growl turns to a hiss.",
+      "death": "a final groan bubbles into silence.",
+      "special": {}
+    },
+    "loot_table_id": "loot_troll",
+    "xp_reward": 200,
+    "home_region": "multi_region",
+    "regions": [
+      "thornveld",
+      "keldaran_mountains",
+      "sunward_coast"
+    ]
+  },
+  {
+    "id": "bandit_captain",
+    "name": "Bandit Captain",
+    "category": "humanoid",
+    "tier": 2,
+    "description": "A practiced road commander who fights behind bodyguards.",
+    "level": 5,
+    "hp": 45,
+    "ac": 15,
+    "speed": 30,
+    "attributes": {
+      "STR": 14,
+      "DEX": 16,
+      "CON": 14,
+      "INT": 12,
+      "WIS": 12,
+      "CHA": 14
+    },
+    "save_proficiencies": [
+      "DEX",
+      "CHA"
+    ],
+    "attacks": [
+      {
+        "name": "Longsword",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d8+3",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "bandit_captain_longsword"
+      },
+      {
+        "name": "Heavy Crossbow",
+        "type": "ranged",
+        "reach": 100,
+        "to_hit": 6,
+        "damage": "1d10+3",
+        "damage_type": "piercing",
+        "special": null,
+        "audio": "bandit_captain_heavy_crossbow"
+      }
+    ],
+    "multiattack": "2 attacks with Longsword or 2 Crossbow shots",
+    "passives": [
+      {
+        "name": "Leadership Aura",
+        "description": "Bandits within 30 ft gain +1 to attack rolls.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Cunning Action",
+        "description": "Can Dash, Disengage, or Hide as a bonus action.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Rally",
+        "description": "All allied bandits within 30 ft regain 1d8 HP.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Dirty Fighting",
+        "description": "Advantage on next attack; on hit, target Blinded 1 round.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Stays behind bodyguards. Uses crossbow at range, switches to sword when pressed. Commands bandits tactically — has them flank, focus fire, and retreat when losing.",
+      "morale": "Flees when last bodyguard falls. Surrenders if cornered and outmatched — will offer information or treasure for life.",
+      "group_size": "With 3-6 bandits",
+      "environment": [
+        "Roads",
+        "forest camps",
+        "ruins used as hideouts"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A sharp whistle calls hidden bandits to order.",
+      "attack_cue": "A crossbow twang cuts through the shouting.",
+      "wounded_cue": "A harsh grunt follows the blow.",
+      "death_cue": "A last breath rattles under the retreating footsteps.",
+      "ambient_cue": "Boots scrape gravel while low voices confer."
+    },
+    "audio": {
+      "ambient": "boots scrape gravel while low voices confer.",
+      "attack": "a crossbow twang cuts through the shouting.",
+      "hit": "a harsh grunt follows the blow.",
+      "death": "a last breath rattles under the retreating footsteps.",
+      "special": {}
+    },
+    "loot_table_id": "loot_bandit_captain_catalog",
+    "xp_reward": 150,
+    "home_region": "multi_region",
+    "regions": [
+      "greyvale",
+      "thornveld"
+    ]
+  },
+  {
+    "id": "thunderbird",
+    "name": "Thunderbird",
+    "category": "beast",
+    "tier": 3,
+    "description": "A storm predator that carries prey into the sky.",
+    "level": 9,
+    "hp": 90,
+    "ac": 15,
+    "speed": 20,
+    "attributes": {
+      "STR": 18,
+      "DEX": 16,
+      "CON": 16,
+      "INT": 6,
+      "WIS": 14,
+      "CHA": 10
+    },
+    "save_proficiencies": [
+      "DEX",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Beak",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "2d6+4",
+        "damage_type": "piercing",
+        "special": null,
+        "audio": "thunderbird_beak"
+      },
+      {
+        "name": "Talons",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d8+4",
+        "damage_type": "slashing",
+        "special": "Target grappled (escape DC 15). Thunderbird can fly while grappling — carries target",
+        "audio": "thunderbird_talons"
+      },
+      {
+        "name": "Lightning Breath",
+        "type": "area",
+        "reach": 60,
+        "to_hit": 0,
+        "damage": "4d8",
+        "damage_type": "lightning",
+        "special": "DEX save DC 15. Half on success. Recharge 5-6. The signature attack",
+        "audio": "thunderbird_lightning_breath"
+      }
+    ],
+    "multiattack": "2 attacks — one Beak and one Talons",
+    "passives": [
+      {
+        "name": "Flyby",
+        "description": "No opportunity attacks when flying away. Flies 80 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Lightning Absorption",
+        "description": "Immune to lightning; heals equal to lightning damage dealt to it.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Storm Sense",
+        "description": "Senses storms 6 hours ahead; fights more commonly during storms.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Apex predator of mountain and steppe skies. Dives from extreme altitude, uses Lightning Breath on groups, picks up isolated targets with talons. Intelligent enough to avoid large armed groups.",
+      "morale": "Retreats to altitude if badly wounded. Returns when healed. Does not fight to the death unless defending nest.",
+      "group_size": "Solitary or mated pair",
+      "environment": [
+        "Keldaran mountain peaks",
+        "Drathian Steppe (during storms)",
+        "high altitude everywhere"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Thunder cracks above the mountain pass.",
+      "attack_cue": "A piercing screech precedes the dive.",
+      "wounded_cue": "A crackle falters through its ragged breath.",
+      "death_cue": "A fading screech trails into the wind.",
+      "ambient_cue": "A low thunder crack rolls overhead."
+    },
+    "audio": {
+      "ambient": "a low thunder rumble circles overhead.",
+      "attack": "a piercing screech precedes the dive.",
+      "hit": "a crackle falters through its ragged breath.",
+      "death": "a fading screech trails into the wind.",
+      "special": {}
+    },
+    "loot_table_id": "loot_thunderbird",
+    "xp_reward": 500,
+    "home_region": "multi_region",
+    "regions": [
+      "keldaran_mountains",
+      "drathian_steppe"
+    ]
+  }
 ]

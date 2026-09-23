@@ -492,4 +492,211 @@
       }
     ]
   }
+,
+  {
+    "id": "loot_umbral_crawler",
+    "description": "Spec harvest drops for Umbral Crawler.",
+    "drops": [
+      {
+        "item_id": "crawler_chitin",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "paralytic_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "crawler_mandible",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_deepstone_guardian",
+    "description": "Spec harvest drops for Deepstone Guardian.",
+    "drops": [
+      {
+        "item_id": "guardian_core_small",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "enchanted_stone",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "ancient_mechanism",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_dire_bear",
+    "description": "Spec harvest drops for Dire Bear.",
+    "drops": [
+      {
+        "item_id": "dire_bear_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "dire_bear_claws",
+        "chance": 1.0,
+        "quantity": 4,
+        "requires": []
+      },
+      {
+        "item_id": "dire_bear_heart",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "dire_bear_fat",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_troll",
+    "description": "Spec harvest drops for Troll.",
+    "drops": [
+      {
+        "item_id": "troll_blood",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "troll_hide",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "troll_bone",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_bandit_captain_catalog",
+    "description": "Spec harvest drops for Bandit Captain.",
+    "drops": [
+      {
+        "item_id": "chain_shirt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "quality_longsword",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "treasure_map_intel",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_thunderbird",
+    "description": "Spec harvest drops for Thunderbird.",
+    "drops": [
+      {
+        "item_id": "thunderbird_feather",
+        "chance": 1.0,
+        "quantity": "2d6",
+        "requires": []
+      },
+      {
+        "item_id": "lightning_gland_large",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "thunderbird_egg",
+        "chance": 0.1,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "storm_crystal",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  }
 ]

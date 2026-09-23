@@ -1,6 +1,7 @@
-"""Spec pins for the seven Steppe, Keldaran, and Sunward creatures."""
+"""Spec pins for the seven Steppe, Keldaran, and Sunward creatures.
 
-# Source: docs/game_mechanics/game_mechanics_bestiary.md:781-966.
+Source: docs/game_mechanics/game_mechanics_bestiary.md:781-966.
+"""
 
 SPEC = {
     "steppe_razorwing": (

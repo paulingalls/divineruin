@@ -1,4 +1,4 @@
-"""Spec pins for the first thirteen natural bestiary entries."""
+"""Spec pins for natural bestiary entries."""
 
 import asyncio
 import importlib
@@ -8,10 +8,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from creature_catalog_story_126_spec import ABILITIES as NEW_ABILITIES
-from creature_catalog_story_126_spec import BEHAVIOR as NEW_BEHAVIOR
-from creature_catalog_story_126_spec import LOOT as NEW_LOOT
-from creature_catalog_story_126_spec import SPEC as NEW_SPEC
+from creature_spec_pins_steppe_keldaran_sunward import ABILITIES as NEW_ABILITIES
+from creature_spec_pins_steppe_keldaran_sunward import BEHAVIOR as NEW_BEHAVIOR
+from creature_spec_pins_steppe_keldaran_sunward import LOOT as NEW_LOOT
+from creature_spec_pins_steppe_keldaran_sunward import SPEC as NEW_SPEC
+from creature_spec_pins_underground_multi_region import ABILITIES as FINAL_ABILITIES
+from creature_spec_pins_underground_multi_region import BEHAVIOR as FINAL_BEHAVIOR
+from creature_spec_pins_underground_multi_region import LOOT as FINAL_LOOT
+from creature_spec_pins_underground_multi_region import MULTIATTACK as FINAL_MULTIATTACK
+from creature_spec_pins_underground_multi_region import SPEC as FINAL_SPEC
 
 from creature_schema import validate_creature_stat_block
 
@@ -19,9 +24,6 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts"))
 seed_content = importlib.import_module("seed_content")
 
-# Source: docs/game_mechanics/game_mechanics_bestiary.md:617-779.
-# Each tuple: category, tier, level, hp, ac, speed, XP, attributes, saves,
-# attacks (name, type, reach, hit, damage, type, special), home, regions.
 SPEC = {
     "grey_wolf": (
         "beast",
@@ -257,6 +259,10 @@ SPEC.update(NEW_SPEC)
 LOOT.update(NEW_LOOT)
 BEHAVIOR.update(NEW_BEHAVIOR)
 ABILITIES.update(NEW_ABILITIES)
+SPEC.update(FINAL_SPEC)
+LOOT.update(FINAL_LOOT)
+BEHAVIOR.update(FINAL_BEHAVIOR)
+ABILITIES.update(FINAL_ABILITIES)
 
 SOUND_OR_SMELL_LEXICON = (
     "howl",
@@ -352,7 +358,9 @@ def test_spec_stats_regions_and_behavior():
             tuple(row["regions"]),
         )
         assert actual == expected, key
-        assert row["multiattack"] == ("2 attacks — one Bite and one Tail" if key == "cave_wyrm" else None)
+        assert row["multiattack"] == FINAL_MULTIATTACK.get(
+            key, "2 attacks — one Bite and one Tail" if key == "cave_wyrm" else None
+        )
         assert row["hollow"] is None and row["reactions"] == []
         behavior = row["behavior"]
         assert (
@@ -367,6 +375,9 @@ def test_spec_stats_regions_and_behavior():
             tuple(ability["description"] for ability in row["passives"]),
             tuple((ability["description"], ability["recharge"]) for ability in row["actives"]),
         ) == ABILITIES[key]
+    assert {attack["name"] for attack in rows["bandit"]["attacks"]} == {"Short Sword", "Light Crossbow"}
+    assert {attack["name"] for attack in rows["bandit_captain"]["attacks"]} == {"Longsword", "Heavy Crossbow"}
+    assert {attack["name"] for attack in rows["troll"]["attacks"]} == {"Claw", "Bite"}
     greyvale = [row for row in rows.values() if row["home_region"] == "greyvale"]
     assert greyvale
     assert all(row["tier"] == 1 for row in greyvale)
@@ -394,7 +405,7 @@ def test_spec_loot_and_owners():
     assert items and materials
     for key, expected in LOOT.items():
         table = tables[rows[key]["loot_table_id"]]
-        assert table["id"] == f"loot_{key}"
+        assert table["id"] == ("loot_bandit_captain_catalog" if key == "bandit_captain" else f"loot_{key}")
         assert seed_content.validate_loot_table(table) == []
         assert drop_rows(table) == expected, key
         assert all(int(drop["item_id"] in items) + int(drop["item_id"] in materials) == 1 for drop in table["drops"])

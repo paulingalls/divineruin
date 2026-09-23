@@ -3516,4 +3516,49 @@
     "craft_value": 75,
     "value_modifiers": {}
   }
+,
+  {
+    "id": "quality_longsword",
+    "name": "Quality Longsword",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "uncommon",
+    "description": "A well-balanced longsword carried by a bandit captain.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 3.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "versatile"
+        ]
+      }
+    ],
+    "value_base": 200,
+    "value_modifiers": {},
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "treasure_map_intel",
+    "name": "Treasure Map or Intel",
+    "tier": 2,
+    "type": "quest_item",
+    "rarity": "uncommon",
+    "description": "A stolen map or written intelligence carried by a bandit captain.",
+    "tags": [
+      "quest"
+    ],
+    "weight": 0.1,
+    "effects": [],
+    "value_base": 50,
+    "value_modifiers": {}
+  }
 ]

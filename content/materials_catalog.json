@@ -235,7 +235,7 @@
     "category": "monster_part",
     "tier": 2,
     "rarity": "uncommon",
-    "source": "Extracted from giant spiders, rock vipers, and cave wyrms.",
+    "source": "Extracted from giant spiders and cave wyrms.",
     "weight": 0.2,
     "description": "A taut translucent bladder sloshing with cloudy poison."
   },
@@ -778,5 +778,106 @@
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
     "description": "Eel Oil harvested from Tidecaller Eel."
+  }
+,
+  {
+    "id": "crawler_chitin",
+    "name": "Crawler Chitin",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "Crawler Chitin harvested from Umbral Crawler."
+  },
+  {
+    "id": "paralytic_gland",
+    "name": "Paralytic Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "Paralytic Gland harvested from Umbral Crawler."
+  },
+  {
+    "id": "crawler_mandible",
+    "name": "Crawler Mandible",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "Crawler Mandible harvested from Umbral Crawler."
+  },
+  {
+    "id": "guardian_core_small",
+    "name": "Guardian Core Small",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "Guardian Core Small harvested from Deepstone Guardian."
+  },
+  {
+    "id": "ancient_mechanism",
+    "name": "Ancient Mechanism",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "Ancient Mechanism harvested from Deepstone Guardian."
+  },
+  {
+    "id": "dire_bear_claws",
+    "name": "Dire Bear Claws",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "Dire Bear Claws harvested from Dire Bear."
+  },
+  {
+    "id": "dire_bear_fat",
+    "name": "Dire Bear Fat",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "Dire Bear Fat harvested from Dire Bear."
+  },
+  {
+    "id": "troll_blood",
+    "name": "Troll Blood",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Troll.",
+    "weight": 0.2,
+    "description": "Troll blood harvested in doses from a troll."
+  },
+  {
+    "id": "lightning_gland_large",
+    "name": "Lightning Gland Large",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "Lightning Gland Large harvested from Thunderbird."
+  },
+  {
+    "id": "thunderbird_egg",
+    "name": "Thunderbird Egg",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "Thunderbird Egg harvested from Thunderbird."
   }
 ]
