@@ -283,10 +283,10 @@
       "ambient_cue": "Soft panting passes through the undergrowth, first near, then farther off."
     },
     "audio": {
-      "ambient": "grey_wolf ambient",
-      "attack": "grey_wolf attack",
-      "hit": "grey_wolf hit",
-      "death": "grey_wolf death",
+      "ambient": "soft panting and paws in leaf litter",
+      "attack": "snarl into a snapping bite",
+      "hit": "sharp yelp",
+      "death": "fading whine",
       "special": {}
     },
     "loot_table_id": "loot_grey_wolf",
@@ -370,10 +370,10 @@
       "ambient_cue": "Snuffling and the smell of churned soil drift from the field edge."
     },
     "audio": {
-      "ambient": "wild_boar ambient",
-      "attack": "wild_boar attack",
-      "hit": "wild_boar hit",
-      "death": "wild_boar death",
+      "ambient": "snuffling and hooves turning soil",
+      "attack": "squealing charge",
+      "hit": "angry grunt",
+      "death": "rattling last breath",
       "special": {}
     },
     "loot_table_id": "loot_wild_boar",
@@ -473,10 +473,10 @@
       "ambient_cue": "Soft clicks travel overhead while silk brushes the stone."
     },
     "audio": {
-      "ambient": "giant_spider ambient",
-      "attack": "giant_spider attack",
-      "hit": "giant_spider hit",
-      "death": "giant_spider death",
+      "ambient": "dry clicks and taut silk creaking",
+      "attack": "hiss of a lunge or cast web",
+      "hit": "chittering rasp",
+      "death": "brittle crunch of legs folding",
       "special": {}
     },
     "loot_table_id": "loot_giant_spider",
@@ -562,10 +562,10 @@
       "ambient_cue": "Low whistles trade between the trees on either side of the road."
     },
     "audio": {
-      "ambient": "bandit ambient",
-      "attack": "bandit attack",
-      "hit": "bandit hit",
-      "death": "bandit death",
+      "ambient": "low whistles and creaking leather",
+      "attack": "blade scrape or crossbow twang",
+      "hit": "pained grunt",
+      "death": "weapon clattering on stone",
       "special": {}
     },
     "loot_table_id": "loot_bandit",
@@ -656,10 +656,10 @@
       "ambient_cue": "Leaves rustle overhead, though the air at ground level is still."
     },
     "audio": {
-      "ambient": "thornveld_stalker ambient",
-      "attack": "thornveld_stalker attack",
-      "hit": "thornveld_stalker hit",
-      "death": "thornveld_stalker death",
+      "ambient": "branches creaking overhead",
+      "attack": "growl and raking claws",
+      "hit": "yelp turning to a rasp",
+      "death": "body thudding through branches",
       "special": {}
     },
     "loot_table_id": "loot_thornveld_stalker",
@@ -766,10 +766,10 @@
       "ambient_cue": "A slow grinding sound moves from tree to tree beneath the smell of spoiled sap."
     },
     "audio": {
-      "ambient": "corrupted_treant ambient",
-      "attack": "corrupted_treant attack",
-      "hit": "corrupted_treant hit",
-      "death": "corrupted_treant death",
+      "ambient": "slow grinding wood",
+      "attack": "groaning limb swing and root crack",
+      "hit": "splintering snap",
+      "death": "long creak and heavy fall",
       "special": {}
     },
     "loot_table_id": "loot_corrupted_treant",

@@ -79,6 +79,16 @@ test("real_catalog_and_injected_invalid_entry", async () => {
   const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
   const entries = JSON.parse(raw) as Record<string, unknown>[];
   assertCatalogEntries(entries);
+  const ids = entries.map((row) => row.id);
+  for (const id of [
+    "grey_wolf",
+    "wild_boar",
+    "giant_spider",
+    "bandit",
+    "thornveld_stalker",
+    "corrupted_treant",
+  ])
+    expect(ids).toContain(id);
   expect(validateCreatureJson(raw)).toEqual([]);
   const invalid = {
     ...entries[0]!,

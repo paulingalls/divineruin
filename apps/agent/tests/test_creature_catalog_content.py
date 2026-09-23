@@ -7,6 +7,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 from creature_schema import validate_creature_stat_block
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -368,18 +370,38 @@ def test_spec_loot_and_owners():
         assert all(int(drop["item_id"] in items) + int(drop["item_id"] in materials) == 1 for drop in table["drops"])
 
 
+SENSORY = re.compile(r"\b(?:" + "|".join(SOUND_OR_SMELL_LEXICON) + r")(?:s|ed|ing)?\b", re.I)
+SIGHT = re.compile(r"\b(?:" + "|".join(SIGHT_LEXICON) + r")(?:s|ed|ing)?\b", re.I)
+
+
+def assert_sound_first(cue, label):
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", cue) if part.strip()]
+    assert 1 <= len(sentences) <= 3, label
+    sound = SENSORY.search(sentences[0])
+    vision = SIGHT.search(sentences[0])
+    assert sound and (not vision or sound.start() < vision.start()), label
+
+
 def test_narration_opens_with_sound_or_smell():
     rows = named_rows(catalog("creatures.json"))
-    sensory = re.compile(r"\b(?:" + "|".join(SOUND_OR_SMELL_LEXICON) + r")(?:s|ed|ing)?\b", re.I)
-    sight = re.compile(r"\b(?:" + "|".join(SIGHT_LEXICON) + r")(?:s|ed|ing)?\b", re.I)
     for key in SPEC:
         for cue_name in ("first_sighting", "attack_cue", "wounded_cue", "death_cue", "ambient_cue"):
-            cue = rows[key]["narration"][cue_name]
-            sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", cue) if part.strip()]
-            assert 1 <= len(sentences) <= 3, (key, cue_name)
-            sound = sensory.search(sentences[0])
-            vision = sight.search(sentences[0])
-            assert sound and (not vision or sound.start() < vision.start()), (key, cue_name)
+            assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
+        audio = rows[key]["audio"]
+        assert all(audio[slot] and key not in audio[slot] for slot in ("ambient", "attack", "hit", "death")), key
+
+
+def test_sound_first_check_rejects_sight_first_and_long_cues():
+    assert_sound_first("A low howl rolls through the brush. Grey shapes close the gap.", "sound first")
+    for cue in (
+        "Grey shapes close the gap. A low howl follows.",
+        "You see a wolf howl.",
+        "Pale fur flickers between the pines.",
+        "A howl. A growl. A snap. A yelp.",
+        "",
+    ):
+        with pytest.raises(AssertionError):
+            assert_sound_first(cue, cue)
 
 
 def test_real_validators_and_seed_submission():
