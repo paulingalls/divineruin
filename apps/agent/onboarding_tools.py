@@ -75,10 +75,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             chat_ctx=summary_ctx,
         )
         sound_id = ACTION_SOUND_EXPORTS["ACTION_ADVANCE_ONBOARDING_BEAT"]
-        try:
-            await publish_action_sound(sd, sound_id)
-        except Exception:
-            logger.exception("Failed to publish completed onboarding cue")
+        await publish_action_sound(sd, sound_id)
         return agent, result
 
     if current == 3:
@@ -101,10 +98,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     sd.onboarding_beat = next_beat
     await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
     sound_id = ACTION_SOUND_EXPORTS["ACTION_ADVANCE_ONBOARDING_BEAT"]
-    try:
-        await publish_action_sound(sd, sound_id)
-    except Exception:
-        logger.exception("Failed to publish intermediate onboarding cue")
+    await publish_action_sound(sd, sound_id)
 
     beat_name = BEAT_NAMES.get(next_beat, "unknown")
     logger.info("Player %s advanced to onboarding beat %d (%s)", sd.player_id, next_beat, beat_name)

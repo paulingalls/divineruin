@@ -380,8 +380,5 @@ async def finalize_character(context: RunContext) -> str | tuple:
     agent = OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx, companion_id=companion_id)
     if steps_succeeded:
         sound_id = ACTION_SOUND_EXPORTS["ACTION_FINALIZE_CHARACTER"]
-        try:
-            await publish_action_sound(sd, sound_id)
-        except Exception:
-            logger.exception("Failed to publish character completion cue")
+        await publish_action_sound(sd, sound_id)
     return agent, json.dumps(summary)

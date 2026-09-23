@@ -1,5 +1,8 @@
+import ast
 import json
+import logging
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sample_fixtures import make_context
@@ -60,8 +63,66 @@ def test_bad_catalog_rejected_by_real_loader(bad_rows):
         _load_action_sounds(bad_rows(rows))
 
 
+async def test_known_id_publish_failure_is_logged_and_returns(caplog):
+    session = make_context().userdata
+    error = RuntimeError("cue transport failed")
+    with patch("action_sound_content.publish_game_event", new_callable=AsyncMock, side_effect=error) as publish:
+        with caplog.at_level(logging.ERROR):
+            await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_TRAVEL"])
+    publish.assert_awaited_once()
+    call = publish.await_args
+    assert call is not None
+    assert call.args[0] is session.room
+    assert call.kwargs["event_bus"] is session.event_bus
+    records = [record for record in caplog.records if record.levelno == logging.ERROR]
+    assert len(records) == 1
+    assert records[0].exc_info is not None
+    assert records[0].exc_info[1] is error
+
+
 async def test_unknown_id_rejected_before_publication():
     session = make_context().userdata
-    with pytest.raises(ValueError, match="unknown action sound"):
-        await publish_action_sound(session, "unknown_action_sound")
+    with patch("action_sound_content.publish_game_event", new_callable=AsyncMock) as publish:
+        with pytest.raises(ValueError, match="unknown action sound"):
+            await publish_action_sound(session, "unknown_action_sound")
+    publish.assert_not_awaited()
     assert session.event_bus.drain() == []
+
+
+def test_no_action_sound_call_has_local_exception_handler():
+    agent_dir = ROOT / "apps" / "agent"
+    assert agent_dir.is_dir()
+    modules = sorted(agent_dir.glob("*.py"))
+    assert modules
+    call_count = 0
+    violations = []
+    for module in modules:
+        tree = ast.parse(module.read_text(), filename=str(module))
+        parents = {}
+        for node in ast.walk(tree):
+            for child in ast.iter_child_nodes(node):
+                parents[child] = node
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = (
+                node.func.id
+                if isinstance(node.func, ast.Name)
+                else node.func.attr
+                if isinstance(node.func, ast.Attribute)
+                else None
+            )
+            if name != "publish_action_sound":
+                continue
+            call_count += 1
+            ancestor = parents.get(node)
+            while ancestor is not None:
+                if isinstance(ancestor, (ast.Try, ast.TryStar)):
+                    for handler in ancestor.handlers:
+                        caught = handler.type
+                        types = caught.elts if isinstance(caught, ast.Tuple) else [caught]
+                        if caught is None or any(isinstance(t, ast.Name) and t.id == "Exception" for t in types):
+                            violations.append(f"{module}:{node.lineno}")
+                ancestor = parents.get(ancestor)
+    assert call_count > 0
+    assert not violations, violations

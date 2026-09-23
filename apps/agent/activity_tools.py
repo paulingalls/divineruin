@@ -34,13 +34,6 @@ from session_data import SessionData
 logger = logging.getLogger("divineruin.tools")
 
 
-async def _publish_begin_cue(session: SessionData, sound_id: str) -> None:
-    try:
-        await publish_action_sound(session, sound_id)
-    except Exception:
-        logger.exception("Failed to publish begin activity cue %s", sound_id)
-
-
 @function_tool()
 @db_tool
 async def begin_activity(
@@ -89,28 +82,28 @@ async def _begin_activity_impl(
         if not program_id:
             raise ToolError("kind='training' requires program_id.")
         result = await training_mod._initiate_training_cycle_impl(context, program_id, spell_id=spell_id)
-        await _publish_begin_cue(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_TRAINING"])
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_TRAINING"])
         return result
 
     if kind == "companion_errand":
         if not (companion_id and errand_type and destination):
             raise ToolError("kind='companion_errand' requires companion_id, errand_type, and destination.")
         result = await errand_mod._dispatch_companion_errand_impl(context, companion_id, errand_type, destination)
-        await _publish_begin_cue(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_COMPANION_ERRAND"])
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_COMPANION_ERRAND"])
         return result
 
     if kind == "crafting":
         if not recipe_id:
             raise ToolError("kind='crafting' requires recipe_id.")
         result = await crafting_mod._start_crafting_project_impl(context, recipe_id)
-        await _publish_begin_cue(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_CRAFTING"])
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_CRAFTING"])
         return result
 
     if kind == "workspace":
         if not workspace_type or not npc_id or days is None:
             raise ToolError("kind='workspace' requires workspace_type, npc_id, and days.")
         result = await crafting_mod._rent_workspace_impl(context, workspace_type, npc_id, days)
-        await _publish_begin_cue(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_WORKSPACE"])
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_WORKSPACE"])
         return result
 
     if kind == "experiment":
@@ -122,7 +115,7 @@ async def _begin_activity_impl(
         result = await experimentation_mod._experiment_with_materials_impl(context, materials, intended_output)
         outcome = json.loads(result)["outcome"]
         if outcome in {"success", "failure", "no_match"}:
-            await _publish_begin_cue(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_EXPERIMENT"])
+            await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_BEGIN_EXPERIMENT"])
         elif outcome != "already_tried":
             raise ValueError(f"Unknown experiment outcome: {outcome!r}")
         return result
