@@ -79,6 +79,7 @@ class TestDivineFavorWhisperIsPrimaryOnly:
             [],
         )
         assert len(speech) == 1
+        assert speech[0].recipient_id == "player_1"
 
     def test_teammates_crossing_queues_nothing(self):
         sd = _sd()

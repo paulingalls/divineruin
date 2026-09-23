@@ -3,6 +3,7 @@
 import asyncio
 import json
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,6 +20,10 @@ from session_end import run_guest_departure
 from session_startup import GameplayInputOwner
 from session_summary import generate_session_summary
 from session_tools import end_session
+
+WIRE_EVENTS = json.loads(
+    (Path(__file__).resolve().parents[4] / "packages/shared/fixtures/event_wire.json").read_text()
+)["events"]
 
 
 def _party():
@@ -40,6 +45,25 @@ async def test_guest_intent_does_not_end_party_inside_tool():
     assert sd.departing_player_id == "guest"
     assert sd.party.member_ids == ["host", "guest"]
     assert sd.departure_task is None
+
+
+@pytest.mark.asyncio
+async def test_guest_farewell_tool_reports_only_guest_metrics():
+    sd = _party()
+    sd.session_xp_earned = 100
+    sd.session_items_found = ["Host sword"]
+    sd.record_player_metric("guest", "xp_earned", 20)
+    sd.record_player_metric("guest", "items_found", "Guest key")
+    ctx = MagicMock(userdata=sd)
+    ctx.speech_handle = SpeechHandle.create()
+    with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+        result = json.loads(await end_session._func(ctx, "goodbye"))
+    assert result["session_stats"] == {
+        "xp_earned": 20,
+        "items_found": ["Guest key"],
+        "quests_progressed": [],
+        "locations_visited": [],
+    }
 
 
 def _departure_setup():
@@ -87,6 +111,11 @@ async def test_departure_waits_for_speech_and_keeps_host_playing():
     lifecycle.mark_departed.assert_called_once_with("guest")
     event = [e for e in sd.event_bus.drain() if e.event_type == E.SESSION_END]
     assert len(event) == 1 and event[0].payload["player_id"] == "guest"
+    assert {"type": event[0].event_type, **event[0].payload} == {
+        **WIRE_EVENTS["session_end_guest"],
+        "player_id": "guest",
+        "summary": "Guest's journey",
+    }
 
 
 @pytest.mark.asyncio
@@ -111,6 +140,7 @@ async def test_failed_removal_keeps_membership_and_does_not_save(caplog):
     assert "Guest departure failed" in caplog.text
     events = [e.payload for e in sd.event_bus.drain() if e.event_type == E.SESSION_END]
     assert events == [{"summary": "Guest's journey", "player_id": "guest"}, {"player_id": "guest", "cancelled": True}]
+    assert {"type": E.SESSION_END, **events[1]} == {**WIRE_EVENTS["session_end_cancelled"], "player_id": "guest"}
 
 
 @pytest.mark.asyncio

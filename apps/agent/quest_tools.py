@@ -366,8 +366,10 @@ async def _update_quest_impl(
         session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
+    session.record_player_metric(actor_id, "quest_progress", quest_id)
     if outcome is not None:
         session.session_xp_earned += outcome.summary_xp_granted
+        session.record_player_metric(primary_id, "xp_earned", outcome.summary_xp_granted)
 
     response = {
         "quest_id": quest_id,

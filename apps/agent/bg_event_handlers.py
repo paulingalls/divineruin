@@ -52,6 +52,7 @@ def _queue(
     stinger_sound: str | None = None,
     *,
     combat_safe: bool = False,
+    recipient_id: str | None = None,
 ) -> None:
     speech_queue.append(
         PendingSpeech(
@@ -59,6 +60,7 @@ def _queue(
             instructions=instructions,
             stinger_sound=stinger_sound,
             combat_safe=combat_safe,
+            recipient_id=recipient_id,
         )
     )
 
@@ -282,4 +284,10 @@ def queue_god_whisper(
             f" {name} does not react during the divine speech. After the silence breaks, "
             f"{name} looks shaken but says nothing unless the player speaks first."
         )
-    _queue(speech_queue, SpeechPriority.CRITICAL, instructions, stinger_sound=profile.stinger_sound)
+    _queue(
+        speech_queue,
+        SpeechPriority.CRITICAL,
+        instructions,
+        stinger_sound=profile.stinger_sound,
+        recipient_id=sd.primary_player_id,
+    )

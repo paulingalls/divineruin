@@ -2,6 +2,7 @@ import pytest
 from livekit.agents import Agent
 
 import base_agent
+import blacksmith_agent
 import combat_agent
 import creation_agent
 import dispatch_agent
@@ -14,6 +15,7 @@ PROJECT_MODULES = {
     module.__name__
     for module in (
         base_agent,
+        blacksmith_agent,
         combat_agent,
         creation_agent,
         dispatch_agent,
@@ -42,6 +44,7 @@ def test_project_agent_hooks_exist_on_installed_livekit_agent():
     classes = [cls for cls in _descendants(Agent) if cls.__module__ in PROJECT_MODULES]
     assert {cls.__name__ for cls in classes} >= {
         "BaseGameAgent",
+        "BlacksmithAgent",
         "ExplorationAgent",
         "CombatAgent",
         "CreationAgent",

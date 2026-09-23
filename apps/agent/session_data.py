@@ -134,6 +134,7 @@ class SessionData:
     session_items_found: list[str] = field(default_factory=list)
     session_quests_progressed: list[str] = field(default_factory=list)
     session_locations_visited: list[str] = field(default_factory=list)
+    player_summary_metrics: dict[str, dict] = field(default_factory=dict)
     departing_player_id: str | None = None
     departure_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
     player_disconnected: bool = False
@@ -332,6 +333,16 @@ class SessionData:
 
     def record_event(self, description: str) -> None:
         self.recent_events.append(description)
+
+    def record_player_metric(self, player_id: str, key: str, value: int | str) -> None:
+        metrics = self.player_summary_metrics.setdefault(
+            player_id,
+            {"xp_earned": 0, "items_found": [], "quest_progress": [], "locations_visited": []},
+        )
+        if key == "xp_earned":
+            metrics[key] += value
+        elif value not in metrics[key]:
+            metrics[key].append(value)
 
     def record_companion_memory(self, memory: str) -> None:
         if self.companion is None:

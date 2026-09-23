@@ -64,6 +64,13 @@ async def generate_session_summary(
         "locations_visited": session_data.session_locations_visited,
         "duration": round(elapsed),
     }
+    if player_id is not None:
+        metrics.update(
+            session_data.player_summary_metrics.get(
+                player_id,
+                {"xp_earned": 0, "items_found": [], "quest_progress": [], "locations_visited": []},
+            )
+        )
 
     recent = list(session_data.recent_events)
 
@@ -84,7 +91,7 @@ async def generate_session_summary(
     # Run LLM summary and story moments fetch concurrently
     async def _fetch_story_moments() -> list:
         try:
-            return await db_activity_queries.get_session_story_moments(session_data.session_id)
+            return await db_activity_queries.get_session_story_moments(session_data.session_id, player_id)
         except Exception:
             logger.debug("Could not fetch story moments for session %s", session_data.session_id)
             return []

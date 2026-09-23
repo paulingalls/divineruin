@@ -2,6 +2,7 @@ import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { authStore } from "@/stores/auth-store";
 import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
@@ -100,6 +101,19 @@ test("session_end for another player leaves this player's session untouched", ()
   expect(sessionStore.getState().sessionSummary).toBe(before.sessionSummary);
   expect(characterStore.getState().character).toBe(character);
   expect(hudStore.getState()).toBe(hud);
+});
+
+test("another member's room-wide init cannot replace the authenticated recipient", () => {
+  authStore.setState({ playerId: "guest" });
+  handleGameEvent({ type: "session_init", character: { player_id: "host", name: "Host" } });
+  expect(characterStore.getState().character).toBeNull();
+  handleGameEvent({ type: "session_init", character: { player_id: "guest", name: "Guest" } });
+  expect(characterStore.getState().character?.playerId).toBe("guest");
+  handleGameEvent({ type: "session_init", character: { player_id: "host", name: "Host" } });
+  handleGameEvent({ type: "session_end", player_id: "host", summary: "Host leaves." });
+  expect(characterStore.getState().character?.playerId).toBe("guest");
+  expect(sessionStore.getState().phase).not.toBe("summary");
+  authStore.setState({ playerId: null });
 });
 
 test("session_end for the local player shows their summary", () => {

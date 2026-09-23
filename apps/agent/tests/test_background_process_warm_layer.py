@@ -51,6 +51,10 @@ class TestWarmLayerRebuild:
         session = MagicMock(current_agent=agent)
         bp = BackgroundProcess(session, sd)
         bp._quest_cache = [{"id": "host-quest"}]
+        bp._speech_queue = [
+            PendingSpeech(priority=SpeechPriority.CRITICAL, instructions="Old host's patron", recipient_id="host"),
+            PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="Party warning"),
+        ]
         bp._last_warm_layer = "host warm"
         sd.handoff_primary("host")
         with (
@@ -70,6 +74,7 @@ class TestWarmLayerRebuild:
         training.assert_awaited_once_with("p2")
         assert build.await_args is not None and build.await_args.args[:2] == ("tavern", "p2")
         assert bp._quest_cache == []
+        assert [speech.instructions for speech in bp._speech_queue] == ["Party warning"]
         assert bp._last_warm_layer == "p2 warm"
 
     @pytest.mark.asyncio

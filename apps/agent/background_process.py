@@ -95,6 +95,11 @@ class BackgroundProcess:
         self._paused = False
 
     async def primary_changed(self) -> None:
+        self._speech_queue = [
+            speech
+            for speech in self._speech_queue
+            if speech.recipient_id is None or speech.recipient_id == self._sd.primary_player_id
+        ]
         self._quest_cache.clear()
         self._scene_cache.clear()
         self._scene_hint_state.clear()

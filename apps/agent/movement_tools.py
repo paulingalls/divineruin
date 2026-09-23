@@ -147,6 +147,7 @@ async def apply_arrival(
     session.record_companion_memory(f"Traveled to {loc_name}")
     if destination_id not in session.session_locations_visited:
         session.session_locations_visited.append(destination_id)
+    session.record_player_metric(speaker_id, "locations_visited", destination_id)
     return previous_location_id
 
 
