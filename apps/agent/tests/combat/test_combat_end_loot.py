@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import db
+import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
@@ -53,7 +54,8 @@ class FakeRng(random.Random):
 
 def _content_stub(material: bool = False) -> MagicMock:
     """A db_content_queries stand-in whose get_loot_table returns one bespoke table for the known
-    id, and whose catalog lookups resolve the drop's display row."""
+    id. get_material_definition is the real query, so a material drop resolves from the seeded
+    materials_catalog row at grant time."""
 
     async def _get(loot_table_id: str) -> dict | None:
         if loot_table_id == _LOOT_TABLE_ID:
@@ -71,11 +73,7 @@ def _content_stub(material: bool = False) -> MagicMock:
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
     content.get_item = AsyncMock(side_effect=_get_item)
-    content.get_material_definition = AsyncMock(
-        return_value={"id": _MATERIAL_ID, "name": "Raw Ore", "description": "Heavy ore.", "rarity": "rare"}
-        if material
-        else None
-    )
+    content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
     return content
 
 
