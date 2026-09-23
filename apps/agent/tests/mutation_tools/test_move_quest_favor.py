@@ -144,9 +144,10 @@ class TestMovePlayer:
             queries=mock_queries,
             content=mock_content,
         )
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == E.LOCATION_CHANGED
+        published = [json.loads(call.args[0]) for call in room.local_participant.publish_data.call_args_list]
+        assert [event["type"] for event in published] == [E.LOCATION_CHANGED, E.PLAY_SOUND]
+        call_data, cue = published
+        assert cue["sound_name"] == "action_move"
         assert call_data["new_location"] == "accord_market_square"
         assert call_data["location_name"] == "Market Square"
         assert call_data["atmosphere"] == "noisy, chaotic"

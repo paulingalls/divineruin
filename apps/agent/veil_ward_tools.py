@@ -51,6 +51,7 @@ import db_queries
 import veil_ward
 import veil_ward_events
 import ward_resolution
+from action_sound_content import publish_action_sound
 from resource_costs import gate_pool
 from session_data import SessionData
 from veil_ward import WardDurationKind
@@ -198,6 +199,7 @@ async def _activate_veil_ward_locked(
     # The raise succeeded, so the scope we just wrote IS the resolved covering scope — the
     # already-active gate above proved nothing else covered the party.
     await veil_ward_events.publish_veil_ward_changed(session, encounter_ward or session.location_ward, scope)
+    await publish_action_sound(session, "action_veil_ward_raise")
     return json.dumps(
         {
             "active": True,
@@ -253,4 +255,5 @@ async def _dismiss_impl(session: SessionData, pid: str, *, db_mod, ward_mutation
     await veil_ward_events.publish_veil_ward_changed(
         session, location_ward, location_scope if location_ward is not None else None
     )
+    await publish_action_sound(session, "action_veil_ward_dismiss")
     return json.dumps({"active": location_ward is not None})

@@ -1,6 +1,7 @@
 import { test, expect } from "bun:test";
-import { lookupSound, knownSoundNames } from "@/audio/sound-registry";
+import { lookupSound, knownSoundNames, mergeSoundRows } from "@/audio/sound-registry";
 import combatSounds from "../../../../content/combat_sounds.json";
+import actionSounds from "../../../../content/action_sounds.json";
 import spells from "../../../../content/spells.json";
 
 const preservedCombatIds = new Set([
@@ -20,6 +21,48 @@ const preservedCombatIds = new Set([
   "player_death",
   "player_stabilized",
 ]);
+
+const expectedActionRows = [
+  ["ACTION_TRAVEL", "action_travel", "footstep_stone"],
+  ["ACTION_MOVE", "action_move", "footstep_stone"],
+  ["ACTION_VEIL_WARD_RAISE", "action_veil_ward_raise", "spell_arcane_force"],
+  ["ACTION_VEIL_WARD_DISMISS", "action_veil_ward_dismiss", "spell_arcane_force"],
+  ["ACTION_VEIL_ANCHOR", "action_veil_anchor", "spell_arcane_force"],
+  ["ACTION_ABILITY", "action_ability", "spell_cast"],
+  ["ACTION_GATHER", "action_gather", "item_pickup"],
+];
+
+test("action catalog exactly matches the fixed rows and resolves", () => {
+  expect(actionSounds).toHaveLength(7);
+  expect(actionSounds.map((row) => [row.export, row.id, row.asset])).toEqual(expectedActionRows);
+  for (const row of actionSounds) {
+    expect(lookupSound(row.id)).not.toBeNull();
+    expect(knownSoundNames()).toContain(row.id);
+  }
+});
+
+test("action merge rejects duplicates, collisions, missing assets, and empty rows", () => {
+  const assets = { footstep_stone: 1, spell_cast: 2 };
+  const first = { export: "FIRST", id: "action_travel", asset: "footstep_stone" };
+  for (const rows of [
+    [first, first],
+    [{ ...first, id: "dice_roll" }],
+    [{ ...first, id: "weapon_hit" }],
+    [{ ...first, asset: "missing_action_asset" }],
+    [],
+  ]) {
+    expect(() => mergeSoundRows({ dice_roll: 3, weapon_hit: 4 }, rows, assets, "action")).toThrow();
+  }
+});
+
+test("action merge treats Object.prototype names as ordinary keys", () => {
+  const target: Record<string, number> = {};
+  mergeSoundRows(target, [{ id: "toString", asset: "spell_cast" }], { spell_cast: 2 }, "action");
+  expect(Object.getOwnPropertyDescriptor(target, "toString")?.value).toBe(2);
+  expect(() => mergeSoundRows({}, [{ id: "action_x", asset: "toString" }], {}, "action")).toThrow(
+    "Unmapped action sound asset: toString",
+  );
+});
 
 test("lookupSound returns asset for known sounds", () => {
   expect(lookupSound("dice_roll")).not.toBeNull();
