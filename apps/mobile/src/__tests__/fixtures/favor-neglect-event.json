@@ -1,0 +1,24 @@
+{
+  "primary": {
+    "type": "divine_favor_changed",
+    "new_level": 7,
+    "previous_level": 12,
+    "amount": -5,
+    "max": 100,
+    "patron_id": "kaelen",
+    "player_id": "s224_primary",
+    "last_whisper_level": 0,
+    "reason": "neglect"
+  },
+  "joiner": {
+    "type": "divine_favor_changed",
+    "new_level": 7,
+    "previous_level": 12,
+    "amount": -5,
+    "max": 100,
+    "patron_id": "kaelen",
+    "player_id": "s224_joiner",
+    "last_whisper_level": 0,
+    "reason": "neglect"
+  }
+}

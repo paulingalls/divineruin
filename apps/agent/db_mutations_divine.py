@@ -48,6 +48,30 @@ async def update_divine_favor(
     )
 
 
+async def persist_favor_decay(player_id: str, level: int, stamp: str, *, conn=None) -> None:
+    connection = conn or await db.get_pool()
+    await connection.execute(
+        """
+        UPDATE players SET data = jsonb_set(
+            jsonb_set(data, '{divine_favor,level}', $2::jsonb),
+            '{divine_favor,last_decay_at}', $3::jsonb
+        ) WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(level),
+        json.dumps(stamp),
+    )
+
+
+async def initialize_favor_clock(player_id: str, stamp: str, *, conn=None) -> None:
+    connection = conn or await db.get_pool()
+    await connection.execute(
+        "UPDATE players SET data = jsonb_set(data, '{divine_favor,last_served_at}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(stamp),
+    )
+
+
 async def mark_favor_whisper_level(
     player_id: str, level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:

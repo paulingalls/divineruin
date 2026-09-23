@@ -18,7 +18,7 @@ registered handler can be invoked directly (a MagicMock decorator return would s
 import asyncio
 import logging
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -139,8 +139,9 @@ async def test_second_player_join_appends_and_hydrates_all_five_substates():
     sd.corruption_level = 4  # the party sits in a corrupted room; the joiner is co-located
     handler = _wire(room, handlers, sd, mods)
 
-    handler(_participant("player_2"))
-    await _drain()
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock):
+        handler(_participant("player_2"))
+        await _drain()
 
     assert sd.party.member_ids == ["player_1", "player_2"]
     m = sd.party.member("player_2")

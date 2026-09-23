@@ -368,6 +368,9 @@ class PartyLifecycle:
             concentration=ConcentrationState(),
         )
         self.userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
+        from session_hydration import apply_session_favor_decay
+
+        await apply_session_favor_decay(self.userdata, identity, row)
 
         # Hydrate the per-member sub-states the same way session_hydration.hydrate_session_state
         # applies them onto the primary. The veil ward is NOT among them (M24 story-004): it is
