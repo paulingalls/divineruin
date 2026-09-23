@@ -281,6 +281,7 @@ async def test_gather_tool_consumes_and_persists_atomically():
         return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
     )
     content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    content.get_material_definition = AsyncMock(return_value={"name": "Herb"})
     db_mod, conn = make_db_mod()
     cond_mut = MagicMock()
     cond_mut.remove_player_conditions = AsyncMock()
@@ -319,6 +320,7 @@ async def test_gather_tool_no_condition_does_not_persist():
         return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
     )
     content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    content.get_material_definition = AsyncMock(return_value={"name": "Herb"})
     db_mod, _ = make_db_mod()
     cond_mut = MagicMock()
     cond_mut.remove_player_conditions = AsyncMock()
