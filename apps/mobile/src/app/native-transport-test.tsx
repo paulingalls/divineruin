@@ -73,6 +73,9 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
   const [eventSender, setEventSender] = useState("");
   const [status, setStatus] = useState("Connecting native transport");
   const submitted = useRef(false);
+  // Once per mount: the result effect re-runs on every microphone-frame update (every 250 ms),
+  // so a start time taken inside it never ages and the observation timeout could never fire.
+  const started = useRef<number | null>(null);
 
   const onGameEvent = useCallback((message: ReceivedDataMessage) => {
     try {
@@ -130,7 +133,7 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
   }, [endpoint, fixture.runId]);
 
   useEffect(() => {
-    const started = Date.now();
+    started.current ??= Date.now();
     const timer = setInterval(() => {
       if (submitted.current) return;
       const peerReady = participants.some((p) => p.identity === fixture.publisherIdentity);
@@ -138,7 +141,7 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
         character?.name === "Upgrade Test Hero" && location?.locationName === "Upgrade Test Room";
       const eventReady = eventSender === fixture.publisherIdentity;
       const success = peerReady && audio && microphoneFrames > 0 && hudReady && eventReady;
-      const timedOut = Date.now() - started >= OBSERVATION_TIMEOUT_MS;
+      const timedOut = Date.now() - (started.current ?? Date.now()) >= OBSERVATION_TIMEOUT_MS;
       if (!success && !timedOut) return;
 
       const guardFailed = !audio
