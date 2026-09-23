@@ -55,6 +55,15 @@ test("action merge rejects duplicates, collisions, missing assets, and empty row
   }
 });
 
+test("action merge treats Object.prototype names as ordinary keys", () => {
+  const target: Record<string, number> = {};
+  mergeSoundRows(target, [{ id: "toString", asset: "spell_cast" }], { spell_cast: 2 }, "action");
+  expect(Object.getOwnPropertyDescriptor(target, "toString")?.value).toBe(2);
+  expect(() => mergeSoundRows({}, [{ id: "action_x", asset: "toString" }], {}, "action")).toThrow(
+    "Unmapped action sound asset: toString",
+  );
+});
+
 test("lookupSound returns asset for known sounds", () => {
   expect(lookupSound("dice_roll")).not.toBeNull();
   expect(lookupSound("sword_clash")).not.toBeNull();

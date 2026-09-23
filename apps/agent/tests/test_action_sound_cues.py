@@ -73,13 +73,13 @@ def assert_committed_cue(ctx, log, expected):
     assert log.index(("commit", None)) < log.index(("cue", expected))
 
 
-def arrival_mocks(log, *, exit=True, requires=None):
+def arrival_mocks(log, *, exit=True, requires=None, terrain="established_road"):
     db, conn = db_with_commit(log)
     start = {
         "id": "accord_guild_hall",
         "exits": {"north": {"destination": "dest", **({"requires": requires} if requires else {})}} if exit else {},
     }
-    dest = {"id": "dest", "name": "Destination", "terrain": "established_road", "exits": {}}
+    dest = {"id": "dest", "name": "Destination", "terrain": terrain, "exits": {}}
     content = MagicMock(get_location=AsyncMock(side_effect=lambda id: {"accord_guild_hall": start, "dest": dest}[id]))
     mutations = MagicMock(update_player_location=AsyncMock(), upsert_map_progress=AsyncMock())
     travel = MagicMock(update_player_travel_state=AsyncMock())
@@ -105,7 +105,7 @@ async def move(ctx, m):
         )
 
 
-async def travel(ctx, m):
+async def travel(ctx, m, roll=1):
     with patch.object(
         movement_tools.ward_resolution, "resolve_scope_ward_with_scope", AsyncMock(return_value=(None, None))
     ):
@@ -118,7 +118,7 @@ async def travel(ctx, m):
             travel_mutations=m.travel,
             content=m.content,
             db_mod=m.db,
-            rng=FixedRng(1),
+            rng=FixedRng(roll),
         )
 
 
@@ -135,6 +135,16 @@ async def test_travel_cue_follows_arrival_commit_and_survives_later_failure():
     with pytest.raises(RuntimeError, match="later"):
         await travel(ctx, m)
     assert_committed_cue(ctx, log, CASES["travel"])
+
+
+async def test_rolled_travel_arrival_publishes_no_action_cue():
+    ctx, log = recorded_context()
+    m = arrival_mocks(log, terrain="known_trail")
+    result = json.loads(await travel(ctx, m, roll=20))
+    assert result["arrived"] is True
+    m.mutations.update_player_location.assert_awaited_once()
+    assert any(e.event_type == E.DICE_ROLL for e in published_events(ctx))
+    assert cues(ctx) == []
 
 
 async def test_move_cue_precedes_delayed_scene_and_survives_later_failure():
@@ -306,6 +316,20 @@ async def test_real_ability_debit_commits_before_cue():
     assert persistence.update_player_resources.await_args.kwargs["conn"] is conn
     assert log.index(next(entry for entry in log if entry[0] == "debit")) < log.index(("commit", None))
     assert_committed_cue(ctx, log, CASES["ability"])
+
+
+async def test_variant_cues_out_of_combat_only():
+    for combat_state, expected in [(None, [CASES["ability"]]), (_make_combat_state(), [])]:
+        ctx, _log = recorded_context()
+        ctx.userdata.combat_state = combat_state
+        ability = MagicMock(_request_ability_activation_impl=AsyncMock(return_value='{"activated": true}'))
+        raw = await _activate_impl(ctx, "warrior_cleaving_blow_drathian", ability_mod=ability)
+        assert json.loads(raw)["activated"] is True
+        ability._request_ability_activation_impl.assert_awaited_once()
+        assert (
+            ability._request_ability_activation_impl.await_args.kwargs["variant_id"] == "warrior_cleaving_blow_drathian"
+        )
+        assert cues(ctx) == expected
 
 
 async def test_in_combat_ability_activates_without_action_cue():

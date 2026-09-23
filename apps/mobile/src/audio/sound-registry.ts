@@ -90,6 +90,9 @@ export function mergeSoundRows(
 ): void {
   if (rows.length === 0) throw new Error(`Empty ${label} sound catalog`);
   for (const row of rows) {
+    // hasOwn, never `in`/`obj[key]`: a row naming an Object.prototype member ("toString",
+    // "constructor") otherwise reads the INHERITED value — a false "Duplicate sound id", or
+    // Object.prototype.toString registered as a playable asset instead of the throw below.
     if (Object.hasOwn(target, row.id)) throw new Error(`Duplicate sound id: ${row.id}`);
     const source = Object.hasOwn(assets, row.asset) ? assets[row.asset] : undefined;
     if (source === undefined) throw new Error(`Unmapped ${label} sound asset: ${row.asset}`);
