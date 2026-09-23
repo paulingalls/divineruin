@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 
 import db_mutations
 import db_queries
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.onboarding_tools")
@@ -67,15 +68,18 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             ),
         )
         result = json.dumps({"onboarding_complete": True, "location": sd.location_id})
-        return (
-            create_gameplay_agent(
-                REGION_CITY,
-                sd.location_id,
-                companion=companion,
-                chat_ctx=summary_ctx,
-            ),
-            result,
+        agent = create_gameplay_agent(
+            REGION_CITY,
+            sd.location_id,
+            companion=companion,
+            chat_ctx=summary_ctx,
         )
+        sound_id = ACTION_SOUND_EXPORTS["ACTION_ADVANCE_ONBOARDING_BEAT"]
+        try:
+            await publish_action_sound(sd, sound_id)
+        except Exception:
+            logger.exception("Failed to publish completed onboarding cue")
+        return agent, result
 
     if current == 3:
         from companion_relationship_queries import hydrate_assigned_companion_state
@@ -96,6 +100,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     next_beat = current + 1
     sd.onboarding_beat = next_beat
     await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
+    await publish_action_sound(sd, ACTION_SOUND_EXPORTS["ACTION_ADVANCE_ONBOARDING_BEAT"])
 
     beat_name = BEAT_NAMES.get(next_beat, "unknown")
     logger.info("Player %s advanced to onboarding beat %d (%s)", sd.player_id, next_beat, beat_name)

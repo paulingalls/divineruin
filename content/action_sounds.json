@@ -15,5 +15,9 @@
   {"export": "ACTION_RESOLVE_TRAINING_MIDPOINT", "id": "action_resolve_training_midpoint", "asset": "notification"},
   {"export": "ACTION_LEARN_RECIPE", "id": "action_learn_recipe", "asset": "discovery_chime"},
   {"export": "ACTION_LEARN_SPELL", "id": "action_learn_spell", "asset": "discovery_chime"},
-  {"export": "ACTION_REPAIR_ITEM", "id": "action_repair_item", "asset": "shield_block"}
+  {"export": "ACTION_REPAIR_ITEM", "id": "action_repair_item", "asset": "shield_block"},
+  {"export": "ACTION_ENTER_MODE_BLACKSMITH", "id": "action_enter_mode_blacksmith", "asset": "shield_block"},
+  {"export": "ACTION_ENTER_MODE_DISPATCH", "id": "action_enter_mode_dispatch", "asset": "notification"},
+  {"export": "ACTION_ADVANCE_ONBOARDING_BEAT", "id": "action_advance_onboarding_beat", "asset": "quest_sting"},
+  {"export": "ACTION_FINALIZE_CHARACTER", "id": "action_finalize_character", "asset": "level_up_sting"}
 ]

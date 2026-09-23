@@ -37,7 +37,9 @@ NEW_IDS = {
 
 def test_fixed_dispatch_rows_cover_catalog():
     assert len(NEW_IDS) == len(set(NEW_IDS.values())) == 10
-    assert set(NEW_IDS.values()) | set(OLD_CASES.values()) == ACTION_SOUND_IDS
+    from test_action_sound_cues_modes import CASES as MODE_CASES
+
+    assert set(NEW_IDS.values()) | set(OLD_CASES.values()) | set(MODE_CASES.values()) == ACTION_SOUND_IDS
 
 
 def recorded_context():
