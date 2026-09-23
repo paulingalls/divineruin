@@ -183,6 +183,7 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
+            MockSD.return_value.favor_loss = None
             MockSD.return_value.player_id = "player_1"
             MockSD.return_value.primary_player_id = "player_1"
             with patch("session_startup.AgentSession") as MockSession:
@@ -236,6 +237,7 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
+            MockSD.return_value.favor_loss = None
             with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()
@@ -286,6 +288,7 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
+            MockSD.return_value.favor_loss = None
             MockSD.return_value.player_id = "player_1"
             MockSD.return_value.primary_player_id = "player_1"
             with patch("session_startup.AgentSession") as MockSession:
@@ -343,6 +346,7 @@ class TestDMSession:
 
         with patch("agent.SessionData") as MockSD:
             MockSD.return_value.companion = None
+            MockSD.return_value.favor_loss = None
             with patch("session_startup.AgentSession") as MockSession:
                 mock_session_instance = MagicMock()
                 mock_session_instance.start = AsyncMock()

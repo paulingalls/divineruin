@@ -91,7 +91,7 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
         resonance_mod=res_mod,
         concentration_mod=conc_mod,
     )
-    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock):
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock, return_value=None):
         handlers["participant_connected"](SimpleNamespace(identity="player_2"))
         await _drain()
 
