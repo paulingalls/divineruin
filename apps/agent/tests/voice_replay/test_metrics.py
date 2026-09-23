@@ -447,6 +447,14 @@ def test_timing_row_rejects_previous_luna_model():
         validate_timing_row(row)
 
 
+def test_timing_row_accepts_the_model_a_comparison_run_selected():
+    row = _valid_row()
+    row["provider_usage"]["llm"]["model"] = "gpt-5.6-luna"
+    validate_timing_row(row, luna_model="gpt-5.6-luna")
+    with pytest.raises(ValueError, match="requires llm usage"):
+        validate_timing_row(_valid_row(), luna_model="gpt-5.6-luna")
+
+
 def test_timing_row_rejects_duplicate_or_missing_grant_and_direct_mutation():
     for delta in ({}, {"quality_wood": 4}):
         broken = _valid_row()
