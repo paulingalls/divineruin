@@ -26,6 +26,18 @@ async def test_non_gain_writes_only_level():
     assert player == "p" and json.loads(level) == 0
 
 
+async def test_decay_writes_level_and_decay_clock_in_one_statement():
+    conn = AsyncMock()
+    stamp = "2026-09-23T00:00:00+00:00"
+    await db_mutations_divine.persist_favor_decay("p", 7, stamp, conn=conn)
+    conn.execute.assert_awaited_once()
+    sql, player, level, decay_at = conn.execute.call_args.args
+    assert "{divine_favor,level}" in sql
+    assert "{divine_favor,last_decay_at}" in sql
+    assert "{divine_favor,last_served_at}" not in sql
+    assert player == "p" and json.loads(level) == 7 and json.loads(decay_at) == stamp
+
+
 async def _seed(pool, pid, favor):
     await pool.execute(
         "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "

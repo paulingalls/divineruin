@@ -388,13 +388,20 @@ async def dm_session(ctx: agents.JobContext) -> None:
             )
         else:
             recap = _build_recap_instruction(last_summary)
+            favor_instruction = ""
+            if userdata.favor_loss:
+                patron, loss = userdata.favor_loss
+                favor_instruction = (
+                    f" {patron}'s displeasure has cost the player {loss} favor. "
+                    "Let the player hear that displeasure in the opening narration."
+                )
             await deliver_speech(
                 session,
                 instructions=(
                     f"Call enter_location with '{location_id}' to get the full scene context. "
                     "Do NOT tell the player you are looking anything up or setting a scene. "
                     "Just BE the narrator — start directly with what the player experiences. "
-                    f"The player returns to the world.{recap} "
+                    f"The player returns to the world.{recap}{favor_instruction} "
                     "Describe where they are now with one atmospheric sentence. "
                     "Remind them of their current situation through narration, not summary. "
                     "End with something that invites action."

@@ -18,15 +18,83 @@ Called once per fresh session by agent.dm_session — reconnects reuse the in-me
 *_mod params are the test seam (mirrors _cast_spell_impl's DI); production uses the defaults.
 """
 
+import json
+from datetime import UTC, datetime
+
 import asyncpg
 
+import db
 import db_mutations_concentration
+import db_mutations_divine
 import db_mutations_resonance
 import db_mutations_veil_ward
+import event_types as E
+import game_events
 import player_session
 import racial_resonance
+from favor_rules import apply_favor_delta, neglect_decay
 from session_data import SessionData
 from veil_ward import WardScope
+
+
+async def apply_session_favor_decay(
+    session: SessionData,
+    player_id: str,
+    player: dict,
+    *,
+    now: datetime | None = None,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    favor = player.get("divine_favor") or {}
+    if (favor.get("patron") or "none") == "none":
+        return
+    instant = now or datetime.now(UTC)
+    source = conn or await db.get_pool()
+    if isinstance(source, asyncpg.Pool):
+        async with source.acquire() as connection:
+            await _decay_locked(session, player_id, connection, instant)
+    else:
+        await _decay_locked(session, player_id, source, instant)
+
+
+async def _decay_locked(session: SessionData, player_id: str, connection, now: datetime) -> None:
+    payload = None
+    async with connection.transaction():
+        row = await connection.fetchrow(
+            "SELECT data->'divine_favor' AS favor FROM players WHERE player_id=$1 FOR UPDATE",
+            player_id,
+        )
+        if row is None:
+            raise ValueError(f"missing player row: {player_id}")
+        favor = row["favor"]
+        if isinstance(favor, str):
+            favor = json.loads(favor)
+        if (favor.get("patron") or "none") == "none":
+            return
+        if "last_served_at" not in favor and "last_decay_at" not in favor:
+            await db_mutations_divine.initialize_favor_clock(player_id, now.isoformat(), conn=connection)
+            return
+        amount = neglect_decay(favor, now)
+        if not amount:
+            return
+        previous = favor["level"]
+        new_level = apply_favor_delta(previous, favor["max"], -amount)
+        await db_mutations_divine.persist_favor_decay(player_id, new_level, now.isoformat(), conn=connection)
+        if new_level != previous:
+            payload = {
+                "new_level": new_level,
+                "previous_level": previous,
+                "amount": new_level - previous,
+                "max": favor["max"],
+                "patron_id": favor["patron"],
+                "player_id": player_id,
+                "last_whisper_level": favor["last_whisper_level"],
+                "reason": "neglect",
+            }
+    if payload is not None:
+        if player_id == session.primary_player_id:
+            session.favor_loss = (payload["patron_id"], -payload["amount"])
+        await game_events.publish_game_event(session.room, E.DIVINE_FAVOR_CHANGED, payload, session.event_bus)
 
 
 async def hydrate_session_state(
@@ -39,6 +107,7 @@ async def hydrate_session_state(
     player_session_mod=player_session,
     racial_mod=racial_resonance,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    now: datetime | None = None,
 ) -> None:
     """Rehydrate a FRESH session's persisted state and set+persist the gated Thessyn bonus.
 
@@ -72,3 +141,4 @@ async def hydrate_session_state(
     # default-inactive row. The cast path resolves its own ward from the DB (ward_resolution).
     session.location_ward = ward
     session.concentration.spell_id = conc["spell_id"]
+    await apply_session_favor_decay(session, player_id, player, now=now, conn=conn)

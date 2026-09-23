@@ -101,6 +101,7 @@ class SessionData:
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
     patron_id: str = "none"
+    favor_loss: tuple[str, int] | None = None
     creation_state: CreationState | None = None
     onboarding_beat: int | None = None
     pre_combat_agent_type: str | None = None

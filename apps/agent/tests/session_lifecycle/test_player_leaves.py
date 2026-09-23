@@ -233,22 +233,24 @@ async def test_departed_member_fresh_connection_hydrates_again_and_old_generatio
     concentration = MagicMock()
     concentration.read_player_concentration = AsyncMock(return_value={"spell_id": None})
     lifecycle = PartyLifecycle(sd.room, sd, queries=queries, resonance_mod=resonance, concentration_mod=concentration)
-    lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
-    old_generation = await lifecycle.authorize("guest")
-    assert old_generation is not None
-    sd.departing_player_id = "guest"
-    assert await lifecycle.authorize("guest") is None
-    lifecycle.mark_departed("guest")
-    sd.departing_player_id = None
-    sd.party.members[:] = [sd.party.primary]
-    assert not lifecycle.is_authorized("guest", old_generation)
-    assert await lifecycle.authorize("guest") is None
-    lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
-    new_generation = await lifecycle.authorize("guest")
-    assert new_generation is not None and new_generation > old_generation
-    rejoined_member = sd.party.member("guest")
-    assert rejoined_member is not None and rejoined_member.patron_id == "new-god"
-    assert sd.party.member_ids == ["host", "guest"]
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock) as decay:
+        lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
+        old_generation = await lifecycle.authorize("guest")
+        assert old_generation is not None
+        sd.departing_player_id = "guest"
+        assert await lifecycle.authorize("guest") is None
+        lifecycle.mark_departed("guest")
+        sd.departing_player_id = None
+        sd.party.members[:] = [sd.party.primary]
+        assert not lifecycle.is_authorized("guest", old_generation)
+        assert await lifecycle.authorize("guest") is None
+        lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
+        new_generation = await lifecycle.authorize("guest")
+        assert new_generation is not None and new_generation > old_generation
+        rejoined_member = sd.party.member("guest")
+        assert rejoined_member is not None and rejoined_member.patron_id == "new-god"
+        assert sd.party.member_ids == ["host", "guest"]
+    decay.assert_awaited_once()
     await lifecycle.aclose()
 
 
