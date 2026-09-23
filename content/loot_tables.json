@@ -67,8 +67,9 @@
   {
     "id": "loot_hollowed_knight",
     "description": "Bespoke Hollowed-Knight table. Heavy residue and the anti-Hollow plate it was corrupted inside of.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
     ]
   }

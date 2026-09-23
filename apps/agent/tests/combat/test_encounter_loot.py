@@ -197,6 +197,8 @@ def test_derive_role_loot_does_not_mutate_input() -> None:
 @pytest.mark.parametrize(
     "die,role,expected",
     [
+        (1, "minion", 1),
+        (4, "minion", 3),
         (1, "standard", 1),
         (4, "standard", 4),
         (1, "elite", 2),

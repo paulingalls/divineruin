@@ -22,7 +22,7 @@ def test_authored_loot_corpus_conforms() -> None:
     tables = json.loads(path.read_text())
     assert tables, "empty loot corpus"
     assert all(table.get("drops") for table in tables), "empty loot table"
-    assert all(seed_content.validate_loot_table(table) == [] for table in tables)
+    assert [error for table in tables for error in seed_content.validate_loot_table(table)] == []
 
 
 @pytest.mark.parametrize(
@@ -33,6 +33,11 @@ def test_authored_loot_corpus_conforms() -> None:
         ({"requires": [{"skill": "crafting", "tier": "legendary"}]}, "tier"),
         ({"requires": [{"skill": "Crafting", "tier": "expert"}]}, "skill"),
         ({"requires": ["crafting:expert"]}, "requires"),
+        ({"requires": [{"skill": "crafting"}]}, "requires"),
+        ({"requires": [{"skill": "crafting", "tier": "expert", "note": "x"}]}, "requires"),
+        ({"chance": 1.5}, "chance"),
+        ({"chance": "0.5"}, "chance"),
+        ({"quantity": 0}, "quantity"),
         ({"quantity": True}, "quantity"),
         ({"quantity": "bad"}, "quantity"),
         ({"quantity": "1d4-4"}, "quantity"),
@@ -64,10 +69,15 @@ def test_bad_hollow_residue_flag_is_refused() -> None:
 
 def test_residue_tables_pin_authored_requirements() -> None:
     tables = {table["id"]: table for table in json.loads((_ROOT / "content" / "loot_tables.json").read_text())}
-    for table_id in ("loot_hollow_drift", "loot_hollow_rend"):
+    residues = {
+        "loot_hollow_drift": "hollow_residue_t1",
+        "loot_hollow_rend": "hollow_residue_t1",
+        "loot_hollowed_knight": "hollow_residue_t2",
+    }
+    for table_id, item_id in residues.items():
         table = tables[table_id]
         assert table["hollow_residue"] is True
-        residue = next(drop for drop in table["drops"] if drop["item_id"] == "hollow_residue_t1")
+        residue = next(drop for drop in table["drops"] if drop["item_id"] == item_id)
         assert residue["requires"] == [{"skill": "crafting", "tier": "expert"}]
 
 
