@@ -179,7 +179,7 @@ async function emittedClientJs(out: string): Promise<string> {
 // PROGRAMMATIC api does NOT inline process.env by default (unlike the `bun build`
 // CLI / `bun run` runtime) — only the `env` option does. This pins that a set
 // PUBLIC_API_URL is baked into the bundle as a literal and the live
-// process.env.PUBLIC_API_URL lookup is gone (it would be undefined in a browser).
+// process.env.PUBLIC_API_URL lookup is gone (it would throw in a browser).
 test("buildSite inlines a set PUBLIC_API_URL into the client bundle", async () => {
   const out = join(tmpdir(), `dr-web-inline-${process.pid}`);
   try {
@@ -197,9 +197,8 @@ test("buildSite inlines a set PUBLIC_API_URL into the client bundle", async () =
 // INTACT (un-inlined) rather than substituting it, so api.ts's localhost fallback
 // ships. Pin the precise env:"PUBLIC_*" contract for the unset case, mirroring the
 // set case: the un-inlined `process.env.PUBLIC_API_URL` reference survives AND the
-// fallback literal is present. (Do NOT assert a bare `typeof process` — React DOM
-// internals also emit that string, so the guard's regression — removing api.ts's
-// `typeof process` guard — would not turn this test red.)
+// fallback literal is present. Whether that surviving read is safe in a browser is
+// src/lib/public-env.test.ts's job: it runs the bundle with `process` undefined.
 test("an unset PUBLIC_API_URL leaves the un-inlined ref intact and ships the localhost fallback", async () => {
   const out = join(tmpdir(), `dr-web-unset-${process.pid}`);
   try {

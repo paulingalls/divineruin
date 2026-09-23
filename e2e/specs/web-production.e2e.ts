@@ -33,10 +33,10 @@ test.describe("Production Lighthouse audit (apps/web home)", () => {
   // retries:2 (CI) are its safety net. SEO/Accessibility are deterministic for a
   // prerendered document.
   test("home page scores Performance/SEO/Accessibility >=90 with green CWV", async ({ page }) => {
-    // The fixture page's Chrome carries the fixed --remote-debugging-port (set in
+    // The fixture page's Chrome carries this checkout's --remote-debugging-port (set in
     // the web-lighthouse project's launchOptions), and Playwright owns its
     // lifecycle. fullyParallel:false + single spec file means only one Chrome
-    // drives its own Lighthouse navigation from here.
+    // binds that port at a time. playAudit drives its own Lighthouse navigation from here.
     await page.goto(`${WEB}/`, { waitUntil: "load" });
 
     const { lhr } = await playAudit({
