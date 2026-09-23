@@ -48,6 +48,19 @@ def test_code_files_stay_within_hard_cap():
     assert {path: count for path, count in lengths.items() if count > MAX_LINES} == {}
 
 
+def test_no_python_file_disables_the_formatter_at_module_level():
+    """The cap counts formatted lines: a module-level `# fmt: off` let a 670-line test sit at 422."""
+    python_files = [path for path in _code_files() if path.suffix == ".py"]
+    assert python_files
+    offenders = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in python_files
+        if any(line.startswith("# fmt: off") for line in path.read_text().splitlines())
+    ]
+
+    assert offenders == []
+
+
 def test_line_cap_policy_is_exactly_the_recorded_code_boundary():
     assert SOURCE_ROOTS == ("apps", "packages", "e2e", "scripts")
     assert frozenset({".py", ".ts", ".tsx"}) == SOURCE_SUFFIXES
