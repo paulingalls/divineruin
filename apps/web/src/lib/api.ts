@@ -20,7 +20,14 @@ export interface JoinOpts {
 const DEFAULT_BASE = "http://localhost:3001";
 
 export function waitlistApiBase(): string {
-  const v = typeof process !== "undefined" ? process.env.PUBLIC_API_URL : undefined;
+  // Bun.build inlines this read as a literal (prerender.ts). A `typeof process` guard would
+  // discard it, because a browser has no `process`; unset, the read stays live and throws.
+  let v: string | undefined;
+  try {
+    v = process.env.PUBLIC_API_URL;
+  } catch {
+    v = undefined;
+  }
   return v && v.length > 0 ? v : DEFAULT_BASE;
 }
 

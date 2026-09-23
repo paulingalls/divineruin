@@ -19,7 +19,14 @@ type Transport = (payload: AnalyticsPayload) => void;
 function defaultTransport(payload: AnalyticsPayload): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("dr:analytics", { detail: payload }));
-  const url = typeof process !== "undefined" ? process.env.PUBLIC_ANALYTICS_URL : undefined;
+  // Bun.build inlines this read as a literal (prerender.ts). A `typeof process` guard would
+  // discard it, because a browser has no `process`; unset, the read stays live and throws.
+  let url: string | undefined;
+  try {
+    url = process.env.PUBLIC_ANALYTICS_URL;
+  } catch {
+    url = undefined;
+  }
   if (
     url &&
     url.length > 0 &&

@@ -126,8 +126,8 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
     // the inlining to the PUBLIC_-prefixed vars only, so no private build-host env
     // leaks into the shipped bundle. PUBLIC_SITE_ORIGIN is read at build time
     // (Bun.env above), not in the client bundle, so it's unaffected. An UNSET
-    // PUBLIC_* ref is left intact in the output — safe behind the `typeof process`
-    // guards in api.ts / analytics.ts (pinned by prerender.test.ts).
+    // PUBLIC_* ref is left intact in the output; api.ts / analytics.ts catch the
+    // ReferenceError it raises in a browser (pinned by src/lib/public-env.test.ts).
     env: "PUBLIC_*",
   });
   if (!result.success) {
