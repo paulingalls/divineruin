@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
 
 import {
-  OWNED_SIMULATOR_UDID,
   developmentClientUrl,
   transportRouteUrl,
   validateScenarioResult,
   runNativeTransport,
+  type NativeTransportDeps,
 } from "../../scripts/verify-native-transport";
 
 const good = {
@@ -24,9 +24,32 @@ const good = {
   hud_character: "Upgrade Test Hero",
   hud_location: "Upgrade Test Room",
 };
+const OWNED_UDID = "OWNED";
+const FOREIGN_UDID = "FOREIGN";
+function runnerDeps(
+  prepareNativeApp: NativeTransportDeps["prepareNativeApp"],
+): NativeTransportDeps {
+  return {
+    resolveOwned: (requested) => {
+      if (requested && requested !== OWNED_UDID)
+        return Promise.reject(new Error("IOS_SIMULATOR_UDID must name the owned simulator"));
+      return Promise.resolve(OWNED_UDID);
+    },
+    prepareNativeApp,
+    requireTarget: () => Promise.resolve(),
+  };
+}
+
+async function failure(action: Promise<unknown>): Promise<string> {
+  try {
+    await action;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error("expected failure");
+}
 
 test("runner binds Metro and route URLs to one run without credentials", () => {
-  expect(OWNED_SIMULATOR_UDID).toBe("DC457949-200B-479A-95FD-611E33210F12");
   expect(developmentClientUrl(18082)).toBe(
     "exp+divineruin://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A18082",
   );
@@ -42,18 +65,18 @@ test("runner rejects a non-owned simulator before any native build or install", 
   try {
     await runNativeTransport(
       "/unused",
-      { IOS_SIMULATOR_UDID: "not-the-owned-simulator" },
+      { IOS_SIMULATOR_UDID: FOREIGN_UDID },
       "none",
-      () => {
+      runnerDeps(() => {
         built = true;
         return Promise.reject(new Error("build must not run"));
-      },
+      }),
     );
   } catch (caught) {
     error = caught;
   }
   expect(error).toBeInstanceOf(Error);
-  expect((error as Error).message).toContain("sprint-owned simulator");
+  expect((error as Error).message).toContain("owned simulator");
   expect(built).toBeFalse();
 });
 
@@ -63,12 +86,12 @@ test("runner refuses transport evidence when the current native app build fails"
   try {
     await runNativeTransport(
       "/unused",
-      { IOS_SIMULATOR_UDID: OWNED_SIMULATOR_UDID },
+      { IOS_SIMULATOR_UDID: OWNED_UDID },
       "none",
-      () => {
+      runnerDeps(() => {
         prepared = true;
         return Promise.reject(new Error("injected native build failure"));
-      },
+      }),
     );
   } catch (caught) {
     error = caught;
@@ -76,6 +99,29 @@ test("runner refuses transport evidence when the current native app build fails"
   expect(error).toBeInstanceOf(Error);
   expect((error as Error).message).toBe("injected native build failure");
   expect(prepared).toBeTrue();
+});
+
+test("runner passes the resolved owned UDID when the environment omits it", async () => {
+  let passed: string | undefined;
+  const deps = runnerDeps((_scope, _root, env) => {
+    passed = env.IOS_SIMULATOR_UDID;
+    return Promise.reject(new Error("stop after capture"));
+  });
+  expect(await failure(runNativeTransport("/unused", {}, "none", deps))).toBe("stop after capture");
+  expect(passed).toBe(OWNED_UDID);
+});
+
+test("runner checks the built app on the resolved device before scenarios", async () => {
+  let checked: string | undefined;
+  const deps = runnerDeps(() => Promise.resolve());
+  deps.requireTarget = (_scope, _root, udid) => {
+    checked = udid;
+    return Promise.reject(new Error("target check stopped the run"));
+  };
+  expect(await failure(runNativeTransport("/unused", {}, "none", deps))).toBe(
+    "target check stopped the run",
+  );
+  expect(checked).toBe(OWNED_UDID);
 });
 
 test("success requires every observation from the current run", () => {
