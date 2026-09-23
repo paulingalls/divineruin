@@ -55,7 +55,7 @@ At any given moment, the player's audio experience is a mix of up to seven simul
 |---|---|---|---|
 | 1 | **DM Voice** | The narrator, NPC ventriloquism, environmental description | Real-time TTS via LiveKit |
 | 2 | **Companion Voice** | The companion's dialogue, reactions, idle chatter | Real-time TTS via LiveKit (different `voice_id`) |
-| 3 | **Critical Sound Effects** | Combat impacts, danger alerts, Hollow intrusions, dice rolls | Client-side playback triggered by `play_sound` tool |
+| 3 | **Critical Sound Effects** | Combat impacts, danger alerts, Hollow intrusions, dice rolls | Client-side playback triggered by client event |
 | 4 | **Music** | Adaptive score, stingers, tension cues | Client-side playback, crossfaded by state |
 | 5 | **Ambient Sound Effects** | Footsteps, door creaks, item interactions, weather | Client-side playback triggered by tools or state |
 | 6 | **Environmental Ambience** | Location-specific soundscape (base layer) | Client-side looping audio, switched on location change |
@@ -65,7 +65,7 @@ At any given moment, the player's audio experience is a mix of up to seven simul
 
 **Voice is sacred.** When the DM or companion speaks, ambient audio ducks by 40-60%. Music ducks by 50-70%. Non-critical sound effects are deferred until the next speech gap. The player must always be able to hear and understand dialogue clearly.
 
-**Effects punctuate, never compete.** Sound effects play in the gaps between speech or are brief enough to overlay without interfering. A sword clash during combat narration is timed to land between the DM's words, not over them. The orchestration layer handles this timing — the `play_sound` tool fires with a `timing` parameter: `immediate` (overrides everything, reserved for danger), `next_gap` (waits for a speech pause), or `background` (plays quietly under speech).
+**Effects punctuate, never compete.** Sound effects play in the gaps between speech or are brief enough to overlay without interfering. A sword clash during combat narration is timed to land between the DM's words, not over them. The orchestration layer handles this timing — the client event fires with a `timing` parameter: `immediate` (overrides everything, reserved for danger), `next_gap` (waits for a speech pause), or `background` (plays quietly under speech).
 
 **Music breathes.** Music is the lowest-energy audio layer. It sets mood without demanding attention. It should be possible to play the game with music at 50% volume and miss nothing. Music swells during dramatic moments when speech pauses, and recedes when dialogue resumes.
 

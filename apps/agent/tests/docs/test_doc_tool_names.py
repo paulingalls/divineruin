@@ -1,130 +1,18 @@
-"""The milestone corpus must describe the registered DM surface accurately."""
+"""Design docs must describe the registered DM surface accurately."""
 
 import re
 from pathlib import Path
 
 import pytest
+from _doc_non_tools import NON_TOOLS
 from _retired_tools import NEVER_BUILT_TOOLS, RETIRED_TOOL_REPLACEMENTS
 from agent_tool_profiles import AGENT_TOOL_LISTS
 
-DOCS = Path(__file__).resolve().parents[4] / "docs" / "milestones"
+DOCS = Path(__file__).resolve().parents[4] / "docs"
+EXCLUDED = (Path("decisions"), Path("milestones/audit"))
 BACKTICK = re.compile(r"`([a-z][a-z0-9_]*(?:\([^`]*\))?)`")
 COMMENTS = re.compile(r"<!--.*?-->")
 TOOL_CONTEXT = re.compile(r"\b(?:agent|DM) tools?\b|\btool surface\b|@function_tool", re.I)
-# Rules-engine, internal and planned-phase function names, plus ids that share a tool line.
-NON_TOOLS = frozenset(
-    {
-        "resolve_check",
-        "record_skill_use",
-        "check_skill_capabilities",
-        "calculate_max_pool",
-        "apply_rest",
-        "get_narrative_state",
-        "level_for_xp",
-        "get_level_up_rewards",
-        "check_level_up",
-        "build_level_up_payload",
-        "apply_level_up",
-        "build_level_up_payload_for_archetype",
-        "get_archetype_chassis",
-        "resolve_milestone",
-        "calculate_max_hp",
-        "calculate_max_pools",
-        "resolve_hollow_echo",
-        "calculate_resonance_generated",
-        "get_resonance_state",
-        "apply_resonance_decay",
-        "check_concentration",
-        "get_racial_resonance_modifier",
-        "narrative_hint",
-        "resolve_attack",
-        "resolve_saving_throw",
-        "advance_combat_phase",
-        "determine_death_cost",
-        "build_encounter",
-        "apply_condition",
-        "tick_conditions",
-        "get_condition_effects",
-        "trigger_character_death",
-        "resolve_gathering",
-        "resolve_death_save",
-        "resolve_social_check",
-        "validate_creature_stat_block",
-        "is_natural",
-        "is_earth_or_stone",
-        "resonance_base",
-        "crossed_dawn",
-        "game_time",
-        "time_of_day_period",
-        "game_day_number",
-        "season",
-        "crossed_boundary",
-        "compute_node_respawn",
-        "allocate_materials",
-        "apply_corruption_aura",
-        "apply_durability_damage",
-        "apply_pricing_modifiers",
-        "apply_quality_outcome",
-        "apply_unbound_resonance_push",
-        "atomic_p2p_transfer",
-        "attempt_purchase",
-        "attempt_sale",
-        "calculate_ac",
-        "calculate_currency_drop",
-        "calculate_price",
-        "calculate_repair_cost",
-        "check_item_condition",
-        "check_material_requirements",
-        "check_mentor_requirements",
-        "clamp_price",
-        "companion_errand",
-        "compute_event_modifier",
-        "compute_faction_modifier",
-        "compute_recovery_multipliers",
-        "compute_rental_price",
-        "convert_currency",
-        "create_npc_from_archetype",
-        "daily_restock_at_dawn",
-        "economy_simulation_tick",
-        "errand_resolution",
-        "errand_type",
-        "evaluate_dramatic_context",
-        "evaluate_patron_alignment",
-        "generate_loot",
-        "generate_settlement_npcs",
-        "get_archetype_synergy",
-        "get_patron_tier",
-        "grimjaw_weapons",
-        "instantiate_npc_from_template",
-        "inventory_pools",
-        "lookup_base_price",
-        "market_general",
-        "millhaven_supplies",
-        "player_inventory",
-        "query_companion_relationship",
-        "remove_condition",
-        "resolve_crafting",
-        "resolve_crafting_check",
-        "resolve_declaration",
-        "resolve_experimentation",
-        "resolve_resonance_on_death",
-        "resolve_travel_segment",
-        "same_settlement",
-        "save_proficiencies",
-        "scale_companion_stats_to_player_level",
-        "temple_supplies",
-        "validate_magic_item_craft_tier",
-        "validate_quest_reward",
-        "validate_recipe_knowledge",
-        "validate_recipe_slot_capacity",
-        "validate_workspace_tier",
-        "workspace_rentals",
-        "ancient_forest",
-        "location_id",
-        "combat_id",
-        "region_type",
-    }
-)
 
 # Agent tools that unbuilt phases (07-09) still specify. ADR 0007 folds them into verbs
 # when those phases are planned; until then they are design intent, not DM surface.
@@ -195,9 +83,31 @@ def violations(path, number, line, live):
                 yield f"{path}:{number}: {name}: {reason}"
 
 
-def scan_docs(directory, live):
-    docs = sorted(directory.glob("*.md"))
-    assert docs, f"no milestone docs under {directory}"
+def doc_paths(directory, excluded=EXCLUDED):
+    return sorted(
+        path
+        for path in directory.rglob("*.md")
+        if not any(path.relative_to(directory).is_relative_to(part) for part in excluded)
+    )
+
+
+def require_corpus(directory, docs, excluded=EXCLUDED, minimum=61):
+    assert set(excluded) == {Path("decisions"), Path("milestones/audit")}, "exemption widened"
+    expected = {
+        path
+        for path in directory.rglob("*.md")
+        if not (
+            path.relative_to(directory).is_relative_to("decisions")
+            or path.relative_to(directory).is_relative_to("milestones/audit")
+        )
+    }
+    assert len(expected) >= minimum, "docs corpus shrank"
+    assert set(docs) == expected, "docs walk omitted or included a path"
+
+
+def scan_docs(directory, live, docs=None):
+    docs = doc_paths(directory) if docs is None else docs
+    assert docs, f"no docs under {directory}"
     return [
         error
         for path in docs
@@ -207,8 +117,8 @@ def scan_docs(directory, live):
 
 
 def require_floor(selected, live):
-    assert selected & live, "no registered tool names selected from milestone docs"
-    assert selected & RETIRED_TOOL_REPLACEMENTS.keys(), "no retired-name mentions selected from milestone docs"
+    assert selected & live, "no registered tool names selected from docs"
+    assert selected & RETIRED_TOOL_REPLACEMENTS.keys(), "no retired-name mentions selected from docs"
 
 
 def test_milestone_tool_names():
@@ -218,15 +128,17 @@ def test_milestone_tool_names():
     assert not NEVER_BUILT_TOOLS & live
     assert all(replacement in live for replacement in RETIRED_TOOL_REPLACEMENTS.values() if replacement)
     assert not (NON_TOOLS | PLANNED_TOOLS) & (live | RETIRED_TOOL_REPLACEMENTS.keys() | NEVER_BUILT_TOOLS)
+    docs = doc_paths(DOCS)
+    require_corpus(DOCS, docs)
     selected = {
         name
-        for path in DOCS.glob("*.md")
+        for path in docs
         for line in path.read_text().splitlines()
         for segment in segments(line)
         for name in candidates(segment)
     }
     require_floor(selected, live)
-    errors = scan_docs(DOCS, live)
+    errors = scan_docs(DOCS, live, docs)
     assert not errors, "\n".join(errors)
 
 
@@ -247,8 +159,32 @@ def test_bad_tool_line_reds(line):
 
 
 def test_empty_doc_walk_reds(tmp_path):
-    with pytest.raises(AssertionError, match="no milestone docs"):
+    with pytest.raises(AssertionError, match="no docs"):
         scan_docs(tmp_path, live_names())
+
+
+def test_corpus_includes_nested_docs_and_exempts_only_allowed_subtrees(tmp_path):
+    nested = tmp_path / "game_mechanics" / "nested.md"
+    nested.parent.mkdir()
+    nested.write_text("`check`\n")
+    for name in ("decisions/old.md", "milestones/audit/old.md"):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Agent tool `request_attack`\n")
+    docs = doc_paths(tmp_path)
+    require_corpus(tmp_path, docs, minimum=1)
+    assert docs == [nested]
+    assert not scan_docs(tmp_path, live_names())
+    with pytest.raises(AssertionError, match="omitted"):
+        require_corpus(tmp_path, [], minimum=1)
+    for excluded in ((Path("."), Path("milestones/audit")), (Path("decisions"), Path("milestones"))):
+        with pytest.raises(AssertionError, match="exemption widened"):
+            require_corpus(tmp_path, doc_paths(tmp_path, excluded), excluded, minimum=1)
+
+
+def test_corpus_floor_reds_when_docs_disappear(tmp_path):
+    with pytest.raises(AssertionError, match="corpus shrank"):
+        require_corpus(tmp_path, [], minimum=1)
 
 
 def test_walk_floor_reds_without_retired_or_live_names():

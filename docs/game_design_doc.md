@@ -260,7 +260,7 @@ Mechanically, the DM requests checks and the rules engine resolves them — the 
 **How it works from the player's perspective:**
 1. The player describes an action: "I try to convince the guard to let us through."
 2. The DM decides if a check is needed. Trivial actions succeed automatically. Impossible actions fail automatically. Everything in between gets a roll.
-3. The DM calls the appropriate mechanics tool (`request_skill_check`, `request_attack`, `request_saving_throw`). The rules engine rolls d20, adds the character's relevant modifier, and compares against the DC.
+3. The DM calls `check` for uncertain actions; combat declarations use `declare_phase` and `resolve_phase`. The rules engine rolls d20, adds the character's relevant modifier, and compares against the DC.
 4. The result — and the `narrative_hint` — return to the DM. The hint tells the DM the emotional texture: "barely succeeded," "overwhelming success," "catastrophic failure," "close but not enough."
 5. The DM narrates the outcome. A bare success sounds different from a triumph. A narrow failure sounds different from a disaster.
 
@@ -323,7 +323,7 @@ The rules engine scales challenge dynamically based on party composition and pow
 | Major contested rolls | Background stat adjustments |
 
 - Visible rolls appear on the HUD with a dice animation — triggered by mechanics tools returning results with `narrative_hint`
-- A **distinct audio cue** plays when dice hit the screen — `play_sound("dice_roll")` fires automatically. Builds Pavlovian tension over time
+- A **distinct audio cue** plays when dice hit the screen — a dice-roll client event fires automatically. Builds Pavlovian tension over time
 - Even eyes-free players know a key roll just happened and can glance down
 - The HUD follows a **smartwatch interaction pattern** — glance, absorb, return to audio
 
@@ -450,7 +450,7 @@ Audio's strengths are tension, intimacy, and imagination. Combat should feel lik
 ### Phase-Based Rounds (Not Turn-By-Turn)
 
 1. **Declaration phase:** All players quickly state intent — "I'm going for the shaman," "I'll hold the doorway." In multiplayer, the orchestrator's collection buffer extends to a configurable declaration timer (10-15 seconds) to gather all inputs.
-2. **Resolution phase:** The DM calls mechanics tools (`request_attack`, `request_skill_check`, `request_saving_throw`) in initiative order. Each tool rolls, validates, and applies consequences atomically. Results include a `narrative_hint` ("barely hit," "critical failure") that guides the DM's narration.
+2. **Resolution phase:** The DM records actions with `declare_phase`, then `resolve_phase` applies them in initiative order. Results include a `narrative_hint` ("barely hit," "critical failure") that guides the DM's narration.
 3. **Outcome:** The DM narrates everything as one flowing scene, using the narrative hints and mechanical outcomes from all resolution tool calls.
 
 This eliminates dead time. Instead of four players sitting through individual turns, everyone acts, then everyone hears what happened.
@@ -458,23 +458,23 @@ This eliminates dead time. Instead of four players sitting through individual tu
 ### Key Combat Mechanics
 
 - **One clear action per round** + optional quick reaction. No bonus actions or movement calculations.
-- **Interrupt / reaction mechanic:** During enemy narration, players shout reactions ("I block!"). The DM calls `request_saving_throw` or `request_skill_check` for the reaction.
+- **Interrupt / reaction mechanic:** During enemy narration, players shout reactions ("I block!"). The DM calls `activate` for an available reaction ability.
 - **Timer pressure:** Hesitate too long and the narrative advances: "You freeze and the goblin presses the advantage." The declaration timer enforces this.
 - **DM narration shifts:** Shorter sentences, urgent cadence, present tense in combat. The `[CHARACTER, emotion]` tags in LLM output shift to high-energy emotions.
-- **Creative actions encouraged:** "I kick the table into the goblin" → DM calls `request_skill_check(player, "athletics", "kick table into goblin")`, rules engine sets DC and resolves.
+- **Creative actions encouraged:** "I kick the table into the goblin" → DM calls `declare_phase` with a maneuver declaration, rules engine sets DC and resolves.
 
 ### Sound Design as a Combat System
 
 The soundscape IS the tactical environment (headphones required):
 - Spatial positioning of enemies — footsteps behind you, archer firing from your left
 - Ambient combat layer running continuously
-- Audio cues triggered automatically by mechanics tools — `play_sound("sword_clash")` on hit, `play_sound("critical_hit_sting")` on crit, health-low warning when HP drops below threshold
+- Audio cues triggered automatically by mechanics tools — sword-clash events on hit and critical-hit stings on crit, health-low warning when HP drops below threshold
 - Combat UI auto-pushes HP bars, turn order, and status effects via LiveKit RPC on every state mutation
 
 ### HUD in Combat
 
 A **simplified tactical view** — not a full battle map, more like a radar:
-- Shows who's where, who's hurt, what's threatening you — auto-updated by `update_combat_ui` on every mechanics tool call
+- Shows who's where, who's hurt, what's threatening you — updated from combat state after `resolve_phase`
 - Key dice rolls animate with audio cue — driven by `narrative_hint` from tool results
 - Delivering urgency information, not tactical complexity
 
@@ -701,7 +701,7 @@ The DM manages this through the ventriloquism system. The background process tra
 
 The companion also processes the story's emotional beats alongside the player. When something frightening happens, the companion is scared too. When something wonderful happens, the companion celebrates. When the player faces a moral dilemma, the companion wrestles with it. This shared emotional experience is what creates attachment — the companion isn't observing the story, they're living it with you.
 
-**4. Combat partner.** The companion fights alongside the player using the same mechanics tools. The DM calls `request_attack` or `request_skill_check` on the companion's behalf, and the companion's actions are narrated as part of the combat sequence. The companion has their own HP, abilities, and tactical personality.
+**4. Combat partner.** The companion fights alongside the player using the same mechanics tools. The DM includes the companion in `declare_phase`, and the companion's actions are narrated as part of the combat sequence. The companion has their own HP, abilities, and tactical personality.
 
 In combat, the companion's voice changes — urgent, focused, reactive. They call out threats ("Behind you!"), suggest tactics ("Focus on the shaman — it's healing the others!"), and react to outcomes ("Nice shot!" or a panicked "I'm hurt, I'm hurt!"). Their voice in combat is a gameplay signal: if the companion sounds scared, the fight is going badly.
 
@@ -1504,7 +1504,7 @@ The game opens up. The DM offers paths forward. The wider world of Aethos awaits
 
 *Resolved:*
 
-- [x] **Combat resolution mechanics** — Hybrid model defined: LLM decides when, rules engine resolves how. Tools: `request_attack`, `request_skill_check`, `request_saving_throw`. See *Tech Architecture — Dice & Mechanics Tools*.
+- [x] **Combat resolution mechanics** — Hybrid model defined: LLM decides when, rules engine resolves how. Tools: `declare_phase`, `resolve_phase`, and `check`. See *Tech Architecture — Dice & Mechanics Tools*.
 - [x] **Core game mechanics** — d20 + modifier vs. DC system, skill list, status effects, difficulty scaling, and failure-as-complication philosophy. See *Game Mechanics* section above.
 - [x] **NPC persistence** — `npc_dispositions` state table with per-player scores, decay toward default. NPC schedules driven by simulation layer 1. See *World Data & Simulation — NPC Schema*.
 - [x] **NPC design** — Tier 1/2 NPC categories, companion system (five functions), relationship mechanics, voice and personality design. See *NPC Design* section above.
