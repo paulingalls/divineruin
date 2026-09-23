@@ -11,7 +11,9 @@ from acceptance.seeds import seed_player_with_pools
 from livekit import rtc
 from livekit.agents import AgentSession, llm
 from livekit.agents.testing import fake_job_context
+from sample_fixtures import FixedRng
 
+import check_resolution
 import db
 from gameplay_agent import create_gameplay_agent
 from gameplay_llm import LUNA_MODEL, create_gameplay_llm
@@ -55,8 +57,16 @@ def _require_default_luna_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_guest_speech_drives_luna_check_activity_and_travel(
-    livekit_server: dict[str, str], reset_db_pool: str
+    livekit_server: dict[str, str], reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The capstone grades the DM's choices, not the dice: a failed persuasion or navigation roll
+    # would leave the asserted rows unchanged and cost a second paid run.
+    resolve = check_resolution.resolve_skill_check_dc
+    monkeypatch.setattr(
+        check_resolution,
+        "resolve_skill_check_dc",
+        lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+    )
     pool = await db.get_pool()
     harness = MultiplayerVoiceHarness(livekit_server)
     host, guest = harness.player_one_identity, harness.player_two_identity

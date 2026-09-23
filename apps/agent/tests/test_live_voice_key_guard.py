@@ -98,7 +98,9 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
     free_modules = []
     for path in modules:
         source = path.read_text()
-        reaches_microphone = any(
+        # Free is the opt-out, not the default: `harness.start()` opens Deepgram unless told
+        # `transcribe=False`, and that call names no token a module-side grep could see.
+        reaches_microphone = "transcribe=False" not in source or any(
             token in source
             for token in ("deepgram.STT(", "PLAYER_ONE_SPEECH", "PLAYER_TWO_SPEECH", "harness.play(", "SpeechFixture(")
         )
@@ -108,6 +110,7 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
             assert mark is None or (
                 "pytest.mark.live_voice" not in mark and "pytest.mark.openai_real_llm" not in mark
             ), f"{path.name} does not reach a paid microphone and must remain free"
+            assert "create_gameplay_llm(" not in source, f"{path.name} is unmarked but reaches the gameplay provider"
             continue
         microphone_modules.append(path.name)
         assert mark is not None, (
@@ -152,6 +155,20 @@ def test_the_package_gate_still_arms_the_loud_path():
         "no autouse fixture in the live-voice conftest calls require_live_voice_key — an opted-in "
         "run with no key would report `6 skipped` over a tier that reached no microphone"
     )
+
+
+def test_the_package_gate_fails_loud_only_for_live_voice_scenarios(request, monkeypatch):
+    """The marker check is what lets a free scenario share the package: inverted, the free test
+    fails on every keyless opted-in run; deleted with the call, a marked one fails nameless."""
+    from acceptance.multiplayer_voice.conftest import _live_voice_key_required
+
+    gate = _live_voice_key_required._get_wrapped_function()
+    monkeypatch.setenv("REQUIRE_REAL_LLM", "1")
+    monkeypatch.delenv(KEY_VAR, raising=False)
+    gate(request)
+    request.node.add_marker(pytest.mark.live_voice)
+    with pytest.raises(pytest.fail.Exception, match=KEY_VAR):
+        gate(request)
 
 
 def test_ci_hands_the_python_job_the_secret_the_gate_reads():

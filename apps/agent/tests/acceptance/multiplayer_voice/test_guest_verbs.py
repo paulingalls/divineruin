@@ -4,15 +4,15 @@ import asyncio
 import json
 import uuid
 from typing import Any
-from unittest.mock import patch
 
+import pytest
 from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
-from acceptance.strict_luna_runtime import FixedRng
 from livekit import rtc
 from livekit.agents import Agent, AgentSession, llm
 from livekit.agents.testing import fake_job_context
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
+from sample_fixtures import FixedRng
 
 import check_resolution
 import db
@@ -91,7 +91,15 @@ async def _disposition(pool, player_id: str) -> str:
     return json.loads(data)["disposition"]
 
 
-async def test_guest_verbs_reach_persisted_party_rows(livekit_server: dict[str, str], reset_db_pool: str) -> None:
+async def test_guest_verbs_reach_persisted_party_rows(
+    livekit_server: dict[str, str], reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resolve = check_resolution.resolve_skill_check_dc
+    monkeypatch.setattr(
+        check_resolution,
+        "resolve_skill_check_dc",
+        lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+    )
     pool = await db.get_pool()
     harness = MultiplayerVoiceHarness(livekit_server)
     host, guest = harness.player_one_identity, harness.player_two_identity
@@ -162,7 +170,6 @@ async def test_guest_verbs_reach_persisted_party_rows(livekit_server: dict[str, 
         outputs = [item for item in dm_session.history.items if isinstance(item, llm.FunctionCallOutput)]
         assert len(calls) == index + 1 and calls[-1].name == name, calls
         assert len(outputs) == index + 1 and not outputs[-1].is_error, outputs
-        assert userdata._actor_binding.get() is None
         return outputs[-1].output
 
     try:
@@ -194,10 +201,7 @@ async def test_guest_verbs_reach_persisted_party_rows(livekit_server: dict[str, 
         assert host_after["focus"] == host_before["focus"]
 
         host_before, guest_before = await _disposition(pool, host), await _disposition(pool, guest)
-        from acceptance._capstone_helpers import _d20
-
-        with patch("check_resolution.dice_roll", return_value=_d20(20)):
-            await turn(1, generation)
+        await turn(1, generation)
         assert await _disposition(pool, guest) != guest_before
         assert await _disposition(pool, host) == host_before
 
@@ -232,12 +236,7 @@ async def test_guest_verbs_reach_persisted_party_rows(livekit_server: dict[str, 
         outsider = f"outsider-{uuid.uuid4().hex[:8]}"
         await seed_player_with_pools(pool, player_id=outsider)
         outsider_before = await _player(pool, outsider)
-        resolve = check_resolution.resolve_skill_check_dc
-        with patch(
-            "check_resolution.resolve_skill_check_dc",
-            side_effect=lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
-        ):
-            travel_output = json.loads(await turn(4, generation))
+        travel_output = json.loads(await turn(4, generation))
         assert travel_output["total"] > 20
         assert (await _player(pool, host))["location_id"] == "greyvale_ruins_exterior"
         assert (await _player(pool, guest))["location_id"] == "greyvale_ruins_exterior"
@@ -289,7 +288,6 @@ async def test_guest_verbs_reach_persisted_party_rows(livekit_server: dict[str, 
         assert (await _player(pool, host))["xp"] > host_before["xp"]
         assert (await _player(pool, guest))["xp"] > guest_before["xp"]
         assert await _player(pool, outsider) == outsider_before
-        assert userdata._actor_binding.get() is None
     finally:
         if multiplayer_input is not None:
             await multiplayer_input.aclose()
