@@ -120,20 +120,29 @@ async def test_host_goodbye_links_p2_and_p2_audio_reaches_dm(livekit_server, res
             assert sd.party.member_ids == [p2, p3]
             row = await db_queries.get_last_session_summary(host)
             assert row is not None and row["summary"] == "host recap"
+            await multiplayer_input.aclose()
+            assert harness.manager is not None
+            heard_turns = []
+            receive = harness.manager.receive
+
+            async def record_receive():
+                heard = await receive()
+                heard_turns.append(heard)
+                return heard
+
+            monkeypatch.setattr(harness.manager, "receive", record_receive)
+            multiplayer_input = MultiplayerInput(harness.manager, lifecycle, session, sd)
+            multiplayer_input.start()
             await harness.play(p2, PLAYER_TWO_SPEECH)
-            heard = await harness.receive()
-            assert heard.participant_identity == p2
-            assert heard.text == "continue second"
-            await transcripts.queue.put(heard)
             async with asyncio.timeout(20):
                 while model.turns < 2:
                     await asyncio.sleep(0.02)
-            p3_generation = await lifecycle.authorize(p3)
-            assert p3_generation is not None
-            await transcripts.queue.put(AuthenticatedTranscript(p3, "continue third", p3_generation))
+            assert any(turn.participant_identity == p2 and turn.text == "continue second" for turn in heard_turns)
+            await harness.play(p3, PLAYER_TWO_SPEECH)
             async with asyncio.timeout(20):
                 while model.turns < 3:
                     await asyncio.sleep(0.02)
+            assert any(turn.participant_identity == p3 and turn.text == "continue second" for turn in heard_turns)
         finally:
             if multiplayer_input is not None:
                 await multiplayer_input.aclose()
