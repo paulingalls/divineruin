@@ -46,7 +46,7 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - [x] All 10 game mechanics docs have section indexes in INDEX.md <!-- evidence: INDEX.md L300-485 covers all 10 (plus encounter_roles as bonus) -->
 - [ ] Each index entry has accurate line ranges (verified against actual file content) <!-- see audit/phase-0.md#m0.2 — 9/10 docs match within 1 line; game_mechanics_archetypes.md ranges are ~133 lines low (file is 1357 lines, INDEX claims 1224) --> <!-- reverified 2026-09-01: still open, and drift has WIDENED to 2 docs. archetypes: INDEX.md:367 header + rows 417-1014/1016-1087/1089-1152/1154-end vs actual headings at 417/1149/1222/1287 (file 1357L). decisions: INDEX.md:466 claims 186 lines and indexes 10 sections ending "183-end"; the file is 351 lines with 18 sections (Encounter Roles :188 through Terrain :326 are unindexed). core.md and economy.md are each off by one line in the header count only; the other 6 match. -->
 - [x] Index entries follow the existing format: `## filename.md (~N lines)` with description and table <!-- evidence: spot-checked at INDEX.md:300,325,343,466 -->
-- [x] `agent_handoffs_and_scenes.md` is indexed <!-- evidence: INDEX.md:278 -->
+- [x] `agent_handoffs_and_scenes.md` is indexed <!-- evidence: INDEX.md:41 -->
 
 **Key references:**
 - *Existing INDEX.md format (any existing entry as template)*

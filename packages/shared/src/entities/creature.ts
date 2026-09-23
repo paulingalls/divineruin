@@ -1,6 +1,7 @@
 import lootTables from "../../../../content/loot_tables.json";
 
-// Encounter currency uses hollow_<class>; this base bestiary category is hollow.
+// Encounter currency uses hollow_<class>; this base bestiary category is hollow. M7.2 (the regional
+// catalog) turns encounter enemies into catalog references and applies that mapping.
 export interface CreatureStatBlock {
   id: string;
   name: string;

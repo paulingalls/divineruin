@@ -144,3 +144,17 @@ def test_harnesses_do_not_claim_to_mirror_seed_default():
 
     for path in paths:
         assert stale_claim not in path.read_text()
+
+
+@pytest.mark.asyncio
+async def test_row_without_primary_key_is_refused_by_name(monkeypatch, tmp_path):
+    (tmp_path / "items.json").write_text('[{"id": "rope"}, {"name": "Nameless"}]')
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    monkeypatch.setattr(seed_content, "TABLE_MAP", {"items.json": "items"})
+
+    class Conn:
+        async def execute(self, *_args):
+            raise AssertionError("no row is written before the file is checked")
+
+    with pytest.raises(seed_content.InvalidContent, match=r"items.json row 1 has no 'id'"):
+        await seed_content.seed(Conn())

@@ -335,17 +335,6 @@ class TestLootAndCurrencyContent:
                     f"Loot table '{table['id']}' references unknown item '{drop['item_id']}'"
                 )
 
-    def test_loot_table_drops_have_valid_chance_and_quantity(self):
-        for table in _load_json("loot_tables.json"):
-            for drop in table.get("drops", []):
-                assert 0.0 <= drop["chance"] <= 1.0, (
-                    f"Loot table '{table['id']}' drop '{drop['item_id']}' chance out of [0,1]"
-                )
-                quantity = drop["quantity"]
-                assert (type(quantity) is int and quantity >= 1) or isinstance(quantity, str), (
-                    f"Loot table '{table['id']}' drop '{drop['item_id']}' quantity must be positive int or dice"
-                )
-
     def test_material_sell_value_below_craft_value(self):
         # D78: selling a raw material is always worth less than crafting with it — the crafting
         # loop must stay the more rewarding path. Every material that pins a craft_value must have

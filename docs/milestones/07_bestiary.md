@@ -12,7 +12,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
-| M7.1 — Creature Stat Block Schema | 7 | 0 | 2 |
+| M7.1 — Creature Stat Block Schema | 8 | 0 | 1 |
 | M7.2 — Regional Creature Catalog | 1 | 1 | 9 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
@@ -51,8 +51,8 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->
 - [x] Hollow-specific nested fields are optional and only validated when category is "hollow" <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 - [x] All attack entries include the canonical template’s name, type, reach, to_hit, damage, damage_type, special, and audio <!-- verified apps/agent/tests/test_creature_schema.py::test_every_spec_field_is_required; supersedes the older attribute/damage_dice/range wording -->
-- [ ] Tier system correctly maps tiers 1-4 to player level ranges
-- [ ] Narration fields provide audio-first cues (sound/smell before sight); both exemplars still lead some cues with sight, so behavior is not proven
+- [x] Tier system correctly maps tiers 1-4 to player level ranges <!-- verified apps/agent/tests/test_creature_tiers.py::test_every_player_level_has_exactly_one_tier; the TypeScript mirror is pinned in packages/shared/src/entities/encounter.test.ts -->
+- [ ] Narration fields provide audio-first cues (sound/smell before sight). The schema requires every cue field; whether the cues put sound first is content, owned by M7.2's audio-first narration box. Both spec exemplars still lead some cues with sight.
 - [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity; apps/agent/tests/combat/test_encounter_loot.py::test_standard_loot_omits_entries_whose_chance_fails; `loot_table_id` supersedes nested guaranteed[]/chance[] loot -->
 - [x] `validate_creature_stat_block` rejects invalid entries with specific error messages <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 - [x] DB migration runs cleanly with proper indexes on category, tier, and name <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->

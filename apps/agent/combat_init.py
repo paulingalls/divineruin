@@ -21,7 +21,7 @@ import db_queries
 import event_types as E
 import item_effects
 import rules_engine
-from combat_init_validation import _validate_enemy_action_shapes, _validate_enemy_resistance_tags
+from combat_init_validation import _validate_enemy_action_shapes, _validate_enemy_resistance_tags, _validate_enemy_tiers
 from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
@@ -157,6 +157,7 @@ async def _start_combat_locked(
         _validate_enemy_action_shapes(enemies)
         validate_encounter_actions(enemies)
         _validate_enemy_resistance_tags(enemies)
+        _validate_enemy_tiers(enemies)
     except ValueError as e:
         raise ToolError(f"Encounter '{encounter_id}' has malformed enemy data: {e}") from e
     for enemy in enemies:

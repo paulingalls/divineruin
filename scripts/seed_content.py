@@ -167,6 +167,9 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
         pk_field = PK_COLUMN.get(table, "id")
         query = upsert_query(table)
         entities = json.loads(filepath.read_text())
+        missing = [i for i, entity in enumerate(entities) if not entity.get(pk_field)]
+        if missing:
+            raise InvalidContent(f"{filename} row {missing[0]} has no {pk_field!r}")
         # The generated tier/level columns cast data to integer, so a bad creature must be caught
         # before insert or it aborts with a cast error instead of a field-named message.
         if table == "creatures":

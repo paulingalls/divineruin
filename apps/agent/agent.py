@@ -281,7 +281,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if needs_creation:
         # --- Character creation mode ---
         # PrologueAgent plays audio, hands off to CreationAgent,
-        # which guides creation and hands off to the exploration agent via finalize_character.
+        # which guides creation; finalize_character hands off to OnboardingAgent.
         from prologue_agent import PrologueAgent
 
         userdata = SessionData(
