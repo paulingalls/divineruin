@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from contextvars import copy_context
 from functools import partial
 
 from livekit.agents.llm import ToolError, function_tool
@@ -119,33 +120,36 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
     logger.info("end_session called: reason=%s", reason)
     sd: SessionData = context.userdata
     actor_id = sd.actor_player_id if len(sd.party.members) > 1 else sd.acting_player_id
-    guest_leaves = actor_id != sd.primary_player_id and len(sd.party.members) > 1
-    if guest_leaves:
+    member_leaves = len(sd.party.members) > 1
+    if member_leaves:
         if sd.departing_player_id is not None:
             raise ToolError("A player departure is already pending")
         sd.departing_player_id = actor_id
-    else:
-        sd.ending_requested = True
 
     session = context.session
 
     def after_playout(handle):
         if handle.interrupted or handle.exception() is not None:
             sd.departing_player_id = None
-            sd.ending_requested = False
-            logger.error("End-session wrap-up did not complete")
+            session.generate_reply(
+                instructions=f"Tell {actor_id} their farewell was interrupted and they can say goodbye again."
+            )
             return
-        if guest_leaves:
-            sd.departure_task = asyncio.create_task(run_guest_departure(sd, actor_id, session))
+        if member_leaves:
+            departure_context = copy_context()
+            departure_context.run(sd._actor_binding.set, None)
+            sd.departure_task = asyncio.create_task(
+                run_guest_departure(sd, actor_id, session), context=departure_context
+            )
             sd.departure_task.add_done_callback(
-                partial(log_task_failure, logger=logger, message="Guest departure failed")
+                partial(log_task_failure, logger=logger, message="Member departure failed")
             )
         else:
             task = asyncio.create_task(session.aclose())
             task.add_done_callback(partial(log_task_failure, logger=logger, message="Session close failed"))
 
     context.speech_handle.add_done_callback(after_playout)
-    if guest_leaves:
+    if member_leaves:
         instruction = (
             "Only this speaker is leaving; the rest of the party keeps playing. Give this player "
             "a 1-2 sentence personal farewell; do not wrap up the session for anyone else."

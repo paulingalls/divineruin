@@ -37,7 +37,6 @@ async def test_guest_intent_does_not_end_party_inside_tool():
     assert result["status"] == "ending"
     assert "rest of the party keeps playing" in result["instruction"]
     assert sd.departing_player_id == "guest"
-    assert not sd.ending_requested
     assert sd.party.member_ids == ["host", "guest"]
     assert sd.departure_task is None
 
@@ -85,7 +84,6 @@ async def test_departure_waits_for_speech_and_keeps_host_playing():
     assert save.await_args.args[0] == "guest"
     assert sd.party.member_ids == ["host"]
     lifecycle.mark_departed.assert_called_once_with("guest")
-    assert not sd.ending_requested
     event = [e for e in sd.event_bus.drain() if e.event_type == E.SESSION_END]
     assert len(event) == 1 and event[0].payload["player_id"] == "guest"
 
@@ -193,32 +191,61 @@ async def test_departure_summary_names_the_guest_as_focus():
 
 
 @pytest.mark.asyncio
-async def test_departed_member_reconnect_is_removed_again_without_party_authority():
+async def test_departed_member_fresh_connection_hydrates_again_and_old_generation_is_stale():
     sd, _ = _departure_setup()
+    sd.departing_player_id = None
     assert sd.room is not None
-    lifecycle = PartyLifecycle(
-        sd.room, sd, queries=MagicMock(), resonance_mod=MagicMock(), concentration_mod=MagicMock()
-    )
-    lifecycle.mark_departed("guest")
-    with patch("participant_lifecycle.room_admin.remove_player", new_callable=AsyncMock) as remove:
-        lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
-        await asyncio.sleep(0)
-        await asyncio.gather(*lifecycle._spawned_joins)
-    remove.assert_awaited_once_with("test-room", "guest")
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "new-god"}})
+    resonance = MagicMock()
+    resonance.read_player_resonance = AsyncMock(return_value={"current": 2, "flickering_bonus": 0})
+    concentration = MagicMock()
+    concentration.read_player_concentration = AsyncMock(return_value={"spell_id": None})
+    lifecycle = PartyLifecycle(sd.room, sd, queries=queries, resonance_mod=resonance, concentration_mod=concentration)
+    lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
+    old_generation = await lifecycle.authorize("guest")
+    assert old_generation is not None
+    sd.departing_player_id = "guest"
     assert await lifecycle.authorize("guest") is None
+    lifecycle.mark_departed("guest")
+    sd.departing_player_id = None
+    sd.party.members[:] = [sd.party.primary]
+    assert not lifecycle.is_authorized("guest", old_generation)
+    assert await lifecycle.authorize("guest") is None
+    lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
+    new_generation = await lifecycle.authorize("guest")
+    assert new_generation is not None and new_generation > old_generation
+    rejoined_member = sd.party.member("guest")
+    assert rejoined_member is not None and rejoined_member.patron_id == "new-god"
     assert sd.party.member_ids == ["host", "guest"]
     await lifecycle.aclose()
 
 
 @pytest.mark.asyncio
-async def test_host_with_guest_still_requests_whole_session_close():
+async def test_host_with_guest_requests_personal_departure():
     sd = _party()
     ctx = MagicMock(userdata=sd)
     ctx.speech_handle = SpeechHandle.create()
     with sd._bind_authenticated_actor("host", 1, lambda _id, _generation: None):
         await end_session._func(ctx, "goodbye")
-    assert sd.ending_requested
+    assert sd.departing_player_id == "host"
+
+
+@pytest.mark.asyncio
+async def test_interrupted_goodbye_tells_player_to_retry_and_clears_pending_departure():
+    sd = _party()
+    session = SimpleNamespace(generate_reply=MagicMock())
+    speech = SpeechHandle.create()
+    ctx = MagicMock(userdata=sd, session=session, speech_handle=speech)
+    with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+        await end_session._func(ctx, "goodbye")
+    speech.interrupt(source="user_turn")
+    speech._mark_done()
+    await asyncio.sleep(0)
     assert sd.departing_player_id is None
+    session.generate_reply.assert_called_once()
+    assert "goodbye again" in session.generate_reply.call_args.kwargs["instructions"]
+    assert sd.departure_task is None
 
 
 @pytest.mark.asyncio
@@ -228,4 +255,4 @@ async def test_unbound_multiplayer_actor_cannot_end_host_session():
     ctx.speech_handle = SpeechHandle.create()
     with pytest.raises(RuntimeError, match="No actor"):
         await end_session._func(ctx, "goodbye")
-    assert not sd.ending_requested
+    assert sd.departing_player_id is None

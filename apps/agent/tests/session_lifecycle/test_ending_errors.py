@@ -51,7 +51,7 @@ class TestEndSessionTool:
     """Test end_session tool."""
 
     @pytest.mark.asyncio
-    async def test_sets_ending_requested(self):
+    async def test_returns_ending_status(self):
         from session_tools import end_session
 
         ctx = _make_context()
@@ -59,7 +59,6 @@ class TestEndSessionTool:
         ctx.userdata.session_items_found = ["Sword"]
         result = json.loads(await end_session._func(ctx, reason="player wants to stop"))
         assert result["status"] == "ending"
-        assert ctx.userdata.ending_requested is True
 
     @pytest.mark.asyncio
     async def test_returns_session_stats(self):

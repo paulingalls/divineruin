@@ -49,7 +49,7 @@ async def hydrate_session_state(
     session derive one band. A None/non-Thessyn race short-circuits the gate to 0 (still
     persisted — a harmless 0).
     """
-    player_id = session.player_id
+    player_id = session.primary_player_id
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)
     # The ward is read from the LOCATION the session starts in, never from the player row (M24).
     # A fresh session is never in combat, so a location scope is the only one that can cover it.

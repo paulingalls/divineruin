@@ -133,7 +133,6 @@ class SessionData:
     session_items_found: list[str] = field(default_factory=list)
     session_quests_progressed: list[str] = field(default_factory=list)
     session_locations_visited: list[str] = field(default_factory=list)
-    ending_requested: bool = False
     departing_player_id: str | None = None
     departure_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
     player_disconnected: bool = False
@@ -186,8 +185,8 @@ class SessionData:
         # @property so pyright keeps validating every ~120 SessionData(...) construction call
         # site by name/type — a property has no positional/keyword construction slot to check.
         # party.primary is seeded from player_id/patron_id in __post_init__; this override keeps
-        # the two copies from drifting afterward — player_id by rejecting reassignment outright
-        # (it's write-once in prod), patron_id by mirroring writes into party.primary. The
+        # the two copies from drifting afterward — player_id by rejecting public reassignment,
+        # patron_id by mirroring writes into party.primary. The
         # sanctioned multi-PC write path for a non-primary caster is member_state(pid), NOT the
         # session.* facade (which always resolves to the primary member).
         if name == "player_id" and "player_id" in self.__dict__:
@@ -237,6 +236,19 @@ class SessionData:
         if member is None:
             raise ValueError(f"No party member with player_id {player_id!r}")
         return member
+
+    def handoff_primary(self, departing_player_id: str) -> str:
+        if self._actor_binding.get() is not None:
+            raise RuntimeError("Primary hand-off cannot run during a bound actor turn")
+        if departing_player_id != self.primary_player_id:
+            raise ValueError("Only the current primary can hand off the table")
+        if len(self.party.members) < 2 or self.party.members[0].player_id != departing_player_id:
+            raise ValueError("Primary hand-off requires a remaining member in join order")
+        successor = self.party.members[1]
+        self.party.members.pop(0)
+        object.__getattribute__(self, "__dict__")["player_id"] = successor.player_id
+        self.patron_id = successor.patron_id
+        return successor.player_id
 
     @property
     def actor_player_id(self) -> str:

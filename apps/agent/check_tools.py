@@ -356,6 +356,6 @@ async def _mark_skill_breakthrough_impl(
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
-    await mutations.mark_narrative_moment(session.player_id, skill_lower)
-    logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
+    await mutations.mark_narrative_moment(session.acting_player_id, skill_lower)
+    logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.acting_player_id, skill_lower)
     return json.dumps({"status": "ok", "skill": skill_lower, "narrative_moment_ready": True})

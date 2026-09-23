@@ -104,8 +104,9 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
             token in source
             for token in ("deepgram.STT(", "PLAYER_ONE_SPEECH", "PLAYER_TWO_SPEECH", "harness.play(", "SpeechFixture(")
         )
+        local_stt = "class LocalSTT(stt.STT)" in source and "stt=LocalSTT()" in source
         mark = _pytestmark_source(path)
-        if not reaches_microphone:
+        if not reaches_microphone or local_stt:
             free_modules.append(path.name)
             assert mark is None or (
                 "pytest.mark.live_voice" not in mark and "pytest.mark.openai_real_llm" not in mark
