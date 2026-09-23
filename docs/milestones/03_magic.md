@@ -98,7 +98,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Ward effect: halves Resonance generation while active
   - Ward penalty: -1 damage die, -1 DC while active
   - Ward bonus: +4 to Hollow Echo roll (shifts results toward safety)
-- Rules function `resolve_hollow_echo` determines severity; the retired `activate_veil_ward` DM tool toggled the ward The current DM verb is `activate`.
+- Rules function `resolve_hollow_echo` determines severity; the retired `activate_veil_ward` DM tool toggled the ward. The current DM verb is `activate`.
 - Client: Hollow Echo roll display (dramatic dice animation), Veil Ward zone indicator
 
 **Acceptance criteria:**

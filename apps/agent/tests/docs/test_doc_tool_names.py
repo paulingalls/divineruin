@@ -11,7 +11,7 @@ DOCS = Path(__file__).resolve().parents[4] / "docs" / "milestones"
 BACKTICK = re.compile(r"`([a-z][a-z0-9_]*(?:\([^`]*\))?)`")
 COMMENTS = re.compile(r"<!--.*?-->")
 TOOL_CONTEXT = re.compile(r"\b(?:agent|DM) tools?\b|\btool surface\b|@function_tool", re.I)
-# Explicitly named ordinary functions, planned functions, and internal functions.
+# Rules-engine, internal and planned-phase function names, plus ids that share a tool line.
 NON_TOOLS = frozenset(
     {
         "resolve_check",
@@ -50,22 +50,6 @@ NON_TOOLS = frozenset(
         "resolve_death_save",
         "resolve_social_check",
         "validate_creature_stat_block",
-        "query_creatures_by_region",
-        "query_creature_by_id",
-        "resolve_harvesting",
-        "generate_encounter",
-        "activate_patron_ability",
-        "check_patron_tier",
-        "query_patron_synergy",
-        "get_merchant_price",
-        "resolve_combat_loot",
-        "grant_reputation",
-        "check_faction_service_available",
-        "query_merchant_inventory",
-        "purchase_item",
-        "sell_item",
-        "consign_item",
-        "consume_item",
         "is_natural",
         "is_earth_or_stone",
         "resonance_base",
@@ -113,12 +97,10 @@ NON_TOOLS = frozenset(
         "grimjaw_weapons",
         "instantiate_npc_from_template",
         "inventory_pools",
-        "learn_spell_from_scroll",
         "lookup_base_price",
         "market_general",
         "millhaven_supplies",
         "player_inventory",
-        "prepare_spells",
         "query_companion_relationship",
         "remove_condition",
         "resolve_crafting",
@@ -141,6 +123,29 @@ NON_TOOLS = frozenset(
         "location_id",
         "combat_id",
         "region_type",
+    }
+)
+
+# Agent tools that unbuilt phases (07-09) still specify. ADR 0007 folds them into verbs
+# when those phases are planned; until then they are design intent, not DM surface.
+PLANNED_TOOLS = frozenset(
+    {
+        "activate_patron_ability",
+        "check_patron_tier",
+        "query_patron_synergy",
+        "query_creatures_by_region",
+        "query_creature_by_id",
+        "resolve_harvesting",
+        "generate_encounter",
+        "get_merchant_price",
+        "resolve_combat_loot",
+        "grant_reputation",
+        "check_faction_service_available",
+        "query_merchant_inventory",
+        "purchase_item",
+        "sell_item",
+        "consign_item",
+        "consume_item",
     }
 )
 
@@ -184,7 +189,7 @@ def violations(path, number, line, live):
                     reason = f"replacement {replacement} is not registered"
                 elif replacement not in {m.group(1).split("(", 1)[0] for m in BACKTICK.finditer(segment)}:
                     reason = f"retired without replacement `{replacement}` on this line"
-            elif name not in live and name not in NON_TOOLS:
+            elif name not in live | NON_TOOLS | PLANNED_TOOLS:
                 reason = "unclassified tool-shaped name"
             if reason:
                 yield f"{path}:{number}: {name}: {reason}"
@@ -201,12 +206,18 @@ def scan_docs(directory, live):
     ]
 
 
+def require_floor(selected, live):
+    assert selected & live, "no registered tool names selected from milestone docs"
+    assert selected & RETIRED_TOOL_REPLACEMENTS.keys(), "no retired-name mentions selected from milestone docs"
+
+
 def test_milestone_tool_names():
     live = live_names()
     assert len(RETIRED_TOOL_REPLACEMENTS) == 31
     assert not RETIRED_TOOL_REPLACEMENTS.keys() & live
     assert not NEVER_BUILT_TOOLS & live
     assert all(replacement in live for replacement in RETIRED_TOOL_REPLACEMENTS.values() if replacement)
+    assert not (NON_TOOLS | PLANNED_TOOLS) & (live | RETIRED_TOOL_REPLACEMENTS.keys() | NEVER_BUILT_TOOLS)
     selected = {
         name
         for path in DOCS.glob("*.md")
@@ -214,7 +225,7 @@ def test_milestone_tool_names():
         for segment in segments(line)
         for name in candidates(segment)
     }
-    assert selected & live, "no registered tool names selected from milestone docs"
+    require_floor(selected, live)
     errors = scan_docs(DOCS, live)
     assert not errors, "\n".join(errors)
 
@@ -240,16 +251,13 @@ def test_empty_doc_walk_reds(tmp_path):
         scan_docs(tmp_path, live_names())
 
 
-def require_retired_fixture(lines):
-    assert any(
-        set(candidates(segment)) & RETIRED_TOOL_REPLACEMENTS.keys() for line in lines for segment in segments(line)
-    ), "no retired-name mentions in fixture corpus"
-
-
-def test_retired_fixture_floor():
-    require_retired_fixture(["`learn_recipe` folded into `learn`"])
+def test_walk_floor_reds_without_retired_or_live_names():
+    live = live_names()
+    require_floor({"learn_recipe", "learn"}, live)
     with pytest.raises(AssertionError, match="no retired-name mentions"):
-        require_retired_fixture(["`learn` is registered"])
+        require_floor({"learn"}, live)
+    with pytest.raises(AssertionError, match="no registered tool names"):
+        require_floor({"learn_recipe"}, live)
 
 
 def test_dropped_map_name_reds(monkeypatch):

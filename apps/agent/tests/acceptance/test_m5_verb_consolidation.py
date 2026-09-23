@@ -72,7 +72,7 @@ VERB_PRESENCE = [
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
-    """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
+    """No retired tool is registered on any agent."""
     leaked = RETIRED_TOOL_REPLACEMENTS.keys() & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 

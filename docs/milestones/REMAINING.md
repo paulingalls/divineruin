@@ -128,7 +128,7 @@ The unrelated documentation findings below remain open:
   No action needed on `04_combat.md:27` — the "wary" divergence is already fixed
   (`role_archetypes.py:101` uses `unfriendly`).
 - **`get_spell_info` (`03_magic.md:144`) is still a real tool — leave it.** Only
-  `activate_veil_ward` and `cast_spell` folded on that page. The current DM verb is `activate`.
+  `activate_veil_ward` and `cast_spell` folded on that page, into `activate`.
 
 ---
 

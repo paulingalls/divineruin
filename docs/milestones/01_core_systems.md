@@ -122,7 +122,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - DB migration: unified progression table (level → HP gain, attribute points, milestones, spell tier access, technique slots)
 - Pure function: `level_for_xp(total_xp)` → int (canonical name per game_mechanics_core.md L678)
 - Pure function: `get_level_up_rewards(from_level, to_level)` → list of rewards and milestones
-- Level-up rewards now come from the combat-exit and quest-completion Resolves. The retired `award_xp` tool was the earlier entrypoint; `check_level_up` + `build_level_up_payload` still publish `LEVEL_UP`. No separate `apply_level_up` tool. Resolve grants XP. <!-- M28 story-003: the `award_xp` TOOL was subsequently deleted; the same logic now runs as the `_award_xp_core` Resolve on combat exit and quest completion. The one-entrypoint reasoning above held and is what the removal preserved. -->
+- Level-up rewards now come from the combat-exit and quest-completion Resolves. The retired `award_xp` tool was the earlier entrypoint; `check_level_up` + `build_level_up_payload` still publish `LEVEL_UP`. No separate `apply_level_up` tool. <!-- M28 story-003: the `award_xp` TOOL was subsequently deleted; the same logic now runs as the `_award_xp_core` Resolve on combat exit and quest completion. The one-entrypoint reasoning above held and is what the removal preserved. -->
 
 **Acceptance criteria:**
 - [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale <!-- evidence: apps/agent/rules_engine.py:236-257 -->

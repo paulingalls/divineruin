@@ -178,7 +178,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Party wipe: all characters die simultaneously, each pays own death cost, all resurrect at highest-priority anchor
 - Companion death: temporary Hollowed-like state but auto-stabilizes (narrative protection, not permanent)
 - DB migration: `death_saves` tracker, `character_death_history` (death count, costs paid), `resurrection_anchor_points`
-- Planned function: `resolve_death_save(character_id)` → save result, check for stabilize/death
+- Rules function: `resolve_death_save(character_id)` → save result, check for stabilize/death
 - Planned death cost interface → cost tier and specific cost based on death count
 - Internal function: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
 
@@ -262,7 +262,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
   - Discovery moments: narrative beats when finding rare resources
   - Pure function: `resolve_gathering(character_skills, location, resource_table)` → gathered items + discovery flag
 - DB migration: `travel_state` table (party route, mode, progress, exhaustion), `gathering_nodes` table (location_id, resource_type, quantity, discovered)
-- Planned function: `resolve_social_check(character_id, npc_id, approach)` → social outcome
+- Rules function: `resolve_social_check(character_id, npc_id, approach)` → social outcome
 - Planned travel interface → travel state with encounter schedule
 - Internal function: `resolve_gathering(character_id, location_id)` → gathered resources
 
