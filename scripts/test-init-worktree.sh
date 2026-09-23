@@ -266,12 +266,20 @@ ok "a reap in progress is not raced by a second bootstrap"
 # 16. The lsof/ps idioms against a REAL listener. The mocked checks above cannot
 # catch a wrong lsof invocation, and that failure is silent — every port would
 # read as free — so this one binds a port for real.
-real_port=48970
+# The OS picks the port: a fixed one is shared by every checkout's pre-push, and two concurrent
+# runs would each see (and kill) the other's listener.
+real_port_file="$(mktemp -t test-init-real-port)"
 set -m
-bun -e "Bun.serve({ port: $real_port, fetch: () => new Response('ok') })" >/dev/null 2>&1 &
+bun -e "const s = Bun.serve({ port: 0, fetch: () => new Response('ok') }); await Bun.write('$real_port_file', String(s.port));" >/dev/null 2>&1 &
 listener_pid=$!
 set +m
-kill_listener() { kill -- "-$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true; }
+kill_listener() { kill -- "-$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true; rm -f "$real_port_file"; }
+waited=0
+until real_port="$(cat "$real_port_file" 2>/dev/null)" && [ -n "$real_port" ]; do
+  sleep 0.2
+  waited=$((waited + 1))
+  [ "$waited" -lt 50 ] || { kill_listener; fail "the test listener never reported its port"; }
+done
 waited=0
 until lsof -ti ":$real_port" -sTCP:LISTEN >/dev/null 2>&1; do
   sleep 0.2
