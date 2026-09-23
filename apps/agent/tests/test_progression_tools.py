@@ -2,6 +2,7 @@
 archetype-aware hp_gains, auto-grant side-effects and the L5 fork."""
 
 import dataclasses
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -351,7 +352,10 @@ async def test_favor_core_writes_in_the_callers_transaction():
 
     assert grant is not None
     assert (grant.previous_level, grant.new_level, grant.patron_id) == (10, 15, "kaelen")
-    mutations.update_divine_favor.assert_awaited_once_with("player_1", 15, conn=conn)
+    mutations.update_divine_favor.assert_awaited_once()
+    assert mutations.update_divine_favor.call_args.args == ("player_1", 15)
+    assert mutations.update_divine_favor.call_args.kwargs["conn"] is conn
+    assert datetime.fromisoformat(mutations.update_divine_favor.call_args.kwargs["last_served_at"]).tzinfo
 
 
 @pytest.mark.asyncio
@@ -398,7 +402,10 @@ async def test_favor_core_clamps_at_the_patrons_max():
     )
 
     assert grant is not None and grant.new_level == 100
-    mutations.update_divine_favor.assert_awaited_once_with("player_1", 100, conn=conn)
+    mutations.update_divine_favor.assert_awaited_once()
+    assert mutations.update_divine_favor.call_args.args == ("player_1", 100)
+    assert mutations.update_divine_favor.call_args.kwargs["conn"] is conn
+    assert datetime.fromisoformat(mutations.update_divine_favor.call_args.kwargs["last_served_at"]).tzinfo
     assert pending[0][1]["new_level"] == 100
     # The HUD toast reads `amount` alone. A clamped grant must publish what the bar ACTUALLY
     # moved (5), never the 10 that was asked for, or the player watches a "+10" over a bar

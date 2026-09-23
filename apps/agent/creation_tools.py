@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import re
+from datetime import UTC, datetime
 from typing import Literal
 
 from livekit.agents.llm import ToolError, function_tool
@@ -279,6 +280,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
             class_id=cs.class_choice,
             deity_id=deity_id,
             backstory=cs.backstory or "",
+            created_at=datetime.now(UTC),
         )
     except ValueError as e:
         logger.exception("Invalid character data for %s", sd.player_id)
