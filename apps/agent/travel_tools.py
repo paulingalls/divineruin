@@ -31,6 +31,7 @@ import db_queries
 import event_types as E
 import rules_engine
 import travel as travel_engine
+from action_sound_content import publish_action_sound
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from movement_tools import apply_arrival
@@ -162,6 +163,8 @@ async def _travel_impl(
         await apply_arrival(
             session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
         )
+        if roll is None:
+            await publish_action_sound(session, "action_travel")
     else:
         # Lost: the party is off-course (no relocation); record the journey it was attempting.
         session.validate_acting_player(speaker_id)

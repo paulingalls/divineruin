@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
-from sample_fixtures import make_context
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
 import db_training
@@ -44,7 +44,7 @@ def _mocks() -> tuple[dict[str, Any], dict[str, AsyncMock]]:
     errand_resolve = AsyncMock(return_value="errand-resolve-result")
     crafting = AsyncMock(return_value="crafting-result")
     workspace = AsyncMock(return_value="workspace-result")
-    experiment = AsyncMock(return_value="experiment-result")
+    experiment = AsyncMock(return_value='{"outcome": "success"}')
 
     training_mod = _SimpleImpl(_initiate_training_cycle_impl=training, _resolve_training_midpoint_impl=training_resolve)
     errand_mod = _SimpleImpl(
@@ -95,6 +95,45 @@ async def _resolve(kind, id_, *, decision=None):
         ctx, kind, id_, decision=decision, training_mod=mods["training_mod"], errand_mod=mods["errand_mod"]
     )
     return ctx, result, fns
+
+
+@pytest.mark.parametrize(
+    "kind,kwargs,delegate,expected",
+    [
+        ("training", {"program_id": "combat_basics"}, "training", "training-result"),
+        (
+            "companion_errand",
+            {"companion_id": "companion_kael", "errand_type": "scout", "destination": "accord_market_square"},
+            "errand_begin",
+            "errand-begin-result",
+        ),
+        ("crafting", {"recipe_id": "iron_dagger_recipe"}, "crafting", "crafting-result"),
+        (
+            "workspace",
+            {"workspace_type": "forge", "npc_id": "guildmaster_torin", "days": 3},
+            "workspace",
+            "workspace-result",
+        ),
+        (
+            "experiment",
+            {"material_ids": ["iron_ore"], "quantities": [2], "intended_output": "iron_ingot"},
+            "experiment",
+            '{"outcome": "success"}',
+        ),
+    ],
+)
+async def test_begin_cue_publish_failure_preserves_delegate_result(kind, kwargs, delegate, expected):
+    mods, fns = _mocks()
+    room = make_mock_room()
+    room.isconnected.return_value = True
+    room.local_participant.publish_data.side_effect = RuntimeError("cue failed")
+    ctx = make_context(room=room)
+
+    result = await _begin_activity_impl(ctx, kind, **kwargs, **mods)
+
+    assert result == expected
+    fns[delegate].assert_awaited_once()
+    room.local_participant.publish_data.assert_awaited_once()
 
 
 class TestBeginTraining:
@@ -172,8 +211,19 @@ class TestBeginExperiment:
             quantities=[2, 1],
             intended_output="iron_ingot",
         )
-        assert result == "experiment-result"
+        assert json.loads(result) == {"outcome": "success"}
         fns["experiment"].assert_awaited_once_with(ctx, {"iron_ore": 2, "coal": 1}, "iron_ingot")
+
+    async def test_unknown_experiment_outcome_fails_loud_without_cue(self):
+        mods, fns = _mocks()
+        fns["experiment"].return_value = '{"outcome": "mystery"}'
+        ctx = make_context(room=make_mock_room())
+        with pytest.raises(ValueError, match="mystery"):
+            await _begin_activity_impl(
+                ctx, "experiment", material_ids=["iron_ore"], quantities=[1], intended_output="iron_ingot", **mods
+            )
+        fns["experiment"].assert_awaited_once()
+        assert published_payloads(ctx.userdata.room) == []
 
     async def test_missing_intended_output_fails_loud_before_dispatch(self):
         with pytest.raises(ToolError, match="experiment"):

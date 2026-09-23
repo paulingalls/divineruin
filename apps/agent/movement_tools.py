@@ -13,6 +13,7 @@ import db_mutations_travel
 import db_queries
 import event_types as E
 import ward_resolution
+from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -221,6 +222,7 @@ async def _move_player_impl(
         mutations=mutations,
         travel_mutations=travel_mutations,
     )
+    await publish_action_sound(session, "action_move")
     session.record_event(f"Moved to {destination_id}")
 
     from scene_tools import _build_scene_context

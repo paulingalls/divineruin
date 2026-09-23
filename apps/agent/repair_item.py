@@ -29,6 +29,7 @@ import durability
 import pricing_queries
 import rules_engine
 import workspace
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from disposition import resolve_disposition
 from rules_engine import SKILL_TIER_ORDER, SkillTier
 from session_data import SessionData
@@ -146,4 +147,5 @@ async def _repair_item_impl(
         await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
 
     logger.info("repair_item: player=%s npc=%s item=%s restored_to=%d", player_id, npc_id, item_id, max_h)
+    await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_REPAIR_ITEM"])
     return json.dumps({"item_id": item_id, "restored_to": max_h, "price_sp": quote.price_sp})

@@ -8,7 +8,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 from typing import Literal
 
@@ -22,11 +21,13 @@ import db_session_queries
 import event_types as E
 import spell_knowledge
 import spells
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from archetypes import get_archetype_chassis
 from asset_utils import slug_asset_url
 from companion_profiles import select_companion_for_archetype
 from creation_classes import CLASSES
 from creation_deities import DEITIES
+from creation_portrait import generate_player_portrait
 from creation_races import RACES
 from creation_rules import build_character_data, infer_culture, select_starting_spells
 from game_events import publish_game_event
@@ -36,8 +37,6 @@ logger = logging.getLogger("divineruin.creation")
 
 VALID_CARD_CATEGORIES = {"race", "class", "deity"}
 VALID_CHOICE_CATEGORIES = {"race", "class", "deity", "name", "backstory"}
-
-SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
 
 
 # --- Input sanitization ---
@@ -296,6 +295,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
     # with a source-appropriate cantrip + minor, prepared (pre-game training). No-op for
     # martials. Non-fatal — the character is already persisted; a grant hiccup must not
     # strand a created character, so it is logged rather than raised.
+    steps_succeeded = True
     try:
         chassis = get_archetype_chassis(cs.class_choice)
         starting_spells = [spells.get_spell(i) for i in select_starting_spells(cs.class_choice, chassis.magic_source)]
@@ -304,6 +304,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
         for spell in starting_spells:
             await character_spells.record_learned(sd.player_id, spell.id, "training", is_prepared=True)
     except Exception:
+        steps_succeeded = False
         logger.exception("Failed to grant starting spells for %s", sd.player_id)
 
     # Bind the starting companion (story-003): the one companion whose `complements` lists this
@@ -316,6 +317,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
         companion_id = select_companion_for_archetype(cs.class_choice)
         await db_mutations_companion.insert_companion_relationship_if_absent(sd.player_id, companion_id)
     except Exception:
+        steps_succeeded = False
         logger.exception("Failed to assign a starting companion for %s", sd.player_id)
 
     # Update session state
@@ -323,13 +325,14 @@ async def finalize_character(context: RunContext) -> str | tuple:
     cs.phase = "complete"
 
     # Fire-and-forget async portrait generation (non-blocking)
-    _portrait_task = asyncio.create_task(_generate_player_portrait(sd, cs))  # noqa: RUF006
+    _portrait_task = asyncio.create_task(generate_player_portrait(sd, cs))  # noqa: RUF006
 
     # Publish session_init so client gets character data
     try:
         payload = await db_session_queries.get_session_init_payload(sd.player_id)
         await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
     except Exception:
+        steps_succeeded = False
         logger.exception("Failed to publish session_init after creation")
 
     # Build summary for DM narration
@@ -374,58 +377,11 @@ async def finalize_character(context: RunContext) -> str | tuple:
     sd.onboarding_beat = 1
     # companion_id is the value bound inside the guarded selection above — NOT a second call to
     # the selector, which would convert a deliberately swallowed content bug into a crashed handoff.
-    return OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx, companion_id=companion_id), json.dumps(summary)
-
-
-async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
-    """Async fire-and-forget: generate player portrait via server API."""
-    try:
-        import httpx
-
-        race_id = getattr(cs, "race", None)
-        class_id = getattr(cs, "class_choice", None)
-        class_data = CLASSES.get(class_id) if class_id else None
-        class_name = class_data.name if class_data else "Adventurer"
-        class_fantasy = class_data.card_description if class_data else "A versatile wanderer."
-        race_data = RACES.get(race_id) if race_id else None
-        race_name = race_data.name if race_data else "Human"
-        physical_features = race_data.card_description if race_data else "Adaptable and determined."
-
-        template_vars = {
-            "class": class_name,
-            "class_fantasy": class_fantasy,
-            "race_name": race_name,
-            "physical_features": physical_features,
-        }
-
-        internal_secret = os.environ.get("INTERNAL_SECRET", "")
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                f"{SERVER_URL}/api/images/generate",
-                json={"templateId": "player_character_creation", "vars": template_vars},
-                headers={"X-Internal-Secret": internal_secret},
-            )
-            if resp.status_code != 200:
-                logger.warning("Portrait generation failed: %s", resp.text)
-                return
-
-            result = resp.json()
-            asset_id = result.get("assetId", "")
-            if not asset_id:
-                return
-
-            portrait_url = slug_asset_url(asset_id)
-
-            # Update player record
-            await db_mutations.update_player_portrait(sd.player_id, portrait_url)
-
-            # Notify client
-            await publish_game_event(
-                sd.room,
-                E.PLAYER_PORTRAIT_READY,
-                {"url": portrait_url},
-                sd.event_bus,
-            )
-            logger.info("Player portrait generated: %s", portrait_url)
-    except Exception:
-        logger.exception("Failed to generate player portrait")
+    agent = OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx, companion_id=companion_id)
+    if steps_succeeded:
+        sound_id = ACTION_SOUND_EXPORTS["ACTION_FINALIZE_CHARACTER"]
+        try:
+            await publish_action_sound(sd, sound_id)
+        except Exception:
+            logger.exception("Failed to publish character completion cue")
+    return agent, json.dumps(summary)

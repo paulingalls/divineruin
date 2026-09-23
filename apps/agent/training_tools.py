@@ -24,6 +24,7 @@ import db_training
 import leveling
 import spell_knowledge
 import spells
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from session_data import SessionData
 from tool_support import _validate_id
 from training_rules import TrainingState, resolve_midpoint_decision, start_training_cycle
@@ -280,6 +281,7 @@ async def _resolve_training_midpoint_impl(
             conn=conn,
         )
 
+    await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_RESOLVE_TRAINING_MIDPOINT"])
     hours_left = (result.second_half_seconds + 30 * 60) // 3600
     return json.dumps(
         {

@@ -26,6 +26,7 @@ import db_queries
 import event_types as E
 import gathering
 import rules_engine
+from action_sound_content import publish_action_sound
 from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
@@ -146,6 +147,8 @@ async def _check_gather_impl(
 
     for name in found_names:
         session.record_item_found(player_id, name)
+    if counts:
+        await publish_action_sound(session, "action_gather")
 
     success = result.result != "nothing"
     await publish_game_event(

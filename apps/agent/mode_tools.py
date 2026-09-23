@@ -15,6 +15,7 @@ it is a no-op cost for the dispatch/blacksmith branches.
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from blacksmith_tools import _enter_blacksmith_impl
 from combat_init import _start_combat_impl
 from db_errors import db_tool
@@ -58,7 +59,11 @@ async def _enter_mode_impl(
             raise ToolError("enter_mode(mode='combat') requires an encounter_id.")
         return await _start_combat_impl(context, encounter_id, encounter_description)
     if mode == "dispatch":
-        return await _enter_dispatch_impl(context)
+        result = await _enter_dispatch_impl(context)
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_ENTER_MODE_DISPATCH"])
+        return result
     if mode == "blacksmith":
-        return await _enter_blacksmith_impl(context)
+        result = await _enter_blacksmith_impl(context)
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_ENTER_MODE_BLACKSMITH"])
+        return result
     raise ToolError(f"Unknown mode {mode!r}; expected one of: {', '.join(VALID_MODES)}.")
