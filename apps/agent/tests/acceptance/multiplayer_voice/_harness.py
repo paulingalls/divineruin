@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from acceptance._livekit_client import (
     aclose_audio,
@@ -107,8 +108,10 @@ class MultiplayerVoiceHarness:
         self.room_name = f"multiplayer-transcription-{suffix}"
         self.player_one_identity = f"player-one-{suffix}"
         self.player_two_identity = f"player-two-{suffix}"
+        self.player_three_identity = f"player-three-{suffix}"
         self.player_one: rtc.Room | None = None
         self.player_two: rtc.Room | None = None
+        self.player_three: rtc.Room | None = None
         self.listener: rtc.Room | None = None
         self.manager: MultiParticipantTranscriber | None = None
         self.audio: dict[str, tuple[rtc.AudioSource, rtc.LocalAudioTrack, rtc.LocalTrackPublication]] = {}
@@ -127,6 +130,8 @@ class MultiplayerVoiceHarness:
         prepare_listener: Callable[[rtc.Room], Awaitable[Callable[[str], Awaitable[int | None]]]] | None = None,
         *,
         transcribe: bool = True,
+        third_player: bool = False,
+        stt: Any = None,
     ) -> None:
         self._http_context = utils.http_context.open()
         await self._http_context.__aenter__()
@@ -139,8 +144,10 @@ class MultiplayerVoiceHarness:
         await wait_for_peer(self.listener, identity=self.player_one_identity)
         authorizer = await prepare_listener(self.listener) if prepare_listener else _authorize_transcription_fixture
         if transcribe:
-            stt = deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300)
-            self.manager = MultiParticipantTranscriber(self.listener, stt=stt, authorizer=authorizer)
+            transcription_stt = (
+                stt if stt is not None else deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300)
+            )
+            self.manager = MultiParticipantTranscriber(self.listener, stt=transcription_stt, authorizer=authorizer)
             self.manager.start()
         self.player_two = await connect_room(self.server["ws_url"], self._token(self.player_two_identity))
         if transcribe:
@@ -148,10 +155,22 @@ class MultiplayerVoiceHarness:
                 self.player_two, sample_rate=16000, channels=1, name="player-two-microphone"
             )
         await wait_for_peer(self.listener, identity=self.player_two_identity)
+        if third_player:
+            self.player_three = await connect_room(self.server["ws_url"], self._token(self.player_three_identity))
+            if transcribe:
+                self.audio[self.player_three_identity] = await create_microphone_track(
+                    self.player_three, sample_rate=16000, channels=1, name="player-three-microphone"
+                )
+            await wait_for_peer(self.listener, identity=self.player_three_identity)
         if transcribe:
-            await self.wait_for_active({self.player_one_identity, self.player_two_identity})
+            expected = {self.player_one_identity, self.player_two_identity}
+            if third_player:
+                expected.add(self.player_three_identity)
+            await self.wait_for_active(expected)
             await self.wait_for_microphone(self.player_one_identity, muted=False)
             await self.wait_for_microphone(self.player_two_identity, muted=False)
+            if third_player:
+                await self.wait_for_microphone(self.player_three_identity, muted=False)
 
     async def wait_for_microphone(self, identity: str, *, muted: bool | None = None, published: bool = True) -> None:
         assert self.listener is not None
@@ -200,14 +219,26 @@ class MultiplayerVoiceHarness:
         await self.wait_for_microphone(identity, muted=muted)
 
     async def unpublish(self, identity: str) -> None:
-        room = self.player_one if identity == self.player_one_identity else self.player_two
+        room = (
+            self.player_one
+            if identity == self.player_one_identity
+            else self.player_two
+            if identity == self.player_two_identity
+            else self.player_three
+        )
         assert room is not None
         source, _track, publication = self.audio.pop(identity)
         await unpublish_audio(room, source, publication)
         await self.wait_for_microphone(identity, published=False)
 
     async def republish(self, identity: str) -> None:
-        room = self.player_one if identity == self.player_one_identity else self.player_two
+        room = (
+            self.player_one
+            if identity == self.player_one_identity
+            else self.player_two
+            if identity == self.player_two_identity
+            else self.player_three
+        )
         assert room is not None
         self.audio[identity] = await create_microphone_track(
             room, sample_rate=16000, channels=1, name=f"{identity}-replacement-microphone"
@@ -291,7 +322,7 @@ class MultiplayerVoiceHarness:
         finally:
             for source, _track, _publication in tuple(self.audio.values()):
                 await aclose_audio(source)
-            for room in (self.player_two, self.listener, self.player_one):
+            for room in (self.player_three, self.player_two, self.listener, self.player_one):
                 if room is not None:
                     await aclose_room(room)
             if self._http_context is not None:

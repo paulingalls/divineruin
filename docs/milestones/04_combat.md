@@ -23,15 +23,15 @@ Redesigns the existing basic combat state machine into a 4-beat phase-based syst
 - Combat is **turn-based**, not phase-based with 4 beats. State lives in `combat_instances` (single `data JSONB`, PostgreSQL) — not spec's `combat_encounters` with phase columns in Redis.
 - No condition system at all: no `character_conditions` table, no `apply_condition`/`tick_conditions`/`get_condition_effects`. `apps/agent/fatigue_narration.py:29-36` is narrative-cue only.
 - No dramatic-dice flag on any roll result packet (`AttackResult`, `SavingThrowResult`, `DeathSaveResult`, `CheckResult` all lack `dramatic`).
-- No social/travel/gathering systems shipped. `apps/agent/wilderness_agent.py:36-52` is a 52-line stub.
+- At the Sprint-003 audit, social/travel/gathering systems had not shipped. M4.6 subsequently delivered them; the former wilderness stub was removed.
 - NPC disposition system exists but uses `"wary"` where spec uses `"unfriendly"` (`apps/agent/tool_support.py:76-83` vs `gm_combat:L671`) — spec/code naming divergence.
 - Mortaen mechanic surface entirely aspirational: no `death_counter`, no `determine_death_cost`, no Mortaen scene wiring.
 
-**encounter_roles primary ownership (capstone decision `m4-7-overlay-status`):** Phase 04 owns the encounter_roles overlay per `execution_plan.json §Milestone 3`. The audit recommends a **new milestone M4.7 "Encounter Role Overlay"** (Minion / Standard / Elite / Boss / Named) — not yet authored as a numbered section below; scope lives in `audit/phase-encounter-roles.md`.
+**encounter_roles primary ownership (capstone decision `m4-7-overlay-status`):** Phase 04 owns the encounter_roles overlay per `execution_plan.json §Milestone 3`. M4.7 "Encounter Role Overlay" (Minion / Standard / Elite / Boss / Named) shipped; its acceptance criteria are authored below.
 
 **Cross-refs:**
 - **M7.1 (Bestiary)** must extend stat block schema with optional `role` field and Boss-only `signature_ability`/`legendary_actions[]` fields.
-- **M7.4 (Encounter Builder)** `build_encounter` signature is in flux: spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Final choice deferred to the M4.7/M7.4 implementation sprint (decision `m7-4-build-encounter-signature` recorded).
+- **M7.4 (Encounter Builder)** `build_encounter` signature is in flux: spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Final choice belongs to Phase 7 M7.4 (decision `m7-4-build-encounter-signature` recorded).
 - **Phase 09 Economy** owns currency drops and material sell values from encounter_roles §Loot Modifiers; see `09_economy.md` Sprint-003 cross-ref.
 
 See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
@@ -90,8 +90,8 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - AC calculation by armor type: Unarmored (`10 + DEX`), Light (`12 + DEX`), Medium (`14 + DEX max 2`), Heavy (`16-18, no DEX`)
 - Weapon damage table: `1d4` (dagger) through `1d12` (greataxe) `+ attribute modifier`
 - Player intent interpretation: player speaks freely, DM agent interprets intent and calls appropriate mechanics tools
-- Agent tool: `request_attack(attacker_id, target_id, weapon_id)` → hit/miss/crit result with damage and dramatic flag
-- Agent tool: `request_save(target_id, save_type, dc)` → success/fail with margin and dramatic flag
+- Former agent tool: `request_attack(attacker_id, target_id, weapon_id)` → hit/miss/crit result with damage and dramatic flag The current DM verb is `declare_phase`.
+- Planned saving throw interface → success/fail with margin and dramatic flag
 - Pure function: `calculate_ac(armor, dex_modifier)` → AC value
 - Pure function: `resolve_attack(attacker_stats, target_ac, weapon)` → attack result packet
 - Pure function: `resolve_declaration(declaration_type, actor, targets, context)` → resolution result
@@ -103,8 +103,8 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
 - [x] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
 - [x] Critical hit (natural 20) doubles damage dice
-- [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag
-- [x] `request_save` returns structured result with success/fail and margin
+- [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag The current DM verb is `declare_phase`.
+- [x] the saving throw resolution returns structured result with success/fail and margin
 - [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
@@ -178,9 +178,9 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Party wipe: all characters die simultaneously, each pays own death cost, all resurrect at highest-priority anchor
 - Companion death: temporary Hollowed-like state but auto-stabilizes (narrative protection, not permanent)
 - DB migration: `death_saves` tracker, `character_death_history` (death count, costs paid), `resurrection_anchor_points`
-- Agent tool: `resolve_death_save(character_id)` → save result, check for stabilize/death
-- Agent tool: `get_death_cost(character_id)` → cost tier and specific cost based on death count
-- Agent tool: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
+- Rules function: `resolve_death_save(character_id)` → save result, check for stabilize/death
+- Planned death cost interface → cost tier and specific cost based on death count
+- Internal function: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
 
 **Acceptance criteria:**
 - [x] 0 HP triggers Fallen state with death save requirement each phase
@@ -262,9 +262,9 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
   - Discovery moments: narrative beats when finding rare resources
   - Pure function: `resolve_gathering(character_skills, location, resource_table)` → gathered items + discovery flag
 - DB migration: `travel_state` table (party route, mode, progress, exhaustion), `gathering_nodes` table (location_id, resource_type, quantity, discovered)
-- Agent tool: `resolve_social_check(character_id, npc_id, approach)` → social outcome
-- Agent tool: `start_travel(party_id, destination, mode)` → travel state with encounter schedule
-- Agent tool: `resolve_gathering(character_id, location_id)` → gathered resources
+- Rules function: `resolve_social_check(character_id, npc_id, approach)` → social outcome
+- Planned travel interface → travel state with encounter schedule
+- Internal function: `resolve_gathering(character_id, location_id)` → gathered resources
 
 **Acceptance criteria:**
 - [x] Social DC correctly derived from NPC disposition (0-10 scale)
@@ -284,3 +284,23 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - *Game Mechanics Combat — Social Encounter Resolution*
 - *Game Mechanics Combat — Travel Modes & Encounters*
 - *Game Mechanics Combat — Gathering System*
+
+### Milestone 4.7 — Encounter Role Overlay
+
+**Goal:** Apply encounter roles to authored enemies and rewards.
+
+**Acceptance criteria:**
+- [x] Starting an authored encounter derives Minion, Standard, and Boss participants; Minions retain a basic attack but lose active abilities and use the role HP floor. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_init_derivation_budget_and_minion_floor -->
+- [x] `calculate_encounter_budget` reports informational budget and composition flags for a role-derived roster; combat start does not gate on those flags. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_init_derivation_budget_and_minion_floor -->
+- [x] Victory grants role-scaled XP and currency, while a living Boss retains its legendary action budget. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_full_combat_to_victory_grants_role_scaled_rewards -->
+
+### Milestone 4.8 — Beneficial Conditions
+
+**Goal:** Carry Bless and Inspire through production, consumption, and narration.
+
+**Acceptance criteria:**
+- [x] Bless adds 1d4 to an eligible saving throw, is consumed once, and its removal persists. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_save_folds_consumes_and_persists_removal -->
+- [x] A Blessed combat attack consumes the bonus once in combat state. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_in_combat_attack_consumes_once -->
+- [x] Inspire adds 1d4 to the next eligible roll and expires after that use. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_inspire_folds_once_then_expires -->
+- [x] Engine automatic saves neither use nor consume a player's bonus die. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_engine_auto_save_never_consumes -->
+- [x] A multi-target Bless names every affected ally for narration; breaking concentration removes Bless. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_multitarget_bless_voices_every_ally apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_breaking_bless_concentration_drops_blessed -->

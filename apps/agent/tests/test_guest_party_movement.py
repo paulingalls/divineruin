@@ -126,6 +126,7 @@ async def test_move_fans_out_from_either_turn(speaker):
     assert result["moved"] is True
     _arrival_calls(m)
     assert ctx.userdata.location_id == DEST
+    assert all(DEST in ctx.userdata.player_summary_metrics[pid]["locations_visited"] for pid in IDS)
     assert [ctx.userdata.member_state(pid).corruption_level for pid in IDS] == [3, 3]
     assert [e.event_type for e in published_events(ctx)].count(E.LOCATION_CHANGED) == 1
     corruption = [e.payload for e in published_events(ctx) if e.event_type == E.HOLLOW_CORRUPTION_CHANGED]

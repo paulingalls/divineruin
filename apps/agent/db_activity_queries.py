@@ -162,18 +162,19 @@ async def get_pending_god_whispers(player_id: str) -> list[dict]:
 
 
 async def get_session_story_moments(
-    session_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    session_id: str, player_id: str | None = None, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> list[dict]:
-    """Return all story moments for a session, ordered by creation time."""
+    """Return session moments, scoped to one player for a personal farewell."""
     _conn = conn or await db.get_pool()
     rows = await _conn.fetch(
         """
         SELECT moment_key, description, template_id, asset_id
         FROM story_moments
-        WHERE session_id = $1
+        WHERE session_id = $1 AND ($2::text IS NULL OR player_id = $2)
         ORDER BY created_at ASC
         """,
         session_id,
+        player_id,
     )
     return [
         {

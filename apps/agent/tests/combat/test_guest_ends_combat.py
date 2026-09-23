@@ -102,6 +102,9 @@ async def test_guest_end_combat_commits_and_cannot_pay_twice():
     assert ctx.userdata.combat_state is None
     mutations.delete_combat_state.assert_awaited_once()
     assert {call.args[0] for call in mutations.update_player_xp.await_args_list} == {"player_1", "player_2"}
+    # Each member's goodbye recap counts their own share, not only the host's.
+    earned = {pid: ctx.userdata.player_summary_metrics[pid]["xp_earned"] for pid in ("player_1", "player_2")}
+    assert earned["player_1"] == earned["player_2"] > 0
 
 
 @pytest.mark.asyncio

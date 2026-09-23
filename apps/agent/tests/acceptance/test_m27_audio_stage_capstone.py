@@ -28,7 +28,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from acceptance.test_m5_verb_consolidation import REMOVED_AUDIO_TOOLS
+from _retired_tools import RETIRED_TOOL_REPLACEMENTS
 from agent_tool_profiles import AGENT_TOOL_LISTS
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
@@ -67,13 +67,10 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_agent_registers_audio_tools(name: str, tools: list) -> None:
-    """Re-asserts the audio-tool invariant under the M27 capstone's own name, so the
-    milestone-exit net names it directly. This net's ASSERTION is independent of M5's
-    combined-union check -- a re-added play_sound/set_music_state tool fails here even if
-    M5's own test ever drops REMOVED_AUDIO_TOOLS from its union. It DOES share M5's
-    REMOVED_AUDIO_TOOLS set and the discovered AGENT_TOOL_LISTS corpus, so narrowing either
-    narrows this net too."""
-    leaked = REMOVED_AUDIO_TOOLS & {t.__name__ for t in tools}
+    """The M27 tear-out remains absent from every discovered agent."""
+    retired = {"play_sound", "set_music_state"}
+    assert all(RETIRED_TOOL_REPLACEMENTS[tool] is None for tool in retired)
+    leaked = retired & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed audio tool(s): {sorted(leaked)}"
 
 

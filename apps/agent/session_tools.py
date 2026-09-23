@@ -1,7 +1,10 @@
 """Session tools — end session, story moments, NPC disposition."""
 
+import asyncio
 import json
 import logging
+from contextvars import copy_context
+from functools import partial
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -18,6 +21,8 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from role_archetypes import shift_disposition
 from session_data import SessionData
+from session_end import run_guest_departure
+from task_logging import log_task_failure
 from tool_preconditions import require_npc_present
 from tool_support import MAX_STORY_MOMENTS_PER_PLAYER, STORY_MOMENTS, _cap_str
 
@@ -114,18 +119,62 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
     want to wrap up, should stop, or similar goodbye phrases."""
     logger.info("end_session called: reason=%s", reason)
     sd: SessionData = context.userdata
-    sd.ending_requested = True
+    actor_id = sd.actor_player_id if len(sd.party.members) > 1 else sd.acting_player_id
+    member_leaves = len(sd.party.members) > 1
+    if member_leaves:
+        if sd.departing_player_id is not None:
+            raise ToolError("A player departure is already pending")
+        sd.departing_player_id = actor_id
+
+    session = context.session
+
+    def after_playout(handle):
+        if handle.interrupted or handle.exception() is not None:
+            disconnected = sd.reconnection_owner is not None and sd.reconnection_owner.is_disconnected(actor_id)
+            if not disconnected:
+                sd.departing_player_id = None
+                session.generate_reply(
+                    instructions=f"Tell {actor_id} their farewell was interrupted and they can say goodbye again."
+                )
+                return
+        if member_leaves:
+            departure_context = copy_context()
+            departure_context.run(sd._actor_binding.set, None)
+            sd.departure_task = asyncio.create_task(
+                run_guest_departure(sd, actor_id, session), context=departure_context
+            )
+            sd.departure_task.add_done_callback(
+                partial(log_task_failure, logger=logger, message="Member departure failed")
+            )
+        else:
+            task = asyncio.create_task(session.aclose())
+            task.add_done_callback(partial(log_task_failure, logger=logger, message="Session close failed"))
+
+    context.speech_handle.add_done_callback(after_playout)
+    if member_leaves:
+        instruction = (
+            "Only this speaker is leaving; the rest of the party keeps playing. Give this player "
+            "a 1-2 sentence personal farewell; do not wrap up the session for anyone else."
+        )
+    else:
+        instruction = (
+            "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
+            "Mention any XP or progress if meaningful. Plant one hook for next session."
+        )
+    # Always the speaker's own tallies: after a host hand-off the session-wide ones still hold
+    # the departed host's earnings, including any from before the last member joined.
+    personal = sd.player_summary_metrics.get(actor_id, {})
+    stats = {
+        "xp_earned": personal.get("xp_earned", 0),
+        "items_found": personal.get("items_found", []),
+        "quests_progressed": personal.get("quest_progress", []),
+        "locations_visited": personal.get("locations_visited", []),
+    }
     return json.dumps(
         {
             "status": "ending",
-            "session_stats": {
-                "xp_earned": sd.session_xp_earned,
-                "items_found": sd.session_items_found,
-                "quests_progressed": sd.session_quests_progressed,
-                "locations_visited": sd.session_locations_visited,
-            },
-            "instruction": "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
-            "Mention any XP or progress if meaningful. Plant one hook for next session.",
+            "session_stats": stats,
+            "instruction": instruction,
         }
     )
 

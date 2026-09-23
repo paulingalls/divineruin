@@ -95,17 +95,17 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Content seed for core abilities (at least 1-2 per archetype)
 - Elective ability pool: L4 and L8 technique choices (pool of 4 per archetype at each level)
 - Reaction ability support: interrupt-triggered abilities tied to combat windows
-- Agent tool `request_ability_activation` — validates resource cost, applies effect, returns narration cue
+- Former agent tool `request_ability_activation` — validates resource cost, applies effect, returns narration cue The current DM verb is `activate`.
 - Ability swap logic: elective techniques swappable on long rest
 - Acquisition paths: Training (async), scrolls (found items), mentors (NPC training)
 
 **Acceptance criteria:**
 - [x] Every archetype has at least one core ability seeded in the DB
-- [x] `request_ability_activation` deducts the correct Stamina or Focus cost and rejects activation when resources are insufficient
+- [x] `request_ability_activation` deducts the correct Stamina or Focus cost and rejects activation when resources are insufficient The current DM verb is `activate`.
 - [x] Elective abilities at L4 and L8 present exactly 4 choices per archetype
 - [x] Characters can swap elective techniques on long rest without losing the technique
 - [x] Reaction abilities can only trigger during their defined combat window
-- [x] `request_ability_activation` returns a narration cue string for the DM agent to voice
+- [x] `request_ability_activation` returns a narration cue string for the DM agent to voice The current DM verb is `activate`.
 - [x] Unit tests cover core activation, elective activation, insufficient resources, and reaction timing
 
 > **Status (shipped):** Ability catalog, activation/cost-rejection, L4/L8 elective pools, long-rest swap, and narration cues are delivered and tested (unit tests + `tests/acceptance/test_story_005_m22_ability_capstone.py`). AC5/AC7's reaction leg landed in story-002 and was REBOUND in sprint-048 story-017: a reaction is an interrupt, not a declaration. There is no Beat-1 REACTION declaration and no `trigger` field — `activate` refuses a reaction unless a Beat-3 window is OPEN (`CombatState.open_window`), the ability's catalog `window` is among that window's `triggers`, and the round's one reaction is unspent (`combat_phase.validate_reaction_activation`). The spend records WHICH reaction answered WHICH held action (`reaction_spend.py`), which story-018 reads to give it mechanical effect. **Scope caveat:** the gate is scoped to combat — a session with no `combat_state` activates a reaction UNGATED, which keeps the four socially-worded reactions (`spy_plausible_deniability`, `diplomat_objection`, `whisper_implant_doubt`, `marshal_countermand`) usable outside a fight. There is no reaction budget outside combat, so those four are still unmetered.
@@ -127,7 +127,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - `archetype_milestones` DB table: milestone_tier (Identity/Power/Mastery/Legend), level (5/10/15/20), archetype_id, granted_abilities, specialization_options (for L5)
 - Content seed for milestone abilities across all 18 archetypes
 - Specialization fork data at L5: each archetype offers 2 specialization paths (e.g., Warrior picks Battle Master or Berserker)
-- Agent tool `resolve_milestone` — grants milestone abilities, triggers specialization choice at L5
+- Planned milestone interface `resolve_milestone` — superseded by the XP Resolve and registered `select` verb
 - Client: leveling screen with specialization choice UI at L5
 - Auto-grant logic for L10, L15, L20 milestones (no player choice, abilities granted automatically)
 
@@ -165,14 +165,14 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Discovery track: learn from scrolls and NPC mentors (including mentor-exclusive variants)
 - Spell preparation: prepare from known pool on long rest; Druid restriction (natural terrain only), Paladin restriction (capped at Major tier)
 - Spell tier unlock by level: Cantrip L1, Minor L1, Standard L4, Major L7, Supreme L13
-- Agent tools: `learn_spell_from_scroll`, `prepare_spells`
+- Spell acquisition uses the registered `learn` verb for scrolls and `prepare_spells_on_long_rest` during rest
 
 **Acceptance criteria:**
 - [x] Core spells are auto-assigned at character creation and always show as prepared
 - [x] Training track respects tier-based cycle durations and advances progress each async cycle
 - [x] Midpoint decision during training modifies the learned spell's bonus variant
-- [x] `learn_spell_from_scroll` adds spell to known pool and marks acquisition track as "discovery"
-- [x] `prepare_spells` enforces preparation limits and archetype restrictions (Druid terrain, Paladin tier cap)
+- [x] scroll learning through `learn` adds the spell to the known pool and marks its acquisition track as "discovery"
+- [x] long-rest preparation enforces preparation limits and archetype restrictions (Druid terrain, Paladin tier cap)
 - [x] Spell tier unlock gates prevent learning spells above the character's level allowance
 - [x] Unit tests cover all three acquisition tracks, preparation rules, and tier gating
 

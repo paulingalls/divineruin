@@ -42,6 +42,49 @@ class TestWarmLayerRebuild:
     """Test warm layer rebuilding logic."""
 
     @pytest.mark.asyncio
+    async def test_handoff_rebuild_queries_new_primary_and_discards_old_cache(self):
+        sd = SessionData(player_id="host", location_id="tavern")
+        sd.party.members.append(SessionData(player_id="p2", location_id="tavern").party.primary)
+        agent = MagicMock()
+        agent.static_prompt.return_value = "STATIC"
+        agent.update_instructions = AsyncMock()
+        session = MagicMock(current_agent=agent)
+        bp = BackgroundProcess(session, sd)
+        bp._quest_cache = [{"id": "host-quest"}]
+        bp._speech_queue = [
+            PendingSpeech(priority=SpeechPriority.CRITICAL, instructions="Old host's patron", recipient_id="host"),
+            PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="Party warning"),
+        ]
+        bp._last_warm_layer = "host warm"
+        sd.handoff_primary("host")
+        with (
+            _mock_db_for_warm_layer(location={"name": "Tavern"}),
+            patch(
+                "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=[]
+            ) as quests,
+            patch(
+                "background_process.db_training.get_player_active_training_activities",
+                new_callable=AsyncMock,
+                return_value=[],
+            ) as training,
+            patch("background_process.build_warm_layer", new_callable=AsyncMock, return_value="p2 warm") as build,
+        ):
+            await bp.primary_changed()
+        quests.assert_awaited_once_with("p2")
+        training.assert_awaited_once_with("p2")
+        assert build.await_args is not None and build.await_args.args[:2] == ("tavern", "p2")
+        assert bp._quest_cache == []
+        assert [speech.instructions for speech in bp._speech_queue] == ["Party warning"]
+        assert bp._last_warm_layer == "p2 warm"
+
+    @pytest.mark.asyncio
+    async def test_handoff_reports_failed_warm_rebuild(self):
+        bp = BackgroundProcess(MagicMock(), SessionData(player_id="p2", location_id="tavern"))
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock, return_value=False):
+            with pytest.raises(RuntimeError, match="warm layer"):
+                await bp.primary_changed()
+
+    @pytest.mark.asyncio
     async def test_rebuild_warm_layer_updates_agent_instructions(self):
         """_rebuild_warm_layer should update agent instructions with new warm layer."""
         mock_agent = MagicMock()

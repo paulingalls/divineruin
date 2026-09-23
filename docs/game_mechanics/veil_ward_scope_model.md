@@ -140,7 +140,7 @@ restriction is Phase 10 (see §7).
 
 Both are raised without Focus or Stamina cost — the crafting *is* the cost.
 Permanent wards (large anchor, `sacred_site`) are **not** dismissible via
-`activate_veil_ward`; their lifecycle belongs to crafting and to Phase 11.
+`activate`; their lifecycle belongs to crafting and to Phase 11.
 
 ---
 

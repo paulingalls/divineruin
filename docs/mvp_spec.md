@@ -306,17 +306,17 @@ A self-contained story in 3–5 sessions that tests all core systems while plant
 | **Background process** | World-aware prompt management | Event-driven + 60s timer. Rebuilds warm prompt layer via `update_instructions()`. Proactive speech with priority system (critical/important/routine). See *Tech Architecture — Layer 2: The Background Process*. |
 | **Orchestration** | Output parsing, multiplayer input, session lifecycle | Strict `[CHARACTER, emotion]: "dialogue"` tags parsed by `tts_node`. 500ms multi-player input buffer. Async state persistence. Narrative session endings. See *Tech Architecture — Orchestration Design*. |
 | **Conversational navigation** | City + wilderness + dungeon | Intent-based movement via `move_player` tool with path validation. DM narrates transitions. |
-| **Phase-based combat** | 3–4 encounter types | Declaration → resolution → narration. `request_attack`, `request_skill_check`, `request_saving_throw` tools resolve atomically. Combat UI auto-pushes via LiveKit RPC. |
+| **Phase-based combat** | 3–4 encounter types | Declaration → resolution → narration. `declare_phase` records actions; `resolve_phase` resolves combat, while `check` handles uncertain actions. Combat UI auto-pushes via LiveKit RPC. |
 | **DM ventriloquism** | Multi-character voices | `tts_node` override routes character dialogue to Inworld TTS with per-character voiceId and emotion-driven expressiveness settings. |
 | **HUD: combat UI** | HP bars, turn order, status effects | Auto-pushed by mutation tools. Updated in real-time during combat. Essential MVP client effect. |
-| **HUD: item cards** | Loot popups on item discovery | Auto-pushed by `add_to_inventory` tool. Displays item image, stats, rarity. |
+| **HUD: item cards** | Loot popups on item discovery | Auto-pushed by `transact` tool. Displays item image, stats, rarity. |
 | **HUD: character sheet** | Basic stats, health, inventory | Glanceable. Not the primary interface. |
 | **HUD: dice rolls** | Key rolls with animation + audio cue | Driven by `narrative_hint` from mechanics tools. |
 | **HUD: simple map** | Fills in as you explore | Breadcrumb trail, current location, points of interest. |
 | **Companion NPC** | 1 companion per player (ventriloquized) | Personality, combat participation, guidance suggestions. Voiced by the DM agent with distinct voice and personality tags. |
 | **Escalating guidance** | All 4 levels | Ambient nudge → companion suggestion → DM guidance → explicit help. `global_hints` in quest schemas feed the guidance system. |
 | **Divine favor** | Basic tracking | Increases through aligned actions. Triggers god whisper at milestone. God-agent heartbeat evaluates player alignment. |
-| **Sound effects** | Combat + environment + Hollow | `play_sound` tool triggers named effects on client. Essential MVP client effect. |
+| **Sound effects** | Combat + environment + Hollow | Game-state events trigger named effects on client. Essential MVP client effect. |
 | **Async activities** | 3 types for MVP | **Crafting** (material choice → timer → narrated outcome with decision), **Companion errand** (send companion to scout/gather → timer → narrated return with intel), **Training** (mentor scene → timer → culmination with choice). Pre-rendered audio narration (not live voice sessions). REST-based decision inputs. See *Game Design — Asynchronous Play*. |
 | **Catch-Up layer + Enter the World** | Integrated home screen | Top: Catch-Up feed (world news, resolved activities with narrated audio + decisions, pending decisions, activity launcher). Bottom: single "Enter the World" button that opens LiveKit voice connection — no mode selection, DM adapts to player behavior. Narrative push notifications ("Kael returned from the northern road. He looks worried."). See *Game Design — Session Types — No Mode Selection*. |
 | **World simulation** | Time-driven + simulation tick + basic god heartbeat | NPC schedules, corruption drift, economy tick, basic god-agent rules. See *World Data & Simulation — World Simulation Rules*. |
@@ -407,9 +407,9 @@ Ordered by dependency and risk. Aligned with the detailed 18-step priority list 
 
 **Phase 2 — Game Mechanics (steps 5-9)**
 
-5. **World query tools.** `query_npc`, `query_location`, `query_lore`, `query_inventory` backed by the content DB. Prove the DM can look up information mid-conversation.
-6. **Dice & mechanics tools.** `request_skill_check`, `request_attack`, `request_saving_throw` with hybrid validation. Prove the DM calls for checks appropriately and narrates outcomes.
-7. **Game state mutation tools.** `move_player`, `add_to_inventory`, `update_quest` with smart validation and auto-push client UI updates. Prove mutations enforce game rules.
+5. **World query tools.** `query_info` backed by the content DB. Prove the DM can look up information mid-conversation.
+6. **Dice & mechanics tools.** `check` for uncertainty and `declare_phase`/`resolve_phase` for combat, with hybrid validation. Prove the DM calls for checks appropriately and narrates outcomes.
+7. **Game state mutation tools.** `move_player`, `transact`, `update_quest` with smart validation and auto-push client UI updates. Prove mutations enforce game rules.
 8. **Background process.** Event bus + timer, `update_instructions()` for prompt management, proactive speech with priority classification. Prove the DM stays aware of world changes.
 9. **Per-turn context injection.** `on_user_turn_completed` hook with combat state, pending events, contextual details. Prove ephemeral context improves DM quality.
 

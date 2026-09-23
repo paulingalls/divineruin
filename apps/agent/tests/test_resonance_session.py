@@ -73,6 +73,19 @@ async def test_rest_reset_zeroes_in_memory_and_persists():
     mutations.reset_player_resonance.assert_awaited_once_with("p1", conn=conn)
 
 
+async def test_guest_rest_reset_zeroes_and_persists_the_guest_not_the_primary():
+    session = _session(current=7)
+    guest = SessionData(player_id="p2", location_id="loc1", room=None).party.primary
+    guest.resonance.current = 5
+    session.party.members.append(guest)
+    mutations = AsyncMock()
+    with session._bind_authenticated_actor("p2", 1, lambda *_: None):
+        await reset_resonance_on_rest(session, resonance_mutations_mod=mutations)
+    assert guest.resonance.current == 0
+    assert session.party.primary.resonance.current == 7
+    mutations.reset_player_resonance.assert_awaited_once_with("p2", conn=None)
+
+
 async def test_publish_resonance_changed_emits_state_only():
     session = _session(current=0)
 

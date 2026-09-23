@@ -333,7 +333,7 @@ Conditions interact with the phase-based action economy in critical ways:
 **Rest restrictions:**
 - Cannot long rest in combat or hostile territory without risk of interruption events
 - Short rest requires a safe, non-threatened location
-- The `rest()` tool validates safety and returns warnings the DM narrates
+- Rest resolution validates safety and returns warnings the DM narrates
 
 ---
 

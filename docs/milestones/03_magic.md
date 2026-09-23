@@ -24,9 +24,9 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 ### Material gaps
 
 - **`content/spells.json` does not exist.** Spec is internally consistent at 87 spells (Arcane 30 = 5+6+6+6+7; Divine 28 = 4+6+6+6+6; Primal 29 = 5+6+6+6+6 — match the headline at `magic.md:541`). Implementer has a well-defined data shape. <!-- see audit/phase-3-magic.md -->
-- **`request_attack(target_id, weapon_or_spell)` at `apps/agent/combat_tools.py:275` is NOT a spell-cast tool.** It accepts an arbitrary string token and looks it up in the player's inventory; no catalog validation, no Focus / Resonance / concentration interaction. Capstone explicitly does not count this toward any M3.3 bullet. <!-- see audit/phase-3-magic.md -->
+- **Historical `request_attack` was not a spell-cast tool.** It used an inventory token without spell catalog, Focus, Resonance, or concentration checks. The retired DM name was replaced by `declare_phase`; spell casting now uses `activate`. This earlier path does not count toward M3.3.
 - **`RaceData` schema gap.** `apps/agent/creation_races.py:8-15` `RaceData` has only `id/name/description/card_description/attribute_bonuses` — no Resonance fields. When M3.4 ships, either extend `RaceData` or seed via a separate `racial_resonance_bonuses` content file (per the milestone). Thessyn's 10+ session counter and Vaelti's 1-round advance warning need state plumbing the character record does not currently expose. <!-- see audit/phase-3-magic.md -->
-- **Spec/milestone divergence — Draethar Inner Fire cost.** Spec (`magic.md:264`): "reduce current Resonance by 3, take 1d6 fire damage (self-inflicted, cannot be reduced), 1/encounter". Milestone deliverable text (`03_magic.md:129` original): "HP or Focus" cost. Capstone recommends tightening milestone text to match spec (fire-damage cost is more specific and aligned with the "Inner Fire" theme).
+- **Draethar Inner Fire cost reconciled.** M3.4 now states the shipped −3 Resonance and 1d6 unpreventable self fire damage, once per encounter.
 - **Stale `gp` references in source spec.** Carried over from sprint-001 Phase 0 audit (`docs/milestones/audit/phase-0.md`). `magic.md:423` Revivify "Diamond (50 gp, consumed)" and `magic.md:432` Resurrection "Diamond (500 gp, consumed)" need migration to M0.3 economy units. These are M0.3 cleanup targets — flagged here for the spec-cleanup punch list, not edited in this story.
 - **NEW spec content not covered by any M3.x bullet** (milestone undercommits):
   - Bard 0.4× multiplier (`magic.md:88-90`) — milestone names only Arcane/Divine/Primal.
@@ -36,7 +36,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
   - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
   - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
-  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** The shipped ward is a per-player boolean; the full-spec ward (area/encounter-scoped, party-wide, duration-bound, multi-source) is decided (SMM `veil-ward-scope-decision`). The Cleric/Druid/Paladin cost+level table already ships in `veil_ward.py`; the deferred bit is the **per-source durations + area scope**, which M24 absorbs because this phase is Delivered and won't reopen.
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model (`057_veil_ward_scope.sql`), including the Cleric/Druid/Paladin source durations and Artificer Veil Anchor. Phase 10 owns the Druid terrain gate; Phase 11 owns ambient and Sacred-site world wards.
 
 ### Cross-doc dependencies
 
@@ -94,11 +94,11 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Severity scales with current Resonance level
 - Hollow Echo trigger: automatic d20 roll when a character is at Overreach state
 - Veil Ward system:
-  - `activate_veil_ward(character_id)` — establishes local area reinforcement
+  - `activate_veil_ward(character_id)` — establishes local area reinforcement The current DM verb is `activate`.
   - Ward effect: halves Resonance generation while active
   - Ward penalty: -1 damage die, -1 DC while active
   - Ward bonus: +4 to Hollow Echo roll (shifts results toward safety)
-- Agent tools: `resolve_hollow_echo` (rolls and narrates result), `activate_veil_ward` (toggles ward on/off)
+- Rules function `resolve_hollow_echo` determines severity; the retired `activate_veil_ward` DM tool toggled the ward. The current DM verb is `activate`.
 - Client: Hollow Echo roll display (dramatic dice animation), Veil Ward zone indicator
 
 **Acceptance criteria:**
@@ -131,15 +131,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - `spell_catalog` DB table seeded from `content/spells.json`
 - Cantrip scaling formula: 1d6 (L1-4), 2d6 (L5-10), 3d6 (L11-16), 4d6 (L17-20)
 - Agent tool `get_spell_info` — looks up spell details for DM narration
-- Agent tool `cast_spell` — validates Focus cost, generates Resonance via M3.1, resolves effect, returns narration cue and audio cue
+- Former agent tool `cast_spell` — validates Focus cost, generates Resonance via M3.1, resolves effect, returns narration cue and audio cue The current DM verb is `activate`.
 - Migration to create and seed the `spell_catalog` table
 
 **Acceptance criteria:**
 - [x] `content/spells.json` contains exactly 87 spells: 30 Arcane, 28 Divine, 29 Primal
 - [x] Every spell entry has all required fields: name, source, focus_cost, resonance_by_source, spell_tier, mechanics, narration_cue, audio_cue
 - [x] `spell_catalog` table is seeded with all 87 entries and queryable by source and tier
-- [x] `cast_spell` deducts Focus cost, calls `calculate_resonance_generated()`, and returns effect + narration cue + audio cue
-- [x] `cast_spell` rejects casting when Focus is insufficient
+- [x] `cast_spell` deducts Focus cost, calls `calculate_resonance_generated()`, and returns effect + narration cue + audio cue The current DM verb is `activate`.
+- [x] `cast_spell` rejects casting when Focus is insufficient The current DM verb is `activate`.
 - [x] Cantrip damage scales correctly at each level bracket (L1-4, L5-10, L11-16, L17-20)
 - [x] `get_spell_info` returns full spell data including narration and audio cues
 - [x] Unit tests cover casting validation, Resonance generation integration, cantrip scaling, and spell lookup
@@ -168,7 +168,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Human: Adaptive decay — Resonance decays at -2/round instead of -1
   - Vaelti: Hyper-awareness — 1-round advance warning before Hollow Echo triggers
   - Korath: Earth-anchored — -1 Primal Resonance generation
-  - Draethar: Inner Fire — pressure valve ability to dump Resonance at a cost (HP or Focus)
+  - Draethar: Inner Fire — once per encounter, −3 Resonance + 1d6 unpreventable self fire damage
   - Thessyn: Deep Adaptation — permanent Resonance handling improvement accrued over 10+ sessions
 - `racial_resonance_bonuses` DB configuration table
 - Rules engine: `get_racial_resonance_modifier(race, modifier_type)` lookup function

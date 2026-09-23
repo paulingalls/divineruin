@@ -45,7 +45,7 @@ async def publish_resonance_changed(
     stored; the raw number is never sent (no-number spec magic.md:98).
     """
     track = resonance_track if resonance_track is not None else session.resonance
-    payload = {"state": track.state, "caster_id": caster_id if caster_id is not None else session.player_id}
+    payload = {"state": track.state, "caster_id": caster_id if caster_id is not None else session.primary_player_id}
     await publish_game_event(
         room or session.room,
         RESONANCE_CHANGED,

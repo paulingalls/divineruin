@@ -88,6 +88,33 @@ def _calls(node: ast.AST, name: str) -> bool:
     )
 
 
+def _every_harness_start_uses_local_stt(source: str) -> bool:
+    if "class LocalSTT(stt.STT)" not in source or "deepgram.STT(" in source:
+        return False
+    starts = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "start"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "harness"
+    ]
+    return bool(starts) and all(
+        any(
+            keyword.arg == "stt" and isinstance(keyword.value, ast.Call) and _calls(keyword.value, "LocalSTT")
+            for keyword in call.keywords
+        )
+        for call in starts
+    )
+
+
+def test_a_harness_start_without_local_stt_still_reaches_deepgram():
+    local = "class LocalSTT(stt.STT): ...\nawait harness.start(prepare, stt=LocalSTT())\n"
+    assert _every_harness_start_uses_local_stt(local)
+    assert not _every_harness_start_uses_local_stt(local + "await harness.start(prepare)\n")
+
+
 def test_every_live_voice_scenario_is_wired_into_the_gate():
     """The mark is carried BY HAND per module, so a sixth scenario added to this package
     inherits nothing. The walk names its corpus and reds when that corpus comes back empty —
@@ -104,8 +131,9 @@ def test_every_live_voice_scenario_is_wired_into_the_gate():
             token in source
             for token in ("deepgram.STT(", "PLAYER_ONE_SPEECH", "PLAYER_TWO_SPEECH", "harness.play(", "SpeechFixture(")
         )
+        local_stt = _every_harness_start_uses_local_stt(source)
         mark = _pytestmark_source(path)
-        if not reaches_microphone:
+        if not reaches_microphone or local_stt:
             free_modules.append(path.name)
             assert mark is None or (
                 "pytest.mark.live_voice" not in mark and "pytest.mark.openai_real_llm" not in mark

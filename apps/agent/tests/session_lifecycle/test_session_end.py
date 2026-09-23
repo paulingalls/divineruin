@@ -7,11 +7,14 @@ placed there fires on the way into every fight.
 
 import asyncio
 import contextlib
+import json
 import time
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents import AgentSession
+from livekit.agents import AgentSession, llm
+from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 from livekit.agents.voice.events import CloseEvent, CloseReason
 
 import event_types as E
@@ -74,38 +77,62 @@ def _session_end_payloads(sd: SessionData) -> list[dict]:
     return [e.payload for e in sd.event_bus.drain() if e.event_type == E.SESSION_END]
 
 
-class TestEndSessionReachesTheCloseEmit:
-    """``end_session`` is the only production path that closes the session from inside the
-    agent, and every other guard in this file produces the close event by hand. If this path
-    never reaches ``emit("close", ...)``, those guards certify a handler nothing calls.
+class _EndStream(llm.LLMStream):
+    def __init__(self, model, **kwargs):
+        super().__init__(model, **kwargs)
+        self.model = model
 
-    Real AgentSession, real AgentActivity, real ExplorationAgent (constraint 9): the question
-    is whether the VENDOR's shutdown ordering — ``aclose`` -> ``activity.drain()`` -> our
-    ``on_exit`` -> ``emit("close")`` (agent_session.py:1003-1058) — survives what our
-    ``on_exit`` does to the task that is driving that very ``aclose``.
-    """
+    async def _run(self):
+        self.model.calls += 1
+        if self.model.calls == 1:
+            delta = llm.ChoiceDelta(
+                role="assistant",
+                tool_calls=[
+                    llm.FunctionToolCall(
+                        name="end_session", arguments=json.dumps({"reason": "goodbye"}), call_id=uuid.uuid4().hex
+                    )
+                ],
+            )
+        else:
+            delta = llm.ChoiceDelta(role="assistant", content="Until next time.")
+        self._event_ch.send_nowait(llm.ChatChunk(id=uuid.uuid4().hex, delta=delta))
+
+
+class _EndModel(llm.LLM):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def chat(self, *, chat_ctx, tools=None, conn_options=DEFAULT_API_CONNECT_OPTIONS, **_kwargs):
+        return _EndStream(self, chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options)
+
+
+class TestEndSessionReachesTheCloseEmit:
+    """A real ExplorationAgent turn reaches the session close event after the wrap-up."""
 
     @pytest.mark.asyncio
-    async def test_end_session_closes_the_session(self):
+    async def test_last_member_goodbye_closes_the_session(self):
         sd = _session_data()
-        session = AgentSession(max_tool_steps=5, userdata=sd)
+        model = _EndModel()
+        session = AgentSession(llm=model, max_tool_steps=5, userdata=sd)
+        session.output.set_audio_enabled(False)
         closed = asyncio.Event()
         session.on("close", lambda _ev: closed.set())
         agent = ExplorationAgent()
 
         with (
-            _quiet_session(real_background=False),
-            patch("db_mutations.save_session_summary", new_callable=AsyncMock),
+            _quiet_session(real_background=True),
+            patch("db_mutations.save_session_summary", new_callable=AsyncMock) as save,
             patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
-            # The named delay, NOT `exploration_agent.asyncio.sleep`: `exploration_agent.asyncio`
-            # IS the shared module object, so patching sleep there hands an AsyncMock to every
-            # await in the block — including the real AgentSession's own start and aclose.
-            patch("exploration_agent.CLOSE_DELAY_S", 0),
         ):
             await session.start(agent)
-            sd.ending_requested = True
-            await agent.on_agent_turn_completed(MagicMock(), MagicMock())
+            await session.run(user_input="goodbye")
             await asyncio.wait_for(closed.wait(), timeout=5.0)
+            assert sd.session_end_task is not None
+            await sd.session_end_task
+        assert model.calls == 2
+        save.assert_awaited_once()
+        assert save.await_args is not None and save.await_args.args[0] == "player_1"
 
 
 class TestTheRecapFiresOncePerSession:

@@ -52,6 +52,7 @@ def _queue(
     stinger_sound: str | None = None,
     *,
     combat_safe: bool = False,
+    recipient_id: str | None = None,
 ) -> None:
     speech_queue.append(
         PendingSpeech(
@@ -59,6 +60,7 @@ def _queue(
             instructions=instructions,
             stinger_sound=stinger_sound,
             combat_safe=combat_safe,
+            recipient_id=recipient_id,
         )
     )
 
@@ -235,7 +237,7 @@ def handle_events(
             # Dropping it would make any future unstamped payload silently swallow the whisper,
             # which is strictly worse than treating it as the primary's.
             recipient = ev.payload.get("player_id")
-            if recipient is not None and recipient != sd.player_id:
+            if recipient is not None and recipient != sd.primary_player_id:
                 continue
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
@@ -258,7 +260,7 @@ def queue_god_whisper(
     speech_queue: list[PendingSpeech],
 ) -> None:
     """Build god-specific whisper instructions and queue as CRITICAL."""
-    patron_id = payload.get("patron_id") or sd.patron_id
+    patron_id = payload.get("patron_id") or sd.party.primary.patron_id
     profile = get_god_profile(patron_id)
     context = payload.get("reason", "")
     instructions = (
@@ -282,4 +284,10 @@ def queue_god_whisper(
             f" {name} does not react during the divine speech. After the silence breaks, "
             f"{name} looks shaken but says nothing unless the player speaks first."
         )
-    _queue(speech_queue, SpeechPriority.CRITICAL, instructions, stinger_sound=profile.stinger_sound)
+    _queue(
+        speech_queue,
+        SpeechPriority.CRITICAL,
+        instructions,
+        stinger_sound=profile.stinger_sound,
+        recipient_id=sd.primary_player_id,
+    )

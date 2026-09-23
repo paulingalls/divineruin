@@ -5,8 +5,8 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 283 / 530 acceptance criteria — 53%** (the sum of the per-phase counts in
-`README.md`; last reconciled after sprint-046). Phases 1, 2, 3, 4, 5 and 6 are
+**Position: 291 / 538 acceptance criteria — 54%** (the sum of the per-phase counts in
+`README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
@@ -19,9 +19,7 @@ Six boxes flipped, but the count understates it — four findings move dependenc
 1. **Phase 1 is complete (43/43).** The ADR-0005 Artificer training-slot deferral
    is discharged: Portable Lab shipped as item + recipe, `countActiveBySlot` now
    buckets on `COALESCE(data->>'slot', data->>'activity_type')`, and a real-DB
-   acceptance test asserts the borrow is counted. **Debt `95de7fa141df` should be
-   closed and ADR 0005 moved off `Status: Accepted`** — it still carries an
-   "unreachable until Phase 5" consequence that is no longer true.
+   acceptance test asserts the borrow is counted. **Debt `95de7fa141df` is discharged; ADR 0005 is fulfilled.**
 2. **Phase 8 is unblocked.** Its stated Phase-3 dependency ("Phase 3 blocks
    Layer 2") is stale — `resonance.py`, `hollow_echo.py`, `veil_ward.py` and
    migrations 044-048/057 all shipped.
@@ -89,53 +87,26 @@ the audit found, because a green phase doc conceals them.
 
 ## 4. Doc-truth drift (Milestone 30)
 
-The docs describe a tool surface that M25/M26 folded away. Current surface:
-`activate` / `begin_activity(kind)` / `resolve_activity(kind,id)` /
-`query_info(kind)` / `learn(kind,id,source)`.
+**Closed by story-111:** Milestone tool names now match the registered DM verbs,
+and `03_magic.md` no longer points to `combat_tools.py:275` or an invented
+Veil Ward tool. The story-111 docs guard covers retired names.
 
-- **~20 stale tool names** across `05_crafting.md` and `06_npcs.md`
-  (`learn_recipe`, `query_recipe_requirements`, `query_available_workspaces`,
-  `start_crafting_project`, `rent_workspace`, `experiment_with_materials`,
-  `get_settlement_npc_population`, `enroll_mentor_training`). **Highest value:
-  `05_crafting.md:175,176,256`** — those are *open follow-ups*, so they read as
-  live surface rather than history. `06_npcs.md:111` is doubly stale.
-- **`03_magic.md:39` and README's `†` footnote** still describe the interim
-  per-player boolean M24 replaced. `:97,:101,:134,:141,:142` name
-  `activate_veil_ward` / `cast_spell`, both folded into `activate`.
-- **`04_combat.md`** names superseded tools throughout (`request_attack`,
-  `request_save`, `get_death_cost`, `trigger_character_death`, `start_travel`,
-  `resolve_gathering`), and `:26` cites `wilderness_agent.py` — **a deleted file**.
-- **`04_combat.md` has no authored AC sections for M4.7 and M4.8** despite both
-  having shipped. Its "65/65" counts six sections and understates the phase.
-- **`08_patrons.md` says the roster is 4/10 gods; it is 10/10.**
-- **`07_bestiary.md` says Ashmark/Cultist enemies are "lore/prompts only"**;
-  they ship in `encounter_templates.json` with `category`, `role`,
-  `loot_table_id` and `resistance_tags`.
-- **Three ACs name an artifact absent *under that name*** but whose substance
-  shipped by recorded decision — correctly left checked: `spell_catalog` table →
-  `spells` (migration 032, 87 rows); `character_conditions` table →
-  `players.data->'conditions'` JSONB (decision `persistent-conditions-jsonb`);
-  death/travel tables → JSONB backfills (051/052/055).
-- **Two ACs are unverifiable** (prompt-level, no RED-able test):
-  `04_combat.md:67` and `:230`, "DM pauses narration during Beat 3".
-- **Stale Phase-1 pointers:** `rules_engine.py:ARCHETYPE_RESOURCE_CONFIG` → now
-  `archetypes.py` (DB-loaded chassis); `async_worker.{apply_skill_practice_advancement,
-  resolve_companion_errand}` → `async_worker_training.py:38` / `async_rules.py:203`;
-  `tests/test_async_worker.py` → `tests/worker_suite/`; `tests/test_training_tools.py`
-  → split. And `01_core_systems.md:215` still says "6 of 7 … deferred to Phase 5" —
-  it is now 7/7.
-- **Remaining line-level items for the M30 punch list:** `03_magic.md:27` dangles on
-  `combat_tools.py:275`, now a 6-line tombstone (`request_attack`'s removal is pinned
-  by `test_m5_verb_consolidation.py:69`); `03_magic.md:171` gives Inner Fire's cost as
-  "(HP or Focus)" — it shipped as −3 Resonance + 1d6 self fire (`draethar_inner_fire.py:44`);
-  `04_combat.md:30` says M4.7 is "not yet authored" — it shipped
-  (`encounter_roles.EncounterRole`, `test_m47_encounter_roles_capstone.py`); `04_combat.md:34`
-  says the signature-ability choice lands with "the M4.7/M7.4 sprint", but M4.7 shipped
-  without M7.4, so that choice is now unowned and belongs to Phase 7 M7.4.
-  No action needed on `04_combat.md:27` — the "wary" divergence is already fixed
-  (`role_archetypes.py:101` uses `unfriendly`).
-- **`get_spell_info` (`03_magic.md:144`) is still a real tool — leave it.** Only
-  `activate_veil_ward` and `cast_spell` folded on that page.
+**Closed by story-113:** The Magic and README ward text now describes M24's
+scoped model; M3.4 gives Inner Fire's shipped cost. M4.7 and M4.8 have eight
+capstone-backed ACs, bringing Phase 4 to 73/73. The M7.4 signature decision
+belongs to Phase 7 in Combat and Bestiary, and Combat no longer cites the deleted
+`wilderness_agent.py`. Patrons says 10/10 entries; Bestiary
+names the shipped Ashmark and Cultist stat blocks while retaining the missing
+Cult Acolyte. Phase 1's M1.6 says 7/7 and its moved code/test pointers are
+updated. ADR 0005 and Crafting record the fulfilled Portable Lab exception;
+Economy's inventory pointers now name `transact` and the mutation substrate.
+The README rows and this Position are pinned by `test_milestone_counts.py`.
+
+**Still open:** Three ACs name artifacts absent under their original names but
+shipped by decision: `spell_catalog` → `spells`, `character_conditions` →
+`players.data->'conditions'`, and death/travel tables → JSONB backfills.
+Two prompt-level Beat-3 pause ACs in `04_combat.md` remain without a red-capable
+test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 ---
 
