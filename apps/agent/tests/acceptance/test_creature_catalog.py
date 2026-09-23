@@ -32,9 +32,13 @@ def test_catalog_columns_and_indexes(fresh_migrated_db):
                 )
             damaged = json.loads(rows[0]["data"])
             damaged["attacks"][0]["damage"] = 4
+            # Both exemplars are tier 1 and level 1, so only distinct values tell those columns apart.
+            damaged.update(tier=3, level=11)
             await conn.execute(
                 "UPDATE creatures SET data = $2::jsonb WHERE id = $1", rows[0]["id"], json.dumps(damaged)
             )
+            derived = await conn.fetchrow("SELECT tier, level FROM creatures WHERE id = $1", rows[0]["id"])
+            assert (derived["tier"], derived["level"]) == (3, 11)
             assert f"{rows[0]['id']}: attacks[0].damage: expected string" in await seed_content.validate(conn)
         finally:
             await conn.close()
