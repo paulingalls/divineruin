@@ -767,7 +767,7 @@
     "rarity": "rare",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "Lightning Gland harvested from Tidecaller Eel."
+    "description": "A taut gland that crackles faintly between your fingers."
   },
   {
     "id": "eel_oil",
@@ -777,7 +777,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "Eel Oil harvested from Tidecaller Eel."
+    "description": "A slick oil that hisses when a drop meets hot iron."
   },
   {
     "id": "crawler_chitin",

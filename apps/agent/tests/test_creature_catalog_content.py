@@ -430,7 +430,7 @@ def assert_sound_first(cue, label):
 
 def test_narration_opens_with_sound_or_smell():
     rows = named_rows(catalog("creatures.json"))
-    for key in SPEC:
+    for key in (*SPEC, "hollow_shadeling", "hollow_hollowmoth"):
         for cue_name in ("first_sighting", "attack_cue", "wounded_cue", "death_cue", "ambient_cue"):
             assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
         audio = rows[key]["audio"]

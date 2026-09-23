@@ -54,6 +54,17 @@ def test_shared_creature_corpus():
         assert validate_creature_stat_block(case["block"]) == case["expected"], case["name"]
 
 
+def test_hollow_exemplar_fixtures_match_catalog() -> None:
+    exemplar_ids = {"hollow_shadeling", "hollow_hollowmoth"}
+    corpus = json.loads(CORPUS.read_text())
+    exemplars = [case for case in corpus["valid"] if case["block"]["id"] in exemplar_ids]
+    assert len(exemplars) == 2
+    assert {case["block"]["id"] for case in exemplars} == exemplar_ids
+    catalog = {row["id"]: row for row in json.loads((ROOT / "content/creatures.json").read_text())}
+    for case in exemplars:
+        assert case["block"] == catalog[case["block"]["id"]]
+
+
 def key_paths(node, prefix=()):
     items = node.items() if isinstance(node, dict) else enumerate(node[:1])
     for key, child in items:

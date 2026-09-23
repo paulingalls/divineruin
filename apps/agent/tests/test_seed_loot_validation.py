@@ -79,16 +79,33 @@ def test_bad_hollow_residue_flag_is_refused() -> None:
 
 def test_residue_tables_pin_authored_requirements() -> None:
     tables = {table["id"]: table for table in json.loads((_ROOT / "content" / "loot_tables.json").read_text())}
+    materials = {row["id"]: row for row in json.loads((_ROOT / "content" / "materials_catalog.json").read_text())}
     residues = {
-        "loot_hollow_drift": "hollow_residue_t1",
-        "loot_hollow_rend": "hollow_residue_t1",
-        "loot_hollowed_knight": "hollow_residue_t2",
+        "loot_hollow_drift": ("hollow_residue_t1", 0.4, 1),
+        "loot_hollow_rend": ("rend_shard", 0.75, 1),
+        "loot_hollowed_knight": ("wrack_core", 0.5, 1),
+        "loot_hollow_warden": ("hollow_residue_t2", 1.0, 2),
     }
-    for table_id, item_id in residues.items():
+    assert materials["rend_shard"]["tier"] == 2
+    assert materials["wrack_core"]["tier"] == 3
+    for table_id, (item_id, chance, quantity) in residues.items():
         table = tables[table_id]
         assert table["hollow_residue"] is True
         residue = next(drop for drop in table["drops"] if drop["item_id"] == item_id)
+        assert residue["chance"] == chance
+        assert residue["quantity"] == quantity
         assert residue["requires"] == [{"skill": "crafting", "tier": "expert"}]
+
+
+def test_eel_material_descriptions_are_sensory() -> None:
+    materials = {row["id"]: row for row in json.loads((_ROOT / "content" / "materials_catalog.json").read_text())}
+    expected = {
+        "eel_oil": "A slick oil that hisses when a drop meets hot iron.",
+        "lightning_gland": "A taut gland that crackles faintly between your fingers.",
+    }
+    assert expected.keys() <= materials.keys()
+    for material_id, description in expected.items():
+        assert materials[material_id]["description"] == description
 
 
 class _Connection:

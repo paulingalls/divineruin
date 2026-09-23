@@ -257,7 +257,7 @@ def test_legacy_loot_table_keeps_seeded_rng_sequence() -> None:
     path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
     tables = {table["id"]: table for table in json.loads(path.read_text())}
     drops = derive_role_loot(tables["loot_hollow_rend"], "standard", rng)
-    assert drops == [{"item_id": "hollow_residue_t1", "quantity": 1}]
+    assert drops == [{"item_id": "rend_shard", "quantity": 1}]
     assert rng.random() == 0.3022981875355706
 
 

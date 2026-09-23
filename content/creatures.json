@@ -80,11 +80,11 @@
       ]
     },
     "narration": {
-      "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
-      "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
-      "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
-      "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
-      "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+      "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+      "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+      "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+      "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+      "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
     },
     "audio": {
       "ambient": "HLW-001",
@@ -189,11 +189,11 @@
       ]
     },
     "narration": {
-      "first_sighting": "Something flickers at the edge of your vision — patches of air that don't look quite right, fluttering in a rhythm that's a fraction too slow.",
-      "attack_cue": "The moth passes through your space and for a moment the world smears — colors shift, edges blur, then snap back.",
-      "wounded_cue": "N/A — moths are killed outright or not at all",
-      "death_cue": "It blinks out, like a candle flame pinched. One less wrongness in the air.",
-      "ambient_cue": "A soft papery flutter and a whine just below the threshold of hearing. Your jaw clenches without you knowing why."
+      "first_sighting": "A high whine catches in your ears. Patches of air flutter at the edge of vision a fraction too slowly.",
+      "attack_cue": "A papery rustle passes through you. Colors smear and edges blur, then snap back.",
+      "wounded_cue": "A sharp squeal breaks off; a struck moth either dies outright or keeps fluttering.",
+      "death_cue": "A tiny snap sounds as the moth blinks out. One less wrongness hangs in the air.",
+      "ambient_cue": "A soft papery flutter and a whine just below hearing tighten your jaw."
     },
     "audio": {
       "ambient": "papery flutter loop + HLW high-frequency whine",
