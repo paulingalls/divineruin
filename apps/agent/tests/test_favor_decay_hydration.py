@@ -133,6 +133,37 @@ async def test_legacy_clock_and_unbound(dev_db_pool, favor):
         await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", player_id)
 
 
+@pytest.mark.parametrize(
+    ("snapshot_patron", "row", "expected_decay_at"),
+    [
+        ("kaelen", {"patron": "kaelen", "level": 0}, NOW.isoformat()),
+        ("kaelen", {"patron": "none", "level": 12}, None),
+    ],
+)
+async def test_decay_without_a_level_change_is_silent(dev_db_pool, snapshot_patron, row, expected_decay_at):
+    player_id = "s224_primary"
+    served = (NOW - timedelta(days=8)).isoformat()
+    favor = {**row, "max": 100, "last_whisper_level": 0, "last_served_at": served}
+    await _seed(dev_db_pool, player_id, favor)
+    session = SessionData(player_id=player_id, location_id="loc")
+    try:
+        with patch("game_events.publish_game_event", new_callable=AsyncMock) as publish:
+            await session_hydration.hydrate_session_state(
+                session,
+                {"race": "human", "divine_favor": {**favor, "patron": snapshot_patron}},
+                conn=dev_db_pool,
+                now=NOW,
+                **_mods(),
+            )
+        persisted = await _favor(dev_db_pool, player_id)
+        assert persisted["level"] == row["level"]
+        assert persisted.get("last_decay_at") == expected_decay_at
+        publish.assert_not_awaited()
+        assert session.favor_loss is None
+    finally:
+        await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", player_id)
+
+
 async def test_join_callback_decays_only_joiner(dev_db_pool):
     primary_id, joiner_id = "s224_primary", "s224_joiner"
     served = (NOW - timedelta(days=8)).isoformat()
@@ -180,6 +211,7 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
             release_reads.set()
             await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}))
         assert events == [FIXTURE["joiner"]]
+        assert session.favor_loss is None
         assert queries.get_player.await_count == 2
         assert (await _favor(dev_db_pool, primary_id)) == favor
         assert session.party.contains(joiner_id)
