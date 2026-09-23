@@ -75,3 +75,6 @@ export type {
   SpecializationOption,
   Grant,
 } from "./milestone";
+
+export type { CreatureStatBlock, Attack, Hollow, Ability as CreatureAbility } from "./creature";
+export { validateCreatureStatBlock } from "./creature";
