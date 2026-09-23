@@ -8,6 +8,7 @@ import { getApiBase, resolveApiUrl } from "@/utils/base-url";
 import type { ReceivedDataMessage } from "@/livekit";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { authStore } from "@/stores/auth-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
@@ -65,7 +66,8 @@ export function handleGameEventMessage(msg: ReceivedDataMessage): void {
  * (pre-SESSION_INIT), is treated as the local player's (single-player back-compat).
  */
 function isEventForLocalPlayer(casterId: unknown): boolean {
-  const localPlayerId = characterStore.getState().character?.playerId;
+  const localPlayerId =
+    authStore.getState().playerId ?? characterStore.getState().character?.playerId;
   return typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
 }
 
@@ -107,6 +109,8 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case E.SESSION_INIT:
+      if (!isEventForLocalPlayer((event.character as Record<string, unknown> | null)?.player_id))
+        break;
       handleSessionInit(event);
       break;
 
@@ -264,7 +268,13 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.SESSION_END: {
+      if (!isEventForLocalPlayer(event.player_id)) break;
       const store = sessionStore.getState();
+      if (event.cancelled === true) {
+        store.setSessionSummary(null);
+        store.setPhase("active");
+        break;
+      }
       if (typeof event.summary === "string") {
         const rawMoments = Array.isArray(event.story_moments)
           ? (event.story_moments as Record<string, unknown>[])

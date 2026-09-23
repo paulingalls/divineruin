@@ -8,8 +8,81 @@ import pytest
 from session_data import SessionData
 
 
+@pytest.mark.asyncio
+async def test_rejoined_player_second_goodbye_replaces_same_session_summary():
+    from db_mutations import save_session_summary
+
+    conn = AsyncMock()
+    await save_session_summary("guest", "room-session", {"summary": "first"}, conn=conn)
+    await save_session_summary("guest", "room-session", {"summary": "second"}, conn=conn)
+    assert conn.execute.await_count == 2
+    for call in conn.execute.await_args_list:
+        assert "ON CONFLICT (player_id, session_id) DO UPDATE" in call.args[0]
+        assert call.args[1:3] == ("guest", "room-session")
+
+
+@pytest.mark.asyncio
+async def test_personal_story_moment_query_filters_player_in_database():
+    from db_activity_queries import get_session_story_moments
+
+    conn = AsyncMock()
+    conn.fetch.return_value = []
+    await get_session_story_moments("room-session", "guest", conn=conn)
+    assert "player_id = $2" in conn.fetch.await_args.args[0]
+    assert conn.fetch.await_args.args[1:] == ("room-session", "guest")
+
+
+@pytest.mark.asyncio
+async def test_last_member_after_host_handoff_recaps_only_their_own_earnings():
+    from session_end import run_session_end
+
+    sd = SessionData(player_id="host", location_id="hall")
+    sd.party.members.append(SessionData(player_id="p2", location_id="hall").party.primary)
+    sd.session_xp_earned = 500
+    sd.session_items_found = ["Host sword"]
+    sd.record_player_metric("p2", "xp_earned", 25)
+    sd.handoff_primary("host")
+    with (
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+        patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        patch("session_end.publish_game_event", new_callable=AsyncMock),
+        patch("session_end.db_mutations.save_session_summary", new_callable=AsyncMock) as save,
+    ):
+        await run_session_end(sd)
+    assert save.await_args is not None
+    player_id, _session_id, payload = save.await_args.args
+    assert player_id == "p2"
+    assert (payload["xp_earned"], payload["items_found"]) == (25, [])
+
+
 class TestSessionSummary:
     """Test session_summary.py generation and fallback."""
+
+    @pytest.mark.asyncio
+    async def test_personal_summary_uses_only_that_players_metrics_and_moments(self):
+        from session_summary import generate_session_summary
+
+        sd = SessionData(player_id="host", location_id="loc1")
+        sd.session_xp_earned = 100
+        sd.session_items_found = ["Host sword"]
+        sd.session_quests_progressed = ["host quest"]
+        sd.session_locations_visited = ["host stop"]
+        sd.record_player_metric("guest", "xp_earned", 25)
+        sd.record_player_metric("guest", "items_found", "Guest key")
+        sd.record_player_metric("guest", "quest_progress", "guest quest")
+        sd.record_player_metric("guest", "locations_visited", "guest stop")
+        with (
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None) as llm,
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]) as moments,
+        ):
+            result = await generate_session_summary(sd, None, player_id="guest")
+        assert result["xp_earned"] == 25
+        assert result["items_found"] == ["Guest key"]
+        assert result["quest_progress"] == ["guest quest"]
+        assert result["locations_visited"] == ["guest stop"]
+        assert llm.await_args is not None
+        assert llm.await_args.kwargs["xp_earned"] == 25
+        moments.assert_awaited_once_with(sd.session_id, "guest")
 
     @pytest.mark.asyncio
     async def test_generates_structured_summary(self):

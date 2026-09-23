@@ -14,6 +14,8 @@ import {
 import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handler";
 import * as sfxPlayer from "@/audio/sfx-player";
 import { characterStore } from "@/stores/character-store";
+import { authStore } from "@/stores/auth-store";
+import { sessionStore } from "@/stores/session-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
 import { portraitStore } from "@/stores/portrait-store";
 import { parseSpellRows } from "@/utils/spell-display";
@@ -33,6 +35,8 @@ const SPELL_ROW = FIXTURE.spell_row;
 // --- Type-string parity: the fixture pins to the TS constants (mirrors the Python pin) ---
 
 test("fixture event types match the TS wire constants", () => {
+  expect(EVENTS.session_end_guest.type).toBe(E.SESSION_END);
+  expect(EVENTS.session_end_cancelled.type).toBe(E.SESSION_END);
   expect(EVENTS.companion_cue.type).toBe(E.COMPANION_CUE);
   expect(EVENTS.resonance_changed.type).toBe(RESONANCE_CHANGED);
   expect(EVENTS.hollow_echo_result.type).toBe(HOLLOW_ECHO_RESULT);
@@ -43,6 +47,18 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.item_acquired.type).toBe(ITEM_ACQUIRED);
   expect(EVENTS.combat_attack_hit.type).toBe("dice_roll");
   expect(EVENTS.combat_attack_miss.type).toBe("dice_roll");
+});
+
+test("recipient-scoped session end and cancellation use the Python wire fixture", () => {
+  authStore.setState({ playerId: EVENTS.session_end_guest.player_id });
+  sessionStore.getState().setPhase("active");
+  handleGameEvent(EVENTS.session_end_guest);
+  expect(sessionStore.getState().phase).toBe("summary");
+  expect(sessionStore.getState().sessionSummary?.summary).toBe(EVENTS.session_end_guest.summary);
+  handleGameEvent(EVENTS.session_end_cancelled);
+  expect(sessionStore.getState().phase).toBe("active");
+  expect(sessionStore.getState().sessionSummary).toBeNull();
+  authStore.setState({ playerId: null });
 });
 
 test("companion_cue fixture shows the assigned companion portrait", () => {

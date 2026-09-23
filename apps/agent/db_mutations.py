@@ -321,6 +321,7 @@ async def save_session_summary(
         """
         INSERT INTO session_summaries (player_id, session_id, data)
         VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (player_id, session_id) DO UPDATE SET data = EXCLUDED.data
         """,
         player_id,
         session_id,

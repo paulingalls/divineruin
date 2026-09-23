@@ -61,14 +61,12 @@ if [ "${#agent_python_files[@]}" -gt 0 ]; then
   (cd apps/agent && uv run pyright)
 fi
 if [ "${#other_python_files[@]}" -gt 0 ]; then
-  for path in "${other_python_files[@]}"; do
-    python3 - "$path" <<'PY'
-import ast
-from pathlib import Path
-import sys
-ast.parse(Path(sys.argv[1]).read_text(), filename=sys.argv[1])
-PY
-  done
+  # apps/agent's ruff config pins target-version py311, the floor every pyproject declares;
+  # the system python3 parses 3.12+ syntax that breaks on 3.11, so a parse check passes it.
+  relative_python_files=()
+  for path in "${other_python_files[@]}"; do relative_python_files+=("../../$path"); done
+  (cd apps/agent && uv run ruff check --config pyproject.toml "${relative_python_files[@]}" \
+    && uv run ruff format --config pyproject.toml --check "${relative_python_files[@]}")
 fi
 if [ "${#shell_files[@]}" -gt 0 ]; then
   for path in "${shell_files[@]}"; do bash -n "$path"; done

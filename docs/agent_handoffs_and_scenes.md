@@ -39,8 +39,8 @@ combat).
 ```python
 class WildernessAgent(Agent):
     @function_tool()
-    async def start_combat(self, context: RunContext, ...):
-        """Begin combat encounter."""
+    async def enter_mode(self, context: RunContext, mode: str, ...):
+        """Hand off to a focused mode context such as combat."""
         # ... set up combat state ...
         sd = self.session.userdata
         sd.pre_combat_agent_type = "wilderness"
@@ -126,8 +126,7 @@ playback and listens for voice activity as an interrupt signal.
 devotion, identity, finalize).
 
 - **Model:** Claude Sonnet (creative, patient guidance).
-- **Tools:** `push_creation_cards`, `set_creation_choice`, `finalize_character`,
-  `play_sound`, `set_music_state`.
+- **Tools:** `push_creation_cards`, `set_creation_choice`, `finalize_character`. Client audio follows creation state events.
 - **System prompt:** `CREATION_SYSTEM_PROMPT` only. No gameplay rules, no world
   context, no navigation instructions.
 - **Transition:** When `finalize_character` succeeds, it returns `OnboardingAgent`
@@ -147,10 +146,8 @@ happening" problem. It has a scripted sequence of beats that it drives the playe
 through, while still allowing natural conversation and exploration within each beat.
 
 - **Model:** Claude Haiku.
-- **Tools:** City-appropriate tools (`enter_location`, `query_location`, `query_npc`,
-  `move_player`, `request_skill_check`, `play_sound`, `set_music_state`,
-  `discover_hidden_element`, `record_story_moment`). No combat tools — combat
-  doesn't happen during onboarding. No wilderness/dungeon tools.
+- **Tools:** `enter_location`, `query_info`, `move_player`, `check`,
+  `record_story_moment`, and `advance_onboarding_beat`. Combat tools are unavailable.
 - **System prompt:** Focused onboarding instructions with the scripted beat sequence.
 - **Background process:** Active, but with onboarding-specific event logic.
 
@@ -225,11 +222,9 @@ reconnection can restore the correct beat.
 companion conversations, crafting, rest.
 
 - **Model:** Claude Haiku.
-- **Tools:** `enter_location`, `query_location`, `query_npc`, `move_player`,
-  `request_skill_check`, `discover_hidden_element`, `update_quest`,
-  `add_to_inventory`, `remove_from_inventory`,
-  `update_npc_disposition`, `query_inventory`, `query_lore`, `record_story_moment`,
-  `play_sound`, `set_music_state`, `end_session`.
+- **Tools:** `enter_location`, `query_info`, `move_player`, `check`,
+  `transact`, `update_quest`, `update_npc_disposition`,
+  `record_story_moment`, `end_session`, `activate`, `select`, and `enter_mode`.
 - **System prompt:** Social/exploration rules, NPC dialogue guidance, companion
   prompt, warm layer. No combat rules, no survival mechanics.
 - **Narration style:** Warm, detailed, conversational. Room for NPC banter, ambient
@@ -240,7 +235,7 @@ companion conversations, crafting, rest.
   world news events, god whispers.
 - **Transition out:** `move_player` to a wilderness or dungeon location triggers
   programmatic handoff. The CityAgent narrates the departure ("The market noise
-  fades behind you. The road stretches north.") before handing off. `start_combat`
+  fades behind you. The road stretches north.") before handing off. `enter_mode`
   (if city combat is possible — bar fights, ambushes) returns `CombatAgent`.
 
 **Locations:** `accord_market_square`, `accord_guild_hall`, `accord_temple_row`,
@@ -258,10 +253,9 @@ via location-specific atmosphere data.
 fields.
 
 - **Model:** Claude Haiku.
-- **Tools:** `enter_location`, `query_location`, `move_player`,
-  `request_skill_check`, `discover_hidden_element`, `update_quest`, `roll_dice`,
-  `start_combat`, `query_inventory`, `query_lore`, `record_story_moment`,
-  `play_sound`, `set_music_state`.
+- **Tools:** `enter_location`, `query_info`, `move_player`,
+  `check`, `update_quest`, `enter_mode`, `record_story_moment`.
+  Audio follows scene state events.
 - **System prompt:** Travel pacing, encounter rules, environmental hazards,
   survival-flavored narration. Companion prompt (Kael is especially active during
   travel — pointing things out, sharing stories, warning about danger).
@@ -275,7 +269,7 @@ fields.
 - **Transition out:** `move_player` to a city location triggers handoff to
   `CityAgent`. `move_player` to a dungeon entrance triggers handoff to
   `DungeonAgent`. The WildernessAgent narrates the departure before handing off.
-  `start_combat` (encounter) returns `CombatAgent`.
+  `enter_mode` (encounter) returns `CombatAgent`.
 
 **Locations:** `greyvale_south_road`, `greyvale_wilderness_north`, `northern_fields`,
 and future road/travel locations.
@@ -286,10 +280,8 @@ and future road/travel locations.
 careful exploration in enclosed spaces.
 
 - **Model:** Claude Haiku.
-- **Tools:** `enter_location`, `query_location`, `move_player`,
-  `request_skill_check`, `request_saving_throw`, `discover_hidden_element`,
-  `update_quest`, `start_combat`, `roll_dice`, `query_inventory`, `add_to_inventory`,
-  `query_lore`, `record_story_moment`, `play_sound`, `set_music_state`.
+- **Tools:** `enter_location`, `query_info`, `move_player`, `check`,
+  `update_quest`, `enter_mode`, `transact`, `record_story_moment`.
 - **System prompt:** Dungeon exploration rules, trap/puzzle handling, hidden element
   emphasis, Hollow corruption guidance (dungeons are where corruption is highest).
   Companion prompt adjusted — Kael is nervous, alert, speaks in whispers.
@@ -302,7 +294,7 @@ careful exploration in enclosed spaces.
   anxiety escalation, hidden element proximity hints.
 - **Transition out:** `move_player` to exterior triggers handoff to
   `WildernessAgent`. The DungeonAgent narrates the departure ("Light. Air. The
-  weight of stone lifts from your shoulders.") before handing off. `start_combat`
+  weight of stone lifts from your shoulders.") before handing off. `enter_mode`
   returns `CombatAgent`.
 
 **Locations:** `greyvale_ruins_entrance`, `greyvale_ruins_inner`,
@@ -313,9 +305,9 @@ careful exploration in enclosed spaces.
 **Purpose:** Run a combat encounter from initiative to resolution.
 
 - **Model:** Claude Haiku.
-- **Tools:** `request_attack`, `resolve_enemy_turn`, `request_saving_throw`,
-  `request_death_save`, `end_combat`, `roll_dice`, `play_sound`, `set_music_state`,
-  `query_inventory` (for item use mid-combat).
+- **Tools:** `declare_phase`, `resolve_phase`, `check`,
+  `request_death_save`, `end_combat`,
+  `query_info` (for item use mid-combat).
 - **System prompt:** `COMBAT_PROMPT` only. Staccato narration style, initiative
   tracking, HP descriptions. No exploration context, no NPC dialogue rules.
 - **Transition:** `end_combat` returns the **previous gameplay-type agent** (tracked
@@ -366,7 +358,7 @@ updating `SessionData.location_id`.
 
 The background process maintains raw game state (location, NPCs, quests, companion,
 corruption) as a shared data structure — the same as today. Each gameplay-type agent
-has its own `render_warm_layer()` method that selects and formats the pieces it cares
+has its own warm prompt renderer method that selects and formats the pieces it cares
 about. The background process doesn't need to know which agent is active; it just
 keeps the data fresh. The active agent pulls from it and renders on each turn.
 
@@ -626,20 +618,20 @@ extracting CombatAgent — the clearest boundary in the system.
 
 **Deliverables:**
 - `BaseGameAgent` class with shared patterns: `SessionData` on `userdata`,
-  `on_enter` / `on_exit` lifecycle hooks, common `render_warm_layer()` interface,
+  `on_enter` / `on_exit` lifecycle hooks, common warm prompt renderer interface,
   background process attachment point.
-- `CombatAgent` class with combat-only tools (`request_attack`, `resolve_enemy_turn`,
-  `request_saving_throw`, `request_death_save`, `end_combat`, `roll_dice`,
-  `play_sound`, `set_music_state`, `query_inventory`), `COMBAT_PROMPT` as system
+- `CombatAgent` class with combat-only tools (`declare_phase`, `resolve_phase`,
+  `check`, `request_death_save`, `end_combat`,
+  `query_info`), `COMBAT_PROMPT` as system
   instructions, staccato narration style.
-- `start_combat` tool on the monolith agent returns `CombatAgent` via tool-return
+- `enter_mode` tool on the monolith agent returns `CombatAgent` via tool-return
   handoff. `end_combat` on `CombatAgent` returns the monolith agent.
 - `SessionData.pre_combat_agent_type` field tracks which agent to return to.
 - Combat tools removed from the monolith agent's tool list.
 - `COMBAT_PROMPT` removed from monolith's system prompt.
 
 **Acceptance criteria:**
-- [x] `start_combat` triggers a LiveKit agent handoff — new agent receives combat
+- [x] `enter_mode` triggers a LiveKit agent handoff — new agent receives combat
       tools, old agent's tools are no longer available.
 - [ ] STT stream survives the handoff — player can speak during transition without
       audio loss. *(requires manual playtest)*
@@ -667,9 +659,9 @@ this milestone, the monolith is gone — `CityAgent` is the primary gameplay age
   quest, inventory, progression, and audio tools minus combat).
 - City-specific system prompt: social/exploration rules, NPC dialogue guidance,
   companion prompt. No combat rules.
-- City-specific `render_warm_layer()`: emphasizes NPCs, dispositions, social
+- City-specific warm prompt renderer: emphasizes NPCs, dispositions, social
   context. De-emphasizes corruption and hazards.
-- `start_combat` on `CityAgent` returns `CombatAgent`. `end_combat` returns
+- `enter_mode` on `CityAgent` returns `CombatAgent`. `end_combat` returns
   `CityAgent` (via `pre_combat_agent_type`).
 - Session entry point (`dm_session`) dispatches `CityAgent` instead of the
   monolith for returning players.
@@ -705,8 +697,8 @@ session boundary between creation and gameplay.
   as skip signal. Programmatic handoff to `CreationAgent` on completion or skip.
   Stops audio playback before handoff on skip.
 - `CreationAgent` class: Sonnet model, creation-only tools
-  (`push_creation_cards`, `set_creation_choice`, `finalize_character`,
-  `play_sound`, `set_music_state`), `CREATION_SYSTEM_PROMPT` only.
+  (`push_creation_cards`, `set_creation_choice`, `finalize_character`),
+  `CREATION_SYSTEM_PROMPT` only.
 - `finalize_character` returns `CityAgent` via tool-return handoff with a
   summarized chat context (race, class, deity, name, backstory).
 - Session entry point dispatches `PrologueAgent` for new players, `CityAgent`
@@ -783,13 +775,13 @@ handoffs on region boundary crossings.
 - `region_type` field added to each location in `locations.json`
   (`city` | `wilderness` | `dungeon`).
 - `WildernessAgent` class: travel pacing, encounter tools, survival narration,
-  companion travel chatter. Wilderness-specific `render_warm_layer()`.
+  companion travel chatter. Wilderness-specific warm prompt renderer.
 - `DungeonAgent` class: trap/puzzle tools, hidden element emphasis, Hollow
-  corruption guidance, terse narration. Dungeon-specific `render_warm_layer()`.
+  corruption guidance, terse narration. Dungeon-specific warm prompt renderer.
 - `move_player` refactored: checks destination's `region_type` against current
   agent type. If different, the current agent narrates a departure, then triggers
   programmatic handoff to the destination's agent type.
-- `start_combat` on both WildernessAgent and DungeonAgent returns `CombatAgent`.
+- `enter_mode` on both WildernessAgent and DungeonAgent returns `CombatAgent`.
   `end_combat` returns the correct agent via `pre_combat_agent_type`.
 - Reconnection dispatch updated: looks up current location's `region_type` to
   select the correct gameplay agent.

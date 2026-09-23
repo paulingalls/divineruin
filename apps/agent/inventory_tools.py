@@ -127,6 +127,7 @@ async def _gain(session, player_id, item_id, delta, source, item, *, db_mod, mut
     session.record_event(f"Gained {delta}x {item_name}{suffix}")
     session.record_companion_memory(f"Found {item_name}")
     session.session_items_found.append(item_name)
+    session.record_player_metric(player_id, "items_found", item_name)
 
     logger.info("transact result: +%d %s (%s)", delta, item_id, source)
     return json.dumps(

@@ -62,6 +62,7 @@ class BackgroundProcess:
         self._cached_static: str = ""
         self._last_target: BaseGameAgent | None = None
         self._paused: bool = False
+        self._warm_lock = asyncio.Lock()
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
@@ -92,6 +93,22 @@ class BackgroundProcess:
 
     def resume(self) -> None:
         self._paused = False
+
+    async def primary_changed(self) -> None:
+        self._speech_queue = [
+            speech
+            for speech in self._speech_queue
+            if speech.recipient_id is None or speech.recipient_id == self._sd.primary_player_id
+        ]
+        self._quest_cache.clear()
+        self._scene_cache.clear()
+        self._scene_hint_state.clear()
+        self._last_warm_layer = ""
+        self._last_static_key = None
+        self._last_target = None
+        rebuilt = await self._rebuild_warm_layer()
+        if not rebuilt:
+            raise RuntimeError("Primary hand-off could not rebuild the warm layer")
 
     async def stop(self) -> None:
         """Awaitable twin of ``_on_session_close``, for callers that can wait for the loop.
@@ -311,7 +328,11 @@ class BackgroundProcess:
         if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
             self._sd.companion.last_speech_time = time.time()
 
-    async def _rebuild_warm_layer(self) -> None:
+    async def _rebuild_warm_layer(self) -> bool:
+        async with self._warm_lock:
+            return await self._build_warm_layer()
+
+    async def _build_warm_layer(self) -> bool:
         try:
             quests, location, npcs_raw, training = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.primary_player_id),
@@ -334,7 +355,7 @@ class BackgroundProcess:
                 self._scene_cache = {}
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer data fetch failed", exc_info=True)
-            return
+            return False
 
         await self._refresh_speakers(quests, training)
 
@@ -362,9 +383,10 @@ class BackgroundProcess:
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)
-            return
+            return False
 
         await self._apply_warm(base)
+        return True
 
     async def _refresh_speakers(self, host_quests: list[dict], host_training: list[dict]) -> None:
         member_ids = self._sd.party.member_ids

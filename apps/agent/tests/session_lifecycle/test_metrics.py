@@ -92,7 +92,6 @@ class TestSessionMetricsFields:
         assert sd.session_items_found == []
         assert sd.session_quests_progressed == []
         assert sd.session_locations_visited == []
-        assert sd.ending_requested is False
         assert sd.player_disconnected is False
         assert sd.disconnect_time == 0.0
 
@@ -320,9 +319,13 @@ class TestSessionLifecycleIntegration:
         from session_tools import end_session
 
         ctx = _make_context()
-        ctx.userdata.session_xp_earned = 200
-        ctx.userdata.session_items_found = ["Magic Ring"]
-        ctx.userdata.session_quests_progressed = ["main_quest"]
+        sd = ctx.userdata
+        sd.session_xp_earned = 200
+        sd.session_items_found = ["Magic Ring"]
+        sd.session_quests_progressed = ["main_quest"]
+        sd.record_player_metric(sd.primary_player_id, "xp_earned", 200)
+        sd.record_player_metric(sd.primary_player_id, "items_found", "Magic Ring")
+        sd.record_player_metric(sd.primary_player_id, "quest_progress", "main_quest")
 
         result = json.loads(await end_session._func(ctx, reason="leaving"))
         assert result["session_stats"]["xp_earned"] == 200

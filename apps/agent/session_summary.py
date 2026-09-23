@@ -21,6 +21,7 @@ You are summarizing a tabletop RPG session for the Dungeon Master to use as cont
 in the next session. The player hears a recap read aloud — write for the ear.
 
 Given the session transcript and metrics below, produce a JSON object with these fields:
+{focus_instruction}
 - "summary": 2-3 sentence narrative recap in second person, past tense. For audio playback.
 - "key_events": list of 3-5 important things that happened (short strings).
 - "decisions": list of player choices that could have consequences (short strings). Empty list if none.
@@ -44,6 +45,8 @@ async def generate_session_summary(
     session_data: SessionData,
     transcript_path: str | None,
     session_start_time: float | None = None,
+    *,
+    player_id: str | None = None,
 ) -> dict:
     """Generate a rich session summary using LLM + hard metrics.
 
@@ -61,6 +64,13 @@ async def generate_session_summary(
         "locations_visited": session_data.session_locations_visited,
         "duration": round(elapsed),
     }
+    if player_id is not None:
+        metrics.update(
+            session_data.player_summary_metrics.get(
+                player_id,
+                {"xp_earned": 0, "items_found": [], "quest_progress": [], "locations_visited": []},
+            )
+        )
 
     recent = list(session_data.recent_events)
 
@@ -81,7 +91,7 @@ async def generate_session_summary(
     # Run LLM summary and story moments fetch concurrently
     async def _fetch_story_moments() -> list:
         try:
-            return await db_activity_queries.get_session_story_moments(session_data.session_id)
+            return await db_activity_queries.get_session_story_moments(session_data.session_id, player_id)
         except Exception:
             logger.debug("Could not fetch story moments for session %s", session_data.session_id)
             return []
@@ -94,6 +104,7 @@ async def generate_session_summary(
             locations_visited=", ".join(metrics["locations_visited"]) or "none",
             duration_minutes=duration_minutes,
             transcript_tail=transcript_tail,
+            focus_player_id=player_id,
         ),
         _fetch_story_moments(),
     )
@@ -138,6 +149,7 @@ async def _call_llm_summary(
     locations_visited: str,
     duration_minutes: float,
     transcript_tail: str,
+    focus_player_id: str | None = None,
 ) -> dict | None:
     """Call Claude Haiku to generate structured summary. Returns None on failure."""
     try:
@@ -148,6 +160,12 @@ async def _call_llm_summary(
             locations_visited=locations_visited,
             duration_minutes=duration_minutes,
             transcript_tail=transcript_tail[:4000],  # Token budget guard
+            focus_instruction=(
+                f"Focus this recap on player {focus_player_id}. Attribute that player's choices to them; "
+                "other party members' actions are context."
+                if focus_player_id
+                else ""
+            ),
         )
         response = await _client.messages.create(
             model=_MODEL,

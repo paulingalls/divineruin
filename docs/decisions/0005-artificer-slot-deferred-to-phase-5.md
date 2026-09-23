@@ -1,10 +1,13 @@
 # ADR 0005 — Artificer training-slot exception deferred to Phase 5
 
-Status: **Accepted** (2026-05-21) — sprint-010 story-002
-Debt: `95de7fa141df`
+Status: **Fulfilled** (original decision accepted 2026-05-21; Phase 5 implementation shipped)
+Debt: `95de7fa141df` — discharged by Phase 5 slot accounting
 Supersedes M1.6 wording: `01_core_systems.md` M1.6 AC4 (reworded as divergence)
 
-## Decision
+## Decision (historical Phase-1 boundary)
+
+Phase 5 has now shipped the Portable Lab item and recipe, slot accounting by the stored slot, and the crafting create path that checks class and lab ownership. The original Phase-1 deferral below explains why that work was not done earlier.
+
 
 **The Artificer "craft on the Training slot with a Portable Lab" exception stays
 unwired through Phase 1.** The crafting/training create paths in
@@ -18,7 +21,7 @@ are intentionally not reachable from production yet.
 M1.6's audit listed the unwired call sites as a dead-code "bug." It is instead a
 deliberate deferral: the feature cannot be shipped cleanly in Phase 1.
 
-## Context
+## Context at acceptance (2026-05-21)
 
 Two independent blockers, both verified against source:
 
@@ -49,7 +52,7 @@ Two independent blockers, both verified against source:
 3. **Accept divergence, defer to Phase 5** (chosen) — document why the call sites
    stay unwired, keep the validator seam + tests, and hand the work to Phase 5.
 
-## Phase-5 requirements (what un-defers this)
+## Phase-5 requirements (fulfilled)
 
 Tracked in `milestones/05_crafting.md` (M5.2 Artificer Portable Lab):
 
@@ -59,12 +62,11 @@ Tracked in `milestones/05_crafting.md` (M5.2 Artificer Portable Lab):
 3. Wire `activities.ts` crafting create to load the player's class + portable-lab
    ownership and pass `archetype` + `hasPortableLab` to `validateSlotAvailability`.
 
-## Consequences
+## Consequences now
 
-**Better**
-- No dead `hasPortableLab=false` plumbing; no shipped capacity bug.
-- The validator seam + its 4 unit tests stay as an executable Phase-5 contract.
-
-**Watch**
-- The validator's Artificer branch is unreachable from production until Phase 5 —
-  its unit tests are aspirational (pin intended behavior, not a live path).
+The Portable Lab item and recipe are shipped. `activity_create.ts` counts an
+Artificer craft against its stored Training slot, and the crafting create path
+checks the player's archetype and lab ownership before allowing that borrow.
+`apps/agent/tests/acceptance/test_artificer_slot_e2e.py` verifies against the DB
+that a borrowed slot blocks subsequent Training. The validator branch is reachable
+from production; debt `95de7fa141df` is discharged.

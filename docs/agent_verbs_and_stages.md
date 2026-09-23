@@ -20,12 +20,12 @@ We are hitting limits that are all the same limit wearing different hats:
   auto-grants and the L5 fork cue.~~ **RESOLVED (M4):** both paths route through the
   extracted `_award_xp_core`. *(debt `ee947a154b10`)*
 - **Consequences reachable as decisions.** ~~`_resolve_milestone_impl` still applies
-  L10/15/20 grants despite its docstring saying `award_xp` owns them — two paths to one
+  L10/15/20 grants despite its docstring saying the retired `award_xp` owns them — two paths to one
   effect, so they drift.~~ **RESOLVED (M4/M28):** `resolve_milestone` was removed, and
   M28 story-003 removed `award_xp` itself — grants now have exactly one path, the Resolve.
   *(debt `2bba66ace8a8`, concerns `2ff6a9a9ab10`/`b96ddddf6542`)*
 - **Tool growth tracks content.** Every new "thing" (recipe, spell, item) tends to add a
-  new tool (`learn_recipe`, future `learn_spell_from_scroll`, …).
+  new knowledge type through `learn`.
 
 These are symptoms of the tool/context boundary being drawn at the wrong level. The fix
 is to draw it where each side's strengths actually live.
@@ -49,7 +49,7 @@ that "just happens" as a consequence is a Resolve and has no tool surface.
 > and *how* to narrate") rather than changing it. The rules engine is already pure; the
 > gap is that consequences leaked up into LLM-invoked tools.
 
-## 3. Sense has two channels: push (the Stage) and pull (`query`)
+## 3. Sense has two channels: push (the Stage) and pull (`query_info`)
 
 Information reaches the judgement layer two ways — the same function, delivered
 differently:
@@ -57,13 +57,13 @@ differently:
 - **Push — the Stage.** Ambient context the LLM didn't have to ask for, assembled by the
   async workers from the DB into the warm/hot prompt layers. *What's true and actionable
   here, now.*
-- **Pull — `query`.** On-demand lookup for something the Stage doesn't carry.
+- **Pull — `query_info`.** On-demand lookup for something the Stage doesn't carry.
 
 The line between them is a **cost/latency optimization per datum**, not an arbitrary one:
 
 > Predictable + frequently-needed + latency-sensitive → **push** into the Stage (no
 > round-trip; the 1500ms budget can't afford fetching what you predictably need).
-> Rare + branch-specific → leave as a **pull** (`query`) to keep the Stage lean.
+> Rare + branch-specific → leave as a **pull** (`query_info`) to keep the Stage lean.
 
 This gives three independent levers on the tool ceiling, not one:
 1. Collapse Resolves into Acts (removes consequence-tools).
@@ -94,7 +94,7 @@ catalogs at once. Split the load:
 | The **Stage** | what's available to act on right now (the targets) | — |
 | The **rules engine** | what happens as a result (the Resolve) | — |
 
-A verb's description never enumerates its targets — the Stage supplies them. `go`'s entire
+A verb's description never enumerates its targets — the Stage supplies them. `move_player`'s entire
 description is "the player moves somewhere"; the Stage lists the exits.
 
 ### Standard Act shape
@@ -118,15 +118,15 @@ decision there.
 The canonical proof lives in the codebase: `resolve_milestone` conflated two things and
 should be **removed as a tool entirely**:
 
-- **The grant** (L5/10/15/20) → pure consequence → a Resolve inside the XP grant / `advance_quest`.
+- **The grant** (L5/10/15/20) → pure consequence → a Resolve inside the XP grant / `update_quest`.
 - **Presenting the L5 fork** → *not* a verb either; the level-up Resolve surfaces a **pending
   choice** in its response and parks it in the Stage (offering a choice is a Resolve output,
   like a narration cue).
 - **The player's pick** → the only decision → the generic **`select`** verb, which resolves
   *any* pending choice (an L5 fork today, a branching quest decision tomorrow).
 
-`award_xp` and `award_divine_favor` likewise become Resolves inside the Acts that trigger
-them (`advance_quest`, combat exit). **Delivered in M28:** both tools are deleted;
+XP and favor awards likewise become Resolves inside the Acts that trigger
+them (`update_quest`, combat exit). **Delivered in M28:** both tools are deleted;
 `_award_xp_core` and `_award_divine_favor_core` are the only grant paths.
 
 **Resolves must report back richly.** "Just happens" must not mean "happens invisibly" —
@@ -250,11 +250,11 @@ the visible thing it hangs off (an `attaches_to`: a `key_feature` id or an exit)
 journal beneath it; examining the inner door cannot. (Migrating existing content: where a
 hidden element names no feature, fall back to room-wide-by-skill until it's annotated.)
 
-**Gated traversal is a check; `go` stays pure.** A locked/sealed exit (e.g. the dungeon's
+**Gated traversal is a check; `move_player` stays pure.** A locked/sealed exit (e.g. the dungeon's
 `deeper` door, `requires: veythar_seal_mark.discovered || arcana:14`) surfaces as a **check
-target**, not a `go` affordance. `check(arcana, sealed_door)` succeeds → its Resolve
-unlocks the exit (and the new `go(deeper)` affordance appears in the hot layer immediately)
-→ `go(deeper)` is then a plain move. `go` never embeds a mechanic. This is the canonical
+target**, not a `move_player` affordance. `check(arcana, sealed_door)` succeeds → its Resolve
+unlocks the exit (and the new `move_player(deeper)` affordance appears in the hot layer immediately)
+→ `move_player(deeper)` is then a plain move. `move_player` never embeds a mechanic. This is the canonical
 Act→Resolve→Stage example: a `check` Resolve flips a discovery flag that re-renders the
 exit set.
 
@@ -280,7 +280,7 @@ Newly discovered/revealed targets join the relevant affordance group via the **h
 the moment they're revealed; the warm layer absorbs them on its next rebuild.
 
 **Affordances are grounding, not rails.** This is a freeform voice RPG — the player can try
-anything; off-list intents still map to a verb (often `check`/`query`). The list must never
+anything; off-list intents still map to a verb (often `check`/`query_info`). The list must never
 *limit* the player. And the DM narrates prose, never reads the menu aloud (Golden Rule 1).
 
 ### Stage schema (validated against Guild Hall + dungeon room + mode-location)
@@ -308,7 +308,7 @@ bands:        threshold-crossing resource state, as words
 Content-schema implications surfaced by the test (feed the migration milestones):
 - `hidden_element.attaches_to` — the `key_feature` id or exit it hangs off (scopes `check`).
 - `exit.requires` — a gate (discovery flag and/or skill check); gated exits render as
-  `check` targets, not `go` affordances, until unlocked.
+  `check` targets, not `move_player` affordances, until unlocked.
 - "present entities" generalizes past *scheduled NPCs* to *threats/hazards*; hostiles route
   to `enter_mode(combat)` with enemies sourced from `encounter_templates` (not a location
   present-list).
@@ -373,17 +373,17 @@ them.
 
 | Verb | Decision | Replaces |
 |---|---|---|
-| `query` | I need info not in front of me | `query_info` (+ option-lookups → mostly Stage) |
-| `go` | the player moves | `move_player`, `enter_location` |
+| `query_info` | I need info not in front of me | NPC, location, lore, inventory and option lookups by kind |
+| `move_player` | the player moves | the former navigation split |
 | `check` | resolve an uncertain action | `request_skill_check`, `request_saving_throw`, `roll_dice`, `discover_hidden_element` |
-| `advance_quest` | a quest moves forward | `update_quest` (+ folds in the XP/level/milestone Resolve) |
+| `update_quest` | a quest moves forward | Quest progression triggers its own XP and level Resolves |
 | `transact` | physical goods change hands (gain/lose/spend, with quantity) | `add_to_inventory`, `remove_from_inventory` |
 | `learn` | the player gains permanent knowledge | `learn_recipe`, future `learn_spell` |
 | `activate` | the player uses a capability | `request_ability_activation`, all future spellcasting |
-| `set_disposition` | an NPC's standing shifted | `update_npc_disposition` |
+| `update_npc_disposition` | an NPC's standing shifted | Validates and persists relationship changes |
 | `select` | the player resolves a pending choice | the L5-fork path of `resolve_milestone`; generalizes to any pending choice |
 | `enter_mode` | play shifts into a focused context | `start_combat`, `enter_dispatch`, `enter_blacksmith` |
-| `record_moment` | mark something memorable | `record_story_moment` |
+| `record_story_moment` | mark something memorable | Persists a story event |
 | `end_session` | wrap the session | `end_session` |
 
 **Core verb set = 12** — the *exploration agent's* shared vocabulary, not a global cap.
@@ -394,33 +394,33 @@ strict-20 ceiling.
 
 Folded entirely (no verb):
 
-- **Ad-hoc XP `reward`** — dropped. All XP rides inside `advance_quest` / combat-exit
+- **Ad-hoc XP `reward`** — dropped. All XP rides inside `update_quest` / combat-exit
   Resolves; no LLM-initiated spontaneous XP. Matches modern tabletop (which moved from
   ad-hoc XP to quest/milestone XP + non-mechanical recognition) and avoids reward inflation.
-- **Divine favor** — accrues deterministically inside patron-aligned Acts (`advance_quest`).
+- **Divine favor** — accrues deterministically inside patron-aligned Acts (`update_quest`).
   A narrow *player-initiated* `devote`/`pray` Act is a possible later addition — player-, not
   LLM-, initiated, so it doesn't reintroduce the inflation risk.
-- **Audio** — `play_sound` + `set_music_state` dropped. Ambient soundscape derives from the
+- **Audio** — Sound and music tools dropped. Ambient soundscape derives from the
   location (`ambient_sounds`) via Stage assembly; discrete SFX derive from events as
   Resolves; the DM's voice carries any other punctuation.
 - **`resolve_milestone`** — removed. Milestone grants are Resolves inside the XP
-  grant / `advance_quest`; the L5 fork is surfaced as a pending choice in the level-up
+  grant / `update_quest`; the L5 fork is surfaced as a pending choice in the level-up
   Resolve's response + the Stage; the player's pick is the generic `select` verb. Presenting
   a choice is a Resolve output, not a verb.
 
 ### Mode-local verbs (off the core list)
 
-- **Combat:** `attack`, `enemy_turn`, `death_save`, `exit_mode` (= `end_combat`); shares
-  core `activate`.
-- **Downtime/Dispatch:** `begin_activity(kind)` (= `initiate_training_cycle` +
-  `dispatch_companion_errand` + `start_crafting_project` + `rent_workspace` +
-  `experiment_with_materials`), `resolve_activity(id, decision)` (= `resolve_training_midpoint`
-  + `resolve_companion_errand`); shares core `acquire`/`go`/`query`/`exit_mode`.
+- **Combat:** `declare_phase` records actions, `resolve_phase` resolves the round,
+  `request_death_save` handles player saves, and `end_combat` exits; `activate`
+  handles available abilities.
+- **Downtime/Dispatch:** `begin_activity` starts training, errands, crafting, and workspace rental;
+  `resolve_activity` handles their later decisions. These modes also use `learn`,
+  `move_player`, and `query_info`.
 - **Creation / Onboarding:** separate constrained modes; same standard applies internally,
   deferred.
 
 **Payoff:** a region agent built from the core carries ~12 verbs vs City's 20 today — and
-**M2.4 adds zero tools**: spell acquisition is `acquire(spell, id)`, casting is
+**M2.4 adds zero tools**: spell acquisition uses `learn`, casting is
 `activate(id)`. Spells become content, not tool surface.
 
 ## 11. Migration sequence (green throughout)
@@ -434,7 +434,7 @@ The two original Phase-2 enabler milestones become the **bookends**:
    `2ff6a9a9ab10`/`b96ddddf6542`)*
 2. ✅ **Verb consolidation** *(delivered — M5/M27/M28)* — collapse noun-tools into verbs
    (`transact`, `learn`, `enter_mode`; fold `discover` into `check`; fold
-   `award_xp`/`award_divine_favor`/`reward` and audio into Resolves/Stage). Drops City
+   XP, favor, and reward tools and audio into Resolves/Stage). Drops City
    below the ceiling: exploration now holds 14 verbs against `MAX_STRICT_TOOLS = 20`.
 3. **Stage schema** — affordance-structured warm/hot layer + banding; promote
    `scene.instructions` register into the Stage. *(finalizes the schema after pressure-test)*
@@ -449,12 +449,12 @@ that builds the relevant surface. **None remain blocking the migration milestone
 
 ### Resolved
 
-1. **Verb granularity** — `go` absorbs `enter_location` and stays pure (gates are checks).
-   Goods vs knowledge → split `transact` + `learn`. `reward` folded entirely. `record_moment`
+1. **Verb granularity** — `move_player` handles movement while `enter_location` handles scene entry (gates are checks).
+   Goods vs knowledge → split `transact` + `learn`. `reward` folded entirely. `record_story_moment`
    kept as an Act. Audio fully Stage/Resolve-driven. Core verb set = 12 (§10).
 2. **Stage-schema field set** — validated against Guild Hall + dungeon room + mode-location
    (§7): `hidden_element.attaches_to` a visible target; gated exits are `check` targets
-   (`go` stays pure); mode-locations present `enter_mode` as a player choice (no
+   (`move_player` stays pure); mode-locations present `enter_mode` as a player choice (no
    auto-handoff); danger is banded; revealed targets surface via the hot layer.
 3. **Commerce/pricing** — band in voice, exact figure + confirm on the **HUD**; `transact`'s
    Resolve owns prices (`content/pricing.json`). Commerce is **not** a voice-numeric

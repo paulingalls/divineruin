@@ -3,9 +3,8 @@ focused and under the module-size limit).
 
 Two setup functions register LiveKit ``room.on`` handlers over a live session's participants:
 
-- ``_setup_reconnection`` — disconnect/grace-timeout/reconnect for the PRIMARY player (any agent
-  type). A drop pauses the session's background process and arms a grace timeout; a reconnect
-  within the grace window resumes and re-greets.
+- ``_setup_reconnection`` — per-member disconnect/grace-timeout/reconnect. The background
+  process pauses when every member is absent; a reconnect within grace resumes and re-greets.
 - ``_setup_party_join`` — the live multi-PC trigger (M18 story-001): a SECOND participant joining
   the room becomes a PartyMember with its own hydrated per-member state. It returns the
   ``PartyLifecycle`` that owns the party roster AND the per-connection authorization gate the
@@ -29,6 +28,7 @@ import db_queries
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
+from session_end import run_guest_departure
 
 logger = logging.getLogger("divineruin.dm")
 
@@ -64,11 +64,14 @@ class ReconnectionLifecycle:
         self.userdata = userdata
         self.agent = agent
         self.sleep = sleep
-        self._deadline: asyncio.Task[None] | None = None
+        self._deadlines: dict[str, asyncio.Task[None]] = {}
+        self._disconnected: set[str] = set()
+        self._departure_lock = asyncio.Lock()
         self._tasks: set[asyncio.Task[None]] = set()
         self.close_task: asyncio.Task[None] | None = None
-        self._closing_from_grace = False
+        self._grace_closer: asyncio.Task[None] | None = None
         self._closed = False
+        userdata.reconnection_owner = self
         room.on("participant_disconnected", self._on_disconnect)
         room.on("participant_connected", self._on_reconnect)
         session.on("close", self._on_session_close)
@@ -93,32 +96,51 @@ class ReconnectionLifecycle:
             )
 
     def _on_disconnect(self, participant: rtc.RemoteParticipant) -> None:
-        if participant.identity != self.userdata.player_id or self.userdata.player_disconnected:
+        identity = participant.identity
+        if not self.userdata.party.contains(identity) or identity in self._disconnected:
             return
-        self.userdata.player_disconnected = True
-        self.userdata.disconnect_time = time.time()
-        if self.userdata.background:
+        self._disconnected.add(identity)
+        if identity == self.userdata.primary_player_id:
+            self.userdata.player_disconnected = True
+            self.userdata.disconnect_time = time.time()
+        if self.userdata.background and len(self._disconnected) == len(self.userdata.party.members):
             self.userdata.background.pause()
-        self._deadline = asyncio.create_task(self._grace_timeout())
-        self._tasks.add(self._deadline)
+        self._arm_grace(identity)
+
+    def is_disconnected(self, identity: str) -> bool:
+        return identity in self._disconnected
+
+    def member_departed(self, identity: str) -> None:
+        self._disconnected.discard(identity)
+        self.userdata.player_disconnected = self.userdata.primary_player_id in self._disconnected
+        deadline = self._deadlines.pop(identity, None)
+        if deadline is not None and deadline is not asyncio.current_task():
+            deadline.cancel()
+
+    def _arm_grace(self, identity: str) -> None:
+        deadline = asyncio.create_task(self._grace_timeout(identity))
+        self._deadlines[identity] = deadline
+        self._tasks.add(deadline)
 
     def _on_reconnect(self, participant: rtc.RemoteParticipant) -> None:
-        if participant.identity != self.userdata.player_id or not self.userdata.player_disconnected:
+        identity = participant.identity
+        if identity not in self._disconnected:
             return
-        self.userdata.player_disconnected = False
-        deadline = self._deadline
-        self._deadline = None
-        task = asyncio.create_task(self._finish_reconnect(deadline))
+        self._disconnected.remove(identity)
+        if identity == self.userdata.primary_player_id:
+            self.userdata.player_disconnected = False
+        deadline = self._deadlines.pop(identity, None)
+        task = asyncio.create_task(self._finish_reconnect(identity, deadline))
         self._tasks.add(task)
 
-    async def _finish_reconnect(self, deadline: asyncio.Task[None] | None) -> None:
+    async def _finish_reconnect(self, identity: str, deadline: asyncio.Task[None] | None) -> None:
         if deadline is not None:
             deadline.cancel()
             try:
                 await deadline
             except asyncio.CancelledError:
                 pass
-        if self.userdata.player_disconnected:
+        if identity in self._disconnected:
             return
         if self.userdata.background:
             self.userdata.background.resume()
@@ -127,30 +149,46 @@ class ReconnectionLifecycle:
         if fire:
             fire(reconnect_reply)
 
-    async def _grace_timeout(self) -> None:
+    async def _grace_timeout(self, identity: str) -> None:
         await self.sleep(RECONNECT_GRACE_S)
-        logger.info("Reconnect grace period expired for %s", self.userdata.player_id)
-        self._closing_from_grace = True
-        try:
-            await self.session.aclose()
-        finally:
-            self._closing_from_grace = False
+        async with self._departure_lock:
+            if identity not in self._disconnected or not self.userdata.party.contains(identity):
+                return
+            if self.userdata.departing_player_id is not None:
+                # A goodbye owns departing_player_id until its departure finishes; taking it
+                # here would fail that goodbye or run two departures over one party.
+                self._arm_grace(identity)
+                return
+            logger.info("Reconnect grace period expired for %s", identity)
+            if len(self.userdata.party.members) == 1:
+                self._grace_closer = asyncio.current_task()
+                try:
+                    await self.session.aclose()
+                finally:
+                    self._grace_closer = None
+                return
+            self.userdata.departing_player_id = identity
+            try:
+                await run_guest_departure(self.userdata, identity, self.session)
+            except Exception:
+                self._arm_grace(identity)
+                raise
+            if self.userdata.background and len(self._disconnected) < len(self.userdata.party.members):
+                self.userdata.background.resume()
 
     async def aclose(self) -> None:
         if self._closed:
             return
         self._closed = True
+        if self.userdata.reconnection_owner is self:
+            self.userdata.reconnection_owner = None
         self.room.off("participant_disconnected", self._on_disconnect)
         self.room.off("participant_connected", self._on_reconnect)
         self.session.off("close", self._on_session_close)
         current = asyncio.current_task()
         # LiveKit emits close inside the grace task's session.aclose(); canceling that task
         # here would cancel the session close that triggered this cleanup.
-        tasks = tuple(
-            task
-            for task in self._tasks
-            if task is not current and not (task is self._deadline and self._closing_from_grace)
-        )
+        tasks = tuple(task for task in self._tasks if task is not current and task is not self._grace_closer)
         for task in tasks:
             if not task.done():
                 task.cancel()
@@ -219,7 +257,11 @@ class PartyLifecycle:
         return self._live.get(identity)
 
     def is_authorized(self, identity: str, generation: int) -> bool:
-        return self.userdata.party.contains(identity) and self._live.get(identity) == generation
+        return (
+            identity != self.userdata.departing_player_id
+            and self.userdata.party.contains(identity)
+            and self._live.get(identity) == generation
+        )
 
     def require_authorized(self, identity: str, generation: int) -> None:
         if not self.is_authorized(identity, generation):
@@ -243,7 +285,7 @@ class PartyLifecycle:
         failure = self._join_failures.get(identity)
         if failure is not None and failure[0] == generation:
             raise RuntimeError(f"party hydration failed for {identity!r}") from failure[1]
-        if self._live.get(identity) != generation or not self.userdata.party.contains(identity):
+        if not self.is_authorized(identity, generation):
             return None
         return generation
 
@@ -271,6 +313,9 @@ class PartyLifecycle:
         generation = self._live.pop(identity, None)
         if generation is not None:
             self._revocations[(identity, generation)].set()
+
+    def mark_departed(self, identity: str) -> None:
+        self._revoke(identity)
 
     async def aclose(self) -> None:
         if self._closed:
