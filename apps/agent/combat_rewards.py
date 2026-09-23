@@ -61,10 +61,11 @@ class RewardChannel:
 
 @dataclass
 class XpGrant:
-    """The response recipient's XP and the primary player's session-summary XP."""
+    """The response recipient's XP, the primary player's session-summary XP, and every seat's share."""
 
     xp_granted: int = 0
     summary_xp_granted: int = 0
+    granted_by_player: dict[str, int] = field(default_factory=dict)
     milestone_grants: list[dict] = field(default_factory=list)
     specialization_fork: bool = False
     leveled_up: bool = False
@@ -300,6 +301,7 @@ async def distribute_xp(
             mutations=mutations,
             **core_kwargs,
         )
+        grant.granted_by_player[pid] = share
         if pid == recipient_id:
             grant.xp_granted = share
             grant.milestone_grants = outcome.milestone_grants

@@ -284,6 +284,7 @@ async def _end_combat_db(
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
         "summary_xp_granted": rewards.xp.summary_xp_granted,
+        "xp_by_player": rewards.xp.granted_by_player,
         "milestone_grants": rewards.xp.milestone_grants,
         "specialization_fork": rewards.xp.specialization_fork,
         "defeated_enemies": rewards.spoils.defeated_enemies,
@@ -344,7 +345,8 @@ def _end_combat_finish(
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
     session.session_xp_earned += end_data["summary_xp_granted"]
-    session.record_player_metric(session.primary_player_id, "xp_earned", end_data["summary_xp_granted"])
+    for pid, share in end_data.get("xp_by_player", {}).items():
+        session.record_player_metric(pid, "xp_earned", share)
 
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)

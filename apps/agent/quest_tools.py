@@ -369,7 +369,8 @@ async def _update_quest_impl(
     session.record_player_metric(actor_id, "quest_progress", quest_id)
     if outcome is not None:
         session.session_xp_earned += outcome.summary_xp_granted
-        session.record_player_metric(primary_id, "xp_earned", outcome.summary_xp_granted)
+        for pid, share in outcome.granted_by_player.items():
+            session.record_player_metric(pid, "xp_earned", share)
 
     response = {
         "quest_id": quest_id,
