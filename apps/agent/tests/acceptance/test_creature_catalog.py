@@ -32,7 +32,7 @@ def test_catalog_floor_accepts_more_rows_and_rejects_missing_exemplars():
     assert_catalog_rows([*rows, {"id": extra["id"], "data": json.dumps(extra)}])
     with pytest.raises(AssertionError):
         assert_catalog_rows([])
-    for row in rows:
+    for row in [row for row in rows if row["id"] in {"hollow_shadeling", "hollow_hollowmoth"}]:
         with pytest.raises(AssertionError):
             assert_catalog_rows([other for other in rows if other is not row])
 

@@ -209,5 +209,575 @@
       "ashmark",
       "greyvale"
     ]
+  },
+  {
+    "id": "grey_wolf",
+    "name": "Grey Wolf",
+    "category": "beast",
+    "tier": 1,
+    "description": "A grey hunting wolf that tracks prey in coordinated packs.",
+    "level": 1,
+    "hp": 11,
+    "ac": 12,
+    "speed": 40,
+    "attributes": {
+      "STR": 12,
+      "DEX": 14,
+      "CON": 12,
+      "INT": 3,
+      "WIS": 12,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "DEX",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "piercing",
+        "special": "DC 11 STR save or knocked prone",
+        "audio": "grey_wolf_bite"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Pack Tactics",
+        "description": "Advantage if an ally is within 5 ft of the target.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Keen Hearing and Smell",
+        "description": "Advantage on related Perception checks.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Packs surround prey. Target prone creatures. Retreat if alpha falls.",
+      "morale": "Flees at half pack size.",
+      "group_size": "Pack of 3-6",
+      "environment": [
+        "Greyvale forest",
+        "Thornveld edge",
+        "Drathian Steppe",
+        "mountain foothills"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A low howl rolls through the brush, answered from both sides of the trail. Grey shapes close the gap.",
+      "attack_cue": "A growl breaks into a sharp snap as the wolf lunges for your leg.",
+      "wounded_cue": "A yelp cuts short, then the wolf backs away with its ears flat.",
+      "death_cue": "A last whine fades into the grass as the pack goes quiet.",
+      "ambient_cue": "Soft panting passes through the undergrowth, first near, then farther off."
+    },
+    "audio": {
+      "ambient": "soft panting and paws in leaf litter",
+      "attack": "snarl into a snapping bite",
+      "hit": "sharp yelp",
+      "death": "fading whine",
+      "special": {}
+    },
+    "loot_table_id": "loot_grey_wolf",
+    "xp_reward": 25,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "thornveld",
+      "drathian_steppe",
+      "keldaran_mountains"
+    ]
+  },
+  {
+    "id": "wild_boar",
+    "name": "Wild Boar",
+    "category": "beast",
+    "tier": 1,
+    "description": "A territorial wild boar that charges intruders and guards its range.",
+    "level": 1,
+    "hp": 14,
+    "ac": 11,
+    "speed": 30,
+    "attributes": {
+      "STR": 14,
+      "DEX": 10,
+      "CON": 14,
+      "INT": 2,
+      "WIS": 10,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Tusk",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "slashing",
+        "special": "If charged 15+ ft before attack: +1d6 damage",
+        "audio": "wild_boar_tusk"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Relentless",
+        "description": "1/day, if reduced to 0 HP by an attack dealing 7 or less damage, drop to 1 HP instead.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Charge",
+        "description": "Bonus damage after moving 15 ft before a tusk attack.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Territorial. Charges at intruders. Does not pursue beyond territory.",
+      "morale": "Fights to death defending territory. Flees if encountered outside territory.",
+      "group_size": "Solitary or sounder of 2-4",
+      "environment": [
+        "Greyvale farmlands",
+        "forest edges",
+        "Thornveld outer"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A rough snort comes from the thicket, followed by the scrape of hooves on hard earth.",
+      "attack_cue": "A squeal rises as the boar drives its tusks toward you.",
+      "wounded_cue": "A grunt shakes its broad chest, but it plants its feet again.",
+      "death_cue": "A final breath rattles through its teeth before the brush falls still.",
+      "ambient_cue": "Snuffling and the smell of churned soil drift from the field edge."
+    },
+    "audio": {
+      "ambient": "snuffling and hooves turning soil",
+      "attack": "squealing charge",
+      "hit": "angry grunt",
+      "death": "rattling last breath",
+      "special": {}
+    },
+    "loot_table_id": "loot_wild_boar",
+    "xp_reward": 25,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "thornveld"
+    ]
+  },
+  {
+    "id": "giant_spider",
+    "name": "Giant Spider",
+    "category": "beast",
+    "tier": 1,
+    "description": "A ceiling-climbing spider that traps prey in webbed ruins and caves.",
+    "level": 2,
+    "hp": 18,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 12,
+      "DEX": 16,
+      "CON": 12,
+      "INT": 2,
+      "WIS": 11,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d8+3",
+        "damage_type": "piercing",
+        "special": "DC 12 CON save or Poisoned 1 hour + 1d6 poison damage",
+        "audio": "giant_spider_bite"
+      },
+      {
+        "name": "Web",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 5,
+        "damage": "0",
+        "damage_type": "none",
+        "special": "Target Restrained (STR DC 12 or slash through, AC 10, 5 HP)",
+        "audio": "giant_spider_web"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Spider Climb",
+        "description": "Climb 30 ft on surfaces including ceilings.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Web Sense",
+        "description": "Knows location of any creature touching its web.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Darkvision",
+        "description": "Darkvision 60 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Ambush predator. Webs exits, waits on ceiling, drops on webbed prey. Climbs 30 ft. Retreats to web if threatened in open.",
+      "morale": "Flees if web is destroyed.",
+      "group_size": "Solitary or pair (shared web)",
+      "environment": [
+        "Greyvale ruins",
+        "caves",
+        "dungeons",
+        "Thornveld canopy"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A dry click comes from above, then another answers from inside the web.",
+      "attack_cue": "A hiss of silk cuts across the passage as the spider casts its web.",
+      "wounded_cue": "A chittering rasp follows the blow, and its legs draw close.",
+      "death_cue": "A brittle crunch ends in silence as the web slackens.",
+      "ambient_cue": "Soft clicks travel overhead while silk brushes the stone."
+    },
+    "audio": {
+      "ambient": "dry clicks and taut silk creaking",
+      "attack": "hiss of a lunge or cast web",
+      "hit": "chittering rasp",
+      "death": "brittle crunch of legs folding",
+      "special": {}
+    },
+    "loot_table_id": "loot_giant_spider",
+    "xp_reward": 50,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "underground",
+      "thornveld"
+    ]
+  },
+  {
+    "id": "bandit",
+    "name": "Bandit",
+    "category": "humanoid",
+    "tier": 1,
+    "description": "An armed road robber who ambushes travelers and bargains when outmatched.",
+    "level": 2,
+    "hp": 16,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 12,
+      "DEX": 14,
+      "CON": 12,
+      "INT": 10,
+      "WIS": 10,
+      "CHA": 10
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Short Sword",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "bandit_short_sword"
+      },
+      {
+        "name": "Light Crossbow",
+        "type": "ranged",
+        "reach": 80,
+        "to_hit": 4,
+        "damage": "1d8+2",
+        "damage_type": "piercing",
+        "special": null,
+        "audio": "bandit_light_crossbow"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [
+      {
+        "name": "Dirty Fighting",
+        "description": "1/encounter: throw dirt or sand. Target is Blinded for 1 round unless it passes a DEX save DC 12.",
+        "narration_cue": "Dirt scatters with a dry hiss before the target cries out.",
+        "recharge": "1/encounter",
+        "audio": "bandit_dirty_fighting"
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+      "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+      "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+      "environment": [
+        "Roads between settlements",
+        "forest ambush points",
+        "ruins"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Leather creaks beyond the bend, and a crossbow string draws tight.",
+      "attack_cue": "A bowstring twangs as the bandit fires from cover.",
+      "wounded_cue": "A grunt escapes through clenched teeth as the bandit staggers.",
+      "death_cue": "A sword clatters on stone, followed by one last breath.",
+      "ambient_cue": "Low whistles trade between the trees on either side of the road."
+    },
+    "audio": {
+      "ambient": "low whistles and creaking leather",
+      "attack": "blade scrape or crossbow twang",
+      "hit": "pained grunt",
+      "death": "weapon clattering on stone",
+      "special": {}
+    },
+    "loot_table_id": "loot_bandit",
+    "xp_reward": 50,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale"
+    ]
+  },
+  {
+    "id": "thornveld_stalker",
+    "name": "Thornveld Stalker",
+    "category": "beast",
+    "tier": 1,
+    "description": "A tree-climbing forest predator that pounces on isolated travelers.",
+    "level": 2,
+    "hp": 22,
+    "ac": 14,
+    "speed": 40,
+    "attributes": {
+      "STR": 14,
+      "DEX": 16,
+      "CON": 12,
+      "INT": 4,
+      "WIS": 14,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "DEX",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d6+3",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "thornveld_stalker_claw"
+      },
+      {
+        "name": "Pounce",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d8+3",
+        "damage_type": "slashing",
+        "special": "Requires 20 ft movement. Target DEX save DC 13 or knocked prone. If prone: free bite attack (1d6+3)",
+        "audio": "thornveld_stalker_pounce"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Keen Smell",
+        "description": "Advantage on Perception checks by smell.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Forest Camouflage",
+        "description": "Advantage on Stealth in forest terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Ambush predator. Climbs 20 ft, stalks from trees, and pounces on isolated targets. Will not attack groups of 4+.",
+      "morale": "Flees if first pounce fails.",
+      "group_size": "Solitary",
+      "environment": [
+        "Thornveld",
+        "deep Greyvale forest"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A branch creaks above you, then comes the smell of wet fur.",
+      "attack_cue": "A sharp growl drops from the canopy as claws rake forward.",
+      "wounded_cue": "A yelp turns to a rasp, and the stalker scrambles for height.",
+      "death_cue": "A final breath catches in its throat before the branches settle.",
+      "ambient_cue": "Leaves rustle overhead, though the air at ground level is still."
+    },
+    "audio": {
+      "ambient": "branches creaking overhead",
+      "attack": "growl and raking claws",
+      "hit": "yelp turning to a rasp",
+      "death": "body thudding through branches",
+      "special": {}
+    },
+    "loot_table_id": "loot_thornveld_stalker",
+    "xp_reward": 50,
+    "home_region": "thornveld",
+    "regions": [
+      "thornveld",
+      "greyvale"
+    ]
+  },
+  {
+    "id": "corrupted_treant",
+    "name": "Corrupted Treant",
+    "category": "elemental",
+    "tier": 2,
+    "description": "A Hollow-touched grove guardian whose roots choke the ground around it.",
+    "level": 6,
+    "hp": 55,
+    "ac": 14,
+    "speed": 20,
+    "attributes": {
+      "STR": 18,
+      "DEX": 6,
+      "CON": 16,
+      "INT": 8,
+      "WIS": 14,
+      "CHA": 8
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Slam",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 7,
+        "damage": "2d8+4",
+        "damage_type": "bludgeoning",
+        "special": "Target pushed 10 ft",
+        "audio": "corrupted_treant_slam"
+      },
+      {
+        "name": "Thorn Barrage",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 0,
+        "damage": "2d6",
+        "damage_type": "piercing",
+        "special": "DEX save DC 14. 15 ft cone. Half on success",
+        "audio": "corrupted_treant_thorn_barrage"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Vulnerability to Fire",
+        "description": "Takes double fire damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Resistance",
+        "description": "Resists bludgeoning and piercing damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Rooted Aura",
+        "description": "Plants within 30 ft grow aggressively; the area is difficult terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Entangling Roots",
+        "description": "All creatures within 15 ft: STR save DC 14 or Restrained. The ground erupts with roots.",
+        "narration_cue": "Roots crack through the earth and coil around nearby legs.",
+        "recharge": "Recharge 5-6",
+        "audio": "corrupted_treant_entangling_roots"
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Territorial guardian of corrupted groves. Twisted by proximity to Hollow corruption; still natural, but warped and hostile. Prioritizes fire-users as threats.",
+      "morale": "Fights to death defending its grove. Will not pursue beyond 100 ft of its tree.",
+      "group_size": "Solitary (guarding 2-3 normal trees that are its grove)",
+      "environment": [
+        "Thornveld corruption edges",
+        "Greyvale where Hollow meets forest"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Wood groans deep in the grove, and sour rot cuts through the pine scent.",
+      "attack_cue": "Roots crack underfoot as the treant swings a heavy limb.",
+      "wounded_cue": "A splintering snap rings out while dark sap seeps from its trunk.",
+      "death_cue": "A long creak subsides into silence as the great trunk falls.",
+      "ambient_cue": "A slow grinding sound moves from tree to tree beneath the smell of spoiled sap."
+    },
+    "audio": {
+      "ambient": "slow grinding wood",
+      "attack": "groaning limb swing and root crack",
+      "hit": "splintering snap",
+      "death": "long creak and heavy fall",
+      "special": {}
+    },
+    "loot_table_id": "loot_corrupted_treant",
+    "xp_reward": 200,
+    "home_region": "thornveld",
+    "regions": [
+      "thornveld",
+      "greyvale"
+    ]
   }
 ]

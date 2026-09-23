@@ -578,5 +578,85 @@
     "source": "Broken from the Still's dream of perfect rest; it offers comfort it cannot keep.",
     "weight": 0.3,
     "description": "A warm, too-soft shard that whispers stay every time you hold it."
+  },
+  {
+    "id": "wolf_fangs",
+    "name": "Wolf Fangs",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Grey Wolf.",
+    "weight": 0.1,
+    "description": "Small pointed fangs worn smooth at the roots."
+  },
+  {
+    "id": "wolf_meat",
+    "name": "Wolf Meat",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from a Grey Wolf.",
+    "weight": 1.0,
+    "description": "Lean game meat with a sharp wild scent."
+  },
+  {
+    "id": "boar_tusks",
+    "name": "Boar Tusks",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Wild Boar.",
+    "weight": 0.3,
+    "description": "Two curved tusks marked by old scrapes."
+  },
+  {
+    "id": "boar_meat",
+    "name": "Boar Meat",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from a Wild Boar.",
+    "weight": 1.0,
+    "description": "Rich meat with a strong earthy smell."
+  },
+  {
+    "id": "spider_chitin",
+    "name": "Spider Chitin",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Giant Spider.",
+    "weight": 0.2,
+    "description": "Hard plates that click when stacked."
+  },
+  {
+    "id": "stalker_pelt",
+    "name": "Stalker Pelt",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Skinned from a Thornveld Stalker.",
+    "weight": 1.2,
+    "description": "Dappled fur carrying the scent of damp bark."
+  },
+  {
+    "id": "stalker_claws",
+    "name": "Stalker Claws",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Taken from a Thornveld Stalker.",
+    "weight": 0.1,
+    "description": "Hooked claws sharp enough to catch on cloth."
+  },
+  {
+    "id": "ironwood_bark",
+    "name": "Ironwood Bark",
+    "category": "wood",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Cut from a Corrupted Treant.",
+    "weight": 0.5,
+    "description": "Dense bark whose split edges smell faintly of rot."
   }
 ]
