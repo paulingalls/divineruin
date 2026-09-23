@@ -238,6 +238,7 @@ async def test_guest_gather_uses_own_tier_and_grants_own_materials():
             }
         ),
         get_gathering_nodes_at_location=AsyncMock(return_value=[node]),
+        get_material_definition=AsyncMock(side_effect=lambda material_id: {"name": material_id.title()}),
     )
     inventory = {"player_1": [], "player_2": []}
     mutations = MagicMock(
@@ -266,6 +267,8 @@ async def test_guest_gather_uses_own_tier_and_grants_own_materials():
     assert conditions_mutations.remove_player_conditions.await_args.args[:2] == ("player_2", ("inspired",))
     assert result["total"] > 20
     assert inventory["player_2"] == result["materials"]
+    assert ctx.userdata.player_summary_metrics["player_2"]["items_found"] == ["Star", "Ore"]
+    assert ctx.userdata.session_items_found == []
     assert inventory["player_1"] == []
 
 
@@ -398,6 +401,7 @@ def call_check(mode, d20, ctx, queries, db_writes):
         # A star node makes the rich find one material id, so the grant is a single write and the
         # consume guard, not the grant loop's next guard, is the one after it.
         get_gathering_nodes_at_location=AsyncMock(return_value=[dict(NODE, resource_type="star")]),
+        get_material_definition=AsyncMock(side_effect=lambda material_id: {"name": material_id.title()}),
     )
     db_mod, _ = make_db_mod()
     io = dict(queries=queries, mutations=db_writes, conditions_mutations=db_writes)

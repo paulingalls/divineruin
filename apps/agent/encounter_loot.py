@@ -59,19 +59,6 @@ def party_reward_multiplier(party_size: int) -> float:
     return 1.0 + PARTY_REWARD_BONUS * (party_size - 1)
 
 
-def tier_for_level(level: int) -> int:
-    """Map an enemy level to an encounter tier (1-4) for currency scaling.
-
-    Pinned here as the single source: 1-2 -> T1, 3-5 -> T2, 6-9 -> T3, 10+ -> T4."""
-    if level <= 2:
-        return 1
-    if level <= 5:
-        return 2
-    if level <= 9:
-        return 3
-    return 4
-
-
 def _validate_category(category: str) -> None:
     if category not in _VALID_CATEGORIES:
         raise ValueError(f"Unknown creature category {category!r}; valid categories are {sorted(_VALID_CATEGORIES)}")
@@ -155,8 +142,8 @@ def _role_quantity(quantity: int, role: str) -> int:
 def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[dict]:
     """Roll a defeated enemy's actual drops from its loot table, scaled by encounter role.
 
-    Each table entry {item_id, chance, quantity} has its drop chance and quantity modified per the
-    role (Minion sheds loot, Boss guarantees it), then the (modified) chance is rolled once. Hits
+    Each table entry {item_id, chance, quantity} has its chance modified per role, then the
+    (modified) chance is rolled once. A hit rolls dice quantity before role scaling. Hits
     become {item_id, quantity} dicts in the returned list — order preserved, misses omitted. Pure:
     every roll flows through ``rng``, no mutation of the input table."""
     _validate_role(role)
@@ -164,5 +151,7 @@ def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[di
     for entry in loot_table.get("drops", []):
         chance = _role_drop_chance(entry["chance"], role)
         if rng.random() < chance:
-            drops.append({"item_id": entry["item_id"], "quantity": _role_quantity(entry["quantity"], role)})
+            authored = entry["quantity"]
+            quantity = roll(authored, rng=rng).total if isinstance(authored, str) else authored
+            drops.append({"item_id": entry["item_id"], "quantity": _role_quantity(quantity, role)})
     return drops

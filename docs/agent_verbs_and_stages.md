@@ -439,7 +439,7 @@ The two original Phase-2 enabler milestones become the **bookends**:
 3. **Stage schema** — affordance-structured warm/hot layer + banding; promote
    `scene.instructions` register into the Stage. *(finalizes the schema after pressure-test)*
 4. **Exploration-agent collapse** — City/Wilderness/Dungeon → one agent on the Stage.
-   *(the agent-types/CityAgent split; also closes the DispatchAgent tap gap `15da0e89fa97`)*
+   *(the region-agent collapse; also closes the DispatchAgent tap gap `15da0e89fa97`)*
 5. → existing **M2.4 Spell Acquisition** proceeds with zero new tools.
 
 ## 12. Decisions (resolved) and deferrals

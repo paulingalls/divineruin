@@ -110,6 +110,22 @@ async def get_item(item_id: str) -> dict | None:
     return data
 
 
+async def get_material_definition(material_id: str) -> dict | None:
+    cache_key = f"material_definition:{material_id}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM materials_catalog WHERE id = $1", material_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
 async def search_lore(keyword: str, limit: int = 5) -> list[dict]:
     keyword = keyword[:256]
     # Escape ILIKE metacharacters

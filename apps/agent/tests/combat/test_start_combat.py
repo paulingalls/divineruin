@@ -47,6 +47,7 @@ SAMPLE_ENCOUNTER = {
             "id": "goblin_scout_1",
             "name": "Goblin Scout",
             "level": 1,
+            "tier": 1,
             "ac": 13,
             "hp": 7,
             "attributes": {
@@ -449,29 +450,28 @@ class TestStartCombat:
             )
 
     @pytest.mark.asyncio
-    async def test_malformed_enemy_condition_action_raises_tool_error(self):
-        # A malformed enemy condition action must surface as a DM-narratable ToolError at the tool
-        # boundary, not a raw ValueError (matching the content-error convention).
+    @pytest.mark.parametrize(
+        ("defect", "reason"),
+        [
+            (
+                {"tier": 1, "action_pool": [{"name": "Shriek", "applies_condition": "frightened", "save": "luck"}]},
+                "Shriek",
+            ),
+            ({}, "enemy 'e1' has no authored tier 1-4"),
+            ({"tier": 7}, "enemy 'e1' has no authored tier 1-4, got 7"),
+        ],
+    )
+    async def test_malformed_enemy_raises_tool_error(self, defect, reason):
+        # Malformed enemy content must surface as a DM-narratable ToolError naming the encounter
+        # and enemy at the tool boundary, not a raw ValueError or KeyError.
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        enemy = {"id": "e1", "name": "E", "attributes": {}, "action_pool": [], **defect}
         mock_content.get_encounter_template = AsyncMock(
-            return_value={
-                "id": "bad_enc",
-                "name": "Bad Encounter",
-                "enemies": [
-                    {
-                        "id": "e1",
-                        "name": "E",
-                        "attributes": {},
-                        "action_pool": [
-                            {"name": "Bad Shriek", "applies_condition": "frightened", "save": "luck", "dc": 12}
-                        ],
-                    }
-                ],
-            }
+            return_value={"id": "bad_enc", "name": "Bad Encounter", "enemies": [enemy]}
         )
         ctx = make_context()
 
-        with pytest.raises(ToolError, match="malformed enemy data"):
+        with pytest.raises(ToolError, match=f"Encounter 'bad_enc' has malformed enemy data: .*{reason}"):
             await _start_combat_impl(
                 ctx,
                 encounter_id="bad_enc",

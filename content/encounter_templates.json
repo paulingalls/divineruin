@@ -9,6 +9,7 @@
         "id": "shadeling_1",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 10,
         "hp": 6,
         "attributes": {
@@ -38,6 +39,7 @@
         "id": "shadeling_2",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 10,
         "hp": 6,
         "attributes": {
@@ -67,6 +69,7 @@
         "id": "shadeling_3",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 10,
         "hp": 6,
         "attributes": {
@@ -104,6 +107,7 @@
         "id": "mawling_1",
         "name": "Mawling",
         "level": 2,
+        "tier": 2,
         "ac": 13,
         "hp": 18,
         "attributes": {
@@ -142,6 +146,7 @@
         "id": "mawling_2",
         "name": "Mawling",
         "level": 2,
+        "tier": 2,
         "ac": 13,
         "hp": 18,
         "attributes": {
@@ -188,6 +193,7 @@
         "id": "hollowed_scout_1",
         "name": "Hollowed Scout",
         "level": 3,
+        "tier": 1,
         "ac": 15,
         "hp": 35,
         "attributes": {
@@ -239,6 +245,7 @@
         "id": "hollow_wisp_1",
         "name": "Hollow Wisp",
         "level": 3,
+        "tier": 1,
         "ac": 14,
         "hp": 22,
         "attributes": {
@@ -283,6 +290,7 @@
         "id": "hollow_rend_1",
         "name": "Hollow Rend",
         "level": 2,
+        "tier": 1,
         "ac": 13,
         "hp": 15,
         "attributes": {
@@ -322,6 +330,7 @@
         "id": "hollow_drift_1",
         "name": "Hollow Drift",
         "level": 1,
+        "tier": 1,
         "ac": 11,
         "hp": 8,
         "attributes": {
@@ -351,6 +360,7 @@
         "id": "hollow_drift_2",
         "name": "Hollow Drift",
         "level": 1,
+        "tier": 1,
         "ac": 11,
         "hp": 8,
         "attributes": {
@@ -388,6 +398,7 @@
         "id": "hollow_warden_1",
         "name": "Hollow Warden",
         "level": 4,
+        "tier": 1,
         "ac": 15,
         "hp": 45,
         "attributes": {
@@ -445,6 +456,7 @@
         "id": "bandit_1",
         "name": "Bandit",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 11,
         "attributes": {
@@ -481,6 +493,7 @@
         "id": "bandit_2",
         "name": "Bandit",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 11,
         "attributes": {
@@ -517,6 +530,7 @@
         "id": "bandit_3",
         "name": "Bandit",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 11,
         "attributes": {
@@ -553,6 +567,7 @@
         "id": "bandit_4",
         "name": "Bandit",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 11,
         "attributes": {
@@ -589,6 +604,7 @@
         "id": "bandit_captain",
         "name": "Bandit Captain",
         "level": 3,
+        "tier": 1,
         "ac": 14,
         "hp": 26,
         "attributes": {
@@ -643,6 +659,7 @@
         "id": "ashmark_soldier_1",
         "name": "Ashmark Soldier",
         "level": 3,
+        "tier": 1,
         "ac": 15,
         "hp": 24,
         "attributes": {
@@ -682,6 +699,7 @@
         "id": "ashmark_soldier_2",
         "name": "Ashmark Soldier",
         "level": 3,
+        "tier": 1,
         "ac": 15,
         "hp": 24,
         "attributes": {
@@ -721,6 +739,7 @@
         "id": "ashmark_soldier_3",
         "name": "Ashmark Soldier",
         "level": 3,
+        "tier": 1,
         "ac": 15,
         "hp": 24,
         "attributes": {
@@ -760,6 +779,7 @@
         "id": "ashmark_soldier_4",
         "name": "Ashmark Soldier",
         "level": 3,
+        "tier": 1,
         "ac": 15,
         "hp": 24,
         "attributes": {
@@ -799,6 +819,7 @@
         "id": "ashmark_sergeant",
         "name": "Ashmark Sergeant",
         "level": 4,
+        "tier": 1,
         "ac": 16,
         "hp": 32,
         "attributes": {
@@ -848,6 +869,7 @@
         "id": "cult_fanatic_1",
         "name": "Cult Fanatic",
         "level": 3,
+        "tier": 1,
         "ac": 13,
         "hp": 22,
         "attributes": {
@@ -890,6 +912,7 @@
         "id": "cult_fanatic_2",
         "name": "Cult Fanatic",
         "level": 3,
+        "tier": 1,
         "ac": 13,
         "hp": 22,
         "attributes": {
@@ -932,6 +955,7 @@
         "id": "cultist_1",
         "name": "Cultist",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 9,
         "attributes": {
@@ -961,6 +985,7 @@
         "id": "cultist_2",
         "name": "Cultist",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 9,
         "attributes": {
@@ -990,6 +1015,7 @@
         "id": "cultist_3",
         "name": "Cultist",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 9,
         "attributes": {
@@ -1019,6 +1045,7 @@
         "id": "cultist_4",
         "name": "Cultist",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 9,
         "attributes": {
@@ -1048,6 +1075,7 @@
         "id": "cult_leader",
         "name": "Cult Leader",
         "level": 4,
+        "tier": 1,
         "ac": 12,
         "hp": 28,
         "attributes": {
@@ -1108,6 +1136,7 @@
         "id": "hollowed_knight",
         "name": "Hollowed Knight",
         "level": 4,
+        "tier": 3,
         "ac": 16,
         "hp": 40,
         "attributes": {
@@ -1156,6 +1185,7 @@
         "id": "mawling_1",
         "name": "Mawling",
         "level": 2,
+        "tier": 2,
         "ac": 13,
         "hp": 14,
         "attributes": {
@@ -1192,6 +1222,7 @@
         "id": "mawling_2",
         "name": "Mawling",
         "level": 2,
+        "tier": 2,
         "ac": 13,
         "hp": 14,
         "attributes": {
@@ -1228,6 +1259,7 @@
         "id": "mawling_3",
         "name": "Mawling",
         "level": 2,
+        "tier": 2,
         "ac": 13,
         "hp": 14,
         "attributes": {
@@ -1264,6 +1296,7 @@
         "id": "shadeling_1",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {
@@ -1293,6 +1326,7 @@
         "id": "shadeling_2",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {
@@ -1322,6 +1356,7 @@
         "id": "shadeling_3",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {
@@ -1351,6 +1386,7 @@
         "id": "shadeling_4",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {
@@ -1380,6 +1416,7 @@
         "id": "shadeling_5",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {
@@ -1409,6 +1446,7 @@
         "id": "shadeling_6",
         "name": "Shadeling",
         "level": 1,
+        "tier": 1,
         "ac": 12,
         "hp": 7,
         "attributes": {

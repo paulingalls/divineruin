@@ -1,5 +1,6 @@
 import json
-from unittest.mock import AsyncMock, MagicMock
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
@@ -8,6 +9,15 @@ from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_r
 import event_types as E
 from quest_tools import _update_quest_impl
 from quest_world_effects import _apply_world_effects
+from session_summary import generate_session_summary
+
+
+async def named_recap(sd, player_id):
+    with (
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+        patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+    ):
+        return await generate_session_summary(sd, None, player_id=player_id)
 
 
 def quest_case(stages, progress=None):
@@ -61,17 +71,54 @@ async def test_guest_advances_after_host_rewardless_stage():
 @pytest.mark.asyncio
 async def test_guest_item_only_completion_pays_and_marks_both_once():
     case = quest_case(
-        [{"on_complete": {"rewards": [{"item": "relic", "quantity": 2}]}}], {"player_1": 0, "player_2": 0}
+        [{"on_complete": {"rewards": [{"item": "relic"}, {"item": "relic", "quantity": 2}]}}],
+        {"player_1": 0, "player_2": 0},
     )
+    case[4].get_item.return_value = {"name": "Sun Relic"}
     with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
         result = await advance(case, 1)
     assert result["completed"]
-    assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1", "player_2"}
+    assert [call.args[:3] for call in case[6].add_inventory_item.await_args_list] == [
+        ("player_1", "relic", 1),
+        ("player_2", "relic", 1),
+        ("player_1", "relic", 2),
+        ("player_2", "relic", 2),
+    ]
+    assert result["rewards_applied"] == [
+        {"type": "item", "item_id": "relic", "quantity": 1},
+        {"type": "item", "item_id": "relic", "quantity": 2},
+    ]
+    assert case[0].userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
+    assert case[0].userdata.player_summary_metrics["player_2"]["items_found"] == ["Sun Relic"]
+    assert case[0].userdata.session_items_found == ["Sun Relic"]
+    assert (await named_recap(case[0].userdata, "player_1"))["items_found"] == ["Sun Relic"]
+    assert (await named_recap(case[0].userdata, "player_2"))["items_found"] == ["Sun Relic"]
     assert {call.args[0] for call in case[6].set_player_quest.await_args_list} == {"player_1", "player_2"}
     with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
         with pytest.raises(ToolError, match="backward"):
             await advance(case, 1)
+    assert case[6].add_inventory_item.await_count == 4
+
+
+@pytest.mark.asyncio
+async def test_quest_commit_failure_records_no_items():
+    case = quest_case([{"on_complete": {"rewards": [{"item": "relic"}]}}], {"player_1": 0, "player_2": 0})
+    case[4].get_item.return_value = {"name": "Sun Relic"}
+
+    @asynccontextmanager
+    async def failed_transaction():
+        yield case[2]
+        raise RuntimeError("commit failed")
+
+    case[1].transaction = failed_transaction
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        with pytest.raises(RuntimeError, match="commit failed"):
+            await advance(case, 1)
     assert case[6].add_inventory_item.await_count == 2
+    assert case[0].userdata.session_items_found == []
+    for pid in ("player_1", "player_2"):
+        assert case[0].userdata.player_summary_metrics.get(pid, {}).get("items_found", []) == []
+        assert (await named_recap(case[0].userdata, pid))["items_found"] == []
 
 
 @pytest.mark.asyncio

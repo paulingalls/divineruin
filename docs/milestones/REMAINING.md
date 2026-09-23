@@ -5,7 +5,7 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 291 / 538 acceptance criteria — 54%** (the sum of the per-phase counts in
+**Position: 299 / 538 acceptance criteria — 56%** (the sum of the per-phase counts in
 `README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
@@ -110,11 +110,11 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 ---
 
-## 5. Unstarted phases (33 milestones, 246 ACs)
+## 5. Incomplete phases (33 milestones, 239 open ACs)
 
 | Phase | Milestones | ACs | Blocked by | Size | Substrate that already exists |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.1–7.4 | 40 | nothing | ~2 sprints | `encounter_roles.py` (roles, `ROLE_MODIFIERS`, `derive_role_stats` incl. signature/legendary), `encounter_loot.py`, `encounter_budget.py`, `encounter.ts` (which names this refactor as pending), **`encounter_templates.json`: 10 templates / 15 distinct stat blocks**, `seed_content.py:176-200` fail-loud referential validation = proto-validator |
+| **7 · Bestiary** | 7.1–7.4 | 33 | nothing | ~2 sprints | `encounter_roles.py` (roles, `ROLE_MODIFIERS`, `derive_role_stats` incl. signature/legendary), `encounter_loot.py`, `encounter_budget.py`, `encounter.ts` (which names this refactor as pending), **`encounter_templates.json`: 10 templates / 15 distinct stat blocks**, `content/creatures.json` has two Tier 1 Hollow exemplars, backed by the indexed `creatures` table and Python/TypeScript validation |
 | **8 · Patrons** | 8.1–8.3 | 34 | nothing (but hard **forward** dep on Phase 2 archetype detail) | ~2-3 sprints | `gods.json` 10/10 with 4 typed `null` slots; `favor_actions`/`values`/`opposed_values` authored but unused; write path `_award_divine_favor_core` (M28 Resolve); **full client leg done** (event types → handlers → `hud-store` favor slot) |
 | **9 · Economy** | 9.1–9.10 | 75 | **Phase 7** (material sell values) | large | `pricing` table + `pricing.json` read cross-language w/ Redis cache; reputation pipeline live end-to-end; repair table exact-to-spec; **new price axis**: `role_archetypes.json` `price_modifier` × settlement personality modifier |
 | **10 · Terrain** | 10.1–10.3 | 17 | nothing | ~1-1.5 sprints | `resonance.py`, `cast_modifiers.py:47-66`, the ward stack, `region_types.py`, the `location.ts`+`locations.ts` strict-loader pair |
@@ -123,10 +123,9 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 **Hazards to settle before the relevant phase opens:**
 
-- **Phase 7 — three incompatible tier/level tables already exist:**
-  `encounter_loot.tier_for_level` (enemy 1-2/3-5/6-9/10+), `_LEVEL_BANDS` (5
-  player bands), and M7.1's spec (1-4/5-8/9-13/14-20). Reconcile to one; do not
-  add a fourth.
+- **Phase 7 — creature tiers are authored:** The four bestiary player bands are
+  mirrored in Python and TypeScript. Encounter budget's five player bands remain
+  difficulty ceilings, a separate calculation.
 - **Phase 10 — the name `terrain` is already taken by a different axis.**
   `location.ts:73-77` has `terrain?: string`, shape-validated only, values from
   `travel.py:59-66 NAVIGATION_DC`, present on **3 of 24 locations**. M10.1's

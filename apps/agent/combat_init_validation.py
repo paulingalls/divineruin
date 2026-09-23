@@ -1,6 +1,7 @@
 import check_resolution_save
 import combat_grapple
 import conditions
+from creature_tiers import TIER_LEVEL_RANGES
 from social_resolution import RESISTANCE_TAGS
 
 
@@ -45,3 +46,11 @@ def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
         for tag in tags:
             if tag not in RESISTANCE_TAGS:
                 raise ValueError(f"{label} resistance_tags {tag!r} not in {RESISTANCE_TAGS}")
+
+
+def _validate_enemy_tiers(enemies: list[dict]) -> None:
+    """Currency scales by the authored tier, so an enemy without one cannot enter combat."""
+    for enemy in enemies:
+        tier = enemy.get("tier")
+        if type(tier) is not int or tier not in TIER_LEVEL_RANGES:
+            raise ValueError(f"enemy {enemy.get('id')!r} has no authored tier 1-4, got {tier!r}")

@@ -93,6 +93,18 @@ def livekit_server() -> Iterator[dict[str, str]]:
             server.container.remove(force=True)
 
 
+async def _apply_migrations(conn: asyncpg.Connection) -> None:
+    for sql_file in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+        await conn.execute(sql_file.read_text())
+
+
+def _require_docker_or_skip() -> None:
+    try:
+        docker.from_env().ping()
+    except DockerException as exc:
+        _handle_docker_unavailable(exc, require_docker=os.environ.get("REQUIRE_DOCKER") == "1")
+
+
 async def _apply_migrations_and_seed(dsn: str) -> None:
     """Replay every scripts/migrations/*.sql in order, then seed content tables."""
     if str(_SCRIPTS_DIR) not in sys.path:
@@ -101,8 +113,7 @@ async def _apply_migrations_and_seed(dsn: str) -> None:
 
     conn = await asyncpg.connect(dsn)
     try:
-        for sql_file in sorted(_MIGRATIONS_DIR.glob("*.sql")):
-            await conn.execute(sql_file.read_text())
+        await _apply_migrations(conn)
         await seed_content.seed(conn)
     finally:
         await conn.close()
@@ -111,15 +122,8 @@ async def _apply_migrations_and_seed(dsn: str) -> None:
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[str]:
     """Boot a per-run Postgres testcontainer (ryuk disabled); yield its asyncpg DSN."""
-    require_docker = os.environ.get("REQUIRE_DOCKER") == "1"
-    try:
-        client = docker.from_env()
-        client.ping()
-    except DockerException as exc:
-        _handle_docker_unavailable(exc, require_docker=require_docker)
-        return
-
-    from testcontainers.postgres import PostgresContainer
+    _require_docker_or_skip()
+    from testcontainers.community.postgres import PostgresContainer
 
     with PostgresContainer(_PG_IMAGE) as pg:
         # testcontainers yields a SQLAlchemy/psycopg2 URL; asyncpg wants a bare scheme.
@@ -132,6 +136,27 @@ def migrated_db(postgres_container: str) -> str:
     """Apply migrations + content seed once per session; return the DSN."""
     asyncio.run(_apply_migrations_and_seed(postgres_container))
     return postgres_container
+
+
+@pytest.fixture
+def fresh_migrated_db() -> Iterator[str]:
+    """Unlike the session-wide `migrated_db`, this database is never seeded: each case
+    measures exactly what its own seed run writes."""
+    _require_docker_or_skip()
+    from testcontainers.community.postgres import PostgresContainer
+
+    with PostgresContainer(_PG_IMAGE) as pg:
+        dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
+
+        async def migrate():
+            conn = await asyncpg.connect(dsn)
+            try:
+                await _apply_migrations(conn)
+            finally:
+                await conn.close()
+
+        asyncio.run(migrate())
+        yield dsn
 
 
 @pytest.fixture

@@ -201,6 +201,7 @@ async def test_manual_victory_empty_seat_order_does_not_crash(monkeypatch):
                 ac=13,
                 is_fallen=True,
                 category="humanoid",
+                tier=2,
                 role="standard",
                 level=5,
                 xp_value=50,

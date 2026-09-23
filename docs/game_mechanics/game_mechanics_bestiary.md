@@ -81,11 +81,7 @@ class CreatureStatBlock:
     }
     
     # === LOOT ===
-    loot: {
-        guaranteed: list[LootEntry]
-        chance: list[LootEntry]
-        hollow_residue: bool
-    }
+    loot_table_id: str          # ID in content/loot_tables.json
     
     # === XP ===
     xp_reward: int
@@ -107,12 +103,9 @@ class Ability:
     recharge: str | None         # None | "1/encounter" | "1/round" | "recharge_5_6"
     audio: str | None
 
-class LootEntry:
-    item_id: str
-    quantity: str                # "1" or "1d4"
-    probability: float           # 0.0-1.0
-    requires_skill: str | None   # "Survival:Trained", "Crafting:Expert" etc.
 ```
+
+The required `loot_table_id` replaces the former nested `loot` block and names a table in `content/loot_tables.json`. Story-122 carries the loot details in that table.
 
 ### Tier System (Universal)
 

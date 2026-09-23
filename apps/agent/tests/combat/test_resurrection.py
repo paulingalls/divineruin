@@ -262,6 +262,7 @@ class TestCombatEndDefeatWiring:
             "xp_granted": 0,
             "summary_xp_granted": 0,
             "xp_by_player": {},
+            "item_recipients": [],
             "milestone_grants": [],
             "specialization_fork": False,
             "defeated_enemies": [],
