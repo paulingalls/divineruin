@@ -126,6 +126,7 @@ export interface EncounterEnemy {
   id: string;
   name: string;
   level: number;
+  tier: number;
   ac: number;
   hp: number;
   attributes: Attributes;
@@ -145,4 +146,20 @@ export interface Encounter {
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
+}
+
+export function validateEncounterEnemyTier(
+  encounterId: string,
+  enemy: { id?: unknown; tier?: unknown },
+): void {
+  if (
+    typeof enemy.tier !== "number" ||
+    !Number.isInteger(enemy.tier) ||
+    enemy.tier < 1 ||
+    enemy.tier > 4
+  ) {
+    throw new Error(
+      `encounter '${encounterId}' enemy '${String(enemy.id)}' has invalid tier ${String(enemy.tier)}`,
+    );
+  }
 }

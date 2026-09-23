@@ -47,6 +47,7 @@ SAMPLE_ENCOUNTER = {
             "id": "goblin_scout_1",
             "name": "Goblin Scout",
             "level": 1,
+            "tier": 1,
             "ac": 13,
             "hp": 7,
             "attributes": {

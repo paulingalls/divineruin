@@ -11,7 +11,6 @@ from encounter_loot import (
     calculate_currency_drop,
     derive_role_loot,
     party_reward_multiplier,
-    tier_for_level,
 )
 
 
@@ -32,17 +31,6 @@ class FakeRng(random.Random):
 
     def random(self) -> float:
         return self._chance
-
-
-# --- tier derivation ---
-
-
-@pytest.mark.parametrize(
-    "level,tier",
-    [(1, 1), (2, 1), (3, 2), (5, 2), (6, 3), (9, 3), (10, 4), (15, 4)],
-)
-def test_tier_for_level_boundaries(level: int, tier: int) -> None:
-    assert tier_for_level(level) == tier
 
 
 # --- currency: role gates ---

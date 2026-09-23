@@ -59,19 +59,6 @@ def party_reward_multiplier(party_size: int) -> float:
     return 1.0 + PARTY_REWARD_BONUS * (party_size - 1)
 
 
-def tier_for_level(level: int) -> int:
-    """Map an enemy level to an encounter tier (1-4) for currency scaling.
-
-    Pinned here as the single source: 1-2 -> T1, 3-5 -> T2, 6-9 -> T3, 10+ -> T4."""
-    if level <= 2:
-        return 1
-    if level <= 5:
-        return 2
-    if level <= 9:
-        return 3
-    return 4
-
-
 def _validate_category(category: str) -> None:
     if category not in _VALID_CATEGORIES:
         raise ValueError(f"Unknown creature category {category!r}; valid categories are {sorted(_VALID_CATEGORIES)}")

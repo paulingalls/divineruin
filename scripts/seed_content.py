@@ -211,6 +211,9 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         data = json.loads(row["data"])
         for enemy in data.get("enemies", []):
             enemy_id = enemy.get("id", "?")
+            tier = enemy.get("tier")
+            if type(tier) is not int or not 1 <= tier <= 4:
+                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' has invalid tier {tier!r}")
             if not enemy.get("category"):
                 errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'category'")
             loot_ref = enemy.get("loot_table_id")

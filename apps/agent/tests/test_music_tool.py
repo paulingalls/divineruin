@@ -36,6 +36,7 @@ class TestStartCombatDifficulty:
                         "ac": 12,
                         "attributes": {"dexterity": 14},
                         "level": 1,
+                        "tier": 1,
                         "xp_value": 25,
                     }
                 ],
@@ -95,6 +96,7 @@ class TestStartCombatDifficulty:
                         "ac": 11,
                         "attributes": {"strength": 14},
                         "level": 1,
+                        "tier": 1,
                         "xp_value": 25,
                     }
                 ],

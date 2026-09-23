@@ -105,6 +105,9 @@ class CombatState:
         session_data <-> combat_phase cycle the class docstring notes."""
         reactions_available = reaction_spend.normalize(data.get("reactions_available", {}))
         held_actions = combat_reaction_contest.normalize_held_actions(data.get("held_actions", []), reactions_available)
+        for participant in data["participants"]:
+            if "tier" not in participant:
+                raise ValueError(f"participant {participant.get('id', '?')} missing tier")
         return cls(
             combat_id=data["combat_id"],
             participants=[CombatParticipant(**p) for p in data["participants"]],

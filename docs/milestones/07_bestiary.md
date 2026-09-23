@@ -43,7 +43,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Audio fields: ambient_sound, attack_sound, death_sound
 - Loot schema: guaranteed[], chance[] (item, probability, quantity), hollow_residue_flag
 - XP reward per creature
-- Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-13), Tier 4 (L14-20)
+- Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
 

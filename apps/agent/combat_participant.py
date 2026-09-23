@@ -57,6 +57,7 @@ class CombatParticipant:
     # (calculate_currency_drop). Empty-string defaults so players/companions and pre-M4.7 enemy
     # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
     category: str = ""
+    tier: int | None = None
     loot_table_id: str = ""
     # Saving-throw proficiencies (M13 close-fix): the attribute save names this participant is
     # proficient in (e.g. ["wisdom", "charisma"]), sourced from players.data at combat init for
