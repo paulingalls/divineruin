@@ -372,9 +372,7 @@ async def _update_quest_impl(
     for pid in party_ids:
         session.record_player_metric(pid, "quest_progress", quest_id)
     for pid, name in item_recipients:
-        session.record_player_metric(pid, "items_found", name)
-        if pid == session.primary_player_id and name not in session.session_items_found:
-            session.session_items_found.append(name)
+        session.record_item_found(pid, name)
     if outcome is not None:
         session.session_xp_earned += outcome.summary_xp_granted
         for pid, share in outcome.granted_by_player.items():

@@ -71,21 +71,22 @@ async def test_guest_advances_after_host_rewardless_stage():
 @pytest.mark.asyncio
 async def test_guest_item_only_completion_pays_and_marks_both_once():
     case = quest_case(
-        [{"on_complete": {"rewards": [{"item": "relic"}, {"item": "relic"}]}}], {"player_1": 0, "player_2": 0}
+        [{"on_complete": {"rewards": [{"item": "relic"}, {"item": "relic", "quantity": 2}]}}],
+        {"player_1": 0, "player_2": 0},
     )
     case[4].get_item.return_value = {"name": "Sun Relic"}
     with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
         result = await advance(case, 1)
     assert result["completed"]
-    assert [call.args[:2] for call in case[6].add_inventory_item.await_args_list] == [
-        ("player_1", "relic"),
-        ("player_2", "relic"),
-        ("player_1", "relic"),
-        ("player_2", "relic"),
+    assert [call.args[:3] for call in case[6].add_inventory_item.await_args_list] == [
+        ("player_1", "relic", 1),
+        ("player_2", "relic", 1),
+        ("player_1", "relic", 2),
+        ("player_2", "relic", 2),
     ]
     assert result["rewards_applied"] == [
         {"type": "item", "item_id": "relic", "quantity": 1},
-        {"type": "item", "item_id": "relic", "quantity": 1},
+        {"type": "item", "item_id": "relic", "quantity": 2},
     ]
     assert case[0].userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
     assert case[0].userdata.player_summary_metrics["player_2"]["items_found"] == ["Sun Relic"]

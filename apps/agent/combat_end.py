@@ -349,9 +349,7 @@ def _end_combat_finish(
     for pid, share in end_data["xp_by_player"].items():
         session.record_player_metric(pid, "xp_earned", share)
     for pid, name in end_data["item_recipients"]:
-        session.record_player_metric(pid, "items_found", name)
-        if pid == session.primary_player_id and name not in session.session_items_found:
-            session.session_items_found.append(name)
+        session.record_item_found(pid, name)
 
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)

@@ -292,6 +292,7 @@ async def test_item_acquired_serializes_to_fixture() -> None:
         content=content,
         conn=MagicMock(),
         channel=combat_rewards.RewardChannel(sink=sink, room=None),
+        item_recipients=[],
     )
     captured = [ev for ev in sink.captured if ev.event_type == event_types.ITEM_ACQUIRED]
     assert len(captured) == 1

@@ -150,7 +150,7 @@ async def distribute_loot(
     content,
     conn,
     channel: RewardChannel,
-    item_recipients: list[tuple[str, str]] | None = None,
+    item_recipients: list[tuple[str, str]],
 ) -> list[dict]:
     """DISTRIBUTE pass — items: round-robin the shared pool across the seats (customer decision
     f437f4475a40). Each rolled drop lands in exactly ONE participant's inventory, so items stay
@@ -169,8 +169,7 @@ async def distribute_loot(
         if recipient == recipient_id:
             primary_loot.append(drop)
         item = await content.get_item(drop["item_id"])
-        if item_recipients is not None:
-            item_recipients.append((recipient, item.get("name", drop["item_id"]) if item else drop["item_id"]))
+        item_recipients.append((recipient, item.get("name", drop["item_id"]) if item else drop["item_id"]))
         await channel.emit(
             E.ITEM_ACQUIRED,
             build_item_acquired_payload(
