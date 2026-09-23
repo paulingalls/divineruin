@@ -81,6 +81,14 @@ API cost) and runs only at the comprehensive push or sprint-close boundary.
   `tests/acceptance/test_m22_audio_completeness_capstone.py` in Verify and runs
   `bun run test:python` before handback: a new publish breaks exact-event-count
   tests on the tool it touches (sprint-104: both surfaced only at pre-push).
+- Session start is shared by many suites: a card touching `session_hydration.py`,
+  `participant_lifecycle.py` or `agent.py`'s session setup names
+  `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
+  so a new DB call on the hydration path reds them (sprint-105: story-224's
+  focused Verify was green while `test:python` had 5 reds).
+- Checking a box in `docs/milestones/*.md` also moves the README phase count, the
+  REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
+  docs pins red on all three (sprint-105).
 - DB changes ship as migrations; `content/*.json` changes require a reseed, or
   strict loaders fail server startup.
 - Content is written for the ear: short sentences, sound and smell before sight.

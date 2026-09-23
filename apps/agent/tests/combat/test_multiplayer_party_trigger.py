@@ -13,7 +13,7 @@ drives them end-to-end: player B joins, then both enter combat together.
 import asyncio
 import copy
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sample_fixtures import make_context
@@ -91,8 +91,9 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
         resonance_mod=res_mod,
         concentration_mod=conc_mod,
     )
-    handlers["participant_connected"](SimpleNamespace(identity="player_2"))
-    await _drain()
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock, return_value=None):
+        handlers["participant_connected"](SimpleNamespace(identity="player_2"))
+        await _drain()
 
     # The party is now >1 member and player_2 carries its OWN per-member state (all five substates).
     assert ctx.userdata.party.member_ids == ["player_1", "player_2"]

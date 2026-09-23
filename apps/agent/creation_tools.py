@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import re
+from datetime import UTC, datetime
 from typing import Literal
 
 from livekit.agents.llm import ToolError, function_tool
@@ -279,6 +280,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
             class_id=cs.class_choice,
             deity_id=deity_id,
             backstory=cs.backstory or "",
+            created_at=datetime.now(UTC),
         )
     except ValueError as e:
         logger.exception("Invalid character data for %s", sd.player_id)
@@ -380,8 +382,5 @@ async def finalize_character(context: RunContext) -> str | tuple:
     agent = OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx, companion_id=companion_id)
     if steps_succeeded:
         sound_id = ACTION_SOUND_EXPORTS["ACTION_FINALIZE_CHARACTER"]
-        try:
-            await publish_action_sound(sd, sound_id)
-        except Exception:
-            logger.exception("Failed to publish character completion cue")
+        await publish_action_sound(sd, sound_id)
     return agent, json.dumps(summary)

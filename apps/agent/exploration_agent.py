@@ -29,6 +29,7 @@ from game_events import publish_game_event
 from inventory_tools import transact
 from mode_tools import enter_mode
 from movement_tools import move_player
+from patron_action_tools import record_patron_action
 from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
@@ -46,7 +47,7 @@ logger = logging.getLogger("divineruin.exploration")
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 14 verbs leave 6 free slots under
+# there is no per-region ceiling pressure: 15 verbs leave 5 free slots under
 # MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
 # (transact, update_npc_disposition) are exposed everywhere; the
 # warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
@@ -61,7 +62,8 @@ logger = logging.getLogger("divineruin.exploration")
 # the list stays at net-zero here; M27 story-003 separately tore out play_sound/
 # set_music_state (18->16) — audio derives only from deterministic Resolves and the Stage.
 # M28 story-003 tore out award_xp/award_divine_favor the same way (16->14): XP and favor are
-# granted by the combat-exit and quest-completion Resolves, never by LLM judgement.
+# granted by the combat-exit and quest-completion Resolves. Authored patron actions
+# use that same favor Resolve.
 EXPLORATION_TOOLS = [
     # World query
     enter_location,
@@ -74,6 +76,7 @@ EXPLORATION_TOOLS = [
     update_quest,
     update_npc_disposition,
     adjust_faction_reputation,
+    record_patron_action,
     record_story_moment,
     end_session,
     # Polymorphic capability activation (M25 Phase-5 story-003): spells, abilities, Veil
