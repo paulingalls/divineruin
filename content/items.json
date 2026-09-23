@@ -3515,8 +3515,7 @@
     "value_base": 15,
     "craft_value": 75,
     "value_modifiers": {}
-  }
-,
+  },
   {
     "id": "quality_longsword",
     "name": "Quality Longsword",

@@ -29,5 +29,5 @@ def test_natural_creature_distribution():
     keldaran = [row for row in natural if row["home_region"] == "keldaran_mountains"]
     assert greyvale and all(row["tier"] == 1 for row in greyvale)
     assert keldaran and any(row["tier"] == 3 for row in keldaran)
-    pairs = [(row["behavior"]["tactics"], row["behavior"]["morale"]) for row in natural]
-    assert len(set(pairs)) == len(natural)
+    for field in ("tactics", "morale"):
+        assert len({row["behavior"][field] for row in natural}) == len(natural), field

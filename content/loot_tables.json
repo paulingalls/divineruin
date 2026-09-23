@@ -491,8 +491,7 @@
         ]
       }
     ]
-  }
-,
+  },
   {
     "id": "loot_umbral_crawler",
     "description": "Spec harvest drops for Umbral Crawler.",
