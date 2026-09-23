@@ -374,6 +374,18 @@ def test_spec_stats_regions_and_behavior():
     assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
 
 
+def drop_rows(table):
+    return tuple(
+        (
+            drop["item_id"],
+            drop["quantity"],
+            drop["chance"],
+            tuple((r["skill"], r["tier"]) for r in drop["requires"]),
+        )
+        for drop in table["drops"]
+    )
+
+
 def test_spec_loot_and_owners():
     rows = named_rows(catalog("creatures.json"))
     tables = {row["id"]: row for row in catalog("loot_tables.json")}
@@ -384,34 +396,13 @@ def test_spec_loot_and_owners():
         table = tables[rows[key]["loot_table_id"]]
         assert table["id"] == f"loot_{key}"
         assert seed_content.validate_loot_table(table) == []
-        actual = tuple(
-            (
-                drop["item_id"],
-                drop["quantity"],
-                drop["chance"],
-                tuple((r["skill"], r["tier"]) for r in drop["requires"]),
-            )
-            for drop in table["drops"]
-        )
-        assert actual == expected, key
+        assert drop_rows(table) == expected, key
         assert all(int(drop["item_id"] in items) + int(drop["item_id"] in materials) == 1 for drop in table["drops"])
 
 
 def test_war_golem_four_spec_drops():
     tables = {row["id"]: row for row in catalog("loot_tables.json")}
-    golem = tables["loot_war_golem"]
-    assert (
-        tuple(
-            (
-                drop["item_id"],
-                drop["quantity"],
-                drop["chance"],
-                tuple((r["skill"], r["tier"]) for r in drop["requires"]),
-            )
-            for drop in golem["drops"]
-        )
-        == NEW_LOOT["war_golem"]
-    )
+    assert drop_rows(tables["loot_war_golem"]) == NEW_LOOT["war_golem"]
 
 
 SENSORY = re.compile(r"\b(?:" + "|".join(SOUND_OR_SMELL_LEXICON) + r")(?:s|ed|ing)?\b", re.I)
