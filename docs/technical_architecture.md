@@ -456,25 +456,24 @@ The DM agent is the core of the game experience. It's not just a voice chatbot �
 
 ### Layer 1: The Voice Agent
 
-The DM is a LiveKit `Agent` subclass running inside an `AgentSession`. It uses the standard STT→LLM→TTS pipeline: Deepgram Nova-3 for speech recognition, Claude for reasoning and narration, Inworld TTS-1.5 for voice synthesis.
+The DM is a LiveKit `Agent` subclass running inside an `AgentSession`. It uses the standard STT→LLM→TTS pipeline: Deepgram Nova-3 for speech recognition, GPT-6 Luna for reasoning and narration, Inworld TTS-1.5 for voice synthesis.
 
 ```python
-class DungeonMasterAgent(Agent):
+class ExplorationAgent(Agent):
     def __init__(self, session_data: SessionData):
         super().__init__(
             instructions=build_system_prompt(session_data),  # static + warm layers
             tools=[
                 # World query tools
-                query_npc, query_location, query_lore, 
-                query_inventory, query_quest_log, query_character_sheet,
+                enter_location, query_info,
                 # Dice & mechanics tools
-                request_skill_check, request_attack, request_saving_throw, roll_dice,
+                check, activate,
                 # Game state mutation tools
-                move_player, add_to_inventory, remove_from_inventory,
-                update_quest, update_npc_disposition, apply_status_effect,
-                remove_status_effect, rest,
-                # Client effect tools
-                play_sound, show_item_card,
+                move_player, travel, transact, update_quest,
+                update_npc_disposition, adjust_faction_reputation,
+                record_story_moment, select, end_session,
+                # Mode handoff (combat, dispatch, blacksmith)
+                enter_mode,
             ],
         )
 ```
@@ -596,8 +595,8 @@ You are atmospheric, responsive to player choices, and never break character.
 [tone, style, and content boundary rules]
 
 [GAME MECHANICS REFERENCE]
-When a player attempts something risky or uncertain, call request_skill_check.
-When combat actions occur, call request_attack or request_saving_throw.
+When a player attempts something risky or uncertain, call check.
+When combat starts, call enter_mode; in combat, declare_phase then resolve_phase.
 You do not decide the outcomes of checks — the dice do. Narrate the results.
 [tool usage guidelines, combat flow summary, rest rules]
 

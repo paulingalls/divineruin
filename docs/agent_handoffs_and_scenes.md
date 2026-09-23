@@ -39,8 +39,8 @@ combat).
 ```python
 class WildernessAgent(Agent):
     @function_tool()
-    async def start_combat(self, context: RunContext, ...):
-        """Begin combat encounter."""
+    async def enter_mode(self, context: RunContext, mode: str, ...):
+        """Hand off to a focused mode context such as combat."""
         # ... set up combat state ...
         sd = self.session.userdata
         sd.pre_combat_agent_type = "wilderness"
@@ -254,8 +254,7 @@ fields.
 
 - **Model:** Claude Haiku.
 - **Tools:** `enter_location`, `query_info`, `move_player`,
-  `check`, `update_quest`, `check`,
-  `enter_mode`, `query_info`, `record_story_moment`,
+  `check`, `update_quest`, `enter_mode`, `record_story_moment`.
   Audio follows scene state events.
 - **System prompt:** Travel pacing, encounter rules, environmental hazards,
   survival-flavored narration. Companion prompt (Kael is especially active during
@@ -282,8 +281,7 @@ careful exploration in enclosed spaces.
 
 - **Model:** Claude Haiku.
 - **Tools:** `enter_location`, `query_info`, `move_player`, `check`,
-  `update_quest`, `enter_mode`, `check`, `query_info`, `transact`,
-  `query_info`, `record_story_moment`.
+  `update_quest`, `enter_mode`, `transact`, `record_story_moment`.
 - **System prompt:** Dungeon exploration rules, trap/puzzle handling, hidden element
   emphasis, Hollow corruption guidance (dungeons are where corruption is highest).
   Companion prompt adjusted — Kael is nervous, alert, speaks in whispers.

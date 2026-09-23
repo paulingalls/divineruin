@@ -13,6 +13,8 @@ EXCLUDED = (Path("decisions"), Path("milestones/audit"))
 BACKTICK = re.compile(r"`([a-z][a-z0-9_]*(?:\([^`]*\))?)`")
 COMMENTS = re.compile(r"<!--.*?-->")
 TOOL_CONTEXT = re.compile(r"\b(?:agent|DM) tools?\b|\btool surface\b|@function_tool", re.I)
+FENCE = re.compile(r"^\s*(?:```|~~~)")
+IDENTIFIER = re.compile(r"\b[a-z][a-z0-9_]*\b")
 
 # Agent tools that unbuilt phases (07-09) still specify. ADR 0007 folds them into verbs
 # when those phases are planned; until then they are design intent, not DM surface.
@@ -83,6 +85,22 @@ def violations(path, number, line, live):
                 yield f"{path}:{number}: {name}: {reason}"
 
 
+# Code examples carry no backticks, so every retired or never-built identifier in a fence is a live example.
+def fenced_violations(path, number, line):
+    for name in sorted(set(IDENTIFIER.findall(line)) & (RETIRED_TOOL_REPLACEMENTS.keys() | NEVER_BUILT_TOOLS)):
+        yield f"{path}:{number}: {name}: retired or never-built name in a code example"
+
+
+def doc_violations(path, live):
+    fenced = False
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        if FENCE.match(line):
+            fenced = not fenced
+        elif fenced:
+            yield from fenced_violations(path, number, line)
+        yield from violations(path, number, line, live)
+
+
 def doc_paths(directory, excluded=EXCLUDED):
     return sorted(
         path
@@ -108,12 +126,7 @@ def require_corpus(directory, docs, excluded=EXCLUDED, minimum=61):
 def scan_docs(directory, live, docs=None):
     docs = doc_paths(directory) if docs is None else docs
     assert docs, f"no docs under {directory}"
-    return [
-        error
-        for path in docs
-        for number, line in enumerate(path.read_text().splitlines(), 1)
-        for error in violations(path, number, line, live)
-    ]
+    return [error for path in docs for error in doc_violations(path, live)]
 
 
 def require_floor(selected, live):
@@ -121,7 +134,7 @@ def require_floor(selected, live):
     assert selected & RETIRED_TOOL_REPLACEMENTS.keys(), "no retired-name mentions selected from docs"
 
 
-def test_milestone_tool_names():
+def test_doc_tool_names():
     live = live_names()
     assert len(RETIRED_TOOL_REPLACEMENTS) == 31
     assert not RETIRED_TOOL_REPLACEMENTS.keys() & live
@@ -212,6 +225,13 @@ def test_injected_doc_lines_red_with_location(tmp_path):
     errors = scan_docs(tmp_path, live_names())
     assert any("05_crafting.md:1: learn_recipe" in error for error in errors)
     assert any("05_crafting.md:2: request_parley" in error for error in errors)
+
+
+def test_code_example_names_red_only_inside_fences(tmp_path):
+    path = tmp_path / "technical_architecture.md"
+    path.write_text("tools=[request_attack]\n```python\ntools=[check, request_attack]\n```\nrequest_attack\n")
+    errors = scan_docs(tmp_path, live_names())
+    assert errors == [f"{path}:3: request_attack: retired or never-built name in a code example"]
 
 
 @pytest.mark.parametrize(
