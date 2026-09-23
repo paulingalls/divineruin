@@ -72,5 +72,187 @@
       { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
     ]
+  },
+  {
+    "id": "loot_grey_wolf",
+    "description": "Spec harvest and equipment drops for grey wolf.",
+    "drops": [
+      {
+        "item_id": "wolf_pelt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "wolf_fangs",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "wolf_meat",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_wild_boar",
+    "description": "Spec harvest and equipment drops for wild boar.",
+    "drops": [
+      {
+        "item_id": "boar_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "boar_tusks",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      },
+      {
+        "item_id": "boar_meat",
+        "chance": 1.0,
+        "quantity": 4,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_giant_spider",
+    "description": "Spec harvest and equipment drops for giant spider.",
+    "drops": [
+      {
+        "item_id": "spider_silk",
+        "chance": 0.75,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "venom_sac",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "spider_chitin",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_bandit",
+    "description": "Spec harvest and equipment drops for bandit.",
+    "drops": [
+      {
+        "item_id": "leather_armor_basic",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "shortsword_basic",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_thornveld_stalker",
+    "description": "Spec harvest and equipment drops for thornveld stalker.",
+    "drops": [
+      {
+        "item_id": "stalker_pelt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "stalker_claws",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_corrupted_treant",
+    "description": "Spec harvest and equipment drops for corrupted treant.",
+    "drops": [
+      {
+        "item_id": "ironwood_bark",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "corrupted_heartwood",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "thornveld_amber",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
   }
 ]

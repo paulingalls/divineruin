@@ -72,8 +72,8 @@ test("catalog floor admits more rows and rejects missing exemplars", async () =>
   const extra = { ...entries[0]!, id: "scratch_third_creature" };
   assertCatalogEntries([...entries, extra]);
   expect(() => assertCatalogEntries([])).toThrow();
-  for (const entry of entries)
-    expect(() => assertCatalogEntries(entries.filter((row) => row.id !== entry.id))).toThrow();
+  for (const id of ["hollow_shadeling", "hollow_hollowmoth"])
+    expect(() => assertCatalogEntries(entries.filter((row) => row.id !== id))).toThrow();
 });
 test("real_catalog_and_injected_invalid_entry", async () => {
   const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();

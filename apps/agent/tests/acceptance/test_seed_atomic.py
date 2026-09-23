@@ -46,5 +46,23 @@ def test_valid_seed_commits_creatures_and_map(fresh_migrated_db, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     asyncio.run(seed_content.main())
     counts = asyncio.run(row_counts(fresh_migrated_db))
-    assert counts["creatures"] == 2
+    assert counts["creatures"] == len(json.loads((ROOT / "content/creatures.json").read_text()))
+
+    async def seeded_creature_ids():
+        conn = await asyncpg.connect(fresh_migrated_db)
+        try:
+            return {row["id"] for row in await conn.fetch("SELECT id FROM creatures")}
+        finally:
+            await conn.close()
+
+    assert asyncio.run(seeded_creature_ids()) >= {
+        "hollow_shadeling",
+        "hollow_hollowmoth",
+        "grey_wolf",
+        "wild_boar",
+        "giant_spider",
+        "bandit",
+        "thornveld_stalker",
+        "corrupted_treant",
+    }
     assert counts["player_map_progress"] > 0

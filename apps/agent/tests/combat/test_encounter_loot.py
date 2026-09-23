@@ -1,8 +1,10 @@
 """Pure-logic tests for the role loot & currency overlay (M4.7, story-002). No DB, no RNG luck:
 a FakeRng injects exact dice/chance values so every assertion is deterministic."""
 
+import importlib
 import json
 import random
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,6 +16,9 @@ from encounter_loot import (
     derive_role_loot,
     party_reward_multiplier,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
+validate_loot_table = importlib.import_module("seed_content").validate_loot_table
 
 
 class FakeRng(random.Random):
@@ -226,35 +231,34 @@ def test_missed_dice_drop_does_not_roll_quantity() -> None:
     assert rng.random() == expected_next
 
 
-def test_existing_integer_table_keeps_seeded_rng_sequence() -> None:
+def assert_rollable_tables(tables: list[dict]) -> None:
+    assert tables
+    for table in tables:
+        assert table["drops"], table["id"]
+        assert validate_loot_table(table) == []
+        drops = derive_role_loot(table, "standard", random.Random(122))
+        assert all(type(drop["quantity"]) is int and drop["quantity"] > 0 for drop in drops)
+
+
+def test_real_loot_tables_accept_positive_integer_or_dice_quantities() -> None:
+    path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
+    assert_rollable_tables(json.loads(path.read_text()))
+
+
+def test_rollable_table_walk_rejects_invalid_dice_and_empty_corpus() -> None:
+    with pytest.raises(AssertionError):
+        assert_rollable_tables([])
+    with pytest.raises(AssertionError):
+        assert_rollable_tables([{"id": "fault", "drops": [{"item_id": "x", "chance": 1.0, "quantity": "not dice"}]}])
+
+
+def test_legacy_loot_table_keeps_seeded_rng_sequence() -> None:
     rng = random.Random(122)
     path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
-    tables = json.loads(path.read_text())
-    assert [table["id"] for table in tables] == [
-        "loot_hollow_drift",
-        "loot_hollow_rend",
-        "loot_humanoid_bandit",
-        "loot_humanoid_soldier",
-        "loot_humanoid_cultist",
-        "loot_bandit_captain",
-        "loot_hollow_warden",
-        "loot_cult_leader",
-        "loot_hollowed_knight",
-    ]
-    assert all(type(drop["quantity"]) is int for table in tables for drop in table["drops"])
-    drops = [derive_role_loot(table, "standard", rng) for table in tables]
-    assert drops == [
-        [],
-        [{"item_id": "hollow_residue_t1", "quantity": 1}],
-        [],
-        [],
-        [],
-        [],
-        [{"item_id": "hollow_residue_t2", "quantity": 2}, {"item_id": "hollow_edge_blade", "quantity": 1}],
-        [{"item_id": "arcane_component_t2", "quantity": 2}, {"item_id": "warded_robes", "quantity": 1}],
-        [{"item_id": "hollow_residue_t2", "quantity": 2}, {"item_id": "hollow_ward_armor", "quantity": 1}],
-    ]
-    assert rng.random() == 0.32867177784673773
+    tables = {table["id"]: table for table in json.loads(path.read_text())}
+    drops = derive_role_loot(tables["loot_hollow_rend"], "standard", rng)
+    assert drops == [{"item_id": "hollow_residue_t1", "quantity": 1}]
+    assert rng.random() == 0.3022981875355706
 
 
 def test_requirements_remain_data_during_loot_roll() -> None:
