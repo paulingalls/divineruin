@@ -9,10 +9,10 @@
   },
   {
     "id": "loot_hollow_rend",
-    "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they absorbed enough to leave residue and the odd cold bone shard.",
+    "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they leave a rend shard and the odd cold bone fragment.",
     "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t1", "chance": 0.6, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
+      { "item_id": "rend_shard", "chance": 0.75, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_bone_fragment", "chance": 0.2, "quantity": 1 }
     ]
   },
@@ -50,8 +50,9 @@
   {
     "id": "loot_hollow_warden",
     "description": "Bespoke Warden table. A boss is a headline drop — dense residue, the experimental Hollow-edge blade, and an Aelindran focus the Warden was guarding.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_edge_blade", "chance": 0.5, "quantity": 1 },
       { "item_id": "aelindran_focus_crystal", "chance": 0.25, "quantity": 1 }
     ]
@@ -66,10 +67,10 @@
   },
   {
     "id": "loot_hollowed_knight",
-    "description": "Bespoke Hollowed-Knight table. Heavy residue and the anti-Hollow plate it was corrupted inside of.",
+    "description": "Bespoke Hollowed-Knight table. A wrack core and the anti-Hollow plate it was corrupted inside of.",
     "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
+      { "item_id": "wrack_core", "chance": 0.5, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
     ]
   },

@@ -667,7 +667,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Steppe Razorwing.",
     "weight": 0.1,
-    "description": "Razorwing Talons harvested from Steppe Razorwing."
+    "description": "Hooked talons that rasp together, sharp enough to split a thumbnail."
   },
   {
     "id": "bison_hide",
@@ -677,7 +677,7 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 1.5,
-    "description": "Bison Hide harvested from Steppe Bison."
+    "description": "A heavy hide that smells of dust and dry grass."
   },
   {
     "id": "bison_horn",
@@ -687,7 +687,7 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 0.5,
-    "description": "Bison Horn harvested from Steppe Bison."
+    "description": "A thick curved horn that rings dully when knocked on stone."
   },
   {
     "id": "bison_meat",
@@ -697,7 +697,7 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 1.0,
-    "description": "Bison Meat harvested from Steppe Bison."
+    "description": "A dense, rich-smelling cut of red meat, heavy in the hand."
   },
   {
     "id": "viper_venom",
@@ -707,7 +707,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Rock Viper.",
     "weight": 0.1,
-    "description": "Viper Venom Dose harvested from Rock Viper."
+    "description": "A stoppered dose of venom with a sharp, bitter smell."
   },
   {
     "id": "viper_skin",
@@ -717,7 +717,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Rock Viper.",
     "weight": 0.2,
-    "description": "Viper Skin harvested from Rock Viper."
+    "description": "A thin, dry skin that whispers when it bends."
   },
   {
     "id": "wyrm_acid_gland",
@@ -727,7 +727,7 @@
     "rarity": "rare",
     "source": "Harvested from Cave Wyrm.",
     "weight": 0.5,
-    "description": "Wyrm Acid Gland harvested from Cave Wyrm."
+    "description": "A swollen gland that fizzes faintly and stinks of sour metal."
   },
   {
     "id": "lurker_hide",
@@ -737,7 +737,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Saltmarsh Lurker.",
     "weight": 1.2,
-    "description": "Lurker Hide harvested from Saltmarsh Lurker."
+    "description": "A slick, briny hide that squelches when folded."
   },
   {
     "id": "lurker_teeth",
@@ -747,7 +747,7 @@
     "rarity": "common",
     "source": "Harvested from Saltmarsh Lurker.",
     "weight": 0.1,
-    "description": "Lurker Teeth harvested from Saltmarsh Lurker."
+    "description": "Needle teeth that click together, still smelling of salt mud."
   },
   {
     "id": "eel_skin",
@@ -757,7 +757,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.5,
-    "description": "Eel Skin harvested from Tidecaller Eel."
+    "description": "A slick skin that smells of the tide and creaks as it dries."
   },
   {
     "id": "lightning_gland",
@@ -767,7 +767,7 @@
     "rarity": "rare",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "Lightning Gland harvested from Tidecaller Eel."
+    "description": "A taut gland that crackles faintly between your fingers."
   },
   {
     "id": "eel_oil",
@@ -777,7 +777,7 @@
     "rarity": "uncommon",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "Eel Oil harvested from Tidecaller Eel."
+    "description": "A slick oil that hisses when a drop meets hot iron."
   },
   {
     "id": "crawler_chitin",

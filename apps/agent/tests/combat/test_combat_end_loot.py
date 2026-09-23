@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import random
 import uuid
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,6 +27,8 @@ from combat_end import _end_combat_db, _end_combat_finish
 from combat_events import EventSink
 from combat_rewards import distribute_loot
 from session_data import CombatParticipant, CombatState, SessionData
+
+ROOT = Path(__file__).resolve().parents[4]
 
 # Per worker process: -n 8 runs this file's tests on several workers at once, and a shared row
 # one worker's cleanup deletes reads back as None in another's test.
@@ -210,6 +213,66 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
                 _end_combat_finish(session, cs, "victory", end_data)
             assert session.session_items_found == ["Raw Ore"]
             assert session.player_summary_metrics[_PLAYER_ID]["items_found"] == ["Raw Ore"]
+    finally:
+        await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_mawling_table_changes_item_without_changing_currency(dev_db_pool):
+    pool = dev_db_pool
+    row = await pool.fetchrow("SELECT data FROM materials_catalog WHERE id = $1", "rend_shard")
+    assert row is not None, "seed rend_shard into the dev database"
+    material = json.loads(row["data"])
+    tables = {table["id"]: table for table in json.loads((ROOT / "content/loot_tables.json").read_text())}
+    table = tables["loot_hollow_rend"]
+    content = MagicMock()
+    content.get_loot_table = AsyncMock(return_value=table)
+    content.get_item = AsyncMock(return_value=None)
+    content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
+    await _seed_player(pool, gold=5)
+    try:
+        session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
+        cs = _victory_state()
+        enemy = cs.participants[1]
+        enemy.id = "hollow_rend"
+        enemy.name = "Mawling"
+        enemy.category = "hollow_rend"
+        enemy.tier = 2
+        enemy.loot_table_id = "loot_hollow_rend"
+        sink = EventSink()
+        async with db.transaction() as conn:
+            end_data = await _end_combat_db(
+                session,
+                cs,
+                "victory",
+                mutations=db_mutations,
+                queries=db_queries,
+                conn=conn,
+                sink=sink,
+                content=content,
+                rng=random.Random(1),
+            )
+        # The old residue table paid 8 silver under this same seed.
+        assert end_data["primary_currency_gold"] == pytest.approx(0.8)
+        player = await db_queries.get_player(_PLAYER_ID, conn=pool)
+        assert player is not None and player["gold"] == pytest.approx(5.8)
+        assert end_data["primary_loot"] == [{"item_id": "rend_shard", "quantity": 1}]
+        assert (
+            await pool.fetchval(
+                "SELECT (data->>'quantity')::int FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+                _PLAYER_ID,
+                "rend_shard",
+            )
+            == 1
+        )
+        currency_events = [event.payload for event in sink.captured if event.event_type == E.CURRENCY_GAINED]
+        assert len(currency_events) == 1
+        assert currency_events[0]["amount"] == pytest.approx(0.8)
+        assert currency_events[0]["new_balance"] == pytest.approx(5.8)
+        item_events = [event.payload for event in sink.captured if event.event_type == E.ITEM_ACQUIRED]
+        assert len(item_events) == 1
+        assert item_events[0]["item_id"] == "rend_shard"
+        assert item_events[0]["name"] == material["name"]
     finally:
         await _cleanup(pool)
 
