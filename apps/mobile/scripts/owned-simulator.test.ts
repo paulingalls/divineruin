@@ -89,6 +89,11 @@ test("follows the newest available iOS runtime instead of a pinned one", async (
     ["xcrun", "simctl", "create", NAME, "phone-19", "com.apple.CoreSimulator.SimRuntime.iOS-28-0"],
   ]);
 });
+test("creates the owned device when simctl lists no devices at all", async () => {
+  const { deps, calls } = fixture([]);
+  expect(await resolveOwnedSimulator(deps)).toBe("OWNED");
+  expect(calls.filter((call) => call.includes("create"))).toHaveLength(1);
+});
 test("reuses the one exact-name device and accepts only its explicit UDID", async () => {
   const { deps, calls } = fixture([STOCK, OWNED]);
   expect(await resolveOwnedSimulator(deps, "OWNED")).toBe("OWNED");
@@ -125,17 +130,15 @@ test("owned-name collisions across runtime buckets fail", async () => {
   expect(await failure(resolveOwnedSimulator(deps))).toMatch(/multiple owned/);
   expect(calls.some((call) => call.includes("create"))).toBe(false);
 });
-test("no available iOS runtime, empty listings, and invalid create result fail", async () => {
+test("no available iOS runtime, malformed listings, and invalid create result fail", async () => {
   const { deps } = fixture([STOCK], {
     runtimes: [{ ...RUNTIMES.runtimes[1], isAvailable: false }],
   });
   expect(await failure(resolveOwnedSimulator(deps))).toMatch(/runtime/);
-  const empty = fixture([]);
-  empty.deps.run = (command) =>
-    Promise.resolve(
-      command.includes("runtimes") ? JSON.stringify(RUNTIMES) : JSON.stringify({ devices: {} }),
-    );
-  expect(await failure(resolveOwnedSimulator(empty.deps))).toMatch(/devices/);
+  const malformed = fixture([]);
+  malformed.deps.run = (command) =>
+    Promise.resolve(command.includes("runtimes") ? JSON.stringify(RUNTIMES) : "{}");
+  expect(await failure(resolveOwnedSimulator(malformed.deps))).toMatch(/devices/);
   const bad = fixture([STOCK]);
   const original = bad.deps.run;
   bad.deps.run = (command) =>

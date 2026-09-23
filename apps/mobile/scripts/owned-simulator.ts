@@ -27,9 +27,7 @@ function parseDevices(raw: string): Device[] {
   const payload = JSON.parse(raw) as { devices?: Record<string, Device[]> };
   if (!payload.devices || typeof payload.devices !== "object")
     throw new Error("simctl returned no devices");
-  const devices = Object.values(payload.devices).flat();
-  if (devices.length === 0) throw new Error("simctl returned no devices");
-  return devices;
+  return Object.values(payload.devices).flat();
 }
 
 function versionParts(version: string): number[] {
