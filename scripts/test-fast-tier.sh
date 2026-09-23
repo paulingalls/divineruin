@@ -103,10 +103,19 @@ bash scripts/test-fast.sh > "$tmp/output"
 echo '  PASS: TypeScript-only commit skips pyright'
 
 reset_case
-mkdir -p scripts
-printf 'def broken(:\n' > scripts/broken.py
+mkdir -p scripts apps/agent
+printf 'BAD\n' > scripts/broken.py
 git add scripts/broken.py
-expect_failure 'staged non-agent Python syntax defect'
+expect_failure 'staged non-agent Python lint defect'
+grep -q 'ruff check --config pyproject.toml ../../scripts/broken.py' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p scripts apps/agent
+printf 'OK\n' > scripts/clean.py
+git add scripts/clean.py
+bash scripts/test-fast.sh > "$tmp/output"
+grep -q 'ruff format --config pyproject.toml --check ../../scripts/clean.py' "$FAST_TEST_LOG"
+echo '  PASS: staged non-agent Python is format-checked'
 
 reset_case
 mkdir -p apps/web/src
