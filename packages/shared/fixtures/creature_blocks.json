@@ -213,7 +213,7 @@
         "narration": {
           "first_sighting": "A high whine catches in your ears. Patches of air flutter at the edge of vision a fraction too slowly.",
           "attack_cue": "A papery rustle passes through you. Colors smear and edges blur, then snap back.",
-          "wounded_cue": "A sharp squeal breaks off; a struck moth either dies outright or keeps fluttering.",
+          "wounded_cue": "A sharp squeal cuts the air, and the moth flutters on as if untouched.",
           "death_cue": "A tiny snap sounds as the moth blinks out. One less wrongness hangs in the air.",
           "ambient_cue": "A soft papery flutter and a whine just below hearing tighten your jaw."
         },

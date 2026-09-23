@@ -97,15 +97,12 @@ def test_residue_tables_pin_authored_requirements() -> None:
         assert residue["requires"] == [{"skill": "crafting", "tier": "expert"}]
 
 
-def test_eel_material_descriptions_are_sensory() -> None:
-    materials = {row["id"]: row for row in json.loads((_ROOT / "content" / "materials_catalog.json").read_text())}
-    expected = {
-        "eel_oil": "A slick oil that hisses when a drop meets hot iron.",
-        "lightning_gland": "A taut gland that crackles faintly between your fingers.",
-    }
-    assert expected.keys() <= materials.keys()
-    for material_id, description in expected.items():
-        assert materials[material_id]["description"] == description
+def test_harvested_material_descriptions_are_not_filler() -> None:
+    materials = json.loads((_ROOT / "content" / "materials_catalog.json").read_text())
+    harvested = [row for row in materials if row["source"].startswith("Harvested from")]
+    assert {"eel_oil", "lightning_gland", "eel_skin"} <= {row["id"] for row in harvested}
+    for row in harvested:
+        assert "harvested from" not in row["description"].lower(), row["id"]
 
 
 class _Connection:
