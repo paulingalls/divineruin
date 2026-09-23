@@ -90,8 +90,8 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - AC calculation by armor type: Unarmored (`10 + DEX`), Light (`12 + DEX`), Medium (`14 + DEX max 2`), Heavy (`16-18, no DEX`)
 - Weapon damage table: `1d4` (dagger) through `1d12` (greataxe) `+ attribute modifier`
 - Player intent interpretation: player speaks freely, DM agent interprets intent and calls appropriate mechanics tools
-- Agent tool: `request_attack(attacker_id, target_id, weapon_id)` → hit/miss/crit result with damage and dramatic flag
-- Agent tool: `request_save(target_id, save_type, dc)` → success/fail with margin and dramatic flag
+- Former agent tool: `request_attack(attacker_id, target_id, weapon_id)` → hit/miss/crit result with damage and dramatic flag The current DM verb is `declare_phase`.
+- Planned saving throw interface → success/fail with margin and dramatic flag
 - Pure function: `calculate_ac(armor, dex_modifier)` → AC value
 - Pure function: `resolve_attack(attacker_stats, target_ac, weapon)` → attack result packet
 - Pure function: `resolve_declaration(declaration_type, actor, targets, context)` → resolution result
@@ -103,8 +103,8 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
 - [x] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
 - [x] Critical hit (natural 20) doubles damage dice
-- [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag
-- [x] `request_save` returns structured result with success/fail and margin
+- [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag The current DM verb is `declare_phase`.
+- [x] the saving throw resolution returns structured result with success/fail and margin
 - [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
@@ -178,9 +178,9 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Party wipe: all characters die simultaneously, each pays own death cost, all resurrect at highest-priority anchor
 - Companion death: temporary Hollowed-like state but auto-stabilizes (narrative protection, not permanent)
 - DB migration: `death_saves` tracker, `character_death_history` (death count, costs paid), `resurrection_anchor_points`
-- Agent tool: `resolve_death_save(character_id)` → save result, check for stabilize/death
-- Agent tool: `get_death_cost(character_id)` → cost tier and specific cost based on death count
-- Agent tool: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
+- Rules function: `resolve_death_save(character_id)` → save result, check for stabilize/death
+- Planned death cost interface → cost tier and specific cost based on death count
+- Internal function: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
 
 **Acceptance criteria:**
 - [x] 0 HP triggers Fallen state with death save requirement each phase
@@ -262,9 +262,9 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
   - Discovery moments: narrative beats when finding rare resources
   - Pure function: `resolve_gathering(character_skills, location, resource_table)` → gathered items + discovery flag
 - DB migration: `travel_state` table (party route, mode, progress, exhaustion), `gathering_nodes` table (location_id, resource_type, quantity, discovered)
-- Agent tool: `resolve_social_check(character_id, npc_id, approach)` → social outcome
-- Agent tool: `start_travel(party_id, destination, mode)` → travel state with encounter schedule
-- Agent tool: `resolve_gathering(character_id, location_id)` → gathered resources
+- Rules function: `resolve_social_check(character_id, npc_id, approach)` → social outcome
+- Planned travel interface → travel state with encounter schedule
+- Internal function: `resolve_gathering(character_id, location_id)` → gathered resources
 
 **Acceptance criteria:**
 - [x] Social DC correctly derived from NPC disposition (0-10 scale)

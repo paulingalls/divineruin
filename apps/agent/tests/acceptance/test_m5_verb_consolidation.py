@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from _retired_tools import RETIRED_TOOL_REPLACEMENTS
 from acceptance.seeds import seed_player
 from agent_tool_profiles import AGENT_TOOL_LISTS
 from livekit.agents.llm import is_function_tool, is_raw_function_tool
@@ -39,66 +40,6 @@ from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
-
-# The complete set of noun tools the four M5 folds removed (stories 001-004). The story
-# text says "six"; the real set is ten — the check fold (story-003) absorbed four.
-REMOVED_NOUN_TOOLS = frozenset(
-    {
-        "add_to_inventory",
-        "remove_from_inventory",  # -> transact (story-001)
-        "learn_recipe",  # -> learn (story-002)
-        "request_skill_check",
-        "discover_hidden_element",
-        "request_saving_throw",
-        "roll_dice",  # -> check (story-003)
-        "start_combat",
-        "enter_dispatch",
-        "enter_blacksmith",  # -> enter_mode (story-004)
-    }
-)
-
-# Combat tools the M4.1 phase-loop rewrite retired: the free-form per-actor swing
-# (request_attack) and enemy turn (resolve_enemy_turn) were replaced by the 4-beat
-# declare_phase/resolve_phase loop (sprint-018 stories 003/009). Guarded here so a
-# re-created tool can't silently re-register on any agent — the verb-fold registry trap.
-REMOVED_COMBAT_TOOLS = frozenset({"request_attack", "resolve_enemy_turn"})
-
-# M25 Phase-5 story-002/003: the five capability tools folded into the single polymorphic
-# activate verb. Guarded the same way as the other folds — no demoted @function_tool
-# wrapper may re-register on any agent.
-REMOVED_CAPABILITY_TOOLS = frozenset(
-    {"cast_spell", "request_ability_activation", "activate_veil_ward", "inner_fire", "deploy_veil_anchor"}
-)
-
-# M26 Phase-5 story-003: the ten downtime noun tools folded into begin_activity/
-# resolve_activity. Guarded the same way as the other folds — no demoted @function_tool
-# wrapper may re-register on any agent.
-REMOVED_ACTIVITY_TOOLS = frozenset(
-    {
-        "query_training_programs",
-        "initiate_training_cycle",
-        "resolve_training_midpoint",
-        "dispatch_companion_errand",
-        "resolve_companion_errand",
-        "query_recipe_requirements",
-        "query_available_workspaces",
-        "rent_workspace",
-        "start_crafting_project",
-        "experiment_with_materials",
-    }
-)
-
-# M27 story-003: play_sound/set_music_state torn out as LLM tools. SFX/music now derive
-# only from deterministic Resolves and the Stage (never from these two @function_tool
-# wrappers). Guarded the same way as the other folds.
-REMOVED_AUDIO_TOOLS = frozenset({"play_sound", "set_music_state"})
-
-# M28 story-003: award_xp/award_divine_favor torn out as LLM tools. XP and divine favor are
-# granted by the combat-exit and quest-completion Resolves (_award_xp_core /
-# _award_divine_favor_core), so no agent may hold a verb that grants a reward by LLM judgement —
-# a second grant path is a second rule waiting to drift from the first.
-REMOVED_PROGRESSION_TOOLS = frozenset({"award_xp", "award_divine_favor"})
-
 
 # verb -> the EXACT set of agents that must hold it (grep-verified against the tool
 # lists). Updated for M7: the three region rows fold into "exploration". A future sprint
@@ -131,15 +72,8 @@ VERB_PRESENCE = [
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
-    """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
-    leaked = (
-        REMOVED_NOUN_TOOLS
-        | REMOVED_COMBAT_TOOLS
-        | REMOVED_CAPABILITY_TOOLS
-        | REMOVED_ACTIVITY_TOOLS
-        | REMOVED_AUDIO_TOOLS
-        | REMOVED_PROGRESSION_TOOLS
-    ) & {t.__name__ for t in tools}
+    """No retired tool is registered on any agent."""
+    leaked = RETIRED_TOOL_REPLACEMENTS.keys() & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
 

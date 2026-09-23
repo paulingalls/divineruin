@@ -89,22 +89,17 @@ the audit found, because a green phase doc conceals them.
 
 ## 4. Doc-truth drift (Milestone 30)
 
-The docs describe a tool surface that M25/M26 folded away. Current surface:
-`activate` / `begin_activity(kind)` / `resolve_activity(kind,id)` /
-`query_info(kind)` / `learn(kind,id,source)`.
+**Resolved:** Milestone tool names were reconciled with the live agent registry. The
+retired `learn_recipe` now points to `learn`;
+retired `cast_spell` points to `activate`; retired `request_attack` points to `declare_phase`. The remaining
+historical names on milestone pages identify their registered replacement on
+that line. Proposed interfaces that never shipped are described without DM tool
+names. `get_spell_info` remains a registered tool.
 
-- **~20 stale tool names** across `05_crafting.md` and `06_npcs.md`
-  (`learn_recipe`, `query_recipe_requirements`, `query_available_workspaces`,
-  `start_crafting_project`, `rent_workspace`, `experiment_with_materials`,
-  `get_settlement_npc_population`, `enroll_mentor_training`). **Highest value:
-  `05_crafting.md:175,176,256`** — those are *open follow-ups*, so they read as
-  live surface rather than history. `06_npcs.md:111` is doubly stale.
+The unrelated documentation findings below remain open:
 - **`03_magic.md:39` and README's `†` footnote** still describe the interim
-  per-player boolean M24 replaced. `:97,:101,:134,:141,:142` name
-  `activate_veil_ward` / `cast_spell`, both folded into `activate`.
-- **`04_combat.md`** names superseded tools throughout (`request_attack`,
-  `request_save`, `get_death_cost`, `trigger_character_death`, `start_travel`,
-  `resolve_gathering`), and `:26` cites `wilderness_agent.py` — **a deleted file**.
+  per-player boolean M24 replaced.
+- **`04_combat.md:26`** cites `wilderness_agent.py`, a deleted file.
 - **`04_combat.md` has no authored AC sections for M4.7 and M4.8** despite both
   having shipped. Its "65/65" counts six sections and understates the phase.
 - **`08_patrons.md` says the roster is 4/10 gods; it is 10/10.**
@@ -124,9 +119,7 @@ The docs describe a tool surface that M25/M26 folded away. Current surface:
   `tests/test_async_worker.py` → `tests/worker_suite/`; `tests/test_training_tools.py`
   → split. And `01_core_systems.md:215` still says "6 of 7 … deferred to Phase 5" —
   it is now 7/7.
-- **Remaining line-level items for the M30 punch list:** `03_magic.md:27` dangles on
-  `combat_tools.py:275`, now a 6-line tombstone (`request_attack`'s removal is pinned
-  by `test_m5_verb_consolidation.py:69`); `03_magic.md:171` gives Inner Fire's cost as
+- **Remaining line-level items for the M30 punch list:** `03_magic.md:171` gives Inner Fire's cost as
   "(HP or Focus)" — it shipped as −3 Resonance + 1d6 self fire (`draethar_inner_fire.py:44`);
   `04_combat.md:30` says M4.7 is "not yet authored" — it shipped
   (`encounter_roles.EncounterRole`, `test_m47_encounter_roles_capstone.py`); `04_combat.md:34`
@@ -135,7 +128,7 @@ The docs describe a tool surface that M25/M26 folded away. Current surface:
   No action needed on `04_combat.md:27` — the "wary" divergence is already fixed
   (`role_archetypes.py:101` uses `unfriendly`).
 - **`get_spell_info` (`03_magic.md:144`) is still a real tool — leave it.** Only
-  `activate_veil_ward` and `cast_spell` folded on that page.
+  `activate_veil_ward` and `cast_spell` folded on that page, into `activate`.
 
 ---
 
