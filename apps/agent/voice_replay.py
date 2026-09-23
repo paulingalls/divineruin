@@ -238,6 +238,7 @@ async def _run_row(
         tts_instances: list[Any] = []
         tts_metrics: list[Any] = []
         stages = StageRecorder()
+        player_room.on("data_received", stages.on_data_received)
         selected.on("metrics_collected", stages.on_llm_metrics)
 
         def observe_tts(instance: Any) -> None:

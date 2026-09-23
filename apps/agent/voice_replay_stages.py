@@ -7,6 +7,7 @@ are LiveKit's own measurements for that stage.
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable
 from typing import Any
@@ -15,6 +16,7 @@ from livekit.agents.metrics import LLMMetrics, TTSMetrics
 
 _USER_KEYS = ("transcription_delay", "end_of_turn_delay", "on_user_turn_completed_delay")
 _ASSISTANT_KEYS = ("llm_node_ttft", "llm_node_ttfs", "tts_node_ttfb", "e2e_latency")
+GAME_EVENTS_TOPIC = "game_events"
 
 
 def _ms(seconds: float) -> float:
@@ -29,6 +31,7 @@ class StageRecorder:
         self._llm: list[tuple[float, LLMMetrics]] = []
         self._tts: list[tuple[float, TTSMetrics]] = []
         self._tools: list[float] = []
+        self._events: list[tuple[float, str]] = []
 
     def on_conversation_item(self, event: Any) -> None:
         item = event.item
@@ -47,6 +50,17 @@ class StageRecorder:
 
     def on_tools_executed(self, _event: Any) -> None:
         self._tools.append(self._now())
+
+    def on_data_received(self, packet: Any) -> None:
+        """Player-side arrival of a game event: the client plays SFX (dice, chimes) from these."""
+        if packet.topic != GAME_EVENTS_TOPIC:
+            return
+        observed = self._now()
+        try:
+            event_type = str(json.loads(packet.data)["type"])
+        except (ValueError, KeyError, TypeError):
+            event_type = "<unparseable>"
+        self._events.append((observed, event_type))
 
     def report(self, *, speech_end_monotonic: float) -> dict[str, Any]:
         def at(observed: float) -> float:
@@ -73,4 +87,5 @@ class StageRecorder:
                 {"done_at_ms": at(t), "ttfb_ms": _ms(m.ttfb), "characters": m.characters_count} for t, m in self._tts
             ],
             "assistant": [{"at_ms": at(t), **picked(m, _ASSISTANT_KEYS)} for t, m in self._assistant],
+            "game_events": [{"at_ms": at(t), "type": event_type} for t, event_type in self._events],
         }

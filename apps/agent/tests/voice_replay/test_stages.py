@@ -75,3 +75,20 @@ def test_messages_without_metrics_are_not_recorded_as_stages():
     recorder.on_conversation_item(SimpleNamespace(item=SimpleNamespace(type="function_call")))
 
     assert recorder.report(speech_end_monotonic=0.0)["assistant"] == []
+
+
+def _packet(data: bytes, topic: str) -> SimpleNamespace:
+    return SimpleNamespace(data=data, topic=topic)
+
+
+def test_game_events_reaching_the_player_are_timed_by_type():
+    clock = iter([11.3, 11.4, 11.5])
+    recorder = StageRecorder(now=lambda: next(clock))
+    recorder.on_data_received(_packet(b'{"type": "dice_roll", "roll": 20}', "game_events"))
+    recorder.on_data_received(_packet(b'{"type": "chat"}', "lk-chat-topic"))
+    recorder.on_data_received(_packet(b"not json", "game_events"))
+
+    assert recorder.report(speech_end_monotonic=10.0)["game_events"] == [
+        {"at_ms": pytest.approx(1300), "type": "dice_roll"},
+        {"at_ms": pytest.approx(1400), "type": "<unparseable>"},
+    ]
