@@ -97,7 +97,7 @@ def validate_loot_table(table: dict) -> list[str]:
         errors.append(f"Loot table '{table_id}' drops must be non-empty")
     if "hollow_residue" in table and type(table["hollow_residue"]) is not bool:
         errors.append(f"Loot table '{table_id}' hollow_residue must be a bool")
-    for drop in table.get("drops", []):
+    for drop in table.get("drops") or []:
         item_id = drop.get("item_id", "?")
         label = f"Loot table '{table_id}' drop '{item_id}'"
         chance = drop.get("chance")

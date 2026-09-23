@@ -16,13 +16,13 @@ def _table() -> dict:
     return {"id": "loot_probe", "drops": [{"item_id": "probe_item", "chance": 1.0, "quantity": 1}]}
 
 
-@pytest.mark.parametrize("missing", [True, False])
-def test_empty_or_missing_drops_are_refused(missing: bool) -> None:
+@pytest.mark.parametrize("drops", [None, [], "missing"])
+def test_empty_or_missing_drops_are_refused(drops) -> None:
     table = _table()
-    if missing:
+    if drops == "missing":
         del table["drops"]
     else:
-        table["drops"] = []
+        table["drops"] = drops
     assert any("loot_probe" in error and "drops" in error for error in seed_content.validate_loot_table(table))
 
 

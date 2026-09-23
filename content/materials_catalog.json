@@ -235,7 +235,7 @@
     "category": "monster_part",
     "tier": 2,
     "rarity": "uncommon",
-    "source": "Extracted from giant spiders, rock vipers, and cave wyrms.",
+    "source": "Extracted from giant spiders and cave wyrms.",
     "weight": 0.2,
     "description": "A taut translucent bladder sloshing with cloudy poison."
   },
@@ -778,5 +778,105 @@
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
     "description": "Eel Oil harvested from Tidecaller Eel."
+  },
+  {
+    "id": "crawler_chitin",
+    "name": "Crawler Chitin",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A curved plate of black chitin that clicks when tapped."
+  },
+  {
+    "id": "paralytic_gland",
+    "name": "Paralytic Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A soft sac that smells of bitter almonds and numbs the fingertips."
+  },
+  {
+    "id": "crawler_mandible",
+    "name": "Crawler Mandible",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A hooked jaw, still sharp enough to rasp against stone."
+  },
+  {
+    "id": "guardian_core_small",
+    "name": "Small Guardian Core",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "A palm-sized stone heart that hums faintly against the skin."
+  },
+  {
+    "id": "ancient_mechanism",
+    "name": "Ancient Mechanism",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "A cluster of stone gears that tick when turned by hand."
+  },
+  {
+    "id": "dire_bear_claws",
+    "name": "Dire Bear Claws",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "A heavy, curved claw that smells of earth and old blood."
+  },
+  {
+    "id": "dire_bear_fat",
+    "name": "Dire Bear Fat",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "Thick, rank fat that renders down into lamp oil and salve."
+  },
+  {
+    "id": "troll_blood",
+    "name": "Troll Blood",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Troll.",
+    "weight": 0.2,
+    "description": "Dark blood that bubbles faintly in the vial, as if still healing."
+  },
+  {
+    "id": "lightning_gland_large",
+    "name": "Large Lightning Gland",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "A swollen gland that crackles and stings the palm that holds it."
+  },
+  {
+    "id": "thunderbird_egg",
+    "name": "Thunderbird Egg",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "A heavy egg that thrums like distant thunder."
   }
 ]
