@@ -30,6 +30,7 @@ from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
 from session_end import run_guest_departure
+from speech_delivery import deliver_speech
 
 logger = logging.getLogger("divineruin.dm")
 
@@ -227,12 +228,16 @@ class PartyLifecycle:
         room: rtc.Room,
         userdata: SessionData,
         *,
+        agent_session: AgentSession | None = None,
+        speech_ready: asyncio.Event | None = None,
         queries: Any,
         resonance_mod: Any,
         concentration_mod: Any,
     ) -> None:
         self.room = room
         self.userdata = userdata
+        self.agent_session = agent_session
+        self.speech_ready = speech_ready
         self.queries = queries
         self.resonance_mod = resonance_mod
         self.concentration_mod = concentration_mod
@@ -386,7 +391,24 @@ class PartyLifecycle:
         # LOCATION_CORRUPTION). A joining player enters the party's room, so adopt the party's
         # current location corruption rather than a default 0.
         member.corruption_level = self.userdata.party.primary.corruption_level
-        await session_hydration.apply_session_favor_decay(self.userdata, identity, row)
+        favor_loss = await session_hydration.apply_session_favor_decay(self.userdata, identity, row)
+        if favor_loss:
+            if self.speech_ready is not None:
+                await self.speech_ready.wait()
+            if self.agent_session is None:
+                raise RuntimeError("party join favor loss has no voice session")
+            patron, loss = favor_loss
+            name = row.get("name") or identity
+            await deliver_speech(
+                self.agent_session,
+                instructions=(
+                    f"The joining player {name} lost {loss} favor with {patron} to neglect. "
+                    f"Let {name} hear {patron}'s displeasure in one short sentence."
+                ),
+                logger=logger,
+                description=f"Party join favor loss for player {identity}",
+                failure_level=logging.ERROR,
+            )
         logger.info("Party-join: appended %r; party now %s", identity, self.userdata.party.member_ids)
 
 
@@ -394,6 +416,8 @@ def _setup_party_join(
     room: rtc.Room,
     userdata: SessionData,
     *,
+    agent_session: AgentSession | None = None,
+    speech_ready: asyncio.Event | None = None,
     queries: Any = db_queries,
     resonance_mod: Any = db_mutations_resonance,
     concentration_mod: Any = db_mutations_concentration,
@@ -401,6 +425,8 @@ def _setup_party_join(
     return PartyLifecycle(
         room,
         userdata,
+        agent_session=agent_session,
+        speech_ready=speech_ready,
         queries=queries,
         resonance_mod=resonance_mod,
         concentration_mod=concentration_mod,

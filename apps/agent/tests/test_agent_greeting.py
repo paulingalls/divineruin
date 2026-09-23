@@ -25,7 +25,7 @@ def _delivery_records(caplog, level: int | None = None):
     ]
 
 
-async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None):
+async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None, onboarding_beat=None):
     from agent import dm_session
 
     ctx = MagicMock()
@@ -39,7 +39,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None):
         "class": "warrior",
         "level": 1,
         "location_id": "accord_guild_hall",
-        "flags": {},
+        "flags": {"onboarding_beat": onboarding_beat} if onboarding_beat is not None else {},
     }
 
     async def hydrate(userdata, _player):
@@ -65,6 +65,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None):
         ),
         patch("session_hydration.hydrate_session_state", side_effect=hydrate),
         patch("gameplay_agent.create_gameplay_agent", return_value=MagicMock()),
+        patch("onboarding_agent.OnboardingAgent", return_value=MagicMock()),
         patch("agent._setup_reconnection"),
         patch("agent.start_gameplay_session", new=_start_gameplay),
     ):
@@ -85,6 +86,24 @@ async def test_returning_greeting_names_patron_loss_only_when_it_occurred():
     reply = MagicMock(return_value=completed_handle())
     without_loss = await _run_gameplay_greeting(summary, reply)
     assert "displeasure" not in without_loss.generate_reply.call_args.kwargs["instructions"]
+
+
+@pytest.mark.asyncio
+async def test_mid_onboarding_reconnect_speaks_persisted_patron_loss():
+    reply = MagicMock(return_value=completed_handle())
+    session = await _run_gameplay_greeting(None, reply, ("kaelen", 5), onboarding_beat=3)
+    instructions = session.generate_reply.call_args.kwargs["instructions"]
+    assert "kaelen's displeasure" in instructions
+    assert "5 favor" in instructions
+
+
+@pytest.mark.asyncio
+async def test_first_gameplay_session_without_summary_speaks_patron_loss():
+    reply = MagicMock(return_value=completed_handle())
+    session = await _run_gameplay_greeting(None, reply, ("kaelen", 5))
+    instructions = session.generate_reply.call_args.kwargs["instructions"]
+    assert "kaelen's displeasure" in instructions
+    assert "5 favor" in instructions
 
 
 @pytest.mark.parametrize(

@@ -139,7 +139,7 @@ async def test_second_player_join_appends_and_hydrates_all_five_substates():
     sd.corruption_level = 4  # the party sits in a corrupted room; the joiner is co-located
     handler = _wire(room, handlers, sd, mods)
 
-    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock):
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock, return_value=None):
         handler(_participant("player_2"))
         await _drain()
 

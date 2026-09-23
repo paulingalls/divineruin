@@ -353,6 +353,18 @@ async def dm_session(ctx: agents.JobContext) -> None:
             )
             await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
+            if userdata.favor_loss:
+                patron, loss = userdata.favor_loss
+                await deliver_speech(
+                    session,
+                    instructions=(
+                        f"{patron}'s displeasure has cost the player {loss} favor. "
+                        "Let the player hear that displeasure now, then resume the current onboarding beat."
+                    ),
+                    logger=logger,
+                    description=f"Onboarding return favor loss for player {player_id}",
+                    failure_level=logging.ERROR,
+                )
             return
 
         # Dispatch correct gameplay agent based on location's region_type
@@ -369,6 +381,13 @@ async def dm_session(ctx: agents.JobContext) -> None:
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
 
         # --- Initial greeting ---
+        favor_instruction = ""
+        if userdata.favor_loss:
+            patron, loss = userdata.favor_loss
+            favor_instruction = (
+                f" {patron}'s displeasure has cost the player {loss} favor. "
+                "Let the player hear that displeasure in the opening narration."
+            )
         if is_first_session:
             await deliver_speech(
                 session,
@@ -379,7 +398,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                     "Just BE the narrator — start directly with what the player experiences. "
                     "The player steps into the market square of the Accord of Tides. It's evening. "
                     "The market is winding down — vendors packing stalls, the smell of salt and fried fish. "
-                    "Describe the atmosphere with one vivid sensory detail. "
+                    f"Describe the atmosphere with one vivid sensory detail.{favor_instruction} "
                     "End with something that invites the player to look around or explore."
                 ),
                 logger=logger,
@@ -388,13 +407,6 @@ async def dm_session(ctx: agents.JobContext) -> None:
             )
         else:
             recap = _build_recap_instruction(last_summary)
-            favor_instruction = ""
-            if userdata.favor_loss:
-                patron, loss = userdata.favor_loss
-                favor_instruction = (
-                    f" {patron}'s displeasure has cost the player {loss} favor. "
-                    "Let the player hear that displeasure in the opening narration."
-                )
             await deliver_speech(
                 session,
                 instructions=(

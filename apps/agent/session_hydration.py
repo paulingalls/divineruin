@@ -44,20 +44,20 @@ async def apply_session_favor_decay(
     *,
     now: datetime | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> None:
+) -> tuple[str, int] | None:
     favor = player.get("divine_favor") or {}
     if (favor.get("patron") or "none") == "none":
-        return
+        return None
     instant = now or datetime.now(UTC)
     source = conn or await db.get_pool()
     if isinstance(source, asyncpg.Pool):
         async with source.acquire() as connection:
-            await _decay_locked(session, player_id, connection, instant)
+            return await _decay_locked(session, player_id, connection, instant)
     else:
-        await _decay_locked(session, player_id, source, instant)
+        return await _decay_locked(session, player_id, source, instant)
 
 
-async def _decay_locked(session: SessionData, player_id: str, connection, now: datetime) -> None:
+async def _decay_locked(session: SessionData, player_id: str, connection, now: datetime) -> tuple[str, int] | None:
     payload = None
     async with connection.transaction():
         row = await connection.fetchrow(
@@ -95,6 +95,8 @@ async def _decay_locked(session: SessionData, player_id: str, connection, now: d
         if player_id == session.primary_player_id:
             session.favor_loss = (payload["patron_id"], -payload["amount"])
         await game_events.publish_game_event(session.room, E.DIVINE_FAVOR_CHANGED, payload, session.event_bus)
+        return payload["patron_id"], -payload["amount"]
+    return None
 
 
 async def hydrate_session_state(

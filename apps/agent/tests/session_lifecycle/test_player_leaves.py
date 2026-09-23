@@ -233,7 +233,7 @@ async def test_departed_member_fresh_connection_hydrates_again_and_old_generatio
     concentration = MagicMock()
     concentration.read_player_concentration = AsyncMock(return_value={"spell_id": None})
     lifecycle = PartyLifecycle(sd.room, sd, queries=queries, resonance_mod=resonance, concentration_mod=concentration)
-    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock) as decay:
+    with patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock, return_value=None) as decay:
         lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity="guest")))
         old_generation = await lifecycle.authorize("guest")
         assert old_generation is not None

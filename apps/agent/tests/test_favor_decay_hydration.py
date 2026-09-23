@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from speech_handles import completed_handle
 
 import session_hydration
 from base_agent import BaseGameAgent
@@ -171,6 +172,8 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
     for player_id in (primary_id, joiner_id):
         await _seed(dev_db_pool, player_id, favor)
     session = SessionData(player_id=primary_id, location_id="loc")
+    voice_session = MagicMock()
+    voice_session.generate_reply.return_value = completed_handle()
     room = MagicMock()
     room.remote_participants = {}
     handlers = {}
@@ -182,7 +185,7 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
     async def get_player(_identity):
         reads_started.set()
         await release_reads.wait()
-        return {"player_id": joiner_id, "divine_favor": favor}
+        return {"player_id": joiner_id, "name": "Aric", "divine_favor": favor}
 
     queries.get_player = AsyncMock(side_effect=get_player)
     res = MagicMock()
@@ -202,7 +205,9 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
             patch("game_events.publish_game_event", side_effect=capture),
         ):
             clock.now.return_value = NOW
-            _setup_party_join(room, session, queries=queries, resonance_mod=res, concentration_mod=conc)
+            _setup_party_join(
+                room, session, agent_session=voice_session, queries=queries, resonance_mod=res, concentration_mod=conc
+            )
             participant = SimpleNamespace(identity=joiner_id)
             handlers["participant_connected"](participant)
             await reads_started.wait()
@@ -212,6 +217,10 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
             await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}))
         assert events == [FIXTURE["joiner"]]
         assert session.favor_loss is None
+        instruction = voice_session.generate_reply.call_args.kwargs["instructions"]
+        assert "Aric" in instruction
+        assert "kaelen's displeasure" in instruction
+        assert "5 favor" in instruction
         assert queries.get_player.await_count == 2
         assert (await _favor(dev_db_pool, primary_id)) == favor
         assert session.party.contains(joiner_id)
