@@ -30,7 +30,7 @@ class TestExplorationAgentConfig:
 
 
 class TestExplorationToolset:
-    def test_count_at_fourteen_under_ceiling(self):
+    def test_count_at_fifteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
         # The unified list is the former CITY_TOOLS (15) + travel (M4.6b, 16) +
@@ -38,7 +38,7 @@ class TestExplorationToolset:
         # M27 story-003 tore out play_sound/set_music_state as LLM tools (18->16) — audio
         # now derives only from deterministic Resolves and the Stage. M28 story-003 tore out
         # award_xp/award_divine_favor (16->14) — rewards derive from Resolves the same way.
-        assert len(EXPLORATION_TOOLS) == 14
+        assert len(EXPLORATION_TOOLS) == 15
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):

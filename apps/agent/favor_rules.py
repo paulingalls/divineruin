@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 def apply_favor_delta(level: int, max_level: int, amount: int) -> int:
     if max_level <= 0:
         raise ValueError("max_level must be positive")
+    if level < 0 or level > max_level:
+        raise ValueError(f"level must be between 0 and {max_level}, got {level}")
     return max(0, min(level + amount, max_level))
 
 

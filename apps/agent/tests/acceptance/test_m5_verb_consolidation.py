@@ -38,6 +38,7 @@ from choice_tools import select
 from inventory_tools import _transact_impl, transact
 from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
+from patron_action_tools import record_patron_action
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
 
@@ -64,7 +65,12 @@ VERB_PRESENCE = [
     # into two verbs, registered only on dispatch.
     (begin_activity, "begin_activity", {"dispatch"}),
     (resolve_activity, "resolve_activity", {"dispatch"}),
+    (record_patron_action, "record_patron_action", {"exploration"}),
 ]
+
+
+def test_patron_action_is_in_verb_presence_registry() -> None:
+    assert [name for _, name, _ in VERB_PRESENCE].count("record_patron_action") == 1
 
 
 # --- registry: no removed noun tool survives ---------------------------------

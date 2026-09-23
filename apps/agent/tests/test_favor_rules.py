@@ -8,7 +8,6 @@ from favor_rules import apply_favor_delta, neglect_decay
 @pytest.mark.parametrize(
     ("level", "cap", "amount", "expected"),
     [
-        (-3, 100, 0, 0),
         (0, 100, -5, 0),
         (0, 100, 5, 5),
         (2, 100, -5, 0),
@@ -16,8 +15,6 @@ from favor_rules import apply_favor_delta, neglect_decay
         (10, 100, 5, 15),
         (100, 100, 0, 100),
         (100, 100, 5, 100),
-        (105, 100, -3, 100),
-        (105, 100, -10, 95),
     ],
 )
 def test_apply_favor_delta(level, cap, amount, expected):
@@ -31,6 +28,12 @@ def test_apply_favor_delta(level, cap, amount, expected):
 def test_nonpositive_cap_is_invalid():
     with pytest.raises(ValueError):
         apply_favor_delta(0, 0, 1)
+
+
+@pytest.mark.parametrize("level", [-1, 101])
+def test_invalid_stored_level(level):
+    with pytest.raises(ValueError, match="level"):
+        apply_favor_delta(level, 100, 5)
 
 
 NOW = datetime(2026, 9, 23, tzinfo=UTC)
