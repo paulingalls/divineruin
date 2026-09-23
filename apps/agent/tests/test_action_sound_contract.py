@@ -121,7 +121,9 @@ def test_no_action_sound_call_has_local_exception_handler():
                     for handler in ancestor.handlers:
                         caught = handler.type
                         types = caught.elts if isinstance(caught, ast.Tuple) else [caught]
-                        if caught is None or any(isinstance(t, ast.Name) and t.id == "Exception" for t in types):
+                        if caught is None or any(
+                            isinstance(t, ast.Name) and t.id in {"Exception", "BaseException"} for t in types
+                        ):
                             violations.append(f"{module}:{node.lineno}")
                 ancestor = parents.get(ancestor)
     assert call_count > 0
