@@ -32,6 +32,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import errand_risk
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from companion_profiles import select_companion_for_archetype
 from errand_resolution import companion_errand_data, resolve_errand_outcome
 from session_data import SessionData
@@ -182,6 +183,7 @@ async def _resolve_companion_errand_impl(
     # window to land its outcome before we raise. Any non-'resolving' row resolves
     # authoritatively on the first attempt, exactly as a single transaction would.
     for attempt in range(_RESOLVE_POLL_ATTEMPTS):
+        fresh_outcome = None
         # Resource-row template: lock the row FOR UPDATE so the read→roll→write is
         # atomic — two concurrent resolves (or one racing the worker) can't both
         # roll before the status persists (ADR 0006: risk rolls once, at resolution).
@@ -242,10 +244,13 @@ async def _resolve_companion_errand_impl(
                     },
                     conn=conn,
                 )
-                return json.dumps(outcome)
+                fresh_outcome = outcome
             # status == 'resolving': exit the `async with` (RELEASE the lock), then
             # sleep below before re-reading — the worker holds no lock during its
             # slow narration window, so the next attempt sees the outcome it lands.
+        if fresh_outcome is not None:
+            await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_RESOLVE_COMPANION_ERRAND"])
+            return json.dumps(fresh_outcome)
         if attempt < _RESOLVE_POLL_ATTEMPTS - 1:
             await sleep(_RESOLVE_POLL_INTERVAL_SECONDS)
 

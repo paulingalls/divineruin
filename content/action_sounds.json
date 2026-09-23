@@ -5,5 +5,15 @@
   {"export": "ACTION_VEIL_WARD_DISMISS", "id": "action_veil_ward_dismiss", "asset": "spell_arcane_force"},
   {"export": "ACTION_VEIL_ANCHOR", "id": "action_veil_anchor", "asset": "spell_arcane_force"},
   {"export": "ACTION_ABILITY", "id": "action_ability", "asset": "spell_cast"},
-  {"export": "ACTION_GATHER", "id": "action_gather", "asset": "item_pickup"}
+  {"export": "ACTION_GATHER", "id": "action_gather", "asset": "item_pickup"},
+  {"export": "ACTION_BEGIN_TRAINING", "id": "action_begin_training", "asset": "sword_clash"},
+  {"export": "ACTION_BEGIN_CRAFTING", "id": "action_begin_crafting", "asset": "shield_block"},
+  {"export": "ACTION_BEGIN_COMPANION_ERRAND", "id": "action_begin_companion_errand", "asset": "footstep_stone"},
+  {"export": "ACTION_BEGIN_EXPERIMENT", "id": "action_begin_experiment", "asset": "spell_arcane_force"},
+  {"export": "ACTION_BEGIN_WORKSPACE", "id": "action_begin_workspace", "asset": "notification"},
+  {"export": "ACTION_RESOLVE_COMPANION_ERRAND", "id": "action_resolve_companion_errand", "asset": "notification"},
+  {"export": "ACTION_RESOLVE_TRAINING_MIDPOINT", "id": "action_resolve_training_midpoint", "asset": "notification"},
+  {"export": "ACTION_LEARN_RECIPE", "id": "action_learn_recipe", "asset": "discovery_chime"},
+  {"export": "ACTION_LEARN_SPELL", "id": "action_learn_spell", "asset": "discovery_chime"},
+  {"export": "ACTION_REPAIR_ITEM", "id": "action_repair_item", "asset": "shield_block"}
 ]

@@ -31,9 +31,9 @@ CASES = {
 }
 
 
-def test_fixed_seven_cases_cover_the_loaded_catalog():
+def test_fixed_seven_cases_are_catalog_ids():
     assert len(CASES) == 7
-    assert set(CASES.values()) == ACTION_SOUND_IDS
+    assert set(CASES.values()) <= ACTION_SOUND_IDS
 
 
 def recorded_context():

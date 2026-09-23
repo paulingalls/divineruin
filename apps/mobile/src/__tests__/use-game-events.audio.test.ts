@@ -74,7 +74,7 @@ test("every combat sound reaches the platform player", () => {
 });
 
 test("every action catalog sound reaches the platform player", () => {
-  expect(actionSounds).toHaveLength(7);
+  expect(actionSounds).toHaveLength(17);
   expect(new Set(actionSounds.map((row) => row.id))).toEqual(
     new Set([
       "action_travel",
@@ -84,6 +84,16 @@ test("every action catalog sound reaches the platform player", () => {
       "action_veil_anchor",
       "action_ability",
       "action_gather",
+      "action_begin_training",
+      "action_begin_crafting",
+      "action_begin_companion_errand",
+      "action_begin_experiment",
+      "action_begin_workspace",
+      "action_resolve_companion_errand",
+      "action_resolve_training_midpoint",
+      "action_learn_recipe",
+      "action_learn_spell",
+      "action_repair_item",
     ]),
   );
   for (const row of actionSounds) expectEventPlays(row.id);
