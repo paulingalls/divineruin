@@ -12,6 +12,28 @@ from world_effect_targets import is_valid_disposition_target
 CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
 
 
+def _assert_loot_drop_owner(table: dict, drop: dict, item_ids: set[str], material_ids: set[str]) -> None:
+    drop_id = drop["item_id"]
+    owners = int(drop_id in item_ids) + int(drop_id in material_ids)
+    assert owners == 1, (
+        f"Loot table '{table['id']}' references {'ambiguous' if owners == 2 else 'unknown'} drop '{drop_id}'"
+    )
+
+
+@pytest.mark.parametrize(
+    "drop_id,expected",
+    [("probe_item", None), ("iron_ore", None), ("missing_drop", "unknown"), ("crystal_flask", "ambiguous")],
+)
+def test_loot_table_drops_catalog_ownership(drop_id: str, expected: str | None) -> None:
+    table = {"id": "loot_probe"}
+    drop = {"item_id": drop_id}
+    if expected:
+        with pytest.raises(AssertionError, match=f"loot_probe.*{expected}.*{drop_id}"):
+            _assert_loot_drop_owner(table, drop, {"probe_item", "crystal_flask"}, {"iron_ore", "crystal_flask"})
+    else:
+        _assert_loot_drop_owner(table, drop, {"probe_item", "crystal_flask"}, {"iron_ore", "crystal_flask"})
+
+
 def _load_json(filename: str) -> list[dict]:
     path = CONTENT_DIR / filename
     if not path.exists():
@@ -329,11 +351,16 @@ class TestLootAndCurrencyContent:
 
     def test_loot_table_drops_reference_real_items(self):
         item_ids = _load_ids("items.json")
-        for table in _load_json("loot_tables.json"):
-            for drop in table.get("drops", []):
-                assert drop["item_id"] in item_ids, (
-                    f"Loot table '{table['id']}' references unknown item '{drop['item_id']}'"
-                )
+        material_ids = _load_ids("materials_catalog.json")
+        path = CONTENT_DIR / "loot_tables.json"
+        assert path.is_file(), path
+        tables = json.loads(path.read_text())
+        assert tables, "empty loot corpus"
+        for table in tables:
+            drops = table.get("drops", [])
+            assert drops, f"Loot table '{table['id']}' has no drops"
+            for drop in drops:
+                _assert_loot_drop_owner(table, drop, item_ids, material_ids)
 
     def test_material_sell_value_below_craft_value(self):
         # D78: selling a raw material is always worth less than crafting with it — the crafting

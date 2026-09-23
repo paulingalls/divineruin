@@ -269,9 +269,11 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                             f"unknown disposition target '{shorthand}'"
                         )
 
+    material_rows = await conn.fetch("SELECT id FROM materials_catalog")
+    material_ids = {row["id"] for row in material_rows}
+
     # Loot & currency (M4.7 story-002): every enemy must carry a category and a loot_table_id
-    # that resolves to a loot_tables row, and every drop's item_id must exist in items. Fail loud
-    # at seed time so a typo can't ship a combat that grants nothing (or crashes) on victory.
+    # that resolves to a loot_tables row.
     loot_rows = await conn.fetch("SELECT id, data FROM loot_tables")
     loot_table_ids = {row["id"] for row in loot_rows}
     for row in loot_rows:
@@ -279,8 +281,11 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         errors.extend(validate_loot_table(data))
         for drop in data.get("drops", []):
             item_ref = drop.get("item_id")
-            if item_ref not in item_ids:
-                errors.append(f"Loot table '{row['id']}' references unknown item '{item_ref}'")
+            owners = int(item_ref in item_ids) + int(item_ref in material_ids)
+            if owners == 0:
+                errors.append(f"Loot table '{row['id']}' references unknown drop '{item_ref}'")
+            elif owners == 2:
+                errors.append(f"Loot table '{row['id']}' references ambiguous drop '{item_ref}'")
 
     encounter_data_rows = await conn.fetch("SELECT id, data FROM encounter_templates")
     for row in encounter_data_rows:
@@ -304,9 +309,6 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     # and its resource_type to a materials_catalog row; every location resource_table entry must also
     # resolve to materials_catalog. Fail loud at seed (mirrors the loot_tables block) so a typo can't
     # ship a node sitting nowhere or granting a nonexistent material.
-    material_rows = await conn.fetch("SELECT id FROM materials_catalog")
-    material_ids = {row["id"] for row in material_rows}
-
     node_rows = await conn.fetch("SELECT id, data FROM gathering_nodes")
     for row in node_rows:
         data = json.loads(row["data"])
