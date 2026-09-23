@@ -134,6 +134,8 @@ class SessionData:
     session_quests_progressed: list[str] = field(default_factory=list)
     session_locations_visited: list[str] = field(default_factory=list)
     ending_requested: bool = False
+    departing_player_id: str | None = None
+    departure_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
     player_disconnected: bool = False
     disconnect_time: float = 0.0
 

@@ -2,6 +2,7 @@ import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
@@ -81,7 +82,63 @@ test("session_init with null character does not crash", () => {
 
 // --- handleGameEvent: session_end ---
 
+test("session_end for another player leaves this player's session untouched", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "host", name: "Host" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+  sessionStore.getState().setPhase("active");
+  hudStore.getState().setResonanceState("flickering");
+  const before = sessionStore.getState();
+  const character = characterStore.getState().character;
+  const hud = hudStore.getState();
+  handleGameEvent({ type: "session_end", player_id: "guest", summary: "Guest leaves." });
+  expect(sessionStore.getState().phase).toBe(before.phase);
+  expect(sessionStore.getState().sessionSummary).toBe(before.sessionSummary);
+  expect(characterStore.getState().character).toBe(character);
+  expect(hudStore.getState()).toBe(hud);
+});
+
+test("session_end for the local player shows their summary", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "guest", name: "Guest" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+  sessionStore.getState().setPhase("active");
+  handleGameEvent({ type: "session_end", player_id: "guest", summary: "Guest leaves." });
+  expect(sessionStore.getState().phase).toBe("summary");
+  expect(sessionStore.getState().sessionSummary?.summary).toBe("Guest leaves.");
+});
+
+test("failed guest departure restores the local active session", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "guest", name: "Guest" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+  sessionStore.getState().setPhase("active");
+  handleGameEvent({ type: "session_end", player_id: "guest", summary: "Guest leaves." });
+  handleGameEvent({ type: "session_end", player_id: "guest", cancelled: true });
+  expect(sessionStore.getState().phase).toBe("active");
+  expect(sessionStore.getState().sessionSummary).toBeNull();
+});
+
 test("session_end with summary populates sessionSummary and sets phase to summary", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "host", name: "Host" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
   sessionStore.getState().setPhase("active");
   handleGameEvent({
     type: "session_end",

@@ -42,7 +42,7 @@ interface SessionState {
   setLocationContext: (ctx: LocationContext) => void;
   setCombat: (inCombat: boolean) => void;
   setReconnecting: (reconnecting: boolean) => void;
-  setSessionSummary: (summary: SessionSummary) => void;
+  setSessionSummary: (summary: SessionSummary | null) => void;
   setCorruptionLevel: (level: number) => void;
   setCombatDifficulty: (difficulty: CombatDifficulty) => void;
   reset: () => void;

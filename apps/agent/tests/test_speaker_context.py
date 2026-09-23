@@ -210,7 +210,7 @@ async def test_session_init_uses_host_during_guest_handback():
 
 
 @pytest.mark.asyncio
-async def test_session_end_recap_survives_guest_close_task():
+async def test_session_end_recap_survives_host_close_task():
     sd = party_session()
     sd.room = MagicMock()
     sd.room.isconnected.return_value = True
@@ -222,7 +222,7 @@ async def test_session_end_recap_survives_guest_close_task():
         patch("session_end.generate_session_summary", new_callable=AsyncMock, return_value=summary),
         patch("session_end.db_mutations.save_session_summary", new_callable=AsyncMock) as save,
     ):
-        with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+        with sd._bind_authenticated_actor("host", 1, lambda *_: None):
             await end_session._func(MagicMock(userdata=sd), "goodbye")
             assert sd.ending_requested
             background._on_session_end(CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
