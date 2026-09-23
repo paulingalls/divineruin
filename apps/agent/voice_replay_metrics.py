@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, cast
 
+from gameplay_llm import LUNA_MODEL
 from voice_replay_audio import ReceivedFrame, find_phrase, normalized_words
 
 
@@ -224,7 +225,7 @@ def validate_timing_row(row: dict[str, Any]) -> None:
     usage = _required_mapping(row, "provider_usage")
     expected_usage = {
         "stt": ("deepgram", "nova-3"),
-        "llm": ("openai", "gpt-5.6-luna"),
+        "llm": ("openai", LUNA_MODEL),
         "tts": ("inworld", "inworld-tts-2"),
         "analysis_stt": ("deepgram", "nova-3"),
     }

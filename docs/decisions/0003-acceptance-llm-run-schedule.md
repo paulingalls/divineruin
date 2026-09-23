@@ -78,3 +78,14 @@ only case by case, when a human approves a specific run for a legitimate concern
 `ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. The hook strips both flags.
 Enforced by `apps/agent/tests/_paid_tests.py` and `tests/test_paid_test_gate.py`, and at the
 hook boundary by `scripts/test-prepush-environment.sh`.
+
+## Addendum (2026-09-22) — GPT-6 Luna gameplay route
+
+The default gameplay model is now `gpt-6-luna`, retaining reasoning effort none,
+strict tool schemas, and the explicit `GAMEPLAY_LLM=anthropic` rollback. The cost
+report uses the [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna)
+standard text rates retrieved 2026-09-22: $0.10 input, $0.01 cached input, and
+$0.50 output per million tokens. The 2026-09-20 GPT-5.6 Luna evidence above
+remains historical. A human-approved paid run on 2026-09-22 passed the GPT-6
+gather continuation and all 27 seeded matrix rows; `agent_strict_mode.md` §12
+records usage and cost. No latency improvement is claimed.

@@ -11,6 +11,7 @@ import pytest
 from livekit.agents.metrics import LLMModelUsage, STTMetrics, STTModelUsage, TTSMetrics
 from livekit.agents.metrics.base import Metadata
 
+from gameplay_llm import LUNA_MODEL
 from voice_replay_audio import (
     ReceivedFrame,
     audio_frames,
@@ -273,7 +274,7 @@ def _session_usage() -> list:
         STTModelUsage(provider="Deepgram", model="nova-3", audio_duration=5.0),
         LLMModelUsage(
             provider="api.openai.com",
-            model="gpt-5.6-luna",
+            model=LUNA_MODEL,
             input_tokens=1_000,
             input_cached_tokens=750,
             output_tokens=30,
@@ -317,7 +318,7 @@ def test_provider_usage_keeps_billable_counts_from_livekit_models():
         _session_usage(),
         _tts_metrics(),
         _analysis_metrics(),
-        luna_model="gpt-5.6-luna",
+        luna_model=LUNA_MODEL,
         inworld_model="inworld-tts-2",
     )
 
@@ -337,7 +338,7 @@ def test_row_model_is_the_model_the_provider_named_not_the_configured_constant(s
             _session_usage(),
             _tts_metrics(spoken),
             _analysis_metrics(),
-            luna_model="gpt-5.6-luna",
+            luna_model=LUNA_MODEL,
             inworld_model="inworld-tts-2",
         )
 
@@ -403,7 +404,7 @@ def _valid_row(scenario: str = "affected") -> dict:
         "received_audio": {"path": "received.wav", "sha256": "c", "bytes": 100},
         "provider_usage": {
             "stt": {"provider": "deepgram", "model": "nova-3", "units": 1},
-            "llm": {"provider": "openai", "model": "gpt-5.6-luna", "units": 1},
+            "llm": {"provider": "openai", "model": LUNA_MODEL, "units": 1},
             "tts": {"provider": "inworld", "model": "inworld-tts-2", "units": 1},
             "analysis_stt": {"provider": "deepgram", "model": "nova-3", "units": 1},
         },
@@ -437,6 +438,13 @@ def test_timing_row_requires_complete_usage_audio_tools_and_state():
         del broken[path[0]][path[1]]
         with pytest.raises(ValueError):
             validate_timing_row(broken)
+
+
+def test_timing_row_rejects_previous_luna_model():
+    row = _valid_row()
+    row["provider_usage"]["llm"]["model"] = "gpt-5.6-luna"
+    with pytest.raises(ValueError, match="requires llm usage"):
+        validate_timing_row(row)
 
 
 def test_timing_row_rejects_duplicate_or_missing_grant_and_direct_mutation():

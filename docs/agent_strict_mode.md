@@ -464,3 +464,21 @@ production 1.0-second floor and excludes the per-player transcriber queue and
 `MultiplayerInput` serialization. These values therefore cannot establish production
 end-to-end latency. Stage-level production measurement and real microphone testing
 remain follow-up optimization, not rollout gates.
+
+## 12. GPT-6 Luna route (2026-09-22)
+
+The default gameplay route now names `gpt-6-luna`. It retains
+`reasoning_effort="none"`, strict tool schemas, and `GAMEPLAY_LLM=anthropic` as an
+explicit rollback. The current cost report uses the [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna)
+standard text rates retrieved 2026-09-22: $0.10 per million input tokens, $0.01
+per million cached input tokens, and $0.50 per million output tokens.
+
+The 2026-09-20 measurements above belong to GPT-5.6 Luna. On 2026-09-22 the human
+approved one paid run of each GPT-6 acceptance. The gather continuation passed:
+narration with no follow-up call, 5,679 input and 26 output tokens. The 27-case
+seeded matrix passed all 27 rows and the completeness guard: 56 model requests,
+268,402 input tokens, 226,600 cached input tokens, 1,753 output tokens, and an
+estimated **$0.0073227**. The GPT-5.6 run cost $0.00796772 with 266,296 input
+tokens cached. At that cache hit rate, GPT-6 rates would price this run near
+$0.0038, about half; the colder prompt cache cancelled most of the rate cut.
+Voice latency was not measured for GPT-6.

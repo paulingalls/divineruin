@@ -29,11 +29,11 @@ from system_prompts import BLACKSMITH_SYSTEM_PROMPT, COMBAT_SYSTEM_PROMPT, DISPA
 from voices import EMOTION_RATES, VOICE_ENV_VARS
 
 REPORT_PATH = Path("/tmp/divineruin_strict_luna_gameplay.jsonl")
-PRICE_SOURCE = "https://developers.openai.com/api/docs/models/gpt-5.6-luna"
-PRICE_RETRIEVED = "2026-09-20"
-INPUT_PER_MILLION = 0.20
-CACHED_INPUT_PER_MILLION = 0.02
-OUTPUT_PER_MILLION = 1.20
+PRICE_SOURCE = "https://developers.openai.com/api/docs/models/gpt-6-luna"
+PRICE_RETRIEVED = "2026-09-22"
+INPUT_PER_MILLION = 0.10
+CACHED_INPUT_PER_MILLION = 0.01
+OUTPUT_PER_MILLION = 0.50
 
 
 def _profile(case, sd) -> tuple[str, list]:

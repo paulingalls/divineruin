@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from acceptance.strict_luna_assertions import STATE_BRANCHES, assert_check_payload, state_branch
 from acceptance.strict_luna_fixtures import MANIFEST_PATH, REQUIRED_CASE_IDS, load_case_manifest
-from acceptance.strict_luna_runtime import _cost, grade_trace
+from acceptance.strict_luna_runtime import PRICE_RETRIEVED, PRICE_SOURCE, _cost, grade_trace
 from livekit.agents import llm
 from livekit.agents.voice.run_result import ChatMessageEvent, FunctionCallEvent
 
@@ -176,5 +176,7 @@ def test_check_rows_reject_wrong_semantic_output(case_id: str, payload: dict) ->
 
 def test_luna_cost_separates_cached_input() -> None:
     assert _cost({"total_input": 1_000_000, "total_cache_read": 250_000, "total_output": 100_000}) == pytest.approx(
-        0.275
+        0.1275
     )
+    assert PRICE_SOURCE == "https://developers.openai.com/api/docs/models/gpt-6-luna"
+    assert PRICE_RETRIEVED == "2026-09-22"
