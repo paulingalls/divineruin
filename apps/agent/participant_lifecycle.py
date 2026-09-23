@@ -26,6 +26,7 @@ from livekit.agents import Agent, AgentSession
 import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
+import room_admin
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
@@ -208,6 +209,7 @@ class PartyLifecycle:
         # join is still in flight overwrites its entry under the same identity.
         self._spawned_joins: set[asyncio.Task[None]] = set()
         self._join_failures: dict[str, tuple[int, BaseException]] = {}
+        self._departed: set[str] = set()
         self._closed = False
 
         room.on("participant_connected", self._on_connected)
@@ -249,6 +251,13 @@ class PartyLifecycle:
 
     def _on_connected(self, participant: rtc.RemoteParticipant) -> None:
         identity = participant.identity
+        if identity in self._departed:
+            logger.warning("Rejected departed party member %r reconnecting", identity)
+            task = asyncio.create_task(room_admin.remove_player(self.room.name, identity))
+            self._spawned_joins.add(task)
+            task.add_done_callback(self._spawned_joins.discard)
+            task.add_done_callback(lambda finished, pid=identity: self._report_rejected_reconnect(finished, pid))
+            return
         if identity in self._live:
             return
         generation = self._last_generation.get(identity, 0) + 1
@@ -271,6 +280,21 @@ class PartyLifecycle:
         generation = self._live.pop(identity, None)
         if generation is not None:
             self._revocations[(identity, generation)].set()
+
+    def mark_departed(self, identity: str) -> None:
+        self._departed.add(identity)
+        self._revoke(identity)
+
+    def _report_rejected_reconnect(self, task: asyncio.Task[None], identity: str) -> None:
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            logger.error(
+                "Failed to remove departed member %r after reconnect",
+                identity,
+                exc_info=(type(error), error, error.__traceback__),
+            )
 
     async def aclose(self) -> None:
         if self._closed:

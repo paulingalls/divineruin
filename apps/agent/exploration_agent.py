@@ -11,10 +11,8 @@ injection, affect analysis forwarding, the L5 specialization tap listener, and
 delayed session close. The session END is not here: see ``session_end.py``.
 """
 
-import asyncio
 import logging
 import time
-from functools import partial
 from typing import Any
 
 from livekit import agents
@@ -40,18 +38,10 @@ from session_data import SessionData
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from speaker_context import speaker_line
 from system_prompts import build_system_prompt
-from task_logging import log_task_failure
 from travel_tools import travel
 from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
-
-# The pause between the DM's narrative wrap-up and the actual session close, so the
-# player hears the goodbye finish before the recap arrives. Named so a test can shorten
-# it without patching `asyncio.sleep`, which is the shared module object — patching it
-# there stubs the vendor's timing for everything running in the same block.
-CLOSE_DELAY_S = 3.0
-
 
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
@@ -123,8 +113,6 @@ class ExplorationAgent(BaseGameAgent):
         )
         self._initial_location = initial_location
         self._spec_tap: SpecializationTapHandler | None = None
-        self._close_scheduled: bool = False
-        self._close_task: asyncio.Task | None = None
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
@@ -179,28 +167,6 @@ class ExplorationAgent(BaseGameAgent):
         affect = self._affect_analyzer.get_current_vector()
         if affect:
             turn_ctx.add_message(role="assistant", content=format_affect_context(affect))
-
-    async def on_agent_turn_completed(
-        self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
-    ) -> None:
-        sd: SessionData = self.session.userdata
-        if sd.ending_requested and not self._close_scheduled:
-            self._close_scheduled = True
-            # NOT _fire_and_forget: that bag is cancelled by BaseGameAgent.on_exit, and
-            # on_exit is what this task's own aclose() is waiting on — cancelling it from
-            # inside it recursed until the close emit was never reached (bug 7a04caf1).
-            # Closing the session is session-scoped work; the agent only holds the handle.
-            self._close_task = asyncio.create_task(self._delayed_close())
-            # Leaving the bag also left the failure unlogged: `self.session` raises
-            # RuntimeError once the agent is no longer running, so a handoff inside the
-            # wrap-up window would silently abandon the close — and with it the recap.
-            self._close_task.add_done_callback(
-                partial(log_task_failure, logger=logger, message="Delayed session close failed")
-            )
-
-    async def _delayed_close(self) -> None:
-        await asyncio.sleep(CLOSE_DELAY_S)
-        await self.session.aclose()
 
     def static_prompt(self, sd: SessionData) -> str:
         # Rebuilt from LIVE state rather than returning the constructor's instructions: the

@@ -261,7 +261,13 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.SESSION_END: {
+      if (!isEventForLocalPlayer(event.player_id)) break;
       const store = sessionStore.getState();
+      if (event.cancelled === true) {
+        store.setSessionSummary(null);
+        store.setPhase("active");
+        break;
+      }
       if (typeof event.summary === "string") {
         const rawMoments = Array.isArray(event.story_moments)
           ? (event.story_moments as Record<string, unknown>[])
