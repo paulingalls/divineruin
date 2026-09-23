@@ -4,16 +4,16 @@
 
 Defines the full creature catalog, from stat block schema through regional creatures, Hollow special mechanics, and the encounter builder. Provides the DM agent with a complete library of adversaries and the tools to assemble balanced encounters.
 
-## Audit Status (Sprint-003)
+## Audit Status (Sprint-045)
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: DEFERRED / NOT_STARTED.** Phase 7 is unshipped at the data and schema layers. There is no `content/creatures.json`, no `creatures` DB table, no `validate_creature_stat_block`, no agent tool family for creatures/loot/harvesting/encounter generation. The shipped template substrate is `content/encounter_templates.json` (10 hand-authored encounters consumed by `apps/agent/db_content_queries.py:183 get_encounter_template()` and `apps/agent/combat_init.py:55 _start_combat_impl()`), using a flat enemy schema that is NOT the M7.1 universal stat block (no `hollow` nested fields, no `behavior`, no `narration`, no `audio` sub-objects, no `loot`, no complete `passives/actives/reactions` catalog or universal `save_proficiencies` schema; template enemies do carry `category`, `role`, and loot keys).
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, and two Tier 1 Hollow exemplars are shipped. The regional catalog, creature agent tools, and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
-| M7.1 — Creature Stat Block Schema | 0 | 0 | 9 |
-| M7.2 — Regional Creature Catalog | 0 | 1 | 10 |
+| M7.1 — Creature Stat Block Schema | 7 | 0 | 2 |
+| M7.2 — Regional Creature Catalog | 1 | 1 | 9 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
@@ -41,22 +41,22 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Behavior fields: aggression pattern, retreat threshold, group tactics
 - Narration fields: appearance_cue, combat_cue, death_cue (audio-first descriptions for DM)
 - Audio fields: ambient_sound, attack_sound, death_sound
-- Loot schema: guaranteed[], chance[] (item, probability, quantity), hollow_residue_flag
+- Loot schema: `loot_table_id` referencing `content/loot_tables.json`; its drops carry chance and quantity, and the table carries `hollow_residue`
 - XP reward per creature
 - Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
 
 **Acceptance criteria:**
-- [ ] Schema supports all 6 creature categories with shared base fields
-- [ ] Hollow-specific nested fields are optional and only validated when category is "hollow"
-- [ ] All attack entries include name, attribute, damage_dice, damage_type, range, and optional effects
+- [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->
+- [x] Hollow-specific nested fields are optional and only validated when category is "hollow" <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
+- [x] All attack entries include the canonical template’s name, type, reach, to_hit, damage, damage_type, special, and audio <!-- verified apps/agent/tests/test_creature_schema.py::test_every_spec_field_is_required; supersedes the older attribute/damage_dice/range wording -->
 - [ ] Tier system correctly maps tiers 1-4 to player level ranges
-- [ ] Narration fields provide audio-first cues (sound/smell before sight)
-- [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified 2026-09-23: guaranteed and chance behavior shipped by M4.7 story-002; table metadata extended in story-122, NOT as a creature-stat-block field. content/loot_tables.json `drops[]` = {item_id, chance, quantity, optional requires} with chance 1.0 = guaranteed (loot_hollow_warden, loot_cult_leader, loot_hollowed_knight); rolled by apps/agent/encounter_loot.py:derive_role_loot(). RED-if-broken: apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity and ::test_standard_loot_omits_entries_whose_chance_fails. Residual: no `guaranteed[]`/`chance[]` split; optional `requires: [{skill, tier}]` and table-level `hollow_residue: bool` are seed-validated data, with requirements not enforced during drops. Loot is referenced from the enemy by `loot_table_id`, not embedded. The M7.1 row of the Sprint-003 Audit Status table above (0 confirmed / 9 NOT_SHIPPED) is stale by this one item. -->
-- [ ] `validate_creature_stat_block` rejects invalid entries with specific error messages
-- [ ] DB migration runs cleanly with proper indexes on category, tier, and name
-- [ ] Tests cover validation for all 6 categories including Hollow edge cases
+- [ ] Narration fields provide audio-first cues (sound/smell before sight); both exemplars still lead some cues with sight, so behavior is not proven
+- [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity; apps/agent/tests/combat/test_encounter_loot.py::test_standard_loot_omits_entries_whose_chance_fails; `loot_table_id` supersedes nested guaranteed[]/chance[] loot -->
+- [x] `validate_creature_stat_block` rejects invalid entries with specific error messages <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
+- [x] DB migration runs cleanly with proper indexes on category, tier, and name <!-- verified apps/agent/tests/test_creature_catalog.py::test_catalog_columns_and_indexes -->
+- [x] Tests cover validation for all 6 categories including Hollow edge cases <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 
 **Key references:**
 - *Game Mechanics Bestiary — Creature Stat Block Template*
@@ -95,7 +95,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] Humanoid enemies have equipment-based attacks matching their role
 - [ ] `query_creatures_by_region` filters correctly by region and tier
 - [ ] `query_creature_by_id` returns null/error for nonexistent IDs
-- [ ] `content/creatures.json` passes schema validation for all entries
+- [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/test_creature_catalog.py::test_catalog_columns_and_indexes -->
 - [ ] Tests verify creature distribution across regions and tier balance
 
 **Key references:**

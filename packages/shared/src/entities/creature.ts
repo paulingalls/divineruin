@@ -195,3 +195,40 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   field(creature, "xp_reward", "", "integer");
   return problems;
 }
+
+const INTEGER_KEYS = new Set([
+  "tier",
+  "level",
+  "hp",
+  "ac",
+  "speed",
+  "STR",
+  "DEX",
+  "CON",
+  "INT",
+  "WIS",
+  "CHA",
+  "reach",
+  "to_hit",
+  "corruption_aura",
+  "resonance_on_death",
+  "xp_reward",
+]);
+
+export function validateCreatureJson(raw: string): string[] {
+  const block: unknown = JSON.parse(raw);
+  const errors = Array.isArray(block)
+    ? block.flatMap(validateCreatureStatBlock)
+    : validateCreatureStatBlock(block);
+  const tokens = raw.match(/"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[:,{}[\]]/g) ?? [];
+  for (let i = 0; i < tokens.length - 2; i++) {
+    const token = tokens[i]!;
+    if (!token.startsWith('"') || tokens[i + 1] !== ":") continue;
+    const key: unknown = JSON.parse(token);
+    if (typeof key === "string" && INTEGER_KEYS.has(key) && /[.eE]/.test(tokens[i + 2]!)) {
+      const error = `${key}: expected integer`;
+      if (!errors.includes(error)) errors.push(error);
+    }
+  }
+  return errors;
+}

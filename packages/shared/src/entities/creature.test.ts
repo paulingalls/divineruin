@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
-import { validateCreatureStatBlock } from "./creature";
+import { validateCreatureJson, validateCreatureStatBlock } from "./creature";
 
 type Case = {
   name: string;
   block: Record<string, unknown>;
   expected?: string[];
   spec_derived?: string;
+  raw_integer_token?: string;
 };
 const corpus = (await Bun.file(
   new URL("../../fixtures/creature_blocks.json", import.meta.url),
@@ -36,11 +37,32 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
   }
   for (const row of invalid) {
     expect(row.expected?.length).toBeGreaterThan(0);
-    expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
+    if (row.raw_integer_token) {
+      const raw = JSON.stringify(row.block).replace(/"level":8/, row.raw_integer_token);
+      expect(validateCreatureJson(raw)).toEqual(row.expected!);
+    } else expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
   }
 }
 
-test("shared creature corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("real_catalog_and_injected_invalid_entry", async () => {
+  const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
+  const entries = JSON.parse(raw) as Record<string, unknown>[];
+  expect(new Set(entries.map((row) => row.id))).toEqual(
+    new Set(["hollow_shadeling", "hollow_hollowmoth"]),
+  );
+  expect(validateCreatureJson(raw)).toEqual([]);
+  const invalid = {
+    ...entries[0]!,
+    attacks: [{ ...(entries[0]!.attacks as object[])[0], damage: 4 }],
+  };
+  expect(validateCreatureJson(JSON.stringify([invalid, entries[1]]))).toContain(
+    "attacks[0].damage: expected string",
+  );
+  expect(validateCreatureJson(raw.replace(/"level": 1/, '"level": 8.0'))).toContain(
+    "level: expected integer",
+  );
+});
 test("corpus floors", () => {
   expect(() => checkCorpus([], corpus.invalid)).toThrow();
   expect(() => checkCorpus(corpus.valid, [])).toThrow();

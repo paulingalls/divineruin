@@ -52,6 +52,32 @@ def test_m47_m48_evidence_paths() -> None:
                     assert re.search(rf"^(async )?def {test_name}\(", read(path), re.M), (test_name, line)
 
 
+def test_bestiary_checked_evidence_paths() -> None:
+    doc = read("docs/milestones/07_bestiary.md")
+    lines = []
+    for line in doc.splitlines():
+        match = BOX.match(line)
+        if match and match[1].lower() == "x":
+            lines.append(line)
+    assert lines
+    readme = read("docs/milestones/README.md")
+    row = next(row for row in ROW.findall(readme) if row[1] == "07_bestiary.md")
+    assert len(lines) == int(row[2])
+    for line in lines:
+        comment = re.search(r"<!-- verified (.*?) -->", line)
+        assert comment, line
+        evidence = re.findall(r"((?:apps/agent/tests|packages/shared/src)/[\w/.]+\.(?:py|ts))(?:::(\w+))?", comment[1])
+        assert evidence, line
+        for path, test_name in evidence:
+            assert (ROOT / path).is_file(), (path, line)
+            if test_name:
+                source = read(path)
+                assert re.search(rf"(?:def {re.escape(test_name)}\(|test\([\"']{re.escape(test_name)}[\"'])", source), (
+                    test_name,
+                    line,
+                )
+
+
 def test_patron_roster_matches_content() -> None:
     gods = json.loads(read("content/gods.json"))
     ids = [god["god_id"] for god in gods]
