@@ -1,4 +1,4 @@
-"""Spec pins for the first six natural bestiary entries."""
+"""Spec pins for the first thirteen natural bestiary entries."""
 
 import asyncio
 import importlib
@@ -8,6 +8,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from creature_catalog_story_126_spec import ABILITIES as NEW_ABILITIES
+from creature_catalog_story_126_spec import BEHAVIOR as NEW_BEHAVIOR
+from creature_catalog_story_126_spec import LOOT as NEW_LOOT
+from creature_catalog_story_126_spec import SPEC as NEW_SPEC
 
 from creature_schema import validate_creature_stat_block
 
@@ -118,7 +122,7 @@ SPEC = {
         ("STR", "CON"),
         (
             ("Slam", "melee", 10, 7, "2d8+4", "bludgeoning", "Target pushed 10 ft"),
-            ("Thorn Barrage", "ranged", 30, 0, "2d6", "piercing", "DEX save DC 14. 15 ft cone. Half on success"),
+            ("Thorn Barrage", "area", 30, 0, "2d6", "piercing", "DEX save DC 14. 15 ft cone. Half on success"),
         ),
         "thornveld",
         ("thornveld", "greyvale"),
@@ -242,6 +246,18 @@ ABILITIES = {
     ),
 }
 
+LOOT = {
+    key: tuple(
+        (item, quantity, chance, () if requirement is None else (tuple(requirement.split(":")),))
+        for item, quantity, chance, requirement in drops
+    )
+    for key, drops in LOOT.items()
+}
+SPEC.update(NEW_SPEC)
+LOOT.update(NEW_LOOT)
+BEHAVIOR.update(NEW_BEHAVIOR)
+ABILITIES.update(NEW_ABILITIES)
+
 SOUND_OR_SMELL_LEXICON = (
     "howl",
     "whine",
@@ -276,6 +292,14 @@ SOUND_OR_SMELL_LEXICON = (
     "squelch",
     "crunch",
     "rasp",
+    "screech",
+    "rattle",
+    "gurgle",
+    "splash",
+    "crackle",
+    "slosh",
+    "groan",
+    "hum",
 )
 SIGHT_LEXICON = (
     "see",
@@ -328,7 +352,8 @@ def test_spec_stats_regions_and_behavior():
             tuple(row["regions"]),
         )
         assert actual == expected, key
-        assert row["multiattack"] is None and row["hollow"] is None and row["reactions"] == []
+        assert row["multiattack"] == ("2 attacks — one Bite and one Tail" if key == "cave_wyrm" else None)
+        assert row["hollow"] is None and row["reactions"] == []
         behavior = row["behavior"]
         assert (
             behavior["tactics"],
@@ -345,6 +370,20 @@ def test_spec_stats_regions_and_behavior():
     greyvale = [row for row in rows.values() if row["home_region"] == "greyvale"]
     assert greyvale
     assert all(row["tier"] == 1 for row in greyvale)
+    keldaran = [row for row in rows.values() if row["home_region"] == "keldaran_mountains"]
+    assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
+
+
+def drop_rows(table):
+    return tuple(
+        (
+            drop["item_id"],
+            drop["quantity"],
+            drop["chance"],
+            tuple((r["skill"], r["tier"]) for r in drop["requires"]),
+        )
+        for drop in table["drops"]
+    )
 
 
 def test_spec_loot_and_owners():
@@ -357,17 +396,13 @@ def test_spec_loot_and_owners():
         table = tables[rows[key]["loot_table_id"]]
         assert table["id"] == f"loot_{key}"
         assert seed_content.validate_loot_table(table) == []
-        actual = tuple(
-            (
-                drop["item_id"],
-                drop["quantity"],
-                drop["chance"],
-                ":".join((r[0]["skill"], r[0]["tier"])) if (r := drop["requires"]) else None,
-            )
-            for drop in table["drops"]
-        )
-        assert actual == expected, key
+        assert drop_rows(table) == expected, key
         assert all(int(drop["item_id"] in items) + int(drop["item_id"] in materials) == 1 for drop in table["drops"])
+
+
+def test_war_golem_four_spec_drops():
+    tables = {row["id"]: row for row in catalog("loot_tables.json")}
+    assert drop_rows(tables["loot_war_golem"]) == NEW_LOOT["war_golem"]
 
 
 SENSORY = re.compile(r"\b(?:" + "|".join(SOUND_OR_SMELL_LEXICON) + r")(?:s|ed|ing)?\b", re.I)

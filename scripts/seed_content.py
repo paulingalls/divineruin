@@ -93,6 +93,8 @@ def validate_loot_table(table: dict) -> list[str]:
     """Validate authored loot data. M34 harvesting enforces requirements; loot rolls do not."""
     table_id = table.get("id", "?")
     errors: list[str] = []
+    if not table.get("drops"):
+        errors.append(f"Loot table '{table_id}' drops must be non-empty")
     if "hollow_residue" in table and type(table["hollow_residue"]) is not bool:
         errors.append(f"Loot table '{table_id}' hollow_residue must be a bool")
     for drop in table.get("drops", []):
