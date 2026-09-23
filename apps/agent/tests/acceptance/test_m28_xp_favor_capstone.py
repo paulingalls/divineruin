@@ -3,15 +3,14 @@
 M28 shipped across stories 001-003 (all merged): combat exit grants XP party-wide
 (story-001), quest completion grants XP and favor (story-002), and both `award_xp`
 and `award_divine_favor` were torn out as LLM tools along with their `_impl` bodies
-(story-003, exploration 16 -> 14). Rewards are now granted ONLY by deterministic
-Resolves — there is no verb an LLM can call to grant one by judgement, because a
-second grant path is a second rule waiting to drift from the first.
+(story-003, exploration 16 -> 14). Quest and combat rewards use deterministic
+Resolves. Patron actions now use an authored action id and the same favor Resolve.
 
 Each story was reviewed against its own diff. This capstone is the integration net
 those reviews could not see (auto-marked ``acceptance`` by tests/acceptance/conftest.py):
 
   1. No agent's tool registry re-admits award_xp/award_divine_favor.
-  2. The tool-ceiling win holds — exploration is exactly 14.
+  2. The tool-ceiling win holds — exploration has 15 verbs after patron actions spent one slot.
   3. A real quest completion pays the party: XP SPLIT by the party multiplier, favor
      UNDIVIDED to every member, and the primary's L10 auto-grant fires on the boundary.
   4. Combat exit still grants XP with no award tool in reach.
@@ -135,10 +134,10 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
 
 def test_exploration_holds_the_two_freed_slots() -> None:
     """M28's stated payoff is verb budget: dropping both award verbs took exploration 16 -> 14,
-    widening the headroom under the strict-tool ceiling from 4 slots to 6. Re-adding either
-    verb reds here as well as in test 1."""
-    assert len(EXPLORATION_TOOLS) == 14
-    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 6
+    widening the headroom under the strict-tool ceiling from 4 slots to 6. The patron action
+    verb now spends one freed slot, leaving 5. Re-adding either retired award verb reds here."""
+    assert len(EXPLORATION_TOOLS) == 15
+    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 5
 
 
 # --- 2b. The authored content this net's arithmetic is seeded from ----------------------

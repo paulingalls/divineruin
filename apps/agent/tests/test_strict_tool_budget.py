@@ -55,9 +55,9 @@ def test_exploration_strict_tool_count():
     # M27 story-003 tore out play_sound/set_music_state as LLM tools; audio now derives
     # only from deterministic Resolves and the Stage (18->16). M28 story-003 tore out
     # award_xp/award_divine_favor (16->14): XP and favor are granted by the combat-exit and
-    # quest-completion Resolves, so a second LLM-judgement grant path no longer exists.
-    assert len(EXPLORATION_TOOLS) == 14
-    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 6
+    # quest-completion Resolves; patron actions use the same favor Resolve.
+    assert len(EXPLORATION_TOOLS) == 15
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 5
 
 
 def test_combat_strict_tool_count():
