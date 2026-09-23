@@ -30,7 +30,9 @@ one is `.xp/system.md` → Constraint case law.
    checks; broad suites belong to story/full tiers unless they cover a distinct
    AC those tiers miss. `test:all` stays OUT of Verify (human 2026-09-06).
    An acceptance harness, combat declaration or band card names focused
-   acceptance coverage in Verify. The story tier runs all Python unit tests;
+   acceptance coverage in Verify. A card that checks a milestone box or edits
+   a doc names tests/docs and test_milestone_status_consistency.py in Verify.
+   The story tier runs all Python unit tests;
    the full tier runs acceptance.
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
