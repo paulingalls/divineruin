@@ -5,7 +5,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import mock_txn
+from sample_fixtures import make_context, mock_txn
 from session_lifecycle._helpers import _make_context
 
 from session_data import SessionData
@@ -181,6 +181,36 @@ class TestMetricsAccumulation:
             content=mock_content,
         )
         assert ctx.userdata.session_items_found == ["Health Potion"]
+
+    @pytest.mark.asyncio
+    async def test_guest_transact_find_stays_off_the_host_recap(self):
+        """A guest's find is the guest's: the host's mirror list only carries the host's own
+        distinct finds, the same rule combat loot and quest rewards follow."""
+        from inventory_tools import _transact_impl
+
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: mock_txn(MagicMock())
+        mock_mutations = MagicMock(add_inventory_item=AsyncMock())
+        mock_queries = MagicMock(get_player_inventory=AsyncMock(return_value=[SAMPLE_ITEM]))
+        mock_content = MagicMock(get_item=AsyncMock(return_value=SAMPLE_ITEM))
+        ctx = make_context(party_member_ids=["player_2"])
+        deps = dict(db_mod=mock_db, mutations=mock_mutations, queries=mock_queries, content=mock_content)
+
+        for actor in ("player_1", "player_1", "player_2"):
+            with ctx.userdata._bind_authenticated_actor(actor, 1, lambda *_: None):
+                await _transact_impl(ctx, item_id="health_potion", delta=1, source="looted", **deps)
+
+        assert mock_mutations.add_inventory_item.await_count == 3
+        assert ctx.userdata.session_items_found == ["Health Potion"]
+        metrics = ctx.userdata.player_summary_metrics
+        assert metrics["player_1"]["items_found"] == ["Health Potion"]
+        assert metrics["player_2"]["items_found"] == ["Health Potion"]
+        mock_mutations.add_inventory_item.reset_mock()
+        ctx.userdata.session_items_found.clear()
+        with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+            await _transact_impl(ctx, item_id="health_potion", delta=1, source="looted", **deps)
+        assert mock_mutations.add_inventory_item.await_count == 1
+        assert ctx.userdata.session_items_found == []
 
     @pytest.mark.asyncio
     async def test_update_quest_tracks_metric(self):

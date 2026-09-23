@@ -143,6 +143,7 @@ SAMPLE_ENCOUNTER = {
             "id": "dire_wolf_1",
             "name": "Dire Wolf",
             "level": 2,
+            "tier": 1,
             "ac": 14,
             "hp": 15,
             "attributes": {"strength": 16, "dexterity": 14},

@@ -8,6 +8,7 @@ test_social_tools.py.
 """
 
 import json
+from contextlib import asynccontextmanager
 from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
@@ -62,6 +63,9 @@ def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
     content = MagicMock()
     content.get_location = AsyncMock(return_value=location)
     content.get_gathering_nodes_at_location = AsyncMock(return_value=list(nodes or []))
+    content.get_material_definition = AsyncMock(
+        side_effect=lambda material_id: {"name": material_id.replace("_", " ").title()}
+    )
     gather_mutations = MagicMock()
     gather_mutations.mark_node_discovered = AsyncMock()
     gather_mutations.deplete_node_quantity = AsyncMock()
@@ -102,6 +106,13 @@ class TestAmbientForage:
         assert result["materials"]  # non-empty
         assert result["inventory_updated"] is True
         mocks[1].add_inventory_item.assert_awaited()  # mutations
+        assert ctx.userdata.session_items_found == list(
+            dict.fromkeys(material.replace("_", " ").title() for material in result["materials"])
+        )
+        assert (
+            ctx.userdata.player_summary_metrics[ctx.userdata.primary_player_id]["items_found"]
+            == ctx.userdata.session_items_found
+        )
         dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
         assert dice.payload["roll_type"] == "gathering_check"
         assert dice.payload["skill"] == "survival"
@@ -115,6 +126,7 @@ class TestAmbientForage:
         assert result["materials"] == []
         assert result["inventory_updated"] is False
         mocks[1].add_inventory_item.assert_not_awaited()
+        assert ctx.userdata.session_items_found == []
 
     @pytest.mark.asyncio
     async def test_material_type_routes_skill(self):
@@ -138,6 +150,24 @@ class TestNodeConsumer:
         # node resource granted
         granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
         assert "sageroot" in granted
+        assert "Sageroot" in ctx.userdata.session_items_found
+
+    @pytest.mark.asyncio
+    async def test_rolled_back_gather_does_not_record_find(self):
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
+
+        @asynccontextmanager
+        async def rolled_back_transaction():
+            yield MagicMock()
+            raise RuntimeError("commit failed")
+
+        mocks[4].transaction = rolled_back_transaction
+        ctx = _ctx_with_bus()
+        with pytest.raises(RuntimeError, match="commit failed"):
+            await _run(ctx, mocks, rng_val=20)
+        mocks[1].add_inventory_item.assert_awaited()
+        assert ctx.userdata.session_items_found == []
+        assert ctx.userdata.player_summary_metrics == {}
 
     @pytest.mark.asyncio
     async def test_dungeon_yields_only_via_node_on_rich_find(self):

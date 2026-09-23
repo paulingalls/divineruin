@@ -58,6 +58,9 @@ class CombatParticipant:
     # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
     category: str = ""
     loot_table_id: str = ""
+    # Authored creature tier (creature_tiers.py bands), read for currency scaling. None on
+    # players/companions; CombatState.from_dict refuses a saved row with no tier key.
+    tier: int | None = None
     # Saving-throw proficiencies (M13 close-fix): the attribute save names this participant is
     # proficient in (e.g. ["wisdom", "charisma"]), sourced from players.data at combat init for
     # a player. resolve_saving_throw adds the proficiency bonus when the rolled save is listed —

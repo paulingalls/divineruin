@@ -313,6 +313,7 @@ _START_ENCOUNTER = {
             "id": "goblin_1",
             "name": "Goblin",
             "level": 1,
+            "tier": 1,
             "ac": 13,
             "hp": 7,
             "attributes": _START_ATTRS,

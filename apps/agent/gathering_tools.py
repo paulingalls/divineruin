@@ -115,6 +115,13 @@ async def _check_gather_impl(
     for material_id in granted:
         counts[material_id] = counts.get(material_id, 0) + 1
 
+    found_names = []
+    for material_id in counts:
+        material = await content.get_material_definition(material_id)
+        if material is None or not isinstance(material.get("name"), str) or not material["name"]:
+            raise ToolError(f"Gathered material '{material_id}' has no display name.")
+        found_names.append(material["name"])
+
     # One transaction so the gather commits atomically: a partial write (node depleted but
     # materials not granted, or granted without depletion) would dupe or lose items in the
     # persistent economy. The conn= seams on both mutation modules thread the tx connection.
@@ -138,8 +145,11 @@ async def _check_gather_impl(
             session.validate_acting_player(player_id)
             await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations, conn=conn)
 
+    for name in found_names:
+        session.record_item_found(player_id, name)
     if counts:
         await publish_action_sound(session, "action_gather")
+
     success = result.result != "nothing"
     await publish_game_event(
         session.room,

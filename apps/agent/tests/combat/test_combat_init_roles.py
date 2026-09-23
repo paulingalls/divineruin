@@ -27,6 +27,7 @@ ROLE_ENCOUNTER = {
             "category": "hollow_drift",
             "loot_table_id": "loot_hollow_drift",
             "level": 2,
+            "tier": 1,
             "ac": 13,
             "hp": 16,
             "attributes": {"strength": 8, "dexterity": 12, "constitution": 10},
@@ -44,6 +45,7 @@ ROLE_ENCOUNTER = {
             "category": "hollow_rend",
             "loot_table_id": "loot_hollow_warden",
             "level": 4,
+            "tier": 3,
             "ac": 14,
             "hp": 20,
             "attributes": {"strength": 16, "dexterity": 10, "constitution": 16},
@@ -141,3 +143,39 @@ async def test_player_participant_has_empty_loot_fields():
     player = (await _run_and_get_participants())[SAMPLE_PLAYER["player_id"]]
     assert player["category"] == ""
     assert player["loot_table_id"] == ""
+
+
+@pytest.mark.asyncio
+async def test_enemy_participants_carry_authored_tier():
+    parts = await _run_and_get_participants()
+    assert parts["shadeling_1"]["tier"] == 1
+    # Level 4 derives T1 (player bands) or T2 (the retired enemy-level bands); 3 is only authored.
+    assert parts["warden_1"]["tier"] == 3
+
+
+def test_saved_participant_requires_tier_key():
+    from session_data import CombatState
+
+    row = {
+        "id": "old_enemy",
+        "name": "Old Enemy",
+        "type": "enemy",
+        "initiative": 1,
+        "hp_current": 1,
+        "hp_max": 1,
+        "ac": 10,
+        "category": "humanoid",
+    }
+    saved = {"combat_id": "old_combat", "participants": [row], "initiative_order": ["old_enemy"]}
+    with pytest.raises(ValueError, match=r"old_enemy.*tier"):
+        CombatState.from_dict(saved)
+
+
+def test_saved_participant_tier_round_trips():
+    from session_data import CombatParticipant, CombatState
+
+    participant = CombatParticipant(
+        id="enemy", name="Enemy", type="enemy", initiative=1, hp_current=1, hp_max=1, ac=10, tier=2
+    )
+    state = CombatState(combat_id="combat", participants=[participant], initiative_order=["enemy"])
+    assert CombatState.from_dict(state.to_dict()).participants[0].tier == 2

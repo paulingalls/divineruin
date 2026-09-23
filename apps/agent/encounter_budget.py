@@ -4,6 +4,7 @@ Given a list of role-tagged enemies and the player's level, this reports the enc
 *budget cost* (the sum of each role's ``budget_cost`` weight, with Minions at 0.5 and Named
 ignored) against the difficulty thresholds for the player's level band, and flags the three
 allocation-rule violations the DM should know about.
+These bands are difficulty ceilings, not creature tiers.
 
 It is INFORMATIONAL, not gating: it returns a report and never blocks combat. There is no
 encounter-builder to integrate with — this is a standalone validator the DM (or future

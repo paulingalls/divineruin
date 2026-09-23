@@ -2,15 +2,17 @@
   {
     "id": "loot_hollow_drift",
     "description": "Shared drift-Hollow residue table. Shadelings, drifts, wisps — fragile things that leave only a smear of residue behind.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t1", "chance": 0.4, "quantity": 1 }
+      { "item_id": "hollow_residue_t1", "chance": 0.4, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] }
     ]
   },
   {
     "id": "loot_hollow_rend",
     "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they absorbed enough to leave residue and the odd cold bone shard.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t1", "chance": 0.6, "quantity": 1 },
+      { "item_id": "hollow_residue_t1", "chance": 0.6, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_bone_fragment", "chance": 0.2, "quantity": 1 }
     ]
   },
@@ -65,8 +67,9 @@
   {
     "id": "loot_hollowed_knight",
     "description": "Bespoke Hollowed-Knight table. Heavy residue and the anti-Hollow plate it was corrupted inside of.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
     ]
   }

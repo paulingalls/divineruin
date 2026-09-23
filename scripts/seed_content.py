@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import random
 import re
 import sys
 from pathlib import Path
@@ -15,6 +16,9 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
+from creature_schema import validate_creature_stat_block
+from dice import roll
+from rules_engine import SKILL_TIER_ORDER, SKILLS
 from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent / "content"
@@ -53,6 +57,7 @@ TABLE_MAP = {
     "quality_outcomes.json": "quality_outcomes",
     "pricing.json": "pricing",
     "gathering_nodes.json": "gathering_nodes",
+    "creatures.json": "creatures",
 }
 
 PK_COLUMN = {
@@ -79,6 +84,55 @@ def upsert_query(table: str) -> str:
 _MISPARSED_URL = "DATABASE_URL does not parse; percent-encode reserved characters in the password"
 
 
+class _MinimumRoll(random.Random):
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+
+def validate_loot_table(table: dict) -> list[str]:
+    """Validate authored loot data. M34 harvesting enforces requirements; loot rolls do not."""
+    table_id = table.get("id", "?")
+    errors: list[str] = []
+    if "hollow_residue" in table and type(table["hollow_residue"]) is not bool:
+        errors.append(f"Loot table '{table_id}' hollow_residue must be a bool")
+    for drop in table.get("drops", []):
+        item_id = drop.get("item_id", "?")
+        label = f"Loot table '{table_id}' drop '{item_id}'"
+        chance = drop.get("chance")
+        if type(chance) not in (int, float) or not 0 <= chance <= 1:
+            errors.append(f"{label} chance must be in [0,1]")
+        quantity = drop.get("quantity")
+        if type(quantity) is int:
+            if quantity < 1:
+                errors.append(f"{label} quantity must be positive")
+        elif isinstance(quantity, str):
+            try:
+                if roll(quantity, rng=_MinimumRoll()).total < 1:
+                    errors.append(f"{label} quantity must have a positive minimum")
+            except ValueError:
+                errors.append(f"{label} quantity must be valid dice notation")
+        else:
+            errors.append(f"{label} quantity must be an int or dice notation")
+        if "requires" not in drop:
+            continue
+        requirements = drop["requires"]
+        if not isinstance(requirements, list):
+            errors.append(f"{label} requires must be a list")
+            continue
+        for requirement in requirements:
+            if not isinstance(requirement, dict) or set(requirement) != {
+                "skill",
+                "tier",
+            }:
+                errors.append(f"{label} requires entries must have skill and tier")
+                continue
+            if type(requirement["skill"]) is not str or requirement["skill"] not in SKILLS:
+                errors.append(f"{label} unknown skill {requirement['skill']!r}")
+            if type(requirement["tier"]) is not str or requirement["tier"] not in SKILL_TIER_ORDER:
+                errors.append(f"{label} unknown tier {requirement['tier']!r}")
+    return errors
+
+
 def database_target(database_url: str) -> str:
     # A reserved character left unencoded in the password misparses the URL, and the refusal must
     # not print it: the parse's ValueError quotes what it misread (`from None` drops that from the
@@ -98,6 +152,10 @@ def database_target(database_url: str) -> str:
     return f"host={parsed.hostname} port={port} database={database}"
 
 
+class InvalidContent(Exception):
+    pass
+
+
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
     for filename, table in TABLE_MAP.items():
@@ -109,6 +167,19 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
         pk_field = PK_COLUMN.get(table, "id")
         query = upsert_query(table)
         entities = json.loads(filepath.read_text())
+        missing = [i for i, entity in enumerate(entities) if not entity.get(pk_field)]
+        if missing:
+            raise InvalidContent(f"{filename} row {missing[0]} has no {pk_field!r}")
+        # The generated tier/level columns cast data to integer, so a bad creature must be caught
+        # before insert or it aborts with a cast error instead of a field-named message.
+        if table == "creatures":
+            problems = [
+                f"{entity.get('id', '?')}: {error}"
+                for entity in entities
+                for error in validate_creature_stat_block(entity)
+            ]
+            if problems:
+                raise InvalidContent("\n".join(problems))
         for entity in entities:
             await conn.execute(query, entity[pk_field], json.dumps(entity))
         counts[table] = len(entities)
@@ -119,6 +190,10 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
 
 async def validate(conn: asyncpg.Connection) -> list[str]:
     errors: list[str] = []
+
+    creature_rows = await conn.fetch("SELECT id, data FROM creatures")
+    for row in creature_rows:
+        errors.extend(f"{row['id']}: {error}" for error in validate_creature_stat_block(json.loads(row["data"])))
 
     rows = await conn.fetch("SELECT id, data FROM locations")
     location_ids = {row["id"] for row in rows}
@@ -201,6 +276,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     loot_table_ids = {row["id"] for row in loot_rows}
     for row in loot_rows:
         data = json.loads(row["data"])
+        errors.extend(validate_loot_table(data))
         for drop in data.get("drops", []):
             item_ref = drop.get("item_id")
             if item_ref not in item_ids:
@@ -211,6 +287,9 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         data = json.loads(row["data"])
         for enemy in data.get("enemies", []):
             enemy_id = enemy.get("id", "?")
+            tier = enemy.get("tier")
+            if type(tier) is not int or not 1 <= tier <= 4:
+                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' has invalid tier {tier!r}")
             if not enemy.get("category"):
                 errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'category'")
             loot_ref = enemy.get("loot_table_id")
@@ -293,23 +372,26 @@ async def main() -> None:
     conn = await asyncpg.connect(database_url)
 
     try:
-        print("Seeding content...")
-        counts = await seed(conn)
+        async with conn.transaction():
+            print("Seeding content...")
+            try:
+                counts = await seed(conn)
+            except InvalidContent as error:
+                print(f"Validation FAILED: {error}")
+                sys.exit(1)
 
-        print("\nSeeding map progress...")
-        await seed_map_progress(conn)
+            print("\nSeeding map progress...")
+            await seed_map_progress(conn)
 
-        print("\nValidating...")
-        errors = await validate(conn)
-
-        if errors:
-            print(f"\nValidation FAILED ({len(errors)} error(s)):")
-            for err in errors:
-                print(f"  - {err}")
-            sys.exit(1)
-        else:
-            total = sum(counts.values())
-            print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
+            print("\nValidating...")
+            errors = await validate(conn)
+            if errors:
+                print(f"\nValidation FAILED ({len(errors)} error(s)):")
+                for err in errors:
+                    print(f"  - {err}")
+                sys.exit(1)
+        total = sum(counts.values())
+        print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:
         await conn.close()
 

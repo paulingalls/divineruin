@@ -38,19 +38,17 @@ Additional topics: Cosmology: The Veil, the Wellspring, the Sundering, the Hollo
 
 ---
 
-## agent_handoffs_and_scenes.md (915 lines)
+## agent_handoffs_and_scenes.md (126 lines)
 
-Multi-agent architecture, LiveKit handoffs, scenes, and structured play.
+Shipped agent flow, mode handoffs, scene context, and H.1–H.8 history.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Problem Statement | 6-28 | Why the monolithic agent doesn't work (prompt bloat, fragile transitions) |
-| LiveKit Agent Handoffs | 29-71 | Tool-return (LLM-driven) and programmatic handoff mechanisms |
-| Proposed Agent Architecture | 72-376 | Agent graph: Prologue → Creation → Onboarding → City/Wilderness/Dungeon/Combat |
-| Context Transfer Strategy | 377-396 | Template-based summaries, session.userdata persistence |
-| Structured Play: Scenes and Play Trees | 397-521 | Scenes as standalone entities, beat progression, play tree structure |
-| LiveKit Rooms as Shared Spaces | 522-609 | Room architecture, multi-agent rooms, data channels |
-| Development Milestones | 610-915 | Agent handoff milestones — all complete |
+| Agent flow | 7-48 | Entry chain, exploration, combat, and focused mode agents |
+| Context transfer and reconnection | 49-59 | Session state and handoff context |
+| Scenes and structured play | 60-67 | Quest scenes, Stage context, and beat hints |
+| LiveKit rooms and multiplayer | 68-74 | Current session model and shared-room proposal |
+| Development Milestones | 75-126 | Original H.1–H.8 plan and shipped outcomes |
 
 ---
 
@@ -544,18 +542,18 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (1234 lines)
+## game_mechanics/game_mechanics_bestiary.md (1227 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Creature Stat Block Schema | 9-138 | Universal template: attributes, attacks, passives, loot, hollow fields |
-| Hollow Creatures | 139-615 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
-| Natural Creatures | 616-1153 | 38+ creatures across 6 regions, Tier 1-3 |
-| Material Catalog Summary | 1154-1200 | Material values and crafting uses for all creature drops |
-| Encounter Building Guidelines | 1201-1231 | Tier-based scaling, solo player math, companion effectiveness |
-| Design Decisions Log (Bestiary) | 1232-1234 | Bestiary decisions (24-29) |
+| Creature Stat Block Schema | 9-131 | Universal template: attributes, attacks, passives, hollow fields, loot_table_id amendment |
+| Hollow Creatures | 132-608 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
+| Natural Creatures | 609-1146 | 38+ creatures across 6 regions, Tier 1-3 |
+| Material Catalog Summary | 1147-1193 | Material values and crafting uses for all creature drops |
+| Encounter Building Guidelines | 1194-1224 | Tier-based scaling, solo player math, companion effectiveness |
+| Design Decisions Log (Bestiary) | 1225-1227 | Bestiary decisions (24-29) |
 
 ---
 
@@ -936,7 +934,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (204 lines)
+## milestones/REMAINING.md (203 lines)
 
 ---
 

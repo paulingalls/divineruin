@@ -31,7 +31,16 @@ _ENCOUNTER = {
     "name": "Goblin Patrol",
     "difficulty": "easy",
     "enemies": [
-        {"id": "goblin_1", "name": "Goblin", "level": 1, "ac": 13, "hp": 7, "attributes": _ATTRS, "action_pool": []},
+        {
+            "id": "goblin_1",
+            "name": "Goblin",
+            "level": 1,
+            "tier": 1,
+            "ac": 13,
+            "hp": 7,
+            "attributes": _ATTRS,
+            "action_pool": [],
+        },
     ],
 }
 

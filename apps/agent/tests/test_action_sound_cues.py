@@ -363,6 +363,7 @@ async def test_gather_cue_follows_grant_commit_and_absence_branches():
         content = MagicMock(
             get_location=AsyncMock(return_value=location if available else {"region": "greyvale"}),
             get_gathering_nodes_at_location=AsyncMock(return_value=[]),
+            get_material_definition=AsyncMock(return_value={"name": "Medicinal Herb"}),
         )
         gathering = MagicMock(mark_node_discovered=AsyncMock(), deplete_node_quantity=AsyncMock())
         raw = await _check_gather_impl(

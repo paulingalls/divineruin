@@ -96,7 +96,7 @@ async def _cleanup(pool) -> None:
 
 
 def _victory_state() -> CombatState:
-    """One defeated humanoid Standard enemy carrying the test loot table; level 3 -> tier 2."""
+    """One defeated humanoid Standard enemy carrying the test loot table; level 5, authored tier 1."""
     enemy = CombatParticipant(
         id="s002_loot_enemy",
         name="Test Bandit",
@@ -105,7 +105,8 @@ def _victory_state() -> CombatState:
         hp_current=0,
         hp_max=11,
         ac=12,
-        level=3,
+        level=5,
+        tier=1,
         xp_value=50,
         is_fallen=True,
         role="standard",
@@ -131,8 +132,8 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         cs = _victory_state()
         sink = EventSink()
-        # die=4, tier=2, humanoid Standard -> 8 sp; converted at the grant boundary to gold
-        # (silver_per_gold=10) -> 0.8 gp; loot drop guaranteed (chance 1.0).
+        # die=4, authored tier=1, humanoid Standard -> 4 sp (formerly 8 sp); converted at the grant boundary to gold
+        # (silver_per_gold=10) -> 0.4 gp; loot drop guaranteed (chance 1.0).
         async with db.transaction() as conn:
             end_data = await _end_combat_db(
                 session,
@@ -146,9 +147,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
                 rng=FakeRng(die=4),
             )
 
-        # Currency converted sp -> gp and added to players.data.gold (5 + 0.8 = 5.8).
+        # Currency converted sp -> gp and added to players.data.gold (5 + 0.4 = 5.4).
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
-        assert player is not None and player["gold"] == pytest.approx(5.8)
+        assert player is not None and player["gold"] == pytest.approx(5.4)
 
         # Loot item granted into inventory at the rolled quantity.
         qty = await pool.fetchval(
@@ -160,16 +161,16 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
 
         # end_data surfaces the primary's own haul for the DM narration / response (solo: the
         # primary is the only participant, so primary_* equals the whole haul).
-        assert end_data["primary_currency_gold"] == pytest.approx(0.8)
+        assert end_data["primary_currency_gold"] == pytest.approx(0.4)
         assert end_data["primary_loot"] == [{"item_id": _ITEM_ID, "quantity": 1}]
 
         # A single CURRENCY_GAINED chip buffered for the whole haul, plus the ITEM_ACQUIRED chip.
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
         assert len(currency_events) == 1
         payload = currency_events[0].payload
-        assert payload["amount"] == pytest.approx(0.8)
+        assert payload["amount"] == pytest.approx(0.4)
         assert payload["currency"] == "gold"
-        assert payload["new_balance"] == pytest.approx(5.8)
+        assert payload["new_balance"] == pytest.approx(5.4)
         assert payload["player_id"] == _PLAYER_ID
 
         item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
@@ -209,6 +210,7 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
             is_fallen=True,
             role="minion",
             category="humanoid",  # would carry coin at any other role, but D79 zeroes a Minion
+            tier=1,
             loot_table_id=_LOOT_TABLE_ID,
         )
         player = CombatParticipant(

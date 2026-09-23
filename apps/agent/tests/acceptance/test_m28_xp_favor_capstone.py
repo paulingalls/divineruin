@@ -236,6 +236,7 @@ async def test_combat_victory_grants_xp_through_the_resolve(reset_db_pool: str) 
             is_fallen=True,
             role="standard",
             category="humanoid",
+            tier=1,
         )
         player = CombatParticipant(
             id=fighter, name="Capstone Hero", type="player", initiative=15, hp_current=18, hp_max=18, ac=14

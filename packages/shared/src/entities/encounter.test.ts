@@ -1,9 +1,11 @@
 import { test, expect, describe } from "bun:test";
+import { TIER_LEVEL_RANGES, playerLevelRangeForTier, tierForPlayerLevel } from "./creature_tiers";
 import {
   ENCOUNTER_ACTION_KIND_VALUES,
   ENCOUNTER_ROLE_VALUES,
   encounterActionKind,
   validateEncounterActionShape,
+  validateEncounterEnemyTier,
   type Encounter,
 } from "./encounter";
 
@@ -157,6 +159,50 @@ describe("enemy action resolution shapes", () => {
   test("half_on_success without damage is refused", () => {
     expect(() => validateEncounterActionShape(actionShapes.invalid_half_without_damage!)).toThrow(
       "needs damage",
+    );
+  });
+});
+
+describe("creature tier player bands", () => {
+  test("the four spec ranges are exact", () => {
+    expect(TIER_LEVEL_RANGES).toEqual({ 1: [1, 4], 2: [5, 8], 3: [9, 14], 4: [15, 20] });
+    for (const [tier, band] of Object.entries(TIER_LEVEL_RANGES)) {
+      expect(playerLevelRangeForTier(Number(tier))).toEqual(band);
+    }
+  });
+  test("each level 1-20 belongs to exactly one tier", () => {
+    for (let level = 1; level <= 20; level++) {
+      const matches = Object.entries(TIER_LEVEL_RANGES)
+        .filter(([, [low, high]]) => low <= level && level <= high)
+        .map(([tier]) => Number(tier));
+      expect(matches).toHaveLength(1);
+      expect(tierForPlayerLevel(level)).toBe(matches[0]!);
+    }
+  });
+  test.each([0, 5])("invalid tier %i fails", (tier) => {
+    expect(() => playerLevelRangeForTier(tier)).toThrow();
+  });
+  test.each([0, 21, -1])("level %i fails", (level) => {
+    expect(() => tierForPlayerLevel(level)).toThrow();
+  });
+});
+
+describe("authored creature tiers", () => {
+  test("every content row has the expected tier", () => {
+    const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
+    expect(rows).toHaveLength(38);
+    const named: Record<string, number> = { Shadeling: 1, Mawling: 2, "Hollowed Knight": 3 };
+    for (const [encId, enemy] of rows) {
+      expect(() => validateEncounterEnemyTier(encId, enemy)).not.toThrow();
+      expect(enemy.tier).toBe(named[enemy.name] ?? tierForPlayerLevel(enemy.level));
+    }
+    for (const name of Object.keys(named)) {
+      expect(rows.filter(([, enemy]) => enemy.name === name).length).toBeGreaterThan(0);
+    }
+  });
+  test.each([undefined, 0, 5, 1.5, "2"])("rejects tier %p with row identity", (tier) => {
+    expect(() => validateEncounterEnemyTier("bad_encounter", { id: "bad_enemy", tier })).toThrow(
+      /bad_encounter.*bad_enemy/,
     );
   });
 });

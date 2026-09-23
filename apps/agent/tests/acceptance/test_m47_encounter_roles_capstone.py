@@ -117,8 +117,7 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
         assert key in report
 
     # Minion drops no currency (D79), independent of category/tier.
-    tier = encounter_loot.tier_for_level(minion.level)
-    assert encounter_loot.calculate_currency_drop(minion.category, tier, "minion", random.Random(0)) == 0
+    assert encounter_loot.calculate_currency_drop(minion.category, minion.tier, "minion", random.Random(0)) == 0
 
     await db_mutations.delete_combat_state(cs.combat_id, conn=pool)
 

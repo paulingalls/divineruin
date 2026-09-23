@@ -344,6 +344,13 @@ class SessionData:
         elif value not in metrics[key]:
             metrics[key].append(value)
 
+    def record_item_found(self, player_id: str, item_name: str) -> None:
+        """The primary's mirror list feeds the saved summary, so it holds only the primary's own
+        distinct finds; each member's recap reads their own metrics."""
+        self.record_player_metric(player_id, "items_found", item_name)
+        if player_id == self.primary_player_id and item_name not in self.session_items_found:
+            self.session_items_found.append(item_name)
+
     def record_companion_memory(self, memory: str) -> None:
         if self.companion is None:
             return
