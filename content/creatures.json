@@ -94,7 +94,12 @@
       "special": {}
     },
     "loot_table_id": "loot_hollow_drift",
-    "xp_reward": 25
+    "xp_reward": 25,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale"
+    ]
   },
   {
     "id": "hollow_hollowmoth",
@@ -198,6 +203,11 @@
       "special": {}
     },
     "loot_table_id": "loot_hollow_drift",
-    "xp_reward": 10
+    "xp_reward": 10,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale"
+    ]
   }
 ]

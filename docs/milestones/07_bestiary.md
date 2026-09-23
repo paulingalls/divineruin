@@ -8,12 +8,12 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, and two Tier 1 Hollow exemplars are shipped. The regional catalog, creature agent tools, and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, two Tier 1 Hollow exemplars, and internal catalog lookups are shipped. The regional catalog, DM query surface, and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
 | M7.1 — Creature Stat Block Schema | 8 | 0 | 1 |
-| M7.2 — Regional Creature Catalog | 1 | 1 | 9 |
+| M7.2 — Regional Creature Catalog | 3 | 1 | 7 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
@@ -82,8 +82,8 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Each creature: full stat block, 1-3 attacks, behavior pattern (aggressive/defensive/pack/ambush), retreat condition, narration cues, audio hints
 - Humanoid enemies (Bandit, Ashmark Soldier, Cult Acolyte) use NPC-like stat blocks with role-appropriate equipment
 - Content: all creatures authored in `content/creatures.json` organized by region
-- Agent tool: `query_creatures_by_region(region_id, tier_filter)` returning matching creatures
-- Agent tool: `query_creature_by_id(creature_id)` returning full stat block
+- Internal function: `query_creatures_by_region(region_id, tier=None)` returning matching creatures
+- Internal function: `query_creature_by_id(creature_id)` returning full stat block
 
 **Acceptance criteria:**
 - [ ] All 38+ creatures have complete stat blocks passing M7.1 validation
@@ -93,10 +93,12 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] Each creature has distinct behavior pattern and retreat threshold
 - [ ] Narration cues follow audio-first convention (sensory details, not visual descriptions)
 - [ ] Humanoid enemies have equipment-based attacks matching their role
-- [ ] `query_creatures_by_region` filters correctly by region and tier
-- [ ] `query_creature_by_id` returns null/error for nonexistent IDs
+- [x] Internal function `query_creatures_by_region` filters correctly by region and tier <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_internal_catalog_queries_use_regions_tier_and_named_missing_error -->
+- [x] Internal function `query_creature_by_id` raises on nonexistent IDs <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_internal_catalog_queries_use_regions_tier_and_named_missing_error -->
 - [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
 - [ ] Tests verify creature distribution across regions and tier balance
+
+**DM surface:** M34 will route creature lookups through `query_info(kind="creature")` with arguments; these internal functions are not DM verbs.
 
 **Key references:**
 - *Game Mechanics Bestiary — Regional Creatures*
