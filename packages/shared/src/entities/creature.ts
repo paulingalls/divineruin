@@ -195,3 +195,27 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   field(creature, "xp_reward", "", "integer");
   return problems;
 }
+
+// JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".
+// The reviver's source text restores the difference; mapping any decimal or exponent literal to
+// NaN leaves string and object checks unchanged and fails every integer check at its own path.
+function decimalLiteralsAsNaN(
+  _key: string,
+  value: unknown,
+  context?: { source?: string },
+): unknown {
+  if (typeof value !== "number") return value;
+  if (context?.source === undefined) throw new Error("JSON.parse source text access is required");
+  return /[.eE]/.test(context.source) ? Number.NaN : value;
+}
+
+export function parseCreatureJson(raw: string): unknown {
+  return JSON.parse(raw, decimalLiteralsAsNaN);
+}
+
+export function validateCreatureJson(raw: string): string[] {
+  const parsed = parseCreatureJson(raw);
+  return Array.isArray(parsed)
+    ? parsed.flatMap(validateCreatureStatBlock)
+    : validateCreatureStatBlock(parsed);
+}

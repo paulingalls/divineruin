@@ -16,6 +16,7 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
+from creature_schema import validate_creature_stat_block
 from dice import roll
 from rules_engine import SKILL_TIER_ORDER, SKILLS
 from world_effect_targets import is_valid_disposition_target
@@ -56,6 +57,7 @@ TABLE_MAP = {
     "quality_outcomes.json": "quality_outcomes",
     "pricing.json": "pricing",
     "gathering_nodes.json": "gathering_nodes",
+    "creatures.json": "creatures",
 }
 
 PK_COLUMN = {
@@ -118,7 +120,10 @@ def validate_loot_table(table: dict) -> list[str]:
             errors.append(f"{label} requires must be a list")
             continue
         for requirement in requirements:
-            if not isinstance(requirement, dict) or set(requirement) != {"skill", "tier"}:
+            if not isinstance(requirement, dict) or set(requirement) != {
+                "skill",
+                "tier",
+            }:
                 errors.append(f"{label} requires entries must have skill and tier")
                 continue
             if type(requirement["skill"]) is not str or requirement["skill"] not in SKILLS:
@@ -147,6 +152,10 @@ def database_target(database_url: str) -> str:
     return f"host={parsed.hostname} port={port} database={database}"
 
 
+class InvalidContent(Exception):
+    pass
+
+
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
     for filename, table in TABLE_MAP.items():
@@ -158,6 +167,16 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
         pk_field = PK_COLUMN.get(table, "id")
         query = upsert_query(table)
         entities = json.loads(filepath.read_text())
+        # The generated tier/level columns cast data to integer, so a bad creature must be caught
+        # before insert or it aborts with a cast error instead of a field-named message.
+        if table == "creatures":
+            problems = [
+                f"{entity.get('id', '?')}: {error}"
+                for entity in entities
+                for error in validate_creature_stat_block(entity)
+            ]
+            if problems:
+                raise InvalidContent("\n".join(problems))
         for entity in entities:
             await conn.execute(query, entity[pk_field], json.dumps(entity))
         counts[table] = len(entities)
@@ -168,6 +187,10 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
 
 async def validate(conn: asyncpg.Connection) -> list[str]:
     errors: list[str] = []
+
+    creature_rows = await conn.fetch("SELECT id, data FROM creatures")
+    for row in creature_rows:
+        errors.extend(f"{row['id']}: {error}" for error in validate_creature_stat_block(json.loads(row["data"])))
 
     rows = await conn.fetch("SELECT id, data FROM locations")
     location_ids = {row["id"] for row in rows}
@@ -346,23 +369,26 @@ async def main() -> None:
     conn = await asyncpg.connect(database_url)
 
     try:
-        print("Seeding content...")
-        counts = await seed(conn)
+        async with conn.transaction():
+            print("Seeding content...")
+            try:
+                counts = await seed(conn)
+            except InvalidContent as error:
+                print(f"Validation FAILED: {error}")
+                sys.exit(1)
 
-        print("\nSeeding map progress...")
-        await seed_map_progress(conn)
+            print("\nSeeding map progress...")
+            await seed_map_progress(conn)
 
-        print("\nValidating...")
-        errors = await validate(conn)
-
-        if errors:
-            print(f"\nValidation FAILED ({len(errors)} error(s)):")
-            for err in errors:
-                print(f"  - {err}")
-            sys.exit(1)
-        else:
-            total = sum(counts.values())
-            print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
+            print("\nValidating...")
+            errors = await validate(conn)
+            if errors:
+                print(f"\nValidation FAILED ({len(errors)} error(s)):")
+                for err in errors:
+                    print(f"  - {err}")
+                sys.exit(1)
+        total = sum(counts.values())
+        print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:
         await conn.close()
 

@@ -1,3 +1,4 @@
+import contextlib
 import sys
 import traceback
 from pathlib import Path
@@ -98,6 +99,9 @@ async def test_success_names_target_and_closes_connection(monkeypatch, capsys):
     class FakeConnection:
         def __init__(self):
             self.closed = False
+
+        def transaction(self):
+            return contextlib.nullcontext()
 
         async def close(self):
             self.closed = True

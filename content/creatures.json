@@ -1,0 +1,203 @@
+[
+  {
+    "id": "hollow_shadeling",
+    "name": "Shadeling",
+    "category": "hollow",
+    "tier": 1,
+    "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+    "level": 1,
+    "hp": 8,
+    "ac": 10,
+    "speed": 20,
+    "attributes": {
+      "STR": 4,
+      "DEX": 12,
+      "CON": 8,
+      "INT": 1,
+      "WIS": 6,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Corrosive Touch",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 3,
+        "damage": "1d4+1",
+        "damage_type": "necrotic",
+        "special": "Organic materials (wood, leather) take double damage",
+        "audio": "hlw_corrosive_touch"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Amorphous",
+        "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Corruption Trail",
+        "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Sunlight Sensitivity",
+        "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": {
+      "class": "drift",
+      "corruption_aura": 0,
+      "resonance_on_death": 0,
+      "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+      "vulnerable_to": [
+        "radiant",
+        "fire",
+        "blessed_weapons"
+      ]
+    },
+    "behavior": {
+      "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+      "morale": "fights_to_death",
+      "group_size": "swarm_6_20",
+      "environment": [
+        "Ashmark",
+        "northern Greyvale",
+        "corrupted zones"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+      "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+      "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+      "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+      "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+    },
+    "audio": {
+      "ambient": "HLW-001",
+      "attack": "wet static hiss",
+      "hit": "muffled impact on nothing solid",
+      "death": "brief static burst",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_drift",
+    "xp_reward": 25
+  },
+  {
+    "id": "hollow_hollowmoth",
+    "name": "Hollowmoth",
+    "category": "hollow",
+    "tier": 1,
+    "description": "Airborne drift expressions. Patches of visual and auditory distortion that flutter in erratic patterns.",
+    "level": 1,
+    "hp": 4,
+    "ac": 12,
+    "speed": 30,
+    "attributes": {
+      "STR": 2,
+      "DEX": 14,
+      "CON": 6,
+      "INT": 1,
+      "WIS": 8,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Distortion Flutter",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1",
+        "damage_type": "necrotic",
+        "special": "No real damage. On hit: target has disadvantage on next Perception check",
+        "audio": "hlw_distortion_flutter"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Swarm Signal",
+        "description": "Where hollowmoths gather, stronger Hollow follows within 1d4 hours. DM receives a staging cue to prepare the next encounter.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "High-Frequency Whine",
+        "description": "All creatures within 30 ft: -1 to Concentration checks. Stacks with multiple moths (max -3).",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Drawn to Life",
+        "description": "Hollowmoths cluster around the creature with the highest current HP in range.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Blinding Swarm",
+        "description": "All creatures in 10 ft: DEX save DC 10 or Blinded for 1 round. The swarm coalesces into a disorienting cloud.",
+        "narration_cue": "The swarm coalesces into a disorienting cloud.",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "drift",
+      "corruption_aura": 0,
+      "resonance_on_death": 0,
+      "veil_effect": "Barely perceptible high-frequency whine. Faint melodic patterns almost resolve into language but never quite do.",
+      "vulnerable_to": [
+        "fire",
+        "area_damage"
+      ]
+    },
+    "behavior": {
+      "tactics": "No aggression. Swarms around living creatures. Real danger is as a warning signal and debuff.",
+      "morale": "scatters_if_half_killed",
+      "group_size": "swarm_8_30",
+      "environment": [
+        "Ashmark edges",
+        "Greyvale north",
+        "advancing corruption"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Something flickers at the edge of your vision — patches of air that don't look quite right, fluttering in a rhythm that's a fraction too slow.",
+      "attack_cue": "The moth passes through your space and for a moment the world smears — colors shift, edges blur, then snap back.",
+      "wounded_cue": "N/A — moths are killed outright or not at all",
+      "death_cue": "It blinks out, like a candle flame pinched. One less wrongness in the air.",
+      "ambient_cue": "A soft papery flutter and a whine just below the threshold of hearing. Your jaw clenches without you knowing why."
+    },
+    "audio": {
+      "ambient": "papery flutter loop + HLW high-frequency whine",
+      "attack": "moth attack",
+      "hit": "moth hit",
+      "death": "brief pop/silence",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_drift",
+    "xp_reward": 10
+  }
+]

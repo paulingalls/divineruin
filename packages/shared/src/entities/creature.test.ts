@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { validateCreatureStatBlock } from "./creature";
+import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
 
 type Case = {
   name: string;
@@ -7,9 +7,9 @@ type Case = {
   expected?: string[];
   spec_derived?: string;
 };
-const corpus = (await Bun.file(
-  new URL("../../fixtures/creature_blocks.json", import.meta.url),
-).json()) as {
+const corpus = parseCreatureJson(
+  await Bun.file(new URL("../../fixtures/creature_blocks.json", import.meta.url)).text(),
+) as {
   valid: Case[];
   invalid: Case[];
 };
@@ -40,7 +40,25 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
   }
 }
 
-test("shared creature corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("real_catalog_and_injected_invalid_entry", async () => {
+  const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
+  const entries = JSON.parse(raw) as Record<string, unknown>[];
+  expect(new Set(entries.map((row) => row.id))).toEqual(
+    new Set(["hollow_shadeling", "hollow_hollowmoth"]),
+  );
+  expect(validateCreatureJson(raw)).toEqual([]);
+  const invalid = {
+    ...entries[0]!,
+    attacks: [{ ...(entries[0]!.attacks as object[])[0], damage: 4 }],
+  };
+  expect(validateCreatureJson(JSON.stringify([invalid, entries[1]]))).toContain(
+    "attacks[0].damage: expected string",
+  );
+  expect(validateCreatureJson(raw.replace(/"level": 1/, '"level": 8.0'))).toContain(
+    "level: expected integer",
+  );
+});
 test("corpus floors", () => {
   expect(() => checkCorpus([], corpus.invalid)).toThrow();
   expect(() => checkCorpus(corpus.valid, [])).toThrow();
