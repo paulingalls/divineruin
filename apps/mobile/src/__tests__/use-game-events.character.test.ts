@@ -2,9 +2,31 @@ import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { hudStore } from "@/stores/hud-store";
+import favorEvents from "./fixtures/favor-neglect-event.json";
 import { SAMPLE_CHARACTER, resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
+
+test("neglect event updates the local favor bar and overlay, but not a teammate's", () => {
+  characterStore.getState().setCharacter({
+    ...SAMPLE_CHARACTER,
+    playerId: favorEvents.primary.player_id,
+  });
+  characterStore.getState().updateDivineFavor(12, 100);
+  handleGameEvent(favorEvents.primary);
+  expect(characterStore.getState().divineFavorLevel).toBe(7);
+  expect(characterStore.getState().divineFavorMax).toBe(100);
+  expect(hudStore.getState().overlays).toHaveLength(1);
+  expect(hudStore.getState().overlays[0].type).toBe("divine_favor");
+  expect(hudStore.getState().overlays[0].payload.amount).toBe(-5);
+  expect(hudStore.getState().overlays[0].payload.patronId).toBe("kaelen");
+
+  hudStore.getState().dismissAllOverlays();
+  handleGameEvent(favorEvents.joiner);
+  expect(characterStore.getState().divineFavorLevel).toBe(7);
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
 
 // --- handleGameEvent: location_changed ---
 

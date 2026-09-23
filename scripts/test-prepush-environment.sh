@@ -1,22 +1,37 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 HOOK="$ROOT/.githooks/pre-push"
-TMP="$(mktemp -d)"
+TMP_BASE="${TMPDIR:-/tmp}"
+ROOT_HASH="$(printf '%s' "$ROOT" | git hash-object --stdin | cut -c1-12)"
+RETAINED="$TMP_BASE/divineruin-prepush-environment-last-$ROOT_HASH"
+TMP="$(mktemp -d "$TMP_BASE/divineruin-prepush-environment.XXXXXXXX")"
 PASS=0
 FAIL=0
 
-# Keep the case dirs (hook.log, each lane's recorded child env, the acceptance
-# pytest env dump) when anything failed — this harness runs inside the pre-push
+# Keep the latest failing case dirs (hook.log, each lane's recorded child env,
+# the acceptance pytest env dump) — this harness runs inside the pre-push
 # gate, where deleting the only evidence is how a real defect gets called a flake.
 cleanup() {
-  if [ "$FAIL" -eq 0 ]; then rm -rf "$TMP"; else echo "  Artifacts preserved at: $TMP"; fi
+  if [ "$FAIL" -eq 0 ]; then
+    rm -rf "$TMP" "$RETAINED"
+  else
+    rm -rf "$RETAINED"
+    mv "$TMP" "$RETAINED"
+    echo "  Artifacts preserved at: $RETAINED"
+  fi
 }
 trap cleanup EXIT
 
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
 fail() { echo "  FAIL: $1${2:+ ($2)}"; FAIL=$((FAIL + 1)); }
+
+if [ "${PREPUSH_RETENTION_PROBE:-}" ]; then
+  printf '%s\n' "$PREPUSH_RETENTION_PROBE" > "$TMP/evidence"
+  if [ "$PREPUSH_RETENTION_PROBE" != pass ]; then fail "injected retention failure"; exit 1; fi
+  exit 0
+fi
 
 want_eq() {
   local name="$1" got="$2" want="$3"
@@ -311,6 +326,22 @@ for lane in scripts design-tokens web e2e-environment; do
   want_line "$lane failure preserved" "$case_dir/artifacts/last-$lane.log" "$lane-environment-failure-23"
   assert_pid_stopped "$lane failure reaps acceptance" "$case_dir/acceptance.pid"
 done
+
+probe_root="$TMP/retention-probe"
+mkdir "$probe_root"
+probe_fixed="$probe_root/divineruin-prepush-environment-last-$ROOT_HASH"
+for marker in first second; do
+  if TMPDIR="$probe_root" PREPUSH_RETENTION_PROBE="$marker" bash "$0" > "$TMP/$marker-retention.log" 2>&1; then
+    fail "$marker retention probe fails"
+  else
+    pass "$marker retention probe fails"
+  fi
+  want_line "$marker reports fixed evidence path" "$TMP/$marker-retention.log" "  Artifacts preserved at: $probe_fixed"
+done
+want_eq "only fixed evidence remains" "$(find "$probe_root" -mindepth 1 -maxdepth 1 -print | sort)" "$probe_fixed"
+want_line "second failure evidence survives" "$probe_fixed/evidence" second
+TMPDIR="$probe_root" PREPUSH_RETENTION_PROBE=pass bash "$0" > "$TMP/pass-retention.log" 2>&1
+want_eq "passing run removes evidence" "$(find "$probe_root" -mindepth 1 -maxdepth 1 -print)" ""
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

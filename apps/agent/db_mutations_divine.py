@@ -14,10 +14,29 @@ import db
 
 
 async def update_divine_favor(
-    player_id: str, new_level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    new_level: int,
+    *,
+    last_served_at: str | None = None,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Update divine_favor.level in player JSONB."""
+    """Update divine_favor.level and, on a real gain, its service clock."""
     _conn = conn or await db.get_pool()
+    if last_served_at is not None:
+        await _conn.execute(
+            """
+            UPDATE players
+            SET data = jsonb_set(
+                jsonb_set(data, '{divine_favor,level}', $2::jsonb),
+                '{divine_favor,last_served_at}', $3::jsonb
+            )
+            WHERE player_id = $1
+            """,
+            player_id,
+            json.dumps(new_level),
+            json.dumps(last_served_at),
+        )
+        return
     await _conn.execute(
         """
         UPDATE players
@@ -26,6 +45,30 @@ async def update_divine_favor(
         """,
         player_id,
         json.dumps(new_level),
+    )
+
+
+async def persist_favor_decay(player_id: str, level: int, stamp: str, *, conn=None) -> None:
+    connection = conn or await db.get_pool()
+    await connection.execute(
+        """
+        UPDATE players SET data = jsonb_set(
+            jsonb_set(data, '{divine_favor,level}', $2::jsonb),
+            '{divine_favor,last_decay_at}', $3::jsonb
+        ) WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(level),
+        json.dumps(stamp),
+    )
+
+
+async def initialize_favor_clock(player_id: str, stamp: str, *, conn=None) -> None:
+    connection = conn or await db.get_pool()
+    await connection.execute(
+        "UPDATE players SET data = jsonb_set(data, '{divine_favor,last_served_at}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(stamp),
     )
 
 

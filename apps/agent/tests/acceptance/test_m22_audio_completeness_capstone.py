@@ -42,6 +42,7 @@ _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"
 _MOBILE_DIR = _APPS_DIR / "mobile"
 _GENERATOR_PATH = _REPO_ROOT / "scripts" / "audio" / "generate_spell_sfx.py"
 _COMBAT_SOUNDS_PATH = _REPO_ROOT / "content" / "combat_sounds.json"
+_ACTION_SOUNDS_PATH = _REPO_ROOT / "content" / "action_sounds.json"
 
 # Emitter family key -> bundled subdir ("." = the flat root).
 _FAMILIES = (
@@ -82,13 +83,16 @@ def _registry_keys() -> dict[str, list[str]]:
 def _asset_for_key() -> dict[str, str]:
     """Registry key -> the bundled stem it actually plays.
 
-    Combat ids are ALIASES (story-089): several wire ids share one stem, so a
-    combat key's own name is not a filename and never will be. Only the stem it
-    resolves to has to exist on disk.
+    Combat ids (story-089) and action cue ids (story-218) are ALIASES: several wire
+    ids share one stem, so an alias key's own name is not a filename and never will
+    be. Only the stem it resolves to has to exist on disk.
     """
-    rows = json.loads(_COMBAT_SOUNDS_PATH.read_text())
-    assert rows, f"{_COMBAT_SOUNDS_PATH} is empty -- an empty alias map would read as 'no aliases'"
-    return {row["id"]: row["asset"] for row in rows}
+    aliases: dict[str, str] = {}
+    for path in (_COMBAT_SOUNDS_PATH, _ACTION_SOUNDS_PATH):
+        rows = json.loads(path.read_text())
+        assert rows, f"{path} is empty -- an empty alias map would read as 'no aliases'"
+        aliases.update({row["id"]: row["asset"] for row in rows})
+    return aliases
 
 
 @functools.cache
@@ -117,6 +121,12 @@ def test_registry_keyset_equals_bundled_stems(family: str, subdir: str) -> None:
     played = {aliases.get(key, key) for key in registry}
     base = _SOUNDS_DIR if subdir == "." else _SOUNDS_DIR / subdir
     bundled = {p.stem for p in base.glob("*.mp3")}
+    if family == "sound":
+        # An action cue may alias a texture one-shot (footstep_stone); that stem is
+        # bundled under textures/, which the texture family already pins as a whole.
+        textures = {p.stem for p in (_SOUNDS_DIR / "textures").glob("*.mp3")}
+        alias_targets = {aliases[key] for key in registry if key in aliases}
+        played -= alias_targets & (textures - bundled)
     assert played == bundled, (
         f"{family}: TS registry keys (alias-resolved) != bundled stems\n"
         f"  registry-only (missing file): {sorted(played - bundled)}\n"

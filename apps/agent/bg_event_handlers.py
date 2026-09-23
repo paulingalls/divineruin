@@ -231,8 +231,8 @@ def handle_events(
             # per member, and the whisper bookkeeping is primary-keyed (background_process marks
             # last_whisper_level on sd.player_id whoever crossed). Ungated, a teammate's crossing
             # takes the tick's single CRITICAL slot and advances the PRIMARY's cadence while never
-            # advancing its own. _award_divine_favor_core is now the SOLE producer of this event
-            # and always stamps player_id, so an unstamped payload should be unreachable — the
+            # advancing its own. Both producers — _award_divine_favor_core and session_hydration's
+            # neglect decay — stamp player_id, so an unstamped payload should be unreachable — the
             # None branch is kept deliberately as tolerance, not as support for a live producer.
             # Dropping it would make any future unstamped payload silently swallow the whisper,
             # which is strictly worse than treating it as the primary's.

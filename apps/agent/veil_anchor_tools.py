@@ -35,6 +35,7 @@ import db_mutations_veil_ward
 import db_queries
 import veil_ward_events
 import ward_resolution
+from action_sound_content import publish_action_sound
 from session_data import SessionData
 from veil_ward import ANCHOR_SOURCE, VEIL_ANCHORS, WardScope, location_expires_at
 
@@ -90,6 +91,7 @@ async def _deploy_veil_anchor_impl(
     ward = {"source": ANCHOR_SOURCE, "expires_at": expires_at, "dismissible": anchor.dismissible}
     session.location_ward = ward
     await veil_ward_events.publish_veil_ward_changed(session, ward, scope)
+    await publish_action_sound(session, "action_veil_anchor")
     return json.dumps(
         {
             "active": True,

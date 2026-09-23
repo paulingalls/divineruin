@@ -75,8 +75,10 @@ async def start_gameplay_session(
     agent: Any,
     userdata: SessionData,
 ) -> GameplayInputOwner:
-    lifecycle = _setup_party_join(room, userdata)
+    speech_ready = asyncio.Event()
+    lifecycle = _setup_party_join(room, userdata, agent_session=session, speech_ready=speech_ready)
     await session.start(room=room, agent=agent, room_options=gameplay_room_options(userdata))
+    speech_ready.set()
     transcriber = MultiParticipantTranscriber(
         room,
         stt=deepgram.STT(model="nova-3", language="en"),

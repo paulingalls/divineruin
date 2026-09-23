@@ -232,7 +232,7 @@ def stub_creation_portrait_generation():
     orphaned coroutine fails an unrelated later test as "never awaited". Global autouse for the
     same reason as stub_creation_companion_grant: the hazard is silent, so an opt-in is forgotten.
     """
-    with patch("creation_tools._generate_player_portrait", new_callable=AsyncMock):
+    with patch("creation_tools.generate_player_portrait", new_callable=AsyncMock):
         yield
 
 

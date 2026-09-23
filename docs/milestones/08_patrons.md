@@ -84,7 +84,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] Layer 2 Resonance modifiers integrate with Phase 3 Magic Resonance calculations
 - [ ] `evaluate_patron_alignment` produces positive delta for aligned actions and negative for misaligned
 - [x] Favor tiers transition correctly: Acknowledged at 0%, Devoted at 40%, Exalted at 75% of the patron's maximum (Sprint-101)
-- [ ] Favor can decay (not just grow) — neglecting patron values reduces favor over time
+- [x] Favor can decay (not just grow) — neglecting patron values reduces favor over time
+  <!-- Evidence: test_favor_decay_hydration.py checks fresh-session persistence, event delivery, join, and handback; use-game-events.character.test.ts checks the shared event fixture on the client. -->
 - [ ] Unbound Path is selectable and grants Resonance visibility, +3 voluntary Resonance push, and Veil Mastery
 - [ ] `content/gods.json` validates with all 10 complete patron profiles
 - [ ] Background process calls `evaluate_patron_alignment` on 15-30 minute heartbeat

@@ -7,6 +7,7 @@ end-to-end flow through every creation tool. Split from the choice-collection te
 """
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -99,6 +100,10 @@ class TestFinalizeCharacter:
         assert cs.phase == "complete"
         assert ctx.userdata.onboarding_beat == 1
         mock_create_player.assert_awaited_once()
+        stored = mock_create_player.call_args.args[2]
+        served = datetime.fromisoformat(stored["divine_favor"]["last_served_at"])
+        assert served.tzinfo is not None
+        assert abs((datetime.now(UTC) - served).total_seconds()) < 60
 
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)

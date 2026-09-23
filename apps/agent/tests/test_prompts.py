@@ -250,6 +250,11 @@ class TestBuildWarmLayerExits:
         assert "AFFORDANCES" in result
 
 
+def test_every_system_prompt_heading_starts_its_own_line():
+    prompt = build_system_prompt("accord_guild_hall")
+    assert prompt.count("## ") == prompt.count("\n## ") > 0
+
+
 class TestNavigationPromptIncluded:
     def test_system_prompt_includes_navigation(self):
         prompt = build_system_prompt("accord_guild_hall")
