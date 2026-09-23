@@ -15,7 +15,7 @@ logger = logging.getLogger("divineruin.creation")
 SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
 
 
-async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
+async def generate_player_portrait(sd: SessionData, cs: object) -> None:
     """Async fire-and-forget: generate player portrait via server API."""
     try:
         import httpx

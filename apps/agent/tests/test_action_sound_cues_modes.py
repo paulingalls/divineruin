@@ -12,19 +12,13 @@ from mode_tools import _enter_mode_impl
 from onboarding_tools import advance_onboarding_beat
 from session_data import CompanionState, CreationState
 
-IDS = {
+CASES = {
     "blacksmith": "action_enter_mode_blacksmith",
     "dispatch": "action_enter_mode_dispatch",
-    "onboarding": "action_advance_onboarding_beat",
+    "beat_2": "action_advance_onboarding_beat",
+    "beat_complete": "action_advance_onboarding_beat",
     "creation": "action_finalize_character",
 }
-CASES = [
-    ("blacksmith", IDS["blacksmith"]),
-    ("dispatch", IDS["dispatch"]),
-    ("beat_2", IDS["onboarding"]),
-    ("beat_complete", IDS["onboarding"]),
-    ("creation", IDS["creation"]),
-]
 
 
 def context():
@@ -59,13 +53,7 @@ def watch_cue(ctx, log):
 
 def test_fixed_cases_cover_new_catalog_rows():
     assert len(CASES) == 5
-    assert IDS == {
-        "blacksmith": "action_enter_mode_blacksmith",
-        "dispatch": "action_enter_mode_dispatch",
-        "onboarding": "action_advance_onboarding_beat",
-        "creation": "action_finalize_character",
-    }
-    assert set(IDS.values()) <= ACTION_SOUND_IDS
+    assert set(CASES.values()) <= ACTION_SOUND_IDS
 
 
 @pytest.mark.parametrize("mode", ["blacksmith", "dispatch"])
@@ -93,7 +81,7 @@ async def test_mode_cue_after_real_handoff(mode):
     assert agent is not None
     assert json.loads(response) == {"status": f"entered_{mode}"}
     assert getattr(ctx.userdata, f"pre_{mode}_agent_type") == "city"
-    assert_cue(ctx, IDS[mode])
+    assert_cue(ctx, CASES[mode])
     assert log == ["agent", "cue", "return"]
 
 
@@ -108,8 +96,8 @@ async def test_mode_constructor_failure_has_no_cue(mode):
     assert cues(ctx) == []
 
 
-@pytest.mark.parametrize("beat,flag", [(1, 2), (5, "complete")])
-async def test_onboarding_cue_after_persisted_beat(beat, flag):
+@pytest.mark.parametrize("case,beat,flag", [("beat_2", 1, 2), ("beat_complete", 5, "complete")])
+async def test_onboarding_cue_after_persisted_beat(case, beat, flag):
     ctx = context()
     ctx.userdata.onboarding_beat = beat
     if beat == 5:
@@ -132,7 +120,7 @@ async def test_onboarding_cue_after_persisted_beat(beat, flag):
     else:
         assert isinstance(result, str)
         assert json.loads(result)["beat"] == 2
-    assert_cue(ctx, IDS["onboarding"])
+    assert_cue(ctx, CASES[case])
     assert log == ["flag", "cue", "return"]
 
 
@@ -255,7 +243,7 @@ async def test_creation_cue_after_all_steps():
         < log.index("cue")
         < log.index("return")
     )
-    assert_cue(ctx, IDS["creation"])
+    assert_cue(ctx, CASES["creation"])
 
 
 @pytest.mark.parametrize("failure", ["player", "spell_1", "spell_2", "companion", "payload", "session_init"])

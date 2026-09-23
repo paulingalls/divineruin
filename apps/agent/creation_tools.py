@@ -27,7 +27,7 @@ from asset_utils import slug_asset_url
 from companion_profiles import select_companion_for_archetype
 from creation_classes import CLASSES
 from creation_deities import DEITIES
-from creation_portrait import _generate_player_portrait
+from creation_portrait import generate_player_portrait
 from creation_races import RACES
 from creation_rules import build_character_data, infer_culture, select_starting_spells
 from game_events import publish_game_event
@@ -325,7 +325,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
     cs.phase = "complete"
 
     # Fire-and-forget async portrait generation (non-blocking)
-    _portrait_task = asyncio.create_task(_generate_player_portrait(sd, cs))  # noqa: RUF006
+    _portrait_task = asyncio.create_task(generate_player_portrait(sd, cs))  # noqa: RUF006
 
     # Publish session_init so client gets character data
     try:
