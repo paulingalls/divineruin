@@ -37,6 +37,7 @@ import spells
 import veil_anchor_tools
 import veil_ward
 import veil_ward_tools
+from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from session_data import SessionData
 
@@ -165,16 +166,22 @@ async def _activate_impl(
         return await cast_spell_mod._cast_spell_impl(context, id, target_id=target_id, target_ids=target_ids)
     if kind == "variant":
         variant = variants_mod.get_mentor_variant(id)
-        return await ability_mod._request_ability_activation_impl(
+        result = await ability_mod._request_ability_activation_impl(
             context,
             variant.ability_id,
             variant_id=id,
             target_id=target_id,
             target_ids=target_ids,
         )
+        if not context.userdata.in_combat:
+            await publish_action_sound(context.userdata, "action_ability")
+        return result
     ability = abilities_mod.get_ability(id)
     if ability.spell_id is not None and not context.userdata.in_combat:
         return await cast_spell_mod._cast_spell_impl(
             context, ability.spell_id, target_id=target_id, target_ids=target_ids
         )
-    return await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)
+    result = await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)
+    if not context.userdata.in_combat:
+        await publish_action_sound(context.userdata, "action_ability")
+    return result

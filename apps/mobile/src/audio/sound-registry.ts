@@ -1,4 +1,5 @@
 import combatSounds from "../../../../content/combat_sounds.json";
+import actionSounds from "../../../../content/action_sounds.json";
 
 /** React Native asset IDs returned by require() are numbers. */
 type SoundAsset = number;
@@ -69,23 +70,34 @@ const COMBAT_ONLY_ASSETS: Partial<Record<string, SoundAsset>> = {
   weapon_miss: require("@/assets/sounds/weapon_miss.mp3"),
   heartbeat_low_hp: require("@/assets/sounds/heartbeat_low_hp.mp3"),
 };
+const ACTION_ONLY_ASSETS: Partial<Record<string, SoundAsset>> = {
+  footstep_stone: require("@/assets/sounds/textures/footstep_stone.mp3"),
+};
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
 const ASSET_BY_STEM: Partial<Record<string, SoundAsset>> = {
   ...BASE_SOUNDS,
   ...COMBAT_ONLY_ASSETS,
+  ...ACTION_ONLY_ASSETS,
 };
 
 const SOUNDS: Record<string, SoundAsset> = { ...BASE_SOUNDS };
-for (const row of combatSounds) {
-  // hasOwn, never `in`/`obj[key]`: a row naming an Object.prototype member ("toString",
-  // "constructor") otherwise reads the INHERITED value — a false "Duplicate sound id", or
-  // Object.prototype.toString registered as a playable asset instead of the throw below.
-  if (Object.hasOwn(SOUNDS, row.id)) throw new Error(`Duplicate sound id: ${row.id}`);
-  const source = Object.hasOwn(ASSET_BY_STEM, row.asset) ? ASSET_BY_STEM[row.asset] : undefined;
-  if (source === undefined) throw new Error(`Unmapped combat sound asset: ${row.asset}`);
-  SOUNDS[row.id] = source;
+export function mergeSoundRows(
+  target: Record<string, SoundAsset>,
+  rows: Array<{ id: string; asset: string }>,
+  assets: Partial<Record<string, SoundAsset>>,
+  label: string,
+): void {
+  if (rows.length === 0) throw new Error(`Empty ${label} sound catalog`);
+  for (const row of rows) {
+    if (Object.hasOwn(target, row.id)) throw new Error(`Duplicate sound id: ${row.id}`);
+    const source = Object.hasOwn(assets, row.asset) ? assets[row.asset] : undefined;
+    if (source === undefined) throw new Error(`Unmapped ${label} sound asset: ${row.asset}`);
+    target[row.id] = source;
+  }
 }
+mergeSoundRows(SOUNDS, combatSounds, ASSET_BY_STEM, "combat");
+mergeSoundRows(SOUNDS, actionSounds, ASSET_BY_STEM, "action");
 
 const SOUND_NAMES = Object.keys(SOUNDS);
 

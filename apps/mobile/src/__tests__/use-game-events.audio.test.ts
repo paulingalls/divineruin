@@ -1,6 +1,7 @@
 import { test, expect, beforeEach, jest, mock, spyOn } from "bun:test";
 import * as Haptics from "expo-haptics";
 import combatSounds from "../../../../content/combat_sounds.json";
+import actionSounds from "../../../../content/action_sounds.json";
 import gods from "../../../../content/gods.json";
 import spells from "../../../../content/spells.json";
 
@@ -70,6 +71,22 @@ function expectEventPlays(soundName: string) {
 test("every combat sound reaches the platform player", () => {
   expect(combatSounds.length).toBeGreaterThanOrEqual(16);
   for (const row of combatSounds) expectEventPlays(row.id);
+});
+
+test("every action catalog sound reaches the platform player", () => {
+  expect(actionSounds).toHaveLength(7);
+  expect(new Set(actionSounds.map((row) => row.id))).toEqual(
+    new Set([
+      "action_travel",
+      "action_move",
+      "action_veil_ward_raise",
+      "action_veil_ward_dismiss",
+      "action_veil_anchor",
+      "action_ability",
+      "action_gather",
+    ]),
+  );
+  for (const row of actionSounds) expectEventPlays(row.id);
 });
 
 test("spell and god whisper content sounds reach the platform player", () => {
