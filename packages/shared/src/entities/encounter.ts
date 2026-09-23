@@ -1,13 +1,5 @@
-// Encounter template schema (Phase 4 M4.7 / story-001). content/encounter_templates.json is the
-// single source of truth; apps/agent/combat_init.py loads a template and builds CombatParticipants
-// from its enemies. This story adds the encounter-role overlay: each enemy carries a `role`
-// (minion/standard/elite/boss/named) that encounter_roles.derive_role_stats scales at combat init,
-// and Boss enemies author a `signature_ability` + `legendary_actions`.
-//
-// Only the `Attributes` shape is reused from the role_archetype/Npc schema. The action shape is
-// local (`EncounterAction`): content actions carry a `description` blurb, distinct from CombatAction's
-// `effect`. These types match the untyped enemy stat blocks combat_init.py consumes; a Phase-7
-// Bestiary refactor will promote them to a shared CreatureStatBlock base.
+// Encounter templates carry combat and currency overlays around the bestiary
+// CreatureStatBlock base in creature.ts. Their current enemy shape remains distinct.
 
 import type { Attributes } from "./role_archetype";
 
