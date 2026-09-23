@@ -38,8 +38,8 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from _retired_tools import RETIRED_TOOL_REPLACEMENTS
 from acceptance.seeds import seed_player
-from acceptance.test_m5_verb_consolidation import REMOVED_PROGRESSION_TOOLS
 from agent_tool_profiles import AGENT_TOOL_LISTS
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
@@ -123,13 +123,10 @@ async def _cleanup(pool, *player_ids: str) -> None:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
-    """Re-asserts the award-tool invariant under the M28 capstone's own name, so the
-    milestone-exit net names it directly. This net's ASSERTION is independent of M5's
-    combined-union check — a re-added award_xp/award_divine_favor fails here even if M5's own
-    test ever drops REMOVED_PROGRESSION_TOOLS from its union. It DOES share M5's
-    REMOVED_PROGRESSION_TOOLS set and the discovered AGENT_TOOL_LISTS corpus, so narrowing
-    either narrows this net too."""
-    leaked = REMOVED_PROGRESSION_TOOLS & {t.__name__ for t in tools}
+    """The M28 tear-out remains absent from every discovered agent."""
+    retired = {"award_xp", "award_divine_favor"}
+    assert all(RETIRED_TOOL_REPLACEMENTS[tool] is None for tool in retired)
+    leaked = retired & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed award tool(s): {sorted(leaked)}"
 
 

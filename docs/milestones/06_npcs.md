@@ -87,7 +87,7 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 - DB migration: `settlement_templates` table (tier, personality, role_distribution)
 - Rules engine: `generate_settlement_npcs(location_tier, personality)` returning a list of instantiated NPC stat blocks
 - Template-based generation: `instantiate_npc_from_template(role, settlement_tier, personality)` applying tier and personality modifiers
-- Agent tool: `get_settlement_npc_population` for DM agent to query or generate on demand
+- DM access to generated settlement rosters through `query_info` with `kind="settlement_population"`
 
 **Acceptance criteria:**
 - [x] All 4 surviving settlement tiers (hamlet/village/town/city) defined with correct NPC role distributions; `keldaran_hold` normalizes to city <!-- AMENDED 2026-09-01 (decision D-1). Was "All 5 settlement tiers", which is unsatisfiable against the source spec: game_mechanics_npcs.md:556 lists Capital as "(None currently exist — the Sundering destroyed the great cities)", and its Role Distribution by Settlement Size table at :560 has only 4 columns — the spec defines NO role distribution for Capital. Building one would mean inventing content for a settlement class the lore destroyed. Shipped state is spec-aligned and deliberate: content/settlement_templates.json has the 4 tier rows; SETTLEMENT_SIZE_VALUES (location.ts:34-40) carries keldaran_hold, which is dual-natured and NOT a leftover: it is a first-class distinct size for WORKSPACE availability (game_mechanics_crafting.md:240 gives it the only Laboratory=Sometimes row — renowned forges, weaker alchemy — encoded at workspace.py:130-134 and pinned by test_workspace.py:140::test_keldaran_hold_forges_renowned_lab_limited), but City-scale for NPC ROLE COUNTS (game_mechanics_npcs.md:555 lists Keldaran holds as City examples), so settlement_generation.py:25 _TIER_ALIASES maps it to city on that axis only. Pinned by apps/agent/tests/test_settlement_generation.py:85::test_keldaran_hold_maps_to_city and test_settlement_templates.py:146 (get_settlement_tier stays fail-loud on it elsewhere). Correct-distribution half is carried by the adjacent [x] AC "generate_settlement_npcs produces correct role counts for every tier". -->
@@ -95,7 +95,7 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 - [x] `generate_settlement_npcs` produces correct role counts for every tier
 - [x] `instantiate_npc_from_template` applies settlement tier and personality modifiers to archetype defaults
 - [x] Generated NPCs have unique names, varied personalities within archetype constraints <!-- MET 2026-09-02 (story-010): generate_settlement_roster preserves role counts while assigning settlement-unique names and distinct 2-3 trait sets from each role's content pool. Name-pool exhaustion widens into given+surname pairs, so every generated name stays speakable; a conformance test blocks any pool name that collides with an authored character. Pinned by test_settlement_generation.py::TestRoster, test_query.py::TestSettlementPopulation, and test_m62_settlement_capstone.py. -->
-- [x] Agent tool `get_settlement_npc_population` returns valid NPC list for any location
+- [x] `query_info` returns the settlement roster for a location
 - [x] Settlement personality "Corrupt" increases Fence/Black Market frequency and reduces Guard disposition
 - [x] Tests cover all tier/personality combinations
 
@@ -108,7 +108,7 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-settlements.md -->
 
-**Status: DELIVERED (capstone `test_m62_settlement_capstone.py` passes; all ACs met).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/settlement_templates.json` (4 tiers hamlet/village/town/city + 8 settlement personalities + a generated given-name/surname pool), migration `040_settlement_templates.sql`, and `apps/agent/settlement_templates.py` / `settlement_generation.py` (counts, named rosters, and template instantiation). Per-role content pools produce distinct 2-3 trait personalities. Agent tool `query_settlement_population` surfaces counts and roster. Corrupt settlements raise fence/black-market frequency and lower guard disposition. The 4 hostile-encounter templates (bandit_ambush, ashmark_patrol, cult_cell, hollow_corrupted_settlement) ship in `content/encounter_templates.json`.
+**Status: DELIVERED (capstone `test_m62_settlement_capstone.py` passes; all ACs met).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/settlement_templates.json` (4 tiers hamlet/village/town/city + 8 settlement personalities + a generated given-name/surname pool), migration `040_settlement_templates.sql`, and `apps/agent/settlement_templates.py` / `settlement_generation.py` (counts, named rosters, and template instantiation). Per-role content pools produce distinct 2-3 trait personalities. The registered `query_info` tool surfaces counts and roster. Corrupt settlements raise fence/black-market frequency and lower guard disposition. The 4 hostile-encounter templates (bandit_ambush, ashmark_patrol, cult_cell, hollow_corrupted_settlement) ship in `content/encounter_templates.json`.
 
 The Sprint-005 audit paragraph below is retained for history only.
 
@@ -156,7 +156,7 @@ See `audit/phase-6-settlements.md` for the full coverage matrix.
 - Mentor nested data per variant: technique, variant_name, variant_effect, training_cycles, requirements (disposition threshold, quest completion, gold payment, skill tier), narration_cue
 - DB migration: `mentor_registry` table (technique_id, variant_id, mentor_npc_id, requirements, training_cycles)
 - Rules engine: `check_mentor_requirements(player, mentor, variant)` returning pass/fail with specific unmet requirements
-- Agent tools: `check_mentor_requirements` (query), `enroll_mentor_training` (mutation — starts training cycle)
+- Planned mentor requirement check and training enrollment; the registered activity verbs are `begin_activity` and `resolve_activity`.
 
 **Acceptance criteria:**
 - [x] Mentor registry covers all Warrior L4 and L8 technique variants (8+ mentors)
@@ -164,7 +164,7 @@ See `audit/phase-6-settlements.md` for the full coverage matrix.
 - [x] Guardian, Skirmisher, Bard, and Spy archetypes each have at least 2 representative mentors <!-- MET 2026-09-01 (story-006): content/mentor_variants.json is now 88 variants / 4 culture-mentors / 44 ability ids. Bard's 4 electives each carry 2 cultural variants, so all four archetypes draw on all 4 culture-mentors. Pinned by test_mentor_variants_content.py + mentor_variants-load.test.ts. -->
 - [x] `check_mentor_requirements` correctly evaluates disposition threshold, quest completion, gold, and skill tier
 - [x] `check_mentor_requirements` returns specific unmet requirements (not just pass/fail)
-- [x] `enroll_mentor_training` validates requirements before enrollment and returns error if unmet
+- [x] mentor training enrollment validates requirements before enrollment and returns an error if unmet
 - [x] Training cycles are tracked per player per variant
 - [x] Mentor data links correctly to Phase 2 M2.5 ability definitions
 - [x] Tests cover requirement combinations (all met, one unmet, multiple unmet)
@@ -193,7 +193,7 @@ The Sprint-005 audit paragraph below is retained for history only.
 - `variant_id` dimension on `training_activities` — table exists with `data JSONB` but no shipping code stores variant_id.
 - 0 of 21+ named spec mentors seeded in `content/npcs.json`. (Probable name-match: Seeker-Agent Emris = `scholar_emris`.)
 - `check_mentor_requirements` pure function — 0 hits in apps/agent.
-- `enroll_mentor_training` agent tool — not in CITY_TOOLS.
+- The proposed mentor enrollment tool never shipped; current activity entrypoint is `begin_activity`.
 - M2.5 ability symbols — 14 technique_ids referenced by mentor variants have 0 ability binding in apps/agent.
 
 **Cross-doc deps:**
