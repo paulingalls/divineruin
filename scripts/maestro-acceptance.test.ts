@@ -47,6 +47,14 @@ describe("runGate", () => {
     expect(gate.stdout).toMatch(/skip/i);
   });
 
+  test("a non-strict skip reports a failed device probe", async () => {
+    const gate = await runGate(
+      deps({ runSimctl: () => Promise.reject(new Error("CoreSimulator is wedged")) }),
+    );
+    expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
+    expect(gate.stdout).toContain("xcrun simctl probe failed: CoreSimulator is wedged");
+  });
+
   test("strict lane resolves the owned simulator without an explicit UDID", async () => {
     let probed = false;
     let invoked = false;

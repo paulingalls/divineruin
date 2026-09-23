@@ -73,6 +73,22 @@ test("creates one clone-named iPhone on newest available iOS runtime, ignoring s
     ["xcrun", "simctl", "create", NAME, "phone-18", "com.apple.CoreSimulator.SimRuntime.iOS-27-0"],
   ]);
 });
+test("follows the newest available iOS runtime instead of a pinned one", async () => {
+  const [old, current, future] = RUNTIMES.runtimes;
+  const tvos = {
+    identifier: "com.apple.CoreSimulator.SimRuntime.tvOS-30-0",
+    version: "30.0",
+    isAvailable: true,
+    supportedDeviceTypes: [{ name: "Apple TV", productFamily: "Apple TV", identifier: "tv" }],
+  };
+  const { deps, calls } = fixture([STOCK], {
+    runtimes: [old, current, { ...future, isAvailable: true }, tvos],
+  });
+  expect(await resolveOwnedSimulator(deps)).toBe("OWNED");
+  expect(calls.filter((call) => call.includes("create"))).toEqual([
+    ["xcrun", "simctl", "create", NAME, "phone-19", "com.apple.CoreSimulator.SimRuntime.iOS-28-0"],
+  ]);
+});
 test("reuses the one exact-name device and accepts only its explicit UDID", async () => {
   const { deps, calls } = fixture([STOCK, OWNED]);
   expect(await resolveOwnedSimulator(deps, "OWNED")).toBe("OWNED");

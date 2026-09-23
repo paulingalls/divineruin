@@ -186,6 +186,19 @@ describe("verifySdk57Baseline", () => {
       }),
     );
     expect(await failure(verify(root))).toMatch(/scene support/);
+
+    const undeclared = await fixture();
+    await writeFile(
+      join(undeclared, "apps/mobile/package.json"),
+      JSON.stringify({
+        dependencies: {
+          expo: "57.0.24",
+          "@livekit/react-native": "2.12.0",
+          "@livekit/react-native-webrtc": "144.1.2",
+        },
+      }),
+    );
+    expect(await failure(verify(undeclared))).toMatch(/scene support/);
   });
 
   test("requires a reachable nonempty evaluated Expo plugin corpus", async () => {

@@ -104,18 +104,12 @@ export async function runGate(deps: GateDeps): Promise<GateResult> {
       const diagnostics = [ios.diagnostic, android.diagnostic].filter((value): value is string =>
         Boolean(value),
       );
-      if (strict) {
-        return failure(
-          diagnostics.length > 0
-            ? `No device is available:\n  - ${diagnostics.join("\n  - ")}`
-            : "REQUIRE_EMULATOR=1 found no available device",
-        );
-      }
       return {
         exitCode: 0,
         stdout:
           "Maestro acceptance: skipped (no booted iOS simulator or attached Android device). " +
-          "Set REQUIRE_EMULATOR=1 to use the owned iOS simulator.",
+          "Set REQUIRE_EMULATOR=1 to use the owned iOS simulator." +
+          diagnostics.map((diagnostic) => `\n  - ${diagnostic}`).join(""),
         stderr: "",
         maestroInvoked: false,
       };
