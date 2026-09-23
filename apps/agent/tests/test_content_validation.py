@@ -341,8 +341,9 @@ class TestLootAndCurrencyContent:
                 assert 0.0 <= drop["chance"] <= 1.0, (
                     f"Loot table '{table['id']}' drop '{drop['item_id']}' chance out of [0,1]"
                 )
-                assert drop["quantity"] >= 1, (
-                    f"Loot table '{table['id']}' drop '{drop['item_id']}' quantity must be >= 1"
+                quantity = drop["quantity"]
+                assert (type(quantity) is int and quantity >= 1) or isinstance(quantity, str), (
+                    f"Loot table '{table['id']}' drop '{drop['item_id']}' quantity must be positive int or dice"
                 )
 
     def test_material_sell_value_below_craft_value(self):
