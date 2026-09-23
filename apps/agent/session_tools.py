@@ -145,6 +145,16 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
             task.add_done_callback(partial(log_task_failure, logger=logger, message="Session close failed"))
 
     context.speech_handle.add_done_callback(after_playout)
+    if guest_leaves:
+        instruction = (
+            "Only this speaker is leaving; the rest of the party keeps playing. Give this player "
+            "a 1-2 sentence personal farewell; do not wrap up the session for anyone else."
+        )
+    else:
+        instruction = (
+            "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
+            "Mention any XP or progress if meaningful. Plant one hook for next session."
+        )
     return json.dumps(
         {
             "status": "ending",
@@ -154,8 +164,7 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
                 "quests_progressed": sd.session_quests_progressed,
                 "locations_visited": sd.session_locations_visited,
             },
-            "instruction": "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
-            "Mention any XP or progress if meaningful. Plant one hook for next session.",
+            "instruction": instruction,
         }
     )
 

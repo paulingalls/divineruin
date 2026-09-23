@@ -35,6 +35,7 @@ async def test_guest_intent_does_not_end_party_inside_tool():
     with sd._bind_authenticated_actor("guest", 1, lambda _id, _generation: None):
         result = json.loads(await end_session._func(ctx, "goodbye"))
     assert result["status"] == "ending"
+    assert "rest of the party keeps playing" in result["instruction"]
     assert sd.departing_player_id == "guest"
     assert not sd.ending_requested
     assert sd.party.member_ids == ["host", "guest"]
@@ -150,6 +151,34 @@ async def test_room_admin_builds_real_revoking_request():
     assert isinstance(request, api.RoomParticipantIdentity)
     assert request.room == "test-room" and request.identity == "guest"
     assert request.revoke_token_ts >= int(time.time())
+
+
+def _removal_client(error: Exception) -> MagicMock:
+    client = MagicMock()
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=None)
+    client.room.remove_participant = AsyncMock(side_effect=error)
+    return client
+
+
+@pytest.mark.asyncio
+async def test_room_admin_treats_already_departed_participant_as_removed():
+    from room_admin import remove_player
+
+    # The self-hosted server's answer for an identity no longer in the room, probed live.
+    gone = api.ServerError("not_found", "twirp error unknown: participant does not exist", status=404)
+    with patch("room_admin.api.LiveKitAPI", return_value=_removal_client(gone)):
+        await remove_player("test-room", "guest")
+
+
+@pytest.mark.asyncio
+async def test_room_admin_raises_every_other_removal_failure():
+    from room_admin import remove_player
+
+    denied = api.ServerError("permission_denied", "no room admin grant", status=403)
+    with patch("room_admin.api.LiveKitAPI", return_value=_removal_client(denied)):
+        with pytest.raises(api.ServerError, match="permission_denied"):
+            await remove_player("test-room", "guest")
 
 
 @pytest.mark.asyncio
