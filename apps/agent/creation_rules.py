@@ -5,6 +5,8 @@ All functions are deterministic and fully testable without external dependencies
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from archetypes import get_archetype_chassis, is_known
 from creation_classes import CLASSES
 from creation_deities import DEITIES
@@ -270,11 +272,15 @@ def build_character_data(
     deity_id: str | None,
     backstory: str,
     skill_choices: list[str] | None = None,
+    *,
+    created_at: datetime,
 ) -> dict:
     """Compose all creation rules into the complete player data JSONB dict.
 
     Output shape matches content/players.json + race/deity fields.
     """
+    if created_at.tzinfo is None or created_at.utcoffset() is None:
+        raise ValueError("created_at must have a timezone")
     cls = CLASSES.get(class_id)
     if cls is None:
         raise ValueError(f"Unknown class: {class_id}")
@@ -317,5 +323,6 @@ def build_character_data(
             "level": 0,
             "max": 100,
             "last_whisper_level": 0,
+            "last_served_at": created_at.astimezone(UTC).isoformat(),
         },
     }

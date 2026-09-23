@@ -6,6 +6,7 @@ quest completion) so rewards are calculated by the rules engine and only NARRATE
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import asyncpg
 
@@ -17,6 +18,7 @@ import milestone_tools
 import milestones
 import rules_engine
 from companion_profiles import get_companion_profile, select_companion_for_archetype
+from favor_rules import apply_favor_delta
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from tool_support import con_mod_for_player
 
@@ -197,8 +199,14 @@ async def _award_divine_favor_core(
 
     current_level = favor.get("level", 0)
     max_level = favor.get("max", 100)
-    new_level = min(current_level + amount, max_level)
-    await mutations.update_divine_favor(player_id, new_level, conn=conn)
+    new_level = apply_favor_delta(current_level, max_level, amount)
+    actual_delta = new_level - current_level
+    if actual_delta > 0:
+        await mutations.update_divine_favor(
+            player_id, new_level, last_served_at=datetime.now(UTC).isoformat(), conn=conn
+        )
+    else:
+        await mutations.update_divine_favor(player_id, new_level, conn=conn)
 
     pending_events.append(
         (
@@ -213,7 +221,7 @@ async def _award_divine_favor_core(
                 # "+N favor" toast off this field alone. Publishing the request made a player at
                 # max favor watch a "+5" celebrate a bar that never moved — while update_quest's
                 # own rewards_applied entry reported the honest 0 to the DM.
-                "amount": new_level - current_level,
+                "amount": actual_delta,
                 "reason": reason,
                 # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
                 # to 100, so dropping it (as this payload used to) fabricated the bar's scale for

@@ -1,6 +1,7 @@
 """Tests for character creation rules — pure functions, deterministic."""
 
 import json
+from datetime import UTC, datetime
 
 import pytest
 
@@ -11,7 +12,6 @@ from creation_races import RACES
 from creation_rules import (
     BASE_ATTRIBUTE,
     CULTURE_START_LOCATIONS,
-    build_character_data,
     calculate_ac,
     calculate_starting_hp,
     generate_attributes,
@@ -20,6 +20,26 @@ from creation_rules import (
     get_starting_location,
     infer_culture,
 )
+from creation_rules import (
+    build_character_data as _build_character_data,
+)
+
+CREATED_AT = datetime(2026, 9, 23, tzinfo=UTC)
+
+
+def build_character_data(*args, **kwargs):
+    return _build_character_data(*args, created_at=CREATED_AT, **kwargs)
+
+
+def test_creation_starts_favor_clock():
+    data = build_character_data("Aric", "human", "warrior", "kaelen", "Test.")
+    assert data["divine_favor"]["last_served_at"] == CREATED_AT.isoformat()
+
+
+def test_creation_rejects_naive_clock():
+    with pytest.raises(ValueError, match="created_at"):
+        _build_character_data("Aric", "human", "warrior", "kaelen", "Test.", created_at=CREATED_AT.replace(tzinfo=None))
+
 
 # --- Race attribute bonuses ---
 
