@@ -45,7 +45,7 @@ ROLE_ENCOUNTER = {
             "category": "hollow_rend",
             "loot_table_id": "loot_hollow_warden",
             "level": 4,
-            "tier": 2,
+            "tier": 3,
             "ac": 14,
             "hp": 20,
             "attributes": {"strength": 16, "dexterity": 10, "constitution": 16},
@@ -149,7 +149,8 @@ async def test_player_participant_has_empty_loot_fields():
 async def test_enemy_participants_carry_authored_tier():
     parts = await _run_and_get_participants()
     assert parts["shadeling_1"]["tier"] == 1
-    assert parts["warden_1"]["tier"] == 2
+    # Level 4 derives T1 (player bands) or T2 (the retired enemy-level bands); 3 is only authored.
+    assert parts["warden_1"]["tier"] == 3
 
 
 def test_saved_participant_requires_tier_key():

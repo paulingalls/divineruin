@@ -269,6 +269,7 @@ async def test_guest_verbs_reach_persisted_party_rows(
             is_fallen=True,
             role="standard",
             category="humanoid",
+            tier=1,
         )
         players = [
             CombatParticipant(id=pid, name=pid, type="player", initiative=15, hp_current=18, hp_max=18, ac=14)
