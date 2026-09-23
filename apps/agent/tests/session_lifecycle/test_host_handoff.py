@@ -4,7 +4,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from session_lifecycle.test_reconnection import ManualSleep, Room
+from session_lifecycle.test_reconnection import ClosingSession, ManualSleep, Room
 
 from session_data import SessionData
 from session_end import run_guest_departure
@@ -153,4 +153,54 @@ async def test_host_grace_promotes_oldest_survivor():
     assert sd.party.member_ids == ["p2", "p3"]
     session.room_io.set_participant.assert_called_once_with("p2")
     session.aclose.assert_not_awaited()
+    await owner.aclose()
+
+
+@pytest.mark.asyncio
+async def test_promoted_last_member_grace_close_is_not_cancelled_by_its_own_cleanup():
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    sd = SessionData(player_id="host", location_id="hall")
+    sd.party.members.append(SessionData(player_id="p2", location_id="hall").party.primary)
+    room = Room()
+    session = ClosingSession()
+    clock = ManualSleep()
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), sd, MagicMock(), sleep=clock)
+    room.emit("participant_disconnected", "p2")
+    await asyncio.sleep(0)
+    deadline = owner._deadlines["p2"]
+    sd.handoff_primary("host")
+    await clock.advance(RECONNECT_GRACE_S)
+    async with asyncio.timeout(1):
+        while owner.close_task is None:
+            await asyncio.sleep(0)
+    await asyncio.wait_for(owner.close_task, 1)
+    await asyncio.gather(deadline, return_exceptions=True)
+    assert session.close_count == 1
+    assert not deadline.cancelled()
+
+
+@pytest.mark.asyncio
+async def test_grace_expiry_waits_for_a_pending_goodbye():
+    from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
+
+    sd = _party()
+    sd.departing_player_id = "p2"
+    room = Room()
+    clock = ManualSleep()
+    session = SimpleNamespace(aclose=AsyncMock(), on=MagicMock(), off=MagicMock(), generate_reply=MagicMock())
+    owner = _setup_reconnection(cast(Any, room), cast(Any, session), sd, MagicMock(), sleep=clock)
+    room.emit("participant_disconnected", "p3")
+    await asyncio.sleep(0)
+    with patch("participant_lifecycle.run_guest_departure", new_callable=AsyncMock) as depart:
+        await clock.advance(RECONNECT_GRACE_S)
+        await asyncio.sleep(0)
+        depart.assert_not_awaited()
+        assert sd.departing_player_id == "p2"
+        sd.departing_player_id = None
+        await clock.advance(RECONNECT_GRACE_S)
+        async with asyncio.timeout(1):
+            while not depart.await_count:
+                await asyncio.sleep(0)
+    depart.assert_awaited_once_with(sd, "p3", session)
     await owner.aclose()

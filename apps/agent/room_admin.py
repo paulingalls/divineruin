@@ -5,15 +5,14 @@ import time
 from livekit import api
 
 
-async def remove_player(room_name: str, player_id: str) -> int:
+async def remove_player(room_name: str, player_id: str) -> None:
     if not room_name or not player_id:
         raise ValueError("Room name and player identity are required")
-    revoke_token_ts = int(time.time()) + 1
-    # LiveKit Cloud enforces this cutoff; self-hosted rooms require an application token gate.
+    # Only LiveKit Cloud enforces this cutoff; a self-hosted server lets the old token rejoin.
     request = api.RoomParticipantIdentity(
         room=room_name,
         identity=player_id,
-        revoke_token_ts=revoke_token_ts,
+        revoke_token_ts=int(time.time()) + 1,
     )
     async with api.LiveKitAPI() as client:
         try:
@@ -24,4 +23,3 @@ async def remove_player(room_name: str, player_id: str) -> int:
             # never means a missing room. Every other code is a real removal failure.
             if exc.code != api.ServerErrorCode.NOT_FOUND:
                 raise
-    return revoke_token_ts
