@@ -38,19 +38,17 @@ Additional topics: Cosmology: The Veil, the Wellspring, the Sundering, the Hollo
 
 ---
 
-## agent_handoffs_and_scenes.md (915 lines)
+## agent_handoffs_and_scenes.md (123 lines)
 
-Multi-agent architecture, LiveKit handoffs, scenes, and structured play.
+Shipped agent flow, mode handoffs, scene context, and H.1–H.8 history.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Problem Statement | 6-28 | Why the monolithic agent doesn't work (prompt bloat, fragile transitions) |
-| LiveKit Agent Handoffs | 29-71 | Tool-return (LLM-driven) and programmatic handoff mechanisms |
-| Proposed Agent Architecture | 72-376 | Agent graph: Prologue → Creation → Onboarding → City/Wilderness/Dungeon/Combat |
-| Context Transfer Strategy | 377-396 | Template-based summaries, session.userdata persistence |
-| Structured Play: Scenes and Play Trees | 397-521 | Scenes as standalone entities, beat progression, play tree structure |
-| LiveKit Rooms as Shared Spaces | 522-609 | Room architecture, multi-agent rooms, data channels |
-| Development Milestones | 610-915 | Agent handoff milestones — all complete |
+| Agent flow | 7-48 | Entry chain, exploration, combat, and focused mode agents |
+| Context transfer and reconnection | 49-56 | Session state and handoff context |
+| Scenes and structured play | 57-64 | Quest scenes, Stage context, and beat hints |
+| LiveKit rooms and multiplayer | 65-70 | Current session model and shared-room proposal |
+| Development Milestones | 71-123 | Original H.1–H.8 plan and shipped outcomes |
 
 ---
 

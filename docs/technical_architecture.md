@@ -1362,7 +1362,7 @@ Email + 6-digit verification code. No passwords, no OAuth.
 
 1. **LiveKit integration + basic voice loop.** Client connects to a room, speaks (detected by client-side Silero VAD), receives audio back from a minimal agent. Prove the transport works, VAD feels natural, and measure end-to-end latency.
 2. **STT + TTS pipeline.** Deepgram Nova-3 streaming in, Inworld TTS-1.5 Max streaming out. Prove voice quality and latency meet the ~1.2-2.0s target for first audio response.
-3. **DM Agent — basic voice loop.** Implement `DungeonMasterAgent(Agent)` with static system prompt, Claude LLM, and basic conversation. Prove the AI DM can hold a freeform conversation in voice with the DM persona.
+3. **DM Agent — basic voice loop.** The original `DungeonMasterAgent` proved the voice loop; `ExplorationAgent` now handles gameplay conversation with Claude and the DM persona.
 4. **DM ventriloquism via tts_node.** Implement the `tts_node` parser that splits LLM output into narrator segments and `[CHARACTER_NAME]: "dialogue"` segments, routing each to Inworld TTS with the appropriate voiceId. Prove that multiple characters sound distinct and transitions feel natural.
 5. **Tool system — world query tools.** Use the `query_info` `@function_tool` backed by the database. Prove the DM can look up information mid-conversation and weave it into narration naturally.
 6. **Tool system — dice & mechanics.** Use `check`, `declare_phase`, and `resolve_phase` with the hybrid model: LLM requests, rules engine validates, rolls, and applies atomically. Prove the DM calls for checks at appropriate moments and narrates outcomes using `narrative_hint`.

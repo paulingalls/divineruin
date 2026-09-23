@@ -300,7 +300,7 @@ A self-contained story in 3–5 sessions that tests all core systems while plant
 
 | System | Scope | Implementation Reference |
 |---|---|---|
-| **Voice input → DM narration** | Core loop | `DungeonMasterAgent` in LiveKit `AgentSession` with Deepgram STT → Claude LLM → Inworld TTS pipeline. See *Tech Architecture — DM Agent Architecture*. |
+| **Voice input → DM narration** | Core loop | `ExplorationAgent` in LiveKit `AgentSession` with Deepgram STT → Claude LLM → Inworld TTS pipeline. See *Tech Architecture — DM Agent Architecture*. |
 | **AI DM engine** | Narrative + rules + tools | Three-layer architecture: voice agent (real-time), background process (prompt management), toolset (game mechanics). See *Tech Architecture — DM Agent Architecture*. |
 | **DM tool system** | ~20 tools across 4 categories | World query, dice/mechanics (hybrid: LLM requests, rules engine validates and applies), game state mutation (smart validation, auto-push UI), client effects. See *Tech Architecture — Layer 3: The Toolset*. |
 | **Background process** | World-aware prompt management | Event-driven + 60s timer. Rebuilds warm prompt layer via `update_instructions()`. Proactive speech with priority system (critical/important/routine). See *Tech Architecture — Layer 2: The Background Process*. |
@@ -402,7 +402,7 @@ Ordered by dependency and risk. Aligned with the detailed 18-step priority list 
 
 1. **LiveKit integration + basic voice loop.** Client connects to a room, speaks, receives audio back. Prove the transport works, VAD feels natural, measure end-to-end latency.
 2. **STT + TTS pipeline.** Deepgram Nova-3 in, Inworld TTS-1.5 Max out. Prove quality and latency meet the ~1.2-2.0s target.
-3. **DM Agent — basic voice loop.** `DungeonMasterAgent` with static system prompt and Claude. Prove the AI DM can hold a freeform conversation.
+3. **DM Agent — basic voice loop.** The original `DungeonMasterAgent` proved the voice loop; `ExplorationAgent` now handles gameplay conversation with Claude.
 4. **DM ventriloquism via tts_node.** Output parser splits `[CHARACTER, emotion]: "dialogue"` tags and routes to per-character voices. Prove multiple characters sound distinct.
 
 **Phase 2 — Game Mechanics (steps 5-9)**
