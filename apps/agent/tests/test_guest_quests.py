@@ -104,6 +104,7 @@ async def test_guest_completion_pays_xp_favor_and_items_to_both():
     assert {call.args[0] for call in case[6].update_player_xp.await_args_list} == {"player_1", "player_2"}
     metrics = case[0].userdata.player_summary_metrics
     assert metrics["player_1"]["xp_earned"] == metrics["player_2"]["xp_earned"] > 0
+    assert all(metrics[pid]["quest_progress"] for pid in ("player_1", "player_2"))
     assert {call.args[0] for call in divine.update_divine_favor.await_args_list} == {"player_1", "player_2"}
     assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1", "player_2"}
     assert {reward["type"] for reward in result["rewards_applied"]} == {"xp", "favor", "item"}

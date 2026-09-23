@@ -32,6 +32,29 @@ async def test_personal_story_moment_query_filters_player_in_database():
     assert conn.fetch.await_args.args[1:] == ("room-session", "guest")
 
 
+@pytest.mark.asyncio
+async def test_last_member_after_host_handoff_recaps_only_their_own_earnings():
+    from session_end import run_session_end
+
+    sd = SessionData(player_id="host", location_id="hall")
+    sd.party.members.append(SessionData(player_id="p2", location_id="hall").party.primary)
+    sd.session_xp_earned = 500
+    sd.session_items_found = ["Host sword"]
+    sd.record_player_metric("p2", "xp_earned", 25)
+    sd.handoff_primary("host")
+    with (
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+        patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        patch("session_end.publish_game_event", new_callable=AsyncMock),
+        patch("session_end.db_mutations.save_session_summary", new_callable=AsyncMock) as save,
+    ):
+        await run_session_end(sd)
+    assert save.await_args is not None
+    player_id, _session_id, payload = save.await_args.args
+    assert player_id == "p2"
+    assert (payload["xp_earned"], payload["items_found"]) == (25, [])
+
+
 class TestSessionSummary:
     """Test session_summary.py generation and fallback."""
 

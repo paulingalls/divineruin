@@ -82,9 +82,12 @@ async def run_session_end(sd: SessionData) -> None:
     """Generate the session summary, publish it to the client, and store the row.
 
     Every input is session-scoped, read off ``SessionData``: an agent instance knows only
-    its own slice of the session, and the recap covers the whole of it.
+    its own slice of the session, and the recap covers the whole of it. A lone remaining
+    member gets their own tallies, because after a host hand-off the session-wide ones still
+    hold the departed host's earnings.
     """
-    payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time)
+    sole_member = sd.primary_player_id if len(sd.party.members) == 1 else None
+    payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time, player_id=sole_member)
 
     results = await asyncio.gather(
         publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus),

@@ -345,7 +345,7 @@ def _end_combat_finish(
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
     session.session_xp_earned += end_data["summary_xp_granted"]
-    for pid, share in end_data.get("xp_by_player", {}).items():
+    for pid, share in end_data["xp_by_player"].items():
         session.record_player_metric(pid, "xp_earned", share)
 
     loot = end_data.get("primary_loot", [])

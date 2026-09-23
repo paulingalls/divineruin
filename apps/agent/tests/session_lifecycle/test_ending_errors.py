@@ -65,10 +65,16 @@ class TestEndSessionTool:
         from session_tools import end_session
 
         ctx = _make_context()
-        ctx.userdata.session_xp_earned = 75
-        ctx.userdata.session_items_found = ["Shield", "Potion"]
-        ctx.userdata.session_quests_progressed = ["quest_1"]
-        ctx.userdata.session_locations_visited = ["loc_a", "loc_b"]
+        sd = ctx.userdata
+        # Session-wide tallies a departed host left behind; the last member's stats ignore them.
+        sd.session_xp_earned = 500
+        sd.session_items_found = ["Host sword"]
+        sd.record_player_metric(sd.primary_player_id, "xp_earned", 75)
+        for item in ("Shield", "Potion"):
+            sd.record_player_metric(sd.primary_player_id, "items_found", item)
+        sd.record_player_metric(sd.primary_player_id, "quest_progress", "quest_1")
+        for loc in ("loc_a", "loc_b"):
+            sd.record_player_metric(sd.primary_player_id, "locations_visited", loc)
         result = json.loads(await end_session._func(ctx, reason="goodbye"))
         stats = result["session_stats"]
         assert stats["xp_earned"] == 75

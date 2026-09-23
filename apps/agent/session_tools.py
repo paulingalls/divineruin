@@ -161,20 +161,15 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
             "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
             "Mention any XP or progress if meaningful. Plant one hook for next session."
         )
+    # Always the speaker's own tallies: after a host hand-off the session-wide ones still hold
+    # the departed host's earnings, including any from before the last member joined.
+    personal = sd.player_summary_metrics.get(actor_id, {})
     stats = {
-        "xp_earned": sd.session_xp_earned,
-        "items_found": sd.session_items_found,
-        "quests_progressed": sd.session_quests_progressed,
-        "locations_visited": sd.session_locations_visited,
+        "xp_earned": personal.get("xp_earned", 0),
+        "items_found": personal.get("items_found", []),
+        "quests_progressed": personal.get("quest_progress", []),
+        "locations_visited": personal.get("locations_visited", []),
     }
-    if member_leaves:
-        personal = sd.player_summary_metrics.get(actor_id, {})
-        stats = {
-            "xp_earned": personal.get("xp_earned", 0),
-            "items_found": personal.get("items_found", []),
-            "quests_progressed": personal.get("quest_progress", []),
-            "locations_visited": personal.get("locations_visited", []),
-        }
     return json.dumps(
         {
             "status": "ending",
