@@ -6,20 +6,20 @@ import re
 from pathlib import Path
 
 import pytest
+from docs.test_doc_tool_names import doc_paths, require_corpus
 
 from combat_agent import COMBAT_AGENT_TOOLS
 
 ROOT = Path(__file__).resolve().parents[4]
 DOCS = ROOT / "docs"
 AGENT = ROOT / "apps/agent"
-EXCLUDED = (Path("decisions"), Path("milestones/audit"))
 RETIRED = {
     "CityAgent": "ExplorationAgent",
     "WildernessAgent": "ExplorationAgent",
     "DungeonAgent": "ExplorationAgent",
     "DungeonMasterAgent": "ExplorationAgent",
 }
-NAME = re.compile(r"(?<!\w)([A-Za-z_][A-Za-z0-9_]*Agent)\b")
+NAME = re.compile(r"(?<!\w)([A-Za-z_][A-Za-z0-9_]*Agent)s?\b")
 
 
 def live_names(source=AGENT):
@@ -36,14 +36,6 @@ def live_names(source=AGENT):
                     if isinstance(node, ast.ClassDef) and node.name.endswith("Agent")
                 )
     return names
-
-
-def doc_paths(directory=DOCS):
-    return sorted(
-        path
-        for path in directory.rglob("*.md")
-        if not any(path.relative_to(directory).is_relative_to(part) for part in EXCLUDED)
-    )
 
 
 def scan_docs(directory, live, docs=None):
@@ -70,7 +62,9 @@ def test_doc_agent_names():
     assert "CityAgent" in RETIRED
     assert not live & RETIRED.keys()
     assert set(RETIRED.values()) <= live
-    errors = scan_docs(DOCS, live)
+    docs = doc_paths(DOCS)
+    require_corpus(DOCS, docs)
+    errors = scan_docs(DOCS, live, docs)
     assert not errors, "\n".join(errors)
 
 
@@ -78,11 +72,13 @@ def test_bad_agent_lines_red_with_location(tmp_path):
     path = tmp_path / "bad.md"
     path.write_text(
         "CityAgent handles shops\nMarketAgent opens stalls\nunknownAgent appears\nExplorationAgent explores\n"
+        "WildernessAgents roamed\n"
     )
     errors = scan_docs(tmp_path, live_names())
     assert f"{path}:1: CityAgent: missing replacement ExplorationAgent" in errors
     assert f"{path}:2: MarketAgent: no class definition" in errors
     assert f"{path}:3: unknownAgent: no class definition" in errors
+    assert f"{path}:5: WildernessAgent: missing replacement ExplorationAgent" in errors
 
 
 def test_empty_corpus_and_zero_live_mentions_red(tmp_path):
@@ -102,14 +98,6 @@ def test_renamed_live_class_reds_doc(tmp_path):
     path = docs / "current.md"
     path.write_text("ExplorationAgent explores\nRenamedAgent exists\n")
     assert f"{path}:1: ExplorationAgent: no class definition" in scan_docs(docs, live_names(source))
-
-
-def test_doc_walk_excludes_only_decisions_and_audit(tmp_path):
-    for relative in ("live.md", "nested/live.md", "decisions/old.md", "milestones/audit/old.md"):
-        path = tmp_path / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("ExplorationAgent\n")
-    assert [p.relative_to(tmp_path).as_posix() for p in doc_paths(tmp_path)] == ["live.md", "nested/live.md"]
 
 
 def test_combat_agent_tools_match_doc():

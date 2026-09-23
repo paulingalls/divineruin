@@ -51,8 +51,11 @@ not location type, define the available actions.
 Tool-return handoffs pass the chosen chat context while `SessionData` persists on
 `session.userdata`. Creation sends a character summary to onboarding. Mode handoffs
 carry recent context and the session state needed for a return to exploration.
-On reconnection, startup uses saved creation, onboarding, combat, and location state
-to choose an agent. Region changes within exploration rebuild location context.
+A player who drops and rejoins keeps the active agent, which greets them with their
+location, companion, and combat status. A new session chooses its agent from saved
+state: `PrologueAgent` without a named character, `OnboardingAgent` at a saved
+onboarding beat, and otherwise `ExplorationAgent` in the saved location's region.
+Region changes within exploration rebuild location context.
 
 ## Scenes and structured play
 
@@ -65,14 +68,14 @@ or dungeon remain with `ExplorationAgent`. Combat scenes use `CombatAgent` throu
 ## LiveKit rooms and multiplayer
 
 Rooms connect participants and the voice agent. The design for a shared location room,
-with one agent serving several players, remains a multiplayer proposal. The current
-session keeps player state on `SessionData` and uses agent handoffs for play modes.
+with one agent serving several players, remains a multiplayer proposal; see
+`technical_architecture.md` → Multiplayer Architecture. The current session keeps
+player state on `SessionData` and uses agent handoffs for play modes.
 
 ## Development Milestones
 
-These milestones record the original plan and its shipped outcome. Checkboxes in the
-old plan described the implementation at the time; the current classes and flows
-below supersede them.
+Each milestone names the original H.1–H.8 plan and what it became. Git history holds
+the original checklists.
 
 ### Milestone H.1 — Base agent and combat extraction
 
@@ -100,8 +103,9 @@ belongs to that guided flow.
 
 ### Milestone H.5 — Region handoffs
 
-The planned `WildernessAgent`, `DungeonAgent`, and `CityAgent` became `ExplorationAgent`. `region_type` and Stage content supply local
-context. `move_player` updates location without switching agent classes.
+The planned `WildernessAgent`, `DungeonAgent`, and `CityAgent` became `ExplorationAgent`.
+`region_type` and Stage content supply local context. `move_player` updates location
+without switching agent classes.
 
 ### Milestone H.6 — Scene and play tree data
 
@@ -118,6 +122,5 @@ speech path. This is independent of region agent selection.
 ### Milestone H.8 — Playtest and polish
 
 The shipped flow is `PrologueAgent` → `CreationAgent` → `OnboardingAgent` →
-`ExplorationAgent`, with `CombatAgent` for encounters. This milestone's historical
-playthrough and latency aspirations are not a claim that every live experience has
-been manually validated.
+`ExplorationAgent`, with `CombatAgent` for encounters. Its playthrough checklist was
+written against the retired region-agent chain.

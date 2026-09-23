@@ -38,17 +38,17 @@ Additional topics: Cosmology: The Veil, the Wellspring, the Sundering, the Hollo
 
 ---
 
-## agent_handoffs_and_scenes.md (123 lines)
+## agent_handoffs_and_scenes.md (126 lines)
 
 Shipped agent flow, mode handoffs, scene context, and H.1–H.8 history.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Agent flow | 7-48 | Entry chain, exploration, combat, and focused mode agents |
-| Context transfer and reconnection | 49-56 | Session state and handoff context |
-| Scenes and structured play | 57-64 | Quest scenes, Stage context, and beat hints |
-| LiveKit rooms and multiplayer | 65-70 | Current session model and shared-room proposal |
-| Development Milestones | 71-123 | Original H.1–H.8 plan and shipped outcomes |
+| Context transfer and reconnection | 49-59 | Session state and handoff context |
+| Scenes and structured play | 60-67 | Quest scenes, Stage context, and beat hints |
+| LiveKit rooms and multiplayer | 68-74 | Current session model and shared-room proposal |
+| Development Milestones | 75-126 | Original H.1–H.8 plan and shipped outcomes |
 
 ---
 
