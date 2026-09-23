@@ -45,7 +45,7 @@ _DEFEND = {"type": "defend"}
 # ashmark_patrol carries a stance_gate, but no reputation writer ships (SMM risk f3af7b633b44) so it
 # always resolves hostile; the isinstance(raw, tuple) assert fails loud if that ever changes.
 _ENCOUNTER = "ashmark_patrol"
-_LOOT_STUB = {"drops": [{"item_id": "iron_scrap", "chance": 1.0, "quantity": 1}]}
+_LOOT_STUB = {"drops": [{"item_id": "veythar_sealed_artifact", "chance": 1.0, "quantity": 1}]}
 _HOLLOWED_STAGE2 = {"type": "hollowed", "duration": None, "source": "veil", "stage": 2}
 
 
