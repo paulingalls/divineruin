@@ -339,7 +339,7 @@ def is_companion_cue(instructions: str, companion: CompanionState) -> bool:
     return f"[{profile.voice_id}," in instructions
 
 
-STORY_MOMENT_PROMPT = """\
+STORY_MOMENT_PROMPT = """
 ## Story Moments
 
 You can call record_story_moment to tag significant narrative moments during play. \
@@ -349,7 +349,7 @@ Call record_story_moment with:
 - moment_key "hollow_encounter" — when the player first encounters Hollow corruption or creatures
 - moment_key "god_contact" — when a god speaks to or contacts the player
 Provide a brief 1-2 sentence description of the scene for the recap caption. \
-Do not mention the tool to the player. Just call it silently after the narrative moment.\
+Do not mention the tool to the player. Just call it silently after the narrative moment.
 
 When the player's completed action clearly matches a favor action id from \
 query_info(kind="patron"), call record_patron_action with that id. Never record an intention.\

@@ -9,6 +9,7 @@ import db
 import db_activity_queries
 import db_queries
 from _gods_content import load_gods
+from db_errors import db_tool
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
 from progression_tools import _award_divine_favor_core
@@ -16,6 +17,7 @@ from session_data import SessionData
 
 
 @function_tool()
+@db_tool
 async def record_patron_action(context: RunContext[SessionData], action_id: str) -> str:
     """Record a completed player action that clearly matches an authored patron action id.
 
@@ -73,4 +75,6 @@ async def _record_patron_action_impl(context: RunContext[SessionData], action_id
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+    # recent_events is the DM's next-turn memory; without this line it re-records the same act.
+    session.record_event(f"Patron action '{action_id}' ({favor['patron']}): favor {result['amount_applied']:+d}")
     return json.dumps(result)

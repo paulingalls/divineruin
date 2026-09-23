@@ -12,6 +12,7 @@ import event_types as E
 from _gods_content import load_gods
 from patron_action_tools import _record_patron_action_impl, record_patron_action
 from patron_favor import get_patron_tier
+from system_prompts import build_system_prompt
 
 VEYTHAR = next(god for god in load_gods() if god["god_id"] == "veythar")
 ACTIONS = VEYTHAR["favor_actions"]["positive"] + VEYTHAR["favor_actions"]["negative"]
@@ -40,14 +41,17 @@ async def invoke(player_id, action_id):
 
     with patch("patron_action_tools.publish_game_event", capture):
         response = await _record_patron_action_impl(context, action_id)
-    return json.loads(response), published
+    return json.loads(response), published, list(context.userdata.recent_events)
+
+
+def test_veythar_authors_eight_actions():
+    assert len(ACTIONS) == 8
 
 
 @pytest.mark.parametrize("row", ACTIONS, ids=lambda row: row["action"])
 async def test_each_authored_action_persists_and_publishes_real_delta(dev_db_pool, row):
-    assert len(ACTIONS) == 8
     player_id = await seed_favor(dev_db_pool)
-    response, published = await invoke(player_id, row["action"])
+    response, published, recent = await invoke(player_id, row["action"])
     expected = max(0, min(10 + row["amount"], 100))
     stored = await db_activity_queries.get_divine_favor(player_id)
     assert stored is not None
@@ -77,6 +81,7 @@ async def test_each_authored_action_persists_and_publishes_real_delta(dev_db_poo
         assert datetime.fromisoformat(stored["last_served_at"]) > datetime.fromisoformat(PRIOR)
     else:
         assert stored["last_served_at"] == PRIOR
+    assert recent == [f"Patron action '{row['action']}' (veythar): favor {expected - 10:+d}"]
 
 
 @pytest.mark.parametrize(
@@ -90,7 +95,7 @@ async def test_each_authored_action_persists_and_publishes_real_delta(dev_db_poo
 )
 async def test_clamps_and_reports_tier_crossings(dev_db_pool, level, action_id, expected):
     player_id = await seed_favor(dev_db_pool, level)
-    response, published = await invoke(player_id, action_id)
+    response, published, _ = await invoke(player_id, action_id)
     assert response["amount_applied"] == expected - level
     assert response["previous_tier"] == get_patron_tier({"patron": "veythar", "level": level, "max": 100})
     assert response["tier"] == get_patron_tier({"patron": "veythar", "level": expected, "max": 100})
@@ -124,6 +129,7 @@ async def test_refusal_does_not_write_or_publish(dev_db_pool, patron, level, act
             await _record_patron_action_impl(context, action_id)
     assert await db_activity_queries.get_divine_favor(player_id) == before
     assert published == []
+    assert list(context.userdata.recent_events) == []
 
 
 def test_openai_strict_schema_requires_one_string_id():
@@ -132,3 +138,7 @@ def test_openai_strict_schema_requires_one_string_id():
     schema = parsed[0]["function"]["parameters"]
     assert schema["required"] == ["action_id"]
     assert schema["properties"] == {"action_id": {"type": "string"}}
+
+
+def test_system_prompt_names_the_id_producer():
+    assert 'favor action id from query_info(kind="patron"), call record_patron_action' in build_system_prompt("x")
