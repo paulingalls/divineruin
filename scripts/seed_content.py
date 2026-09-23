@@ -152,6 +152,10 @@ def database_target(database_url: str) -> str:
     return f"host={parsed.hostname} port={port} database={database}"
 
 
+class InvalidContent(Exception):
+    pass
+
+
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
     for filename, table in TABLE_MAP.items():
@@ -163,6 +167,8 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
         pk_field = PK_COLUMN.get(table, "id")
         query = upsert_query(table)
         entities = json.loads(filepath.read_text())
+        # The generated tier/level columns cast data to integer, so a bad creature must be caught
+        # before insert or it aborts with a cast error instead of a field-named message.
         if table == "creatures":
             problems = [
                 f"{entity.get('id', '?')}: {error}"
@@ -170,7 +176,7 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
                 for error in validate_creature_stat_block(entity)
             ]
             if problems:
-                raise ValueError("\n".join(problems))
+                raise InvalidContent("\n".join(problems))
         for entity in entities:
             await conn.execute(query, entity[pk_field], json.dumps(entity))
         counts[table] = len(entities)
@@ -367,7 +373,7 @@ async def main() -> None:
             print("Seeding content...")
             try:
                 counts = await seed(conn)
-            except ValueError as error:
+            except InvalidContent as error:
                 print(f"Validation FAILED: {error}")
                 sys.exit(1)
 

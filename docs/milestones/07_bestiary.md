@@ -4,7 +4,7 @@
 
 Defines the full creature catalog, from stat block schema through regional creatures, Hollow special mechanics, and the encounter builder. Provides the DM agent with a complete library of adversaries and the tools to assemble balanced encounters.
 
-## Audit Status (Sprint-045)
+## Audit Status (Sprint-060)
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 

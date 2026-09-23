@@ -2493,7 +2493,7 @@
       ]
     },
     {
-      "name": "whole_number_float_level",
+      "name": "whole_number_floats",
       "block": {
         "id": "hollow_shadeling",
         "name": "Shadeling",
@@ -2505,7 +2505,7 @@
         "ac": 10,
         "speed": 20,
         "attributes": {
-          "STR": 4,
+          "STR": 4.0,
           "DEX": 12,
           "CON": 8,
           "INT": 1,
@@ -2592,9 +2592,9 @@
         "xp_reward": 25
       },
       "expected": [
-        "level: expected integer"
-      ],
-      "raw_integer_token": "\"level\": 8.0"
+        "level: expected integer",
+        "attributes.STR: expected integer"
+      ]
     }
   ]
 }

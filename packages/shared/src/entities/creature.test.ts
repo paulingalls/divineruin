@@ -1,16 +1,15 @@
 import { expect, test } from "bun:test";
-import { validateCreatureJson, validateCreatureStatBlock } from "./creature";
+import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
 
 type Case = {
   name: string;
   block: Record<string, unknown>;
   expected?: string[];
   spec_derived?: string;
-  raw_integer_token?: string;
 };
-const corpus = (await Bun.file(
-  new URL("../../fixtures/creature_blocks.json", import.meta.url),
-).json()) as {
+const corpus = parseCreatureJson(
+  await Bun.file(new URL("../../fixtures/creature_blocks.json", import.meta.url)).text(),
+) as {
   valid: Case[];
   invalid: Case[];
 };
@@ -37,10 +36,7 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
   }
   for (const row of invalid) {
     expect(row.expected?.length).toBeGreaterThan(0);
-    if (row.raw_integer_token) {
-      const raw = JSON.stringify(row.block).replace(/"level":8/, row.raw_integer_token);
-      expect(validateCreatureJson(raw)).toEqual(row.expected!);
-    } else expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
+    expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
   }
 }
 

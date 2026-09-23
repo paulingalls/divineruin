@@ -196,39 +196,26 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   return problems;
 }
 
-const INTEGER_KEYS = new Set([
-  "tier",
-  "level",
-  "hp",
-  "ac",
-  "speed",
-  "STR",
-  "DEX",
-  "CON",
-  "INT",
-  "WIS",
-  "CHA",
-  "reach",
-  "to_hit",
-  "corruption_aura",
-  "resonance_on_death",
-  "xp_reward",
-]);
+// JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".
+// The reviver's source text restores the difference; mapping any decimal or exponent literal to
+// NaN leaves string and object checks unchanged and fails every integer check at its own path.
+function decimalLiteralsAsNaN(
+  _key: string,
+  value: unknown,
+  context?: { source?: string },
+): unknown {
+  if (typeof value !== "number") return value;
+  if (context?.source === undefined) throw new Error("JSON.parse source text access is required");
+  return /[.eE]/.test(context.source) ? Number.NaN : value;
+}
+
+export function parseCreatureJson(raw: string): unknown {
+  return JSON.parse(raw, decimalLiteralsAsNaN);
+}
 
 export function validateCreatureJson(raw: string): string[] {
-  const block: unknown = JSON.parse(raw);
-  const errors = Array.isArray(block)
-    ? block.flatMap(validateCreatureStatBlock)
-    : validateCreatureStatBlock(block);
-  const tokens = raw.match(/"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[:,{}[\]]/g) ?? [];
-  for (let i = 0; i < tokens.length - 2; i++) {
-    const token = tokens[i]!;
-    if (!token.startsWith('"') || tokens[i + 1] !== ":") continue;
-    const key: unknown = JSON.parse(token);
-    if (typeof key === "string" && INTEGER_KEYS.has(key) && /[.eE]/.test(tokens[i + 2]!)) {
-      const error = `${key}: expected integer`;
-      if (!errors.includes(error)) errors.push(error);
-    }
-  }
-  return errors;
+  const parsed = parseCreatureJson(raw);
+  return Array.isArray(parsed)
+    ? parsed.flatMap(validateCreatureStatBlock)
+    : validateCreatureStatBlock(parsed);
 }
