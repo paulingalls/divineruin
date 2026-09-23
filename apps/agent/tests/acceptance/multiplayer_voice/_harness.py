@@ -125,31 +125,33 @@ class MultiplayerVoiceHarness:
     async def start(
         self,
         prepare_listener: Callable[[rtc.Room], Awaitable[Callable[[str], Awaitable[int | None]]]] | None = None,
+        *,
+        transcribe: bool = True,
     ) -> None:
         self._http_context = utils.http_context.open()
         await self._http_context.__aenter__()
         self.player_one = await connect_room(self.server["ws_url"], self._token(self.player_one_identity))
-        self.audio[self.player_one_identity] = await create_microphone_track(
-            self.player_one, sample_rate=16000, channels=1, name="player-one-microphone"
-        )
+        if transcribe:
+            self.audio[self.player_one_identity] = await create_microphone_track(
+                self.player_one, sample_rate=16000, channels=1, name="player-one-microphone"
+            )
         self.listener = await connect_room(self.server["ws_url"], self._token(f"transcriber-{uuid.uuid4().hex[:8]}"))
         await wait_for_peer(self.listener, identity=self.player_one_identity)
-        stt = deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300)
         authorizer = await prepare_listener(self.listener) if prepare_listener else _authorize_transcription_fixture
-        self.manager = MultiParticipantTranscriber(
-            self.listener,
-            stt=stt,
-            authorizer=authorizer,
-        )
-        self.manager.start()
+        if transcribe:
+            stt = deepgram.STT(model="nova-3", language="en-US", endpointing_ms=300)
+            self.manager = MultiParticipantTranscriber(self.listener, stt=stt, authorizer=authorizer)
+            self.manager.start()
         self.player_two = await connect_room(self.server["ws_url"], self._token(self.player_two_identity))
-        self.audio[self.player_two_identity] = await create_microphone_track(
-            self.player_two, sample_rate=16000, channels=1, name="player-two-microphone"
-        )
+        if transcribe:
+            self.audio[self.player_two_identity] = await create_microphone_track(
+                self.player_two, sample_rate=16000, channels=1, name="player-two-microphone"
+            )
         await wait_for_peer(self.listener, identity=self.player_two_identity)
-        await self.wait_for_active({self.player_one_identity, self.player_two_identity})
-        await self.wait_for_microphone(self.player_one_identity, muted=False)
-        await self.wait_for_microphone(self.player_two_identity, muted=False)
+        if transcribe:
+            await self.wait_for_active({self.player_one_identity, self.player_two_identity})
+            await self.wait_for_microphone(self.player_one_identity, muted=False)
+            await self.wait_for_microphone(self.player_two_identity, muted=False)
 
     async def wait_for_microphone(self, identity: str, *, muted: bool | None = None, published: bool = True) -> None:
         assert self.listener is not None
