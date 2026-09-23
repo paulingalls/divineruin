@@ -246,6 +246,7 @@ def test_combat_end_resets_every_member_after_use():
     end_data = {
         "xp_total": 0,
         "xp_granted": 0,
+        "summary_xp_granted": 0,
         "defeated_enemies": [],
         "milestone_grants": [],
         "specialization_fork": None,

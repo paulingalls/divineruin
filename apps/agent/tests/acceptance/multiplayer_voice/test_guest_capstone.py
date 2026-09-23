@@ -147,7 +147,9 @@ async def test_guest_speech_drives_luna_check_travel_and_activity(
                         break
                     await asyncio.sleep(0.1)
         except TimeoutError as exc:
-            raise GuestTrainingNotReached(
+            completed = {call.name for call in calls if any(output.call_id == call.call_id for output in outputs)}
+            stalled = GuestTrainingNotReached if completed >= set(EXPECTED_CALLS[:-1]) else TimeoutError
+            raise stalled(
                 f"guest calls stalled: heard={heard}, calls={names}, history={dm_session.history.items}"
             ) from exc
         assert heard and all(identity == guest for identity, _ in heard)
