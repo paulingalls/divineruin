@@ -22,6 +22,7 @@ from token_tracker import TokenTracker
 
 if TYPE_CHECKING:
     from background_process import BackgroundProcess
+    from participant_lifecycle import ReconnectionLifecycle
     from session_startup import GameplayInputOwner
     from speaker_context import SpeakerSummary
 
@@ -156,6 +157,7 @@ class SessionData:
     # races room.disconnect(), which makes publish_game_event drop the recap.
     session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
     multiplayer_owner: GameplayInputOwner | None = field(default=None, repr=False, compare=False)
+    reconnection_owner: ReconnectionLifecycle | None = field(default=None, repr=False, compare=False)
     multiplayer_close_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:

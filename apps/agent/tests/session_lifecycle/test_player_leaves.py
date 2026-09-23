@@ -10,9 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit import api, rtc
 from livekit.agents.voice.speech_handle import SpeechHandle
+from session_lifecycle.test_reconnection import ManualSleep, Room
 
 import event_types as E
-from participant_lifecycle import PartyLifecycle
+from participant_lifecycle import RECONNECT_GRACE_S, PartyLifecycle, _setup_reconnection
 from session_data import SessionData
 from session_end import run_guest_departure
 from session_startup import GameplayInputOwner
@@ -246,6 +247,101 @@ async def test_interrupted_goodbye_tells_player_to_retry_and_clears_pending_depa
     session.generate_reply.assert_called_once()
     assert "goodbye again" in session.generate_reply.call_args.kwargs["instructions"]
     assert sd.departure_task is None
+
+
+@pytest.mark.asyncio
+async def test_disconnected_host_interrupted_during_farewell_still_departs():
+    sd = _party()
+    sd.party.members.append(SessionData(player_id="p3", location_id="hall").party.primary)
+    room = Room()
+    sd.room = MagicMock()
+    sd.room.name = "test-room"
+    sd.room.isconnected.return_value = True
+    sd.room.local_participant.publish_data = AsyncMock()
+    sd.multiplayer_owner = cast(GameplayInputOwner, SimpleNamespace(lifecycle=MagicMock()))
+    sd.background = MagicMock()
+    sd.background.primary_changed = AsyncMock()
+    session = MagicMock()
+    session.aclose = AsyncMock()
+    session.room_io = MagicMock()
+    clock = ManualSleep()
+    owner = _setup_reconnection(cast(rtc.Room, room), session, sd, MagicMock(), sleep=clock)
+    speech = SpeechHandle.create()
+    ctx = MagicMock(userdata=sd, session=session, speech_handle=speech)
+    with (
+        patch("session_end.generate_session_summary", new_callable=AsyncMock, return_value={"summary": "host recap"}),
+        patch("session_end.room_admin.remove_player", new_callable=AsyncMock) as remove,
+        patch("session_end.db_mutations.save_session_summary", new_callable=AsyncMock) as save,
+    ):
+        with sd._bind_authenticated_actor("host", 1, lambda *_: None):
+            await end_session._func(ctx, "goodbye")
+        room.emit("participant_disconnected", "host")
+        speech.interrupt(source="user_turn")
+        speech._mark_done()
+        await asyncio.sleep(0)
+        assert sd.departure_task is not None
+        await sd.departure_task
+        save.assert_awaited_once()
+        assert save.await_args is not None
+        assert save.await_args.args[0] == "host"
+        remove.assert_awaited_once_with("test-room", "host")
+        assert sd.party.member_ids == ["guest", "p3"]
+        assert sd.primary_player_id == "guest"
+        session.room_io.set_participant.assert_called_once_with("guest")
+        session.generate_reply.assert_not_called()
+        assert not sd.player_disconnected
+        assert not owner.is_disconnected("host")
+        room.emit("participant_disconnected", "guest")
+        assert not sd.background.pause.called
+        room.emit("participant_connected", "guest")
+        await asyncio.sleep(0)
+        sd.departing_player_id = "p3"
+        await run_guest_departure(sd, "p3", session)
+        room.emit("participant_disconnected", "guest")
+        await asyncio.sleep(0)
+        await clock.advance(RECONNECT_GRACE_S)
+        session.aclose.assert_awaited_once()
+    await owner.aclose()
+
+
+@pytest.mark.asyncio
+async def test_failed_departure_of_disconnected_member_retries_after_grace():
+    sd, _ = _departure_setup()
+    sd.departing_player_id = None
+    room = Room()
+    clock = ManualSleep()
+    session = MagicMock()
+    session.aclose = AsyncMock()
+    owner = _setup_reconnection(cast(rtc.Room, room), session, sd, MagicMock(), sleep=clock)
+    speech = SpeechHandle.create()
+    ctx = MagicMock(userdata=sd, session=session, speech_handle=speech)
+    remove = AsyncMock(side_effect=[RuntimeError("room down"), None])
+    with (
+        patch("session_end.generate_session_summary", new_callable=AsyncMock, return_value={"summary": "guest recap"}),
+        patch("session_end.room_admin.remove_player", remove),
+        patch("session_end.db_mutations.save_session_summary", new_callable=AsyncMock) as save,
+    ):
+        with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
+            await end_session._func(ctx, "goodbye")
+        room.emit("participant_disconnected", "guest")
+        speech._mark_done()
+        await asyncio.sleep(0)
+        assert sd.departure_task is not None
+        with pytest.raises(RuntimeError, match="room down"):
+            await sd.departure_task
+        assert sd.party.member_ids == ["host", "guest"]
+        await clock.advance(RECONNECT_GRACE_S)
+        async with asyncio.timeout(1):
+            while sd.party.contains("guest"):
+                await asyncio.sleep(0)
+    assert remove.await_count == 2
+    save.assert_awaited_once()
+    assert sd.party.member_ids == ["host"]
+    room.emit("participant_disconnected", "host")
+    await asyncio.sleep(0)
+    await clock.advance(RECONNECT_GRACE_S)
+    session.aclose.assert_awaited_once()
+    await owner.aclose()
 
 
 @pytest.mark.asyncio

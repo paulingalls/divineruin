@@ -130,11 +130,13 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
 
     def after_playout(handle):
         if handle.interrupted or handle.exception() is not None:
-            sd.departing_player_id = None
-            session.generate_reply(
-                instructions=f"Tell {actor_id} their farewell was interrupted and they can say goodbye again."
-            )
-            return
+            disconnected = sd.reconnection_owner is not None and sd.reconnection_owner.is_disconnected(actor_id)
+            if not disconnected:
+                sd.departing_player_id = None
+                session.generate_reply(
+                    instructions=f"Tell {actor_id} their farewell was interrupted and they can say goodbye again."
+                )
+                return
         if member_leaves:
             departure_context = copy_context()
             departure_context.run(sd._actor_binding.set, None)

@@ -71,6 +71,7 @@ class ReconnectionLifecycle:
         self.close_task: asyncio.Task[None] | None = None
         self._grace_closer: asyncio.Task[None] | None = None
         self._closed = False
+        userdata.reconnection_owner = self
         room.on("participant_disconnected", self._on_disconnect)
         room.on("participant_connected", self._on_reconnect)
         session.on("close", self._on_session_close)
@@ -98,8 +99,6 @@ class ReconnectionLifecycle:
         identity = participant.identity
         if not self.userdata.party.contains(identity) or identity in self._disconnected:
             return
-        if identity == self.userdata.departing_player_id:
-            return
         self._disconnected.add(identity)
         if identity == self.userdata.primary_player_id:
             self.userdata.player_disconnected = True
@@ -107,6 +106,17 @@ class ReconnectionLifecycle:
         if self.userdata.background and len(self._disconnected) == len(self.userdata.party.members):
             self.userdata.background.pause()
         self._arm_grace(identity)
+
+    def is_disconnected(self, identity: str) -> bool:
+        return identity in self._disconnected
+
+    def member_departed(self, identity: str) -> None:
+        self._disconnected.discard(identity)
+        if identity == self.userdata.primary_player_id:
+            self.userdata.player_disconnected = False
+        deadline = self._deadlines.pop(identity, None)
+        if deadline is not None and deadline is not asyncio.current_task():
+            deadline.cancel()
 
     def _arm_grace(self, identity: str) -> None:
         deadline = asyncio.create_task(self._grace_timeout(identity))
@@ -159,7 +169,11 @@ class ReconnectionLifecycle:
                     self._grace_closer = None
                 return
             self.userdata.departing_player_id = identity
-            await run_guest_departure(self.userdata, identity, self.session)
+            try:
+                await run_guest_departure(self.userdata, identity, self.session)
+            except Exception:
+                self._arm_grace(identity)
+                raise
             self._disconnected.discard(identity)
             self._deadlines.pop(identity, None)
             if identity != self.userdata.primary_player_id:
@@ -171,6 +185,8 @@ class ReconnectionLifecycle:
         if self._closed:
             return
         self._closed = True
+        if self.userdata.reconnection_owner is self:
+            self.userdata.reconnection_owner = None
         self.room.off("participant_disconnected", self._on_disconnect)
         self.room.off("participant_connected", self._on_reconnect)
         self.session.off("close", self._on_session_close)
