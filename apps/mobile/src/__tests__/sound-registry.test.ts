@@ -40,10 +40,14 @@ const expectedActionRows = [
   ["ACTION_LEARN_RECIPE", "action_learn_recipe", "discovery_chime"],
   ["ACTION_LEARN_SPELL", "action_learn_spell", "discovery_chime"],
   ["ACTION_REPAIR_ITEM", "action_repair_item", "shield_block"],
+  ["ACTION_ENTER_MODE_BLACKSMITH", "action_enter_mode_blacksmith", "shield_block"],
+  ["ACTION_ENTER_MODE_DISPATCH", "action_enter_mode_dispatch", "notification"],
+  ["ACTION_ADVANCE_ONBOARDING_BEAT", "action_advance_onboarding_beat", "quest_sting"],
+  ["ACTION_FINALIZE_CHARACTER", "action_finalize_character", "level_up_sting"],
 ];
 
 test("action catalog exactly matches the fixed rows and resolves", () => {
-  expect(actionSounds).toHaveLength(17);
+  expect(actionSounds).toHaveLength(21);
   expect(actionSounds.map((row) => [row.export, row.id, row.asset])).toEqual(expectedActionRows);
   for (const row of actionSounds) {
     expect(lookupSound(row.id)).not.toBeNull();

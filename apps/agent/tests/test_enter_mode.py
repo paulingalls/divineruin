@@ -13,12 +13,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_context
 
 from mode_tools import _enter_mode_impl
 
 
 def _ctx() -> MagicMock:
-    return MagicMock(name="run_context")
+    return make_context()
 
 
 class TestEnterModeDelegation:
