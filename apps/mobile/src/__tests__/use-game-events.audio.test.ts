@@ -1,4 +1,5 @@
-import { test, expect, beforeEach, mock } from "bun:test";
+import { test, expect, beforeEach, mock, spyOn } from "bun:test";
+import * as Haptics from "expo-haptics";
 import combatSounds from "../../../../content/combat_sounds.json";
 import gods from "../../../../content/gods.json";
 import spells from "../../../../content/spells.json";
@@ -40,10 +41,11 @@ void mock.module("expo-audio", () => ({
   setAudioModeAsync: async () => {},
 }));
 
-import { handleGameEvent } from "@/audio/game-event-handler";
+import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handler";
 import { lookupSound } from "@/audio/sound-registry";
 import { playSfx, releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
+import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(() => {
@@ -80,11 +82,98 @@ test("spell and god whisper content sounds reach the platform player", () => {
   for (const soundName of new Set(godStingers)) expectEventPlays(soundName);
 });
 
-test("dice_roll event triggers playback", () => {
-  handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14 });
-  expect(mockPlayers).toHaveLength(1);
-  expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
-  expect(mockPlayers[0].playCalls).toBe(1);
+function withDiceClock(
+  run: (clock: { pending: () => number; advance: (ms: number) => void }) => void,
+) {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const timers = new Map<number, { at: number; callback: () => void }>();
+  let now = 0;
+  let nextId = 1;
+  globalThis.setTimeout = ((callback: () => void, delay: number) => {
+    const id = nextId++;
+    timers.set(id, { at: now + delay, callback });
+    return id as unknown as ReturnType<typeof setTimeout>;
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id: ReturnType<typeof setTimeout>) => {
+    timers.delete(id as unknown as number);
+  }) as typeof clearTimeout;
+  try {
+    run({
+      pending: () => timers.size,
+      advance: (ms) => {
+        now += ms;
+        for (const [id, timer] of timers) {
+          if (timer.at <= now) {
+            timers.delete(id);
+            timer.callback();
+          }
+        }
+      },
+    });
+  } finally {
+    timers.clear();
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+}
+
+test.each<[string, { success?: unknown }]>([
+  ["absent", {}],
+  ["null", { success: null }],
+  ["string", { success: "false" }],
+  ["number", { success: 0 }],
+])("narrative dice_roll with %s success has no result sting", (_, outcome) => {
+  const haptic = spyOn(Haptics, "impactAsync");
+  try {
+    withDiceClock((clock) => {
+      handleGameEvent({ type: "dice_roll", roll_type: "narrative", roll: 14, ...outcome });
+      expect(mockPlayers).toHaveLength(1);
+      expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
+      expect(mockPlayers[0].playCalls).toBe(1);
+      expect(haptic).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light);
+      expect(hudStore.getState().overlays[0]).toMatchObject({
+        type: "dice_result",
+        payload: { roll: 14, rollType: "narrative", success: outcome.success },
+      });
+      expect(clock.pending()).toBe(0);
+      clock.advance(DICE_STINGER_DELAY_MS + 1);
+      expect(mockPlayers).toHaveLength(1);
+    });
+  } finally {
+    haptic.mockRestore();
+  }
+});
+
+test.each([
+  [true, "success_sting"],
+  [false, "fail_sting"],
+] as const)("dice_roll success %s plays %s after the delay", (success, sound) => {
+  withDiceClock((clock) => {
+    handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14, success });
+    expect(mockPlayers).toHaveLength(1);
+    expect(mockPlayers[0].source).toBe(lookupSound("dice_roll") as number);
+    expect(clock.pending()).toBe(1);
+    clock.advance(DICE_STINGER_DELAY_MS - 1);
+    expect(mockPlayers).toHaveLength(1);
+    clock.advance(1);
+    expect(mockPlayers).toHaveLength(2);
+    expect(mockPlayers[1].source).toBe(lookupSound(sound) as number);
+    expect(mockPlayers[1].playCalls).toBe(1);
+  });
+});
+
+test("narrative dice_roll cancels an earlier result sting", () => {
+  withDiceClock((clock) => {
+    handleGameEvent({ type: "dice_roll", roll_type: "skill_check", roll: 14, success: false });
+    expect(clock.pending()).toBe(1);
+    clock.advance(DICE_STINGER_DELAY_MS - 1);
+    handleGameEvent({ type: "dice_roll", roll_type: "narrative", roll: 15 });
+    expect(clock.pending()).toBe(0);
+    clock.advance(DICE_STINGER_DELAY_MS + 1);
+    expect(mockPlayers).toHaveLength(2);
+    expect(mockPlayers.every((player) => player.source === lookupSound("dice_roll"))).toBe(true);
+  });
 });
 
 test("unknown event type does not crash", () => {

@@ -97,10 +97,13 @@ export function handleGameEvent(event: DataChannelEvent): void {
         DICE_ROLL_TTL_MS,
       );
       if (_diceStingerTimer) clearTimeout(_diceStingerTimer);
-      _diceStingerTimer = setTimeout(() => {
-        _diceStingerTimer = null;
-        playSfx(event.success ? "success_sting" : "fail_sting");
-      }, DICE_STINGER_DELAY_MS);
+      _diceStingerTimer = null;
+      if (typeof event.success === "boolean") {
+        _diceStingerTimer = setTimeout(() => {
+          _diceStingerTimer = null;
+          playSfx(event.success ? "success_sting" : "fail_sting");
+        }, DICE_STINGER_DELAY_MS);
+      }
       break;
 
     case E.SESSION_INIT:
