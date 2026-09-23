@@ -216,16 +216,22 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
     _conn = conn or await db.get_pool()
     rows = await _conn.fetch(
         """
-        SELECT i.data AS item_data, pi.data AS slot_data
+        SELECT pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
         FROM player_inventory pi
-        JOIN items i ON i.id = pi.item_id
+        LEFT JOIN items i ON i.id = pi.item_id
+        LEFT JOIN materials_catalog m ON m.id = pi.item_id
         WHERE pi.player_id = $1
         """,
         player_id,
     )
     results = []
     for row in rows:
-        item = json.loads(row["item_data"])
+        definition = row["item_data"] or row["material_data"]
+        if definition is None:
+            raise ValueError(f"Inventory for player {player_id!r} contains unknown id {row['item_id']!r}")
+        item = json.loads(definition)
+        if row["item_data"] is None:
+            item["type"] = "material"
         slot = json.loads(row["slot_data"])
         item["slot_info"] = slot
         image_url = compute_item_image_url(item)
@@ -314,9 +320,8 @@ async def get_player_materials(
     player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None, for_update: bool = False
 ) -> dict[str, int]:
     """Return {material_id: quantity} for a player's inventory — the pre-flight Check 4
-    + craft-consume input. Reads player_inventory DIRECTLY (mirrors the TS consume path
-    activities.ts), NOT via get_player_inventory's items JOIN — that JOIN drops material
-    rows whose item_id is a materials_catalog id with no items-table row."""
+    + craft-consume input. Reads player_inventory directly, mirroring the TS consume path
+    in activities.ts."""
     _conn = conn or await db.get_pool()
     sql = "SELECT item_id, COALESCE((data->>'quantity')::int, 1) AS quantity FROM player_inventory WHERE player_id = $1"
     if for_update:

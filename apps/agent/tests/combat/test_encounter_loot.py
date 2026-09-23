@@ -261,6 +261,15 @@ def test_legacy_loot_table_keeps_seeded_rng_sequence() -> None:
     assert rng.random() == 0.3022981875355706
 
 
+def test_hollowed_knight_seeded_roll() -> None:
+    path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
+    tables = {table["id"]: table for table in json.loads(path.read_text())}
+    assert derive_role_loot(tables["loot_hollowed_knight"], "standard", random.Random(4)) == [
+        {"item_id": "wrack_core", "quantity": 1},
+        {"item_id": "hollow_ward_armor", "quantity": 1},
+    ]
+
+
 def test_requirements_remain_data_during_loot_roll() -> None:
     table = {
         "drops": [

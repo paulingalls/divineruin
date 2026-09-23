@@ -91,6 +91,11 @@ def test_residue_tables_pin_authored_requirements() -> None:
     for table_id, (item_id, chance, quantity) in residues.items():
         table = tables[table_id]
         assert table["hollow_residue"] is True
+        assert [
+            drop["item_id"]
+            for drop in table["drops"]
+            if drop["item_id"] in {"hollow_residue_t1", "hollow_residue_t2", "rend_shard", "wrack_core"}
+        ] == [item_id]
         residue = next(drop for drop in table["drops"] if drop["item_id"] == item_id)
         assert residue["chance"] == chance
         assert residue["quantity"] == quantity

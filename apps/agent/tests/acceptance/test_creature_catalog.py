@@ -102,6 +102,7 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
             greyvale_tier_two = {row["id"] for row in await query_creatures_by_region("greyvale", tier=2)}
             assert "scratch_tier_two" in greyvale_tier_two
             assert not greyvale_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
+            assert "scratch_tier_two" not in {row["id"] for row in await query_creatures_by_region("ashmark")}
         finally:
             await conn.close()
 
