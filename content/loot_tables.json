@@ -9,10 +9,10 @@
   },
   {
     "id": "loot_hollow_rend",
-    "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they absorbed enough to leave residue and the odd cold bone shard.",
+    "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they leave a rend shard and the odd cold bone fragment.",
     "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t1", "chance": 0.6, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
+      { "item_id": "rend_shard", "chance": 0.75, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_bone_fragment", "chance": 0.2, "quantity": 1 }
     ]
   },
@@ -50,8 +50,9 @@
   {
     "id": "loot_hollow_warden",
     "description": "Bespoke Warden table. A boss is a headline drop — dense residue, the experimental Hollow-edge blade, and an Aelindran focus the Warden was guarding.",
+    "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_edge_blade", "chance": 0.5, "quantity": 1 },
       { "item_id": "aelindran_focus_crystal", "chance": 0.25, "quantity": 1 }
     ]
@@ -66,11 +67,636 @@
   },
   {
     "id": "loot_hollowed_knight",
-    "description": "Bespoke Hollowed-Knight table. Heavy residue and the anti-Hollow plate it was corrupted inside of.",
+    "description": "Bespoke Hollowed-Knight table. A wrack core and the anti-Hollow plate it was corrupted inside of.",
     "hollow_residue": true,
     "drops": [
-      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2, "requires": [{ "skill": "crafting", "tier": "expert" }] },
+      { "item_id": "wrack_core", "chance": 0.5, "quantity": 1, "requires": [{ "skill": "crafting", "tier": "expert" }] },
       { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_grey_wolf",
+    "description": "Spec harvest and equipment drops for grey wolf.",
+    "drops": [
+      {
+        "item_id": "wolf_pelt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "wolf_fangs",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "wolf_meat",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_wild_boar",
+    "description": "Spec harvest and equipment drops for wild boar.",
+    "drops": [
+      {
+        "item_id": "boar_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "boar_tusks",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      },
+      {
+        "item_id": "boar_meat",
+        "chance": 1.0,
+        "quantity": 4,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_giant_spider",
+    "description": "Spec harvest and equipment drops for giant spider.",
+    "drops": [
+      {
+        "item_id": "spider_silk",
+        "chance": 0.75,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "venom_sac",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "spider_chitin",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_bandit",
+    "description": "Spec harvest and equipment drops for bandit.",
+    "drops": [
+      {
+        "item_id": "leather_armor_basic",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "shortsword_basic",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_thornveld_stalker",
+    "description": "Spec harvest and equipment drops for thornveld stalker.",
+    "drops": [
+      {
+        "item_id": "stalker_pelt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "stalker_claws",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_corrupted_treant",
+    "description": "Spec harvest and equipment drops for corrupted treant.",
+    "drops": [
+      {
+        "item_id": "ironwood_bark",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "corrupted_heartwood",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "thornveld_amber",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_steppe_razorwing",
+    "description": "Spec harvest drops for Steppe Razorwing.",
+    "drops": [
+      {
+        "item_id": "razorwing_feather",
+        "chance": 1.0,
+        "quantity": "1d6",
+        "requires": []
+      },
+      {
+        "item_id": "razorwing_talons",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_steppe_bison",
+    "description": "Spec harvest drops for Steppe Bison.",
+    "drops": [
+      {
+        "item_id": "bison_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "bison_horn",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      },
+      {
+        "item_id": "bison_meat",
+        "chance": 1.0,
+        "quantity": 8,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_rock_viper",
+    "description": "Spec harvest drops for Rock Viper.",
+    "drops": [
+      {
+        "item_id": "viper_venom",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "viper_skin",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_cave_wyrm",
+    "description": "Spec harvest drops for Cave Wyrm.",
+    "drops": [
+      {
+        "item_id": "cave_wyrm_scales",
+        "chance": 1.0,
+        "quantity": "1d6",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "wyrm_acid_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "wyrm_teeth",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "cave_gemstone",
+        "chance": 0.25,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "investigation",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_war_golem",
+    "description": "Spec harvest drops for War Golem.",
+    "drops": [
+      {
+        "item_id": "golem_core",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "enchanted_stone",
+        "chance": 1.0,
+        "quantity": "2d4",
+        "requires": []
+      },
+      {
+        "item_id": "forged_steel",
+        "chance": 0.75,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "power_crystal",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_saltmarsh_lurker",
+    "description": "Spec harvest drops for Saltmarsh Lurker.",
+    "drops": [
+      {
+        "item_id": "lurker_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "lurker_teeth",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_tidecaller_eel",
+    "description": "Spec harvest drops for Tidecaller Eel.",
+    "drops": [
+      {
+        "item_id": "eel_skin",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "lightning_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "eel_oil",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_umbral_crawler",
+    "description": "Spec harvest drops for Umbral Crawler.",
+    "drops": [
+      {
+        "item_id": "crawler_chitin",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "paralytic_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "crawler_mandible",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_deepstone_guardian",
+    "description": "Spec harvest drops for Deepstone Guardian.",
+    "drops": [
+      {
+        "item_id": "guardian_core_small",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "enchanted_stone",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "ancient_mechanism",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_dire_bear",
+    "description": "Spec harvest drops for Dire Bear.",
+    "drops": [
+      {
+        "item_id": "dire_bear_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "dire_bear_claws",
+        "chance": 1.0,
+        "quantity": 4,
+        "requires": []
+      },
+      {
+        "item_id": "dire_bear_heart",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "dire_bear_fat",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_troll",
+    "description": "Spec harvest drops for Troll.",
+    "drops": [
+      {
+        "item_id": "troll_blood",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "troll_hide",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "troll_bone",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_bandit_captain_catalog",
+    "description": "Spec harvest drops for Bandit Captain.",
+    "drops": [
+      {
+        "item_id": "chain_shirt",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "quality_longsword",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "treasure_map_intel",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_thunderbird",
+    "description": "Spec harvest drops for Thunderbird.",
+    "drops": [
+      {
+        "item_id": "thunderbird_feather",
+        "chance": 1.0,
+        "quantity": "2d6",
+        "requires": []
+      },
+      {
+        "item_id": "lightning_gland_large",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "thunderbird_egg",
+        "chance": 0.1,
+        "quantity": 1,
+        "requires": []
+      },
+      {
+        "item_id": "storm_crystal",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "trained"
+          }
+        ]
+      }
     ]
   }
 ]

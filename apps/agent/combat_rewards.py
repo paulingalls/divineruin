@@ -165,17 +165,26 @@ async def distribute_loot(
     primary_loot: list[dict] = []
     for i, drop in enumerate(loot_pool if seat_order else []):
         recipient = seat_order[i % len(seat_order)]
+        item = await content.get_item(drop["item_id"])
+        material = await content.get_material_definition(drop["item_id"])
+        if item is None:
+            if material is None:
+                raise ValueError(f"Loot drop '{drop['item_id']}' has no item or material definition")
+            definition = material
+        else:
+            if material is not None:
+                raise ValueError(f"Loot drop '{drop['item_id']}' is ambiguous across item and material catalogs")
+            definition = item
         await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
         if recipient == recipient_id:
             primary_loot.append(drop)
-        item = await content.get_item(drop["item_id"])
-        item_recipients.append((recipient, item.get("name", drop["item_id"]) if item else drop["item_id"]))
+        item_recipients.append((recipient, definition["name"]))
         await channel.emit(
             E.ITEM_ACQUIRED,
             build_item_acquired_payload(
-                item,
+                definition,
                 item_id=drop["item_id"],
-                image_url=compute_item_image_url(item) if item else None,
+                image_url=compute_item_image_url(definition),
                 quantity=drop["quantity"],
                 source="combat_loot",
                 player_id=recipient,

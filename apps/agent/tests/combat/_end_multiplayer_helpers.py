@@ -134,6 +134,7 @@ def _content_stub(drops: list[dict]) -> MagicMock:
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
     content.get_item = AsyncMock(side_effect=_get_item)
+    content.get_material_definition = AsyncMock(return_value=None)
     return content
 
 

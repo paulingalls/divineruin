@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from world_regions import REGION_IDS
+
 CATEGORIES = ("hollow", "beast", "humanoid", "construct", "undead", "elemental")
 ATTACK_TYPES = ("melee", "ranged", "area")
 HOLLOW_CLASSES = ("drift", "rend", "wrack", "named")
@@ -42,6 +44,16 @@ def validate_creature_stat_block(creature: object) -> list[str]:
     tier = field(creature, "tier", "", "integer")
     if type(tier) is int and tier not in (1, 2, 3, 4):
         problems.append("tier: expected integer 1-4")
+    home_region = field(creature, "home_region", "", "string")
+    if isinstance(home_region, str) and home_region not in (*REGION_IDS, "multi_region"):
+        problems.append("home_region: unknown region")
+    regions = field(creature, "regions", "", "array")
+    if isinstance(regions, list):
+        if not regions:
+            problems.append("regions: expected non-empty array")
+        for i, region in enumerate(regions):
+            if region not in REGION_IDS:
+                problems.append(f"regions[{i}]: unknown region")
     field(creature, "description", "", "string")
     for key in ("level", "hp", "ac", "speed"):
         field(creature, key, "", "integer")

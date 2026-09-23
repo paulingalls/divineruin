@@ -207,9 +207,12 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
     )
     with patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)):
         with patch("pricing_queries.get_economy_pricing", AsyncMock(return_value={"silver_per_gold": 10})):
-            with patch(
-                "db_content_queries.get_item",
-                AsyncMock(side_effect=lambda item_id: {"name": {"relic": "Sun Relic", "gem": "Blue Gem"}[item_id]}),
+            with (
+                patch(
+                    "db_content_queries.get_item",
+                    AsyncMock(side_effect=lambda item_id: {"name": {"relic": "Sun Relic", "gem": "Blue Gem"}[item_id]}),
+                ),
+                patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
             ):
                 with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
                     _, raw = await _end_combat_impl(
@@ -252,9 +255,12 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
         import combat_turn
 
         with patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)):
-            with patch(
-                "db_content_queries.get_item",
-                AsyncMock(side_effect=lambda item_id: {"name": {"relic": "Sun Relic", "gem": "Blue Gem"}[item_id]}),
+            with (
+                patch(
+                    "db_content_queries.get_item",
+                    AsyncMock(side_effect=lambda item_id: {"name": {"relic": "Sun Relic", "gem": "Blue Gem"}[item_id]}),
+                ),
+                patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
             ):
                 await combat_turn._resolve_phase_impl(ctx, **deps)
                 result = await combat_turn._resolve_phase_impl(ctx, **deps)
@@ -286,6 +292,7 @@ async def test_identical_combat_drops_count_one_display_name():
     with (
         patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),
         patch("db_content_queries.get_item", AsyncMock(return_value={"name": "Sun Relic"})),
+        patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
     ):
         await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=_fake_db_mod())
     assert mutations.add_inventory_item.await_count == 2
@@ -316,6 +323,7 @@ async def test_combat_commit_failure_records_no_items():
     with (
         patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),
         patch("db_content_queries.get_item", AsyncMock(side_effect=lambda item_id: {"name": item_id.title()})),
+        patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
     ):
         with pytest.raises(RuntimeError, match="commit failed"):
             await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=db_mod)
