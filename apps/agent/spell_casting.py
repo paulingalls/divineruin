@@ -143,7 +143,6 @@ async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
-    caster_id: str | None = None,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     db_mod=db,
@@ -173,13 +172,9 @@ async def _cast_spell_impl(
     context.disallow_interruptions()
     _validate_id(spell_id, "spell_id")
     session: SessionData = context.userdata
-    # The OOC caster below defaults to party.primary, so this verb is still primary-only while the
-    # actor-aware migration is owed. Gate it explicitly: without this call a guest's authenticated
-    # turn would debit the HOST's Focus/Resonance, and the only thing refusing it would be the
-    # player_id read inside the log line below — which any log tidy-up silently removes.
-    session.validate_acting_player(session.primary_player_id)
-    logger.info("cast_spell called: spell=%s player=%s", spell_id, session.player_id)
-    caster = session.member_state(caster_id) if caster_id else session.party.primary
+    player_id = session.acting_player_id
+    caster = session.member_state(player_id)
+    logger.info("cast_spell called: spell=%s player=%s", spell_id, player_id)
 
     async with db_mod.transaction() as conn:
         result = await _resolve_cast(
@@ -187,6 +182,7 @@ async def _cast_spell_impl(
             spell_id,
             conn=conn,
             caster=caster,
+            revalidate_actor=True,
             target_id=target_id,
             target_ids=target_ids,
             queries_mod=queries_mod,
@@ -227,6 +223,7 @@ async def _resolve_cast(
     *,
     conn,
     caster: PartyMember | None = None,
+    revalidate_actor: bool = False,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     player: dict | None = None,
@@ -261,9 +258,8 @@ async def _resolve_cast(
     flush after commit (a rollback drops them, leaking nothing).
 
     ``caster`` is the PartyMember whose OWN pool (resonance/veil_ward/concentration) and player_id the
-    cast reads and writes — defaulting to ``session.party.primary`` so the OOC path (which passes none)
-    stays byte-identical to single-player. In multi-player combat the phase loop passes the declaring
-    member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
+    cast reads and writes — defaulting to ``session.party.primary``. ``cast_spell`` passes the bound
+    speaker; in multi-player combat the phase loop passes the declaring member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
     primary's (M14 story-004). ``session.resonance``/``session.concentration`` delegate to the primary,
     so for a solo party ``caster`` == the primary is the same objects. The ward does NOT: it is
     scope-owned, resolved from the DB per cast (ward_resolution.resolve_scope_ward).
@@ -352,6 +348,8 @@ async def _resolve_cast(
     generated = cast_modifiers.apply_ward_halving(generated, ward_active, veil_ward=veil_ward)
 
     if spell.focus_cost > 0:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
         await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
     # The post-cast total: shed one cast-paced decay round (suppressed in combat, where the WRAP beat
@@ -369,6 +367,8 @@ async def _resolve_cast(
     )
     new_resonance = effective_resonance if generated > 0 else None
     if generated > 0:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
 
     # Casting a concentration spell starts concentration on it and ends any prior one (the single
@@ -377,6 +377,8 @@ async def _resolve_cast(
     # non-concentration cast never touches concentration (returns the _UNCHANGED sentinel).
     concentration_spell_id: object = _UNCHANGED
     if spell.concentration:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
         await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
         concentration_spell_id = spell_id
 

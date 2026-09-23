@@ -1,5 +1,10 @@
 import os
+import re
+import tokenize
+from io import StringIO
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).parents[3]
 SOURCE_ROOTS = ("apps", "packages", "e2e", "scripts")
@@ -46,6 +51,30 @@ def test_code_files_stay_within_hard_cap():
     lengths = {path.relative_to(REPO_ROOT).as_posix(): len(path.read_text().splitlines()) for path in _code_files()}
 
     assert {path: count for path, count in lengths.items() if count > MAX_LINES} == {}
+
+
+def _has_format_off(source: str) -> bool:
+    return any(
+        token.type == tokenize.COMMENT and re.search(r"#\s*fmt\s*:\s*off\b", token.string)
+        for token in tokenize.generate_tokens(StringIO(source).readline)
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["# fmt: off\na=    [1,2]\n", "# fmt:off\na=    [1,2]\n", "def f():\n    # fmt: off\n    a=    [1,2]\n"],
+)
+def test_format_off_variants_are_detected(source):
+    assert _has_format_off(source)
+
+
+def test_no_python_file_disables_the_formatter_at_module_level():
+    """The cap counts formatted lines: a module-level formatter disable hid a 670-line test."""
+    python_files = [path for path in _code_files() if path.suffix == ".py"]
+    assert python_files
+    offenders = [path.relative_to(REPO_ROOT).as_posix() for path in python_files if _has_format_off(path.read_text())]
+
+    assert offenders == []
 
 
 def test_line_cap_policy_is_exactly_the_recorded_code_boundary():

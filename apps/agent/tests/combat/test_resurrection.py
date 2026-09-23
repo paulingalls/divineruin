@@ -260,6 +260,7 @@ class TestCombatEndDefeatWiring:
         end_data = {
             "xp_total": 0,
             "xp_granted": 0,
+            "summary_xp_granted": 0,
             "milestone_grants": [],
             "specialization_fork": False,
             "defeated_enemies": [],

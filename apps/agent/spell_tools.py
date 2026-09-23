@@ -52,7 +52,7 @@ async def _learn_spell_impl(
     except ValueError as exc:
         raise ToolError(f"Unknown spell: {spell_id}") from exc
 
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     player = await queries_mod.get_player(player_id)
     if not player:
         raise ToolError(f"Unknown player: {player_id}")
@@ -77,6 +77,7 @@ async def _learn_spell_impl(
         )
 
     logger.info("learn spell: player=%s spell=%s tier=%s via=%s", player_id, spell_id, spell.spell_tier, source)
+    context.userdata.validate_acting_player(player_id)
     await character_spells_mod.record_learned(player_id, spell_id, source)
 
     return json.dumps(

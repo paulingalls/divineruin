@@ -103,7 +103,7 @@ class TestLearnVariant:
         db_mod, conn = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock(return_value="train_var1")
         result = json.loads(
             await _learn_variant_impl(
@@ -149,7 +149,7 @@ class TestLearnVariant:
         db_mod, conn = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock(return_value="train_var1")
         result = json.loads(
             await _learn_variant_impl(
@@ -180,7 +180,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock()
         with pytest.raises(ToolError, match="own the base"):
             await _learn_variant_impl(
@@ -210,7 +210,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock()
         with pytest.raises(ToolError, match="elective"):
             await _learn_variant_impl(
@@ -268,7 +268,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=True)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock()
         with pytest.raises(ToolError, match="already unlocked"):
             await _learn_variant_impl(
@@ -294,7 +294,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(
+        training.get_player_active_training_activities = AsyncMock(
             return_value=[{"id": "train_existing", "state": "running_first_half"}]
         )
         training.create_training_activity = AsyncMock()
@@ -343,7 +343,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock()
         reqs = _reqs_mod(met=False, unmet=["gold: need 50, have 0"])
         with pytest.raises(ToolError, match="isn't here"):
@@ -374,7 +374,7 @@ class TestLearnVariant:
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
         training = MagicMock()
-        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.get_player_active_training_activities = AsyncMock(return_value=[])
         training.create_training_activity = AsyncMock()
         with pytest.raises(ToolError, match="gold: need 50"):
             await _learn_variant_impl(

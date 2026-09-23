@@ -35,10 +35,8 @@ UNCANNY_DODGE = "rogue_uncanny_dodge"
 async def _to_post_roll_pause(ctx, deps) -> dict:
     """Drive the round to the POST-ROLL, pre-damage pause on the held goblin blow.
 
-    Three calls: the ally band (which holds the enemy action), the pre-roll window, then the roll
-    plus the post-roll window. Nothing is spent at the pre-roll pause, so the post-roll one opens.
+    Two calls: the ally band, then the roll and post-roll window.
     """
-    await _call(ctx, deps)
     await _call(ctx, deps)
     paused = await _call(ctx, deps)
     assert paused["next"]["waiting_on"]["stage"] == reaction_windows.POST_ROLL
@@ -74,7 +72,7 @@ async def test_the_same_blow_unanswered_deals_its_whole_damage():
     would pass it while the reaction did nothing.
     """
     room = make_mock_room()
-    ctx = _ctx_at_resolution(room=room)
+    ctx = _ctx_at_resolution(room=room, reaction_ids=(UNCANNY_DODGE,))
     deps = _resolve_deps(damage=6)
     await _to_post_roll_pause(ctx, deps)
     final = await _call(ctx, deps)

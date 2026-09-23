@@ -75,6 +75,8 @@ async def _update_quest_impl(
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
     session: SessionData = context.userdata
+    actor_id = session.acting_player_id
+    primary_id = session.primary_player_id
 
     quest = await content.get_quest(quest_id)
     if quest is None:
@@ -103,8 +105,10 @@ async def _update_quest_impl(
     # and a conjunction that happens to short-circuit is not what should keep a name defined.
     xp_paid_ids: set[str] = set()
     favor_paid_ids: set[str] = set()
+    pending_corruption: dict[str, int] = {}
 
     async with db_mod.transaction() as conn:
+        session.validate_acting_player(actor_id)
         # Lock EVERY party member's player_quests row for this quest in ONE ascending-player_id
         # pass, and read the primary's row out of the map — never primary-first (story-009,
         # concern 3a9a93230eed). The marker pass below writes all of these rows, so a
@@ -119,11 +123,11 @@ async def _update_quest_impl(
         # reads the snapshot. Re-reading it after the awaits below could hand the reward passes a
         # member whose row was never locked and who is therefore missing from `party_quests` —
         # which reads as "unpaid" and pays them again for a stage their row already holds.
-        party_ids = sorted({session.player_id} | set(session.party.member_ids))
+        party_ids = sorted({primary_id} | set(session.party.member_ids))
         party_quests = {
             pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True) for pid in party_ids
         }
-        player_quest = party_quests[session.player_id]
+        player_quest = party_quests[primary_id]
 
         if player_quest is None:
             if new_stage_id != 0:
@@ -172,7 +176,8 @@ async def _update_quest_impl(
                 outcome = await combat_rewards.distribute_xp(
                     xp_reward,
                     eligible_ids,
-                    primary_id=session.player_id,
+                    recipient_id=actor_id,
+                    summary_player_id=primary_id,
                     reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
                     mutations=mutations,
                     queries=queries,
@@ -189,7 +194,7 @@ async def _update_quest_impl(
                 xp_paid_ids |= {ev.payload["player_id"] for ev in xp_sink.captured if ev.event_type == E.XP_AWARDED}
                 paid_ids |= xp_paid_ids
                 if outcome.xp_granted:
-                    # The primary's OWN share, not the undistributed total — the response is what
+                    # The speaker's own share, not the undistributed total — the response is what
                     # the DM narrates to them.
                     rewards_applied.append(
                         {"type": "xp", "amount": outcome.xp_granted, "leveled_up": outcome.leveled_up}
@@ -218,7 +223,7 @@ async def _update_quest_impl(
                     if favor_grant is not None:
                         favor_paid_ids.add(pid)
                         paid_ids.add(pid)
-                    if favor_grant is not None and pid == session.player_id:
+                    if favor_grant is not None and pid == actor_id:
                         rewards_applied.append(
                             {
                                 "type": "favor",
@@ -260,8 +265,11 @@ async def _update_quest_impl(
                 item_id = item_reward.get("item") or item_reward.get("item_id")
                 qty = item_reward.get("quantity", 1)
                 if item_id:
-                    await mutations.add_inventory_item(session.player_id, item_id, qty, conn=conn)
-                    rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
+                    for pid in eligible_ids:
+                        await mutations.add_inventory_item(pid, item_id, qty, conn=conn)
+                        paid_ids.add(pid)
+                    if actor_id in eligible_ids:
+                        rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
 
             world_effects = on_complete.get("world_effects", [])
             if world_effects:
@@ -273,6 +281,8 @@ async def _update_quest_impl(
                     mutations=mutations,
                     queries=queries,
                     content=content,
+                    pending_corruption=pending_corruption,
+                    party_ids=tuple(party_ids),
                 )
 
         # On completion there is no stages[len]; an empty dict makes the objective/target
@@ -295,7 +305,8 @@ async def _update_quest_impl(
         # The advance-only guard is load-bearing, not belt-and-braces: set_player_quest is a
         # whole-blob upsert, so writing this stage onto a member who is FURTHER ALONG in their own
         # run would drag them backward — trading a farming hole for data loss.
-        for pid in sorted(paid_ids | {session.player_id}):
+        session.validate_acting_player(actor_id)
+        for pid in sorted(paid_ids | {primary_id}):
             if _is_unpaid_for_stage(party_quests[pid], new_stage_id):
                 await mutations.set_player_quest(pid, quest_id, quest_data, conn=conn)
 
@@ -311,6 +322,9 @@ async def _update_quest_impl(
         if target_loc:
             quest_updated_payload["target_location_id"] = target_loc
         pending_events.append((E.QUEST_UPDATED, quest_updated_payload))
+
+    for pid, level in pending_corruption.items():
+        session.member_state(pid).corruption_level = level
 
     # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:
@@ -337,8 +351,8 @@ async def _update_quest_impl(
     # (story-003) took their `record_event` lines with them, leaving XP and favor grants absent
     # from `recent_events` — which is what exploration_agent's `[Recent: ...]` layer and
     # session_summary's transcript fallback are built from, so the DM forgot the grant on the very
-    # next turn (debt fb14dced76f6). The PRIMARY's own share, matching session_xp_earned below:
-    # recent_events speaks for the session's own player.
+    # next turn (debt fb14dced76f6). The speaker's own share, matching session_xp_earned below:
+    # recent_events speaks for the current speaker.
     for reward in rewards_applied:
         if reward["type"] == "xp":
             session.record_event(f"Awarded {reward['amount']} XP: quest '{quest_name}' stage completed")
@@ -353,10 +367,7 @@ async def _update_quest_impl(
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
     if outcome is not None:
-        # The PRIMARY's own share, not the stage's undistributed total — the same rule combat
-        # exit's metric follows. Counted out here rather than inside the transaction: a stage
-        # that rolls back must not leave its XP behind in the session metric.
-        session.session_xp_earned += outcome.xp_granted
+        session.session_xp_earned += outcome.summary_xp_granted
 
     response = {
         "quest_id": quest_id,
@@ -367,7 +378,7 @@ async def _update_quest_impl(
         "rewards_applied": rewards_applied,
         # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
         # level-up (the DM narrates from the tool response, not the bus).
-        # The PRIMARY's grants only — every other member's level-up reaches their own client on
+        # The speaker's grants only — every other member's level-up reaches their own client on
         # the wire, stamped with their player_id.
         "milestone_grants": outcome.milestone_grants if outcome else [],
         "specialization_fork": outcome.specialization_fork if outcome else False,

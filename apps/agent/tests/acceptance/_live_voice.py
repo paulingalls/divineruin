@@ -1,6 +1,6 @@
 """Credential gate for the live-voice acceptance lane.
 
-Every scenario under `acceptance/multiplayer_voice/` drives the REAL Deepgram STT API, and
+Marked microphone scenarios drive the REAL Deepgram STT API, and
 without a usable key each one dies inside session setup with a vendor error that names no
 cause. REJECTED: branching the CI step on the secret and passing
 `--ignore=tests/acceptance/multiplayer_voice` when it is absent. That gates one invocation

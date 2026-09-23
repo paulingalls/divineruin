@@ -223,6 +223,19 @@ def stub_creation_companion_grant():
         yield
 
 
+@pytest.fixture(autouse=True)
+def stub_creation_portrait_generation():
+    """Default-stub finalize_character's fire-and-forget portrait request.
+
+    Unstubbed, every finalize test POSTs to the REST server's /api/images/generate: paid image
+    generation whenever a dev server is up, and otherwise a connect the test loop cancels, whose
+    orphaned coroutine fails an unrelated later test as "never awaited". Global autouse for the
+    same reason as stub_creation_companion_grant: the hazard is silent, so an opt-in is forgotten.
+    """
+    with patch("creation_tools._generate_player_portrait", new_callable=AsyncMock):
+        yield
+
+
 @pytest.fixture
 def stub_companion_errand_affinity_io():
     """Narrow, opt-in stub for the errand/worker companion-relationship DB calls (story-007).

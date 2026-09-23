@@ -21,6 +21,7 @@ needs it too). story-008 rebuilds the payload as scope-membership.
 """
 
 import json
+from contextlib import nullcontext
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -107,7 +108,12 @@ def _combat_mod():
 
 
 async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None, combat_mod=None):
-    with patch.object(veil_ward_events, "publish_game_event", AsyncMock()) as pub:
+    actor = (
+        ctx.userdata._bind_authenticated_actor(caster_id, 1, lambda *_: None)
+        if caster_id in ctx.userdata.party.member_ids
+        else nullcontext()
+    )
+    with actor, patch.object(veil_ward_events, "publish_game_event", AsyncMock()) as pub:
         raw = await _activate_veil_ward_impl(
             ctx,
             active,
@@ -250,7 +256,7 @@ async def test_second_member_cannot_re_raise_a_warded_scope():
     ward_mut.write_ward.assert_not_awaited()
 
 
-# --- non-primary caster: resolves via member_state(caster_id), not the primary facade -----
+# --- non-primary caster: the bound speaker pays, not the primary -------------------------
 
 
 async def test_non_primary_member_raises_scope_ward_and_pays_alone():

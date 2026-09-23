@@ -10,6 +10,7 @@ a mock spells_mod so the arithmetic is independent of catalog tuning; pass the r
 """
 
 import json
+from contextlib import nullcontext
 from unittest.mock import AsyncMock, MagicMock
 
 from sample_fixtures import make_context, make_db_mod
@@ -228,7 +229,7 @@ async def _cast_racial(
 
     racial_mod is the seeded-spec stub; concentration_mutations_mod is mocked so the persist is
     asserted without touching the DB; dice_mod is a fixed sequence for deterministic echo rolls.
-    ``caster_id``/``party_member_ids`` (story-003) drive a non-primary caster through the same
+    ``caster_id``/``party_member_ids`` bind a non-primary member as the speaker through the same
     entry as the public tool, so the post-commit sync lands on that member, not the primary.
     Returns (parsed_packet, ctx, mutations_mock, concentration_mock, echo_events_mock).
     """
@@ -257,21 +258,26 @@ async def _cast_racial(
     concentration.update_player_concentration = AsyncMock()
     spells_mod = MagicMock()
     spells_mod.get_spell = MagicMock(return_value=spell)
-    raw = await _cast_spell_impl(
-        ctx,
-        spell.id,
-        caster_id=caster_id,
-        db_mod=mock_db,
-        queries_mod=queries,
-        persistence_mod=persistence,
-        resonance_mutations_mod=mutations,
-        resonance_events_mod=events,
-        spells_mod=spells_mod,
-        dice_mod=_dice_seq(*d20s),
-        echo_events_mod=echo_events,
-        racial_mod=_racial_mod(),
-        vaelti_warning_mod=vaelti_warning or MagicMock(),
-        concentration_mutations_mod=concentration,
-        character_spells_mod=_known(spell.id),
+    actor = (
+        ctx.userdata._bind_authenticated_actor(caster_id, 1, lambda *_: None)
+        if caster_id is not None
+        else nullcontext()
     )
+    with actor:
+        raw = await _cast_spell_impl(
+            ctx,
+            spell.id,
+            db_mod=mock_db,
+            queries_mod=queries,
+            persistence_mod=persistence,
+            resonance_mutations_mod=mutations,
+            resonance_events_mod=events,
+            spells_mod=spells_mod,
+            dice_mod=_dice_seq(*d20s),
+            echo_events_mod=echo_events,
+            racial_mod=_racial_mod(),
+            vaelti_warning_mod=vaelti_warning or MagicMock(),
+            concentration_mutations_mod=concentration,
+            character_spells_mod=_known(spell.id),
+        )
     return json.loads(raw), ctx, mutations, concentration, echo_events

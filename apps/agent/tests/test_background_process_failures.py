@@ -49,32 +49,18 @@ def _background_data():
 
     mocks = SimpleNamespace()
     with ExitStack() as stack:
-        mocks.rider = stack.enter_context(
-            patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
-        )
-        mocks.quests = stack.enter_context(
-            patch("background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=[])
-        )
-        mocks.location = stack.enter_context(
-            patch(
-                "background_process.db_content_queries.get_location",
-                new_callable=AsyncMock,
-                return_value={"name": "Guild Hall"},
-            )
-        )
-        mocks.npcs = stack.enter_context(
-            patch("background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-        )
-        mocks.training = stack.enter_context(
-            patch(
-                "background_process.db_training.get_player_training_activities",
-                new_callable=AsyncMock,
-                return_value=[],
-            )
-        )
-        mocks.build = stack.enter_context(
-            patch("background_process.build_warm_layer", new_callable=AsyncMock, side_effect=build)
-        )
+
+        def add(path, **kwargs):
+            return stack.enter_context(patch(f"background_process.{path}", new_callable=AsyncMock, **kwargs))
+
+        add("db_queries.get_player", return_value=None)
+        add("db_activity_queries.get_player_activities", return_value=[])
+        mocks.rider = add("db_content_queries.get_scene", return_value=None)
+        mocks.quests = add("db_queries.get_active_player_quests", return_value=[])
+        mocks.location = add("db_content_queries.get_location", return_value={"name": "Guild Hall"})
+        mocks.npcs = add("db_queries.get_npcs_at_location", return_value=[])
+        mocks.training = add("db_training.get_player_active_training_activities", return_value=[])
+        mocks.build = add("build_warm_layer", side_effect=build)
         yield mocks
 
 

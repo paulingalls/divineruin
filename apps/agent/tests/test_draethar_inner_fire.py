@@ -64,7 +64,7 @@ def _combat_ctx(*, resonance: int = 9, hp_current: int = 20, used: bool = False,
     ctx = make_context(room=room)
     session = ctx.userdata
     session.resonance.current = resonance
-    session.draethar_inner_fire_used = used
+    session.party.primary.draethar_inner_fire_used = used
     session.combat_state = CombatState(
         combat_id="c1",
         participants=[
@@ -132,7 +132,7 @@ async def test_inner_fire_drops_resonance_and_applies_fire_damage():
     hp_mut.update_player_hp.assert_awaited_once_with("player_1", 16, conn=ANY)
     assert session.combat_state.get_participant("player_1").hp_current == 16
     # Once-per-encounter flag spent.
-    assert session.draethar_inner_fire_used is True
+    assert session.party.primary.draethar_inner_fire_used is True
     # Packet shape.
     assert result["resonance_reduced"] == 3
     assert result["fire_damage"] == 4
@@ -369,7 +369,7 @@ async def test_non_draethar_rejected():
         await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
     res_mut.update_player_resonance.assert_not_awaited()
     hp_mut.update_player_hp.assert_not_awaited()
-    assert session.draethar_inner_fire_used is False
+    assert session.party.primary.draethar_inner_fire_used is False
 
 
 async def test_already_used_this_encounter_rejected():
@@ -406,7 +406,7 @@ async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
     story's own tests can see it — 016's never spend a resource at the pause, and 026's never hold
     a blow — so it needed a test that drives both.
     """
-    ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20)
+    ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
     deps = _resolve_deps(damage=3)
     deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
     session = ctx.userdata
@@ -467,4 +467,4 @@ async def test_inner_fire_serialises_against_the_phase_loop():
     burned = ctx.userdata.combat_state.get_participant("player_1")
     assert burned.hp_current == 0, "the phase adopted a copy taken before the burn and healed it away"
     assert burned.is_fallen is True, "story-026's fall went with it — nothing owes this player a death save"
-    assert ctx.userdata.draethar_inner_fire_used is True
+    assert ctx.userdata.party.primary.draethar_inner_fire_used is True

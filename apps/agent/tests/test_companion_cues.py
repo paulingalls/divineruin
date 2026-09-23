@@ -11,6 +11,7 @@ from speech_handles import completed_handle
 
 import event_types as E
 from background_process import BackgroundProcess
+from bg_event_handlers import CORRUPTION_COMPANION_CUES
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_profiles import get_companion_profile
 from event_bus import GameEvent
@@ -117,6 +118,19 @@ def test_every_event_cue_uses_the_assigned_companion(
 
     assert len(background._speech_queue) == 1
     _assert_assigned_cue(background._speech_queue[0].instructions, companion_id)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_corruption_companion_cue_uses_primary_member(reverse: bool) -> None:
+    sd = _session_data(_companion("companion_kael"))
+    background, _ = _background(sd)
+    events = [
+        GameEvent(E.HOLLOW_CORRUPTION_CHANGED, {"player_id": "player_1", "level": 3}),
+        GameEvent(E.HOLLOW_CORRUPTION_CHANGED, {"player_id": "player_2", "level": 1}),
+    ]
+    background._handle_events(list(reversed(events)) if reverse else events)
+    assert len(background._speech_queue) == 1
+    assert CORRUPTION_COMPANION_CUES[3][0] in background._speech_queue[0].instructions
 
 
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)

@@ -9,7 +9,8 @@ mkdir -p "$tmp/repo/scripts" "$tmp/bin"
 cp "$root/scripts/test-fast.sh" "$tmp/repo/scripts/test-fast.sh"
 cat > "$tmp/bin/bunx" <<'EOF'
 #!/usr/bin/env bash
-echo "bunx $*" >> "$FAST_TEST_LOG"
+echo "bunx $* @ ${PWD##*/repo}" >> "$FAST_TEST_LOG"
+if [ "$*" = "tsc --noEmit" ] && [ -f TYPE_ERROR ]; then exit 1; fi
 for arg in "$@"; do
   if [ -f "$arg" ] && grep -q BAD "$arg"; then exit 1; fi
 done
@@ -17,6 +18,7 @@ EOF
 cat > "$tmp/bin/uv" <<'EOF'
 #!/usr/bin/env bash
 echo "uv $*" >> "$FAST_TEST_LOG"
+if [ "$*" = "run pyright" ] && [ -f TYPE_ERROR ]; then exit 1; fi
 for arg in "$@"; do
   if [ -f "$arg" ] && grep -q BAD "$arg"; then exit 1; fi
 done
@@ -57,6 +59,48 @@ printf 'BAD\n' > apps/agent/tests/broken.py
 git add apps/agent/tests/broken.py
 expect_failure 'staged Python defect'
 grep -q 'ruff check.*tests/broken.py' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p apps/mobile/src
+printf 'OK\n' > apps/mobile/src/clean.ts
+touch apps/mobile/TYPE_ERROR
+git add apps/mobile/src/clean.ts
+expect_failure 'staged mobile TypeScript with a workspace type error'
+grep -q 'bunx tsc --noEmit @ /apps/mobile$' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p packages/shared/src apps/mobile apps/server apps/web
+printf 'OK\n' > packages/shared/src/clean.ts
+touch apps/server/TYPE_ERROR
+git add packages/shared/src/clean.ts
+expect_failure 'shared package change breaking a consuming workspace'
+grep -q 'bunx tsc --noEmit @ $' "$FAST_TEST_LOG"
+grep -q 'bunx tsc --noEmit @ /apps/server$' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p apps/server/src
+printf 'OK\n' > apps/server/src/only.ts
+git add apps/server/src/only.ts
+bash scripts/test-fast.sh > "$tmp/output"
+grep -q 'bunx tsc --noEmit @ /apps/server$' "$FAST_TEST_LOG"
+! grep -q 'bunx tsc --noEmit @ /apps/mobile$' "$FAST_TEST_LOG"
+echo '  PASS: server-only commit typechecks only the server'
+
+reset_case
+mkdir -p apps/agent
+printf 'OK\n' > apps/agent/clean.py
+touch apps/agent/TYPE_ERROR
+git add apps/agent/clean.py
+expect_failure 'staged agent Python with a project type error'
+grep -q 'uv run pyright' "$FAST_TEST_LOG"
+
+reset_case
+mkdir -p apps/server/src
+printf 'OK\n' > apps/server/src/fine.ts
+git add apps/server/src/fine.ts
+bash scripts/test-fast.sh > "$tmp/output"
+! grep -q 'pyright' "$FAST_TEST_LOG"
+echo '  PASS: TypeScript-only commit skips pyright'
 
 reset_case
 mkdir -p scripts

@@ -2,10 +2,11 @@
 
 import json
 import time
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sample_fixtures import make_context
 
 from card_tap_handler import (
     HINT_COOLDOWN_S,
@@ -19,7 +20,7 @@ from card_tap_handler import (
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
-from session_data import CreationState, SessionData, SpecializationTap
+from session_data import CreationState, SessionData
 
 # ---------------------------------------------------------------------------
 # build_hint_instruction — pure function tests
@@ -218,7 +219,11 @@ def _make_spec_handler() -> tuple[SpecializationTapHandler, MagicMock]:
     room = MagicMock()
     session = MagicMock()
     session.generate_reply = MagicMock()
-    sd = SessionData(player_id="test", location_id="", room=room)
+    sd = make_context(player_id="test", party_member_ids=["player_2"]).userdata
+    lifecycle = MagicMock()
+    lifecycle.current_generation.return_value = 4
+    lifecycle.is_authorized.return_value = True
+    sd.multiplayer_owner = MagicMock(lifecycle=lifecycle)
     handler = SpecializationTapHandler(room=room, session=session, userdata=sd)
     return handler, session
 
@@ -305,64 +310,76 @@ class TestSpecializationTapHandler:
         session.generate_reply.assert_not_called()
 
 
-class TestSpecializationTapTicket:
-    """The tap records its LiveKit-verified sender so select resolves the OWNER's fork.
+class TestSpecializationTapActor:
+    """The tap binds its LiveKit-verified sender as the DM turn's actor, or dispatches nothing.
 
     ``DataPacket.participant.identity`` IS the player_id (participant_lifecycle compares it
-    directly), so there is no mapping to build — and the identity is carried on SessionData
-    rather than rendered into the DM instruction (decision 5829eecd76eb)."""
+    directly), and it is never rendered into the DM instruction (decision 5829eecd76eb)."""
 
-    def test_valid_tap_records_the_verified_sender(self):
-        handler, _ = _make_spec_handler()
-        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
-        assert handler._userdata.pending_specialization_tap == SpecializationTap(
-            "player_2", "warrior_identity", "warrior_battle_master"
-        )
+    def _actor_seen_by_reply(self, handler, session) -> list[str]:
+        seen: list[str] = []
+        session.generate_reply.side_effect = lambda **kw: seen.append(handler._userdata.acting_player_id)
+        return seen
 
-    def test_ticket_is_set_before_the_dm_is_asked_to_resolve(self):
-        # select consumes the ticket during the reply this call triggers, so it must
-        # already be on SessionData by the time generate_reply runs.
+    def test_authorized_guest_tap_binds_the_guest_for_the_reply(self):
         handler, session = _make_spec_handler()
-        seen: list[object] = []
-        session.generate_reply.side_effect = lambda **kw: seen.append(handler._userdata.pending_specialization_tap)
+        seen = self._actor_seen_by_reply(handler, session)
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
-        assert seen == [SpecializationTap("player_2", "warrior_identity", "warrior_battle_master")]
+        assert seen == ["player_2"]
+        cast(Any, handler._userdata.multiplayer_owner).lifecycle.is_authorized.assert_called_once_with("player_2", 4)
 
-    def test_no_identity_still_dispatches_the_tap(self):
-        # A packet without a participant leaves no ticket, and select falls back to the
-        # sole-claimant party scan — exactly right for the solo session this happens in.
+    def test_no_identity_drops_the_tap(self):
         handler, session = _make_spec_handler()
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
-        assert handler._userdata.pending_specialization_tap is None
-        session.generate_reply.assert_called_once()
+        session.generate_reply.assert_not_called()
 
-    def test_unusable_sender_costs_the_ticket_not_the_tap(self):
-        # Sender validation gets its OWN try (concern 95a6e9e64010): sharing the guard on
-        # milestone_id/specialization_id would return False and swallow the whole tap.
+    def test_unusable_sender_drops_the_tap(self):
         handler, session = _make_spec_handler()
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="not a valid id!"))
-        assert handler._userdata.pending_specialization_tap is None
-        session.generate_reply.assert_called_once()
+        session.generate_reply.assert_not_called()
 
-    def test_unusable_sender_clears_a_previous_ticket(self):
-        # A tap is the most recent statement of who is choosing. Leaving an earlier
-        # tapper's ticket standing could resolve THIS tap onto their row.
-        handler, _ = _make_spec_handler()
-        handler._userdata.pending_specialization_tap = SpecializationTap(
-            "player_2", "warrior_identity", "warrior_battle_master"
-        )
-        handler._last_hint_time = 0.0
-        handler._on_data_received(_make_data_packet(SPEC_TAP, identity=None))
-        assert handler._userdata.pending_specialization_tap is None
+    def test_sender_outside_the_party_drops_the_tap(self):
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_9"))
+        session.generate_reply.assert_not_called()
 
-    def test_dropped_tap_records_nothing(self):
-        handler, _ = _make_spec_handler()
-        handler._on_data_received(_make_data_packet({"type": "specialization_choice_tap"}, identity="player_2"))
-        assert handler._userdata.pending_specialization_tap is None
+    def test_unauthorized_sender_drops_the_tap(self):
+        handler, session = _make_spec_handler()
+        cast(Any, handler._userdata.multiplayer_owner).lifecycle.is_authorized.return_value = False
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        session.generate_reply.assert_not_called()
+
+    def test_sender_with_no_current_generation_drops_the_tap(self):
+        handler, session = _make_spec_handler()
+        lifecycle = cast(Any, handler._userdata.multiplayer_owner).lifecycle
+        lifecycle.current_generation.return_value = None
+        lifecycle.is_authorized.side_effect = lambda _pid, generation: generation is None
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        session.generate_reply.assert_not_called()
+
+    def test_without_an_owner_a_guest_tap_drops(self):
+        handler, session = _make_spec_handler()
+        handler._userdata.multiplayer_owner = None
+        handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
+        session.generate_reply.assert_not_called()
+
+    def test_without_an_owner_the_host_of_a_party_drops(self):
+        handler, session = _make_spec_handler()
+        handler._userdata.multiplayer_owner = None
+        handler._on_data_received(_make_data_packet(SPEC_TAP))
+        session.generate_reply.assert_not_called()
+
+    def test_without_an_owner_a_solo_host_tap_dispatches_as_the_host(self):
+        room, session = MagicMock(), MagicMock()
+        sd = SessionData(player_id="test", location_id="", room=room)
+        handler = SpecializationTapHandler(room=room, session=session, userdata=sd)
+        seen = self._actor_seen_by_reply(handler, session)
+        handler._on_data_received(_make_data_packet(SPEC_TAP))
+        assert seen == ["test"]
 
     def test_no_identity_reaches_the_llm_instruction(self):
-        # The whole point of the ticket: a model that mis-copied an id would pass every
-        # validation check and write one member's choice onto another's write-once row.
+        # A model that mis-copied an id would pass every validation check and write one
+        # member's choice onto another's write-once row.
         handler, session = _make_spec_handler()
         handler._on_data_received(_make_data_packet(SPEC_TAP, identity="player_2"))
         kwargs = session.generate_reply.call_args[1]

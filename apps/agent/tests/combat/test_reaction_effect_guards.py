@@ -174,7 +174,7 @@ async def test_uncanny_dodge_spent_by_a_bystander_leaves_the_allys_damage_whole(
     install it directly to prove the effect guard remains defense-in-depth if a bad record reaches
     the pump by another path. Bram is the one being hit, Kael is the recorded reactor.
     """
-    ctx = _ctx_at_resolution(state=_guarded_ally_state())
+    ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=("guardian_intercept",))
     deps = _resolve_deps(damage=6)
     packets: list[dict] = []
 
@@ -199,7 +199,7 @@ async def test_a_shield_reaction_spent_by_a_bystander_wears_nobodys_shield():
     never spent. The activation gate refuses this case; direct installation keeps the downstream
     guard executable. Bram is the one hit here and both players are carrying a shield.
     """
-    ctx = _ctx_at_resolution(state=_guarded_ally_state())
+    ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=("guardian_intercept",))
     deps = _shield_bearing_deps()
     packets: list[dict] = []
 

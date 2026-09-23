@@ -16,6 +16,7 @@ def mock_context():
     context = AsyncMock(spec=RunContext)
     session_data = AsyncMock(spec=SessionData)
     session_data.player_id = "test_player"
+    session_data.acting_player_id = "test_player"
     session_data.location_id = "test_location"
     context.userdata = session_data
     return context
@@ -208,6 +209,7 @@ class TestQueryInfoE2E:
         """AC4: query_info(kind='training_programs') returns JSON with programs list."""
         player_id = f"query_training_{uuid.uuid4().hex}"
         mock_context.userdata.player_id = player_id
+        mock_context.userdata.acting_player_id = player_id
         await dev_db_pool.execute(
             "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)",
             player_id,

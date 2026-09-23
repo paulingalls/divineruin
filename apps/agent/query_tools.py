@@ -124,7 +124,7 @@ async def _query_patron_impl(
     gods_loader=load_gods,
 ) -> str:
     session: SessionData = context.userdata
-    favor = await activities.get_divine_favor(session.player_id)
+    favor = await activities.get_divine_favor(session.acting_player_id)
     if favor is None:
         raise ToolError("Cannot query patron: current player has no divine_favor row.")
 
@@ -172,14 +172,15 @@ async def _query_abilities_impl(
     spell_catalog=spells,
 ) -> str:
     session: SessionData = context.userdata
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     player_class = player.get("class") if player else None
     if not isinstance(player_class, str) or not player_class:
         raise ToolError("Cannot query abilities: current player has no class.")
 
-    known_rows = await persistence.get_character_abilities(session.player_id)
+    known_rows = await persistence.get_character_abilities(player_id)
     known_ids = {row["ability_id"] for row in known_rows}
-    library_rows = await character_spells_mod.get_known(session.player_id)
+    library_rows = await character_spells_mod.get_known(player_id)
     castable_ids = spell_knowledge_mod.castable_spell_ids(player_class, (row["spell_id"] for row in library_rows))
 
     # An empty catalog means unknown or unloaded, not zero ownership; returning [] would falsely
@@ -217,7 +218,7 @@ async def _query_abilities_impl(
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":
-            active_variant_id = await persistence.get_active_variant(session.player_id, ability.id)
+            active_variant_id = await persistence.get_active_variant(player_id, ability.id)
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id
         results.append(row)
@@ -309,7 +310,7 @@ async def _query_npc_impl(
     if npc is None:
         raise ToolError(f"NPC '{npc_id}' not found.")
 
-    disposition = await _resolve_disposition(npc_id, session.player_id, npc, queries=queries)
+    disposition = await _resolve_disposition(npc_id, session.acting_player_id, npc, queries=queries)
 
     knowledge = filter_knowledge(npc.get("knowledge", {}), disposition)
     narration = _npc_for_narration(npc, disposition, knowledge)
@@ -348,8 +349,9 @@ async def _query_inventory_impl(
     queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
-    logger.info("query_info[inventory] called: player_id=%s", session.player_id)
-    items = await queries.get_player_inventory(session.player_id)
+    player_id = session.acting_player_id
+    logger.info("query_info[inventory] called: player_id=%s", player_id)
+    items = await queries.get_player_inventory(player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
 

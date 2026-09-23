@@ -101,7 +101,7 @@ async def _query_available_workspaces_impl(
     workspace_mod=workspace,
     pricing_mod=pricing_queries,
 ) -> str:
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     location_id = context.userdata.location_id
     if npc_id is not None:
         _validate_id(npc_id, "npc_id")
@@ -181,7 +181,7 @@ async def _rent_workspace_impl(
     if days < 1:
         raise ToolError("Rental length must be at least 1 day.")
 
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     location_id = context.userdata.location_id
 
     # A multi-workspace offer is sold only where location tags host every grant.
@@ -231,12 +231,15 @@ async def _rent_workspace_impl(
         # workspace_type must stay inside the four-member vocabulary the TS gate
         # re-parses (apps/server/src/workspace.ts parseWorkspaceType), so the bundle
         # token itself is never persisted.
-        rental_ids = [
-            await mutations_mod.create_workspace_rental(
-                player_id, location_id, granted.value, "rental", expires_at, conn=conn
+        rental_ids = []
+        for granted in offer.grants:
+            rental_ids.append(
+                await mutations_mod.create_workspace_rental(
+                    player_id, location_id, granted.value, "rental", expires_at, conn=conn
+                )
             )
-            for granted in offer.grants
-        ]
+
+        context.userdata.validate_acting_player(player_id)
 
     logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
     result = {
@@ -297,7 +300,7 @@ async def _start_crafting_project_impl(
 ) -> str:
     context.disallow_interruptions()
     _validate_id(recipe_id, "recipe_id")
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     location_id = context.userdata.location_id
 
     # Cached reference reads BEFORE the txn (pool-exhaustion guard, like _learn_recipe_impl).
@@ -394,6 +397,7 @@ async def _start_crafting_project_impl(
             "narration_audio_url": None,
             "decision_options": None,
         }
+        context.userdata.validate_acting_player(player_id)
         activity_id = await mutations_mod.create_async_activity(player_id, data, conn=conn)
 
     logger.info("start_crafting_project: player=%s recipe=%s activity=%s", player_id, recipe_id, activity_id)

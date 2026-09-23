@@ -36,7 +36,7 @@ DB_SEAMS = (
     "background_process.db_queries.get_active_player_quests",
     "background_process.db_content_queries.get_location",
     "background_process.db_queries.get_npcs_at_location",
-    "background_process.db_training.get_player_training_activities",
+    "background_process.db_training.get_player_active_training_activities",
 )
 
 
@@ -45,6 +45,8 @@ def _mock_db():
     """The four DB seams _rebuild_warm_layer fans out to, plus the disposition read the NPC
     affordance makes as soon as a caller gives the npcs seam a non-empty row."""
     with (
+        patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
+        patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
         patch(DB_SEAMS[0], new_callable=AsyncMock, return_value=[]) as quests,
         patch(DB_SEAMS[1], new_callable=AsyncMock, return_value=SAMPLE_LOCATION) as location,
         patch(DB_SEAMS[2], new_callable=AsyncMock, return_value=[]) as npcs,

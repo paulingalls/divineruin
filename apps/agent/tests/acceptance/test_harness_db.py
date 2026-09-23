@@ -34,3 +34,14 @@ async def test_migrations_seed_and_training_roundtrip(reset_db_pool: str) -> Non
     # _to_dict deserializes JSONB `data` to a real dict, matching how consumers
     # (async_worker.advance_training_cycles) index into it.
     assert row["data"]["program_id"] == "combat_basics"
+
+
+async def test_active_training_query_excludes_completed_rows(reset_db_pool: str) -> None:
+    pool = await db.get_pool()
+    await seed_player(pool, player_id="player_1")
+    await clear_training_activities(pool, "player_1")
+    running = await db_training.create_training_activity("player_1", "technique_base", "running_first_half", {})
+    completed = await db_training.create_training_activity("player_1", "technique_base", "complete", {})
+    rows = await db_training.get_player_active_training_activities("player_1")
+    assert [row["id"] for row in rows] == [running]
+    assert completed not in [row["id"] for row in rows]

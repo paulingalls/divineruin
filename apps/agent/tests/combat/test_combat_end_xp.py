@@ -225,14 +225,15 @@ async def test_mp_victory_locks_player_rows_in_ascending_seat_order():
     assert lock_order == ["p1", "p2"]
 
 
-async def test_mp_victory_end_data_carries_the_primarys_own_share():
-    # end_data.xp_granted is the PRIMARY's share (matching primary_currency_gold), because the
-    # single-session response and session_xp_earned are the primary's own, never the party sum.
+async def test_mp_victory_end_data_carries_the_speakers_own_share():
+    # xp_granted is the speaker's share, the one the DM narrates; summary_xp_granted is the
+    # primary's, for the host-owned session summary. Neither is ever the party sum.
     session = _session(["p2", "p1"])  # primary p2
     end_data, _m, _q, _sink, _c = await _run(session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]))
 
     assert end_data["xp_total"] == 100
     assert end_data["xp_granted"] == 75
+    assert end_data["summary_xp_granted"] == 75
 
 
 async def test_a_share_that_rounds_to_zero_grants_nothing_rather_than_erroring():

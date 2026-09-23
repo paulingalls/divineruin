@@ -49,6 +49,9 @@ async def _step(ctx, deps):
 )
 async def test_roundtripped_ownership_controls_the_window(ownership, opens_window):
     state = _resolution_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.reaction_ids = ["skirmisher_sidestep"]
     state.reactions_available = {"player_1": reaction_spend.unspent()}
     ctx = _context(_roundtrip_with_ownership(state, ownership))
     deps = _resolve_deps(damage=3)
@@ -81,10 +84,12 @@ async def test_mixed_party_skips_non_owner_budget_and_one_owner_opens_window():
         hp_max=20,
         ac=14,
         has_reaction_ability=True,
+        reaction_ids=["cleric_shield_of_faith"],
     )
     state.participants.append(owner)
     state.initiative_order.append(owner.id)
-    # is_spent({}) raises KeyError, so a gate that consults the non-owner reds here.
+    non_owner.reaction_ids = ["skirmisher_sidestep"]
+    # is_spent({}) raises KeyError, so a gate that consults the non-owner budget reds here.
     state.reactions_available = {non_owner.id: {}, owner.id: reaction_spend.unspent()}
     ctx = _context(state)
 
@@ -213,11 +218,8 @@ async def test_each_window_names_only_the_reactions_the_gate_would_accept():
     deps = _resolve_deps(damage=3)
 
     await _step(ctx, deps)
-    pre_roll = (await _step(ctx, deps))["next"]["waiting_on"]
     post_roll = (await _step(ctx, deps))["next"]["waiting_on"]
 
-    assert pre_roll["stage"] == "pre_roll"
-    assert pre_roll["reactions"] == []
     assert post_roll["stage"] == "post_roll"
     assert post_roll["reactions"] == [{"actor_id": "player_1", "id": "rogue_uncanny_dodge", "name": "Uncanny Dodge"}]
 
@@ -234,9 +236,8 @@ async def test_activation_refuses_a_reaction_id_the_actor_does_not_own():
     deps = _resolve_deps(damage=3)
 
     await _step(ctx, deps)
-    await _step(ctx, deps)
-    post_roll = (await _step(ctx, deps))["next"]["waiting_on"]
-    assert post_roll["stage"] == "post_roll"
+    result = await _step(ctx, deps)
+    assert result["next"]["waiting_on"] is None
 
     with pytest.raises(ToolError) as refused:
         await _activate(ctx, "rogue_uncanny_dodge", player_class="rogue")
@@ -255,7 +256,6 @@ async def test_a_downed_player_is_offered_no_reaction_and_cannot_spend_one():
     state.reactions_available = {"player_1": reaction_spend.unspent()}
     ctx = _context(state)
     deps = _resolve_deps(damage=3)
-    await _step(ctx, deps)
     await _step(ctx, deps)
     await _step(ctx, deps)
     paused = ctx.userdata.combat_state

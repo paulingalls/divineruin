@@ -12,6 +12,7 @@ from combat_end import end_combat
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
 from query_tools import query_info
 from session_data import SessionData
+from speaker_context import speaker_line
 from spell_info_tools import get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 from warm_prompts import format_combat_hot_line
@@ -64,8 +65,9 @@ class CombatAgent(BaseGameAgent):
         """
         sd: SessionData = self.session.userdata
         hot = format_combat_hot_line(sd.combat_state)
-        if hot:
-            turn_ctx.add_message(role="assistant", content=hot)
+        turn_ctx.add_message(
+            role="assistant", content=" ".join(part for part in (speaker_line(sd, combat=True), hot) if part)
+        )
 
 
 def create_combat_agent(chat_ctx: Any = None) -> CombatAgent:

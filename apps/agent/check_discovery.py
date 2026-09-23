@@ -75,24 +75,26 @@ async def _check_discover_impl(
     if location is None:
         raise ToolError(f"Current location '{session.location_id}' not found.")
 
-    player = await queries.get_player(session.player_id)
+    player_id = session.acting_player_id
+    player = await queries.get_player(player_id)
     if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
+        raise ToolError(f"Player '{player_id}' not found.")
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
-    validated_player_conditions(player, session.player_id)
+    validated_player_conditions(player, player_id)
 
     # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
-    # is keyed on the ELEMENT, not the free-text target, so re-searching the same secret under a
-    # reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the next
-    # one becomes reachable.
+    # is keyed on the player and ELEMENT, not the free-text target, so re-searching the same secret
+    # under a reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the
+    # next one becomes reachable. Per player because the discovered flag is per player: a guest's
+    # miss must not lock the host out of a secret the host has never found.
     flags = player.get("flags", {})
     skill_candidates = [
         elem
         for elem in location.get("hidden_elements", [])
         if elem.get("discover_skill", "perception") == skill_lower
         and not flags.get(f"{elem.get('id')}.discovered")
-        and f"{skill_lower}:{elem.get('id')}" not in session.attempted_discoveries
+        and f"{player_id}:{skill_lower}:{elem.get('id')}" not in session.attempted_discoveries
     ]
 
     # M6 attaches_to scoping: an element bound to a visible target surfaces ONLY when that
@@ -152,26 +154,27 @@ async def _check_discover_impl(
     # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
     # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a
     # lone write (success-only, or consume-only on a failed roll) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume
-    # helper is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     if result.success and result.consumed_conditions:
         async with db_mod.transaction() as conn:
-            await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True, conn=conn)
-            await consume_beneficial_conditions(
-                session.player_id, result.consumed_conditions, conditions_mutations, conn=conn
-            )
+            session.validate_acting_player(player_id)
+            await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)
+            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations, conn=conn)
     else:
         if result.success:
-            await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
-        await consume_beneficial_conditions(session.player_id, result.consumed_conditions, conditions_mutations)
+            session.validate_acting_player(player_id)
+            await mutations.set_player_flag(player_id, f"{element_id}.discovered", True)
+        if result.consumed_conditions:
+            session.validate_acting_player(player_id)
+            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
 
-    # Block re-rolling THIS element this session (keyed on the element, not the target) — added only
+    # Block re-rolling THIS element this session for this player (not keyed on the target) — added only
     # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
     # this line, so a rolled-back discovery flag leaves the element re-attemptable instead of locked
     # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus
     # die was spent on the d20) still reaches here when its writes succeed, so a miss still spends
     # the session attempt.
-    session.attempted_discoveries.add(f"{skill_lower}:{element_id}")
+    session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
 
     if result.success:
         response["element_id"] = element_id

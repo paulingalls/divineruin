@@ -61,10 +61,10 @@ class RewardChannel:
 
 @dataclass
 class XpGrant:
-    """What the PRIMARY got out of the XP pass — the only member the single-session tool response
-    and session_xp_earned speak for. Every other seat's award reaches its own client on the wire."""
+    """The response recipient's XP and the primary player's session-summary XP."""
 
     xp_granted: int = 0
+    summary_xp_granted: int = 0
     milestone_grants: list[dict] = field(default_factory=list)
     specialization_fork: bool = False
     leveled_up: bool = False
@@ -142,7 +142,7 @@ async def distribute_loot(
     loot_pool: list[dict],
     seat_order: list[str],
     *,
-    primary_id: str,
+    recipient_id: str,
     mutations,
     content,
     conn,
@@ -162,7 +162,7 @@ async def distribute_loot(
     for i, drop in enumerate(loot_pool if seat_order else []):
         recipient = seat_order[i % len(seat_order)]
         await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
-        if recipient == primary_id:
+        if recipient == recipient_id:
             primary_loot.append(drop)
         item = await content.get_item(drop["item_id"])
         await channel.emit(
@@ -183,7 +183,7 @@ async def distribute_currency(
     currency_silver: int,
     seat_order: list[str],
     *,
-    primary_id: str,
+    recipient_id: str,
     mutations,
     queries,
     pricing,
@@ -211,7 +211,7 @@ async def distribute_currency(
         prior_gold = (player or {}).get("gold", 0) or 0
         new_balance = prior_gold + share_gold
         await mutations.update_player_gold(pid, new_balance, conn=conn)
-        if pid == primary_id:
+        if pid == recipient_id:
             primary_currency_gold = share_gold
         await channel.emit(
             E.CURRENCY_GAINED,
@@ -230,7 +230,8 @@ async def distribute_xp(
     xp_total: int,
     seat_order: list[str],
     *,
-    primary_id: str,
+    recipient_id: str,
+    summary_player_id: str,
     reason: str,
     mutations,
     queries,
@@ -299,13 +300,13 @@ async def distribute_xp(
             mutations=mutations,
             **core_kwargs,
         )
-        if pid == primary_id:
-            grant = XpGrant(
-                xp_granted=share,
-                milestone_grants=outcome.milestone_grants,
-                specialization_fork=outcome.result.specialization_fork,
-                leveled_up=outcome.result.leveled_up,
-            )
+        if pid == recipient_id:
+            grant.xp_granted = share
+            grant.milestone_grants = outcome.milestone_grants
+            grant.specialization_fork = outcome.result.specialization_fork
+            grant.leveled_up = outcome.result.leveled_up
+        if pid == summary_player_id:
+            grant.summary_xp_granted = share
     for event_type, payload in pending_events:
         await channel.emit(event_type, payload)
     return grant
@@ -315,7 +316,8 @@ async def grant_victory_rewards(
     participants,
     rng: random.Random,
     *,
-    primary_id: str,
+    recipient_id: str,
+    summary_player_id: str,
     reason: str,
     mutations,
     queries,
@@ -340,7 +342,7 @@ async def grant_victory_rewards(
     primary_loot = await distribute_loot(
         spoils.loot_pool,
         seat_order,
-        primary_id=primary_id,
+        recipient_id=recipient_id,
         mutations=mutations,
         content=content,
         conn=conn,
@@ -349,7 +351,7 @@ async def grant_victory_rewards(
     primary_currency_gold = await distribute_currency(
         spoils.currency_silver,
         seat_order,
-        primary_id=primary_id,
+        recipient_id=recipient_id,
         mutations=mutations,
         queries=queries,
         pricing=pricing,
@@ -359,7 +361,8 @@ async def grant_victory_rewards(
     xp = await distribute_xp(
         spoils.xp_total,
         seat_order,
-        primary_id=primary_id,
+        recipient_id=recipient_id,
+        summary_player_id=summary_player_id,
         reason=reason,
         mutations=mutations,
         queries=queries,

@@ -36,7 +36,6 @@ from training_rules import get_cycles_required, start_training_cycle
 logger = logging.getLogger("divineruin.mentor_variant_tools")
 
 _VARIANT_ACTIVITY_TYPE = "technique_mentor_variant"
-_TERMINAL_STATE = "complete"
 
 
 async def _learn_variant_impl(
@@ -70,7 +69,7 @@ async def _learn_variant_impl(
     except ValueError as exc:
         raise ToolError(f"Unknown mentor variant: {variant_id}") from exc
 
-    player_id = context.userdata.player_id
+    player_id = context.userdata.acting_player_id
     now = (now_fn or _default_now)()
     start_fn = rules_mod or start_training_cycle
     try:
@@ -103,8 +102,8 @@ async def _learn_variant_impl(
         if await progress_mod.is_unlocked(player_id, variant_id, conn=conn):
             raise ToolError(f"Variant {variant_id} is already unlocked.")
         # One in-flight training cycle per player (mirrors initiate_training_cycle).
-        existing = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
-        if any(row["state"] != _TERMINAL_STATE for row in existing):
+        existing = await db_training_mod.get_player_active_training_activities(player_id, conn=conn)
+        if existing:
             raise ToolError("A training cycle is already in progress.")
 
         # Own-the-base gate (story-006): a variant supplements a base elective the
@@ -127,6 +126,7 @@ async def _learn_variant_impl(
             "cultural_attribution": variant.cultural_attribution,
             "first_half_seconds": cycle.first_half_seconds,
         }
+        context.userdata.validate_acting_player(player_id)
         activity_id = await db_training_mod.create_training_activity(
             player_id=player_id,
             activity_type=_VARIANT_ACTIVITY_TYPE,
