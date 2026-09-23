@@ -1,4 +1,7 @@
 import json
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from functools import partial
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -7,6 +10,7 @@ from sample_fixtures import make_context, make_mock_room, published_events, publ
 
 import event_types as E
 from action_sound_content import ACTION_SOUND_IDS
+from activity_tools import _begin_activity_impl
 from creation_tools import finalize_character
 from mode_tools import _enter_mode_impl
 from onboarding_tools import advance_onboarding_beat
@@ -164,7 +168,9 @@ async def test_completed_onboarding_cue_failure_preserves_handoff():
     ):
         result = await advance_onboarding_beat._func(ctx)
     assert isinstance(result, tuple)
-    write.assert_awaited_once()
+    assert json.loads(result[1])["onboarding_complete"] is True
+    assert ctx.userdata.onboarding_beat is None
+    write.assert_awaited_once_with(ctx.userdata.player_id, "onboarding_beat", "complete")
     publish.assert_awaited_once()
 
 
@@ -277,7 +283,58 @@ async def test_creation_cue_publish_failure_preserves_handoff():
     ctx = creation_context()
     result, log = await run_creation(ctx, "cue_publish")
     assert isinstance(result, tuple)
+    assert json.loads(result[1])["character"]["name"] == "Aric"
+    assert ctx.userdata.creation_state.phase == "complete"
+    assert ctx.userdata.onboarding_beat == 1
+    assert E.SESSION_INIT in log
     assert E.PLAY_SOUND in log
+    assert log[-1] == "return"
+
+
+async def test_training_begin_cue_failure_preserves_committed_cycle():
+    from test_training_initiate import SAMPLE_PROGRAM, _make_cycle
+
+    import training_tools
+
+    ctx = context()
+    conn = object()
+    committed = []
+
+    @asynccontextmanager
+    async def transaction():
+        yield conn
+        committed.append(True)
+
+    db = MagicMock()
+    db.transaction = transaction
+    training = MagicMock(get_player_active_training_activities=AsyncMock(return_value=[]))
+
+    async def create(*_args, **kwargs):
+        assert kwargs["conn"] is conn
+        return "t1"
+
+    training.create_training_activity = AsyncMock(side_effect=create)
+    real_training = partial(
+        training_tools._initiate_training_cycle_impl,
+        db_mod=db,
+        db_training_mod=training,
+        db_content_mod=MagicMock(get_training_program=AsyncMock(return_value=SAMPLE_PROGRAM)),
+        rules_mod=lambda *_: _make_cycle(),
+        now_fn=lambda: datetime(2026, 5, 22, tzinfo=UTC),
+    )
+    with patch.object(
+        ctx.userdata.room.local_participant, "publish_data", side_effect=RuntimeError("cue failed")
+    ) as publish:
+        result = await _begin_activity_impl(
+            ctx,
+            "training",
+            program_id="combat_basics",
+            training_mod=MagicMock(_initiate_training_cycle_impl=real_training),
+        )
+    assert json.loads(result)["activity_id"] == "t1"
+    training.create_training_activity.assert_awaited_once()
+    assert committed == [True]
+    publish.assert_awaited_once()
 
 
 async def test_creation_agent_construction_failure_has_no_cue():

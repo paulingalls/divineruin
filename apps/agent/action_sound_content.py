@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from types import MappingProxyType
 
@@ -6,6 +7,8 @@ import event_types as E
 from combat_sound_content import COMBAT_SOUND_IDS
 from game_events import publish_game_event
 from session_data import SessionData
+
+logger = logging.getLogger("divineruin.action_sound_content")
 
 _ROOT = Path(__file__).resolve().parents[2]
 _CONTENT_PATH = _ROOT / "content" / "action_sounds.json"
@@ -49,4 +52,7 @@ ACTION_SOUND_IDS = frozenset(ACTION_SOUND_EXPORTS.values())
 async def publish_action_sound(session: SessionData, sound_id: str) -> None:
     if sound_id not in ACTION_SOUND_IDS:
         raise ValueError(f"unknown action sound: {sound_id}")
-    await publish_game_event(session.room, E.PLAY_SOUND, {"sound_name": sound_id}, event_bus=session.event_bus)
+    try:
+        await publish_game_event(session.room, E.PLAY_SOUND, {"sound_name": sound_id}, event_bus=session.event_bus)
+    except Exception:
+        logger.exception("Failed to publish action sound %s", sound_id)
