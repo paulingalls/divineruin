@@ -126,11 +126,15 @@ beforeAll(() => {
   const now = Date.now() / 1000;
   utimesSync(staleDir, now - 2 * 60 * 60, now - 2 * 60 * 60);
   utimesSync(freshDir, now - 60, now - 60);
+  // A killed run never reaches afterAll. The age floor spares a concurrent
+  // run's live fixture; that run may also reap a stale dir between our
+  // readdir and our stat/rm, so a vanished entry is skipped.
   const cutoff = Date.now() - 60 * 60 * 1000;
   for (const entry of readdirSync(tmpdir(), { withFileTypes: true })) {
     if (!entry.isDirectory() || !entry.name.startsWith("dr-ensure-db-")) continue;
     const path = join(tmpdir(), entry.name);
-    if (statSync(path).mtimeMs < cutoff) rmSync(path, { recursive: true });
+    const stat = statSync(path, { throwIfNoEntry: false });
+    if (stat && stat.mtimeMs < cutoff) rmSync(path, { recursive: true, force: true });
   }
   const dir = mkdtempSync(join(tmpdir(), "dr-ensure-db-"));
   try {

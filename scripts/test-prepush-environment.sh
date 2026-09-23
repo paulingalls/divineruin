@@ -4,7 +4,8 @@ set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 HOOK="$ROOT/.githooks/pre-push"
 TMP_BASE="${TMPDIR:-/tmp}"
-RETAINED="$TMP_BASE/divineruin-prepush-environment-last-$(printf '%s' "$ROOT" | git hash-object --stdin | cut -c1-12)"
+ROOT_HASH="$(printf '%s' "$ROOT" | git hash-object --stdin | cut -c1-12)"
+RETAINED="$TMP_BASE/divineruin-prepush-environment-last-$ROOT_HASH"
 TMP="$(mktemp -d "$TMP_BASE/divineruin-prepush-environment.XXXXXXXX")"
 PASS=0
 FAIL=0
@@ -328,8 +329,7 @@ done
 
 probe_root="$TMP/retention-probe"
 mkdir "$probe_root"
-probe_hash="$(printf '%s' "$ROOT" | git hash-object --stdin | cut -c1-12)"
-probe_fixed="$probe_root/divineruin-prepush-environment-last-$probe_hash"
+probe_fixed="$probe_root/divineruin-prepush-environment-last-$ROOT_HASH"
 for marker in first second; do
   if TMPDIR="$probe_root" PREPUSH_RETENTION_PROBE="$marker" bash "$0" > "$TMP/$marker-retention.log" 2>&1; then
     fail "$marker retention probe fails"
