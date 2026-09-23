@@ -1,3 +1,4 @@
+import { API_ORIGIN } from "../ports.js";
 import { test as base, type Page } from "@playwright/test";
 import pg from "pg";
 import { requireEnvironment } from "../require-environment.js";
@@ -87,7 +88,7 @@ export const test = base.extend<{ authenticatedPage: Page }, { testUser: TestUse
       ]);
 
       // Verify code via API to get a valid JWT
-      const verifyRes = await fetch("http://localhost:3001/api/auth/verify-code", {
+      const verifyRes = await fetch(`${API_ORIGIN}/api/auth/verify-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code }),

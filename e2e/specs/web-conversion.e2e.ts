@@ -1,13 +1,8 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 import { queryDb } from "../fixtures/auth.js";
 
-// Capstone for Milestone 5: proves the three conversion sections (Pricing, FAQ, Waitlist) compose
-// into the served production build in mockup order, the FAQ accordion is keyboard-operable, the
-// NavBar/Hero #waitlist CTAs resolve to the live Waitlist section, and — the milestone's `done`
-// criterion — a visitor submits a valid email that POSTs to the real /api/waitlist (:3001) and
-// lands in Postgres, with the ON CONFLICT dedupe holding on a repeat. The marketing site is served
-// on :8085 and the API on :3001 by the webServers in playwright.config.ts.
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 test.describe("Conversion sections (apps/web)", () => {
   test("prerenders Pricing/FAQ/Waitlist into the served HTML in mockup order", async ({

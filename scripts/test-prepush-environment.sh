@@ -3,6 +3,8 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 HOOK="$ROOT/.githooks/pre-push"
+source "$ROOT/scripts/worktree-common.sh"
+wt_expected_env
 TMP_BASE="${TMPDIR:-/tmp}"
 ROOT_HASH="$(printf '%s' "$ROOT" | git hash-object --stdin | cut -c1-12)"
 RETAINED="$TMP_BASE/divineruin-prepush-environment-last-$ROOT_HASH"
@@ -117,6 +119,9 @@ case_dir="$PREPUSH_CASE_DIR"
 {
   printf 'DATABASE_URL=%s\n' "${DATABASE_URL-<unset>}"
   printf 'REDIS_URL=%s\n' "${REDIS_URL-<unset>}"
+  for key in PORT E2E_API_PORT E2E_APP_PORT E2E_WEB_PORT E2E_LH_DEBUG_PORT LIVEKIT_ACCEPTANCE_UDP_PORT LIVEKIT_ACCEPTANCE_CONTAINER WT_CLONE_ID WT_CHECKOUT_ID; do
+    printf '%s=%s\n' "$key" "${!key-<unset>}"
+  done
   printf 'DEEPGRAM_API_KEY=%s\n' "${DEEPGRAM_API_KEY-<unset>}"
   printf 'REQUIRE_DOCKER=%s\n' "${REQUIRE_DOCKER-<unset>}"
   printf 'REQUIRE_REAL_LLM=%s\n' "${REQUIRE_REAL_LLM-<unset>}"
@@ -186,6 +191,8 @@ run_hook() {
     PREPUSH_FAIL_E2E="$fail_e2e" \
     PREPUSH_FAIL_UNIT="$fail_unit" PREPUSH_BLOCK_ACCEPTANCE="$block_acceptance" \
     PREPUSH_ACCEPTANCE_RECORD="$case_dir/pytest.json" \
+    E2E_API_PORT=9 E2E_APP_PORT=9 E2E_WEB_PORT=9 E2E_LH_DEBUG_PORT=9 \
+    LIVEKIT_ACCEPTANCE_UDP_PORT=9 LIVEKIT_ACCEPTANCE_CONTAINER=foreign \
     PYTHONPATH="$TMP/plugin:$ROOT/apps/agent:$ROOT/apps/agent/tests" \
     PYTEST_PLUGINS=prepush_probe UV_PROJECT_ENVIRONMENT="$ROOT/apps/agent/.venv" \
     ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 DEEPGRAM_API_KEY=parent-deepgram-key bash "$HOOK" \
@@ -254,13 +261,19 @@ assert_argv "$S" shared "bun test --cwd packages/shared"
 assert_argv "$S" scripts "bun --env-file=.env test ./scripts"
 assert_argv "$S" design-tokens "bun test --cwd packages/design-tokens"
 assert_argv "$S" web "bun test --cwd apps/web"
-assert_argv "$S" e2e-environment "bun test e2e/require-environment.test.ts"
+assert_argv "$S" e2e-environment "bun test e2e/ports.test.ts e2e/require-environment.test.ts"
 assert_argv "$S" python "bun run test:python"
 assert_argv "$S" e2e "bunx playwright test --reporter=list"
 want_line "server retains per-run database" "$S/server.env" "DATABASE_URL=postgresql://per-run@localhost:61001/per_run"
 want_line "server retains per-run redis" "$S/server.env" "REDIS_URL=redis://localhost:61002"
 want_line "E2E retains per-run database" "$S/e2e.env" "DATABASE_URL=postgresql://per-run@localhost:61001/per_run"
 want_line "E2E retains per-run redis" "$S/e2e.env" "REDIS_URL=redis://localhost:61002"
+for lane in acceptance e2e; do
+  for key in E2E_API_PORT E2E_APP_PORT E2E_WEB_PORT E2E_LH_DEBUG_PORT LIVEKIT_ACCEPTANCE_UDP_PORT LIVEKIT_ACCEPTANCE_CONTAINER WT_CLONE_ID WT_CHECKOUT_ID; do
+    want_line "$lane receives checkout $key" "$S/$lane.env" "$key=${!key}"
+  done
+  want_line "$lane receives API listener port" "$S/$lane.env" "PORT=$E2E_API_PORT"
+done
 want_line "Python database is masked" "$S/python.env" "DATABASE_URL="
 want_line "Python redis is masked" "$S/python.env" "REDIS_URL="
 want_line "acceptance boundary database is unset" "$S/acceptance.env" "DATABASE_URL=<unset>"

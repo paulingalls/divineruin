@@ -23,12 +23,8 @@ cd "$REPO_ROOT"
 # shellcheck source=scripts/worktree-common.sh
 source "$REPO_ROOT/scripts/worktree-common.sh"
 
-# Expo typegen dev-server port band. Deliberately above the mobile/e2e ports
-# (8082 app/web, 8085 web-prod, 3001 playwright) so a typegen server never
-# serves its bundle into a running e2e run. We SCAN this band (not a fixed
-# port): concurrent worktree bootstraps must not all grab the same port.
-TYPEGEN_PORT_MIN=8890
-TYPEGEN_PORT_MAX=8899
+# Each checkout gets its own typegen band from wt_expected_env. Scan within it
+# so repeated bootstraps in the same checkout still reserve different ports.
 TYPEGEN_LOCK_ROOT="${TMPDIR:-/tmp}/divineruin-typegen-ports"
 
 ROUTER_TYPES="$REPO_ROOT/apps/mobile/.expo/types/router.d.ts"

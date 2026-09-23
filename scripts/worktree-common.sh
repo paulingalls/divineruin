@@ -67,10 +67,15 @@ wt_select_offset() {
     selected="$derived"; source="checkout identity"
   fi
   case "$selected" in
-    ''|*[!0-9]*) wt_die "$source value '${selected:-<empty>}' is invalid; use a decimal offset from 0 through 9000."; return 1 ;;
+    ''|*[!0-9]*) wt_die "$source value '${selected:-<empty>}' is invalid; use 0 or a multiple of 10 through 9000."; return 1 ;;
   esac
-  if [ "$selected" -gt 9000 ]; then
-    wt_die "$source value $selected is invalid; use a decimal offset from 0 through 9000."
+  if [ "${#selected}" -gt 4 ]; then
+    wt_die "$source value $selected is invalid; use 0 or a multiple of 10 through 9000."
+    return 1
+  fi
+  selected=$((10#$selected))
+  if [ "$selected" -gt 9000 ] || [ $((selected % 10)) -ne 0 ]; then
+    wt_die "$source value $selected is invalid; use 0 or a multiple of 10 through 9000."
     return 1
   fi
   if [ "$WT_GIT_DIR" != "$WT_COMMON_DIR" ] && [ "$selected" -eq 0 ]; then
@@ -78,6 +83,30 @@ wt_select_offset() {
     return 1
   fi
   printf '%s\n' "$selected"
+}
+
+wt_derive_ports() {
+  local offset="$1" slot
+  POSTGRES_HOST_PORT=$((55432 + offset))
+  VALKEY_HOST_PORT=$((56379 + offset))
+  if [ "$offset" -eq 0 ]; then
+    E2E_API_PORT=3001 E2E_APP_PORT=8082 E2E_WEB_PORT=8085 E2E_LH_DEBUG_PORT=9222
+    LIVEKIT_ACCEPTANCE_UDP_PORT=7882
+    TYPEGEN_PORT_MIN=8890 TYPEGEN_PORT_MAX=8899
+    LIVEKIT_ACCEPTANCE_CONTAINER=divineruin-livekit-acceptance
+  else
+    slot=$((offset / 10 - 1))
+    E2E_API_PORT=$((10000 + 5 * slot))
+    E2E_APP_PORT=$((E2E_API_PORT + 1))
+    E2E_WEB_PORT=$((E2E_API_PORT + 2))
+    E2E_LH_DEBUG_PORT=$((E2E_API_PORT + 3))
+    LIVEKIT_ACCEPTANCE_UDP_PORT=$((E2E_API_PORT + 4))
+    TYPEGEN_PORT_MIN=$((15000 + 10 * slot))
+    TYPEGEN_PORT_MAX=$((TYPEGEN_PORT_MIN + 9))
+    LIVEKIT_ACCEPTANCE_CONTAINER="dr-livekit-acc-${WT_CLONE_ID}-${WT_CHECKOUT_ID}"
+  fi
+  export POSTGRES_HOST_PORT VALKEY_HOST_PORT E2E_API_PORT E2E_APP_PORT E2E_WEB_PORT E2E_LH_DEBUG_PORT
+  export LIVEKIT_ACCEPTANCE_UDP_PORT LIVEKIT_ACCEPTANCE_CONTAINER TYPEGEN_PORT_MIN TYPEGEN_PORT_MAX
 }
 
 wt_expected_env() {
@@ -94,8 +123,7 @@ wt_expected_env() {
   fi
   WT_OFFSET="$(wt_select_offset "$offset")" || return 1
   offset="$WT_OFFSET"
-  POSTGRES_HOST_PORT=$((55432 + offset))
-  VALKEY_HOST_PORT=$((56379 + offset))
+  wt_derive_ports "$offset"
   DATABASE_URL="postgresql://divineruin:divineruin_dev@localhost:${POSTGRES_HOST_PORT}/divineruin"
   REDIS_URL="redis://localhost:${VALKEY_HOST_PORT}"
   export WT_OFFSET POSTGRES_HOST_PORT VALKEY_HOST_PORT COMPOSE_PROJECT_NAME DATABASE_URL REDIS_URL
@@ -231,6 +259,20 @@ wt_run_compose() {
     VALKEY_HOST_PORT="$VALKEY_HOST_PORT" docker compose -f "$WT_ROOT/docker-compose.yml" "$@"
 }
 
+wt_remove_livekit() {
+  wt_expected_env || return 1
+  local ids id labels clone checkout
+  ids="$(docker ps -aq --filter "label=com.divineruin.clone=$WT_CLONE_ID" --filter "label=com.divineruin.checkout=$WT_CHECKOUT_ID" --filter 'label=divineruin.acceptance=1')" || return 1
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    labels="$(wt_read_labels "$id")" || return 1
+    clone="$(printf '%s' "$labels" | wt_label com.divineruin.clone)" || return 1
+    checkout="$(printf '%s' "$labels" | wt_label com.divineruin.checkout)" || return 1
+    [ "$clone" = "$WT_CLONE_ID" ] && [ "$checkout" = "$WT_CHECKOUT_ID" ] || { wt_die "LiveKit container $id is foreign; refusing removal."; return 1; }
+    docker rm -f "$id" || return 1
+  done <<< "$ids"
+}
+
 wt_live_checkout_ids() {
   local paths path git_dir count=0
   paths="$(git worktree list --porcelain | sed -n 's/^worktree //p')" || return 1
@@ -289,7 +331,7 @@ wt_cli() {
     # 78 is the adapter contract for refusal before Docker. Child exit codes,
     # including pg_isready's ordinary not-ready status, pass through unchanged.
     compose) local intent="${1:-}"; shift; wt_authorize "$intent" || return 78; wt_run_compose "$@" ;;
-    expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" ;;
+    expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" "E2E_API_PORT=$E2E_API_PORT" "E2E_APP_PORT=$E2E_APP_PORT" "E2E_WEB_PORT=$E2E_WEB_PORT" "E2E_LH_DEBUG_PORT=$E2E_LH_DEBUG_PORT" "LIVEKIT_ACCEPTANCE_UDP_PORT=$LIVEKIT_ACCEPTANCE_UDP_PORT" "LIVEKIT_ACCEPTANCE_CONTAINER=$LIVEKIT_ACCEPTANCE_CONTAINER" "TYPEGEN_PORT_MIN=$TYPEGEN_PORT_MIN" "TYPEGEN_PORT_MAX=$TYPEGEN_PORT_MAX" ;;
     sweep-candidates) wt_sweep_candidates ;;
     destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" ;;
     *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|lifecycle-identity|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;

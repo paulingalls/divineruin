@@ -1,21 +1,8 @@
+import { WEB_ORIGIN, LH_DEBUG_PORT } from "../ports.js";
 import { test, expect } from "@playwright/test";
 import { playAudit } from "playwright-lighthouse";
-import { LH_DEBUG_PORT } from "../fixtures/lighthouse.js";
 
-// story-007 capstone: the Milestone 6 "done" gate for the marketing site. Proves
-// the served PRODUCTION build (apps/web on :8085, built + served by the
-// web-lighthouse project's webServer) scores Lighthouse Performance / SEO /
-// Accessibility >=90 with green Core Web Vitals, AND serves SEO meta/OG +
-// sitemap.xml + robots.txt. AC#5 wants both in ONE suite, so this file carries
-// two describe blocks — the Lighthouse audit (needs a Chrome debug port) and the
-// meta/crawl checks (plain request.get, no browser).
-//
-// Runs under the dedicated "web-lighthouse" project (playwright.config.ts), which
-// is fullyParallel:false and launches its Chrome with a fixed
-// --remote-debugging-port (set via the project's launchOptions) so playAudit can
-// attach to the fixture page. The parallel "web" project testIgnores this spec,
-// so its fixed port can't collide with the other web specs' concurrent Chromes.
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 // Must equal the web-lighthouse project's launchOptions --remote-debugging-port
 // (playwright.config.ts) — both import the one constant so they can't drift.
 const LH_PORT = LH_DEBUG_PORT;
@@ -49,7 +36,6 @@ test.describe("Production Lighthouse audit (apps/web home)", () => {
     // The fixture page's Chrome carries the fixed --remote-debugging-port (set in
     // the web-lighthouse project's launchOptions), and Playwright owns its
     // lifecycle. fullyParallel:false + single spec file means only one Chrome
-    // binds 9222 at a time — no collision. Just navigate to the URL; playAudit
     // drives its own Lighthouse navigation from here.
     await page.goto(`${WEB}/`, { waitUntil: "load" });
 

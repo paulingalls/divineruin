@@ -155,6 +155,14 @@ else
     }
     trap _cleanup EXIT INT TERM
 
+    # Derive stable checkout ports before either lane starts. Preserve caller
+    # service URLs so test-env can still provision its per-run database.
+    local caller_db="${DATABASE_URL-}" caller_redis="${REDIS_URL-}" caller_db_set="${DATABASE_URL+x}" caller_redis_set="${REDIS_URL+x}"
+    source "$(dirname "$0")/../scripts/worktree-common.sh"
+    wt_expected_env
+    export PORT="$E2E_API_PORT"
+    if [ "$caller_db_set" = x ]; then export DATABASE_URL="$caller_db"; else unset DATABASE_URL; fi
+    if [ "$caller_redis_set" = x ]; then export REDIS_URL="$caller_redis"; else unset REDIS_URL; fi
     # shellcheck source=scripts/test-env.sh
     if [ "$PREPUSH_TEST_MODE" = lanes ]; then
       source "$PREPUSH_TEST_ENV_SOURCE"
@@ -217,7 +225,7 @@ else
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:design-tokens")
     ( set -o pipefail; run_pre_push_lane web bun test --cwd apps/web 2>&1 | tee "$ART/last-web.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:web")
-    ( set -o pipefail; run_pre_push_lane e2e-environment bun test e2e/require-environment.test.ts 2>&1 | tee "$ART/last-e2e-environment.log" ) &
+    ( set -o pipefail; run_pre_push_lane e2e-environment bun test e2e/ports.test.ts e2e/require-environment.test.ts 2>&1 | tee "$ART/last-e2e-environment.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:e2e-environment")
     # Empty values prevent explicit env files from restoring unit-test credentials.
     ( set -o pipefail; mask_python_test_environment; \
@@ -282,7 +290,7 @@ else
       # session-scoped and usually torn down by the time we get here, so the
       # docker-ps snapshot is what records whether it ever came up.
       docker ps -a > "$snap/docker-ps.log" 2>&1 || true
-      docker logs divineruin-livekit-acceptance > "$snap/livekit-container.log" 2>&1 || true
+      docker logs "$LIVEKIT_ACCEPTANCE_CONTAINER" > "$snap/livekit-container.log" 2>&1 || true
       echo "ERROR: acceptance tests failed. Logs preserved at:" >&2
       echo "    $snap" >&2
       exit 1
