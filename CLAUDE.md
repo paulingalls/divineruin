@@ -15,7 +15,7 @@ Expo Client (TS) ◄──► Bun/TS REST API ◄──► PostgreSQL + Valkey �
                   ◄──────── LiveKit voice + data channels ────────►
 ```
 
-Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Valkey (Redis-protocol) is the shared state layer.
+Two languages, one database. Python for DM agent (LiveKit Agents SDK and its LLM/STT/TTS plugins). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Valkey (Redis-protocol) is the shared state layer.
 
 ## Language Rules
 
@@ -47,13 +47,13 @@ Apply XP values in all work:
 2. **DM is the game.** Everything reaches the player through the DM's voice. Visual HUD supplements, never replaces.
 3. **Deterministic mechanics.** Rules engine = pure functions, no LLM. LLM decides *when* to invoke and *how to narrate*.
 4. **State in the database.** DB is source of truth, not the prompt. DM agent queries DB every turn.
-5. **Cost conscious.** Cache system prompts (90% savings). Haiku for routine, Sonnet for complex. See `cost_model.md`.
+5. **Cost conscious.** Cache system prompts. Gameplay voice runs on GPT-6 Luna with reasoning off; background text (narration, companion idle, god whispers) runs on Claude Haiku (`llm_config.py`). See `cost_model.md`.
 6. **Latency budget: 1500ms** end-of-speech to first audio. Stream everything.
 7. **Hollow breaks rules.** Intentionally violates audio mixing, spatial audio, DM voice. By design.
 
 ## DM Agent — Three Layers
 
-1. **Voice Agent:** LiveKit `AgentSession`. Deepgram STT → Claude LLM → Inworld TTS.
+1. **Voice Agent:** LiveKit `AgentSession`. Deepgram STT → GPT-6 Luna (strict tool schemas; `apps/agent/gameplay_llm.py`) → Inworld TTS. `GAMEPLAY_LLM=anthropic` is the strict-off rollback (ADR 0008).
 2. **Background Process:** Async coroutine. Monitors world events, updates warm prompt layer, injects proactive events.
 3. **Toolset:** `@function_tool` functions — world queries (read), dice/mechanics (deterministic), state mutation (enforced rules), client effects (UI events).
 
@@ -81,7 +81,7 @@ Rules engine must be exhaustively tested (pure functions, deterministic).
 
 ## Settled Decisions
 
-Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey (Redis-protocol; `Bun.redis`/`redis.asyncio` clients + `REDIS_URL` keep their redis names), Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.
+Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey (Redis-protocol; `Bun.redis`/`redis.asyncio` clients + `REDIS_URL` keep their redis names), Deepgram Nova-3, Inworld TTS, GPT-6 Luna (gameplay LLM), Claude Haiku (background text), zustand, expo-router, uv.
 
 ## Don't
 
