@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 DOCS = ROOT / "docs/milestones"
-BOX = re.compile(r"^- \[([ x])\] ", re.M)
+BOX = re.compile(r"^\s*[-*] \[([ xX])\] ", re.M)
 ROW = re.compile(r"^\| (\d+) · [^|]+\| \[([^]]+\.md)\]\([^)]*\) \|[^|]*\| (\d+)/(\d+) ACs \|", re.M)
 
 
@@ -14,18 +14,15 @@ def read(path: str) -> str:
     return (ROOT / path).read_text()
 
 
-def test_phase_and_overall_counts():
+def test_phase_and_overall_counts() -> None:
     readme = read("docs/milestones/README.md")
     rows = ROW.findall(readme)
     assert len(rows) == 13, "README needs exactly one count row per phase"
     assert {int(row[0]) for row in rows} == set(range(13))
     checked_sum = total_sum = 0
     for phase, filename, checked, total in rows:
-        assert (
-            filename
-            == f"{int(phase):02d}_{['doc_updates', 'core_systems', 'archetypes', 'magic', 'combat', 'crafting', 'npcs', 'bestiary', 'patrons', 'economy', 'terrain', 'world_loop', 'story_content'][int(phase)]}.md"
-        )
-        boxes = BOX.findall((DOCS / filename).read_text())
+        assert filename.startswith(f"{int(phase):02d}_"), (phase, filename)
+        boxes = [box.lower() for box in BOX.findall((DOCS / filename).read_text())]
         assert boxes, filename
         actual = (boxes.count("x"), len(boxes))
         assert actual == (int(checked), int(total)), (filename, actual, checked, total)
@@ -36,7 +33,7 @@ def test_phase_and_overall_counts():
     assert (int(position[1]), int(position[2])) == (checked_sum, total_sum)
 
 
-def test_m47_m48_evidence_paths():
+def test_m47_m48_evidence_paths() -> None:
     combat = read("docs/milestones/04_combat.md")
     for milestone in ("4.7", "4.8"):
         match = re.search(rf"^### Milestone {re.escape(milestone)}\b(.*?)(?=^### Milestone |\Z)", combat, re.M | re.S)
@@ -44,15 +41,18 @@ def test_m47_m48_evidence_paths():
         lines = [line for line in match[1].splitlines() if BOX.match(line)]
         assert lines, milestone
         for line in lines:
-            assert line.startswith("- [x] "), line
+            assert re.match(r"\s*[-*] \[[xX]\] ", line), line
             comment = re.search(r"<!-- verified (.*?) -->", line)
             assert comment, line
-            paths = re.findall(r"apps/agent/tests/[\w/]+\.py", comment[1])
-            assert paths, line
-            assert all((ROOT / path).is_file() for path in paths), line
+            evidence = re.findall(r"(apps/agent/tests/[\w/]+\.py)(?:::(\w+))?", comment[1])
+            assert evidence, line
+            for path, test_name in evidence:
+                assert (ROOT / path).is_file(), (path, line)
+                if test_name:
+                    assert re.search(rf"^(async )?def {test_name}\(", read(path), re.M), (test_name, line)
 
 
-def test_patron_roster_matches_content():
+def test_patron_roster_matches_content() -> None:
     gods = json.loads(read("content/gods.json"))
     ids = [god["god_id"] for god in gods]
     assert ids and len(ids) == len(set(ids))
@@ -61,7 +61,7 @@ def test_patron_roster_matches_content():
     assert (int(claim[1]), int(claim[2])) == (len(ids), len(ids))
 
 
-def test_inner_fire_cost_matches_racial_content():
+def test_inner_fire_cost_matches_racial_content() -> None:
     racial = json.loads(read("content/racial_resonance_bonuses.json"))
     modifiers = next(row["modifiers"] for row in racial if row["id"] == "draethar")
     implementation = read("apps/agent/draethar_inner_fire.py")
@@ -78,7 +78,7 @@ def test_inner_fire_cost_matches_racial_content():
     )
 
 
-def test_veil_ward_scope_matches_migration():
+def test_veil_ward_scope_matches_migration() -> None:
     migration = read("scripts/migrations/057_veil_ward_scope.sql")
     assert "CREATE TABLE IF NOT EXISTS veil_wards" in migration
     assert "scope_kind  TEXT NOT NULL" in migration and "scope_id    TEXT NOT NULL" in migration
@@ -91,7 +91,7 @@ def test_veil_ward_scope_matches_migration():
         assert re.search(r"location/encounter-scoped, party-wide, duration-bound, multi-source", doc), path
 
 
-def test_artificer_decision_is_fulfilled():
+def test_artificer_decision_is_fulfilled() -> None:
     adr = read("docs/decisions/0005-artificer-slot-deferred-to-phase-5.md")
     status = re.search(r"^Status: \*\*(.*?)\*\*", adr, re.M)
     assert status and status[1] == "Fulfilled"

@@ -6,7 +6,7 @@ per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
 **Position: 291 / 538 acceptance criteria — 54%** (the sum of the per-phase counts in
-`README.md`; last reconciled after sprint-046). Phases 1, 2, 3, 4, 5 and 6 are
+`README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
@@ -89,13 +89,13 @@ the audit found, because a green phase doc conceals them.
 
 **Closed by story-111:** Milestone tool names now match the registered DM verbs,
 and `03_magic.md` no longer points to `combat_tools.py:275` or an invented
-Veil Ward tool. The story-111 docs guard covers retired names. Story-113 also removed
-the stale historical `wilderness_agent.py` pointer in Combat.
+Veil Ward tool. The story-111 docs guard covers retired names.
 
 **Closed by story-113:** The Magic and README ward text now describes M24's
 scoped model; M3.4 gives Inner Fire's shipped cost. M4.7 and M4.8 have eight
 capstone-backed ACs, bringing Phase 4 to 73/73. The M7.4 signature decision
-belongs to Phase 7 in Combat and Bestiary. Patrons says 10/10 entries; Bestiary
+belongs to Phase 7 in Combat and Bestiary, and Combat no longer cites the deleted
+`wilderness_agent.py`. Patrons says 10/10 entries; Bestiary
 names the shipped Ashmark and Cultist stat blocks while retaining the missing
 Cult Acolyte. Phase 1's M1.6 says 7/7 and its moved code/test pointers are
 updated. ADR 0005 and Crafting record the fulfilled Portable Lab exception;

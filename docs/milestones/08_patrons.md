@@ -49,8 +49,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 ### Cross-doc dependencies
 
-- **Patrons ↔ Magic Resonance (Phase 3) — Layer 2 modifiers — BLOCKED.** Every patron's Layer 2 modifier (Veythar +2 Flickering dice, Kaelen -1 Resonance on combat spells, Orenthel 0 Resonance on healing, etc.) requires a working Resonance system. Phase 3 is NOT_SHIPPED per `audit/phase-3-magic.md`. **Phase 3 has since shipped; Layer 2 is unblocked.**
-- **Patrons ↔ Archetypes (Phase 2) — Layer 4 synergies — FORWARD DEP.** M8.3's archetype × patron matrix needs the 18 archetypes' canonical IDs (already in `apps/agent/rules_engine.py:30 ARCHETYPE_RESOURCE_CONFIG`) AND per-archetype detail encoding from Phase 2. Sprint-001 confirmed the 18 IDs; per-archetype technique/spell surfaces are still partial. See `audit/phase-2-archetypes.md`.
+- **Patrons ↔ Magic Resonance (Phase 3) — Layer 2 modifiers — UNBLOCKED.** Every patron's Layer 2 modifier (Veythar +2 Flickering dice, Kaelen -1 Resonance on combat spells, Orenthel 0 Resonance on healing, etc.) requires a working Resonance system. The Sprint-002 audit (`audit/phase-3-magic.md`) found Phase 3 unshipped; it has since shipped (`resonance.py`), so M8.1 Layer 2 can proceed.
+- **Patrons ↔ Archetypes (Phase 2) — Layer 4 synergies — FORWARD DEP.** M8.3's archetype × patron matrix needs the 18 archetypes' canonical IDs (already in the DB-loaded chassis, `apps/agent/archetypes.py`) AND per-archetype detail encoding from Phase 2. Sprint-001 confirmed the 18 IDs; per-archetype technique/spell surfaces are still partial. See `audit/phase-2-archetypes.md`.
 - **Patrons ↔ Unbound Veil Mastery ↔ Hollow Echo.** Unbound's Sovereign-tier "Veil Mastery" ("treat any Hollow Echo result as Nothing stirs") requires a Hollow Echo table. Hollow Echo is implied by Phase 3.
 - **Patrons ↔ god-whisper system.** Existing god-whisper generator operates on raw `divine_favor.level` integer. Any tier restructuring (M8.1 acceptance #5) must preserve the whisper trigger — keyed off `level`, not `tier`. Within-phase consistency concern, not a blocker.
 
