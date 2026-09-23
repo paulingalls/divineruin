@@ -55,7 +55,10 @@ function ownedDevice(devices: Device[], name: string): Device | undefined {
       device.isAvailable !== true ||
       !["Booted", "Shutdown"].includes(device.state ?? ""))
   )
-    throw new Error(`owned simulator ${name} is unusable`);
+    throw new Error(
+      `owned simulator ${name} is unusable (state ${device.state}, available ${device.isAvailable}); ` +
+        `delete it with \`xcrun simctl delete ${device.udid}\` and rerun`,
+    );
   return device;
 }
 

@@ -104,7 +104,7 @@ test("reuses the one exact-name device and accepts only its explicit UDID", asyn
 test("duplicates and unusable owned devices fail before create", async () => {
   for (const [devices, expected] of [
     [[OWNED, OWNED], /multiple owned/],
-    [[{ ...OWNED, isAvailable: false }], /unusable/],
+    [[{ ...OWNED, isAvailable: false }], /unusable .*simctl delete OWNED/],
     [[{ ...OWNED, state: "Creating" }], /unusable/],
   ] as const) {
     const { deps, calls } = fixture(devices);
