@@ -433,9 +433,8 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
             print("[db-lifecycle] Tearing down docker compose services this run started...")
             _authorize("destroy")
             if not _same_lifetime(state["lifetime"], _observe_lifetime()):
-                state = {"count": 0, "harness_started": False}
                 _started_lifetimes.pop((host, port), None)
-                _write_state(state_path, state)
+                state_path.unlink()
                 return
             result = _compose("down")
             if result.returncode != 0:
@@ -443,4 +442,9 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
                 raise RuntimeError(f"`docker compose down` failed (exit {result.returncode}): {detail}")
             state = {"count": 0, "harness_started": False}
             _started_lifetimes.pop((host, port), None)
-        _write_state(state_path, state)
+        # The .lock file stays: a flock waiter may hold its inode, and
+        # unlinking the path would let a new caller lock a different inode.
+        if state["count"] == 0 and not state["harness_started"]:
+            state_path.unlink()
+        else:
+            _write_state(state_path, state)

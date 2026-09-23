@@ -182,6 +182,37 @@ def test_ensure_db_up_increments_count_when_already_reachable(monkeypatch):
     assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
 
 
+def test_developer_owned_state_removed_only_after_last_release(monkeypatch):
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
+    lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
+
+    assert dbl.ensure_db_up(database_url) is False
+    assert dbl.ensure_db_up(database_url) is False
+    dbl.stop_if_started(False, database_url)
+    assert state_path.exists()
+    assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
+
+    dbl.stop_if_started(False, database_url)
+    assert not state_path.exists()
+    assert lock_path.exists()
+
+
+def test_replaced_service_state_removed_without_down(monkeypatch):
+    lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, _owned_state(1))
+    replacement = [{**TEST_LIFETIME[0], "id": "postgres-replaced"}]
+    monkeypatch.setattr(dbl, "_observe_lifetime", lambda: replacement)
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
+
+    dbl.stop_if_started(False, "postgresql://u:p@localhost:55432/divineruin")
+
+    assert calls == []
+    assert not state_path.exists()
+    assert lock_path.exists()
+
+
 def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
     """A leaked count from a SIGKILLed prior run must not survive once the DB
     is actually observed to be down."""
@@ -232,7 +263,7 @@ def test_stop_if_started_refcount_teardown(monkeypatch):
 
     dbl.stop_if_started(True)  # run A (starter) finishes last -> count hits 0
     assert calls == [("down",)]
-    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+    assert not state_path.exists()
 
 
 @pytest.mark.parametrize(
