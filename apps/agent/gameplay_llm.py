@@ -5,7 +5,7 @@ import os
 from livekit.agents import llm
 from livekit.plugins import anthropic, openai
 
-LUNA_MODEL = "gpt-5.6-luna"
+LUNA_MODEL = "gpt-6-luna"
 DEFAULT_GAMEPLAY_LLM = "openai-luna"
 PROVIDER_API_KEYS = {
     "anthropic": "ANTHROPIC_API_KEY",

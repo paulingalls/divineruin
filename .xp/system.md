@@ -10,7 +10,7 @@ the Sundering, and the Hollow corruption. Greyvale is the MVP region.
 
 **Stack**: Two languages, one database — no code crosses the boundary, only
 PostgreSQL + Valkey. Python 3.14.7 (uv; asyncpg, redis.asyncio, all-async, typed)
-runs the DM agent on LiveKit AgentSession: Deepgram STT → GPT-5.6 Luna → Inworld TTS,
+runs the DM agent on LiveKit AgentSession: Deepgram STT → GPT-6 Luna → Inworld TTS,
 plus an async worker. Everything else is TypeScript on Bun (never Node): Bun.serve
 REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.

@@ -290,7 +290,7 @@ Sign up and generate keys for the following services:
 | Service | Console | Key for `.env` | Notes |
 |---------|---------|----------------|-------|
 | [LiveKit Cloud](https://cloud.livekit.io) | Project → Settings → Keys | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Free tier available |
-| [OpenAI](https://platform.openai.com/api-keys) | API Keys | `OPENAI_API_KEY` | Default gameplay model (GPT-5.6 Luna) |
+| [OpenAI](https://platform.openai.com/api-keys) | API Keys | `OPENAI_API_KEY` | Default gameplay model (GPT-6 Luna) |
 | [Anthropic](https://console.anthropic.com) | API Keys | `ANTHROPIC_API_KEY` | Required for background narration/summaries and rollback gameplay |
 | [Deepgram](https://console.deepgram.com) | API Keys | `DEEPGRAM_API_KEY` | $200 free credit on signup |
 | [Inworld](https://studio.inworld.ai) | Integrations → API Keys | `INWORLD_API_KEY`, `INWORLD_WORKSPACE_ID` | Use the **Basic (Base64)** value, not the JWT Key |
