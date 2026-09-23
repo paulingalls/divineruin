@@ -23,15 +23,15 @@ Redesigns the existing basic combat state machine into a 4-beat phase-based syst
 - Combat is **turn-based**, not phase-based with 4 beats. State lives in `combat_instances` (single `data JSONB`, PostgreSQL) — not spec's `combat_encounters` with phase columns in Redis.
 - No condition system at all: no `character_conditions` table, no `apply_condition`/`tick_conditions`/`get_condition_effects`. `apps/agent/fatigue_narration.py:29-36` is narrative-cue only.
 - No dramatic-dice flag on any roll result packet (`AttackResult`, `SavingThrowResult`, `DeathSaveResult`, `CheckResult` all lack `dramatic`).
-- No social/travel/gathering systems shipped. `apps/agent/wilderness_agent.py:36-52` is a 52-line stub.
+- At the Sprint-003 audit, social/travel/gathering systems had not shipped. M4.6 subsequently delivered them; the former wilderness stub was removed.
 - NPC disposition system exists but uses `"wary"` where spec uses `"unfriendly"` (`apps/agent/tool_support.py:76-83` vs `gm_combat:L671`) — spec/code naming divergence.
 - Mortaen mechanic surface entirely aspirational: no `death_counter`, no `determine_death_cost`, no Mortaen scene wiring.
 
-**encounter_roles primary ownership (capstone decision `m4-7-overlay-status`):** Phase 04 owns the encounter_roles overlay per `execution_plan.json §Milestone 3`. The audit recommends a **new milestone M4.7 "Encounter Role Overlay"** (Minion / Standard / Elite / Boss / Named) — not yet authored as a numbered section below; scope lives in `audit/phase-encounter-roles.md`.
+**encounter_roles primary ownership (capstone decision `m4-7-overlay-status`):** Phase 04 owns the encounter_roles overlay per `execution_plan.json §Milestone 3`. M4.7 "Encounter Role Overlay" (Minion / Standard / Elite / Boss / Named) shipped; its acceptance criteria are authored below.
 
 **Cross-refs:**
 - **M7.1 (Bestiary)** must extend stat block schema with optional `role` field and Boss-only `signature_ability`/`legendary_actions[]` fields.
-- **M7.4 (Encounter Builder)** `build_encounter` signature is in flux: spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Final choice deferred to the M4.7/M7.4 implementation sprint (decision `m7-4-build-encounter-signature` recorded).
+- **M7.4 (Encounter Builder)** `build_encounter` signature is in flux: spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Final choice belongs to Phase 7 M7.4 (decision `m7-4-build-encounter-signature` recorded).
 - **Phase 09 Economy** owns currency drops and material sell values from encounter_roles §Loot Modifiers; see `09_economy.md` Sprint-003 cross-ref.
 
 See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
@@ -284,3 +284,23 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - *Game Mechanics Combat — Social Encounter Resolution*
 - *Game Mechanics Combat — Travel Modes & Encounters*
 - *Game Mechanics Combat — Gathering System*
+
+### Milestone 4.7 — Encounter Role Overlay
+
+**Goal:** Apply encounter roles to authored enemies and rewards.
+
+**Acceptance criteria:**
+- [x] Starting an authored encounter derives Minion, Standard, and Boss participants; Minions retain a basic attack but lose active abilities and use the role HP floor. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_init_derivation_budget_and_minion_floor -->
+- [x] `calculate_encounter_budget` reports informational budget and composition flags for a role-derived roster; combat start does not gate on those flags. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_init_derivation_budget_and_minion_floor -->
+- [x] Victory grants role-scaled XP and currency, while a living Boss retains its legendary action budget. <!-- verified apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py::test_m47_full_combat_to_victory_grants_role_scaled_rewards -->
+
+### Milestone 4.8 — Beneficial Conditions
+
+**Goal:** Carry Bless and Inspire through production, consumption, and narration.
+
+**Acceptance criteria:**
+- [x] Bless adds 1d4 to an eligible saving throw, is consumed once, and its removal persists. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_save_folds_consumes_and_persists_removal -->
+- [x] A Blessed combat attack consumes the bonus once in combat state. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_in_combat_attack_consumes_once -->
+- [x] Inspire adds 1d4 to the next eligible roll and expires after that use. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_inspire_folds_once_then_expires -->
+- [x] Engine automatic saves neither use nor consume a player's bonus die. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_engine_auto_save_never_consumes -->
+- [x] A multi-target Bless names every affected ally for narration; breaking concentration removes Bless. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_multitarget_bless_voices_every_ally apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_breaking_bless_concentration_drops_blessed -->

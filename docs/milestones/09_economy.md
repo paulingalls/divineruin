@@ -299,7 +299,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 **Status: DESIGNED↔aspirational at substrate, NOT_SHIPPED at pipeline.**
 
-Substrate BUILT: `inventory_pools` table (migration 001:84-91); 4 content pools (`market_general`, `grimjaw_weapons`, `temple_supplies`, `millhaven_supplies`) with schema-divergent flat-list shape; `Npc.inventory_pool: string | null` field on schema (0 of 14 NPCs populate it); `player_inventory` table actively used by `apps/agent/db_queries.py:120,187` + `apps/agent/db_mutations.py:135,156`; former narrative-only `add_to_inventory` + `remove_from_inventory` agent tools at `apps/agent/inventory_tools.py:24,105`. The current DM verb is `transact`.
+Substrate BUILT: `inventory_pools` table (migration 001:84-91); 4 content pools (`market_general`, `grimjaw_weapons`, `temple_supplies`, `millhaven_supplies`) with schema-divergent flat-list shape; `Npc.inventory_pool: string | null` field on schema (0 of 14 NPCs populate it); `player_inventory` table actively used by `apps/agent/db_queries.py:120,187` + `apps/agent/db_mutations.py:135,156`; retired narrative inventory tools replaced by `transact` in `apps/agent/inventory_tools.py:37`; DB writes live in `db_mutations_inventory.py`.
 
 **Schema divergence:** spec pool shape is type-keyed with tier classification + settlement-keyed quantities. Shipped pool shape is location/merchant-keyed flat list with `{item_id, quantity, price}`. Capstone follow-up: restructure content to spec shape OR adapt spec to shipped shape.
 
@@ -469,7 +469,7 @@ What does NOT ship: 0 faucet_event_log; 0 wealth_curve constants; 0 aggregate me
 **Inputs:** M9.1 (currency), M9.8 (sink_event_log — transfer is a special event type), M9.9 (faucet_event_log), Phase 6 M6.1 (NPC schema + Location schema for settlement-aware queries).
 
 **Deliverables (Phase 1):**
-- **Item provenance:** typed `provenance: ProvenanceEvent[]` field on Item (or sibling `item_history` table keyed on per-instance UUID). Replaces current free-text `source: str` parameter on `add_to_inventory`. Each event captures `{actor_type, actor_id, action, timestamp, context?}`. Migration converts existing source strings into 1-event seed histories. The current DM verb is `transact`.
+- **Item provenance:** typed `provenance: ProvenanceEvent[]` field on Item (or sibling `item_history` table keyed on per-instance UUID). Replaces the free-text `source: str` parameter on `transact`. Each event captures `{actor_type, actor_id, action, timestamp, context?}`. Migration converts existing source strings into 1-event seed histories. The current DM verb is `transact`.
 - **Per-instance item identity:** `item_instance_id UUID` column (or `data.instance_id` convention) on `player_inventory` so the provenance trail has a per-copy anchor (current PK is `(player_id, item_id)` on template id).
 - **Atomic transaction primitives:** `atomic_p2p_transfer(from_player, to_player, items, gold)` function wrapping inventory mutations + gold debit/credit in a single asyncpg transaction. Uses existing `conn: asyncpg.Connection | Pool | None` parameter pattern (BUILT across 22 sites in `apps/agent/db_mutations.py`).
 - **Settlement-aware APIs:** `Location.settlement_id: string` field + `Settlement` entity type OR tag→settlement_id mapping convention. Enables `same_settlement(p1, p2) -> bool` query.
@@ -502,7 +502,7 @@ What does NOT ship: 0 faucet_event_log; 0 wealth_curve constants; 0 aggregate me
 **Status: DESIGNED↔aspirational on 2 of 4 Phase 1 infrastructure items; NOT_SHIPPED on 2.**
 
 Phase 1 supporting infrastructure (the only Phase 9 surface in scope):
-1. **Item provenance — DESIGNED↔aspirational.** `add_to_inventory(item_id, quantity, source: str)` BUILT at `apps/agent/inventory_tools.py:24-33` with free-text source (examples: "looted from goblin", "purchased from merchant"). Structured trail + per-instance UUID NOT_SHIPPED. The current DM verb is `transact`.
+1. **Item provenance — DESIGNED↔aspirational.** `transact(item_id, delta, source: str)` BUILT in `apps/agent/inventory_tools.py` with free-text source on gains (examples: "looted from goblin", "purchased from merchant"). Structured trail + per-instance UUID NOT_SHIPPED. The current DM verb is `transact`.
 2. **Atomic transaction primitives — DESIGNED↔aspirational.** Asyncpg `conn` parameter plumbing BUILT across 22 mutation sites in `apps/agent/db_mutations.py`. `atomic_p2p_transfer` primitive itself NOT_SHIPPED.
 3. **Settlement-aware APIs — NOT_SHIPPED.** Player→location BUILT (`update_player_location` writes `players.data->location_id`); `Location.settlement_id` field absent (cross-ref M9.6 honesty note).
 4. **Transaction logging schema — NOT_SHIPPED.** Inherits M9.8 + M9.9 — neither sink_event_log nor faucet_event_log ships.
