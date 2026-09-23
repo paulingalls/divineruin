@@ -14,13 +14,14 @@ from livekit import rtc
 
 import db
 import db_mutations
-from voice_replay import append_evidence_row, assert_inventory_result, execute_with_evidence
+from voice_replay import append_evidence_row, execute_with_evidence
 from voice_replay_audio import (
     capture_received_audio,
     load_checked_clip,
     publish_checked_audio,
     write_wav,
 )
+from voice_replay_state import assert_inventory_result
 
 _ROOT = Path(__file__).parents[4]
 _CLIP = _ROOT / "apps/agent/tests/fixtures/voice_replay/gather_herbs.wav"

@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import dataclasses
+import functools
 import json
 import os
 import random
 import time
-from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from pathlib import Path
@@ -24,6 +24,7 @@ from livekit.plugins import deepgram
 
 import check_resolution
 import db
+import gameplay_llm
 from base_agent import BaseGameAgent, _make_tts
 from exploration_agent import EXPLORATION_TOOLS
 from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
@@ -49,6 +50,8 @@ from voice_replay_metrics import (
     validate_timing_row,
 )
 from voice_replay_scope import REPLAY_ENDPOINTING_SECONDS, REPLAY_INSTRUCTION, VOICE_REPLAY_SCOPE
+from voice_replay_stages import StageRecorder
+from voice_replay_state import assert_inventory_result, inventory_quantities, reset_seed
 from voices import INWORLD_MODEL
 
 AGENT_IDENTITY = "voice-replay-agent"
@@ -115,59 +118,6 @@ async def execute_with_evidence(
         raise error
     if cleanup_errors:
         raise RuntimeError(f"owned cleanup failed: {cleanup_errors}")
-
-
-async def inventory_quantities(pool: Any, player_id: str) -> dict[str, int]:
-    rows = await pool.fetch("SELECT item_id, data FROM player_inventory WHERE player_id = $1", player_id)
-    return {row["item_id"]: json.loads(row["data"]).get("quantity", 0) for row in rows}
-
-
-async def assert_inventory_result(
-    pool: Any, player_id: str, before: dict[str, int], tool_output: dict[str, Any]
-) -> dict[str, int]:
-    materials = tool_output.get("materials")
-    if not isinstance(materials, list) or not materials or any(not isinstance(item, str) for item in materials):
-        raise AssertionError(f"gather tool returned an invalid material multiset: {materials!r}")
-    after = await inventory_quantities(pool, player_id)
-    changed = {
-        item: after.get(item, 0) - before.get(item, 0)
-        for item in set(before) | set(after)
-        if after.get(item, 0) != before.get(item, 0)
-    }
-    expected = dict(Counter(materials))
-    if changed != expected:
-        raise AssertionError(f"inventory delta {changed!r} did not equal gather result {expected!r}")
-    return changed
-
-
-async def reset_seed(pool: Any, player_id: str) -> dict[str, int]:
-    await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
-    data = {
-        "player_id": player_id,
-        "name": "Voice Replay",
-        "level": 2,
-        "class": "skirmisher",
-        "location_id": "greyvale_south_road",
-        "attributes": {
-            "strength": 12,
-            "dexterity": 16,
-            "constitution": 14,
-            "intelligence": 10,
-            "wisdom": 13,
-            "charisma": 8,
-        },
-        "proficiencies": ["stealth", "perception"],
-        "saving_throw_proficiencies": ["strength", "dexterity"],
-        "hp": {"current": 28, "max": 28},
-        "ac": 15,
-    }
-    await pool.execute("INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)", player_id, json.dumps(data))
-    await pool.execute(
-        "INSERT INTO skill_advancement (player_id, skill_id, tier, use_counter, narrative_moment_ready) "
-        "VALUES ($1, 'survival', 'master', 0, FALSE)",
-        player_id,
-    )
-    return await inventory_quantities(pool, player_id)
 
 
 def _evidence_dir(override: Path | None) -> Path:
@@ -245,7 +195,14 @@ async def _transcribe(received: ReceivedAudio, metrics: list[Any]) -> tuple[str,
 
 
 async def _run_row(
-    *, scenario: str, repetition: int, clip: CheckedClip, evidence_dir: Path, evidence_path: Path, timeout: float
+    *,
+    scenario: str,
+    repetition: int,
+    clip: CheckedClip,
+    evidence_dir: Path,
+    evidence_path: Path,
+    timeout: float,
+    model: str,
 ) -> None:
     row: dict[str, Any] = {
         "scenario": scenario,
@@ -274,15 +231,19 @@ async def _run_row(
         await player_room.local_participant.publish_track(track, options)
 
         selected = create_gameplay_llm("unused")
-        if not is_luna(selected) or getattr(selected, "model", None) != LUNA_MODEL:
+        if not is_luna(selected) or getattr(selected, "model", None) != model:
             raise RuntimeError("voice replay gameplay model is not the pinned Luna model")
         session_stt = deepgram.STT(model="nova-3", language="en")
         configured_tts = _make_tts()
         tts_instances: list[Any] = []
         tts_metrics: list[Any] = []
+        stages = StageRecorder()
+        player_room.on("data_received", stages.on_data_received)
+        selected.on("metrics_collected", stages.on_llm_metrics)
 
         def observe_tts(instance: Any) -> None:
             instance.on("metrics_collected", tts_metrics.append)
+            instance.on("metrics_collected", stages.on_tts_metrics)
             tts_instances.append(instance)
             closers.append(instance.aclose)
 
@@ -321,8 +282,10 @@ async def _run_row(
             lambda event: final_transcripts.append(event.transcript) if event.is_final else None,
         )
         session.on("function_tools_executed", tool_events.append)
+        session.on("function_tools_executed", stages.on_tools_executed)
 
         def conversation(event: Any) -> None:
+            stages.on_conversation_item(event)
             item = event.item
             if getattr(item, "role", None) == "assistant":
                 model_text.extend(part for part in item.content if isinstance(part, str))
@@ -358,6 +321,7 @@ async def _run_row(
             await wait_for_output(session, affected=scenario == "affected", tool_events=tool_events, timeout=timeout)
         stop_capture.set()
         received = await capture_task
+        row["stages"] = stages.report(speech_end_monotonic=published.speech_end_monotonic)
 
         normalized_input = normalized_words(" ".join(final_transcripts))
         if normalized_input != normalized_words(clip.transcript):
@@ -411,7 +375,7 @@ async def _run_row(
                 session.usage.model_usage,
                 tts_metrics,
                 analysis_metrics,
-                luna_model=LUNA_MODEL,
+                luna_model=model,
                 inworld_model=INWORLD_MODEL,
             ),
             tool_output=tool_output,
@@ -438,7 +402,8 @@ async def _run_row(
         }
         row["model_text"] = " ".join(model_text)
 
-    await execute_with_evidence(operation, closers, evidence_path, row, validate=validate_timing_row)
+    validate = functools.partial(validate_timing_row, luna_model=model)
+    await execute_with_evidence(operation, closers, evidence_path, row, validate=validate)
 
 
 async def run(args: argparse.Namespace) -> None:
@@ -451,7 +416,11 @@ async def run(args: argparse.Namespace) -> None:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence_path = evidence_dir / f"voice-replay-{time.strftime('%Y%m%d-%H%M%S')}-{uuid4().hex[:8]}.jsonl"
     failures = []
+    # The strict atomic gate keys on gameplay_llm.LUNA_MODEL, so a comparison model must
+    # replace that constant for the whole run or it would replay without the gate.
+    comparison = patch.object(gameplay_llm, "LUNA_MODEL", args.model)
     try:
+        comparison.start()
         for repetition in range(args.runs):
             for scenario in ("affected", "direct"):
                 try:
@@ -462,6 +431,7 @@ async def run(args: argparse.Namespace) -> None:
                         evidence_dir=evidence_dir,
                         evidence_path=evidence_path,
                         timeout=args.timeout,
+                        model=args.model,
                     )
                 except BaseException as exc:
                     # An interrupt must end the whole replay, not be filed as one row's failure.
@@ -469,6 +439,7 @@ async def run(args: argparse.Namespace) -> None:
                         raise
                     failures.append(f"{scenario}[{repetition}]: {type(exc).__name__}: {exc}")
     finally:
+        comparison.stop()
         await db.close_all()
     if failures:
         raise RuntimeError("; ".join(failures))
@@ -482,6 +453,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--model", default=LUNA_MODEL, help="Luna model to compare against the default")
     args = parser.parse_args(argv)
     if args.runs <= 0 or args.timeout <= 0:
         parser.error("--runs and --timeout must be positive")
