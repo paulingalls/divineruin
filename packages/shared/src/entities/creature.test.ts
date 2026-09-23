@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
+import { REGION_IDS } from "./region";
 
 type Case = {
   name: string;
@@ -12,12 +13,27 @@ const corpus = parseCreatureJson(
 ) as {
   valid: Case[];
   invalid: Case[];
+  region_ids: string[];
 };
 const catalog = (await Bun.file(
   new URL("../../../../content/loot_tables.json", import.meta.url),
 ).json()) as { id: string }[];
 
+test("canonical region ids match the shared corpus", () => {
+  expect(corpus.region_ids.length).toBe(7);
+  expect(new Set(corpus.region_ids).size).toBe(7);
+  expect([...REGION_IDS] as string[]).toEqual(corpus.region_ids);
+});
+
 function checkCorpus(valid: Case[], invalid: Case[]): void {
+  for (const name of [
+    "missing_regions",
+    "empty_regions",
+    "unknown_region",
+    "missing_home_region",
+    "unknown_home_region",
+  ])
+    expect(invalid.some((row) => row.name === name)).toBe(true);
   expect(valid.length).toBeGreaterThan(0);
   expect(invalid.length).toBeGreaterThan(0);
   const derived = valid.filter((row) => row.spec_derived);
@@ -41,12 +57,28 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
 }
 
 test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+function assertCatalogEntries(entries: Record<string, unknown>[]): void {
+  expect(entries.length).toBeGreaterThan(0);
+  const ids = entries.map((row) => row.id);
+  expect(new Set(ids).size).toBe(entries.length);
+  for (const id of ["hollow_shadeling", "hollow_hollowmoth"]) expect(ids).toContain(id);
+  for (const entry of entries) expect(validateCreatureStatBlock(entry)).toEqual([]);
+}
+
+test("catalog floor admits more rows and rejects missing exemplars", async () => {
+  const entries = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const extra = { ...entries[0]!, id: "scratch_third_creature" };
+  assertCatalogEntries([...entries, extra]);
+  expect(() => assertCatalogEntries([])).toThrow();
+  for (const entry of entries)
+    expect(() => assertCatalogEntries(entries.filter((row) => row.id !== entry.id))).toThrow();
+});
 test("real_catalog_and_injected_invalid_entry", async () => {
   const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
   const entries = JSON.parse(raw) as Record<string, unknown>[];
-  expect(new Set(entries.map((row) => row.id))).toEqual(
-    new Set(["hollow_shadeling", "hollow_hollowmoth"]),
-  );
+  assertCatalogEntries(entries);
   expect(validateCreatureJson(raw)).toEqual([]);
   const invalid = {
     ...entries[0]!,

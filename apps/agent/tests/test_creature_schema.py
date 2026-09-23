@@ -32,6 +32,13 @@ def test_shared_creature_corpus():
     assert CORPUS.is_file()
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert {case["name"] for case in invalid} >= {
+        "missing_regions",
+        "empty_regions",
+        "unknown_region",
+        "missing_home_region",
+        "unknown_home_region",
+    }
     assert_corpus_floors(valid, invalid)
     derived = [case for case in valid if case.get("spec_derived")]
     assert {case["name"] for case in derived} >= {"spec_shadeling", "spec_hollowmoth", "spec_bandit"}

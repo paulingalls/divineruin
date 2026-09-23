@@ -105,7 +105,12 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
       }
     },
     {
@@ -220,7 +225,12 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 10
+        "xp_reward": 10,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
       }
     },
     {
@@ -316,7 +326,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     },
     {
@@ -402,7 +416,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     },
     {
@@ -488,7 +506,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     },
     {
@@ -574,7 +596,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     },
     {
@@ -660,7 +686,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     },
     {
@@ -748,7 +778,11 @@
           "special": {}
         },
         "loot_table_id": "loot_humanoid_bandit",
-        "xp_reward": 50
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
       }
     }
   ],
@@ -849,7 +883,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "reactions: required"
@@ -951,7 +989,11 @@
           "death": "brief static burst",
           "special": {}
         },
-        "loot_table_id": "loot_hollow_drift"
+        "loot_table_id": "loot_hollow_drift",
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "xp_reward: required"
@@ -1054,7 +1096,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "category: expected hollow|beast|humanoid|construct|undead|elemental"
@@ -1157,7 +1203,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "tier: expected integer 1-4"
@@ -1260,7 +1310,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "tier: expected integer 1-4"
@@ -1362,7 +1416,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "attacks[0].damage: required"
@@ -1465,7 +1523,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "attacks[0].type: expected melee|ranged|area"
@@ -1568,7 +1630,11 @@
           "special": {}
         },
         "loot_table_id": "loot_missing",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "loot_table_id: unknown loot table"
@@ -1671,7 +1737,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "hollow.corruption_aura: expected integer"
@@ -1763,7 +1833,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "hollow: required"
@@ -1864,7 +1938,11 @@
           "death": "brief static burst",
           "special": {}
         },
-        "loot_table_id": "loot_hollow_drift"
+        "loot_table_id": "loot_hollow_drift",
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "reactions: required",
@@ -1968,7 +2046,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "hollow.class: expected drift|rend|wrack|named"
@@ -2061,7 +2143,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "hollow: expected object"
@@ -2166,7 +2252,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "save_proficiencies[1]: expected string",
@@ -2273,7 +2363,11 @@
           }
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "audio.special.burst: expected string"
@@ -2371,7 +2465,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "attacks[1]: expected object",
@@ -2475,7 +2573,11 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": true
+        "xp_reward": true,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "tier: expected integer",
@@ -2589,12 +2691,556 @@
           "special": {}
         },
         "loot_table_id": "loot_hollow_drift",
-        "xp_reward": 25
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
       },
       "expected": [
         "level: expected integer",
         "attributes.STR: expected integer"
       ]
+    },
+    {
+      "name": "missing_regions",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+          "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+          "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+          "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+          "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark"
+      },
+      "expected": [
+        "regions: required"
+      ]
+    },
+    {
+      "name": "empty_regions",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+          "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+          "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+          "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+          "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": []
+      },
+      "expected": [
+        "regions: expected non-empty array"
+      ]
+    },
+    {
+      "name": "unknown_region",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+          "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+          "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+          "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+          "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "atlantis"
+        ]
+      },
+      "expected": [
+        "regions[0]: unknown region"
+      ]
+    },
+    {
+      "name": "missing_home_region",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+          "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+          "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+          "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+          "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "home_region: required"
+      ]
+    },
+    {
+      "name": "unknown_home_region",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A smear of darkness drifts across the ground — shapeless, wrong, leaving a trail of withered grass in its wake.",
+          "attack_cue": "It reaches for you — not with a hand, but with its entire form pressing against yours. Where it touches, your skin burns cold.",
+          "wounded_cue": "The shadeling shudders, its form flickering, edges dissolving into nothing.",
+          "death_cue": "It disperses — a burst of black mist that thins and vanishes. Where it was, the ground is grey and dead.",
+          "ambient_cue": "A patch of shadow that moves against the light. The grass beneath it is already dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "atlantis",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "home_region: unknown region"
+      ]
     }
+  ],
+  "region_ids": [
+    "greyvale",
+    "thornveld",
+    "drathian_steppe",
+    "sunward_coast",
+    "keldaran_mountains",
+    "ashmark",
+    "underground"
   ]
 }
