@@ -203,7 +203,7 @@ def _required_mapping(row: dict[str, Any], name: str) -> dict[str, Any]:
     return value
 
 
-def validate_timing_row(row: dict[str, Any]) -> None:
+def validate_timing_row(row: dict[str, Any], luna_model: str = LUNA_MODEL) -> None:
     if row.get("completion") not in {"success", "failed"}:
         raise ValueError("timing row requires a completion state")
     scenario = row.get("scenario")
@@ -225,7 +225,7 @@ def validate_timing_row(row: dict[str, Any]) -> None:
     usage = _required_mapping(row, "provider_usage")
     expected_usage = {
         "stt": ("deepgram", "nova-3"),
-        "llm": ("openai", LUNA_MODEL),
+        "llm": ("openai", luna_model),
         "tts": ("inworld", "inworld-tts-2"),
         "analysis_stt": ("deepgram", "nova-3"),
     }

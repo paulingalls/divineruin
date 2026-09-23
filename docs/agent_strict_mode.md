@@ -482,3 +482,13 @@ estimated **$0.0073227**. The GPT-5.6 run cost $0.00796772 with 266,296 input
 tokens cached. At that cache hit rate, GPT-6 rates would price this run near
 $0.0038, about half; the colder prompt cache cancelled most of the rate cut.
 Voice latency was not measured for GPT-6.
+
+Voice replay rows now carry per-stage timings (`voice_replay_stages.py`), and
+`voice_replay.py --model` replays a comparison Luna model under the same strict
+gate. Five stage-timed runs per model on 2026-09-22 gave direct first audio medians
+of 1147 ms (GPT-5.6) and 1289 ms (GPT-6), and gather medians of 2090 ms and 2406 ms.
+Every slow outlier was OpenAI time to first token (worst: 2090 ms for GPT-5.6,
+3897 ms for GPT-6); Deepgram and Inworld stayed flat. GPT-6 returned the gather call
+without a spoken preamble in 4 of 5 runs, so first audio waited for the post-tool
+narration request; GPT-5.6 spoke the preamble with the call in 5 of 5. The strict
+gate costs only the stream tail after the first token (10–100 ms).
