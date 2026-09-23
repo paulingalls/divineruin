@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from creature_tiers import tier_for_player_level
 from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
@@ -293,6 +294,25 @@ class TestLootAndCurrencyContent:
         for enc_id, enemy in self._enemies():
             assert enemy.get("category"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'category'"
             assert enemy.get("loot_table_id"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'loot_table_id'"
+
+    def test_every_enemy_authors_expected_tier(self):
+        path = CONTENT_DIR / "encounter_templates.json"
+        assert path.is_file(), f"missing encounter corpus: {path}"
+        encounters = json.loads(path.read_text())
+        assert encounters
+        rows = [(enc["id"], enemy) for enc in encounters for enemy in enc.get("enemies", [])]
+        assert len(rows) == 38
+        named = {"Shadeling": 1, "Mawling": 2, "Hollowed Knight": 3}
+        carriers = {name: 0 for name in named}
+        for enc_id, enemy in rows:
+            label = f"encounter '{enc_id}' enemy '{enemy['id']}'"
+            tier = enemy.get("tier")
+            assert type(tier) is int and 1 <= tier <= 4, f"{label} invalid tier {tier!r}"
+            expected = named.get(enemy["name"], tier_for_player_level(enemy["level"]))
+            if enemy["name"] in carriers:
+                carriers[enemy["name"]] += 1
+            assert tier == expected, f"{label} tier {tier} != {expected}"
+        assert all(carriers.values()), carriers
 
     def test_enemy_categories_are_valid(self):
         for enc_id, enemy in self._enemies():

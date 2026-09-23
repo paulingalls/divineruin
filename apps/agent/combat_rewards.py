@@ -108,8 +108,9 @@ async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list
     pre-story-002 content drops nothing rather than crashing."""
     currency = 0
     if p.category:
-        tier = encounter_loot.tier_for_level(p.level)
-        currency = encounter_loot.calculate_currency_drop(p.category, tier, p.role, rng)
+        if p.tier is None:
+            raise ValueError(f"enemy {p.id} missing authored tier")
+        currency = encounter_loot.calculate_currency_drop(p.category, p.tier, p.role, rng)
     drops: list[dict] = []
     if p.loot_table_id:
         table = await content.get_loot_table(p.loot_table_id)

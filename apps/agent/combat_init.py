@@ -301,6 +301,7 @@ async def _start_combat_locked(
                 # and currency on victory. derive_role_stats copies the source enemy, so these ride
                 # through; empty-string defaults keep untagged/pre-M4.7 enemies inert (no drops).
                 category=derived.get("category", ""),
+                tier=derived["tier"],
                 loot_table_id=derived.get("loot_table_id", ""),
                 # Tier-3 de-escalation resistance profile (M15 story-002): carry the template
                 # enemy's resistance_tags onto the participant so the orchestrator shifts each

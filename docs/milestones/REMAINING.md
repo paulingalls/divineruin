@@ -123,10 +123,9 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 **Hazards to settle before the relevant phase opens:**
 
-- **Phase 7 — three incompatible tier/level tables already exist:**
-  `encounter_loot.tier_for_level` (enemy 1-2/3-5/6-9/10+), `_LEVEL_BANDS` (5
-  player bands), and M7.1's spec (1-4/5-8/9-13/14-20). Reconcile to one; do not
-  add a fourth.
+- **Phase 7 — creature tiers are authored:** The four bestiary player bands are
+  mirrored in Python and TypeScript. Encounter budget's five player bands remain
+  difficulty ceilings, a separate calculation.
 - **Phase 10 — the name `terrain` is already taken by a different axis.**
   `location.ts:73-77` has `terrain?: string`, shape-validated only, values from
   `travel.py:59-66 NAVIGATION_DC`, present on **3 of 24 locations**. M10.1's
