@@ -4,9 +4,8 @@ a defeated enemy's loot table is rolled, items land in player_inventory, currenc
 players.data.gold, and the CURRENCY_GAINED + ITEM_ACQUIRED chips are buffered into the sink.
 
 A FakeRng pins the rolls so the grant is exact, and the loot table is injected via a content stub
-(get_loot_table) plus a self-seeded test item row, so the test depends on neither the seeded
-loot_tables catalog nor a specific items seed. Cleanup removes the player, its inventory, and the
-test item in a finally (unique keys, mirroring the other fast-lane real-PG tests).
+(get_loot_table) plus a self-seeded item or material row. Cleanup removes the player, its inventory,
+and the test catalog row in a finally.
 """
 
 from __future__ import annotations
@@ -14,23 +13,29 @@ from __future__ import annotations
 import json
 import random
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 import db
+import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
-from combat_end import _end_combat_db
+from combat_end import _end_combat_db, _end_combat_finish
 from combat_events import EventSink
+from combat_rewards import distribute_loot
 from session_data import CombatParticipant, CombatState, SessionData
+
+ROOT = Path(__file__).resolve().parents[4]
 
 # Per worker process: -n 8 runs this file's tests on several workers at once, and a shared row
 # one worker's cleanup deletes reads back as None in another's test.
 _WORKER = uuid.uuid4().hex[:8]
 _PLAYER_ID = f"s002_combat_end_loot_player_{_WORKER}"
 _ITEM_ID = f"s002_loot_test_residue_{_WORKER}"
+_MATERIAL_ID = f"s002_loot_test_material_{_WORKER}"
 _LOOT_TABLE_ID = "s002_loot_test_table"
 
 
@@ -50,15 +55,17 @@ class FakeRng(random.Random):
         return self._chance
 
 
-def _content_stub() -> MagicMock:
+def _content_stub(material: bool = False) -> MagicMock:
     """A db_content_queries stand-in whose get_loot_table returns one bespoke table for the known
-    id, and whose get_item resolves that drop's display row (the ITEM_ACQUIRED payload's
-    name/description/rarity). MagicMock (Any-typed) so it satisfies the injected ``content``
-    parameter."""
+    id. get_material_definition is the real query, so a material drop resolves from the seeded
+    materials_catalog row at grant time."""
 
     async def _get(loot_table_id: str) -> dict | None:
         if loot_table_id == _LOOT_TABLE_ID:
-            return {"id": _LOOT_TABLE_ID, "drops": [{"item_id": _ITEM_ID, "chance": 1.0, "quantity": 1}]}
+            return {
+                "id": _LOOT_TABLE_ID,
+                "drops": [{"item_id": _MATERIAL_ID if material else _ITEM_ID, "chance": 1.0, "quantity": 1}],
+            }
         return None
 
     async def _get_item(item_id: str) -> dict | None:
@@ -69,6 +76,7 @@ def _content_stub() -> MagicMock:
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
     content.get_item = AsyncMock(side_effect=_get_item)
+    content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
     return content
 
 
@@ -89,10 +97,19 @@ async def _seed_item(pool) -> None:
     )
 
 
+async def _seed_material(pool) -> None:
+    await pool.execute(
+        "INSERT INTO materials_catalog (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO UPDATE SET data = $2::jsonb",
+        _MATERIAL_ID,
+        json.dumps({"id": _MATERIAL_ID, "name": "Raw Ore", "description": "Heavy ore.", "rarity": "rare"}),
+    )
+
+
 async def _cleanup(pool) -> None:
     await pool.execute("DELETE FROM player_inventory WHERE player_id = $1", _PLAYER_ID)
     await pool.execute("DELETE FROM players WHERE player_id = $1", _PLAYER_ID)
     await pool.execute("DELETE FROM items WHERE id = $1", _ITEM_ID)
+    await pool.execute("DELETE FROM materials_catalog WHERE id = $1", _MATERIAL_ID)
 
 
 def _victory_state() -> CombatState:
@@ -124,10 +141,14 @@ def _victory_state() -> CombatState:
 
 
 @pytest.mark.asyncio
-async def test_victory_grants_role_loot_and_currency(dev_db_pool):
+@pytest.mark.parametrize("material", [False, True])
+async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
     pool = dev_db_pool
     await _seed_player(pool, gold=5)
-    await _seed_item(pool)
+    if material:
+        await _seed_material(pool)
+    else:
+        await _seed_item(pool)
     try:
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         cs = _victory_state()
@@ -143,7 +164,7 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
                 queries=db_queries,
                 conn=conn,
                 sink=sink,
-                content=_content_stub(),
+                content=_content_stub(material),
                 rng=FakeRng(die=4),
             )
 
@@ -155,14 +176,14 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         qty = await pool.fetchval(
             "SELECT (data->>'quantity')::int FROM player_inventory WHERE player_id = $1 AND item_id = $2",
             _PLAYER_ID,
-            _ITEM_ID,
+            _MATERIAL_ID if material else _ITEM_ID,
         )
         assert qty == 1
 
         # end_data surfaces the primary's own haul for the DM narration / response (solo: the
         # primary is the only participant, so primary_* equals the whole haul).
         assert end_data["primary_currency_gold"] == pytest.approx(0.4)
-        assert end_data["primary_loot"] == [{"item_id": _ITEM_ID, "quantity": 1}]
+        assert end_data["primary_loot"] == [{"item_id": _MATERIAL_ID if material else _ITEM_ID, "quantity": 1}]
 
         # A single CURRENCY_GAINED chip buffered for the whole haul, plus the ITEM_ACQUIRED chip.
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
@@ -178,16 +199,110 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         # The item CARD's three fields ride along: the client builds its overlay from
         # name/description/rarity, so an id-only payload draws a blank card.
         assert item_events[0].payload == {
-            "item_id": _ITEM_ID,
-            "name": "Cured Hide",
-            "description": "Supple.",
-            "rarity": "uncommon",
+            "item_id": _MATERIAL_ID if material else _ITEM_ID,
+            "name": "Raw Ore" if material else "Cured Hide",
+            "description": "Heavy ore." if material else "Supple.",
+            "rarity": "rare" if material else "uncommon",
             "quantity": 1,
             "source": "combat_loot",
             "player_id": _PLAYER_ID,
         }
+        if material:
+            assert end_data["item_recipients"] == [(_PLAYER_ID, "Raw Ore")]
+            with patch("combat_end._build_handoff_agent", return_value=None):
+                _end_combat_finish(session, cs, "victory", end_data)
+            assert session.session_items_found == ["Raw Ore"]
+            assert session.player_summary_metrics[_PLAYER_ID]["items_found"] == ["Raw Ore"]
     finally:
         await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_mawling_table_changes_item_without_changing_currency(dev_db_pool):
+    pool = dev_db_pool
+    row = await pool.fetchrow("SELECT data FROM materials_catalog WHERE id = $1", "rend_shard")
+    assert row is not None, "seed rend_shard into the dev database"
+    material = json.loads(row["data"])
+    tables = {table["id"]: table for table in json.loads((ROOT / "content/loot_tables.json").read_text())}
+    table = tables["loot_hollow_rend"]
+    content = MagicMock()
+    content.get_loot_table = AsyncMock(return_value=table)
+    content.get_item = AsyncMock(return_value=None)
+    content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
+    await _seed_player(pool, gold=5)
+    try:
+        session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
+        cs = _victory_state()
+        enemy = cs.participants[1]
+        enemy.id = "hollow_rend"
+        enemy.name = "Mawling"
+        enemy.category = "hollow_rend"
+        enemy.tier = 2
+        enemy.loot_table_id = "loot_hollow_rend"
+        sink = EventSink()
+        async with db.transaction() as conn:
+            end_data = await _end_combat_db(
+                session,
+                cs,
+                "victory",
+                mutations=db_mutations,
+                queries=db_queries,
+                conn=conn,
+                sink=sink,
+                content=content,
+                rng=random.Random(1),
+            )
+        # The old residue table paid 8 silver under this same seed.
+        assert end_data["primary_currency_gold"] == pytest.approx(0.8)
+        player = await db_queries.get_player(_PLAYER_ID, conn=pool)
+        assert player is not None and player["gold"] == pytest.approx(5.8)
+        assert end_data["primary_loot"] == [{"item_id": "rend_shard", "quantity": 1}]
+        assert (
+            await pool.fetchval(
+                "SELECT (data->>'quantity')::int FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+                _PLAYER_ID,
+                "rend_shard",
+            )
+            == 1
+        )
+        currency_events = [event.payload for event in sink.captured if event.event_type == E.CURRENCY_GAINED]
+        assert len(currency_events) == 1
+        assert currency_events[0]["amount"] == pytest.approx(0.8)
+        assert currency_events[0]["new_balance"] == pytest.approx(5.8)
+        item_events = [event.payload for event in sink.captured if event.event_type == E.ITEM_ACQUIRED]
+        assert len(item_events) == 1
+        assert item_events[0]["item_id"] == "rend_shard"
+        assert item_events[0]["name"] == material["name"]
+    finally:
+        await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ambiguous", [False, True])
+async def test_missing_or_ambiguous_loot_row_raises_before_grant(ambiguous):
+    drop_id = "ambiguous_drop" if ambiguous else "missing_drop"
+    content = MagicMock()
+    content.get_item = AsyncMock(return_value={"name": "Other"} if ambiguous else None)
+    content.get_material_definition = AsyncMock(return_value={"name": "Other material"} if ambiguous else None)
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    channel = MagicMock()
+    channel.emit = AsyncMock()
+    recipients = []
+    with pytest.raises(ValueError, match=drop_id):
+        await distribute_loot(
+            [{"item_id": drop_id, "quantity": 1}],
+            [_PLAYER_ID],
+            recipient_id=_PLAYER_ID,
+            mutations=mutations,
+            content=content,
+            conn=None,
+            channel=channel,
+            item_recipients=recipients,
+        )
+    mutations.add_inventory_item.assert_not_awaited()
+    channel.emit.assert_not_awaited()
+    assert recipients == []
 
 
 @pytest.mark.asyncio

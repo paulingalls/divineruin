@@ -32,6 +32,13 @@ def test_shared_creature_corpus():
     assert CORPUS.is_file()
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert {case["name"] for case in invalid} >= {
+        "missing_regions",
+        "empty_regions",
+        "unknown_region",
+        "missing_home_region",
+        "unknown_home_region",
+    }
     assert_corpus_floors(valid, invalid)
     derived = [case for case in valid if case.get("spec_derived")]
     assert {case["name"] for case in derived} >= {"spec_shadeling", "spec_hollowmoth", "spec_bandit"}
@@ -45,6 +52,17 @@ def test_shared_creature_corpus():
     for case in invalid:
         assert case["expected"]
         assert validate_creature_stat_block(case["block"]) == case["expected"], case["name"]
+
+
+def test_hollow_exemplar_fixtures_match_catalog() -> None:
+    exemplar_ids = {"hollow_shadeling", "hollow_hollowmoth"}
+    corpus = json.loads(CORPUS.read_text())
+    exemplars = [case for case in corpus["valid"] if case["block"]["id"] in exemplar_ids]
+    assert len(exemplars) == 2
+    assert {case["block"]["id"] for case in exemplars} == exemplar_ids
+    catalog = {row["id"]: row for row in json.loads((ROOT / "content/creatures.json").read_text())}
+    for case in exemplars:
+        assert case["block"] == catalog[case["block"]["id"]]
 
 
 def key_paths(node, prefix=()):

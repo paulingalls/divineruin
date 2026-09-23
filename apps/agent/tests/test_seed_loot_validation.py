@@ -16,6 +16,16 @@ def _table() -> dict:
     return {"id": "loot_probe", "drops": [{"item_id": "probe_item", "chance": 1.0, "quantity": 1}]}
 
 
+@pytest.mark.parametrize("drops", [None, [], "missing"])
+def test_empty_or_missing_drops_are_refused(drops) -> None:
+    table = _table()
+    if drops == "missing":
+        del table["drops"]
+    else:
+        table["drops"] = drops
+    assert any("loot_probe" in error and "drops" in error for error in seed_content.validate_loot_table(table))
+
+
 def test_authored_loot_corpus_conforms() -> None:
     path = _ROOT / "content" / "loot_tables.json"
     assert path.is_file(), path
@@ -69,16 +79,35 @@ def test_bad_hollow_residue_flag_is_refused() -> None:
 
 def test_residue_tables_pin_authored_requirements() -> None:
     tables = {table["id"]: table for table in json.loads((_ROOT / "content" / "loot_tables.json").read_text())}
+    materials = {row["id"]: row for row in json.loads((_ROOT / "content" / "materials_catalog.json").read_text())}
     residues = {
-        "loot_hollow_drift": "hollow_residue_t1",
-        "loot_hollow_rend": "hollow_residue_t1",
-        "loot_hollowed_knight": "hollow_residue_t2",
+        "loot_hollow_drift": ("hollow_residue_t1", 0.4, 1),
+        "loot_hollow_rend": ("rend_shard", 0.75, 1),
+        "loot_hollowed_knight": ("wrack_core", 0.5, 1),
+        "loot_hollow_warden": ("hollow_residue_t2", 1.0, 2),
     }
-    for table_id, item_id in residues.items():
+    assert materials["rend_shard"]["tier"] == 2
+    assert materials["wrack_core"]["tier"] == 3
+    for table_id, (item_id, chance, quantity) in residues.items():
         table = tables[table_id]
         assert table["hollow_residue"] is True
+        assert [
+            drop["item_id"]
+            for drop in table["drops"]
+            if drop["item_id"] in {"hollow_residue_t1", "hollow_residue_t2", "rend_shard", "wrack_core"}
+        ] == [item_id]
         residue = next(drop for drop in table["drops"] if drop["item_id"] == item_id)
+        assert residue["chance"] == chance
+        assert residue["quantity"] == quantity
         assert residue["requires"] == [{"skill": "crafting", "tier": "expert"}]
+
+
+def test_harvested_material_descriptions_are_not_filler() -> None:
+    materials = json.loads((_ROOT / "content" / "materials_catalog.json").read_text())
+    harvested = [row for row in materials if row["source"].startswith("Harvested from")]
+    assert {"eel_oil", "lightning_gland", "eel_skin"} <= {row["id"] for row in harvested}
+    for row in harvested:
+        assert "harvested from" not in row["description"].lower(), row["id"]
 
 
 class _Connection:
@@ -89,8 +118,25 @@ class _Connection:
         if "FROM loot_tables" in sql:
             return [{"id": self.table["id"], "data": json.dumps(self.table)}]
         if "FROM items" in sql:
-            return [{"id": "probe_item"}]
+            return [{"id": "probe_item"}, {"id": "crystal_flask"}]
+        if "FROM materials_catalog" in sql:
+            return [{"id": "iron_ore"}, {"id": "crystal_flask"}]
         return []
+
+
+@pytest.mark.parametrize(
+    "drop_id,expected",
+    [("probe_item", None), ("iron_ore", None), ("missing_drop", "unknown"), ("crystal_flask", "ambiguous")],
+)
+async def test_seed_loot_drop_has_exactly_one_catalog(drop_id: str, expected: str | None) -> None:
+    table = _table()
+    table["drops"][0]["item_id"] = drop_id
+    errors = await seed_content.validate(_Connection(table))
+    loot_errors = [error for error in errors if "Loot table 'loot_probe'" in error]
+    if expected:
+        assert any(drop_id in error and expected in error for error in loot_errors), loot_errors
+    else:
+        assert loot_errors == []
 
 
 @pytest.mark.parametrize(

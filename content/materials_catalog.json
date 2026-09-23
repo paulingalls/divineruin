@@ -45,7 +45,7 @@
     "category": "metal",
     "tier": 3,
     "rarity": "rare",
-    "source": "Salvaged from the plating of shattered War Golems (Crafting: Expert).",
+    "source": "Salvaged from the plating of shattered War Golems (Crafting: Trained).",
     "weight": 1.5,
     "description": "Plate steel still humming with the old forge-songs of the constructs."
   },
@@ -235,7 +235,7 @@
     "category": "monster_part",
     "tier": 2,
     "rarity": "uncommon",
-    "source": "Extracted from giant spiders, rock vipers, and cave wyrms.",
+    "source": "Extracted from giant spiders and cave wyrms.",
     "weight": 0.2,
     "description": "A taut translucent bladder sloshing with cloudy poison."
   },
@@ -578,5 +578,305 @@
     "source": "Broken from the Still's dream of perfect rest; it offers comfort it cannot keep.",
     "weight": 0.3,
     "description": "A warm, too-soft shard that whispers stay every time you hold it."
+  },
+  {
+    "id": "wolf_fangs",
+    "name": "Wolf Fangs",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Grey Wolf.",
+    "weight": 0.1,
+    "description": "Small pointed fangs worn smooth at the roots."
+  },
+  {
+    "id": "wolf_meat",
+    "name": "Wolf Meat",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from a Grey Wolf.",
+    "weight": 1.0,
+    "description": "Lean game meat with a sharp wild scent."
+  },
+  {
+    "id": "boar_tusks",
+    "name": "Boar Tusks",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Wild Boar.",
+    "weight": 0.3,
+    "description": "Two curved tusks marked by old scrapes."
+  },
+  {
+    "id": "boar_meat",
+    "name": "Boar Meat",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from a Wild Boar.",
+    "weight": 1.0,
+    "description": "Rich meat with a strong earthy smell."
+  },
+  {
+    "id": "spider_chitin",
+    "name": "Spider Chitin",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from a Giant Spider.",
+    "weight": 0.2,
+    "description": "Hard plates that click when stacked."
+  },
+  {
+    "id": "stalker_pelt",
+    "name": "Stalker Pelt",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Skinned from a Thornveld Stalker.",
+    "weight": 1.2,
+    "description": "Dappled fur carrying the scent of damp bark."
+  },
+  {
+    "id": "stalker_claws",
+    "name": "Stalker Claws",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Taken from a Thornveld Stalker.",
+    "weight": 0.1,
+    "description": "Hooked claws sharp enough to catch on cloth."
+  },
+  {
+    "id": "ironwood_bark",
+    "name": "Ironwood Bark",
+    "category": "wood",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Cut from a Corrupted Treant.",
+    "weight": 0.5,
+    "description": "Dense bark whose split edges smell faintly of rot."
+  },
+  {
+    "id": "razorwing_talons",
+    "name": "Razorwing Talons",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Steppe Razorwing.",
+    "weight": 0.1,
+    "description": "Hooked talons that rasp together, sharp enough to split a thumbnail."
+  },
+  {
+    "id": "bison_hide",
+    "name": "Bison Hide",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 1.5,
+    "description": "A heavy hide that smells of dust and dry grass."
+  },
+  {
+    "id": "bison_horn",
+    "name": "Bison Horn",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 0.5,
+    "description": "A thick curved horn that rings dully when knocked on stone."
+  },
+  {
+    "id": "bison_meat",
+    "name": "Bison Meat",
+    "category": "reagent",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 1.0,
+    "description": "A dense, rich-smelling cut of red meat, heavy in the hand."
+  },
+  {
+    "id": "viper_venom",
+    "name": "Viper Venom Dose",
+    "category": "reagent",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Rock Viper.",
+    "weight": 0.1,
+    "description": "A stoppered dose of venom with a sharp, bitter smell."
+  },
+  {
+    "id": "viper_skin",
+    "name": "Viper Skin",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Rock Viper.",
+    "weight": 0.2,
+    "description": "A thin, dry skin that whispers when it bends."
+  },
+  {
+    "id": "wyrm_acid_gland",
+    "name": "Wyrm Acid Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Harvested from Cave Wyrm.",
+    "weight": 0.5,
+    "description": "A swollen gland that fizzes faintly and stinks of sour metal."
+  },
+  {
+    "id": "lurker_hide",
+    "name": "Lurker Hide",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Saltmarsh Lurker.",
+    "weight": 1.2,
+    "description": "A slick, briny hide that squelches when folded."
+  },
+  {
+    "id": "lurker_teeth",
+    "name": "Lurker Teeth",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Saltmarsh Lurker.",
+    "weight": 0.1,
+    "description": "Needle teeth that click together, still smelling of salt mud."
+  },
+  {
+    "id": "eel_skin",
+    "name": "Eel Skin",
+    "category": "hide",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.5,
+    "description": "A slick skin that smells of the tide and creaks as it dries."
+  },
+  {
+    "id": "lightning_gland",
+    "name": "Lightning Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.2,
+    "description": "A taut gland that crackles faintly between your fingers."
+  },
+  {
+    "id": "eel_oil",
+    "name": "Eel Oil",
+    "category": "reagent",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.2,
+    "description": "A slick oil that hisses when a drop meets hot iron."
+  },
+  {
+    "id": "crawler_chitin",
+    "name": "Crawler Chitin",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A curved plate of black chitin that clicks when tapped."
+  },
+  {
+    "id": "paralytic_gland",
+    "name": "Paralytic Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A soft sac that smells of bitter almonds and numbs the fingertips."
+  },
+  {
+    "id": "crawler_mandible",
+    "name": "Crawler Mandible",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Umbral Crawler.",
+    "weight": 0.2,
+    "description": "A hooked jaw, still sharp enough to rasp against stone."
+  },
+  {
+    "id": "guardian_core_small",
+    "name": "Small Guardian Core",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "A palm-sized stone heart that hums faintly against the skin."
+  },
+  {
+    "id": "ancient_mechanism",
+    "name": "Ancient Mechanism",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Deepstone Guardian.",
+    "weight": 0.2,
+    "description": "A cluster of stone gears that tick when turned by hand."
+  },
+  {
+    "id": "dire_bear_claws",
+    "name": "Dire Bear Claws",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "A heavy, curved claw that smells of earth and old blood."
+  },
+  {
+    "id": "dire_bear_fat",
+    "name": "Dire Bear Fat",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Dire Bear.",
+    "weight": 0.2,
+    "description": "Thick, rank fat that renders down into lamp oil and salve."
+  },
+  {
+    "id": "troll_blood",
+    "name": "Troll Blood",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Troll.",
+    "weight": 0.2,
+    "description": "Dark blood that bubbles faintly in the vial, as if still healing."
+  },
+  {
+    "id": "lightning_gland_large",
+    "name": "Large Lightning Gland",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "A swollen gland that crackles and stings the palm that holds it."
+  },
+  {
+    "id": "thunderbird_egg",
+    "name": "Thunderbird Egg",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from Thunderbird.",
+    "weight": 0.2,
+    "description": "A heavy egg that thrums like distant thunder."
   }
 ]

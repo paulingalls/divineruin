@@ -8,18 +8,18 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, and two Tier 1 Hollow exemplars are shipped. The regional catalog, creature agent tools, and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, two Tier 1 Hollow exemplars, all 19 spec-authored natural creatures, and internal catalog lookups are shipped. The DM query surface and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
-| M7.1 — Creature Stat Block Schema | 8 | 0 | 1 |
-| M7.2 — Regional Creature Catalog | 1 | 1 | 9 |
+| M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
+| M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
 **Material gaps:**
 - **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block must add optional `role` field (Minion/Standard/Elite/Boss/Named) and Boss-only `signature_ability` + `legendary_actions[]` fields for the Phase-7 catalog. M4.7 already derives roles from authored templates; M7.1 must give that data a typed catalog home.
-- **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** milestone text claims "38+ natural creatures" and "humanoid enemies including Ashmark Soldier, Cult Acolyte." The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and does NOT include Ashmark Soldier or Cult Acolyte stat blocks. **Resolution:** narrow milestone text to "19+ natural creatures" (path b — match milestone to spec). Ashmark Soldier and Ashmark Sergeant ship in `content/encounter_templates.json` (`ashmark_patrol`); Cultist, Cult Fanatic, and Cult Leader ship there in `cult_cell`. Cult Acolyte still lacks a stat block. The Phase-7 catalog and builder remain unbuilt.
+- **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** the earlier milestone count claimed "38+ natural creatures" and named Ashmark Soldier and Cult Acolyte. The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and lacks those two stat blocks. The milestone count now matches the spec. Ashmark Soldier and Ashmark Sergeant ship in `content/encounter_templates.json` (`ashmark_patrol`); Cultist, Cult Fanatic, and Cult Leader ship there in `cult_cell`. Cult Acolyte still lacks a stat block. All 19 natural rows now ship in the Phase-7 catalog; the encounter builder remains unbuilt.
 - **M7.3 can now proceed:** Phase 3 Resonance shipped after the Sprint-002 audit. `apply_corruption_aura` and `resolve_resonance_on_death` remain absent from the Phase-7 creature mechanics.
 - **M7.4 `build_encounter` signature in flux (decision `m7-4-build-encounter-signature`):** spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Capstone records both forms; final choice belongs to Phase 7 M7.4; M4.7 already shipped. `_start_combat_impl(context, encounter_id, …)` at `apps/agent/combat_init.py:55` consumes pre-authored templates; the retired DM `start_combat` name is replaced by `enter_mode`. It does not generate or compose creatures.
 
@@ -52,7 +52,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [x] Hollow-specific nested fields are optional and only validated when category is "hollow" <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 - [x] All attack entries include the canonical template’s name, type, reach, to_hit, damage, damage_type, special, and audio <!-- verified apps/agent/tests/test_creature_schema.py::test_every_spec_field_is_required; supersedes the older attribute/damage_dice/range wording -->
 - [x] Tier system correctly maps tiers 1-4 to player level ranges <!-- verified apps/agent/tests/test_creature_tiers.py::test_every_player_level_has_exactly_one_tier; the TypeScript mirror is pinned in packages/shared/src/entities/encounter.test.ts -->
-- [ ] Narration fields provide audio-first cues (sound/smell before sight). The schema requires every cue field; whether the cues put sound first is content, owned by M7.2's audio-first narration box. Both spec exemplars still lead some cues with sight.
+- [x] Narration fields provide audio-first cues (sound/smell before sight) <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_narration_opens_with_sound_or_smell; apps/agent/tests/test_creature_schema.py::test_hollow_exemplar_fixtures_match_catalog -->
 - [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity; apps/agent/tests/combat/test_encounter_loot.py::test_standard_loot_omits_entries_whose_chance_fails; `loot_table_id` supersedes nested guaranteed[]/chance[] loot -->
 - [x] `validate_creature_stat_block` rejects invalid entries with specific error messages <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 - [x] DB migration runs cleanly with proper indexes on category, tier, and name <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
@@ -67,36 +67,43 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 
 ### Milestone 7.2 — Regional Creature Catalog
 
-**Goal:** Author all 38+ natural (non-Hollow) creatures organized by region, each with a complete stat block, behavior patterns, and narration cues, populating the bestiary the DM agent draws from.
+**Goal:** Author all 19 natural (non-Hollow) creatures, including the underground pair and four multi-region threats, with complete stat blocks, distinct behavior, and audio-first cues across the six spec regions.
 
 **Inputs:** M7.1 (creature stat block schema).
 
 **Deliverables:**
-- 38+ creature entries across 6 regions, fully authored:
+- 19 natural creature entries across the specified regions, fully authored:
   - Greyvale: Grey Wolf, Wild Boar, Giant Spider, Bandit (Tier 1)
   - Thornveld: Thornveld Stalker, Corrupted Treant (Tier 1-2)
   - Drathian Steppe: Steppe Razorwing, Steppe Bison (Tier 1)
   - Keldaran Mountains: Rock Viper, Cave Wyrm, War Golem (Tier 1-3)
   - Sunward Coast & Wetlands: Saltmarsh Lurker, Tidecaller Eel (Tier 1-2)
-  - Underground: Umbral Crawler, Deepstone Guardian (Tier 2-3)
+  - Underground: Umbral Crawler, Deepstone Guardian (Tier 2)
+  - Multi-region: Dire Bear, Troll, Bandit Captain, Thunderbird (Tier 2-3)
 - Each creature: full stat block, 1-3 attacks, behavior pattern (aggressive/defensive/pack/ambush), retreat condition, narration cues, audio hints
-- Humanoid enemies (Bandit, Ashmark Soldier, Cult Acolyte) use NPC-like stat blocks with role-appropriate equipment
+- Bandit and Bandit Captain use equipment attacks; Troll uses its specified natural attacks
 - Content: all creatures authored in `content/creatures.json` organized by region
-- Agent tool: `query_creatures_by_region(region_id, tier_filter)` returning matching creatures
-- Agent tool: `query_creature_by_id(creature_id)` returning full stat block
+- Internal function: `query_creatures_by_region(region_id, tier=None)` returning matching creatures
+- Internal function: `query_creature_by_id(creature_id)` returning full stat block
 
 **Acceptance criteria:**
-- [ ] All 38+ creatures have complete stat blocks passing M7.1 validation
-- [ ] Every region has at least 3 creatures spanning appropriate tiers
-- [ ] Greyvale creatures are Tier 1 only (starter region)
-- [ ] Keldaran Mountains include Tier 3 creatures (late-game region)
-- [ ] Each creature has distinct behavior pattern and retreat threshold
-- [ ] Narration cues follow audio-first convention (sensory details, not visual descriptions)
-- [ ] Humanoid enemies have equipment-based attacks matching their role
-- [ ] `query_creatures_by_region` filters correctly by region and tier
-- [ ] `query_creature_by_id` returns null/error for nonexistent IDs
+- [x] All 19 natural creatures have complete stat blocks passing M7.1 validation <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_real_validators_and_seed_submission; apps/agent/tests/test_creature_distribution.py::test_natural_creature_distribution -->
+- [x] Every spec region has at least 3 natural creatures, with distribution counts pinned by region <!-- verified apps/agent/tests/test_creature_distribution.py::test_natural_creature_distribution -->
+- [x] Greyvale home-region creatures are Tier 1 only (starter region) <!-- verified apps/agent/tests/test_creature_distribution.py::test_natural_creature_distribution -->
+- [x] Keldaran Mountains include Tier 3 creatures (late-game region) <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_spec_stats_regions_and_behavior -->
+- [x] Each natural creature has a distinct behavior pattern (tactics) and retreat threshold (morale) <!-- verified apps/agent/tests/test_creature_distribution.py::test_natural_creature_distribution -->
+- [x] Natural creature narration cues follow the audio-first convention <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_narration_opens_with_sound_or_smell -->
+- [x] Bandit and Bandit Captain have their specified equipment attacks; Troll has its specified Claw and Bite <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_spec_stats_regions_and_behavior -->
+- [x] Internal function `query_creatures_by_region` filters correctly by region and tier <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_internal_catalog_queries_use_regions_tier_and_named_missing_error -->
+- [x] Internal function `query_creature_by_id` raises on nonexistent IDs <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_internal_catalog_queries_use_regions_tier_and_named_missing_error -->
 - [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
-- [ ] Tests verify creature distribution across regions and tier balance
+- [x] Tests verify exact natural creature distribution, Greyvale home tiers, and Keldaran Tier 3 presence <!-- verified apps/agent/tests/test_creature_distribution.py::test_natural_creature_distribution -->
+
+All 19 spec-authored natural catalog rows ship, including the underground pair and four multi-region threats. Their linked loot tables retain every representable spec quantity and harvest requirement. Greyvale's four home-region rows are Tier 1; War Golem gives Keldaran a Tier 3 home row. Bandit and Bandit Captain use their spec equipment attacks; the Troll uses Claw and Bite. The Captain's catalog table uses chain shirt, quality longsword, and map or intel, while encounter-template captains retain their existing table. Coin pouches and variable stolen goods are omitted because the item-drop schema cannot represent them.
+
+An attack's rider poison damage stays in `special`, while `damage` records its base hit (Giant Spider and Rock Viper). The single `speed` field holds walking speed; Crawler climb 30 ft and Thunderbird fly 80 ft, like earlier climb, burrow, and swim speeds, remain in ability descriptions. Tier 3 `cave_wyrm_scales` can drop from the Tier 2 Cave Wyrm because material tier and creature tier have separate meanings. Guardian Pulse and Lightning Breath use `type: area` with schema-required unused `to_hit: 0`; their saves and areas remain in `special`. Dire Bear's Maul also carries `to_hit: 0`; its auto-hit against grappled targets lives in `special`.
+
+**DM surface:** M34 will route creature lookups through `query_info(kind="creature")` with arguments; these internal functions are not DM verbs.
 
 **Key references:**
 - *Game Mechanics Bestiary — Regional Creatures*
@@ -150,6 +157,8 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 **Goal:** Implement the loot generation system with skill-gated harvesting and the encounter builder that assembles balanced combat encounters from the creature catalog. Current loot tables carry optional skill requirements and a Hollow residue flag as data; M34 must enforce requirements when harvesting. `derive_role_loot` does not gate drops by player skill.
 
 **Inputs:** M7.1-M7.3 (creature catalog), Phase 1 (Core — skill tiers for harvesting gates), Phase 5 (Crafting — for material-to-recipe pipeline integration).
+
+The Warden has no spec stat block. Its authored residue flag and Crafting:Expert harvest gate follow the rend table's residue precedent; they do not imply a spec drop for the Warden.
 
 **Deliverables:**
 - Loot generation: `generate_loot(creature, player_skills)` returning guaranteed drops plus probabilistic rolls

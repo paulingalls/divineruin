@@ -1,4 +1,5 @@
 import lootTables from "../../../../content/loot_tables.json";
+import { REGION_IDS, type RegionId } from "./region";
 
 // Encounter currency uses hollow_<class>; this base bestiary category is hollow. M7.2 (the regional
 // catalog) turns encounter enemies into catalog references and applies that mapping.
@@ -7,6 +8,8 @@ export interface CreatureStatBlock {
   name: string;
   category: "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental";
   tier: 1 | 2 | 3 | 4;
+  home_region: RegionId | "multi_region";
+  regions: RegionId[];
   description: string;
   level: number;
   hp: number;
@@ -115,6 +118,21 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   const tier = field(creature, "tier", "", "integer");
   if (typeof tier === "number" && ![1, 2, 3, 4].includes(tier))
     problems.push("tier: expected integer 1-4");
+  const homeRegion = field(creature, "home_region", "", "string");
+  if (
+    typeof homeRegion === "string" &&
+    homeRegion !== "multi_region" &&
+    !(REGION_IDS as readonly string[]).includes(homeRegion)
+  )
+    problems.push("home_region: unknown region");
+  const regions = field(creature, "regions", "", "array");
+  if (Array.isArray(regions)) {
+    if (regions.length === 0) problems.push("regions: expected non-empty array");
+    regions.forEach((region, i) => {
+      if (!(REGION_IDS as readonly unknown[]).includes(region))
+        problems.push(`regions[${i}]: unknown region`);
+    });
+  }
   field(creature, "description", "", "string");
   for (const key of ["level", "hp", "ac", "speed"]) field(creature, key, "", "integer");
   const attributes = field(creature, "attributes", "", "object");
