@@ -1,8 +1,17 @@
-"""Route downtime actions and publish neutral cues after successful writes.
+"""Downtime-activity dispatchers: ``begin_activity(kind)`` and ``resolve_activity(kind, id)``.
 
-The begin and resolve tools share strict kind validation. A resolved errand publishes
-inside its delegate so cached reads stay silent; training resolves in its delegate
-for the same post-commit ordering.
+One verb per direction keeps new activity kinds from adding tools (ADR 0004 ceiling, ADR 0007).
+``begin_activity`` takes a discriminated sum type (``activity_payloads``, ADR 0008) because an
+optional-kwarg superset spent most of a request's union budget. Required params are still checked
+per kind here, fail loud, before dispatch: the schema binds only the LLM path.
+
+``resolve_activity`` takes an explicit ``kind`` rather than inferring it from ``id``: training and
+errand ids share no disjoint namespace. ``@db_tool`` sits on both dispatchers so every routed kind
+narrates DB errors the same way.
+
+Begin cues publish here, after the delegate's write returns. Resolve cues publish inside their
+delegates: an errand resolver returns the same shape for a fresh resolution and a cached re-read,
+so only it knows which one committed.
 """
 
 import json

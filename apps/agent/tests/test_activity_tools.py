@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
-from sample_fixtures import make_context
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
 import db_training
@@ -174,6 +174,17 @@ class TestBeginExperiment:
         )
         assert json.loads(result) == {"outcome": "success"}
         fns["experiment"].assert_awaited_once_with(ctx, {"iron_ore": 2, "coal": 1}, "iron_ingot")
+
+    async def test_unknown_experiment_outcome_fails_loud_without_cue(self):
+        mods, fns = _mocks()
+        fns["experiment"].return_value = '{"outcome": "mystery"}'
+        ctx = make_context(room=make_mock_room())
+        with pytest.raises(ValueError, match="mystery"):
+            await _begin_activity_impl(
+                ctx, "experiment", material_ids=["iron_ore"], quantities=[1], intended_output="iron_ingot", **mods
+            )
+        fns["experiment"].assert_awaited_once()
+        assert published_payloads(ctx.userdata.room) == []
 
     async def test_missing_intended_output_fails_loud_before_dispatch(self):
         with pytest.raises(ToolError, match="experiment"):
