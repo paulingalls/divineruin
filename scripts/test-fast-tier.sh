@@ -69,12 +69,13 @@ expect_failure 'staged mobile TypeScript with a workspace type error'
 grep -q 'bunx tsc --noEmit @ /apps/mobile$' "$FAST_TEST_LOG"
 
 reset_case
-mkdir -p packages/shared/src apps/server
+mkdir -p packages/shared/src apps/mobile apps/server apps/web
 printf 'OK\n' > packages/shared/src/clean.ts
 touch apps/server/TYPE_ERROR
 git add packages/shared/src/clean.ts
 expect_failure 'shared package change breaking a consuming workspace'
 grep -q 'bunx tsc --noEmit @ $' "$FAST_TEST_LOG"
+grep -q 'bunx tsc --noEmit @ /apps/server$' "$FAST_TEST_LOG"
 
 reset_case
 mkdir -p apps/server/src

@@ -106,3 +106,27 @@ def test_guest_capstone_skips_for_approval_even_when_both_keys_are_present():
     )
     assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
     assert "1 skipped" in result.stdout and APPROVAL_VAR in result.stdout, result.stdout[-2000:]
+
+
+def test_approved_guest_capstone_fails_loud_without_openai_key():
+    env = dict(os.environ)
+    env.update(ALLOW_PAID_TESTS="1", REQUIRE_REAL_LLM="1", DEEPGRAM_API_KEY="dg-fake-gate-probe", OPENAI_API_KEY="")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/acceptance/multiplayer_voice/test_guest_capstone.py",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=_TESTS.parent,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode != 0, result.stdout[-2000:] + result.stderr[-2000:]
+    assert "OPENAI_API_KEY is absent" in result.stdout
+    assert "xfailed" not in result.stdout

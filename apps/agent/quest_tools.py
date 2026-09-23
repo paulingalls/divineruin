@@ -177,6 +177,7 @@ async def _update_quest_impl(
                     xp_reward,
                     eligible_ids,
                     recipient_id=actor_id,
+                    summary_player_id=primary_id,
                     reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
                     mutations=mutations,
                     queries=queries,
@@ -366,10 +367,7 @@ async def _update_quest_impl(
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
     if outcome is not None:
-        # The speaker's own share, not the stage's undistributed total — the same rule combat
-        # exit's metric follows. Counted out here rather than inside the transaction: a stage
-        # that rolls back must not leave its XP behind in the session metric.
-        session.session_xp_earned += outcome.xp_granted
+        session.session_xp_earned += outcome.summary_xp_granted
 
     response = {
         "quest_id": quest_id,

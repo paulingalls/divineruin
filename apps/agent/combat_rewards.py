@@ -61,10 +61,10 @@ class RewardChannel:
 
 @dataclass
 class XpGrant:
-    """What the response recipient got out of the XP pass — the only member the single-session tool response
-    and session_xp_earned speak for. Every other seat's award reaches its own client on the wire."""
+    """The response recipient's XP and the primary player's session-summary XP."""
 
     xp_granted: int = 0
+    summary_xp_granted: int = 0
     milestone_grants: list[dict] = field(default_factory=list)
     specialization_fork: bool = False
     leveled_up: bool = False
@@ -231,6 +231,7 @@ async def distribute_xp(
     seat_order: list[str],
     *,
     recipient_id: str,
+    summary_player_id: str,
     reason: str,
     mutations,
     queries,
@@ -300,12 +301,12 @@ async def distribute_xp(
             **core_kwargs,
         )
         if pid == recipient_id:
-            grant = XpGrant(
-                xp_granted=share,
-                milestone_grants=outcome.milestone_grants,
-                specialization_fork=outcome.result.specialization_fork,
-                leveled_up=outcome.result.leveled_up,
-            )
+            grant.xp_granted = share
+            grant.milestone_grants = outcome.milestone_grants
+            grant.specialization_fork = outcome.result.specialization_fork
+            grant.leveled_up = outcome.result.leveled_up
+        if pid == summary_player_id:
+            grant.summary_xp_granted = share
     for event_type, payload in pending_events:
         await channel.emit(event_type, payload)
     return grant
@@ -316,6 +317,7 @@ async def grant_victory_rewards(
     rng: random.Random,
     *,
     recipient_id: str,
+    summary_player_id: str,
     reason: str,
     mutations,
     queries,
@@ -360,6 +362,7 @@ async def grant_victory_rewards(
         spoils.xp_total,
         seat_order,
         recipient_id=recipient_id,
+        summary_player_id=summary_player_id,
         reason=reason,
         mutations=mutations,
         queries=queries,

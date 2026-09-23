@@ -159,6 +159,7 @@ async def _end_combat_db(
             cs.participants,
             rng,
             recipient_id=actor_id,
+            summary_player_id=primary_id,
             reason=f"Victory at {cs.location_id}",
             mutations=mutations,
             queries=queries,
@@ -282,6 +283,7 @@ async def _end_combat_db(
     return {
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
+        "summary_xp_granted": rewards.xp.summary_xp_granted,
         "milestone_grants": rewards.xp.milestone_grants,
         "specialization_fork": rewards.xp.specialization_fork,
         "defeated_enemies": rewards.spoils.defeated_enemies,
@@ -341,9 +343,7 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
-    # The session metric is the speaker's own award (the same rule quest completion follows),
-    # not the party total.
-    session.session_xp_earned += xp_granted
+    session.session_xp_earned += end_data["summary_xp_granted"]
 
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)

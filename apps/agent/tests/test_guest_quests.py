@@ -108,6 +108,16 @@ async def test_guest_completion_pays_xp_favor_and_items_to_both():
 
 
 @pytest.mark.asyncio
+async def test_guest_quest_xp_counts_host_grant_when_guest_was_already_paid():
+    case = quest_case([{"on_complete": {"xp": 100}}], {"player_1": 0, "player_2": 1})
+    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        result = await advance(case, 1)
+    assert not any(reward["type"] == "xp" for reward in result["rewards_applied"])
+    assert [call.args[0] for call in case[6].update_player_xp.await_args_list] == ["player_1"]
+    assert case[0].userdata.session_xp_earned > 0
+
+
+@pytest.mark.asyncio
 async def test_item_reward_skips_member_already_ahead():
     case = quest_case(
         [{"on_complete": {"rewards": [{"item": "relic"}]}}, {"on_complete": {}}], {"player_1": 0, "player_2": 2}

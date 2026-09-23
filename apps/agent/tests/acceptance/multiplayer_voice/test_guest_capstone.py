@@ -22,11 +22,17 @@ from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import SessionData
 from session_startup import gameplay_room_options
 
+
+class GuestTrainingNotReached(TimeoutError):
+    pass
+
+
 pytestmark = [
     pytest.mark.openai_real_llm,
     pytest.mark.live_voice,
     pytest.mark.xfail(
         strict=True,
+        raises=GuestTrainingNotReached,
         reason="debt b6784d9c: the DM declines training at the ruins; needs a trainer location and flow",
     ),
     pytest.mark.skipif(
@@ -141,7 +147,7 @@ async def test_guest_speech_drives_luna_check_travel_and_activity(
                         break
                     await asyncio.sleep(0.1)
         except TimeoutError as exc:
-            raise TimeoutError(
+            raise GuestTrainingNotReached(
                 f"guest calls stalled: heard={heard}, calls={names}, history={dm_session.history.items}"
             ) from exc
         assert heard and all(identity == guest for identity, _ in heard)

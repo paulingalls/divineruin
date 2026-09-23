@@ -105,6 +105,26 @@ async def test_guest_end_combat_commits_and_cannot_pay_twice():
 
 
 @pytest.mark.asyncio
+async def test_guest_combat_xp_does_not_enter_host_summary_when_host_receives_none():
+    ctx = make_context()
+    _add_second_member(ctx)
+    cs = _make_combat_state(enemy_fallen=True)
+    guest = copy.deepcopy(cs.participants[0])
+    guest.id = "player_2"
+    cs.participants.insert(1, guest)
+    ctx.userdata.combat_state = cs
+    queries = combat_end_queries(
+        get_player=AsyncMock(side_effect=lambda pid, **_kw: None if pid == "player_1" else _second_member_row())
+    )
+    mutations = combat_end_mutations()
+    with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+        _, raw = await _end_combat_impl(ctx, "victory", mutations=mutations, queries=queries, db_mod=_fake_db_mod())
+    assert json.loads(raw)["xp_granted"] > 0
+    assert [call.args[0] for call in mutations.update_player_xp.await_args_list] == ["player_2"]
+    assert ctx.userdata.session_xp_earned == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("speaker", ["player_1", "player_2"])
 @pytest.mark.parametrize("outcome,enemy_fallen", [("victory", True), ("deescalated", False)])
 async def test_combat_faction_outcome_reaches_each_member(speaker, outcome, enemy_fallen):
