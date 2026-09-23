@@ -26,7 +26,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - **`content/spells.json` does not exist.** Spec is internally consistent at 87 spells (Arcane 30 = 5+6+6+6+7; Divine 28 = 4+6+6+6+6; Primal 29 = 5+6+6+6+6 — match the headline at `magic.md:541`). Implementer has a well-defined data shape. <!-- see audit/phase-3-magic.md -->
 - **Historical `request_attack` was not a spell-cast tool.** It used an inventory token without spell catalog, Focus, Resonance, or concentration checks. The retired DM name was replaced by `declare_phase`; spell casting now uses `activate`. This earlier path does not count toward M3.3.
 - **`RaceData` schema gap.** `apps/agent/creation_races.py:8-15` `RaceData` has only `id/name/description/card_description/attribute_bonuses` — no Resonance fields. When M3.4 ships, either extend `RaceData` or seed via a separate `racial_resonance_bonuses` content file (per the milestone). Thessyn's 10+ session counter and Vaelti's 1-round advance warning need state plumbing the character record does not currently expose. <!-- see audit/phase-3-magic.md -->
-- **Spec/milestone divergence — Draethar Inner Fire cost.** Spec (`magic.md:264`): "reduce current Resonance by 3, take 1d6 fire damage (self-inflicted, cannot be reduced), 1/encounter". Milestone deliverable text (`03_magic.md:129` original): "HP or Focus" cost. Capstone recommends tightening milestone text to match spec (fire-damage cost is more specific and aligned with the "Inner Fire" theme).
+- **Draethar Inner Fire cost reconciled.** M3.4 now states the shipped −3 Resonance and 1d6 unpreventable self fire damage, once per encounter.
 - **Stale `gp` references in source spec.** Carried over from sprint-001 Phase 0 audit (`docs/milestones/audit/phase-0.md`). `magic.md:423` Revivify "Diamond (50 gp, consumed)" and `magic.md:432` Resurrection "Diamond (500 gp, consumed)" need migration to M0.3 economy units. These are M0.3 cleanup targets — flagged here for the spec-cleanup punch list, not edited in this story.
 - **NEW spec content not covered by any M3.x bullet** (milestone undercommits):
   - Bard 0.4× multiplier (`magic.md:88-90`) — milestone names only Arcane/Divine/Primal.
@@ -36,7 +36,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
   - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
   - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
-  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** The shipped ward is a per-player boolean; the full-spec ward (area/encounter-scoped, party-wide, duration-bound, multi-source) is decided (SMM `veil-ward-scope-decision`). The Cleric/Druid/Paladin cost+level table already ships in `veil_ward.py`; the deferred bit is the **per-source durations + area scope**, which M24 absorbs because this phase is Delivered and won't reopen.
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model (`057_veil_ward_scope.sql`), including the Cleric/Druid/Paladin source durations and Artificer Veil Anchor. Phase 10 owns the Druid terrain gate; Phase 11 owns ambient and Sacred-site world wards.
 
 ### Cross-doc dependencies
 
@@ -168,7 +168,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Human: Adaptive decay — Resonance decays at -2/round instead of -1
   - Vaelti: Hyper-awareness — 1-round advance warning before Hollow Echo triggers
   - Korath: Earth-anchored — -1 Primal Resonance generation
-  - Draethar: Inner Fire — pressure valve ability to dump Resonance at a cost (HP or Focus)
+  - Draethar: Inner Fire — once per encounter, −3 Resonance + 1d6 unpreventable self fire damage
   - Thessyn: Deep Adaptation — permanent Resonance handling improvement accrued over 10+ sessions
 - `racial_resonance_bonuses` DB configuration table
 - Rules engine: `get_racial_resonance_modifier(race, modifier_type)` lookup function
