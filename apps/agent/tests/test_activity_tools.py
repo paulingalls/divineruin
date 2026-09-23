@@ -97,6 +97,45 @@ async def _resolve(kind, id_, *, decision=None):
     return ctx, result, fns
 
 
+@pytest.mark.parametrize(
+    "kind,kwargs,delegate,expected",
+    [
+        ("training", {"program_id": "combat_basics"}, "training", "training-result"),
+        (
+            "companion_errand",
+            {"companion_id": "companion_kael", "errand_type": "scout", "destination": "accord_market_square"},
+            "errand_begin",
+            "errand-begin-result",
+        ),
+        ("crafting", {"recipe_id": "iron_dagger_recipe"}, "crafting", "crafting-result"),
+        (
+            "workspace",
+            {"workspace_type": "forge", "npc_id": "guildmaster_torin", "days": 3},
+            "workspace",
+            "workspace-result",
+        ),
+        (
+            "experiment",
+            {"material_ids": ["iron_ore"], "quantities": [2], "intended_output": "iron_ingot"},
+            "experiment",
+            '{"outcome": "success"}',
+        ),
+    ],
+)
+async def test_begin_cue_publish_failure_preserves_delegate_result(kind, kwargs, delegate, expected):
+    mods, fns = _mocks()
+    room = make_mock_room()
+    room.isconnected.return_value = True
+    room.local_participant.publish_data.side_effect = RuntimeError("cue failed")
+    ctx = make_context(room=room)
+
+    result = await _begin_activity_impl(ctx, kind, **kwargs, **mods)
+
+    assert result == expected
+    fns[delegate].assert_awaited_once()
+    room.local_participant.publish_data.assert_awaited_once()
+
+
 class TestBeginTraining:
     async def test_routes_to_initiate_training_cycle_impl(self):
         ctx, result, fns = await _begin("training", program_id="combat_basics")

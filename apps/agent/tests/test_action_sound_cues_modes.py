@@ -168,6 +168,23 @@ async def test_completed_onboarding_cue_failure_preserves_handoff():
     publish.assert_awaited_once()
 
 
+async def test_intermediate_onboarding_cue_failure_preserves_advanced_beat():
+    ctx = context()
+    ctx.userdata.onboarding_beat = 1
+    with (
+        patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as write,
+        patch.object(
+            ctx.userdata.room.local_participant, "publish_data", side_effect=RuntimeError("cue failed")
+        ) as publish,
+    ):
+        result = await advance_onboarding_beat._func(ctx)
+    assert isinstance(result, str)
+    assert json.loads(result) == {"beat": 2, "beat_name": "market"}
+    assert ctx.userdata.onboarding_beat == 2
+    write.assert_awaited_once_with(ctx.userdata.player_id, "onboarding_beat", 2)
+    publish.assert_awaited_once()
+
+
 def creation_context():
     ctx = context()
     ctx.userdata.creation_state = CreationState(
