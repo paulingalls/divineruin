@@ -13,7 +13,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
 | M7.1 — Creature Stat Block Schema | 8 | 0 | 1 |
-| M7.2 — Regional Creature Catalog | 3 | 1 | 7 |
+| M7.2 — Regional Creature Catalog | 4 | 1 | 6 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
