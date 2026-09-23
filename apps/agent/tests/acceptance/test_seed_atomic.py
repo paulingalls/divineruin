@@ -3,9 +3,7 @@ import json
 
 import asyncpg
 import pytest
-from test_creature_catalog import ROOT, seed_content
-
-pytest_plugins = ("test_creature_catalog",)
+from acceptance.test_creature_catalog import ROOT, seed_content
 
 
 async def row_counts(dsn):
@@ -18,8 +16,8 @@ async def row_counts(dsn):
 
 
 @pytest.mark.parametrize("kind", ["creature", "gathering_node"])
-def test_invalid_content_rolls_back_every_table(migrated_db, tmp_path, monkeypatch, capsys, kind):
-    monkeypatch.setenv("DATABASE_URL", migrated_db)
+def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, monkeypatch, capsys, kind):
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
     for name in seed_content.TABLE_MAP:
         source = ROOT / "content" / name
@@ -41,12 +39,12 @@ def test_invalid_content_rolls_back_every_table(migrated_db, tmp_path, monkeypat
         asyncio.run(seed_content.main())
     assert exit_info.value.code != 0
     assert expected in capsys.readouterr().out
-    assert all(count == 0 for count in asyncio.run(row_counts(migrated_db)).values())
+    assert all(count == 0 for count in asyncio.run(row_counts(fresh_migrated_db)).values())
 
 
-def test_valid_seed_commits_creatures_and_map(migrated_db, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", migrated_db)
+def test_valid_seed_commits_creatures_and_map(fresh_migrated_db, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     asyncio.run(seed_content.main())
-    counts = asyncio.run(row_counts(migrated_db))
+    counts = asyncio.run(row_counts(fresh_migrated_db))
     assert counts["creatures"] == 2
     assert counts["player_map_progress"] > 0

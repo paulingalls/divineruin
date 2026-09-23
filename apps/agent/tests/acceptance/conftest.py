@@ -135,6 +135,27 @@ def migrated_db(postgres_container: str) -> str:
 
 
 @pytest.fixture
+def fresh_migrated_db() -> Iterator[str]:
+    """Unlike the session-wide `migrated_db`, this database is never seeded: each case
+    measures exactly what its own seed run writes."""
+    from testcontainers.community.postgres import PostgresContainer
+
+    with PostgresContainer(_PG_IMAGE) as pg:
+        dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
+
+        async def migrate():
+            conn = await asyncpg.connect(dsn)
+            try:
+                for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+                    await conn.execute(path.read_text())
+            finally:
+                await conn.close()
+
+        asyncio.run(migrate())
+        yield dsn
+
+
+@pytest.fixture
 def harness(migrated_db: str) -> Iterator[SimpleNamespace]:
     """Drive async agent/worker work from sync pytest-bdd steps.
 

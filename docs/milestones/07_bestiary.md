@@ -55,7 +55,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] Narration fields provide audio-first cues (sound/smell before sight); both exemplars still lead some cues with sight, so behavior is not proven
 - [x] Loot schema supports both guaranteed and probabilistic drops <!-- verified apps/agent/tests/combat/test_encounter_loot.py::test_boss_loot_is_guaranteed_and_boosts_quantity; apps/agent/tests/combat/test_encounter_loot.py::test_standard_loot_omits_entries_whose_chance_fails; `loot_table_id` supersedes nested guaranteed[]/chance[] loot -->
 - [x] `validate_creature_stat_block` rejects invalid entries with specific error messages <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
-- [x] DB migration runs cleanly with proper indexes on category, tier, and name <!-- verified apps/agent/tests/test_creature_catalog.py::test_catalog_columns_and_indexes -->
+- [x] DB migration runs cleanly with proper indexes on category, tier, and name <!-- verified apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
 - [x] Tests cover validation for all 6 categories including Hollow edge cases <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus -->
 
 **Key references:**
@@ -95,7 +95,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] Humanoid enemies have equipment-based attacks matching their role
 - [ ] `query_creatures_by_region` filters correctly by region and tier
 - [ ] `query_creature_by_id` returns null/error for nonexistent IDs
-- [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/test_creature_catalog.py::test_catalog_columns_and_indexes -->
+- [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
 - [ ] Tests verify creature distribution across regions and tier balance
 
 **Key references:**

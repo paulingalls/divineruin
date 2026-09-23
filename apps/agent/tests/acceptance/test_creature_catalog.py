@@ -1,40 +1,19 @@
 import asyncio
 import importlib
 import json
-import os
 import sys
 from pathlib import Path
 
 import asyncpg
-import pytest
-from testcontainers.community.postgres import PostgresContainer
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "scripts"))
 seed_content = importlib.import_module("seed_content")
 
 
-@pytest.fixture
-def migrated_db():
-    os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
-    with PostgresContainer("postgres:16-alpine") as pg:
-        dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
-
-        async def migrate():
-            conn = await asyncpg.connect(dsn)
-            try:
-                for path in sorted((ROOT / "scripts/migrations").glob("*.sql")):
-                    await conn.execute(path.read_text())
-            finally:
-                await conn.close()
-
-        asyncio.run(migrate())
-        yield dsn
-
-
-def test_catalog_columns_and_indexes(migrated_db):
+def test_catalog_columns_and_indexes(fresh_migrated_db):
     async def check():
-        conn = await asyncpg.connect(migrated_db)
+        conn = await asyncpg.connect(fresh_migrated_db)
         try:
             indexes = await conn.fetch("SELECT indexdef FROM pg_indexes WHERE tablename = 'creatures'")
             definitions = "\n".join(row["indexdef"] for row in indexes)
