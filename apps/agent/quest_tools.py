@@ -94,6 +94,7 @@ async def _update_quest_impl(
 
     rewards_applied = []
     item_recipients: list[tuple[str, str]] = []
+    item_names: dict[str, str] = {}
     pending_events: list[tuple[str, dict]] = []
     outcome = None
     # Who the reward passes ACTUALLY paid — the marker set is derived from their own output, never
@@ -268,6 +269,7 @@ async def _update_quest_impl(
                 if item_id:
                     item = await content.get_item(item_id)
                     item_name = item.get("name", item_id) if item else item_id
+                    item_names[item_id] = item_name
                     for pid in eligible_ids:
                         await mutations.add_inventory_item(pid, item_id, qty, conn=conn)
                         item_recipients.append((pid, item_name))
@@ -330,18 +332,15 @@ async def _update_quest_impl(
     for pid, level in pending_corruption.items():
         session.member_state(pid).corruption_level = level
 
-    # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:
         if reward["type"] == "item":
-            item = await content.get_item(reward["item_id"])
-            item_name = item.get("name", reward["item_id"]) if item else reward["item_id"]
             pending_events.append(
                 (
                     E.INVENTORY_UPDATED,
                     {
                         "action": "added",
                         "item_id": reward["item_id"],
-                        "item_name": item_name,
+                        "item_name": item_names[reward["item_id"]],
                         "quantity": reward["quantity"],
                     },
                 )
