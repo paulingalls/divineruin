@@ -79,7 +79,7 @@ wt_select_offset() {
     return 1
   fi
   if [ "$WT_GIT_DIR" != "$WT_COMMON_DIR" ] && [ "$selected" -eq 0 ]; then
-    wt_die "$source value 0 would target the primary ports from linked checkout $WT_CHECKOUT_ID; use 1 through 9000."
+    wt_die "$source value 0 would target the primary ports from linked checkout $WT_CHECKOUT_ID; use a multiple of 10 from 10 through 9000."
     return 1
   fi
   printf '%s\n' "$selected"
@@ -332,9 +332,10 @@ wt_cli() {
     # including pg_isready's ordinary not-ready status, pass through unchanged.
     compose) local intent="${1:-}"; shift; wt_authorize "$intent" || return 78; wt_run_compose "$@" ;;
     expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" "E2E_API_PORT=$E2E_API_PORT" "E2E_APP_PORT=$E2E_APP_PORT" "E2E_WEB_PORT=$E2E_WEB_PORT" "E2E_LH_DEBUG_PORT=$E2E_LH_DEBUG_PORT" "LIVEKIT_ACCEPTANCE_UDP_PORT=$LIVEKIT_ACCEPTANCE_UDP_PORT" "LIVEKIT_ACCEPTANCE_CONTAINER=$LIVEKIT_ACCEPTANCE_CONTAINER" "TYPEGEN_PORT_MIN=$TYPEGEN_PORT_MIN" "TYPEGEN_PORT_MAX=$TYPEGEN_PORT_MAX" ;;
+    livekit-env) wt_expected_env; printf '%s\n' "LIVEKIT_ACCEPTANCE_CONTAINER=$LIVEKIT_ACCEPTANCE_CONTAINER" "LIVEKIT_ACCEPTANCE_UDP_PORT=$LIVEKIT_ACCEPTANCE_UDP_PORT" "WT_CLONE_ID=$WT_CLONE_ID" "WT_CHECKOUT_ID=$WT_CHECKOUT_ID" ;;
     sweep-candidates) wt_sweep_candidates ;;
     destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" ;;
-    *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|lifecycle-identity|compose INTENT ARGS...|expected-env|sweep-candidates}" ;;
+    *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|lifecycle-identity|compose INTENT ARGS...|expected-env|livekit-env|sweep-candidates}" ;;
   esac
 }
 

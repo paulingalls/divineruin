@@ -5,7 +5,12 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from acceptance._livekit import _digest, _ensure_livekit_container, _handle_docker_unavailable
+from acceptance._livekit import (
+    _digest,
+    _ensure_livekit_container,
+    _handle_docker_unavailable,
+    checkout_livekit_settings,
+)
 from docker.errors import APIError, DockerException, NotFound
 
 NAME = "dr-livekit-acc-test"
@@ -55,6 +60,25 @@ def test_foreign_container_is_never_removed() -> None:
     with pytest.raises(RuntimeError, match="another checkout"):
         _ensure(client)
     foreign.remove.assert_not_called()
+
+
+def test_legacy_unlabeled_container_names_its_manual_removal() -> None:
+    client = MagicMock()
+    legacy = _container()
+    del legacy.labels["com.divineruin.clone"], legacy.labels["com.divineruin.checkout"]
+    client.containers.get.return_value = legacy
+    with pytest.raises(RuntimeError, match=f"predates checkout labels.*docker rm -f {NAME}"):
+        _ensure(client)
+    legacy.remove.assert_not_called()
+
+
+def test_settings_come_from_the_checkout_without_exports(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in ("LIVEKIT_ACCEPTANCE_CONTAINER", "LIVEKIT_ACCEPTANCE_UDP_PORT", "WT_CLONE_ID", "WT_CHECKOUT_ID"):
+        monkeypatch.delenv(key, raising=False)
+    settings = checkout_livekit_settings()
+    assert settings["LIVEKIT_ACCEPTANCE_CONTAINER"]
+    assert 1 <= int(settings["LIVEKIT_ACCEPTANCE_UDP_PORT"]) <= 65535
+    assert len(settings["WT_CLONE_ID"]) == len(settings["WT_CHECKOUT_ID"]) == 12
 
 
 def test_name_conflict_reuses_winner() -> None:

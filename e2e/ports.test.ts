@@ -4,11 +4,13 @@ import { join, relative } from "node:path";
 
 const root = import.meta.dir;
 const legacy = [3000 + 1, 8080 + 2, 8080 + 5, 9220 + 2].map(String);
+// Playwright writes run output here; a primary checkout's reports carry its own origins.
+const generated = new Set(["node_modules", "playwright-report", "test-results"]);
 
 function authoredFiles(dir: string): string[] {
   if (!existsSync(dir)) throw new Error(`Missing E2E corpus: ${dir}`);
   return readdirSync(dir).flatMap((entry) => {
-    if (entry === "node_modules") return [];
+    if (generated.has(entry)) return [];
     const path = join(dir, entry);
     return statSync(path).isDirectory() ? authoredFiles(path) : [path];
   });

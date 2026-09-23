@@ -19,7 +19,7 @@ ok() { echo "  ok: $1"; }
 
 offset="$(python3 - <<'PY'
 import random, socket
-for offset in random.sample(range(100, 8500), 8400):
+for offset in random.sample(range(100, 8500, 10), 840):
     sockets = []
     try:
         for port in (55432 + offset, 56379 + offset):

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-import os
+import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import docker
@@ -13,6 +14,7 @@ import httpx
 import pytest
 from docker.errors import APIError, DockerException, NotFound
 
+_OWNER_HELPER = Path(__file__).resolve().parents[4] / "scripts" / "worktree-common.sh"
 IMAGE = "livekit/livekit-server:v1.11.0"
 PORT = 7880
 _COMMAND = "--dev --bind 0.0.0.0"
@@ -35,11 +37,25 @@ class LiveKitServer:
     container: Any
 
 
+def checkout_livekit_settings() -> dict[str, str]:
+    """Ask the checkout authority, so direct `bun run test:acceptance` runs need no exports."""
+    result = subprocess.run(
+        ["bash", str(_OWNER_HELPER), "livekit-env"],
+        cwd=_OWNER_HELPER.parents[1],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"checkout LiveKit settings are unavailable: {result.stderr.strip()}")
+    return dict(line.split("=", 1) for line in result.stdout.splitlines())
+
+
 def ensure_livekit_server(*, require_docker: bool = True) -> LiveKitServer:
-    name = os.environ["LIVEKIT_ACCEPTANCE_CONTAINER"]
-    udp_port = int(os.environ["LIVEKIT_ACCEPTANCE_UDP_PORT"])
-    clone = os.environ["WT_CLONE_ID"]
-    checkout = os.environ["WT_CHECKOUT_ID"]
+    settings = checkout_livekit_settings()
+    name = settings["LIVEKIT_ACCEPTANCE_CONTAINER"]
+    udp_port = int(settings["LIVEKIT_ACCEPTANCE_UDP_PORT"])
+    clone = settings["WT_CLONE_ID"]
+    checkout = settings["WT_CHECKOUT_ID"]
     try:
         client = docker.from_env()
         client.ping()
@@ -113,6 +129,11 @@ def _ensure_livekit_container(
     for _attempt in range(20):
         existing = _exact_container(client, name)
         if existing is not None:
+            if "com.divineruin.checkout" not in existing.labels:
+                raise RuntimeError(
+                    f"LiveKit container {name} predates checkout labels; "
+                    f"remove it with `docker rm -f {name}` once no older-tree acceptance run is using it"
+                )
             if any(
                 existing.labels.get(key) != value
                 for key, value in labels.items()
