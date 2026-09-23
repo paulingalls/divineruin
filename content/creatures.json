@@ -705,7 +705,7 @@
       },
       {
         "name": "Thorn Barrage",
-        "type": "ranged",
+        "type": "area",
         "reach": 30,
         "to_hit": 0,
         "damage": "2d6",
@@ -778,6 +778,688 @@
     "regions": [
       "thornveld",
       "greyvale"
+    ]
+  },
+  {
+    "id": "steppe_razorwing",
+    "name": "Steppe Razorwing",
+    "category": "beast",
+    "tier": 1,
+    "description": "A sharp-winged hunter that dives from the open highlands.",
+    "level": 2,
+    "hp": 15,
+    "ac": 13,
+    "speed": 10,
+    "attributes": {
+      "STR": 10,
+      "DEX": 16,
+      "CON": 10,
+      "INT": 3,
+      "WIS": 14,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Talons",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d6+3",
+        "damage_type": "slashing",
+        "special": "On hit from a dive (30+ ft descent): +1d6 damage",
+        "audio": "steppe_razorwing_talons"
+      },
+      {
+        "name": "Wing Slash",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1d4+3",
+        "damage_type": "slashing",
+        "special": "Can target two adjacent creatures",
+        "audio": "steppe_razorwing_wing_slash"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Flyby",
+        "description": "Doesn't provoke opportunity attacks when flying away.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Keen Sight",
+        "description": "Advantage on Perception checks by sight.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Dive-attacks from height. Targets small or isolated creatures. Retreats to altitude between attacks.",
+      "morale": "Flees after taking any damage (unless defending nest).",
+      "group_size": "Pair or flock of 4-8",
+      "environment": [
+        "Drathian Steppe",
+        "mountain passes",
+        "open highlands"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A shrill whistle cuts through the high wind above you.",
+      "attack_cue": "A wing snaps in the wind as talons rake downward.",
+      "wounded_cue": "A harsh screech breaks off as its flight falters.",
+      "death_cue": "A last whistle thins into the wind as feathers settle.",
+      "ambient_cue": "Wingbeats rustle overhead in the open air."
+    },
+    "audio": {
+      "ambient": "high wing whistle",
+      "attack": "wind snap and talon rake",
+      "hit": "ragged screech",
+      "death": "fading whistle",
+      "special": {}
+    },
+    "loot_table_id": "loot_steppe_razorwing",
+    "xp_reward": 50,
+    "home_region": "drathian_steppe",
+    "regions": [
+      "drathian_steppe",
+      "keldaran_mountains"
+    ]
+  },
+  {
+    "id": "steppe_bison",
+    "name": "Steppe Bison",
+    "category": "beast",
+    "tier": 1,
+    "description": "A powerful herd beast of the Drathian grasslands.",
+    "level": 2,
+    "hp": 28,
+    "ac": 11,
+    "speed": 40,
+    "attributes": {
+      "STR": 18,
+      "DEX": 8,
+      "CON": 16,
+      "INT": 2,
+      "WIS": 10,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Gore",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "2d6+4",
+        "damage_type": "piercing",
+        "special": "If charged 20+ ft: target STR save DC 14 or knocked prone and Stunned 1 round",
+        "audio": "steppe_bison_gore"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Stampede",
+        "description": "If 3+ bison charge in the same direction, all creatures in the path: DEX save DC 14 or 2d8 bludgeoning damage and knocked prone.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Herd animal. Normally docile. Panics and stampedes when threatened. Individual bison charge only when cornered or defending calves.",
+      "morale": "Stampedes away from danger. Individual fights to death only if cornered.",
+      "group_size": "Herd of 6-20 (only 1-2 fight; rest flee)",
+      "environment": [
+        "Drathian Steppe",
+        "open grasslands"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Heavy hoof thuds roll across the grass.",
+      "attack_cue": "A furious snort precedes the charge.",
+      "wounded_cue": "A pained grunt rises above the pounding herd.",
+      "death_cue": "A final breath rattles as the massive body falls.",
+      "ambient_cue": "Low grunts and hoof thuds travel across the plain."
+    },
+    "audio": {
+      "ambient": "distant hoof thuds",
+      "attack": "charging snort",
+      "hit": "painful grunt",
+      "death": "heavy fall",
+      "special": {}
+    },
+    "loot_table_id": "loot_steppe_bison",
+    "xp_reward": 50,
+    "home_region": "drathian_steppe",
+    "regions": [
+      "drathian_steppe"
+    ]
+  },
+  {
+    "id": "rock_viper",
+    "name": "Rock Viper",
+    "category": "beast",
+    "tier": 1,
+    "description": "A small venomous snake concealed among mountain stones.",
+    "level": 1,
+    "hp": 6,
+    "ac": 13,
+    "speed": 20,
+    "attributes": {
+      "STR": 4,
+      "DEX": 16,
+      "CON": 10,
+      "INT": 1,
+      "WIS": 10,
+      "CHA": 2
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "1",
+        "damage_type": "piercing",
+        "special": "On hit: +1d6 poison damage. DC 11 CON save or Poisoned 1 hour. Failed by 5+: Paralyzed 10 min",
+        "audio": "rock_viper_bite"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Camouflage",
+        "description": "Advantage on Stealth checks in rocky terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Tiny",
+        "description": "Can hide in cracks and crevices. Climbs 20 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Ambush. Hides in rocks, strikes exposed ankles or hands. Does not pursue.",
+      "morale": "Flees immediately after striking.",
+      "group_size": "Solitary or nest of 2-3",
+      "environment": [
+        "Keldaran Mountains",
+        "mountain passes",
+        "cave entrances"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A dry hiss leaks from between the stones.",
+      "attack_cue": "A sharp hiss accompanies a strike at your ankle.",
+      "wounded_cue": "A thin rasp escapes as it recoils into a crack.",
+      "death_cue": "Its last hiss fades beneath the scrape of loose grit.",
+      "ambient_cue": "Pebbles scrape and a faint hiss answers from the rocks."
+    },
+    "audio": {
+      "ambient": "dry stone hiss",
+      "attack": "swift striking hiss",
+      "hit": "thin rasp",
+      "death": "grit scraping",
+      "special": {}
+    },
+    "loot_table_id": "loot_rock_viper",
+    "xp_reward": 15,
+    "home_region": "keldaran_mountains",
+    "regions": [
+      "keldaran_mountains"
+    ]
+  },
+  {
+    "id": "cave_wyrm",
+    "name": "Cave Wyrm",
+    "category": "beast",
+    "tier": 2,
+    "description": "A hungry scaled predator that tunnels through mountain caves.",
+    "level": 5,
+    "hp": 52,
+    "ac": 15,
+    "speed": 30,
+    "attributes": {
+      "STR": 16,
+      "DEX": 12,
+      "CON": 16,
+      "INT": 4,
+      "WIS": 12,
+      "CHA": 8
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d10+3",
+        "damage_type": "piercing",
+        "special": "On crit: target grappled (escape DC 14)",
+        "audio": "cave_wyrm_bite"
+      },
+      {
+        "name": "Tail Sweep",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 6,
+        "damage": "1d8+3",
+        "damage_type": "bludgeoning",
+        "special": "DEX save DC 14 or knocked prone. Reach 10 ft",
+        "audio": "cave_wyrm_tail_sweep"
+      },
+      {
+        "name": "Acid Spit",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 4,
+        "damage": "2d6",
+        "damage_type": "acid",
+        "special": "Recharge 5-6. DEX save DC 13 for half. Corrodes metal armor (-1 AC until repaired)",
+        "audio": "cave_wyrm_acid_spit"
+      }
+    ],
+    "multiattack": "2 attacks — one Bite and one Tail",
+    "passives": [
+      {
+        "name": "Tremorsense",
+        "description": "Detects movement through ground within 30 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Darkvision",
+        "description": "Darkvision 60 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Scales",
+        "description": "Resists acid damage. Climbs 30 ft and burrows 10 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Ambush from tunnel walls or ceiling. Uses tremorsense to detect approaching prey. Fights aggressively — cave wyrms are always hungry.",
+      "morale": "Fights to 25% HP, then attempts to burrow and escape.",
+      "group_size": "Solitary or mated pair",
+      "environment": [
+        "Keldaran mines",
+        "mountain caves",
+        "underground passages"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A deep rasp rolls through the tunnel walls.",
+      "attack_cue": "Stone cracks under its claws as jaws lunge forward.",
+      "wounded_cue": "A guttural growl echoes off the cave roof.",
+      "death_cue": "A final rattling breath fades into the deep passage.",
+      "ambient_cue": "Claws scrape the rock beyond the bend."
+    },
+    "audio": {
+      "ambient": "claws scraping rock",
+      "attack": "stone crack and jaw snap",
+      "hit": "guttural growl",
+      "death": "rattling breath",
+      "special": {}
+    },
+    "loot_table_id": "loot_cave_wyrm",
+    "xp_reward": 150,
+    "home_region": "keldaran_mountains",
+    "regions": [
+      "keldaran_mountains",
+      "underground"
+    ]
+  },
+  {
+    "id": "war_golem",
+    "name": "War Golem",
+    "category": "construct",
+    "tier": 3,
+    "description": "An ancient stone and steel guardian bound to its last command.",
+    "level": 10,
+    "hp": 100,
+    "ac": 18,
+    "speed": 25,
+    "attributes": {
+      "STR": 22,
+      "DEX": 6,
+      "CON": 20,
+      "INT": 3,
+      "WIS": 10,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Slam",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 9,
+        "damage": "2d10+6",
+        "damage_type": "bludgeoning",
+        "special": "Target pushed 10 ft",
+        "audio": "war_golem_slam"
+      },
+      {
+        "name": "Stone Throw",
+        "type": "ranged",
+        "reach": 60,
+        "to_hit": 9,
+        "damage": "2d8+6",
+        "damage_type": "bludgeoning",
+        "special": "Throws chunks of itself. Each throw reduces max HP by 5 until repaired",
+        "audio": "war_golem_stone_throw"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Damage Immunity",
+        "description": "Immune to poison and psychic damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Resistance",
+        "description": "Resists non-magical physical damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Magic Resistance",
+        "description": "Advantage on saves versus spells.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Immutable Form",
+        "description": "Immune to effects that would alter its form.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Follows last instructions given by its creator. Most Keldaran war golems guard ancient holds or mines. They do not communicate and cannot be reasoned with. They perform their duty until destroyed.",
+      "morale": "Fights to destruction. Cannot flee, surrender, or negotiate.",
+      "group_size": "Solitary (guarding a specific location)",
+      "environment": [
+        "Keldaran ancient holds",
+        "deep mines",
+        "ruins from the pre-Sundering era"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Stone grinds against steel somewhere ahead.",
+      "attack_cue": "A heavy clatter marks the swing of its arm.",
+      "wounded_cue": "Metal groans as a plate splits from its frame.",
+      "death_cue": "A long grinding crash ends in silence.",
+      "ambient_cue": "A steady stone scrape paces the ancient hall."
+    },
+    "audio": {
+      "ambient": "stone grinding on steel",
+      "attack": "heavy metal clatter",
+      "hit": "splitting plate groan",
+      "death": "grinding collapse",
+      "special": {}
+    },
+    "loot_table_id": "loot_war_golem",
+    "xp_reward": 500,
+    "home_region": "keldaran_mountains",
+    "regions": [
+      "keldaran_mountains",
+      "underground"
+    ]
+  },
+  {
+    "id": "saltmarsh_lurker",
+    "name": "Saltmarsh Lurker",
+    "category": "beast",
+    "tier": 1,
+    "description": "A submerged marsh predator that drags prey beneath the water.",
+    "level": 2,
+    "hp": 20,
+    "ac": 12,
+    "speed": 20,
+    "attributes": {
+      "STR": 14,
+      "DEX": 12,
+      "CON": 14,
+      "INT": 2,
+      "WIS": 10,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d8+2",
+        "damage_type": "piercing",
+        "special": "On hit: target grappled (escape DC 12). Grappled targets pulled underwater next turn",
+        "audio": "saltmarsh_lurker_bite"
+      },
+      {
+        "name": "Tail Slap",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "bludgeoning",
+        "special": "Reach 10 ft",
+        "audio": "saltmarsh_lurker_tail_slap"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Hold Breath",
+        "description": "Can hold its breath for 30 minutes. Swims 40 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Ambush from Water",
+        "description": "Advantage on Stealth while submerged.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Swamp Camouflage",
+        "description": "Camouflages in swamp terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Lies submerged near banks or fords. Grabs creatures at the water's edge and drags them under.",
+      "morale": "Releases prey if it takes 10+ damage in one hit.",
+      "group_size": "Solitary",
+      "environment": [
+        "Sunward Coast marshes",
+        "river crossings",
+        "wetlands"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A wet squelch stirs at the bank.",
+      "attack_cue": "Water slaps the shore as jaws snap shut.",
+      "wounded_cue": "A low hiss bubbles through the reeds.",
+      "death_cue": "A last gurgling breath rises through the water.",
+      "ambient_cue": "Reeds rustle and water drips into the mud."
+    },
+    "audio": {
+      "ambient": "reeds rustling in water",
+      "attack": "water slap and jaw snap",
+      "hit": "bubbling hiss",
+      "death": "final gurgle",
+      "special": {}
+    },
+    "loot_table_id": "loot_saltmarsh_lurker",
+    "xp_reward": 50,
+    "home_region": "sunward_coast",
+    "regions": [
+      "sunward_coast"
+    ]
+  },
+  {
+    "id": "tidecaller_eel",
+    "name": "Tidecaller Eel",
+    "category": "beast",
+    "tier": 2,
+    "description": "A territorial coastal eel that discharges lightning through water.",
+    "level": 4,
+    "hp": 35,
+    "ac": 13,
+    "speed": 10,
+    "attributes": {
+      "STR": 16,
+      "DEX": 14,
+      "CON": 14,
+      "INT": 3,
+      "WIS": 10,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "DEX",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 6,
+        "damage": "1d10+3",
+        "damage_type": "piercing",
+        "special": "Target grappled (escape DC 14)",
+        "audio": "tidecaller_eel_bite"
+      },
+      {
+        "name": "Lightning Discharge",
+        "type": "area",
+        "reach": 15,
+        "to_hit": 0,
+        "damage": "2d8",
+        "damage_type": "lightning",
+        "special": "CON save DC 13. Water only; all creatures in water within 15 ft. Recharge 5-6",
+        "audio": "tidecaller_eel_lightning_discharge"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Water Breathing",
+        "description": "Breathes underwater. Swims 50 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Electricity Absorption",
+        "description": "Immune to lightning; heals HP equal to lightning damage dealt to it.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Keen Vibration Sense",
+        "description": "Detects movement in water within 60 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Territorial in coastal waters. Uses Lightning Discharge to stun prey, then bites grappled targets.",
+      "morale": "Retreats to deep water if outmatched on shore.",
+      "group_size": "Solitary or pair",
+      "environment": [
+        "Sunward Coast waters",
+        "river mouths",
+        "coastal caves"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A faint electrical crackle runs across the water.",
+      "attack_cue": "A sharp snap breaks from the water before the discharge.",
+      "wounded_cue": "A wet rasp follows its thrashing tail.",
+      "death_cue": "The crackle fades into a final splash.",
+      "ambient_cue": "Water sloshes against rock beneath a low electrical hum."
+    },
+    "audio": {
+      "ambient": "low electrical crackle",
+      "attack": "sharp electrical snap",
+      "hit": "wet thrashing rasp",
+      "death": "fading crackle",
+      "special": {}
+    },
+    "loot_table_id": "loot_tidecaller_eel",
+    "xp_reward": 100,
+    "home_region": "sunward_coast",
+    "regions": [
+      "sunward_coast"
     ]
   }
 ]

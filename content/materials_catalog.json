@@ -658,5 +658,125 @@
     "source": "Cut from a Corrupted Treant.",
     "weight": 0.5,
     "description": "Dense bark whose split edges smell faintly of rot."
+  },
+  {
+    "id": "razorwing_talons",
+    "name": "Razorwing Talons",
+    "category": "monster_part",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Steppe Razorwing.",
+    "weight": 0.1,
+    "description": "Razorwing Talons harvested from Steppe Razorwing."
+  },
+  {
+    "id": "bison_hide",
+    "name": "Bison Hide",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 1.5,
+    "description": "Bison Hide harvested from Steppe Bison."
+  },
+  {
+    "id": "bison_horn",
+    "name": "Bison Horn",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 0.5,
+    "description": "Bison Horn harvested from Steppe Bison."
+  },
+  {
+    "id": "bison_meat",
+    "name": "Bison Meat",
+    "category": "reagent",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Steppe Bison.",
+    "weight": 1.0,
+    "description": "Bison Meat harvested from Steppe Bison."
+  },
+  {
+    "id": "viper_venom",
+    "name": "Viper Venom Dose",
+    "category": "reagent",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Rock Viper.",
+    "weight": 0.1,
+    "description": "Viper Venom Dose harvested from Rock Viper."
+  },
+  {
+    "id": "viper_skin",
+    "name": "Viper Skin",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Rock Viper.",
+    "weight": 0.2,
+    "description": "Viper Skin harvested from Rock Viper."
+  },
+  {
+    "id": "wyrm_acid_gland",
+    "name": "Wyrm Acid Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Harvested from Cave Wyrm.",
+    "weight": 0.5,
+    "description": "Wyrm Acid Gland harvested from Cave Wyrm."
+  },
+  {
+    "id": "lurker_hide",
+    "name": "Lurker Hide",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Harvested from Saltmarsh Lurker.",
+    "weight": 1.2,
+    "description": "Lurker Hide harvested from Saltmarsh Lurker."
+  },
+  {
+    "id": "lurker_teeth",
+    "name": "Lurker Teeth",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Harvested from Saltmarsh Lurker.",
+    "weight": 0.1,
+    "description": "Lurker Teeth harvested from Saltmarsh Lurker."
+  },
+  {
+    "id": "eel_skin",
+    "name": "Eel Skin",
+    "category": "hide",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.5,
+    "description": "Eel Skin harvested from Tidecaller Eel."
+  },
+  {
+    "id": "lightning_gland",
+    "name": "Lightning Gland",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.2,
+    "description": "Lightning Gland harvested from Tidecaller Eel."
+  },
+  {
+    "id": "eel_oil",
+    "name": "Eel Oil",
+    "category": "reagent",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Harvested from Tidecaller Eel.",
+    "weight": 0.2,
+    "description": "Eel Oil harvested from Tidecaller Eel."
   }
 ]

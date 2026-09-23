@@ -19,7 +19,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 **Material gaps:**
 - **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block must add optional `role` field (Minion/Standard/Elite/Boss/Named) and Boss-only `signature_ability` + `legendary_actions[]` fields for the Phase-7 catalog. M4.7 already derives roles from authored templates; M7.1 must give that data a typed catalog home.
-- **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** the earlier milestone count claimed "38+ natural creatures" and named Ashmark Soldier and Cult Acolyte. The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and lacks those two stat blocks. The milestone count now matches the spec. Ashmark Soldier and Ashmark Sergeant ship in `content/encounter_templates.json` (`ashmark_patrol`); Cultist, Cult Fanatic, and Cult Leader ship there in `cult_cell`. Cult Acolyte still lacks a stat block. Six natural rows now ship in the Phase-7 catalog; the encounter builder remains unbuilt.
+- **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** the earlier milestone count claimed "38+ natural creatures" and named Ashmark Soldier and Cult Acolyte. The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and lacks those two stat blocks. The milestone count now matches the spec. Ashmark Soldier and Ashmark Sergeant ship in `content/encounter_templates.json` (`ashmark_patrol`); Cultist, Cult Fanatic, and Cult Leader ship there in `cult_cell`. Cult Acolyte still lacks a stat block. Thirteen natural rows now ship in the Phase-7 catalog; the encounter builder remains unbuilt.
 - **M7.3 can now proceed:** Phase 3 Resonance shipped after the Sprint-002 audit. `apply_corruption_aura` and `resolve_resonance_on_death` remain absent from the Phase-7 creature mechanics.
 - **M7.4 `build_encounter` signature in flux (decision `m7-4-build-encounter-signature`):** spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Capstone records both forms; final choice belongs to Phase 7 M7.4; M4.7 already shipped. `_start_combat_impl(context, encounter_id, …)` at `apps/agent/combat_init.py:55` consumes pre-authored templates; the retired DM `start_combat` name is replaced by `enter_mode`. It does not generate or compose creatures.
 
@@ -89,7 +89,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [ ] All 19 natural creatures have complete stat blocks passing M7.1 validation
 - [ ] Every region has at least 3 creatures spanning appropriate tiers
 - [ ] Greyvale creatures are Tier 1 only (starter region)
-- [ ] Keldaran Mountains include Tier 3 creatures (late-game region)
+- [x] Keldaran Mountains include Tier 3 creatures (late-game region) <!-- verified apps/agent/tests/test_creature_catalog_content.py::test_spec_stats_regions_and_behavior -->
 - [ ] Each creature has distinct behavior pattern and retreat threshold
 - [ ] Narration cues follow audio-first convention (sensory details, not visual descriptions)
 - [ ] Humanoid enemies have equipment-based attacks matching their role
@@ -98,7 +98,9 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - [x] `content/creatures.json` passes schema validation for all entries <!-- verified packages/shared/src/entities/creature.test.ts::real_catalog_and_injected_invalid_entry; apps/agent/tests/acceptance/test_creature_catalog.py::test_catalog_columns_and_indexes -->
 - [ ] Tests verify creature distribution across regions and tier balance
 
-Six natural catalog rows now ship: Grey Wolf, Wild Boar, Giant Spider, Bandit, Thornveld Stalker, and Corrupted Treant. Their six loot tables use spec quantities and harvest requirements; eight previously missing material drops were added. Greyvale's four home-region rows are all Tier 1. Bandit catalog loot uses worn leather armor and a short sword; encounter-template bandits retain their existing table pending conversion. The spec's 2d6 sp coin pouch and variable stolen goods are omitted because this item-drop schema cannot represent them. Thorn Barrage uses `to_hit: 0` as an unused attack-roll slot; its DEX save DC 14 and half-on-success cone remain in `special`.
+Thirteen natural catalog rows now ship, including Steppe Razorwing, Steppe Bison, Rock Viper, Cave Wyrm, War Golem, Saltmarsh Lurker, and Tidecaller Eel. Their linked loot tables retain every spec quantity and harvest requirement. Greyvale's four home-region rows are Tier 1; War Golem gives Keldaran a Tier 3 home row. Bandit catalog loot uses worn leather armor and a short sword; encounter-template bandits retain their existing table pending conversion. The spec's 2d6 sp coin pouch and variable stolen goods are omitted because this item-drop schema cannot represent them. Thorn Barrage and Lightning Discharge use `type: area` and the schema-required unused `to_hit: 0`; their saves and areas remain in `special`.
+
+The single `speed` field holds walking speed: Razorwing fly 60 ft, Viper climb 20 ft, Wyrm climb 30 ft and burrow 10 ft, Lurker swim 40 ft, and Eel swim 50 ft cannot be separately represented.
 
 **DM surface:** M34 will route creature lookups through `query_info(kind="creature")` with arguments; these internal functions are not DM verbs.
 

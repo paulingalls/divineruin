@@ -254,5 +254,242 @@
         ]
       }
     ]
+  },
+  {
+    "id": "loot_steppe_razorwing",
+    "description": "Spec harvest drops for Steppe Razorwing.",
+    "drops": [
+      {
+        "item_id": "razorwing_feather",
+        "chance": 1.0,
+        "quantity": "1d6",
+        "requires": []
+      },
+      {
+        "item_id": "razorwing_talons",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_steppe_bison",
+    "description": "Spec harvest drops for Steppe Bison.",
+    "drops": [
+      {
+        "item_id": "bison_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "bison_horn",
+        "chance": 1.0,
+        "quantity": 2,
+        "requires": []
+      },
+      {
+        "item_id": "bison_meat",
+        "chance": 1.0,
+        "quantity": 8,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_rock_viper",
+    "description": "Spec harvest drops for Rock Viper.",
+    "drops": [
+      {
+        "item_id": "viper_venom",
+        "chance": 0.75,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "viper_skin",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_cave_wyrm",
+    "description": "Spec harvest drops for Cave Wyrm.",
+    "drops": [
+      {
+        "item_id": "cave_wyrm_scales",
+        "chance": 1.0,
+        "quantity": "1d6",
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "wyrm_acid_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "wyrm_teeth",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      },
+      {
+        "item_id": "cave_gemstone",
+        "chance": 0.25,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "investigation",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_war_golem",
+    "description": "Spec harvest drops for War Golem.",
+    "drops": [
+      {
+        "item_id": "golem_core",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "enchanted_stone",
+        "chance": 1.0,
+        "quantity": "2d4",
+        "requires": []
+      },
+      {
+        "item_id": "forged_steel",
+        "chance": 0.75,
+        "quantity": "1d4",
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "power_crystal",
+        "chance": 0.25,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_saltmarsh_lurker",
+    "description": "Spec harvest drops for Saltmarsh Lurker.",
+    "drops": [
+      {
+        "item_id": "lurker_hide",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "lurker_teeth",
+        "chance": 1.0,
+        "quantity": "1d4",
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_tidecaller_eel",
+    "description": "Spec harvest drops for Tidecaller Eel.",
+    "drops": [
+      {
+        "item_id": "eel_skin",
+        "chance": 1.0,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "lightning_gland",
+        "chance": 0.5,
+        "quantity": 1,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "eel_oil",
+        "chance": 0.75,
+        "quantity": 2,
+        "requires": [
+          {
+            "skill": "survival",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
   }
 ]
