@@ -142,8 +142,8 @@ def _role_quantity(quantity: int, role: str) -> int:
 def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[dict]:
     """Roll a defeated enemy's actual drops from its loot table, scaled by encounter role.
 
-    Each table entry {item_id, chance, quantity} has its drop chance and quantity modified per the
-    role (Minion sheds loot, Boss guarantees it), then the (modified) chance is rolled once. Hits
+    Each table entry {item_id, chance, quantity} has its chance modified per role, then the
+    (modified) chance is rolled once. A hit rolls dice quantity before role scaling. Hits
     become {item_id, quantity} dicts in the returned list — order preserved, misses omitted. Pure:
     every roll flows through ``rng``, no mutation of the input table."""
     _validate_role(role)
@@ -151,5 +151,7 @@ def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[di
     for entry in loot_table.get("drops", []):
         chance = _role_drop_chance(entry["chance"], role)
         if rng.random() < chance:
-            drops.append({"item_id": entry["item_id"], "quantity": _role_quantity(entry["quantity"], role)})
+            authored = entry["quantity"]
+            quantity = roll(authored, rng=rng).total if isinstance(authored, str) else authored
+            drops.append({"item_id": entry["item_id"], "quantity": _role_quantity(quantity, role)})
     return drops

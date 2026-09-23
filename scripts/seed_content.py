@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import random
 import re
 import sys
 from pathlib import Path
@@ -15,6 +16,8 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
+from dice import roll
+from rules_engine import SKILL_TIER_ORDER, SKILLS
 from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent / "content"
@@ -77,6 +80,52 @@ def upsert_query(table: str) -> str:
 
 
 _MISPARSED_URL = "DATABASE_URL does not parse; percent-encode reserved characters in the password"
+
+
+class _MinimumRoll(random.Random):
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+
+def validate_loot_table(table: dict) -> list[str]:
+    """Validate authored loot data. M34 harvesting enforces requirements; loot rolls do not."""
+    table_id = table.get("id", "?")
+    errors: list[str] = []
+    if "hollow_residue" in table and type(table["hollow_residue"]) is not bool:
+        errors.append(f"Loot table '{table_id}' hollow_residue must be a bool")
+    for drop in table.get("drops", []):
+        item_id = drop.get("item_id", "?")
+        label = f"Loot table '{table_id}' drop '{item_id}'"
+        chance = drop.get("chance")
+        if type(chance) not in (int, float) or not 0 <= chance <= 1:
+            errors.append(f"{label} chance must be in [0,1]")
+        quantity = drop.get("quantity")
+        if type(quantity) is int:
+            if quantity < 1:
+                errors.append(f"{label} quantity must be positive")
+        elif isinstance(quantity, str):
+            try:
+                if roll(quantity, rng=_MinimumRoll()).total < 1:
+                    errors.append(f"{label} quantity must have a positive minimum")
+            except ValueError:
+                errors.append(f"{label} quantity must be valid dice notation")
+        else:
+            errors.append(f"{label} quantity must be an int or dice notation")
+        if "requires" not in drop:
+            continue
+        requirements = drop["requires"]
+        if not isinstance(requirements, list):
+            errors.append(f"{label} requires must be a list")
+            continue
+        for requirement in requirements:
+            if not isinstance(requirement, dict) or set(requirement) != {"skill", "tier"}:
+                errors.append(f"{label} requires entries must have skill and tier")
+                continue
+            if type(requirement["skill"]) is not str or requirement["skill"] not in SKILLS:
+                errors.append(f"{label} unknown skill {requirement['skill']!r}")
+            if type(requirement["tier"]) is not str or requirement["tier"] not in SKILL_TIER_ORDER:
+                errors.append(f"{label} unknown tier {requirement['tier']!r}")
+    return errors
 
 
 def database_target(database_url: str) -> str:
@@ -201,6 +250,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     loot_table_ids = {row["id"] for row in loot_rows}
     for row in loot_rows:
         data = json.loads(row["data"])
+        errors.extend(validate_loot_table(data))
         for drop in data.get("drops", []):
             item_ref = drop.get("item_id")
             if item_ref not in item_ids:

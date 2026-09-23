@@ -1,7 +1,9 @@
 """Pure-logic tests for the role loot & currency overlay (M4.7, story-002). No DB, no RNG luck:
 a FakeRng injects exact dice/chance values so every assertion is deterministic."""
 
+import json
 import random
+from pathlib import Path
 
 import pytest
 
@@ -190,6 +192,81 @@ def test_derive_role_loot_does_not_mutate_input() -> None:
     table = _table()
     derive_role_loot(table, "boss", FakeRng(chance=0.0))
     assert table["drops"][0] == {"item_id": "hide", "chance": 0.5, "quantity": 2}
+
+
+@pytest.mark.parametrize(
+    "die,role,expected",
+    [
+        (1, "standard", 1),
+        (4, "standard", 4),
+        (1, "elite", 2),
+        (4, "elite", 5),
+        (1, "boss", 2),
+        (3, "boss", 5),
+        (4, "boss", 6),
+    ],
+)
+def test_dice_quantity_rolls_before_role_modifier(die: int, role: str, expected: int) -> None:
+    table = {"drops": [{"item_id": "residue", "chance": 1.0, "quantity": "1d4"}]}
+    assert derive_role_loot(table, role, FakeRng(die=die)) == [{"item_id": "residue", "quantity": expected}]
+
+
+def test_missed_dice_drop_does_not_roll_quantity() -> None:
+    rng = random.Random(20)
+    before = rng.getstate()
+    table = {"drops": [{"item_id": "residue", "chance": 0.0, "quantity": "1d4"}]}
+    assert derive_role_loot(table, "standard", rng) == []
+    rng.setstate(before)
+    rng.random()
+    expected_next = rng.random()
+    rng.setstate(before)
+    derive_role_loot(table, "standard", rng)
+    assert rng.random() == expected_next
+
+
+def test_existing_integer_table_keeps_seeded_rng_sequence() -> None:
+    rng = random.Random(122)
+    path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
+    tables = json.loads(path.read_text())
+    assert [table["id"] for table in tables] == [
+        "loot_hollow_drift",
+        "loot_hollow_rend",
+        "loot_humanoid_bandit",
+        "loot_humanoid_soldier",
+        "loot_humanoid_cultist",
+        "loot_bandit_captain",
+        "loot_hollow_warden",
+        "loot_cult_leader",
+        "loot_hollowed_knight",
+    ]
+    assert all(type(drop["quantity"]) is int for table in tables for drop in table["drops"])
+    drops = [derive_role_loot(table, "standard", rng) for table in tables]
+    assert drops == [
+        [],
+        [{"item_id": "hollow_residue_t1", "quantity": 1}],
+        [],
+        [],
+        [],
+        [],
+        [{"item_id": "hollow_residue_t2", "quantity": 2}, {"item_id": "hollow_edge_blade", "quantity": 1}],
+        [{"item_id": "arcane_component_t2", "quantity": 2}, {"item_id": "warded_robes", "quantity": 1}],
+        [{"item_id": "hollow_residue_t2", "quantity": 2}, {"item_id": "hollow_ward_armor", "quantity": 1}],
+    ]
+    assert rng.random() == 0.32867177784673773
+
+
+def test_requirements_remain_data_during_loot_roll() -> None:
+    table = {
+        "drops": [
+            {
+                "item_id": "residue",
+                "chance": 1.0,
+                "quantity": 1,
+                "requires": [{"skill": "crafting", "tier": "expert"}],
+            }
+        ]
+    }
+    assert derive_role_loot(table, "standard", FakeRng()) == [{"item_id": "residue", "quantity": 1}]
 
 
 # --- party reward multiplier (M18 story-003): reward grouping without N x farming ---
