@@ -89,8 +89,25 @@ class _Connection:
         if "FROM loot_tables" in sql:
             return [{"id": self.table["id"], "data": json.dumps(self.table)}]
         if "FROM items" in sql:
-            return [{"id": "probe_item"}]
+            return [{"id": "probe_item"}, {"id": "crystal_flask"}]
+        if "FROM materials_catalog" in sql:
+            return [{"id": "iron_ore"}, {"id": "crystal_flask"}]
         return []
+
+
+@pytest.mark.parametrize(
+    "drop_id,expected",
+    [("probe_item", None), ("iron_ore", None), ("missing_drop", "unknown"), ("crystal_flask", "ambiguous")],
+)
+async def test_seed_loot_drop_has_exactly_one_catalog(drop_id: str, expected: str | None) -> None:
+    table = _table()
+    table["drops"][0]["item_id"] = drop_id
+    errors = await seed_content.validate(_Connection(table))
+    loot_errors = [error for error in errors if "Loot table 'loot_probe'" in error]
+    if expected:
+        assert any(drop_id in error and expected in error for error in loot_errors), loot_errors
+    else:
+        assert loot_errors == []
 
 
 @pytest.mark.parametrize(

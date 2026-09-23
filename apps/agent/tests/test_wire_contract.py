@@ -281,6 +281,7 @@ async def test_item_acquired_serializes_to_fixture() -> None:
             "rarity": expected["rarity"],
         }
     )
+    content.get_material_definition = AsyncMock(return_value=None)
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()
     sink = combat_events.EventSink()
