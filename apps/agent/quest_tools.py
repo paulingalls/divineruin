@@ -93,6 +93,7 @@ async def _update_quest_impl(
     is_completion = new_stage_id == len(stages)
 
     rewards_applied = []
+    item_recipients: list[tuple[str, str]] = []
     pending_events: list[tuple[str, dict]] = []
     outcome = None
     # Who the reward passes ACTUALLY paid — the marker set is derived from their own output, never
@@ -265,8 +266,11 @@ async def _update_quest_impl(
                 item_id = item_reward.get("item") or item_reward.get("item_id")
                 qty = item_reward.get("quantity", 1)
                 if item_id:
+                    item = await content.get_item(item_id)
+                    item_name = item.get("name", item_id) if item else item_id
                     for pid in eligible_ids:
                         await mutations.add_inventory_item(pid, item_id, qty, conn=conn)
+                        item_recipients.append((pid, item_name))
                         paid_ids.add(pid)
                     if actor_id in eligible_ids:
                         rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
@@ -368,6 +372,10 @@ async def _update_quest_impl(
         session.session_quests_progressed.append(quest_id)
     for pid in party_ids:
         session.record_player_metric(pid, "quest_progress", quest_id)
+    for pid, name in item_recipients:
+        session.record_player_metric(pid, "items_found", name)
+        if pid == session.primary_player_id and name not in session.session_items_found:
+            session.session_items_found.append(name)
     if outcome is not None:
         session.session_xp_earned += outcome.summary_xp_granted
         for pid, share in outcome.granted_by_player.items():

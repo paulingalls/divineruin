@@ -88,6 +88,7 @@ class VictoryRewards:
 
     spoils: EncounterSpoils = field(default_factory=EncounterSpoils)
     primary_loot: list[dict] = field(default_factory=list)
+    item_recipients: list[tuple[str, str]] = field(default_factory=list)
     primary_currency_gold: float = 0
     xp: XpGrant = field(default_factory=XpGrant)
 
@@ -149,6 +150,7 @@ async def distribute_loot(
     content,
     conn,
     channel: RewardChannel,
+    item_recipients: list[tuple[str, str]] | None = None,
 ) -> list[dict]:
     """DISTRIBUTE pass — items: round-robin the shared pool across the seats (customer decision
     f437f4475a40). Each rolled drop lands in exactly ONE participant's inventory, so items stay
@@ -167,6 +169,8 @@ async def distribute_loot(
         if recipient == recipient_id:
             primary_loot.append(drop)
         item = await content.get_item(drop["item_id"])
+        if item_recipients is not None:
+            item_recipients.append((recipient, item.get("name", drop["item_id"]) if item else drop["item_id"]))
         await channel.emit(
             E.ITEM_ACQUIRED,
             build_item_acquired_payload(
@@ -342,6 +346,7 @@ async def grant_victory_rewards(
     """
     spoils = await roll_encounter_spoils(participants, rng, content=content)
     seat_order = seat_order_for(participants)
+    item_recipients: list[tuple[str, str]] = []
     primary_loot = await distribute_loot(
         spoils.loot_pool,
         seat_order,
@@ -350,6 +355,7 @@ async def grant_victory_rewards(
         content=content,
         conn=conn,
         channel=channel,
+        item_recipients=item_recipients,
     )
     primary_currency_gold = await distribute_currency(
         spoils.currency_silver,
@@ -372,4 +378,10 @@ async def grant_victory_rewards(
         conn=conn,
         channel=channel,
     )
-    return VictoryRewards(spoils=spoils, primary_loot=primary_loot, primary_currency_gold=primary_currency_gold, xp=xp)
+    return VictoryRewards(
+        spoils=spoils,
+        primary_loot=primary_loot,
+        item_recipients=item_recipients,
+        primary_currency_gold=primary_currency_gold,
+        xp=xp,
+    )
