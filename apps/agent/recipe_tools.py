@@ -1,7 +1,7 @@
 """Recipe acquisition agent tools (story-006, M5.1; learn verb M5 story-002).
 
-`learn(kind, id, source)` is the generic acquire-knowledge verb (ADR 0007); today
-the only kind is "recipe", which dispatches to `_learn_recipe_impl` — the mutating
+`learn(kind, id, source)` is the generic acquire-knowledge verb (ADR 0007).
+The recipe kind dispatches to `_learn_recipe_impl` — the mutating
 write surface that locks the player row FOR UPDATE (serializing per-player learns
 so the slot count→write is atomic), gates on recipe-slot capacity
 (recipe_validation), and records the learn in player_known_recipes. An unknown kind
@@ -28,6 +28,7 @@ import recipe_slots
 import recipes
 import rules_engine
 import spell_tools
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from recipe_validation import validate_recipe_slot_capacity
 from session_data import SessionData
 from tool_support import _validate_id
@@ -91,7 +92,9 @@ async def _learn_impl(
         # Spell-domain impl (ADR 0007): no new tool, just a new kind. spell_tools
         # validates the source ({discovery, npc_teaching}), the archetype's magic source
         # and the level→tier gate.
-        return await spell_tools._learn_spell_impl(context, id, source)
+        result = await spell_tools._learn_spell_impl(context, id, source)
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_LEARN_SPELL"])
+        return result
     if kind == "variant":
         # Mentor-variant impl (ADR 0007, M9): unlike recipe/spell this INITIATES a
         # multi-session training loop rather than acquiring instantly. mentor_variant_tools
@@ -151,6 +154,7 @@ async def _learn_recipe_impl(
         if not inserted:
             raise ToolError(f"Player already knows recipe {recipe_id}.")
 
+    await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_LEARN_RECIPE"])
     return json.dumps(
         {
             "learned": recipe_id,

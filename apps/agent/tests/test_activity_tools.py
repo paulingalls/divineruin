@@ -44,7 +44,7 @@ def _mocks() -> tuple[dict[str, Any], dict[str, AsyncMock]]:
     errand_resolve = AsyncMock(return_value="errand-resolve-result")
     crafting = AsyncMock(return_value="crafting-result")
     workspace = AsyncMock(return_value="workspace-result")
-    experiment = AsyncMock(return_value="experiment-result")
+    experiment = AsyncMock(return_value='{"outcome": "success"}')
 
     training_mod = _SimpleImpl(_initiate_training_cycle_impl=training, _resolve_training_midpoint_impl=training_resolve)
     errand_mod = _SimpleImpl(
@@ -172,7 +172,7 @@ class TestBeginExperiment:
             quantities=[2, 1],
             intended_output="iron_ingot",
         )
-        assert result == "experiment-result"
+        assert json.loads(result) == {"outcome": "success"}
         fns["experiment"].assert_awaited_once_with(ctx, {"iron_ore": 2, "coal": 1}, "iron_ingot")
 
     async def test_missing_intended_output_fails_loud_before_dispatch(self):
