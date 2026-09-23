@@ -10,7 +10,7 @@ from typing import cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from acceptance._livekit_client import connect_room, register_data_packet_collector, wait_for_audio_track
+from acceptance._livekit_client import register_data_packet_collector, wait_for_audio_track
 from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
 from livekit import rtc
@@ -145,7 +145,6 @@ async def test_guest_goodbye_audio_precedes_disconnect_and_host_continues(liveki
                 disconnected.set()
 
             harness.player_two.on("disconnected", on_disconnect)
-            refreshed_token = harness._token(guest)
 
             async def collect_audio():
                 nonlocal audio_seconds
@@ -176,12 +175,6 @@ async def test_guest_goodbye_audio_precedes_disconnect_and_host_continues(liveki
             assert any(e.get("type") == "session_end" and e.get("player_id") == guest for e in events)
             assert sd.party.member_ids == [host]
             assert await lifecycle.authorize(guest) is None
-            rejoined = await connect_room(livekit_server["ws_url"], refreshed_token)
-            try:
-                assert await lifecycle.authorize(guest) is None
-                assert sd.party.member_ids == [host]
-            finally:
-                await rejoined.disconnect()
             assert sd.background is not None and sd.background._task is not None and not sd.background._task.done()
             row = await db_queries.get_last_session_summary(guest)
             assert row is not None and row["summary"] == "Guest's journey"

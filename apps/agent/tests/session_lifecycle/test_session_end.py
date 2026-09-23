@@ -20,7 +20,6 @@ from livekit.agents.voice.events import CloseEvent, CloseReason
 import event_types as E
 from background_process import BackgroundProcess
 from exploration_agent import ExplorationAgent
-from party_state import PartyState
 from session_data import SessionData
 
 # apps/mobile/src/audio/game-event-handler.ts:266-286 reads these off the SESSION_END
@@ -111,12 +110,9 @@ class _EndModel(llm.LLM):
 class TestEndSessionReachesTheCloseEmit:
     """A real ExplorationAgent turn reaches the session close event after the wrap-up."""
 
-    @pytest.mark.parametrize("with_guest", [False, True], ids=["last-member", "host-with-guest"])
     @pytest.mark.asyncio
-    async def test_end_session_closes_the_session(self, with_guest):
+    async def test_last_member_goodbye_closes_the_session(self):
         sd = _session_data()
-        if with_guest:
-            sd.party.members.append(PartyState.solo("guest").primary)
         model = _EndModel()
         session = AgentSession(llm=model, max_tool_steps=5, userdata=sd)
         session.output.set_audio_enabled(False)
@@ -130,11 +126,7 @@ class TestEndSessionReachesTheCloseEmit:
             patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
         ):
             await session.start(agent)
-            binding = (
-                sd._bind_authenticated_actor("player_1", 1, lambda *_: None) if with_guest else contextlib.nullcontext()
-            )
-            with binding:
-                await session.run(user_input="goodbye")
+            await session.run(user_input="goodbye")
             await asyncio.wait_for(closed.wait(), timeout=5.0)
             assert sd.session_end_task is not None
             await sd.session_end_task

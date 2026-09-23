@@ -8,6 +8,7 @@ from livekit import api
 async def remove_player(room_name: str, player_id: str) -> None:
     if not room_name or not player_id:
         raise ValueError("Room name and player identity are required")
+    # Only LiveKit Cloud enforces this cutoff; a self-hosted server lets the old token rejoin.
     request = api.RoomParticipantIdentity(
         room=room_name,
         identity=player_id,

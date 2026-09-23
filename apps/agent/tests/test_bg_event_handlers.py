@@ -5,8 +5,10 @@ triggers a warm rebuild AND records the revealed element id on SessionData, whic
 story-003's hot-layer assembly reads (and clears) to surface the target same-turn.
 """
 
+from unittest.mock import MagicMock, patch
+
 import event_types as E
-from bg_event_handlers import REBUILD_EVENT_TYPES, handle_events
+from bg_event_handlers import REBUILD_EVENT_TYPES, handle_events, queue_god_whisper
 from event_bus import GameEvent
 from session_data import SessionData
 
@@ -99,3 +101,24 @@ class TestDivineFavorWhisperIsPrimaryOnly:
         speech: list = []
         handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech, False, {}, [])
         assert len(speech) == 1
+
+    def test_after_handoff_p2_crossing_whispers_and_host_crossing_does_not(self):
+        sd = _sd()
+        sd.party.members.append(SessionData(player_id="player_2", location_id="hall").party.primary)
+        sd.handoff_primary("player_1")
+        speech: list = []
+        events = [
+            GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"}),
+            GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"}),
+        ]
+        handle_events(events, sd, speech, False, {}, [])
+        assert len(speech) == 1
+
+
+def test_whisper_fallback_uses_new_primary_patron():
+    sd = SessionData(player_id="host", location_id="hall", patron_id="solwyn")
+    sd.party.members.append(SessionData(player_id="p2", location_id="hall", patron_id="thessyn").party.primary)
+    sd.handoff_primary("host")
+    with patch("bg_event_handlers.get_god_profile", return_value=MagicMock()) as profile:
+        queue_god_whisper({}, sd, [])
+    profile.assert_called_once_with("thessyn")

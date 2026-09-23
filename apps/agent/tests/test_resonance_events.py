@@ -65,6 +65,14 @@ async def test_caster_id_defaults_to_session_primary():
     assert payload["caster_id"] == "p1"
 
 
+async def test_default_caster_and_track_follow_handoff():
+    session = _session(current=9)
+    session.party.members.append(SessionData(player_id="p2", location_id="loc1").party.primary)
+    session.handoff_primary("p1")
+    payload = await _published_payload(session)
+    assert payload == {"state": "stable", "caster_id": "p2"}
+
+
 async def test_explicit_track_and_caster_id_push_that_member():
     # M14 story-004: the phase loop pushes each member's OWN track under its OWN caster_id, so the
     # payload's state derives from the passed track (not the session primary's) and carries that id.

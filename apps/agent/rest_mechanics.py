@@ -216,8 +216,9 @@ async def reset_resonance_on_rest(
     pass a transactional ``conn`` (e.g. from ``db.transaction()``); with ``conn=None``
     the single persist runs on a pooled connection.
     """
-    session.resonance.current = 0
-    await resonance_mutations_mod.reset_player_resonance(session.player_id, conn=conn)
+    player_id = session.acting_player_id
+    session.member_state(player_id).resonance.current = 0
+    await resonance_mutations_mod.reset_player_resonance(player_id, conn=conn)
 
 
 async def record_last_rested_settlement(
@@ -237,4 +238,6 @@ async def record_last_rested_settlement(
     """
     location = await location_mod.get_location(session.location_id)
     if location and location.get("settlement_tier"):
-        await resurrection_mutations_mod.set_last_rested_settlement(session.player_id, session.location_id, conn=conn)
+        await resurrection_mutations_mod.set_last_rested_settlement(
+            session.acting_player_id, session.location_id, conn=conn
+        )

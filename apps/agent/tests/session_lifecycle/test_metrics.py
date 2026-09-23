@@ -92,7 +92,6 @@ class TestSessionMetricsFields:
         assert sd.session_items_found == []
         assert sd.session_quests_progressed == []
         assert sd.session_locations_visited == []
-        assert sd.ending_requested is False
         assert sd.player_disconnected is False
         assert sd.disconnect_time == 0.0
 

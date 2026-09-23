@@ -224,7 +224,6 @@ async def test_session_end_recap_survives_host_close_task():
     ):
         with sd._bind_authenticated_actor("host", 1, lambda *_: None):
             await end_session._func(MagicMock(userdata=sd), "goodbye")
-            assert sd.ending_requested
             background._on_session_end(CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
             assert sd.session_end_task is not None
             await sd.session_end_task

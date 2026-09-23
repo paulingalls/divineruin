@@ -16,6 +16,7 @@ import db_mutations
 import event_types as E
 import room_admin
 from game_events import publish_game_event
+from host_handoff import promote_after_departure
 from session_summary import generate_session_summary
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
     """Complete one member's goodbye after their turn has finished playing."""
     end_published = False
     removed = False
+    saved = False
     try:
         if sd.departing_player_id != player_id or not sd.party.contains(player_id):
             raise RuntimeError(f"No pending departure for {player_id!r}")
@@ -43,8 +45,14 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         await room_admin.remove_player(sd.room.name, player_id)
         removed = True
         lifecycle.mark_departed(player_id)
-        sd.party.members[:] = [member for member in sd.party.members if member.player_id != player_id]
-        await db_mutations.save_session_summary(player_id, sd.session_id, payload)
+        if player_id == sd.primary_player_id:
+            await db_mutations.save_session_summary(player_id, sd.session_id, payload)
+            saved = True
+            await promote_after_departure(sd, player_id, session)
+        else:
+            sd.party.members[:] = [member for member in sd.party.members if member.player_id != player_id]
+            await db_mutations.save_session_summary(player_id, sd.session_id, payload)
+            saved = True
     except Exception:
         logger.exception("Guest departure failed for %s", player_id)
         if end_published and not removed:
@@ -54,15 +62,20 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
                 )
             except Exception:
                 logger.exception("Failed to cancel guest end event for %s", player_id)
-        instruction = (
-            "Tell the party briefly that the guest left but their recap could not be saved."
-            if removed
-            else "Tell the party briefly that the departure failed and they can try again."
-        )
+        if saved:
+            instruction = "Tell the party the departure completed but the new primary could not be prepared."
+        elif removed:
+            instruction = "Tell the party briefly that the member left but their recap could not be saved."
+        else:
+            instruction = "Tell the party briefly that the departure failed and they can try again."
         session.generate_reply(instructions=instruction)
         raise
     finally:
         sd.departing_player_id = None
+        # The leaver's own disconnect can land at any await above; clear it only once they are
+        # out of the party, so a member still in it keeps the grace that retries their departure.
+        if sd.reconnection_owner is not None and not sd.party.contains(player_id):
+            sd.reconnection_owner.member_departed(player_id)
 
 
 async def run_session_end(sd: SessionData) -> None:

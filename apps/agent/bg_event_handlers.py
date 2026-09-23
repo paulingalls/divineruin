@@ -235,7 +235,7 @@ def handle_events(
             # Dropping it would make any future unstamped payload silently swallow the whisper,
             # which is strictly worse than treating it as the primary's.
             recipient = ev.payload.get("player_id")
-            if recipient is not None and recipient != sd.player_id:
+            if recipient is not None and recipient != sd.primary_player_id:
                 continue
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
@@ -258,7 +258,7 @@ def queue_god_whisper(
     speech_queue: list[PendingSpeech],
 ) -> None:
     """Build god-specific whisper instructions and queue as CRITICAL."""
-    patron_id = payload.get("patron_id") or sd.patron_id
+    patron_id = payload.get("patron_id") or sd.party.primary.patron_id
     profile = get_god_profile(patron_id)
     context = payload.get("reason", "")
     instructions = (

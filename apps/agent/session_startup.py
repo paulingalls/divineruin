@@ -18,7 +18,7 @@ from session_data import SessionData
 def _primary_room_options(userdata: SessionData, *, audio_input: bool) -> room_io.RoomOptions:
     """Link RoomIO to the primary player and leave a drop to _setup_reconnection's grace."""
     return room_io.RoomOptions(
-        participant_identity=userdata.player_id,
+        participant_identity=userdata.primary_player_id,
         audio_input=audio_input,
         text_input=False,
         close_on_disconnect=False,

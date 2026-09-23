@@ -108,8 +108,7 @@ async def test_grace_expiry_closes_without_canceling_its_own_session_close():
         while owner.close_task is None:
             await asyncio.sleep(0)
     await asyncio.wait_for(owner.close_task, 1)
-    assert owner._deadline is not None
-    await asyncio.wait_for(owner._deadline, 1)
+    await asyncio.wait_for(owner._deadlines["player-one"], 1)
     assert session.close_count == 1
     assert room.handlers == {}
 
