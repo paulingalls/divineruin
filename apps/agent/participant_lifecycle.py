@@ -112,8 +112,7 @@ class ReconnectionLifecycle:
 
     def member_departed(self, identity: str) -> None:
         self._disconnected.discard(identity)
-        if identity == self.userdata.primary_player_id:
-            self.userdata.player_disconnected = False
+        self.userdata.player_disconnected = self.userdata.primary_player_id in self._disconnected
         deadline = self._deadlines.pop(identity, None)
         if deadline is not None and deadline is not asyncio.current_task():
             deadline.cancel()
@@ -174,10 +173,6 @@ class ReconnectionLifecycle:
             except Exception:
                 self._arm_grace(identity)
                 raise
-            self._disconnected.discard(identity)
-            self._deadlines.pop(identity, None)
-            if identity != self.userdata.primary_player_id:
-                self.userdata.player_disconnected = False
             if self.userdata.background and len(self._disconnected) < len(self.userdata.party.members):
                 self.userdata.background.resume()
 

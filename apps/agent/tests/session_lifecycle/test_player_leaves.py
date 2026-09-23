@@ -249,8 +249,7 @@ async def test_interrupted_goodbye_tells_player_to_retry_and_clears_pending_depa
     assert sd.departure_task is None
 
 
-@pytest.mark.asyncio
-async def test_disconnected_host_interrupted_during_farewell_still_departs():
+def _three_player_room():
     sd = _party()
     sd.party.members.append(SessionData(player_id="p3", location_id="hall").party.primary)
     room = Room()
@@ -259,13 +258,20 @@ async def test_disconnected_host_interrupted_during_farewell_still_departs():
     sd.room.isconnected.return_value = True
     sd.room.local_participant.publish_data = AsyncMock()
     sd.multiplayer_owner = cast(GameplayInputOwner, SimpleNamespace(lifecycle=MagicMock()))
-    sd.background = MagicMock()
-    sd.background.primary_changed = AsyncMock()
+    background = MagicMock()
+    background.primary_changed = AsyncMock()
+    sd.background = background
     session = MagicMock()
     session.aclose = AsyncMock()
     session.room_io = MagicMock()
     clock = ManualSleep()
     owner = _setup_reconnection(cast(rtc.Room, room), session, sd, MagicMock(), sleep=clock)
+    return sd, room, session, clock, owner, background
+
+
+@pytest.mark.asyncio
+async def test_disconnected_host_interrupted_during_farewell_still_departs():
+    sd, room, session, clock, owner, background = _three_player_room()
     speech = SpeechHandle.create()
     ctx = MagicMock(userdata=sd, session=session, speech_handle=speech)
     with (
@@ -292,7 +298,7 @@ async def test_disconnected_host_interrupted_during_farewell_still_departs():
         assert not sd.player_disconnected
         assert not owner.is_disconnected("host")
         room.emit("participant_disconnected", "guest")
-        assert not sd.background.pause.called
+        assert not background.pause.called
         room.emit("participant_connected", "guest")
         await asyncio.sleep(0)
         sd.departing_player_id = "p3"
@@ -301,6 +307,30 @@ async def test_disconnected_host_interrupted_during_farewell_still_departs():
         await asyncio.sleep(0)
         await clock.advance(RECONNECT_GRACE_S)
         session.aclose.assert_awaited_once()
+    await owner.aclose()
+
+
+@pytest.mark.asyncio
+async def test_host_disconnect_landing_mid_departure_leaves_no_stale_absence():
+    # The mobile client drops on its own SESSION_END, so the host's disconnect can land while
+    # the departure is still saving; it must not count the departed host as an absent member.
+    sd, room, session, _clock, owner, background = _three_player_room()
+    sd.departing_player_id = "host"
+
+    async def save_while_host_drops(*_args):
+        room.emit("participant_disconnected", "host")
+
+    with (
+        patch("session_end.generate_session_summary", new_callable=AsyncMock, return_value={"summary": "host recap"}),
+        patch("session_end.room_admin.remove_player", new_callable=AsyncMock),
+        patch("session_end.db_mutations.save_session_summary", side_effect=save_while_host_drops),
+    ):
+        await run_guest_departure(sd, "host", session)
+    assert sd.party.member_ids == ["guest", "p3"]
+    assert not owner.is_disconnected("host")
+    assert not sd.player_disconnected
+    room.emit("participant_disconnected", "guest")
+    background.pause.assert_not_called()
     await owner.aclose()
 
 
@@ -337,6 +367,7 @@ async def test_failed_departure_of_disconnected_member_retries_after_grace():
     assert remove.await_count == 2
     save.assert_awaited_once()
     assert sd.party.member_ids == ["host"]
+    assert not owner.is_disconnected("guest")
     room.emit("participant_disconnected", "host")
     await asyncio.sleep(0)
     await clock.advance(RECONNECT_GRACE_S)

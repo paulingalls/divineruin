@@ -45,8 +45,6 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         await room_admin.remove_player(sd.room.name, player_id)
         removed = True
         lifecycle.mark_departed(player_id)
-        if sd.reconnection_owner is not None:
-            sd.reconnection_owner.member_departed(player_id)
         if player_id == sd.primary_player_id:
             await db_mutations.save_session_summary(player_id, sd.session_id, payload)
             saved = True
@@ -74,6 +72,10 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         raise
     finally:
         sd.departing_player_id = None
+        # The leaver's own disconnect can land at any await above; clear it only once they are
+        # out of the party, so a member still in it keeps the grace that retries their departure.
+        if sd.reconnection_owner is not None and not sd.party.contains(player_id):
+            sd.reconnection_owner.member_departed(player_id)
 
 
 async def run_session_end(sd: SessionData) -> None:
