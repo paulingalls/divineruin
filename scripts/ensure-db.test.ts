@@ -1,5 +1,22 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { Socket } from "node:net";
 import { runMigrations } from "./migrate.ts";
 import { tmpdir } from "node:os";
@@ -82,6 +99,8 @@ test("ownership is checked before reachability and reachable connection", async 
 // generates, so what is owned and what is foreign is known here.
 const OWNER_SCRIPT = new URL("./worktree-common.sh", import.meta.url).pathname;
 let fixture: { dir: string; settings: Record<string, string> };
+let staleDir: string;
+let freshDir: string;
 
 function setting(key: string): string {
   const value = fixture.settings[key];
@@ -91,37 +110,64 @@ function setting(key: string): string {
 
 function ownerIn(cwd: string) {
   return async (...args: string[]) => {
-    const proc = Bun.spawn(["bash", OWNER_SCRIPT, ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+    const proc = Bun.spawn(["bash", OWNER_SCRIPT, ...args], {
+      cwd,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
     const stderr = await new Response(proc.stderr).text();
     return { exit: await proc.exited, stderr };
   };
 }
 
 beforeAll(() => {
+  staleDir = mkdtempSync(join(tmpdir(), "dr-ensure-db-stale-"));
+  freshDir = mkdtempSync(join(tmpdir(), "dr-ensure-db-fresh-"));
+  const now = Date.now() / 1000;
+  utimesSync(staleDir, now - 2 * 60 * 60, now - 2 * 60 * 60);
+  utimesSync(freshDir, now - 60, now - 60);
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  for (const entry of readdirSync(tmpdir(), { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith("dr-ensure-db-")) continue;
+    const path = join(tmpdir(), entry.name);
+    if (statSync(path).mtimeMs < cutoff) rmSync(path, { recursive: true });
+  }
   const dir = mkdtempSync(join(tmpdir(), "dr-ensure-db-"));
-  Bun.spawnSync(["git", "init", "-q"], { cwd: dir });
-  const expected = Bun.spawnSync(["bash", OWNER_SCRIPT, "expected-env"], { cwd: dir });
-  const text = new TextDecoder().decode(expected.stdout);
-  writeFileSync(join(dir, ".env"), text);
-  const settings = Object.fromEntries(
-    text
-      .trim()
-      .split("\n")
-      .map((line) => {
-        const at = line.indexOf("=");
-        return [line.slice(0, at), line.slice(at + 1)] as const;
-      }),
-  );
-  fixture = { dir, settings };
-  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+  try {
+    Bun.spawnSync(["git", "init", "-q"], { cwd: dir });
+    const expected = Bun.spawnSync(["bash", OWNER_SCRIPT, "expected-env"], { cwd: dir });
+    const text = new TextDecoder().decode(expected.stdout);
+    writeFileSync(join(dir, ".env"), text);
+    const settings = Object.fromEntries(
+      text
+        .trim()
+        .split("\n")
+        .map((line) => {
+          const at = line.indexOf("=");
+          return [line.slice(0, at), line.slice(at + 1)] as const;
+        }),
+    );
+    fixture = { dir, settings };
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true });
+    throw error;
+  }
+});
+
+test("reaps old fixture directories and preserves fresh ones", () => {
+  expect(existsSync(staleDir)).toBe(false);
+  expect(existsSync(freshDir)).toBe(true);
+});
+
+afterAll(() => {
+  rmSync(staleDir, { recursive: true, force: true });
+  rmSync(freshDir, { recursive: true, force: true });
+  rmSync(fixture.dir, { recursive: true, force: true });
+  expect(existsSync(fixture.dir)).toBe(false);
 });
 
 test("the real shared authority accepts the checkout's own endpoints", async () => {
-  await authorizeRuntime(
-    setting("DATABASE_URL"),
-    setting("REDIS_URL"),
-    ownerIn(fixture.dir),
-  );
+  await authorizeRuntime(setting("DATABASE_URL"), setting("REDIS_URL"), ownerIn(fixture.dir));
 });
 
 test("the real shared authority rejects a foreign runtime endpoint", () => {
@@ -138,11 +184,7 @@ test("the real shared authority rejects a foreign runtime endpoint", () => {
 test("the real shared authority rejects a foreign ambient Redis endpoint", () => {
   const foreign = Number(setting("VALKEY_HOST_PORT")) + 1;
   expect(
-    authorizeRuntime(
-      setting("DATABASE_URL"),
-      `redis://localhost:${foreign}`,
-      ownerIn(fixture.dir),
-    ),
+    authorizeRuntime(setting("DATABASE_URL"), `redis://localhost:${foreign}`, ownerIn(fixture.dir)),
   ).rejects.toThrow("runtime REDIS_URL");
 });
 

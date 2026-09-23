@@ -182,6 +182,22 @@ def test_ensure_db_up_increments_count_when_already_reachable(monkeypatch):
     assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
 
 
+def test_developer_owned_state_removed_only_after_last_release(monkeypatch):
+    database_url = "postgresql://u:p@localhost:55432/divineruin"
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
+    lock_path, state_path = dbl._lockfile_paths("localhost", 55432)
+
+    assert dbl.ensure_db_up(database_url) is False
+    assert dbl.ensure_db_up(database_url) is False
+    dbl.stop_if_started(False, database_url)
+    assert state_path.exists()
+    assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
+
+    dbl.stop_if_started(False, database_url)
+    assert not state_path.exists()
+    assert lock_path.exists()
+
+
 def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
     """A leaked count from a SIGKILLed prior run must not survive once the DB
     is actually observed to be down."""
