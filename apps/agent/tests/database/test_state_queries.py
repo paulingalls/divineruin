@@ -78,9 +78,7 @@ class TestStateQueries:
         mock_pool.fetch = AsyncMock(
             return_value=[
                 {
-                    "item_id": "sword",
                     "item_data": json.dumps({"id": "sword", "name": "Steel Sword"}),
-                    "material_data": None,
                     "slot_data": json.dumps({"quantity": 1, "equipped": True}),
                 }
             ]

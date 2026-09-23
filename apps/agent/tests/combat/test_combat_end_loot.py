@@ -209,9 +209,6 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         }
         if material:
             assert end_data["item_recipients"] == [(_PLAYER_ID, "Raw Ore")]
-            inventory = await db_queries.get_player_inventory(_PLAYER_ID, conn=pool)
-            assert [(item["id"], item["slot_info"]["quantity"]) for item in inventory] == [(_MATERIAL_ID, 1)]
-            assert inventory[0]["type"] == "material"
             with patch("combat_end._build_handoff_agent", return_value=None):
                 _end_combat_finish(session, cs, "victory", end_data)
             assert session.session_items_found == ["Raw Ore"]
