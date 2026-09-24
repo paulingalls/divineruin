@@ -262,8 +262,8 @@ async def test_creation_cue_after_all_steps():
     assert (
         log.index("payload")
         < log.index(E.SESSION_INIT)
-        < log.index(E.PLAY_SOUND)
         < log.index("cue")
+        < log.index(E.PLAY_SOUND)
         < log.index("return")
     )
     assert_cue(ctx, CASES["creation"])
