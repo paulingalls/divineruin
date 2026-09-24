@@ -147,7 +147,7 @@ async def _discard_desynced_redis(r: aioredis.Redis, key: str, reply: object) ->
     also leave the connection untrustworthy. A wrong string reply remains undetectable here.
     """
     global _redis
-    if reply == ["GET", key] or reply == ["get", key]:
+    if reply == ["GET", key]:
         logger.error("Redis GET %s hit a TCP self-connect: echoed %r", key, reply)
     logger.error(DESYNCED_REPLY_LOG, key, reply, r.connection_pool, id(asyncio.get_running_loop()))
     if _redis is r:
