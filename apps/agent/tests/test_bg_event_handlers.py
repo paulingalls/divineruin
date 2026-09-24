@@ -7,6 +7,8 @@ story-003's hot-layer assembly reads (and clears) to surface the target same-tur
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import event_types as E
 from bg_event_handlers import REBUILD_EVENT_TYPES, handle_events, queue_god_whisper
 from bg_speech import SpeechPriority
@@ -127,6 +129,13 @@ def test_whisper_fallback_uses_new_primary_patron():
     profile.assert_called_once_with("thessyn")
 
 
+def test_displeasure_without_patron_profile_raises():
+    speech = []
+    with pytest.raises(ValueError, match="No displeasure_prompt for patron not_a_god"):
+        queue_god_whisper({"patron_id": "not_a_god"}, _sd(), speech, displeasure=True)
+    assert speech == []
+
+
 def _favor_event(amount: int, reason: str, player_id: str = "player_1") -> GameEvent:
     return GameEvent(
         event_type=E.DIVINE_FAVOR_CHANGED,
@@ -176,3 +185,10 @@ def test_positive_due_favor_remains_ordinary_and_zero_queues_nothing():
     handle_events([_favor_event(5, "valor")], sd, speech, False, {}, [])
     assert len(speech) == 1
     assert not speech[0].is_displeasure
+
+
+def test_favor_event_requires_amount():
+    payload = _favor_event(5, "valor").payload
+    del payload["amount"]
+    with pytest.raises(KeyError, match="amount"):
+        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=payload)], _sd(), [], False, {}, [])
