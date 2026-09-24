@@ -354,7 +354,8 @@
       "effect": "Gain +1 to all skill checks while you can see or hear an ally.",
       "trigger": "While an ally is within sight or hearing.",
       "recharge": "always",
-      "status": "awaits_binding"
+      "status": "active",
+      "mechanics": {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
     },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,

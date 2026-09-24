@@ -116,7 +116,11 @@ async def _resolve_deescalation_packet(
     # (M4.8 story-011). Consume the signalled die ONCE off the participant; the mutation rides the
     # phase's save_combat_state, so there is no permanent +1d4 and it applies to at most one round.
     argument = check_resolution.resolve_skill_check_dc(
-        {**player, "conditions": attacker.conditions}, "persuasion", combat_resolution.DEESCALATE_BASE_DC, rng
+        {**player, "conditions": attacker.conditions},
+        "persuasion",
+        combat_resolution.DEESCALATE_BASE_DC,
+        rng,
+        ally_present=session.ally_present_for(attacker.id),
     )
     argument_total = argument.total
     if argument.consumed_conditions:
@@ -203,6 +207,7 @@ async def _resolve_deescalation_packet(
         "resolved": True,
         "declaration_type": str(decl.type),
         "action": "de_escalate",
+        **({"gift_name": argument.gift_name} if argument.gift_name else {}),
         "deescalation": {
             "round": scene.round_counter,
             "ends_combat": state.deescalated,

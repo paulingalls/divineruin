@@ -64,6 +64,7 @@ def _roll_response(result: check_resolution.SkillCheckResult, target: str, outco
         "dc": result.dc,
         "narrative_hint": result.narrative_hint,
         "outcome": outcome,
+        **({"gift_name": result.gift_name} if result.gift_name else {}),
     }
 
 
@@ -143,7 +144,9 @@ async def _check_discover_impl(
     if not candidates:
         # Silence, a sting, an unspent Inspired or a thinner DM response would each tell the
         # player whether anything is hidden, so an empty search rolls and spends like a failed one.
-        result = check_resolution.resolve_skill_check_dc(player, skill_lower, DEFAULT_DISCOVER_DC)
+        result = check_resolution.resolve_skill_check_dc(
+            player, skill_lower, DEFAULT_DISCOVER_DC, ally_present=session.ally_present_for(player_id)
+        )
         await _publish_roll(session, result)
         if result.consumed_conditions:
             session.validate_acting_player(player_id)
@@ -157,7 +160,9 @@ async def _check_discover_impl(
     element = min(candidates, key=lambda e: e.get("dc", 13))
     dc = element.get("dc", DEFAULT_DISCOVER_DC)
 
-    result = check_resolution.resolve_skill_check_dc(player, skill_lower, dc)
+    result = check_resolution.resolve_skill_check_dc(
+        player, skill_lower, dc, ally_present=session.ally_present_for(player_id)
+    )
     await _publish_roll(session, result)
 
     outcome = "discovered" if result.success else "not_found"

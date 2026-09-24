@@ -145,11 +145,14 @@ class TestCombatStartE2E:
         # The in-combat check path builds player_data from the participant's conditions
         # (combat_turn). Resolve a check both with and without the loaded conditions: the
         # Exhausted -1/stack penalty must land on the modifier.
-        baseline = resolve_skill_check({"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate")
+        baseline = resolve_skill_check(
+            {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False
+        )
         in_combat = resolve_skill_check(
             {"attributes": dict(_ATTRS), "level": 5, "conditions": player_part.conditions},
             "athletics",
             "moderate",
+            ally_present=False,
         )
         assert in_combat.modifier == baseline.modifier - 1
 
