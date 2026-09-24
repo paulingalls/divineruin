@@ -1,12 +1,7 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 
-// Capstone for Milestone 4: proves the six lore/feature sections (Session, World, Races,
-// Pantheon, Classes, Tech) compose into the served production build, reveal on scroll, lay out
-// responsively at mobile/tablet/desktop, and that the Hero's re-pointed #world CTA resolves to
-// the World section — the integration the standalone component unit suites can't cover. The
-// global baseURL is the mobile app (:8082); the marketing site is served on :8085 by the
-// apps/web webServer in playwright.config.ts (web project).
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 const SECTION_IDS = ["session", "world", "races", "pantheon", "classes", "tech"] as const;
 

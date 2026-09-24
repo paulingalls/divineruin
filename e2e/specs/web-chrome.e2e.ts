@@ -1,9 +1,7 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 
-// story-003 AC-3: the scroll-aware NavBar + Footer chrome on the production
-// build. The global baseURL is the mobile app (:8082); the marketing site is
-// served on :8085 by the apps/web webServer entry in playwright.config.ts.
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 test.describe("Marketing chrome (apps/web)", () => {
   test("prerenders the NavBar and Footer into the served HTML (no JS executed)", async ({

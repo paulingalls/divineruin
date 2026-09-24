@@ -1,11 +1,7 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 
-// Capstone for Milestone 3: proves the above-the-fold sections (Hero, AudioDemo,
-// Premise) compose on the served production build — the seam the standalone
-// component unit tests can't cover. The global baseURL is the mobile app
-// (:8082); the marketing site is served on :8085 by the apps/web webServer in
-// playwright.config.ts (web project).
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 test.describe("Above-the-fold sections (apps/web)", () => {
   test("prerenders the hero headline + primary CTA into the served HTML (good LCP)", async ({

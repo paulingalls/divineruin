@@ -1,11 +1,7 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 
-// story-004 capstone for Milestone 2: proves the design-tokens + fonts + theme
-// surfaces compose on the served production build — the above-fold fonts are
-// preloaded, fonts.css is served with a no-CLS swap, and the token-derived CSS
-// variables are live on the page. Chrome + scroll are covered by
-// web-chrome.e2e.ts; hero prerender + clean hydration by web-home.e2e.ts.
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 test.describe("Marketing theme + fonts (apps/web)", () => {
   test("preloads the above-fold fonts and links fonts.css in the served HTML", async ({

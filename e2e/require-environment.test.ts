@@ -9,7 +9,7 @@ async function withFault(relativePath: string, check: (path: string) => void) {
   const directory = await mkdtemp(join(tmpdir(), "e2e-environment-fault-"));
   try {
     await mkdir(join(directory, "fixtures"));
-    for (const dependency of ["node_modules", "require-environment.ts", "fixtures/lighthouse.ts"]) {
+    for (const dependency of ["node_modules", "require-environment.ts", "ports.ts"]) {
       await symlink(resolve(e2eRoot, dependency), join(directory, dependency));
     }
     const source = await Bun.file(resolve(e2eRoot, relativePath)).text();
@@ -23,7 +23,14 @@ async function withFault(relativePath: string, check: (path: string) => void) {
 }
 
 function runChild(source: string, databaseUrl?: string) {
-  const env: NodeJS.ProcessEnv = { ...process.env, REDIS_URL: "redis://127.0.0.1:61235" };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    REDIS_URL: "redis://127.0.0.1:61235",
+    E2E_API_PORT: "13001",
+    E2E_APP_PORT: "13002",
+    E2E_WEB_PORT: "13003",
+    E2E_LH_DEBUG_PORT: "13004",
+  };
   delete env.DATABASE_URL;
   if (databaseUrl !== undefined) env.DATABASE_URL = databaseUrl;
   return Bun.spawnSync({

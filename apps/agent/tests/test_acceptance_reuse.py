@@ -1,9 +1,4 @@
-"""Unit tests for the acceptance LiveKit-container reuse helpers.
-
-Runs in the fast (non-acceptance) lane with a fake docker client — no Docker
-required. Covers the branch logic of conftest helpers without spinning a
-real container.
-"""
+"""Fast branch checks for the checkout-owned LiveKit container seam."""
 
 from __future__ import annotations
 
@@ -11,78 +6,87 @@ from unittest.mock import MagicMock
 
 import pytest
 from acceptance._livekit import (
-    _CONFIG_DIGEST,
+    _digest,
     _ensure_livekit_container,
     _handle_docker_unavailable,
+    checkout_livekit_settings,
 )
-from docker.errors import DockerException
+from docker.errors import APIError, DockerException, NotFound
+
+NAME = "dr-livekit-acc-test"
 
 
-def _fake_container(host_port: str, *, config_digest: str = _CONFIG_DIGEST) -> MagicMock:
+def _ensure(client: MagicMock):
+    return _ensure_livekit_container(
+        client, name=NAME, image="img", port=7880, udp_port=17982, clone="clone", checkout="checkout"
+    )
+
+
+def _container(digest: str | None = None) -> MagicMock:
     c = MagicMock()
-    c.attrs = {"NetworkSettings": {"Ports": {"7880/tcp": [{"HostPort": host_port}]}}}
-    c.labels = {"divineruin.acceptance.config": config_digest}
+    c.name = NAME
+    c.status = "running"
+    c.labels = {
+        "com.divineruin.clone": "clone",
+        "com.divineruin.checkout": "checkout",
+        "divineruin.acceptance": "1",
+        "divineruin.acceptance.config": digest or _digest("img", 17982),
+    }
+    c.attrs = {"NetworkSettings": {"Ports": {"7880/tcp": [{"HostPort": "55001"}]}}}
     return c
 
 
-def test_reuse_path_returns_existing_without_create() -> None:
+def test_reuse_existing_owned_container() -> None:
     client = MagicMock()
-    existing = _fake_container("55001")
-    client.containers.list.return_value = [existing]
-
-    container, host_port = _ensure_livekit_container(client, name="lk", image="img", port=7880)
-
+    existing = _container()
+    client.containers.get.return_value = existing
+    assert _ensure(client) == (existing, 55001)
     client.containers.run.assert_not_called()
-    assert container is existing
-    assert host_port == 55001
 
 
-def test_stale_running_container_with_mismatched_digest_is_rebuilt() -> None:
+def test_boot_when_name_is_absent() -> None:
     client = MagicMock()
-    stale_running = _fake_container("55001", config_digest="deadbeef0000")
-    fresh = _fake_container("55004")
-    # Running list returns the stale-config container; all=True returns it too
-    # (it still holds the name) so it must be removed before booting fresh.
-    client.containers.list.side_effect = lambda **kwargs: [stale_running]
-    client.containers.run.return_value = fresh
-
-    container, host_port = _ensure_livekit_container(client, name="lk", image="img", port=7880)
-
-    stale_running.remove.assert_called_once_with(force=True)
-    client.containers.run.assert_called_once()
-    assert container is fresh
-    assert host_port == 55004
+    client.containers.get.side_effect = NotFound("missing")
+    client.containers.run.return_value = _container()
+    assert _ensure(client)[1] == 55001
+    assert client.containers.run.call_args.kwargs["labels"]["com.divineruin.checkout"] == "checkout"
 
 
-def test_boot_path_creates_when_absent() -> None:
+def test_foreign_container_is_never_removed() -> None:
     client = MagicMock()
-    client.containers.list.return_value = []
-    client.containers.run.return_value = _fake_container("55002")
-
-    _container, host_port = _ensure_livekit_container(client, name="lk", image="img", port=7880)
-
-    client.containers.run.assert_called_once()
-    kwargs = client.containers.run.call_args.kwargs
-    assert kwargs["name"] == "lk"
-    assert kwargs["detach"] is True
-    assert kwargs["remove"] is False
-    assert "7880/tcp" in kwargs["ports"]
-    assert "--dev" in kwargs["command"]
-    assert host_port == 55002
+    foreign = _container()
+    foreign.labels["com.divineruin.checkout"] = "foreign"
+    client.containers.get.return_value = foreign
+    with pytest.raises(RuntimeError, match="another checkout"):
+        _ensure(client)
+    foreign.remove.assert_not_called()
 
 
-def test_stale_stopped_container_is_removed_before_boot() -> None:
+def test_legacy_unlabeled_container_names_its_manual_removal() -> None:
     client = MagicMock()
-    stale = MagicMock()
-    # Running list is empty; all=True list returns a stopped same-named container.
-    client.containers.list.side_effect = lambda **kwargs: [stale] if kwargs.get("all") else []
-    client.containers.run.return_value = _fake_container("55003")
+    legacy = _container()
+    del legacy.labels["com.divineruin.clone"], legacy.labels["com.divineruin.checkout"]
+    client.containers.get.return_value = legacy
+    with pytest.raises(RuntimeError, match=f"predates checkout labels.*docker rm -f {NAME}"):
+        _ensure(client)
+    legacy.remove.assert_not_called()
 
-    _container, host_port = _ensure_livekit_container(client, name="lk", image="img", port=7880)
 
-    stale.remove.assert_called_once_with(force=True)
-    client.containers.run.assert_called_once()
-    assert host_port == 55003
+def test_settings_come_from_the_checkout_without_exports(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in ("LIVEKIT_ACCEPTANCE_CONTAINER", "LIVEKIT_ACCEPTANCE_UDP_PORT", "WT_CLONE_ID", "WT_CHECKOUT_ID"):
+        monkeypatch.delenv(key, raising=False)
+    settings = checkout_livekit_settings()
+    assert settings["LIVEKIT_ACCEPTANCE_CONTAINER"]
+    assert 1 <= int(settings["LIVEKIT_ACCEPTANCE_UDP_PORT"]) <= 65535
+    assert len(settings["WT_CLONE_ID"]) == len(settings["WT_CHECKOUT_ID"]) == 12
+
+
+def test_name_conflict_reuses_winner() -> None:
+    client = MagicMock()
+    winner = _container()
+    client.containers.get.side_effect = [NotFound("missing"), winner]
+    client.containers.run.side_effect = APIError("name conflict", response=MagicMock(status_code=409))
+    assert _ensure(client) == (winner, 55001)
 
 
 def test_require_docker_raises_not_skips() -> None:

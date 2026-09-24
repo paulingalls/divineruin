@@ -43,6 +43,43 @@ max_valkey=$(( 56379 + 9000 ))
 [ "$max_valkey" -lt 65536 ] || fail "max valkey port $max_valkey exceeds 65535"
 ok "ports stay < 65536 even at the max offset"
 
+# Exercise every accepted offset through production selection and derivation.
+wt_identity
+accepted=0
+port_rows="$(mktemp -t checkout-port-rows)"
+for ((candidate=0; candidate<=9000; candidate++)); do
+  if ! selected="$(WT_GIT_DIR="$WT_COMMON_DIR" WT_PORT_OFFSET="$candidate" wt_select_offset "$candidate" 2>/dev/null)"; then
+    ((candidate % 10 != 0)) || fail "valid offset $candidate was refused"
+    continue
+  fi
+  ((candidate % 10 == 0)) || fail "non-slot offset $candidate was accepted"
+  wt_derive_ports "$selected"
+  [ "$E2E_API_PORT" -ge 1 ] && [ "$VALKEY_HOST_PORT" -le 65535 ] || fail "ports out of range at $candidate"
+  [ "$LIVEKIT_ACCEPTANCE_CONTAINER" != divineruin-livekit-acceptance ] || [ "$candidate" -eq 0 ] || fail "nonzero container aliases legacy name"
+  [ "$candidate" -eq 0 ] || [[ "$LIVEKIT_ACCEPTANCE_CONTAINER" != *divineruin-livekit-acceptance* ]] || fail "nonzero name contains legacy name"
+  printf '%s %s %s %s %s %s %s %s %s %s\n' "$candidate" "$POSTGRES_HOST_PORT" "$VALKEY_HOST_PORT" "$E2E_API_PORT" "$E2E_APP_PORT" "$E2E_WEB_PORT" "$E2E_LH_DEBUG_PORT" "$LIVEKIT_ACCEPTANCE_UDP_PORT" "$TYPEGEN_PORT_MIN" "$TYPEGEN_PORT_MAX" >> "$port_rows"
+  accepted=$((accepted + 1))
+done
+[ "$accepted" -eq 901 ] || fail "accepted $accepted offsets rather than 901"
+python3 - "$port_rows" <<'PY' || fail "derived ports overlap"
+import sys
+owners = {}
+for line in open(sys.argv[1]):
+    offset, *values = map(int, line.split())
+    ports = values[:7] + list(range(values[7], values[8] + 1))
+    for port in ports:
+        assert 1 <= port <= 65535, (offset, port)
+        assert port not in owners, (port, owners.get(port), offset)
+        owners[port] = offset
+assert owners
+PY
+rm -f "$port_rows"
+wt_derive_ports 0
+[ "$E2E_API_PORT:$E2E_APP_PORT:$E2E_WEB_PORT:$E2E_LH_DEBUG_PORT:$LIVEKIT_ACCEPTANCE_UDP_PORT:$TYPEGEN_PORT_MIN:$TYPEGEN_PORT_MAX" = "3001:8082:8085:9222:7882:8890:8899" ] || fail "legacy port mapping changed"
+WT_PORT_OFFSET=810 wt_select_offset 810 >/dev/null || fail "810 refused"
+if WT_PORT_OFFSET=5081 wt_select_offset 5081 >/dev/null 2>&1; then fail "5081 accepted"; fi
+ok "every accepted offset has disjoint host ports"
+
 # 4. A non-zero offset never lands a worktree back on the primary's 55432/56379.
 #    (offset >= 10, and the pg/valkey bases differ by 947 — never a multiple of
 #    10 — so the two services never collide with each other either.)
@@ -229,12 +266,20 @@ ok "a reap in progress is not raced by a second bootstrap"
 # 16. The lsof/ps idioms against a REAL listener. The mocked checks above cannot
 # catch a wrong lsof invocation, and that failure is silent — every port would
 # read as free — so this one binds a port for real.
-real_port=48970
+# The OS picks the port: a fixed one is shared by every checkout's pre-push, and two concurrent
+# runs would each see (and kill) the other's listener.
+real_port_file="$(mktemp -t test-init-real-port)"
 set -m
-bun -e "Bun.serve({ port: $real_port, fetch: () => new Response('ok') })" >/dev/null 2>&1 &
+bun -e "const s = Bun.serve({ port: 0, fetch: () => new Response('ok') }); await Bun.write('$real_port_file', String(s.port));" >/dev/null 2>&1 &
 listener_pid=$!
 set +m
-kill_listener() { kill -- "-$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true; }
+kill_listener() { kill -- "-$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true; rm -f "$real_port_file"; }
+waited=0
+until real_port="$(cat "$real_port_file" 2>/dev/null)" && [ -n "$real_port" ]; do
+  sleep 0.2
+  waited=$((waited + 1))
+  [ "$waited" -lt 50 ] || { kill_listener; fail "the test listener never reported its port"; }
+done
 waited=0
 until lsof -ti ":$real_port" -sTCP:LISTEN >/dev/null 2>&1; do
   sleep 0.2

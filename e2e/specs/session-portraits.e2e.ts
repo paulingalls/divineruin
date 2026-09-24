@@ -1,3 +1,4 @@
+import { API_ORIGIN } from "../ports.js";
 import { test, expect } from "../fixtures/session.js";
 
 test("tagged NPC transcript shows the authored portrait with an absolute image URL", async ({
@@ -26,7 +27,7 @@ test("tagged NPC transcript shows the authored portrait with an absolute image U
   await expect(overlay).toContainText("Guildmaster Torin");
   await expect(overlay.locator("img")).toHaveAttribute(
     "src",
-    /^http:\/\/localhost:3001\/api\/assets\/images\//,
+    new RegExp(`^${API_ORIGIN}/api/assets/images/`),
   );
 });
 
@@ -55,7 +56,7 @@ test("tagged companion transcript shows the assigned companion portrait", async 
   await expect(overlay).toContainText("Lira");
   await expect(overlay.locator("img")).toHaveAttribute(
     "src",
-    /^http:\/\/localhost:3001\/api\/assets\/images\//,
+    new RegExp(`^${API_ORIGIN}/api/assets/images/`),
   );
 });
 
@@ -80,6 +81,6 @@ test("Sable companion cue shows her portrait without a transcript tag", async ({
   await expect(overlay).toContainText("Sable");
   await expect(overlay.locator("img")).toHaveAttribute(
     "src",
-    /^http:\/\/localhost:3001\/api\/assets\/images\//,
+    new RegExp(`^${API_ORIGIN}/api/assets/images/`),
   );
 });

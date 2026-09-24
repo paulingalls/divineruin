@@ -1,11 +1,7 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 
-// story-003: the prod static server serves the crawl + brand assets out of
-// dist/ — robots.txt + sitemap.xml (generated per build from the origin),
-// og-image.png + favicon.ico (copied from public/). Each must return 200 with
-// the right content-type and a revalidate (not 1y-immutable) Cache-Control,
-// since they keep stable names and can change in place.
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 const REVALIDATE = "no-cache";
 
 test.describe("Crawl + brand assets (apps/web)", () => {

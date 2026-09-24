@@ -1,5 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
-import { LH_DEBUG_PORT } from "./fixtures/lighthouse.js";
+import {
+  API_PORT,
+  APP_PORT,
+  WEB_PORT,
+  LH_DEBUG_PORT,
+  API_ORIGIN,
+  APP_ORIGIN,
+  WEB_ORIGIN,
+} from "./ports.js";
 import { requireEnvironment } from "./require-environment.js";
 
 const CI = !!process.env.CI;
@@ -8,10 +16,7 @@ const CI = !!process.env.CI;
 // project's specs execute. Parse the selected --project(s) from argv so we only
 // start the servers a run actually needs: a web-only run skips the slow
 // mobile-expo boot, and a non-web run skips the ~120s apps/web prerender build.
-// The API server (:3001) is the exception — it starts for ANY run, because the
-// chromium app specs AND the web-conversion waitlist spec (which POSTs to
-// /api/waitlist) both need it. With no --project filter (CI's bare
-// `playwright test`) every gate opens, matching the pre-split config.
+// The API is needed by app specs and the waitlist POST in web specs.
 function selectedProjects(): string[] {
   const out: string[] = [];
   const argv = process.argv;
@@ -27,8 +32,6 @@ function selectedProjects(): string[] {
 }
 
 const selected = selectedProjects();
-// Both web projects (marketing site + its Lighthouse capstone) serve the same
-// apps/web prod build on :8085, so either one selected starts that webServer.
 const WEB_PROJECTS = ["web", "web-lighthouse"];
 const runsWeb = selected.length === 0 || selected.some((p) => WEB_PROJECTS.includes(p));
 // "non-web" = any selected project that is neither web project (today only
@@ -46,7 +49,7 @@ const runsNonWeb = selected.length === 0 || selected.some((p) => !WEB_PROJECTS.i
 const serverWebServer = {
   command: "bun run apps/server/src/index.ts",
   cwd: "../",
-  port: 3001,
+  port: API_PORT,
   reuseExistingServer: false,
   // Pipe the API server's stdout into the run output (Playwright IGNORES
   // webServer stdout by default — only stderr is piped). Without this the
@@ -55,6 +58,7 @@ const serverWebServer = {
   // it was already captured.
   stdout: "pipe" as const,
   env: {
+    PORT: String(API_PORT),
     DATABASE_URL: requireEnvironment("DATABASE_URL"),
     REDIS_URL: requireEnvironment("REDIS_URL"),
     JWT_SECRET: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
@@ -73,33 +77,28 @@ const serverWebServer = {
 };
 
 const mobileWebServer = {
-  command: "cd apps/mobile && bunx expo start --web --port 8082 --non-interactive",
+  command: `cd apps/mobile && bunx expo start --web --port ${APP_PORT} --non-interactive`,
   cwd: "../",
-  // Wait on an HTTP probe of the served page, NOT a bare TCP port: Expo opens :8082
-  // BEFORE it will answer HTTP at all, so a `port` probe goes ready early. `url` polls
+  // Expo binds before it answers HTTP; a `port` probe goes ready early. `url` polls
   // for a real 200; the 120s timeout gives it headroom. Mirrors webWebServer's
   // port-probe-race fix.
   //
   // This probe alone is NOT enough: a 200 only proves the HTML shell is served, and Metro
   // compiles the JS bundle on demand, so the first specs still raced the compile past the
   // 30s test timeout. globalSetup (./global-setup.ts) pays that compile off the clock.
-  url: "http://localhost:8082/",
+  url: `${APP_ORIGIN}/`,
   timeout: 120_000,
   reuseExistingServer: false,
   // Pipe Expo/Metro stdout into the run output (Playwright pipes only stderr by default), so a
-  // persisted flake log shows Metro's bundling state / errors at the moment of a hang. Without
-  // this the :8082 server produced zero output in flake-artifacts, leaving a goto timeout
-  // undiagnosable. Matches serverWebServer.
+  // persisted flake log shows Metro's bundling state at the moment of a hang.
   stdout: "pipe" as const,
   env: {
-    EXPO_PUBLIC_API_URL: "http://localhost:3001",
+    EXPO_PUBLIC_API_URL: API_ORIGIN,
   },
 };
 
 const webWebServer = {
-  // Marketing site (apps/web): build the prerendered dist, then serve it via
-  // the production static branch. The web specs use absolute :8085 URLs
-  // (the global baseURL below is the mobile app on :8082).
+  // Build the prerendered marketing site before starting the production server.
   command: "bun run --cwd apps/web build && bun run --cwd apps/web start",
   cwd: "../",
   // Wait on an HTTP probe of the served page, not a bare TCP port: the command
@@ -108,27 +107,24 @@ const webWebServer = {
   // build is CPU-starved. A `port` probe can race the build; `url` polls for a
   // real 200 from the prod server, so Playwright only starts specs once dist is
   // actually served. timeout gives the build headroom under contention.
-  url: "http://localhost:8085/",
+  url: `${WEB_ORIGIN}/`,
   timeout: 180_000,
-  // Never reuse an existing :8085 server. A leftover/half-dead server from a
-  // killed run would serve stale (or empty) dist and silently fail the content
-  // assertions; always build fresh and fail loud on a real port conflict.
+  // A server left by a killed run could serve stale or empty dist.
   reuseExistingServer: false,
   // Pipe the build+serve stdout (Playwright pipes only stderr by default) so a flake log
   // captures prerender/build progress when this CPU-starved lane stalls under contention.
   stdout: "pipe" as const,
   env: {
     NODE_ENV: "production",
-    PORT: "8085",
+    PORT: String(WEB_PORT),
+    PUBLIC_API_URL: API_ORIGIN,
   },
 };
 
 export default defineConfig({
   testDir: "./specs",
   testMatch: "*.e2e.ts",
-  // Warm the Metro bundle before any spec runs — see global-setup.ts. Gated on
-  // the same runsNonWeb flag as mobileWebServer itself: a web-only run never
-  // starts :8082, so warming it would hang against a server that isn't there.
+  // Warm Metro only when the mobile webServer starts.
   globalSetup: runsNonWeb ? "./global-setup.ts" : undefined,
   // Distribute tests across workers (not just files). Safe because the
   // testUser fixture is worker-scoped (each worker gets its own account, see
@@ -144,7 +140,7 @@ export default defineConfig({
   timeout: 30_000,
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],
   use: {
-    baseURL: "http://localhost:8082",
+    baseURL: APP_ORIGIN,
     // retain-on-failure (not on-first-retry): the local pre-push gate runs with
     // retries:0, so on-first-retry records NOTHING on a local flake. retain-on-
     // failure keeps a full trace + video for every failed test even at 0 retries
@@ -156,9 +152,7 @@ export default defineConfig({
   },
   projects: [
     {
-      // App + API specs (auth, navigation, session-*, home, etc.) against the
-      // mobile web app on :8082. Excludes the marketing-site specs so this
-      // project never triggers the apps/web prerender build.
+      // App specs do not need the marketing build.
       name: "chromium",
       testIgnore: /web-.*\.e2e\.ts$/,
       use: {
@@ -167,11 +161,7 @@ export default defineConfig({
       },
     },
     {
-      // Marketing site (apps/web) specs hit the prod build on :8085 at a
-      // desktop viewport. Isolated so only this project starts the apps/web
-      // webServer (see the gated webServer array below). Excludes the Lighthouse
-      // capstone: it needs a fixed Chrome debug port + serial execution, which
-      // would collide with this project's fullyParallel:true workers.
+      // Lighthouse runs separately because its Chrome debug port needs serial execution.
       name: "web",
       testMatch: /web-.*\.e2e\.ts$/,
       testIgnore: /web-production\.e2e\.ts$/,
@@ -180,9 +170,7 @@ export default defineConfig({
       },
     },
     {
-      // story-007 capstone: the Lighthouse + meta/crawl gate, against the same
-      // prod build on :8085. fullyParallel:false so its single spec file runs
-      // serially in one worker — the only Chrome that binds the fixed
+      // The Lighthouse capstone runs serially in one worker: only this Chrome binds the
       // remote-debugging-port playAudit attaches to, so it never collides with
       // the parallel "web" project's Chromes. (Playwright's `workers` is global-
       // only, not per-project, so serial-within-the-file is what isolates the
@@ -199,9 +187,7 @@ export default defineConfig({
     },
   ],
   webServer: [
-    // Always start the :3001 API server — the chromium app specs and the
-    // web-conversion waitlist spec both depend on it (previously a web-only run
-    // started only :8085, so a web spec POSTing to the API failed).
+    // The waitlist web spec also needs the API.
     serverWebServer,
     ...(runsNonWeb ? [mobileWebServer] : []),
     ...(runsWeb ? [webWebServer] : []),

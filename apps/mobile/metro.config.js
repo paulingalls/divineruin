@@ -1,9 +1,11 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
+const { FileStore } = require('@expo/metro-config/build/binary-file-store');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
+config.cacheStores = [new FileStore({ root: path.join(__dirname, '.expo', 'metro-cache') })];
 
 // Override Expo's auto-discovered watchFolders to drop apps/server (mobile
 // never imports from it; only packages/shared and packages/design-tokens).

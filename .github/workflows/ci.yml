@@ -105,6 +105,7 @@ jobs:
       - run: bun test --cwd packages/design-tokens
       - run: bun install --cwd e2e --frozen-lockfile
       - run: bun test e2e/require-environment.test.ts
+      - run: bun test e2e/ports.test.ts
       - run: bun --env-file=.env test ./scripts
       - run: bun test --cwd apps/web
 
@@ -222,6 +223,10 @@ jobs:
       INTERNAL_SECRET: e2e-test-internal-secret
       NODE_ENV: development
       EXPO_PUBLIC_API_URL: http://localhost:3001
+      E2E_API_PORT: "3001"
+      E2E_APP_PORT: "8082"
+      E2E_WEB_PORT: "8085"
+      E2E_LH_DEBUG_PORT: "9222"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

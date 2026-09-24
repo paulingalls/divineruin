@@ -22,7 +22,7 @@ Run from `apps/web/` with Bun (never npm/node):
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun test` | unit tests (`bun:test`). |
 
-Production serve is `build` then `start`. The e2e harness builds + serves on `:8085`.
+Production serve is `build` then `start`. The e2e harness builds + serves on the checkout's `E2E_WEB_PORT` (`:8085` in an offset-0 primary; `scripts/worktree-common.sh` derives it).
 
 ## Build / SSG (`scripts/prerender.ts`)
 

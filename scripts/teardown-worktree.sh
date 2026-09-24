@@ -34,8 +34,22 @@ main() {
     wt_die "refusing to destroy the primary checkout. Re-run --force from this proven primary checkout."
     return 1
   fi
-  echo "==> removing checkout-owned Compose project"
-  wt_compose destroy down -v
+  local compose_ids projects present runtime_db="${DATABASE_URL:-}" runtime_redis="${REDIS_URL:-}"
+  wt_validate_settings
+  wt_validate_runtime_values "$runtime_db" "$runtime_redis"
+  compose_ids="$(wt_resource_ids "$COMPOSE_PROJECT_NAME")"
+  if [ -z "$compose_ids" ]; then
+    projects="$(docker compose ls --all --format json)" || return 1
+    present="$(printf '%s' "$projects" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert isinstance(d,list); print(int(any(x.get("Name")==sys.argv[1] for x in d)))' "$COMPOSE_PROJECT_NAME")" || return 1
+    [ "$present" -eq 0 ] || { wt_die "project $COMPOSE_PROJECT_NAME exists without ownership metadata; refusing teardown."; return 1; }
+  else
+    wt_authorize destroy
+  fi
+  wt_remove_livekit
+  if [ -n "$compose_ids" ]; then
+    echo "==> removing checkout-owned Compose project"
+    wt_run_compose down -v
+  fi
 }
 
 main "$@"

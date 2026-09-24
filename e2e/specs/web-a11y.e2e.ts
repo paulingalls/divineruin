@@ -1,13 +1,8 @@
+import { WEB_ORIGIN } from "../ports.js";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-// Capstone for Milestone 6 (story-006): proves the served production build of the
-// marketing site meets WCAG 2.1 AA on the dimensions the story remediated — an
-// automated axe scan with zero serious/critical violations, a single <main>
-// landmark, a working skip-to-content link, and a visible keyboard focus
-// indicator. The home page is served on :8085 by the apps/web webServer in
-// playwright.config.ts (web project); the global baseURL is the mobile app (:8082).
-const WEB = "http://localhost:8085";
+const WEB = WEB_ORIGIN;
 
 test.describe("Accessibility (apps/web, WCAG 2.1 AA)", () => {
   // Emulate reduced motion for every check in this group so axe (and any future

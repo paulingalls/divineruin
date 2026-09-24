@@ -31,7 +31,33 @@ MALFORMED="divineruin-test-notapid-pg"      # non-numeric → no match → untou
 
 ALL=("$DEAD_A" "$DEAD_B" "$LIVE_SELF" "$LIVE_ROOT" "$MALFORMED")
 
-cleanup() { for n in "${ALL[@]}"; do docker rm -f "$n" >/dev/null 2>&1; done; }
+# The fixture names are machine-global (the sweep regex needs a PID in the name, and one must be
+# PID 1), so two checkouts' pre-push runs would create and remove each other's fixtures. mkdir is
+# atomic; the holder's PID lets a later run clear a lock whose holder died.
+LOCK="${TMPDIR:-/tmp}/divineruin-sweep-harness.lock"
+acquire_lock() {
+  local waited=0 holder
+  until mkdir "$LOCK" 2>/dev/null; do
+    holder="$(cat "$LOCK/pid" 2>/dev/null || true)"
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+      rm -rf "$LOCK"
+      continue
+    fi
+    if [ "$waited" -ge 300 ]; then
+      echo "FAIL: sweep harness lock $LOCK held by pid ${holder:-unknown} for 300s"
+      exit 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  echo "$$" > "$LOCK/pid"
+}
+
+cleanup() {
+  for n in "${ALL[@]}"; do docker rm -f "$n" >/dev/null 2>&1; done
+  [ "$(cat "$LOCK/pid" 2>/dev/null)" = "$$" ] && rm -rf "$LOCK"
+}
+acquire_lock
 trap cleanup EXIT
 
 # Fresh slate, then create all fixtures.
