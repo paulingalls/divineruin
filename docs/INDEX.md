@@ -542,7 +542,7 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (2004 lines)
+## game_mechanics/game_mechanics_bestiary.md (1998 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
@@ -554,7 +554,7 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 | Material Catalog Summary | 1147-1193 | Material values and crafting uses for all creature drops |
 | Encounter Building Guidelines | 1194-1224 | Tier-based scaling, solo player math, companion effectiveness |
 | Design Decisions Log (Bestiary) | 1225-1228 | Bestiary decisions (24-29) |
-| Encounter Creature Stat Blocks | 1229-2004 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
+| Encounter Creature Stat Blocks | 1229-1998 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 

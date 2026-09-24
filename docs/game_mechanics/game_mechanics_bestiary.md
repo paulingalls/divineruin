@@ -1493,16 +1493,13 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
   ],
   "multiattack": null,
   "passives": [],
-  "actives": [
-    {
-      "name": "Reality Collapse",
-      "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground. Targets make a wisdom save.",
-      "narration_cue": "A deep groan splits the room as two versions of it grind together.",
-      "recharge": "1/encounter",
-      "audio": "hollow-warden-signature"
-    }
-  ],
+  "actives": [],
   "reactions": [],
+  "signature_ability": {
+    "name": "Reality Collapse",
+    "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
+    "save": "wisdom"
+  },
   "hollow": {
     "class": "rend",
     "corruption_aura": 30,
@@ -1938,8 +1935,8 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     },
     {
       "name": "Hold Person",
-      "type": "melee",
-      "reach": 5,
+      "type": "ranged",
+      "reach": 60,
       "to_hit": 0,
       "damage": "0",
       "damage_type": "none",
@@ -1962,16 +1959,13 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
   ],
   "multiattack": null,
   "passives": [],
-  "actives": [
-    {
-      "name": "Mantle of Ruin",
-      "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby. Targets make a constitution save.",
-      "narration_cue": "A cold hiss pours from the leader's hands as the light gutters.",
-      "recharge": "1/encounter",
-      "audio": "cult-leader-signature"
-    }
-  ],
+  "actives": [],
   "reactions": [],
+  "signature_ability": {
+    "name": "Mantle of Ruin",
+    "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
+    "save": "constitution"
+  },
   "hollow": null,
   "behavior": {
     "tactics": "Pins one intruder with Hold Person and strikes clustered foes with dark force.",

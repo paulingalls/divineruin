@@ -131,7 +131,6 @@ def test_every_encounter_action_is_in_its_own_block():
                 assert action["kind"] in authored["description"].lower()
         if "signature_ability" in source:
             signature = source["signature_ability"]
-            actual = next(row for row in block["actives"] if row["name"] == signature["name"])
-            assert signature["save"] in actual["description"].lower()
+            assert block["signature_ability"] == signature, name
         if name == "Hollow Warden":
             assert "healing" in actions["Absorb"]["special"].lower()
