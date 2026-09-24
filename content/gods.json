@@ -1096,7 +1096,7 @@
       "id": "zhael_fates_thread",
       "name": "Fate's Thread",
       "effect": "After seeing any d20 result, force a reroll and choose which result stands.",
-      "trigger": "After you see your d20 result or someone else\u2019s.",
+      "trigger": "After you see your d20 result or someone else's.",
       "recharge": "long_rest",
       "status": "awaits_rest"
     },
