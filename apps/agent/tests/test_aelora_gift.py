@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 from types import SimpleNamespace
@@ -27,6 +28,15 @@ def player(patron):
     return {"attributes": {"strength": 12}, "level": 3, "divine_favor": {"patron": patron}}
 
 
+def _live_party(session, *identities):
+    room = MagicMock(remote_participants={identity: SimpleNamespace(identity=identity) for identity in identities})
+    lifecycle = PartyLifecycle(
+        room, session, queries=MagicMock(), resonance_mod=MagicMock(), concentration_mod=MagicMock()
+    )
+    session.multiplayer_owner = GameplayInputOwner(lifecycle=lifecycle, transcriber=MagicMock(), input=MagicMock())
+    return lifecycle
+
+
 def test_bond_uses_content_amount_only_with_an_ally(monkeypatch):
     solo = check_resolution._resolve_skill_check_impl(
         player("aelora"), "athletics", 13, ToolRng(10), ally_present=False
@@ -51,6 +61,31 @@ def test_bond_uses_content_amount_only_with_an_ally(monkeypatch):
         player("aelora"), "athletics", 13, ToolRng(10), ally_present=True
     )
     assert stronger.total - solo.total == 2
+
+
+def _with_aelora_gift(monkeypatch, field, value):
+    rows = copy.deepcopy(load_gods())
+    gift = next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]
+    (gift["mechanics"] if field == "requires" else gift)[field] = value
+    monkeypatch.setattr(check_resolution, "load_gods", lambda: rows)
+
+
+def test_inactive_bond_grants_nothing(monkeypatch):
+    solo = check_resolution._resolve_skill_check_impl(
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False
+    )
+    _with_aelora_gift(monkeypatch, "status", "awaits_binding")
+    dormant = check_resolution._resolve_skill_check_impl(
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True
+    )
+    assert dormant.total == solo.total
+    assert dormant.gift_name is None
+
+
+def test_unknown_bond_requirement_fails_loud(monkeypatch):
+    _with_aelora_gift(monkeypatch, "requires", "ally_in_combat")
+    with pytest.raises(ValueError, match="ally_in_combat"):
+        check_resolution._resolve_skill_check_impl(player("aelora"), "athletics", 13, ToolRng(10), ally_present=True)
 
 
 def test_beyond_tier_check_does_not_name_unapplied_bond():
@@ -111,11 +146,19 @@ async def test_ally_presence_tracks_live_roster_and_present_companion():
 @pytest.mark.parametrize("producer", ["skill", "discover_empty", "discover_candidate", "gather", "social", "travel"])
 async def test_tool_response_names_bond_only_with_present_ally(producer):
     async def invoke(present):
-        ctx = make_context(companion_id="ally" if present else None)
+        guest_mode = present in ("host_live", "host_dropped")
+        ctx = make_context(
+            companion_id="ally" if present is True or present == "absent" else None,
+            party_member_ids=["guest"] if guest_mode else None,
+        )
         if present == "absent":
             ctx.userdata.companion.is_present = False
         ctx.userdata.event_bus = MagicMock()
-        row = {**player("aelora"), "player_id": "player_1", "flags": {}}
+        actor = contextlib.nullcontext()
+        if guest_mode:
+            lifecycle = _live_party(ctx.userdata, "guest", *(["player_1"] if present == "host_live" else []))
+            actor = ctx.userdata._bind_authenticated_actor("guest", 1, lambda _pid, _gen: None)
+        row = {**player("aelora"), "player_id": "guest" if guest_mode else "player_1", "flags": {}}
         queries = MagicMock(get_player=AsyncMock(return_value=row))
         mutations = MagicMock(
             update_skill_advancement=AsyncMock(),
@@ -126,62 +169,65 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
             upsert_map_progress=AsyncMock(),
         )
         db_mod, _ = make_db_mod()
-        if producer == "skill":
-            queries.get_single_skill_advancement = AsyncMock(
-                return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
-            )
-            with patch("check_resolution.dice_roll", return_value=_roll(10)):
-                raw = await _check_skill_impl(
-                    ctx, "athletics", "moderate", "climb", queries=queries, mutations=mutations
+        with actor:
+            if producer == "skill":
+                queries.get_single_skill_advancement = AsyncMock(
+                    return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
                 )
-        elif producer.startswith("discover"):
-            hidden = (
-                []
-                if producer == "discover_empty"
-                else [{"id": "secret", "discover_skill": "perception", "dc": 18, "description": "Door"}]
-            )
-            content = MagicMock(get_location=AsyncMock(return_value={"hidden_elements": hidden}))
-            with patch("check_resolution.dice_roll", return_value=_roll(2)):
-                raw = await _check_discover_impl(
-                    ctx, "perception", "wall", content=content, queries=queries, mutations=mutations
+                with patch("check_resolution.dice_roll", return_value=_roll(10)):
+                    raw = await _check_skill_impl(
+                        ctx, "athletics", "moderate", "climb", queries=queries, mutations=mutations
+                    )
+            elif producer.startswith("discover"):
+                hidden = (
+                    []
+                    if producer == "discover_empty"
+                    else [{"id": "secret", "discover_skill": "perception", "dc": 18, "description": "Door"}]
                 )
-        elif producer == "gather":
-            content = MagicMock(
-                get_location=AsyncMock(return_value={"region": "greyvale", "resource_table": {"common": ["herb"]}}),
-                get_gathering_nodes_at_location=AsyncMock(return_value=[]),
-                get_material_definition=AsyncMock(return_value={"name": "Herb"}),
-            )
-            raw = await _check_gather_impl(
-                ctx, "", queries=queries, mutations=mutations, content=content, db_mod=db_mod, rng=ToolRng(10)
-            )
-        elif producer == "social":
-            queries.get_npc_disposition = AsyncMock(return_value="neutral")
-            content = MagicMock(get_npc=AsyncMock(return_value={"default_disposition": "neutral"}))
-            raw = await _check_social_impl(
-                ctx,
-                "merchant",
-                "persuasion",
-                "moderate",
-                queries=queries,
-                mutations=mutations,
-                content=content,
-                rng=ToolRng(10),
-            )
-        else:
-            ctx.userdata.location_id = "hall"
-            content = MagicMock(get_location=AsyncMock(return_value={"id": "dest", "terrain": "dense_forest"}))
-            travel_mutations = MagicMock(update_player_travel_state=AsyncMock())
-            raw = await _travel_impl(
-                ctx,
-                "dest",
-                "compressed",
-                queries=queries,
-                mutations=mutations,
-                travel_mutations=travel_mutations,
-                content=content,
-                db_mod=db_mod,
-                rng=ToolRng(2),
-            )
+                content = MagicMock(get_location=AsyncMock(return_value={"hidden_elements": hidden}))
+                with patch("check_resolution.dice_roll", return_value=_roll(2)):
+                    raw = await _check_discover_impl(
+                        ctx, "perception", "wall", content=content, queries=queries, mutations=mutations
+                    )
+            elif producer == "gather":
+                content = MagicMock(
+                    get_location=AsyncMock(return_value={"region": "greyvale", "resource_table": {"common": ["herb"]}}),
+                    get_gathering_nodes_at_location=AsyncMock(return_value=[]),
+                    get_material_definition=AsyncMock(return_value={"name": "Herb"}),
+                )
+                raw = await _check_gather_impl(
+                    ctx, "", queries=queries, mutations=mutations, content=content, db_mod=db_mod, rng=ToolRng(10)
+                )
+            elif producer == "social":
+                queries.get_npc_disposition = AsyncMock(return_value="neutral")
+                content = MagicMock(get_npc=AsyncMock(return_value={"default_disposition": "neutral"}))
+                raw = await _check_social_impl(
+                    ctx,
+                    "merchant",
+                    "persuasion",
+                    "moderate",
+                    queries=queries,
+                    mutations=mutations,
+                    content=content,
+                    rng=ToolRng(10),
+                )
+            else:
+                ctx.userdata.location_id = "hall"
+                content = MagicMock(get_location=AsyncMock(return_value={"id": "dest", "terrain": "dense_forest"}))
+                travel_mutations = MagicMock(update_player_travel_state=AsyncMock())
+                raw = await _travel_impl(
+                    ctx,
+                    "dest",
+                    "compressed",
+                    queries=queries,
+                    mutations=mutations,
+                    travel_mutations=travel_mutations,
+                    content=content,
+                    db_mod=db_mod,
+                    rng=ToolRng(2),
+                )
+        if guest_mode:
+            await lifecycle.aclose()
         return json.loads(raw)
 
     with_ally = await invoke(True)
@@ -192,6 +238,8 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
     assert "gift_name" not in absent_companion
     assert with_ally["total"] - alone["total"] == 1
     assert absent_companion["total"] == alone["total"]
+    assert (await invoke("host_live"))["gift_name"] == "Hearthkeeper's Bond"
+    assert "gift_name" not in await invoke("host_dropped")
 
 
 @pytest.mark.asyncio

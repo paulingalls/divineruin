@@ -352,7 +352,9 @@ def _resolve_skill_check_impl(
         and (player_data.get("divine_favor") or {}).get("patron") == "aelora"
     ):
         gift = next(row["layer_1_gift"] for row in load_gods() if row["god_id"] == "aelora")
-        if gift["status"] == "active" and gift["mechanics"]["requires"] == "ally_present":
+        if gift["mechanics"]["requires"] != "ally_present":
+            raise ValueError(f"Aelora's gift requires {gift['mechanics']['requires']!r}, not a present ally")
+        if gift["status"] == "active":
             bonus += gift["mechanics"]["amount"]
             gift_name = gift["name"]
 
