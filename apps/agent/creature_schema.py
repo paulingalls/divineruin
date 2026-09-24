@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from combat_init_validation import _validate_enemy_action_shapes, _validate_enemy_resistance_tags
+from encounter_actions import validate_encounter_actions
 from world_regions import REGION_IDS
 
 CATEGORIES = ("hollow", "beast", "humanoid", "construct", "undead", "elemental")
@@ -17,10 +19,11 @@ def validate_creature_stat_block(creature: object) -> list[str]:
     if not isinstance(creature, dict):
         return ["creature: expected object"]
 
-    def field(obj: dict, key: str, path: str, kind: str, nullable: bool = False):
+    def field(obj: dict, key: str, path: str, kind: str, nullable: bool = False, required: bool = True):
         name = f"{path}.{key}" if path else key
         if key not in obj:
-            problems.append(f"{name}: required")
+            if required:
+                problems.append(f"{name}: required")
             return None
         value = obj[key]
         if nullable and value is None:
@@ -28,6 +31,7 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         valid = {
             "string": lambda v: isinstance(v, str),
             "integer": lambda v: type(v) is int,
+            "boolean": lambda v: type(v) is bool,
             "object": lambda v: isinstance(v, dict),
             "array": lambda v: isinstance(v, list),
         }[kind](value)
@@ -35,6 +39,20 @@ def validate_creature_stat_block(creature: object) -> list[str]:
             problems.append(f"{name}: expected {kind}")
             return None
         return value
+
+    def strings(values: list, path: str) -> None:
+        for i, value in enumerate(values):
+            if not isinstance(value, str):
+                problems.append(f"{path}[{i}]: expected string")
+
+    def combat_entry(action: dict, path: str) -> None:
+        # combat_init runs both guards, in this order, on every action_pool entry.
+        enemies = [{"id": path, "action_pool": [action]}]
+        try:
+            _validate_enemy_action_shapes(enemies)
+            validate_encounter_actions(enemies)
+        except ValueError as exc:
+            problems.append(str(exc))
 
     for key in ("id", "name"):
         field(creature, key, "", "string")
@@ -63,13 +81,12 @@ def validate_creature_stat_block(creature: object) -> list[str]:
             field(attributes, key, "attributes", "integer")
     saves = field(creature, "save_proficiencies", "", "array")
     if isinstance(saves, list):
-        for i, value in enumerate(saves):
-            if not isinstance(value, str):
-                problems.append(f"save_proficiencies[{i}]: expected string")
+        strings(saves, "save_proficiencies")
     attacks = field(creature, "attacks", "", "array")
     if isinstance(attacks, list):
         for i, attack in enumerate(attacks):
             path = f"attacks[{i}]"
+            before = len(problems)
             if not isinstance(attack, dict):
                 problems.append(f"{path}: expected object")
                 continue
@@ -83,12 +100,26 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 field(attack, key, path, "string")
             field(attack, "special", path, "string", True)
             field(attack, "audio", path, "string")
+            properties = field(attack, "properties", path, "array", required=False)
+            if isinstance(properties, list):
+                strings(properties, f"{path}.properties")
+            for key, kind in (
+                ("applies_condition", "string"),
+                ("save", "string"),
+                ("dc", "integer"),
+                ("half_on_success", "boolean"),
+                ("escape_dc", "integer"),
+            ):
+                field(attack, key, path, kind, required=False)
+            if len(problems) == before:
+                combat_entry(attack, path)
     field(creature, "multiattack", "", "string", True)
     for group in ("passives", "actives", "reactions"):
         abilities = field(creature, group, "", "array")
         if isinstance(abilities, list):
             for i, ability in enumerate(abilities):
                 path = f"{group}[{i}]"
+                before = len(problems)
                 if not isinstance(ability, dict):
                     problems.append(f"{path}: expected object")
                     continue
@@ -96,6 +127,25 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                     field(ability, key, path, "string")
                 for key in ("recharge", "audio"):
                     field(ability, key, path, "string", True)
+                if group == "actives":
+                    kind = field(ability, "kind", path, "string", required=False)
+                    properties = field(ability, "properties", path, "array", required=False)
+                    if isinstance(properties, list):
+                        strings(properties, f"{path}.properties")
+                    if kind is not None and len(problems) == before:
+                        combat_entry(ability, path)
+                        if len(problems) == before and kind == "attack":
+                            problems.append(f"{path}.kind: expected command|accusation")
+    signature = field(creature, "signature_ability", "", "object", required=False)
+    if isinstance(signature, dict):
+        for key in ("name", "description"):
+            field(signature, key, "signature_ability", "string")
+    tags = field(creature, "resistance_tags", "", "array", required=False)
+    if isinstance(tags, list):
+        try:
+            _validate_enemy_resistance_tags([{"id": "resistance_tags", "resistance_tags": tags}])
+        except ValueError as exc:
+            problems.append(str(exc))
     if "hollow" not in creature:
         problems.append("hollow: required")
     elif category == "hollow":

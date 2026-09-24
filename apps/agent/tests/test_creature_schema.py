@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from conditions import CONDITION_CATALOG
 from creature_schema import validate_creature_stat_block
+from social_resolution import RESISTANCE_TAGS
 
 ROOT = Path(__file__).resolve().parents[3]
 CORPUS = ROOT / "packages/shared/fixtures/creature_blocks.json"
@@ -38,7 +40,24 @@ def test_shared_creature_corpus():
         "unknown_region",
         "missing_home_region",
         "unknown_home_region",
+        "unknown_active_kind",
+        "mark_with_damage",
+        "condition_without_save",
+        "condition_without_dc",
+        "unknown_condition",
+        "half_without_damage",
+        "grapple_without_escape_dc",
+        "unknown_resistance_tag",
+        "signature_without_name",
+        "signature_without_description",
+        "active_kind_attack",
+        "attack_with_mark_kind",
     }
+    assert {case["name"] for case in valid} >= {"all_combat_fields", "legacy_no_combat_fields"}
+    assert set(corpus["condition_names"]) == set(CONDITION_CATALOG)
+    assert set(corpus["resistance_tags"]) == set(RESISTANCE_TAGS)
+    assert len(corpus["condition_names"]) == len(CONDITION_CATALOG)
+    assert len(corpus["resistance_tags"]) == len(RESISTANCE_TAGS)
     assert_corpus_floors(valid, invalid)
     derived = [case for case in valid if case.get("spec_derived")]
     assert {case["name"] for case in derived} >= {"spec_shadeling", "spec_hollowmoth", "spec_bandit"}
@@ -51,6 +70,8 @@ def test_shared_creature_corpus():
         assert validate_creature_stat_block(case["block"]) == [], case["name"]
     for case in invalid:
         assert case["expected"]
+        if "field" in case:
+            assert all(case["field"] in reason for reason in case["expected"]), case["name"]
         assert validate_creature_stat_block(case["block"]) == case["expected"], case["name"]
 
 
