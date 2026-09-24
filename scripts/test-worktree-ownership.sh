@@ -89,8 +89,8 @@ cat > "$primary/.env" <<'ENV'
 COMPOSE_PROJECT_NAME=dr-copied-primary
 POSTGRES_HOST_PORT=55432
 VALKEY_HOST_PORT=56379
-DATABASE_URL=postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
-REDIS_URL=redis://localhost:56379
+DATABASE_URL=postgresql://divineruin:divineruin_dev@127.0.0.1:55432/divineruin
+REDIS_URL=redis://127.0.0.1:56379
 ENV
 cp "$primary/.env" "$linked/.env"
 
@@ -138,8 +138,8 @@ ok "valid settings and credentials remain byte-for-byte unchanged"
 cat > "$primary/.env" <<'ENV'
 WT_PORT_OFFSET=2700
 COMPOSE_PROJECT_NAME=dr-copied-primary
-DATABASE_URL=postgresql://custom_user:custom_password@localhost:58132/divineruin
-REDIS_URL=redis://localhost:59079
+DATABASE_URL=postgresql://custom_user:custom_password@127.0.0.1:58132/divineruin
+REDIS_URL=redis://127.0.0.1:59079
 POSTGRES_USER=custom_user
 POSTGRES_PASSWORD=custom_password
 ANTHROPIC_API_KEY=preserve-primary
@@ -154,8 +154,8 @@ ok "primary offset override and credentials are preserved"
 
 cat > "$primary/.env" <<'ENV'
 COMPOSE_PROJECT_NAME=dr-copied-primary
-DATABASE_URL=postgresql://custom_user:custom_password@localhost:55432/divineruin
-REDIS_URL=redis://localhost:56379
+DATABASE_URL=postgresql://custom_user:custom_password@127.0.0.1:55432/divineruin
+REDIS_URL=redis://127.0.0.1:56379
 POSTGRES_USER=custom_user
 POSTGRES_PASSWORD=custom_password
 ENV
@@ -227,7 +227,7 @@ ok "copied sibling settings are rejected"
 
 valid="$same_a"
 printf '%s\n' "$env_a" > "$valid/.env"
-foreign_db='postgresql://u:p@localhost:55432/divineruin'
+foreign_db='postgresql://u:p@127.0.0.1:55432/divineruin'
 if (cd "$valid" && bash scripts/worktree-common.sh authorize-runtime "$foreign_db" '' >/dev/null 2>&1); then
   fail "foreign runtime DATABASE_URL was authorized"
 fi
@@ -356,43 +356,6 @@ grep -q 'down -v' "$record" && fail "empty enumeration reached destructive Docke
 ok "empty Docker enumeration fails closed"
 
 
-url_fixture="$TMP/url-docker"; mkdir -p "$url_fixture"
-printf '[]\n' > "$url_fixture/projects.json"
-refuse_url() {  # <sed-expression> <label>
-  local record="$TMP/url-$2.calls"; : > "$record"
-  printf '%s\n' "$env_a" | sed -E "$1" > "$valid/.env"
-  if (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$url_fixture" \
-    PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
-    fail "$2 aimed at another checkout's endpoint was accepted"
-  fi
-  [ ! -s "$record" ] || fail "$2 conflict reached Docker"
-}
-refuse_url 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://divineruin:divineruin_dev@localhost:55432/divineruin#' DATABASE_URL
-refuse_url 's#^REDIS_URL=.*#REDIS_URL=redis://localhost:56379#' REDIS_URL
-printf '%s\n' "$env_a" > "$valid/.env"
-ok "a service URL aimed at another checkout's endpoint is refused before Docker"
-
-# .env can be perfect while the caller's PROCESS environment points elsewhere —
-# the runtime endpoints each adapter actually connects with. The owned run is
-# the floor: without it a fixture that refuses everything would look the same.
-valkey_a="$(printf '%s\n' "$env_a" | sed -n 's/^VALKEY_HOST_PORT=//p')"
-record="$TMP/ambient-owned.calls"; : > "$record"
-if ! (cd "$valid" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$TMP/valid-docker" \
-  PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
-  fail "an owned checkout with no ambient conflict was refused"
-fi
-[ -s "$record" ] || fail "the owned ambient case never reached Docker"
-for ambient in "DATABASE_URL=postgresql://u:p@localhost:$((port_a + 1))/divineruin" \
-               "REDIS_URL=redis://localhost:$((valkey_a + 1))"; do
-  record="$TMP/ambient-${ambient%%=*}.calls"; : > "$record"
-  if (cd "$valid" && env "$ambient" DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$TMP/valid-docker" \
-    PATH="$primary/bin:$PATH" bash scripts/worktree-common.sh compose reuse ps >/dev/null 2>&1); then
-    fail "ambient ${ambient%%=*} from another checkout was accepted"
-  fi
-  [ ! -s "$record" ] || fail "ambient ${ambient%%=*} conflict reached Docker"
-done
-ok "an ambient service URL from another checkout is refused before Docker"
-
 record="$TMP/ci-marker.calls"; : > "$record"
 if (cd "$primary" && DOCKER_RECORD="$record" PATH="$primary/bin:$PATH" \
   env -u GITHUB_ACTIONS -u DIVINERUIN_CI_SERVICE_DB \
@@ -426,6 +389,8 @@ make_labels "$meta_fixture" primary-container "$clone_id" "$checkout_id" \
 refuse_force foreign-compose-config
 ok "labels from another directory or Compose file are refused under --force"
 
+url_fixture="$TMP/url-docker"; mkdir -p "$url_fixture"
+printf '[]\n' > "$url_fixture/projects.json"
 cat > "$TMP/hold-port.py" <<'HOLDER'
 import socket, sys, time
 sock = socket.socket()

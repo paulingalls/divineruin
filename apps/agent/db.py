@@ -143,11 +143,12 @@ async def _cache_get(key: str) -> str | None:
 async def _discard_desynced_redis(r: aioredis.Redis, key: str, reply: object) -> None:
     """Drop a client whose GET was answered with a non-string.
 
-    A string GET cannot reply with anything else, so the connection read bytes meant for another
-    command, and no later read on that client can be trusted. This tolerates exactly that shape; a
-    desynced connection that happens to hand back another key's string passes unseen.
+    A GET that echoes its own command indicates a TCP self-connect. Other non-string replies
+    also leave the connection untrustworthy. A wrong string reply remains undetectable here.
     """
     global _redis
+    if reply == ["GET", key]:
+        logger.error("Redis GET %s hit a TCP self-connect: echoed %r", key, reply)
     logger.error(DESYNCED_REPLY_LOG, key, reply, r.connection_pool, id(asyncio.get_running_loop()))
     if _redis is r:
         _redis = None

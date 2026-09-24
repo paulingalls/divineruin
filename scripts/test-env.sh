@@ -78,8 +78,8 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-export DATABASE_URL="postgresql://divineruin:divineruin_dev@localhost:${_te_pg_port}/divineruin"
-export REDIS_URL="redis://localhost:${_te_redis_port}"
+export DATABASE_URL="postgresql://divineruin:divineruin_dev@127.0.0.1:${_te_pg_port}/divineruin"
+export REDIS_URL="redis://127.0.0.1:${_te_redis_port}"
 
 # NOTE: per-run *server* ports (Playwright API/mobile/web) were tried and
 # reverted — `expo` bakes EXPO_PUBLIC_API_URL into the cached metro bundle, so a

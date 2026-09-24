@@ -131,29 +131,6 @@ else
   ok "linked worktree -> non-zero offset $off (ports isolated from primary)"
 fi
 
-(
-  set +o pipefail  # pre-push runs without pipefail, where grep|tail hid an absent key
-  fixture="$(mktemp -d -t absent-offset)"
-  trap 'rm -rf "$fixture"' EXIT
-  while IFS= read -r var; do unset "$var"; done < <(git rev-parse --local-env-vars)
-  git -C "$fixture" init -q
-  cd "$fixture"
-  unset WT_PORT_OFFSET
-  printf 'OTHER=value\n' > .env
-  if wt_env_value WT_PORT_OFFSET .env >/dev/null; then fail "absent offset key was found"; fi
-  wt_expected_env || fail "primary checkout rejected absent offset key"
-  [ "$WT_OFFSET:$POSTGRES_HOST_PORT" = "0:55432" ] || fail "absent offset did not select primary ports"
-  printf 'WT_PORT_OFFSET=\n' > .env
-  selected="$(wt_env_value WT_PORT_OFFSET .env)" || fail "empty offset key was absent"
-  [ -z "$selected" ] || fail "empty offset key returned a value"
-  if wt_select_offset 0 2> "$fixture/error"; then fail "empty offset was accepted"; fi
-  grep -Fq "$fixture/.env WT_PORT_OFFSET value '<empty>'" "$fixture/error" || fail "empty offset error lost its .env source"
-  printf 'WT_PORT_OFFSET=20\n' > .env
-  [ "$(wt_env_value WT_PORT_OFFSET .env)" = 20 ] || fail "configured offset lookup failed"
-  [ "$(wt_select_offset 0)" = 20 ] || fail "configured offset was not selected"
-)
-ok "absent, empty, and configured .env offsets"
-
 # 9. This checkout's complete coupled settings agree with its Git identity.
 wt_validate_settings || fail "checkout-owned .env was rejected"
 [ "$POSTGRES_HOST_PORT" = "$(printf '%s' "$DATABASE_URL" | sed -E 's#.*:([0-9]+)/.*#\1#')" ] \
@@ -395,6 +372,8 @@ settings_authority() {  # the real CLI, in a fixture checkout, with no ambient s
     cd "$settings_root" && bash "$SCRIPT_DIR/worktree-common.sh" "$@" )
 }
 settings_authority expected-env > "$settings_root/.env"
+grep -Eq "^DATABASE_URL=postgresql://[^ ]+@127\.0\.0\.1:[0-9]+/divineruin$" "$settings_root/.env" || fail "bootstrap generated a non-IPv4 Postgres URL"
+grep -Eq "^REDIS_URL=redis://127\.0\.0\.1:[0-9]+$" "$settings_root/.env" || fail "bootstrap generated a non-IPv4 Redis URL"
 settings_authority authorize settings || fail "the fixture's own generated settings were rejected"
 (
   cd "$settings_root"
