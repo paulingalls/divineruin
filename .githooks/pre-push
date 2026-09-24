@@ -92,6 +92,8 @@ else
     # Validate the per-worktree host-port-offset derivation (worktree-common.sh).
     echo "  Worktree bootstrap offset self-test..."
     bash "$(dirname "$0")/../scripts/test-init-worktree.sh"
+    echo "  Prepare hooksPath self-test..."
+    bash "$(dirname "$0")/../scripts/test-prepare-hookspath.sh"
 
     # Typecheck + lint backstop. Pre-commit checks staged files and skips language
     # tools in fresh worktrees without deps. Fast-fail here (set -e),

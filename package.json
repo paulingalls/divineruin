@@ -37,7 +37,7 @@
     "test:all": "bun --env-file=.env run scripts/test-all.ts",
     "docker:sweep": "bash scripts/sweep-test-containers.sh",
     "worktree:teardown": "bash scripts/teardown-worktree.sh",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "test \"$(git config --get core.hooksPath)\" = .githooks || git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
