@@ -2123,5 +2123,554 @@
       "keldaran_mountains",
       "drathian_steppe"
     ]
+  },
+  {
+    "id": "hollow_mawling",
+    "name": "Mawling",
+    "category": "hollow",
+    "tier": 2,
+    "description": "Probes defenses, feints, retreats from strong resistance, returns from different angle. In groups of 3+, one flanks while others engage. Uses Lunge to grab isolated targets.",
+    "level": 4,
+    "hp": 38,
+    "ac": 13,
+    "speed": 35,
+    "attributes": {
+      "STR": 14,
+      "DEX": 15,
+      "CON": 13,
+      "INT": 3,
+      "WIS": 10,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "DEX",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 5,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": "Reach 10 ft (unnaturally long limbs)",
+        "audio": "hlw_claw"
+      },
+      {
+        "name": "Dissolution Maw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "2d6+2",
+        "damage_type": "necrotic",
+        "special": "DC 13 CON save or item in hand takes 1d4 durability damage",
+        "audio": "hlw_dissolution_maw"
+      },
+      {
+        "name": "Lunge",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 5,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": "Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.",
+        "audio": "hlw_lunge",
+        "properties": [
+          "grapple"
+        ],
+        "escape_dc": 13
+      }
+    ],
+    "multiattack": "2 attacks — one Claw and one Dissolution Maw",
+    "passives": [
+      {
+        "name": "Unsettling Silence",
+        "description": "Mawlings make no vocalizations. Advantage on Stealth in low-light.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Dissolution Field",
+        "description": "Creatures starting turn grappled by a mawling take 1d6 necrotic automatically.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Adaptive Learning",
+        "description": "If the same tactic is used against this mawling twice in one encounter, it gains advantage on saves/AC against that tactic for the rest of the fight.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Lunge",
+        "description": "Move 15 ft toward target + Claw with advantage. Hit: target grappled (STR DC 13 escape).",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Scatter",
+        "description": "Requires 3+ mawlings. All mawlings reposition 15 ft without provoking reactions. Coordinated flank.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 5,
+      "resonance_on_death": 1,
+      "veil_effect": "Natural sounds distort within 15 ft. Footsteps echo wrong. Combat sounds arrive delayed.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "divine_spells"
+      ]
+    },
+    "behavior": {
+      "tactics": "Probes defenses, feints, retreats from strong resistance, returns from different angle. In groups of 3+, one flanks while others engage. Uses Lunge to grab isolated targets.",
+      "morale": "retreats_at_25_percent_if_alone",
+      "group_size": "pair_or_pack_3_6",
+      "environment": [
+        "Ashmark",
+        "Greyvale ruins",
+        "corrupted zones",
+        "corrupted dungeons"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A scrape marks three footfalls where there should be two. A nearly human shape approaches on joints that bend backward, with a tear where its face should be.",
+      "attack_cue": "A wet rasp tears through the air as its hand reaches too far. The air shimmers behind it.",
+      "wounded_cue": "A thin crackle follows the mawling as it staggers and flickers, momentarily transparent.",
+      "death_cue": "A soft crunch folds its limbs inward. A dark smear remains, carrying the smell of absence.",
+      "ambient_cue": "A scrape counts three steps where there should be two. A pause follows, then silence."
+    },
+    "audio": {
+      "ambient": "wrong footfall loop",
+      "attack": "wet pulling dissolution",
+      "hit": "impact on semi-solid mass",
+      "death": "organic collapse and static burst",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_mawling",
+    "xp_reward": 100,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_weaver",
+    "name": "Hollow Weaver",
+    "category": "hollow",
+    "tier": 2,
+    "description": "Anchors to a location and warps space. Left undisturbed for 1 hour, converts a building into a spatial labyrinth.",
+    "level": 5,
+    "hp": 28,
+    "ac": 11,
+    "speed": 10,
+    "attributes": {
+      "STR": 6,
+      "DEX": 8,
+      "CON": 14,
+      "INT": 6,
+      "WIS": 14,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Spatial Lash",
+        "type": "melee",
+        "reach": 15,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "force",
+        "special": "The space between the weaver and target compresses violently",
+        "audio": "hlw_spatial_lash"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Spatial Distortion",
+        "description": "Warps space in a 30 ft radius. Ranged attacks have disadvantage. Movement through the zone costs double; terrain is perception-based, not physical.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Anchored",
+        "description": "Attaches to a surface and does not move voluntarily. It must be approached.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Fragile Form",
+        "description": "Vulnerable to all physical damage. Easy to kill if reached.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Rearrange",
+        "description": "Shift one doorway, corridor, or passage within 30 ft to a different real location. Creatures in the passage arrive at the new destination.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Spatial Fold",
+        "description": "Target within 30 ft: WIS save DC 13 or teleport 30 ft in random direction. If destination is solid matter, take 2d6 force and move to nearest open space.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 30,
+      "resonance_on_death": 1,
+      "veil_effect": "Reverb characteristics change — small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
+      "vulnerable_to": [
+        "physical_damage"
+      ]
+    },
+    "behavior": {
+      "tactics": "Anchors to a location and warps space. Left undisturbed for 1 hour, converts a building into a spatial labyrinth.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary",
+      "environment": [
+        "Greyvale ruins",
+        "corrupted buildings",
+        "dungeons near Ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A low hum bends the echo in the corridor. A doorway that was ten feet away now seems thirty, and the passage bends around something anchored ahead.",
+      "attack_cue": "A compressed-air thud strikes as the space between you and the weaver folds.",
+      "wounded_cue": "A wavering hum breaks as the room briefly snaps back to normal dimensions, then warps again.",
+      "death_cue": "A sharp snap sounds like a taut wire breaking. Walls settle back into place and the room sounds normal again.",
+      "ambient_cue": "A low glass-rim hum carries through the building. Each footstep returns from the wrong direction."
+    },
+    "audio": {
+      "ambient": "glass-rim hum and spatial reverb",
+      "attack": "compressed air burst",
+      "hit": "thin impact",
+      "death": "wire snap then normal acoustics",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_weaver",
+    "xp_reward": 150,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_knight",
+    "name": "Hollowed Knight",
+    "category": "hollow",
+    "tier": 3,
+    "description": "Holds chokepoints, sends lesser Hollow to probe, flanks, and targets healers and casters first.",
+    "level": 8,
+    "hp": 85,
+    "ac": 16,
+    "speed": 30,
+    "attributes": {
+      "STR": 18,
+      "DEX": 12,
+      "CON": 16,
+      "INT": 8,
+      "WIS": 10,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Corrupted Blade",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d10+4",
+        "damage_type": "slashing",
+        "special": "Plus 1d6 necrotic. On crit: DC 14 CON save or Stage 1 Hollowed condition.",
+        "audio": "hlw_corrupted_blade"
+      },
+      {
+        "name": "Shield Slam",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d6+4",
+        "damage_type": "bludgeoning",
+        "special": "DC 14 STR save or knocked prone.",
+        "audio": "hlw_shield_slam",
+        "applies_condition": "prone",
+        "save": "STR",
+        "dc": 14
+      }
+    ],
+    "multiattack": "2 attacks with Corrupted Blade",
+    "passives": [
+      {
+        "name": "Remnant Tactics",
+        "description": "Uses combat techniques from former life. Takes Dodge when outnumbered and uses terrain for advantage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Corrupted Resilience",
+        "description": "Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Fragment Voice",
+        "description": "Occasionally speaks from its former life. First time former allies hear this: WIS save DC 12 or Shaken, disadvantage on next attack. Cosmetic thereafter.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Command Lesser",
+        "kind": "command",
+        "description": "As a bonus action, direct up to 4 Drift or Rend Hollow within 60 ft to focus a target or reposition.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Dissolution Strike",
+        "description": "Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Unholy Fortitude",
+        "description": "At 0 HP, CON save DC 10. On success drop to 1 HP; DC increases by 5 each time.",
+        "narration_cue": "",
+        "recharge": "passive trigger",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "wrack",
+      "corruption_aura": 10,
+      "resonance_on_death": 2,
+      "veil_effect": "30 ft radius — temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "divine_spells",
+        "turn_undead_hollow"
+      ]
+    },
+    "behavior": {
+      "tactics": "Holds chokepoints, sends lesser Hollow to probe, flanks, and targets healers and casters first.",
+      "morale": "fights_to_destruction",
+      "group_size": "solitary_with_mawlings_or_shadelings",
+      "environment": [
+        "Ashmark front",
+        "corrupted settlements",
+        "deep dungeons"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Armor creaks with an unnaturally regular gait. Ashmark issue plate closes in, its wearer moving with practiced precision and a head that turns too far.",
+      "attack_cue": "A blade whistles with a soldier’s practiced timing. Necrotic energy sizzles along its edge.",
+      "wounded_cue": "A confused human breath catches beneath the helmet as the knight staggers. Then the bellows rhythm returns.",
+      "death_cue": "Armor clatters to the ground. One nearly human breath follows, then silence.",
+      "ambient_cue": "Armor creaks in measured steps. Beneath it, breathing rasps like bellows."
+    },
+    "audio": {
+      "ambient": "mechanical breathing and armor creak",
+      "attack": "blade swing and necrotic sizzle",
+      "hit": "corrupted armor impact",
+      "death": "armor collapse, human breath, silence",
+      "special": {
+        "fragment_voice": "HLW-006 corrupted voice variant"
+      }
+    },
+    "loot_table_id": "loot_hollowed_knight_catalog",
+    "xp_reward": 450,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_veilrender",
+    "name": "Veilrender",
+    "category": "hollow",
+    "tier": 3,
+    "description": "Advances 100 yards per day converting territory. In combat stands ground and uses area denial. Radiant damage or Veil Ward suppresses regeneration.",
+    "level": 10,
+    "hp": 120,
+    "ac": 14,
+    "speed": 10,
+    "attributes": {
+      "STR": 22,
+      "DEX": 4,
+      "CON": 20,
+      "INT": 3,
+      "WIS": 12,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Crushing Mass",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 8,
+        "damage": "3d8+6",
+        "damage_type": "bludgeoning",
+        "special": "Push target 10 ft. Structures take double damage.",
+        "audio": "hlw_crushing_mass"
+      },
+      {
+        "name": "Corruption Wave",
+        "type": "area",
+        "reach": 30,
+        "to_hit": 0,
+        "damage": "2d8",
+        "damage_type": "necrotic",
+        "special": "30 ft cone. Half damage on successful DC 16 CON save; failed save causes Poisoned for 1 round.",
+        "audio": "hlw_corruption_wave",
+        "applies_condition": "poisoned",
+        "save": "CON",
+        "dc": 16,
+        "half_on_success": true
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Corruption Field",
+        "description": "Permanent 60 ft radius. Creatures starting turn inside take 1d4 necrotic (CON save DC 14 negates). Organic matter degrades; plants die, water darkens, stone becomes brittle.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Regeneration",
+        "description": "Regains 10 HP at start of each turn. Radiant damage or Veil Ward suppresses for 1 round.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Siege Monster",
+        "description": "Deals double damage to structures and objects.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Massive",
+        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft × 15 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Reality Crush",
+        "description": "20 ft radius centered on veilrender: DEX save DC 16. Failure: 4d8 force and prone; success: half damage, not prone. Ground cracks and structures collapse.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Corruption Pulse",
+        "description": "60 ft radius: CON save DC 16. Failure: 3d6 necrotic and Stage 1 Hollowed; success: half, no Hollowed.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Absorb Magic",
+        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost × 3. Radiant spells bypass this.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "wrack",
+      "corruption_aura": 60,
+      "resonance_on_death": 3,
+      "veil_effect": "Sound doesn't travel correctly in 60 ft radius. Voices sound distant. Your own voice sounds muffled. Acoustic space is rewritten.",
+      "vulnerable_to": [
+        "radiant",
+        "divine_intervention",
+        "veil_ward_artifacts"
+      ]
+    },
+    "behavior": {
+      "tactics": "Advances 100 yards per day converting territory. In combat stands ground and uses area denial. Radiant damage or Veil Ward suppresses regeneration.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary_with_drift",
+      "environment": [
+        "Ashmark front",
+        "corrupted territories"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A subsonic hum builds over minutes until your own voice sounds far away. A building-sized mass advances through an area where every sound arrives wrong.",
+      "attack_cue": "A vast thud presses down as the mass falls forward. The air muffles your scream.",
+      "wounded_cue": "A crack snaps across its surface, followed by a low grinding sound as the gap seals again.",
+      "death_cue": "A deep groan swallows the field. Silence hangs over the hollow it leaves in the earth.",
+      "ambient_cue": "A low hum presses beneath conversation. Your companion’s voice sounds distant at arm’s length."
+    },
+    "audio": {
+      "ambient": "HLW-002 heavy subsonic drone and acoustic distortion",
+      "attack": "massive impact and corruption wave",
+      "hit": "dull thud on immense mass",
+      "death": "implosion, silence, then returning sound",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_veilrender",
+    "xp_reward": 700,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
   }
 ]

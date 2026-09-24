@@ -307,7 +307,7 @@
     "rarity": "rare",
     "source": "Condensed from a Hollow Weaver's unraveling; purify first.",
     "weight": 0.1,
-    "description": "A bead of nothing that the eye keeps sliding off of."
+    "description": "A bead of nothing that hums from the wrong side of your palm; the eye keeps sliding off it."
   },
   {
     "id": "hollow_shard",
@@ -337,7 +337,7 @@
     "rarity": "rare",
     "source": "Shed by a Veilrender as the Veil tears.",
     "weight": 0.2,
-    "description": "A glassy splinter that shows a wrong sky when held to the eye."
+    "description": "A glassy splinter that chimes like wind across a far sky; held to the eye, it shows that sky wrong."
   },
   {
     "id": "veilrender_carapace",
@@ -547,7 +547,7 @@
     "rarity": "rare",
     "source": "A scrap of torn Veil, painstakingly wound onto a spindle before it unravels.",
     "weight": 0.1,
-    "description": "A thread of nothing that the eye slides off; it weighs less than it should."
+    "description": "A thread of nothing that whispers as it unwinds; it weighs less than it should."
   },
   {
     "id": "living_stone",
@@ -878,5 +878,65 @@
     "source": "Harvested from Thunderbird.",
     "weight": 0.2,
     "description": "A heavy egg that thrums like distant thunder."
+  },
+  {
+    "id": "dissolution_membrane",
+    "name": "Dissolution Membrane",
+    "category": "hollow_residue",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Recovered from a Mawling; requires expert Crafting and trained Arcana to harvest.",
+    "weight": 0.2,
+    "description": "A wet rasp sounds when the membrane is unfolded; its edges dissolve exposed fibers."
+  },
+  {
+    "id": "corrupted_armor_fragments",
+    "name": "Corrupted Armor Fragments",
+    "category": "metal",
+    "tier": 3,
+    "rarity": "uncommon",
+    "source": "Recovered from a Hollowed Knight; purification yields high-grade steel.",
+    "weight": 0.8,
+    "description": "Armor scraps clatter with a hollow ring and smell of scorched iron."
+  },
+  {
+    "id": "remnant_identity",
+    "name": "Remnant Identity",
+    "category": "arcane",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Extracted from a Hollowed Knight with trained Arcana.",
+    "weight": 0.1,
+    "description": "A faint remembered voice whispers from the remnant; useful for memory extraction or soul peace."
+  },
+  {
+    "id": "salvageable_weapon",
+    "name": "Salvageable Weapon",
+    "category": "metal",
+    "tier": 3,
+    "rarity": "uncommon",
+    "source": "Tainted weapon recovered from a Hollowed Knight for purification.",
+    "weight": 2.0,
+    "description": "Its blade rings dully and smells of old ash; purification yields a standard martial weapon."
+  },
+  {
+    "id": "corruption_saturated_stone",
+    "name": "Corruption-Saturated Stone",
+    "category": "stone",
+    "tier": 3,
+    "rarity": "uncommon",
+    "source": "Recovered from a Veilrender; cannot be purified and serves Hollow research.",
+    "weight": 1.0,
+    "description": "A low hum rises from the stone, followed by the smell of wet earth."
+  },
+  {
+    "id": "wrack_core_large",
+    "name": "Wrack Core (Large)",
+    "category": "hollow_residue",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Recovered from a Veilrender with expert Crafting; purify before use.",
+    "weight": 1.0,
+    "description": "A deep pulse sounds within this heavy core, more potent than a knight’s wrack core."
   }
 ]

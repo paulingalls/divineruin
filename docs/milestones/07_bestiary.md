@@ -119,6 +119,8 @@ An attack's rider poison damage stays in `special`, while `damage` records its b
 
 **Inputs:** M7.1 (creature stat block schema with Hollow extensions), Phase 3 (Magic — Resonance system for resonance_on_death interaction).
 
+The catalog now includes Shadeling, Hollowmoth, Mawling, Hollow Weaver, Hollowed Knight, and Veilrender. The four newly added Rend and Wrack rows carry their spec stats, Hollow properties, narrated abilities, and spec loot tables. The Hollowed Knight catalog table is separate from its existing encounter reward table. Only an attack can carry `escape_dc`, so Mawling's Lunge active is also authored as a grapple attack; its Recharge 5-6 stays in `special`, which no engine reads yet. Combat resolution for the remaining special mechanics and the three Tier 4 creatures is still pending.
+
 **Deliverables:**
 - 9 Hollow creatures with full stat blocks and special mechanics:
   - Tier 1-2 (combat troops): Shadeling, Hollowmoth, Mawling, Hollow Weaver
