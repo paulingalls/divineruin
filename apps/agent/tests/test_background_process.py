@@ -339,7 +339,13 @@ class TestGodWhisperFlow:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "kaelen", "reason": "valor"},
+                payload={
+                    "new_level": 25,
+                    "last_whisper_level": 0,
+                    "patron_id": "kaelen",
+                    "reason": "valor",
+                    "amount": 5,
+                },
             )
         ]
         bg._handle_events(events)
@@ -356,7 +362,7 @@ class TestGodWhisperFlow:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "kaelen"},
+                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "kaelen", "amount": 5},
             )
         ]
         bg._handle_events(events)
@@ -369,7 +375,7 @@ class TestGodWhisperFlow:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "syrath"},
+                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "syrath", "amount": 5},
             )
         ]
         bg._handle_events(events)
@@ -382,7 +388,7 @@ class TestGodWhisperFlow:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 50, "last_whisper_level": 25, "patron_id": "veythar"},
+                payload={"new_level": 50, "last_whisper_level": 25, "patron_id": "veythar", "amount": 5},
             )
         ]
         bg._handle_events(events)
@@ -412,7 +418,7 @@ class TestGodWhisperFlow:
             events = [
                 GameEvent(
                     event_type=E.DIVINE_FAVOR_CHANGED,
-                    payload={"new_level": 25, "last_whisper_level": 0, "patron_id": deity_id},
+                    payload={"new_level": 25, "last_whisper_level": 0, "patron_id": deity_id, "amount": 5},
                 )
             ]
             bg._handle_events(events)
