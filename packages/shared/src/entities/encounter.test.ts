@@ -158,7 +158,7 @@ describe("enemy action resolution shapes", () => {
   // valid save/dc, so only the damage check can throw here.
   test("half_on_success without damage is refused", () => {
     expect(() => validateEncounterActionShape(actionShapes.invalid_half_without_damage!)).toThrow(
-      "needs damage",
+      "half_on_success needs non-zero 'damage'",
     );
   });
 });

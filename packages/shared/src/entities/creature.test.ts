@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test";
 import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
 import { REGION_IDS } from "./region";
+import { CONDITION_NAMES, RESISTANCE_TAG_VALUES } from "./encounter";
 
 type Case = {
   name: string;
   block: Record<string, unknown>;
   expected?: string[];
   spec_derived?: string;
+  field?: string;
 };
 const corpus = parseCreatureJson(
   await Bun.file(new URL("../../fixtures/creature_blocks.json", import.meta.url)).text(),
@@ -14,6 +16,8 @@ const corpus = parseCreatureJson(
   valid: Case[];
   invalid: Case[];
   region_ids: string[];
+  condition_names: string[];
+  resistance_tags: string[];
 };
 const catalog = (await Bun.file(
   new URL("../../../../content/loot_tables.json", import.meta.url),
@@ -24,6 +28,14 @@ test("canonical region ids match the shared corpus", () => {
   expect(new Set(corpus.region_ids).size).toBe(7);
   expect([...REGION_IDS] as string[]).toEqual(corpus.region_ids);
 });
+test("combat vocabularies match the Python corpus", () => {
+  expect(corpus.condition_names.length).toBe(22);
+  expect(corpus.resistance_tags.length).toBe(7);
+  expect(([...CONDITION_NAMES] as string[]).sort()).toEqual([...corpus.condition_names].sort());
+  expect(([...RESISTANCE_TAG_VALUES] as string[]).sort()).toEqual(
+    [...corpus.resistance_tags].sort(),
+  );
+});
 
 function checkCorpus(valid: Case[], invalid: Case[]): void {
   for (const name of [
@@ -32,9 +44,21 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
     "unknown_region",
     "missing_home_region",
     "unknown_home_region",
+    "unknown_active_kind",
+    "mark_with_damage",
+    "condition_without_save",
+    "condition_without_dc",
+    "unknown_condition",
+    "half_without_damage",
+    "grapple_without_escape_dc",
+    "unknown_resistance_tag",
+    "signature_without_name",
+    "signature_without_description",
   ])
     expect(invalid.some((row) => row.name === name)).toBe(true);
   expect(valid.length).toBeGreaterThan(0);
+  for (const name of ["all_combat_fields", "legacy_no_combat_fields"])
+    expect(valid.some((row) => row.name === name)).toBe(true);
   expect(invalid.length).toBeGreaterThan(0);
   const derived = valid.filter((row) => row.spec_derived);
   expect(derived.length).toBeGreaterThan(0);
@@ -52,6 +76,7 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
   }
   for (const row of invalid) {
     expect(row.expected?.length).toBeGreaterThan(0);
+    if (row.field) for (const reason of row.expected!) expect(reason).toContain(row.field);
     expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
   }
 }

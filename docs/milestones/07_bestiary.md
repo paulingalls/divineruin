@@ -18,7 +18,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
 **Material gaps:**
-- **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block must add optional `role` field (Minion/Standard/Elite/Boss/Named) and Boss-only `signature_ability` + `legendary_actions[]` fields for the Phase-7 catalog. M4.7 already derives roles from authored templates; M7.1 must give that data a typed catalog home.
+- **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block still needs optional `role` (Minion/Standard/Elite/Boss/Named) and Boss-only `legendary_actions[]` for the Phase-7 catalog. Optional `signature_ability` now has a typed catalog home; M4.7 already derives roles from authored templates.
 - **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** the earlier milestone count claimed "38+ natural creatures" and named Ashmark Soldier and Cult Acolyte. The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and lacks those two stat blocks. The milestone count now matches the spec. Ashmark Soldier and Ashmark Sergeant ship in `content/encounter_templates.json` (`ashmark_patrol`); Cultist, Cult Fanatic, and Cult Leader ship there in `cult_cell`. Cult Acolyte still lacks a stat block. All 19 natural rows now ship in the Phase-7 catalog; the encounter builder remains unbuilt.
 - **M7.3 can now proceed:** Phase 3 Resonance shipped after the Sprint-002 audit. `apply_corruption_aura` and `resolve_resonance_on_death` remain absent from the Phase-7 creature mechanics.
 - **M7.4 `build_encounter` signature in flux (decision `m7-4-build-encounter-signature`):** spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Capstone records both forms; final choice belongs to Phase 7 M7.4; M4.7 already shipped. `_start_combat_impl(context, encounter_id, …)` at `apps/agent/combat_init.py:55` consumes pre-authored templates; the retired DM `start_combat` name is replaced by `enter_mode`. It does not generate or compose creatures.
@@ -46,6 +46,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
+- Optional combat fields: attacks may carry `properties[]`, `applies_condition`, `save`, `dc`, `half_on_success`, and `escape_dc`; actives may carry `kind` (`command` or `accusation`) and `properties[]`; a creature may carry `signature_ability` (`name`, `description`) and `resistance_tags[]`. Present fields use combat entry validation in both language contracts. Existing catalog rows require none of these fields; Sprint 63 backfills encounter references and M34 owns natural rows.
 
 **Acceptance criteria:**
 - [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->
