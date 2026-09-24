@@ -262,6 +262,9 @@ class PartyLifecycle:
     def current_generation(self, identity: str) -> int | None:
         return self._live.get(identity)
 
+    def is_live(self, identity: str) -> bool:
+        return identity in self._live
+
     def is_authorized(self, identity: str, generation: int) -> bool:
         return (
             identity != self.userdata.departing_player_id

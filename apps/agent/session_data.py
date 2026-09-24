@@ -329,6 +329,14 @@ class SessionData:
     def has_companion(self) -> bool:
         return self.companion is not None and self.companion.is_present
 
+    def ally_present_for(self, actor_id: str) -> bool:
+        if self.has_companion:
+            return True
+        owner = self.multiplayer_owner
+        return owner is not None and any(
+            member_id != actor_id and owner.lifecycle.is_live(member_id) for member_id in self.party.member_ids
+        )
+
     @property
     def companion_can_act(self) -> bool:
         return self.companion is not None and self.companion.is_present and self.companion.is_conscious

@@ -6,6 +6,7 @@ All resolution functions accept an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
+from _gods_content import load_gods
 from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -66,6 +67,7 @@ class SkillCheckResult:
     # defaulted so existing packets stay valid. story-003 reads this to remove + persist the
     # condition. Empty when the roller had no applicable beneficial condition.
     consumed_conditions: tuple[str, ...] = ()
+    gift_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -312,6 +314,8 @@ def _resolve_skill_check_impl(
     skill: str,
     dc: int,
     rng: random.Random | None = None,
+    *,
+    ally_present: bool,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     attr = SKILLS.get(skill_lower)
@@ -341,6 +345,17 @@ def _resolve_skill_check_impl(
     else:
         bonus, consumed = roll_bonus_dice(effects, "check", rng=rng)
 
+    gift_name = None
+    if (
+        ally_present
+        and not _check_auto_fail(dc, tier)
+        and (player_data.get("divine_favor") or {}).get("patron") == "aelora"
+    ):
+        gift = next(row["layer_1_gift"] for row in load_gods() if row["god_id"] == "aelora")
+        if gift["status"] == "active" and gift["mechanics"]["requires"] == "ally_present":
+            bonus += gift["mechanics"]["amount"]
+            gift_name = gift["name"]
+
     check = resolve_check(
         score,
         level,
@@ -364,6 +379,7 @@ def _resolve_skill_check_impl(
         dramatic=check.dramatic,
         context=check.context,
         consumed_conditions=consumed,
+        gift_name=gift_name,
     )
 
 
@@ -372,8 +388,10 @@ def resolve_skill_check(
     skill: str,
     difficulty: str,
     rng: random.Random | None = None,
+    *,
+    ally_present: bool,
 ) -> SkillCheckResult:
-    return _resolve_skill_check_impl(player_data, skill, dc_for_tier(difficulty), rng)
+    return _resolve_skill_check_impl(player_data, skill, dc_for_tier(difficulty), rng, ally_present=ally_present)
 
 
 def resolve_skill_check_dc(
@@ -381,13 +399,15 @@ def resolve_skill_check_dc(
     skill: str,
     dc: int,
     rng: random.Random | None = None,
+    *,
+    ally_present: bool,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
     Use when the DC is stored as a number (e.g. hidden element DCs)
     rather than a difficulty tier string.
     """
-    return _resolve_skill_check_impl(player_data, skill, dc, rng)
+    return _resolve_skill_check_impl(player_data, skill, dc, rng, ally_present=ally_present)
 
 
 # --- Skill advancement ---

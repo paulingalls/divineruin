@@ -89,7 +89,9 @@ async def _check_gather_impl(
     if dc is None:
         raise ToolError(f"No gathering DC for region {region!r}.")
 
-    roll = check_resolution.resolve_skill_check_dc(player, skill, dc, rng)
+    roll = check_resolution.resolve_skill_check_dc(
+        player, skill, dc, rng, ally_present=session.ally_present_for(player_id)
+    )
     resource_table = {rarity: tuple(ids) for rarity, ids in (resource_table_raw or {}).items()}
     result = gathering.resolve_gathering(
         material_type=mat,
@@ -194,5 +196,6 @@ async def _check_gather_impl(
             "total": roll.total,
             "dc": result.dc,
             "margin": result.margin,
+            **({"gift_name": roll.gift_name} if roll.gift_name else {}),
         }
     )

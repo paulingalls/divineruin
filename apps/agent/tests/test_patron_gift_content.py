@@ -7,7 +7,7 @@ from _gods_content import load_gods
 EXPECTED_GIFTS = {
     "veythar": ("short_rest", "awaits_rest"),
     "kaelen": ("per_encounter", "awaits_binding"),
-    "aelora": ("always", "awaits_binding"),
+    "aelora": ("always", "active"),
     "syrath": ("short_rest", "awaits_rest"),
     "mortaen": ("always", "narrated"),
     "thyra": ("always", "awaits_terrain"),
@@ -37,8 +37,11 @@ def validate_gifts(rows):
         assert "layer_1_gift" in row, row["god_id"]
         gift = row["layer_1_gift"]
         assert isinstance(gift, dict), row["god_id"]
-        assert set(gift) == GIFT_FIELDS, row["god_id"]
-        assert all(isinstance(value, str) and value.strip() for value in gift.values()), row["god_id"]
+        expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] == "aelora" else set())
+        assert set(gift) == expected_fields, row["god_id"]
+        assert all(isinstance(gift[field], str) and gift[field].strip() for field in GIFT_FIELDS), row["god_id"]
+        if row["god_id"] == "aelora":
+            assert gift["mechanics"] == {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
         assert (gift["recharge"], gift["status"]) == EXPECTED_GIFTS[row["god_id"]]
         gift_ids.append(gift["id"])
     assert len(gift_ids) == len(set(gift_ids))
@@ -68,6 +71,11 @@ def test_every_patron_has_authored_layer_1_gift():
         "assigned_recharge",
         "assignment",
         "gift_id",
+        "missing_mechanics",
+        "wrong_kind",
+        "wrong_amount",
+        "wrong_requires",
+        "extra_mechanics",
     ],
 )
 def test_gift_validator_rejects_defects(defect):
@@ -94,5 +102,12 @@ def test_gift_validator_rejects_defects(defect):
         rows[0]["layer_1_gift"]["status"] = "active"
     elif defect == "gift_id":
         rows[0]["layer_1_gift"]["id"] = rows[1]["layer_1_gift"]["id"]
+    elif defect == "missing_mechanics":
+        del next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]
+    elif defect in {"wrong_kind", "wrong_amount", "wrong_requires"}:
+        mechanics = next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]
+        mechanics[{"wrong_kind": "kind", "wrong_amount": "amount", "wrong_requires": "requires"}[defect]] = "wrong"
+    elif defect == "extra_mechanics":
+        rows[0]["layer_1_gift"]["mechanics"] = {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
     with pytest.raises(AssertionError):
         validate_gifts(rows)

@@ -196,7 +196,9 @@ async def run_luna_case(case) -> dict[str, Any]:
             resolve = check_resolution.resolve_skill_check_dc
             roll_context = patch(
                 "check_resolution.resolve_skill_check_dc",
-                side_effect=lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+                side_effect=lambda player, skill, dc, rng=None, *, ally_present: resolve(
+                    player, skill, dc, FixedRng(20), ally_present=ally_present
+                ),
             )
         with (
             roll_context,

@@ -118,7 +118,7 @@ class TestResolversTolerateJsonNullConditions:
 
         player = {"attributes": self._ATTRS, "level": 3, "conditions": None}
         # No crash; returns a result (rng-free path is fine — we assert it doesn't raise).
-        result = resolve_skill_check_dc(player, "athletics", 10)
+        result = resolve_skill_check_dc(player, "athletics", 10, ally_present=False)
         assert result is not None
 
     def test_resolve_saving_throw_tolerates_null(self):
