@@ -124,8 +124,8 @@ wt_expected_env() {
   WT_OFFSET="$(wt_select_offset "$offset")" || return 1
   offset="$WT_OFFSET"
   wt_derive_ports "$offset"
-  DATABASE_URL="postgresql://divineruin:divineruin_dev@localhost:${POSTGRES_HOST_PORT}/divineruin"
-  REDIS_URL="redis://localhost:${VALKEY_HOST_PORT}"
+  DATABASE_URL="postgresql://divineruin:divineruin_dev@127.0.0.1:${POSTGRES_HOST_PORT}/divineruin"
+  REDIS_URL="redis://127.0.0.1:${VALKEY_HOST_PORT}"
   export WT_OFFSET POSTGRES_HOST_PORT VALKEY_HOST_PORT COMPOSE_PROJECT_NAME DATABASE_URL REDIS_URL
 }
 
@@ -152,19 +152,34 @@ wt_url_endpoint() {
   python3 -c 'from urllib.parse import urlparse; import sys; u=urlparse(sys.argv[1]); print("{}\t{}\t{}".format(u.scheme,u.hostname or "",u.port or sys.argv[2]))' "$1" "$2"
 }
 
+wt_replacement_url() {  # <scheme> <url> <port>
+  python3 - "$1" "$2" "$3" <<'PYURL'
+from urllib.parse import urlsplit, urlunsplit
+import sys
+scheme, value, port = sys.argv[1:]
+try:
+    parsed = urlsplit(value)
+except ValueError:
+    parsed = urlsplit("")
+userinfo = parsed.netloc.rpartition("@")[0]
+authority = f"{userinfo}@" if userinfo else ""
+print(urlunsplit((scheme, f"{authority}127.0.0.1:{port}", parsed.path, parsed.query, parsed.fragment)))
+PYURL
+}
+
 wt_validate_runtime_values() {
   local db_url="${1:-}" redis_url="${2:-}" endpoint
   if [ -n "$db_url" ]; then
     endpoint="$(wt_url_endpoint "$db_url" 5432 2>/dev/null || true)"
-    if [ "$endpoint" != $'postgresql\tlocalhost\t'"$POSTGRES_HOST_PORT" ]; then
-      wt_die "runtime DATABASE_URL=$db_url conflicts with checkout $WT_CHECKOUT_ID; expected PostgreSQL at localhost:$POSTGRES_HOST_PORT. Preserve the data, correct the caller environment, then retry."
+    if [ "$endpoint" != $'postgresql\t127.0.0.1\t'"$POSTGRES_HOST_PORT" ]; then
+      wt_die "runtime DATABASE_URL=$db_url conflicts with checkout $WT_CHECKOUT_ID; replace with DATABASE_URL=$(wt_replacement_url postgresql "$db_url" "$POSTGRES_HOST_PORT"). Preserve the data, correct the caller environment, then retry."
       return 1
     fi
   fi
   if [ -n "$redis_url" ]; then
     endpoint="$(wt_url_endpoint "$redis_url" 6379 2>/dev/null || true)"
-    if [ "$endpoint" != $'redis\tlocalhost\t'"$VALKEY_HOST_PORT" ]; then
-      wt_die "runtime REDIS_URL=$redis_url conflicts with checkout $WT_CHECKOUT_ID; expected Redis at localhost:$VALKEY_HOST_PORT. Preserve the data, correct the caller environment, then retry."
+    if [ "$endpoint" != $'redis\t127.0.0.1\t'"$VALKEY_HOST_PORT" ]; then
+      wt_die "runtime REDIS_URL=$redis_url conflicts with checkout $WT_CHECKOUT_ID; replace with REDIS_URL=$(wt_replacement_url redis "$redis_url" "$VALKEY_HOST_PORT"). Preserve the data, correct the caller environment, then retry."
       return 1
     fi
   fi
@@ -192,12 +207,12 @@ wt_validate_settings() {
   redis_url="$(wt_env_value REDIS_URL "$file" 2>/dev/null || true)"
   db_endpoint="$(wt_url_endpoint "$db_url" 5432 2>/dev/null || true)"
   redis_endpoint="$(wt_url_endpoint "$redis_url" 6379 2>/dev/null || true)"
-  if [ "$db_endpoint" != $'postgresql\tlocalhost\t'"$POSTGRES_HOST_PORT" ]; then
-    wt_die "DATABASE_URL conflicts with checkout $WT_CHECKOUT_ID and its owned Postgres endpoint localhost:$POSTGRES_HOST_PORT. Preserve the data, correct $file, then retry."
+  if [ "$db_endpoint" != $'postgresql\t127.0.0.1\t'"$POSTGRES_HOST_PORT" ]; then
+    wt_die "DATABASE_URL conflicts with checkout $WT_CHECKOUT_ID and its owned Postgres endpoint 127.0.0.1:$POSTGRES_HOST_PORT; replace with DATABASE_URL=$(wt_replacement_url postgresql "$db_url" "$POSTGRES_HOST_PORT"). Preserve the data, correct $file, then retry."
     return 1
   fi
-  if [ "$redis_endpoint" != $'redis\tlocalhost\t'"$VALKEY_HOST_PORT" ]; then
-    wt_die "REDIS_URL conflicts with checkout $WT_CHECKOUT_ID and its owned Valkey endpoint localhost:$VALKEY_HOST_PORT. Preserve the data, correct $file, then retry."
+  if [ "$redis_endpoint" != $'redis\t127.0.0.1\t'"$VALKEY_HOST_PORT" ]; then
+    wt_die "REDIS_URL conflicts with checkout $WT_CHECKOUT_ID and its owned Valkey endpoint 127.0.0.1:$VALKEY_HOST_PORT; replace with REDIS_URL=$(wt_replacement_url redis "$redis_url" "$VALKEY_HOST_PORT"). Preserve the data, correct $file, then retry."
     return 1
   fi
   for key in POSTGRES_HOST_PORT VALKEY_HOST_PORT; do

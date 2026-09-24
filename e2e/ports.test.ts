@@ -71,8 +71,8 @@ test("Playwright binds and builds against this checkout's API", () => {
     E2E_APP_PORT: "14002",
     E2E_WEB_PORT: "14003",
     E2E_LH_DEBUG_PORT: "14004",
-    DATABASE_URL: "postgresql://test@localhost:60001/test",
-    REDIS_URL: "redis://localhost:60002",
+    DATABASE_URL: "postgresql://test@127.0.0.1:60001/test",
+    REDIS_URL: "redis://127.0.0.1:60002",
   };
   const source = `const c = (await import(${JSON.stringify(join(root, "playwright.config.ts"))})).default; console.log(JSON.stringify(c.webServer));`;
   const result = Bun.spawnSync({
