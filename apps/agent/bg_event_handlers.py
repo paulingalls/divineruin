@@ -53,6 +53,7 @@ def _queue(
     *,
     combat_safe: bool = False,
     recipient_id: str | None = None,
+    is_displeasure: bool = False,
 ) -> None:
     speech_queue.append(
         PendingSpeech(
@@ -61,6 +62,7 @@ def _queue(
             stinger_sound=stinger_sound,
             combat_safe=combat_safe,
             recipient_id=recipient_id,
+            is_displeasure=is_displeasure,
         )
     )
 
@@ -241,7 +243,11 @@ def handle_events(
                 continue
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
-            if should_trigger_whisper(new_level, last_whisper):
+            amount = ev.payload["amount"]
+            if amount < 0 and ev.payload.get("reason") != "neglect" and not sd.displeasure_whisper_queued:
+                queue_god_whisper(ev.payload, sd, speech_queue, displeasure=True)
+                sd.displeasure_whisper_queued = True
+            elif amount > 0 and should_trigger_whisper(new_level, last_whisper):
                 queue_god_whisper(ev.payload, sd, speech_queue)
 
         elif ev.event_type == E.HIDDEN_REVEALED:
@@ -258,11 +264,23 @@ def queue_god_whisper(
     payload: dict,
     sd: SessionData,
     speech_queue: list[PendingSpeech],
+    *,
+    displeasure: bool = False,
 ) -> None:
     """Build god-specific whisper instructions and queue as CRITICAL."""
     patron_id = payload.get("patron_id") or sd.party.primary.patron_id
     profile = get_god_profile(patron_id)
+    if displeasure and not profile.displeasure_prompt:
+        raise ValueError(f"No displeasure_prompt for patron {patron_id}")
     context = payload.get("reason", "")
+    # The authored line names one sin but a god has several contrary acts, so it models the
+    # voice rather than being read verbatim over the wrong act.
+    god_instruction = (
+        "The god is displeased by the act named in Context. Model the god's words on this line, "
+        f'fitted to that act: "{profile.displeasure_prompt}" '
+        if displeasure
+        else ""
+    )
     instructions = (
         "Something shifts. The air thickens. Sound stops — not fades, stops, as if the world "
         "has held its breath. For a heartbeat, everything is impossibly still.\n\n"
@@ -271,6 +289,7 @@ def queue_god_whisper(
         f"Then the god speaks. Use [{profile.voice_character}, {profile.voice_emotion}] tag. "
         f"Speaking style: {profile.speaking_style}. "
         f"{profile.personality_prompt}\n\n"
+        f"{god_instruction}"
         "Two sentences from the god. Short. Weighted. Ancient perspective. "
         f"{f'Context: {context}. ' if context else ''}"
         "Then silence returns like a wave breaking, and the world resumes."
@@ -290,4 +309,5 @@ def queue_god_whisper(
         instructions,
         stinger_sound=profile.stinger_sound,
         recipient_id=sd.primary_player_id,
+        is_displeasure=displeasure,
     )

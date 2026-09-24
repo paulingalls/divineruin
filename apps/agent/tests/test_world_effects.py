@@ -369,7 +369,7 @@ class TestGodWhisper:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "veythar"},
+                payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "veythar", "amount": 5},
             )
         ]
         bg._handle_events(events)
@@ -383,7 +383,7 @@ class TestGodWhisper:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "veythar"},
+                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "veythar", "amount": 5},
             )
         ]
         bg._handle_events(events)
@@ -396,7 +396,7 @@ class TestGodWhisper:
         events = [
             GameEvent(
                 event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "veythar"},
+                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "veythar", "amount": 5},
             )
         ]
         bg._handle_events(events)

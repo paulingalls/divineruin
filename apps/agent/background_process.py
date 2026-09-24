@@ -316,7 +316,7 @@ class BackgroundProcess:
         logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
 
         # Mark last_whisper_level after delivering (deferred from critical path)
-        if top.stinger_sound is not None:
+        if top.stinger_sound is not None and not top.is_displeasure:
             try:
                 favor = await db_activity_queries.get_divine_favor(self._sd.primary_player_id)
                 if favor:

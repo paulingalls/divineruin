@@ -102,6 +102,7 @@ class SessionData:
     companion: CompanionState | None = None
     patron_id: str = "none"
     favor_loss: tuple[str, int] | None = None
+    displeasure_whisper_queued: bool = False
     creation_state: CreationState | None = None
     onboarding_beat: int | None = None
     pre_combat_agent_type: str | None = None
