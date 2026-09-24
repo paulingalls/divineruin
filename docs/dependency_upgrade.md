@@ -69,6 +69,7 @@ Release age policy: 604800 seconds.
 | apps/mobile | dependencies | expo | `57.0.24` | 57.0.24 / 57.0.24 | 57.0.24 | 57.0.24 | Current |
 | apps/mobile | dependencies | expo-asset | `57.0.18` | 57.0.18 / 57.0.18 | 57.0.18 | 57.0.18 | Current |
 | apps/mobile | dependencies | expo-audio | `57.0.5` | 57.0.5 / 57.0.5 | 57.0.5 | 57.0.5 | Current |
+| apps/mobile | dependencies | expo-build-properties | `57.0.21` | 57.0.21 / 57.0.21 | 57.0.21 | 57.0.21 | Added on 2026-09-23 after the Sprint 102 snapshot so Expo SDK 57 builds adopt the iOS 27 scene lifecycle. |
 | apps/mobile | dependencies | expo-crypto | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
 | apps/mobile | dependencies | expo-dev-client | `57.0.19` | 57.0.19 / 57.0.19 | 57.0.19 | 57.0.19 | Current |
 | apps/mobile | dependencies | expo-device | `57.0.2` | 57.0.2 / 57.0.2 | 57.0.2 | 57.0.2 | Current |
@@ -147,7 +148,7 @@ Release age policy: 604800 seconds.
 
 - Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
 - Platform minimums: Android 7+ (compile/target SDK 36/36); iOS 16.4+; Xcode 26.4+.
-- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-audio, expo-secure-store, expo-asset, expo-image.
+- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-build-properties, expo-audio, expo-secure-store, expo-asset, expo-image.
 - Patch files: none.
 
 | Git dependency | Requested | Locked commit |

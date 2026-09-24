@@ -1,3 +1,8 @@
+import {
+  createRealOwnedSimulatorDeps,
+  resolveOwnedSimulator,
+} from "../apps/mobile/scripts/owned-simulator";
+
 export interface SimulatorDevice {
   udid?: string;
   name?: string;
@@ -7,6 +12,7 @@ export interface SimulatorDevice {
 
 export interface GateDeps {
   env: Record<string, string | undefined>;
+  resolveOwnedSimulator: (requestedUdid?: string) => Promise<string>;
   runSimctl: () => Promise<string>;
   runAdb: () => Promise<string>;
   probeRequestedIos: (udid: string) => Promise<boolean>;
@@ -68,12 +74,16 @@ export function requestedDeviceIsBooted(devices: SimulatorDevice[], udid: string
 
 export async function runGate(deps: GateDeps): Promise<GateResult> {
   const strict = deps.env.REQUIRE_EMULATOR === "1";
-  const requestedUdid = deps.env.IOS_SIMULATOR_UDID?.trim();
+  let requestedUdid = deps.env.IOS_SIMULATOR_UDID;
   const flows = [...OFFLINE_SAFE_FLOWS];
   if (deps.env.REQUIRE_BACKEND === "1") flows.push(...BACKEND_REQUIRED_FLOWS);
 
-  if (strict && !requestedUdid) {
-    return failure("REQUIRE_EMULATOR=1 requires IOS_SIMULATOR_UDID");
+  if (strict || requestedUdid !== undefined) {
+    try {
+      requestedUdid = await deps.resolveOwnedSimulator(requestedUdid);
+    } catch (error) {
+      return failure(error instanceof Error ? error.message : String(error));
+    }
   }
 
   if (requestedUdid) {
@@ -94,18 +104,12 @@ export async function runGate(deps: GateDeps): Promise<GateResult> {
       const diagnostics = [ios.diagnostic, android.diagnostic].filter((value): value is string =>
         Boolean(value),
       );
-      if (strict) {
-        return failure(
-          diagnostics.length > 0
-            ? `No device is available:\n  - ${diagnostics.join("\n  - ")}`
-            : "REQUIRE_EMULATOR=1 found no available device",
-        );
-      }
       return {
         exitCode: 0,
         stdout:
           "Maestro acceptance: skipped (no booted iOS simulator or attached Android device). " +
-          "Set REQUIRE_EMULATOR=1 and IOS_SIMULATOR_UDID to hard-fail.",
+          "Set REQUIRE_EMULATOR=1 to use the owned iOS simulator." +
+          diagnostics.map((diagnostic) => `\n  - ${diagnostic}`).join(""),
         stderr: "",
         maestroInvoked: false,
       };
@@ -164,8 +168,10 @@ export function createRealGateDeps(
 ): GateDeps {
   const mobileDir = `${repoRoot}/apps/mobile`;
   const maestroDir = `${mobileDir}/.maestro`;
+  const ownedDeps = createRealOwnedSimulatorDeps(repoRoot);
   return {
     env,
+    resolveOwnedSimulator: (requested) => resolveOwnedSimulator(ownedDeps, requested),
     runSimctl: () => spawnText(["xcrun", "simctl", "list", "devices"]),
     runAdb: () => spawnText(["adb", "devices"]),
     probeRequestedIos: async (udid) => requestedDeviceIsBooted(await listSimulatorDevices(), udid),

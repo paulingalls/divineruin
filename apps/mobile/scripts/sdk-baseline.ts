@@ -61,6 +61,15 @@ function stringArray(value: unknown): string[] {
     : [];
 }
 
+function hasSceneSupport(plugins: unknown[]): boolean {
+  return plugins.some(
+    (entry) =>
+      Array.isArray(entry) &&
+      entry[0] === "expo-build-properties" &&
+      record(record(entry[1]).ios).enableSceneSupport === true,
+  );
+}
+
 function verifyEslint(configs: unknown[]): void {
   if (configs.length === 0) throw new Error("evaluated ESLint config corpus is empty");
   const entries = configs.map(record);
@@ -139,11 +148,11 @@ export async function verifySdk57Baseline(options: SdkBaselineOptions): Promise<
     throw new Error("evaluated Expo config retains buildReactNativeFromSource=true");
   }
   if (
-    contains(evaluatedPlugins, (_key, value) => value === "expo-build-properties") ||
-    contains(directPlugins, (_key, value) => value === "expo-build-properties")
-  ) {
-    throw new Error("expo-build-properties remains in the plugin corpus");
-  }
+    typeof dependencies["expo-build-properties"] !== "string" ||
+    !hasSceneSupport(directPlugins) ||
+    !hasSceneSupport(evaluatedPlugins)
+  )
+    throw new Error("Expo SDK 57 requires scene support in authored and evaluated config");
 
   const eslint = await (options.loadEslintConfig ?? loadEslintConfig)(options.repoRoot);
   verifyEslint(eslint);

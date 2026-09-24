@@ -21,6 +21,7 @@ import {
   type SimulatorDevice,
 } from "../../../scripts/maestro-acceptance";
 import type { CommandResult, NativeBuildDeps } from "./verify-native-build";
+import { createRealOwnedSimulatorDeps, resolveOwnedSimulator } from "./owned-simulator";
 
 interface OwnedProcess {
   pid: number;
@@ -228,9 +229,11 @@ async function stopMetro(process: OwnedProcess): Promise<void> {
 }
 
 export function createNativeBuildDeps(repoRoot: string): NativeBuildDeps {
+  const ownedDeps = createRealOwnedSimulatorDeps(repoRoot);
   return {
     loadRootEnvironment: async (root) => parseEnv(await readFile(join(root, ".env"), "utf8")),
     requireNonemptyFile,
+    resolveOwnedSimulator: (requested) => resolveOwnedSimulator(ownedDeps, requested),
     ensureSimulator,
     probeBackend: async (url) => {
       await fetch(url, { signal: AbortSignal.timeout(5_000) });

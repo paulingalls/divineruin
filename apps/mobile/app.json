@@ -58,6 +58,14 @@
         }
       ],
       "expo-disable-pods-indexing",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ],
       "expo-audio",
       "expo-secure-store",
       "expo-asset",
