@@ -129,8 +129,6 @@ def test_every_encounter_action_is_in_its_own_block():
             if "kind" in action:
                 assert authored["kind"] == action["kind"]
                 assert action["kind"] in authored["description"].lower()
-        if "signature_ability" in source:
-            signature = source["signature_ability"]
-            assert block["signature_ability"] == signature, name
+        assert block.get("signature_ability") == source.get("signature_ability"), name
         if name == "Hollow Warden":
             assert "healing" in actions["Absorb"]["special"].lower()
