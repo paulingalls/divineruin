@@ -137,7 +137,11 @@ export default defineConfig({
   // (apps/server/src/middleware.ts), workers=4 is green.
   workers: 4,
   retries: CI ? 2 : 0,
-  timeout: 30_000,
+  // Sized for a contended machine (pre-push lanes, other checkouts, other projects'
+  // builds): under load a spec must run slower, not fail. Dev-mode Metro rebundles
+  // on every page load, and that cost grows with load. A real hang still fails.
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],
   use: {
     baseURL: APP_ORIGIN,
