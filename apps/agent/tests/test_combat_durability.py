@@ -98,6 +98,14 @@ def test_find_equipped_matches_type_and_equipped_flag():
     assert found is not None and found["id"] == "plate_armor"
 
 
+@pytest.mark.parametrize("gear_type", ["weapon", "armor", "shield"])
+def test_find_equipped_ignores_equipped_material(gear_type):
+    material = _inv_item("wolf_pelt", "material", equipped=True)
+    gear = _inv_item("real_gear", gear_type, equipped=True)
+    assert combat_durability._find_equipped([material, gear], gear_type) is gear
+    assert combat_durability._find_equipped([material], gear_type) is None
+
+
 def test_find_equipped_returns_none_when_no_match():
     inv = [_inv_item("longsword_guild", "weapon", equipped=True)]
     assert combat_durability._find_equipped(inv, "shield") is None
