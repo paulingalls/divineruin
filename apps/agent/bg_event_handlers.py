@@ -9,9 +9,9 @@ import event_types as E
 import vaelti_echo_warning
 from bg_speech import PendingSpeech, SpeechPriority
 from companion_profiles import get_companion_profile
+from companion_prompts import build_companion_cue
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from sanitize import sanitize_for_prompt
-from system_prompts import build_companion_cue
 from tool_support import _disposition_rank
 
 if TYPE_CHECKING:

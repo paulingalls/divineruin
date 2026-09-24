@@ -14,10 +14,10 @@ from background_process import BackgroundProcess
 from bg_event_handlers import CORRUPTION_COMPANION_CUES
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_profiles import get_companion_profile
+from companion_prompts import build_companion_cue
 from event_bus import GameEvent
 from onboarding_background import NUDGE_DELAY_SECONDS, ONBOARDING_NUDGES, OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
-from system_prompts import build_companion_cue
 
 COMPANION_IDS = (
     "companion_kael",
