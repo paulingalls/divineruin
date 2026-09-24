@@ -98,28 +98,41 @@ async def test_empty_search_keeps_flat_penalty():
 
 
 @pytest.mark.asyncio
-async def test_empty_search_never_spends_inspired():
-    player = {
-        **DISCOVER_PLAYER,
-        "conditions": apply_condition([], "inspired"),
-        "flags": {"secret_door.discovered": True},
-    }
-    content, queries, mutations = _make_discover_mocks(player=player)
-    condition_writes = MagicMock(remove_player_conditions=AsyncMock())
-    ctx = _make_context(location_id="test_location")
-    with patch("check_resolution.dice_roll", return_value=_roll(3)) as dice:
-        await _check_discover_impl(
-            ctx,
-            "perception",
-            "bookshelf",
-            content=content,
-            queries=queries,
-            mutations=mutations,
-            conditions_mutations=condition_writes,
-        )
-    assert dice.call_count == 1
-    condition_writes.remove_player_conditions.assert_not_awaited()
-    mutations.set_player_flag.assert_not_awaited()
+async def test_empty_search_spends_inspired_and_answers_like_a_failed_roll():
+    # Human 2026-09-24: an empty search must be indistinguishable from a failed one, so it
+    # spends Inspired too and the DM gets the same roll-shaped response.
+    inspired = {**DISCOVER_PLAYER, "conditions": apply_condition([], "inspired")}
+    empty = {**inspired, "flags": {"secret_door.discovered": True}}
+    packets, responses, events = [], [], []
+    for player in (inspired, empty):
+        content, queries, mutations = _make_discover_mocks(player=player)
+        ctx = _make_context(location_id="test_location")
+        ctx.userdata.event_bus = MagicMock()
+        condition_writes = MagicMock(remove_player_conditions=AsyncMock())
+        with patch("check_resolution.dice_roll", side_effect=[_roll(1), _roll(3)]) as dice:
+            responses.append(
+                json.loads(
+                    await _check_discover_impl(
+                        ctx,
+                        "perception",
+                        "bookshelf",
+                        content=content,
+                        queries=queries,
+                        mutations=mutations,
+                        conditions_mutations=condition_writes,
+                    )
+                )
+            )
+        assert dice.call_count == 2
+        assert condition_writes.remove_player_conditions.await_args.args[:2] == ("player_1", ("inspired",))
+        mutations.set_player_flag.assert_not_awaited()
+        packets.append(ctx.userdata.event_bus.publish.call_args_list[0].args[0].payload)
+        events.append(ctx.userdata.recent_events)
+    assert packets[0] == packets[1]
+    assert events[0] == events[1]
+    assert set(responses[0]) == set(responses[1])
+    assert responses[1]["outcome"] == "not_found"
+    assert responses[1]["dc"] == 13
 
 
 @pytest.mark.asyncio

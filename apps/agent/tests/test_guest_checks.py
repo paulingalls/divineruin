@@ -212,9 +212,18 @@ async def test_guest_discover_writes_own_fact_and_host_can_search(inspired):
     assert rows["player_1"]["flags"] == {}
     with fixed_roll(), bind(ctx):
         retry = json.loads(
-            await _check_discover_impl(ctx, "perception", "wall", content=content, queries=queries, mutations=mutations)
+            await _check_discover_impl(
+                ctx,
+                "perception",
+                "wall",
+                content=content,
+                queries=queries,
+                mutations=mutations,
+                conditions_mutations=conditions_mutations,
+            )
         )
-    assert "roll" not in retry
+    assert retry["outcome"] == "not_found"
+    assert rows["player_2"]["flags"] == {"secret.discovered": True}
     with fixed_roll():
         host_result = json.loads(
             await _check_discover_impl(ctx, "perception", "wall", content=content, queries=queries, mutations=mutations)
@@ -334,9 +343,18 @@ async def test_guest_discover_failed_roll_consumes_inspired():
     assert "player_2:perception:secret" in ctx.userdata.attempted_discoveries
     with bind(ctx), fixed_roll(15):
         retry = json.loads(
-            await _check_discover_impl(ctx, "perception", "wall", content=content, queries=queries, mutations=mutations)
+            await _check_discover_impl(
+                ctx,
+                "perception",
+                "wall",
+                content=content,
+                queries=queries,
+                mutations=mutations,
+                conditions_mutations=conditions_mutations,
+            )
         )
-    assert "roll" not in retry
+    assert retry["outcome"] == "not_found"
+    mutations.set_player_flag.assert_not_awaited()
     assert rows["player_1"]["flags"] == {}
 
 
