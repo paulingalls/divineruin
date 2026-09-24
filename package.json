@@ -1,6 +1,6 @@
 {
   "name": "divineruin",
-  "version": "0.21.2",
+  "version": "0.21.4",
   "type": "module",
   "private": true,
   "packageManager": "bun@1.4.2",
@@ -37,7 +37,7 @@
     "test:all": "bun --env-file=.env run scripts/test-all.ts",
     "docker:sweep": "bash scripts/sweep-test-containers.sh",
     "worktree:teardown": "bash scripts/teardown-worktree.sh",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "test \"$(git config --get core.hooksPath)\" = .githooks || git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

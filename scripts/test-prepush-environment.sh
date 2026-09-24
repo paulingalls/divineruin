@@ -67,8 +67,8 @@ ln -s "$ROOT/apps/agent/.venv" "$TMP/fixture/apps/agent/.venv"
 ln -s "$ROOT/apps/agent/tests" "$TMP/fixture/apps/agent/tests"
 cp "$ROOT/apps/agent/pyproject.toml" "$ROOT/apps/agent/uv.lock" "$TMP/fixture/apps/agent/"
 cat > "$TMP/fixture/.env" <<'EOF'
-DATABASE_URL=postgresql://checkout@localhost:62001/checkout
-REDIS_URL=redis://localhost:62002
+DATABASE_URL=postgresql://checkout@127.0.0.1:62001/checkout
+REDIS_URL=redis://127.0.0.1:62002
 LIVEKIT_URL=fixture-livekit-url
 LIVEKIT_API_KEY=fixture-livekit-key
 LIVEKIT_API_SECRET=fixture-livekit-secret
@@ -99,8 +99,8 @@ def pytest_configure(config):
 PY
 
 cat > "$TMP/test-env.sh" <<'EOF'
-export DATABASE_URL="postgresql://per-run@localhost:61001/per_run"
-export REDIS_URL="redis://localhost:61002"
+export DATABASE_URL="postgresql://per-run@127.0.0.1:61001/per_run"
+export REDIS_URL="redis://127.0.0.1:61002"
 touch "$PREPUSH_CASE_DIR/owned-pg" "$PREPUSH_CASE_DIR/owned-redis"
 _te_teardown() {
   local count=0
@@ -264,10 +264,10 @@ assert_argv "$S" web "bun test --cwd apps/web"
 assert_argv "$S" e2e-environment "bun test e2e/ports.test.ts e2e/require-environment.test.ts"
 assert_argv "$S" python "bun run test:python"
 assert_argv "$S" e2e "bunx playwright test --reporter=list"
-want_line "server retains per-run database" "$S/server.env" "DATABASE_URL=postgresql://per-run@localhost:61001/per_run"
-want_line "server retains per-run redis" "$S/server.env" "REDIS_URL=redis://localhost:61002"
-want_line "E2E retains per-run database" "$S/e2e.env" "DATABASE_URL=postgresql://per-run@localhost:61001/per_run"
-want_line "E2E retains per-run redis" "$S/e2e.env" "REDIS_URL=redis://localhost:61002"
+want_line "server retains per-run database" "$S/server.env" "DATABASE_URL=postgresql://per-run@127.0.0.1:61001/per_run"
+want_line "server retains per-run redis" "$S/server.env" "REDIS_URL=redis://127.0.0.1:61002"
+want_line "E2E retains per-run database" "$S/e2e.env" "DATABASE_URL=postgresql://per-run@127.0.0.1:61001/per_run"
+want_line "E2E retains per-run redis" "$S/e2e.env" "REDIS_URL=redis://127.0.0.1:61002"
 for lane in acceptance e2e; do
   for key in E2E_API_PORT E2E_APP_PORT E2E_WEB_PORT E2E_LH_DEBUG_PORT LIVEKIT_ACCEPTANCE_UDP_PORT LIVEKIT_ACCEPTANCE_CONTAINER WT_CLONE_ID WT_CHECKOUT_ID; do
     want_line "$lane receives checkout $key" "$S/$lane.env" "$key=${!key}"
@@ -290,9 +290,9 @@ for key, value in json.load(open(sys.argv[1])).items():
     print(f"{key}={value}")
 PY
 want_eq "acceptance loads checkout database" "$(grep '^DATABASE_URL=' "$S/pytest.env")" \
-  "DATABASE_URL=postgresql://checkout@localhost:62001/checkout"
+  "DATABASE_URL=postgresql://checkout@127.0.0.1:62001/checkout"
 want_eq "acceptance loads checkout redis" "$(grep '^REDIS_URL=' "$S/pytest.env")" \
-  "REDIS_URL=redis://localhost:62002"
+  "REDIS_URL=redis://127.0.0.1:62002"
 for expected in \
   LIVEKIT_URL=fixture-livekit-url LIVEKIT_API_KEY=fixture-livekit-key \
   LIVEKIT_API_SECRET=fixture-livekit-secret ANTHROPIC_API_KEY=fixture-anthropic-key \

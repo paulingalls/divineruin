@@ -237,13 +237,13 @@ def test_real_authority_rejects_explicit_foreign_dsn_before_probe(tmp_path, monk
     foreign_port = int(settings["POSTGRES_HOST_PORT"]) + 1
 
     with pytest.raises(RuntimeError, match="runtime DATABASE_URL"):
-        dbl.ensure_db_up(f"postgresql://u:p@localhost:{foreign_port}/divineruin")
+        dbl.ensure_db_up(f"postgresql://u:p@127.0.0.1:{foreign_port}/divineruin")
 
 
 def test_real_authority_rejects_foreign_redis_before_probe(tmp_path, monkeypatch):
     settings = _owned_checkout(tmp_path, monkeypatch)
     monkeypatch.setattr(dbl, "_authorize_runtime", REAL_AUTHORIZE_RUNTIME)
-    monkeypatch.setenv("REDIS_URL", f"redis://localhost:{int(settings['VALKEY_HOST_PORT']) + 1}")
+    monkeypatch.setenv("REDIS_URL", f"redis://127.0.0.1:{int(settings['VALKEY_HOST_PORT']) + 1}")
     monkeypatch.setattr(
         dbl,
         "is_reachable",
@@ -289,8 +289,8 @@ def test_compose_never_inherits_the_callers_runtime_urls(monkeypatch):
         captured.update(kwargs["env"])
         return _FakeCompleted()
 
-    monkeypatch.setenv("DATABASE_URL", "postgresql://foreign@localhost:1/db")
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:2")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://foreign@127.0.0.1:1/db")
+    monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:2")
     monkeypatch.setattr(dbl.subprocess, "run", run)
 
     dbl._compose("ps")

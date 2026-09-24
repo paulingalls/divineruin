@@ -89,15 +89,15 @@ wt_service_observation() {
   ids="$(docker ps -q \
     --filter "label=com.docker.compose.project=$project" \
     --filter "label=com.docker.compose.service=$service")" \
-    || { wt_die "running $service enumeration for project $project is unreadable; refusing endpoint localhost:$host_port."; return 1; }
+    || { wt_die "running $service enumeration for project $project is unreadable; refusing endpoint 127.0.0.1:$host_port."; return 1; }
   count="$(printf '%s\n' "$ids" | sed '/^$/d' | wc -l | tr -d ' ')"
   if [ "$count" -ne 1 ]; then
-    wt_die "project $project has $count running $service containers; expected exactly one publishing localhost:$host_port. Preserve the data and repair the owning checkout."
+    wt_die "project $project has $count running $service containers; expected exactly one publishing 127.0.0.1:$host_port. Preserve the data and repair the owning checkout."
     return 1
   fi
   id="$(printf '%s\n' "$ids" | sed -n '1p')"
   inspection="$(docker inspect "$id" 2>/dev/null)" \
-    || { wt_die "running $service container $id for project $project is unreadable; refusing endpoint localhost:$host_port."; return 1; }
+    || { wt_die "running $service container $id for project $project is unreadable; refusing endpoint 127.0.0.1:$host_port."; return 1; }
   if result="$(printf '%s' "$inspection" | python3 -c '
 import json, os, sys
 project, service, container_port, host_port, clone, checkout, root = sys.argv[1:]
@@ -144,7 +144,7 @@ except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
     status=$?
   fi
   if [ "$status" -ne 0 ]; then
-    wt_die "project $project cannot authorize localhost:$host_port from running $service container $id: ${result:-malformed Docker inspection}. Preserve the data and repair the owning checkout."
+    wt_die "project $project cannot authorize 127.0.0.1:$host_port from running $service container $id: ${result:-malformed Docker inspection}. Preserve the data and repair the owning checkout."
     return 1
   fi
 }

@@ -372,6 +372,8 @@ settings_authority() {  # the real CLI, in a fixture checkout, with no ambient s
     cd "$settings_root" && bash "$SCRIPT_DIR/worktree-common.sh" "$@" )
 }
 settings_authority expected-env > "$settings_root/.env"
+grep -Eq "^DATABASE_URL=postgresql://[^ ]+@127\.0\.0\.1:[0-9]+/divineruin$" "$settings_root/.env" || fail "bootstrap generated a non-IPv4 Postgres URL"
+grep -Eq "^REDIS_URL=redis://127\.0\.0\.1:[0-9]+$" "$settings_root/.env" || fail "bootstrap generated a non-IPv4 Redis URL"
 settings_authority authorize settings || fail "the fixture's own generated settings were rejected"
 (
   cd "$settings_root"

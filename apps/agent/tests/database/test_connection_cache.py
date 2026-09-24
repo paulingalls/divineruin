@@ -172,8 +172,6 @@ class TestCacheOperations:
 
     @pytest.mark.asyncio
     async def test_cache_get_discards_a_client_whose_get_answers_with_a_non_string(self, caplog):
-        # The one reply shape redis-py has actually handed back here: the client's own command,
-        # decoded off a connection holding bytes that were never Valkey's answer.
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value=["GET", "locations:all"])
         mock_redis.connection_pool.disconnect = AsyncMock()
@@ -187,6 +185,7 @@ class TestCacheOperations:
         desynced = [record for record in caplog.records if record.msg == db.DESYNCED_REPLY_LOG]
         assert len(desynced) == 1
         assert "['GET', 'locations:all']" in desynced[0].getMessage()
+        assert "TCP self-connect" in caplog.text
 
     @pytest.mark.asyncio
     async def test_cache_set_writes_to_redis(self):

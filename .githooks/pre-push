@@ -92,6 +92,11 @@ else
     # Validate the per-worktree host-port-offset derivation (worktree-common.sh).
     echo "  Worktree bootstrap offset self-test..."
     bash "$(dirname "$0")/../scripts/test-init-worktree.sh"
+    echo "  Worktree .env value self-test..."
+    bash "$(dirname "$0")/../scripts/test-worktree-env-value.sh"
+    echo "  Prepare hooksPath self-test..."
+    bash "$(dirname "$0")/../scripts/test-prepare-hookspath.sh"
+    bash "$(dirname "$0")/../scripts/test-local-service-host.sh"
 
     # Typecheck + lint backstop. Pre-commit checks staged files and skips language
     # tools in fresh worktrees without deps. Fast-fail here (set -e),
@@ -114,6 +119,7 @@ else
     # below the lint backstop, which is what keeps a typo cheap.
     echo "  Worktree ownership self-test..."
     bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
+    bash "$(dirname "$0")/../scripts/test-worktree-url-ownership.sh"
     echo "  Worktree listener ownership self-test..."
     bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
 
