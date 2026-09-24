@@ -15,7 +15,6 @@ from session_data import SessionData
 async def test_whisper_delivery_marks_only_ordinary_favor(amount, should_mark):
     sd = SessionData(player_id="player_1", location_id="accord_guild_hall", patron_id="kaelen")
     session = MagicMock()
-    session.generate_reply = MagicMock(return_value=completed_handle())
     bg = BackgroundProcess(session=session, session_data=sd)
     bg._handle_events(
         [

@@ -185,6 +185,7 @@ def test_positive_due_favor_remains_ordinary_and_zero_queues_nothing():
     handle_events([_favor_event(5, "valor")], sd, speech, False, {}, [])
     assert len(speech) == 1
     assert not speech[0].is_displeasure
+    assert get_god_profile("kaelen").displeasure_prompt not in speech[0].instructions
 
 
 def test_favor_event_requires_amount():

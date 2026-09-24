@@ -273,7 +273,14 @@ def queue_god_whisper(
     if displeasure and not profile.displeasure_prompt:
         raise ValueError(f"No displeasure_prompt for patron {patron_id}")
     context = payload.get("reason", "")
-    god_instruction = f"{profile.displeasure_prompt} " if displeasure else ""
+    # The authored line names one sin but a god has several contrary acts, so it models the
+    # voice rather than being read verbatim over the wrong act.
+    god_instruction = (
+        "The god is displeased by the act named in Context. Model the god's words on this line, "
+        f'fitted to that act: "{profile.displeasure_prompt}" '
+        if displeasure
+        else ""
+    )
     instructions = (
         "Something shifts. The air thickens. Sound stops — not fades, stops, as if the world "
         "has held its breath. For a heartbeat, everything is impossibly still.\n\n"
