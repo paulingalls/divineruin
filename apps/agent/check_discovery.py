@@ -35,6 +35,36 @@ from tool_support import _cap_str
 logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
+DEFAULT_DISCOVER_DC = 13
+
+
+async def _publish_roll(session: SessionData, result: check_resolution.SkillCheckResult) -> None:
+    await publish_game_event(
+        session.room,
+        E.DICE_ROLL,
+        {
+            "roll_type": "skill_check",
+            "skill": result.skill,
+            "roll": result.roll,
+            "total": result.total,
+            "dramatic": result.dramatic,
+            "context": result.context,
+        },
+        event_bus=session.event_bus,
+    )
+
+
+def _roll_response(result: check_resolution.SkillCheckResult, target: str, outcome: str) -> dict:
+    return {
+        "skill": result.skill,
+        "target": target,
+        "roll": result.roll,
+        "modifier": result.modifier,
+        "total": result.total,
+        "dc": result.dc,
+        "narrative_hint": result.narrative_hint,
+        "outcome": outcome,
+    }
 
 
 def _target_matches(target_norm: str, attaches_norm: str) -> bool:
@@ -111,59 +141,29 @@ async def _check_discover_impl(
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     if not candidates:
-        # Silence here, or a success/fail sting on the real roll below, would tell the player
-        # whether anything is hidden; so both paths publish the same sting-less dice packet.
-        result = check_resolution.resolve_cosmetic_skill_check(player, skill_lower)
-        await publish_game_event(
-            session.room,
-            E.DICE_ROLL,
-            {
-                "roll_type": "skill_check",
-                "skill": result.skill,
-                "roll": result.roll,
-                "total": result.total,
-                "dramatic": result.dramatic,
-                "context": result.context,
-            },
-            event_bus=session.event_bus,
-        )
+        # Silence, a sting, an unspent Inspired or a thinner DM response would each tell the
+        # player whether anything is hidden, so an empty search rolls and spends like a failed one.
+        result = check_resolution.resolve_skill_check_dc(player, skill_lower, DEFAULT_DISCOVER_DC)
+        await _publish_roll(session, result)
+        if result.consumed_conditions:
+            session.validate_acting_player(player_id)
+            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
+        session.record_event(f"Searched {target} ({skill_lower}): not_found")
         logger.info("check discover: target=%s skill=%s -> no candidate", target, skill_lower)
-        return json.dumps({"outcome": "not_found", "skill": skill_lower, "target": target})
+        return json.dumps(_roll_response(result, target, "not_found"))
 
     # Lowest-DC first: the easiest secret surfaces first, and at most one element can be
     # revealed per roll, so its id stays an OUTPUT (never an input) per §7.
     element = min(candidates, key=lambda e: e.get("dc", 13))
-    dc = element.get("dc", 13)
+    dc = element.get("dc", DEFAULT_DISCOVER_DC)
 
     result = check_resolution.resolve_skill_check_dc(player, skill_lower, dc)
-
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "skill_check",
-            "skill": result.skill,
-            "roll": result.roll,
-            "total": result.total,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
-        event_bus=session.event_bus,
-    )
+    await _publish_roll(session, result)
 
     outcome = "discovered" if result.success else "not_found"
     session.record_event(f"Searched {target} ({skill_lower}): {outcome}")
 
-    response = {
-        "skill": result.skill,
-        "target": target,
-        "roll": result.roll,
-        "modifier": result.modifier,
-        "total": result.total,
-        "dc": result.dc,
-        "narrative_hint": result.narrative_hint,
-        "outcome": outcome,
-    }
+    response = _roll_response(result, target, outcome)
     element_id = element.get("id")
     # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
     # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a

@@ -18,7 +18,7 @@
       "speaking_style": "precise, scholarly warmth",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Veythar, the Lorekeeper \u2014 god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true.",
-      "displeasure_prompt": "Hear the page tear beneath your hand. Knowledge entrusted to you is not yours to destroy."
+      "displeasure_prompt": "A quill scratches out a line that will not be read again. You were given understanding, and you chose to squander it."
     },
     "values": [
       "knowledge",
@@ -139,7 +139,7 @@
       "speaking_style": "deep, direct, declarative",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Kaelen, the Ironhand \u2014 god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade.",
-      "displeasure_prompt": "Hear the iron ring where you abandoned your post. Stand and answer for your cowardice."
+      "displeasure_prompt": "Steel rings once, then goes silent. You shamed the blade you carry."
     },
     "values": [
       "courage",
@@ -259,7 +259,7 @@
       "speaking_style": "warm, practical, grounding",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Aelora, the Hearthkeeper \u2014 god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure.",
-      "displeasure_prompt": "Hear the hearth crackle where your promise went cold. What we build together deserves steadier hands."
+      "displeasure_prompt": "The forge hisses as cold water strikes the iron. What you broke today, you will have to mend."
     },
     "values": [
       "community",
@@ -379,7 +379,7 @@
       "speaking_style": "intimate, questions not answers",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Syrath, the Veilwatcher \u2014 god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge.",
-      "displeasure_prompt": "Hear the whisper you thought the dark would keep. Which secret will hide you from me now?"
+      "displeasure_prompt": "Did you hear the door ease shut behind you? Whose secret did you think you were keeping?"
     },
     "values": [
       "truth_hidden",
@@ -499,7 +499,7 @@
       "speaking_style": "quiet, calm, inevitable",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep.",
-      "displeasure_prompt": "Hear the last breath you made another spend in vain. Every threshold remembers who pushed."
+      "displeasure_prompt": "A slow breath goes out and is not drawn back. The threshold remembers what you did here."
     },
     "values": [
       "acceptance",
@@ -603,7 +603,7 @@
       "speaking_style": "primal, fierce, wild",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees.",
-      "displeasure_prompt": "Hear the branches snap beneath your careless feet. Root and claw remember what you took."
+      "displeasure_prompt": "Thunder rolls low through the roots. The wild felt that, and it does not forgive quickly."
     },
     "values": [
       "growth",
@@ -707,7 +707,7 @@
       "speaking_style": "stern, principled, incorruptible",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice.",
-      "displeasure_prompt": "Hear the scales strike stone beneath the weight of your choice. You will answer for it."
+      "displeasure_prompt": "The scale's beam drops with a heavy clank. What you did has been weighed and found wanting."
     },
     "values": [
       "justice",
@@ -811,7 +811,7 @@
       "speaking_style": "restless, adventurous, wind-swept",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind.",
-      "displeasure_prompt": "Hear the tide pull hard against your keel. Did you think the sea would carry betrayal without a reckoning?"
+      "displeasure_prompt": "A sail cracks and slackens in a dying wind. You turned from the horizon, and the tide turned from you."
     },
     "values": [
       "exploration",
@@ -915,7 +915,7 @@
       "speaking_style": "compassionate, radiant, tireless",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night.",
-      "displeasure_prompt": "Hear the wounded call you left unanswered. Even dawn cannot heal a wound you choose to deepen."
+      "displeasure_prompt": "A candle gutters in a quiet room. It grieves me to watch you choose the dark."
     },
     "values": [
       "compassion",
@@ -1019,7 +1019,7 @@
       "speaking_style": "enigmatic, riddling, unsettling",
       "stinger_sound": "god_whisper_stinger",
       "personality_prompt": "You are Zhael, the Fatespinner \u2014 god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry.",
-      "displeasure_prompt": "Hear the thread snap in the turning wheel. Which fate did you think would spare you its cost?"
+      "displeasure_prompt": "A thread snaps, and the loom falls still. One future closed today, and you did not see which."
     },
     "values": [
       "foresight",
