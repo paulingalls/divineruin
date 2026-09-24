@@ -51,8 +51,10 @@ async def test_save_then_get_player_roundtrips_conditions(dev_db_pool):
 
         # The persisted condition flows into an out-of-combat check via the get_player dict
         # (story-003 resolver reads player["conditions"]): Exhausted -1 lands on the modifier.
-        plain = resolve_skill_check({"attributes": {"strength": 14}, "level": 5}, "athletics", "moderate")
-        tired = resolve_skill_check(player, "athletics", "moderate")
+        plain = resolve_skill_check(
+            {"attributes": {"strength": 14}, "level": 5}, "athletics", "moderate", ally_present=False
+        )
+        tired = resolve_skill_check(player, "athletics", "moderate", ally_present=False)
         assert tired.modifier == plain.modifier - 1
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

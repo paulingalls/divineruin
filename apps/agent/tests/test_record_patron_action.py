@@ -73,6 +73,7 @@ async def test_each_authored_action_persists_and_publishes_real_delta(dev_db_poo
         "patron_id": "veythar",
         "last_whisper_level": 3,
         "amount": expected - 10,
+        "requested_amount": row["amount"],
         "reason": f"Patron action '{row['action']}'",
         "max": 100,
         "player_id": player_id,

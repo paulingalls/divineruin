@@ -7,9 +7,13 @@ story-003's hot-layer assembly reads (and clears) to surface the target same-tur
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import event_types as E
 from bg_event_handlers import REBUILD_EVENT_TYPES, handle_events, queue_god_whisper
+from bg_speech import SpeechPriority
 from event_bus import GameEvent
+from god_whisper_data import get_god_profile
 from session_data import SessionData
 
 
@@ -65,7 +69,7 @@ class TestDivineFavorWhisperIsPrimaryOnly:
     tick's single CRITICAL speech slot and advance the primary's cadence while never advancing its
     own. Gate on the recipient (decision b7c3a66f1b74)."""
 
-    _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "solwyn"}
+    _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "kaelen", "amount": 5}
 
     def test_primarys_crossing_queues_a_whisper(self):
         sd = _sd()
@@ -123,3 +127,69 @@ def test_whisper_fallback_uses_new_primary_patron():
     with patch("bg_event_handlers.get_god_profile", return_value=MagicMock()) as profile:
         queue_god_whisper({}, sd, [])
     profile.assert_called_once_with("thessyn")
+
+
+def test_displeasure_without_patron_profile_raises():
+    speech = []
+    with pytest.raises(ValueError, match="No displeasure_prompt for patron not_a_god"):
+        queue_god_whisper({"patron_id": "not_a_god"}, _sd(), speech, displeasure=True)
+    assert speech == []
+
+
+def _favor_event(amount: int, reason: str, player_id: str = "player_1") -> GameEvent:
+    return GameEvent(
+        event_type=E.DIVINE_FAVOR_CHANGED,
+        payload={
+            "player_id": player_id,
+            "patron_id": "kaelen",
+            "new_level": 30,
+            "last_whisper_level": 0,
+            "amount": amount,
+            "reason": reason,
+        },
+    )
+
+
+def test_contrary_loss_queues_displeasure_once_on_same_session():
+    sd = _sd()
+    speech = []
+    event = _favor_event(-5, "Patron action 'fled_battle'")
+    handle_events([event], sd, speech, False, {}, [])
+    assert len(speech) == 1
+    queued = speech[0]
+    assert queued.priority == SpeechPriority.CRITICAL
+    assert queued.recipient_id == "player_1"
+    assert queued.stinger_sound == "god_whisper_stinger"
+    assert "Something shifts. The air thickens." in queued.instructions
+    assert get_god_profile("kaelen").displeasure_prompt in queued.instructions
+    assert queued.is_displeasure
+    handle_events([event], sd, speech, False, {}, [])
+    assert len(speech) == 1
+
+
+def test_neglect_and_teammate_loss_leave_displeasure_available():
+    sd = _sd()
+    speech = []
+    handle_events([_favor_event(-5, "neglect")], sd, speech, False, {}, [])
+    handle_events([_favor_event(-5, "Patron action 'fled_battle'", "player_2")], sd, speech, False, {}, [])
+    assert speech == []
+    handle_events([_favor_event(-5, "Patron action 'fled_battle'")], sd, speech, False, {}, [])
+    assert len(speech) == 1
+
+
+def test_positive_due_favor_remains_ordinary_and_zero_queues_nothing():
+    sd = _sd()
+    speech = []
+    handle_events([_favor_event(0, "none")], sd, speech, False, {}, [])
+    assert speech == []
+    handle_events([_favor_event(5, "valor")], sd, speech, False, {}, [])
+    assert len(speech) == 1
+    assert not speech[0].is_displeasure
+    assert get_god_profile("kaelen").displeasure_prompt not in speech[0].instructions
+
+
+def test_favor_event_requires_amount():
+    payload = _favor_event(5, "valor").payload
+    del payload["amount"]
+    with pytest.raises(KeyError, match="amount"):
+        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=payload)], _sd(), [], False, {}, [])

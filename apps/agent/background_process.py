@@ -19,11 +19,11 @@ import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
+from companion_prompts import build_companion_cue, is_companion_cue
 from sanitize import sanitize_for_prompt
 from session_end import run_session_end
 from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
-from system_prompts import build_companion_cue, is_companion_cue
 from task_logging import log_task_failure
 from warm_prompts import build_full_prompt, build_warm_layer
 
@@ -314,9 +314,11 @@ class BackgroundProcess:
             return
 
         logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
+        if top.is_displeasure:
+            self._sd.displeasure_whisper_queued = True
 
         # Mark last_whisper_level after delivering (deferred from critical path)
-        if top.stinger_sound is not None:
+        if top.stinger_sound is not None and not top.is_displeasure:
             try:
                 favor = await db_activity_queries.get_divine_favor(self._sd.primary_player_id)
                 if favor:

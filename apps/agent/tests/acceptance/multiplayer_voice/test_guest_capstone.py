@@ -80,7 +80,9 @@ async def test_guest_speech_drives_luna_check_travel_and_activity(
     monkeypatch.setattr(
         check_resolution,
         "resolve_skill_check_dc",
-        lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+        lambda player, skill, dc, rng=None, *, ally_present: resolve(
+            player, skill, dc, FixedRng(20), ally_present=ally_present
+        ),
     )
     pool = await db.get_pool()
     harness = MultiplayerVoiceHarness(livekit_server)

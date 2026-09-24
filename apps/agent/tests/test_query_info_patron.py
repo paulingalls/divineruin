@@ -28,6 +28,14 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         "positive": [{"action": "kept_promise", "description": "Keeping a difficult promise", "amount": 3}],
         "negative": [{"action": "broke_promise", "description": "Breaking a sworn promise", "amount": -4}],
     }
+    gift = {
+        "id": "sentinel_gift",
+        "name": "Sentinel's Gift",
+        "effect": "Guard the boundary.",
+        "trigger": "When bound",
+        "recharge": "always",
+        "status": "narrated",
+    }
 
     def catalog():
         return [
@@ -36,6 +44,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": actions,
+                "layer_1_gift": gift,
                 "gift": "must not leak",
             }
         ]
@@ -52,20 +61,24 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         "next_tier": "Devoted",
         "favor_needed_to_next_tier": 1,
         "favor_actions": actions,
+        "layer_1_gift": gift,
     }
     activities.get_divine_favor.assert_awaited_once_with("sentinel_player")
 
 
 @pytest.mark.asyncio
-async def test_real_patron_actions_round_trip_from_gods_content():
+@pytest.mark.parametrize("patron_id", ["aelora", "veythar", "mortaen"])
+async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
     context = make_context()
-    patron = load_gods()[0]
+    patron = next(row for row in load_gods() if row["god_id"] == patron_id)
     activities = MagicMock()
     activities.get_divine_favor = AsyncMock(return_value={"patron": patron["god_id"], "level": 0, "max": 100})
 
-    response = json.loads(await query_tools._query_patron_impl(context, activities=activities))
+    with patch("query_tools.db_activity_queries.get_divine_favor", activities.get_divine_favor):
+        response = json.loads(await query_tools._query_info_impl(context, "patron"))
 
     assert response["favor_actions"] == patron["favor_actions"]
+    assert response["layer_1_gift"] == patron["layer_1_gift"]
 
 
 @pytest.mark.asyncio
@@ -81,6 +94,7 @@ async def test_exalted_has_explicitly_no_next_tier():
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
+                "layer_1_gift": {"id": "sentinel_gift"},
             }
         ]
 
@@ -125,6 +139,25 @@ async def test_unknown_patron_id_fails_loud():
         await query_tools._query_patron_impl(make_context(), activities=activities, gods_loader=lambda: [])
 
 
+@pytest.mark.asyncio
+async def test_bound_patron_missing_gift_fails_loud():
+    activities = MagicMock()
+    activities.get_divine_favor = AsyncMock(return_value={"patron": "sentinel", "level": 1, "max": 100})
+
+    def catalog():
+        return [
+            {
+                "god_id": "sentinel",
+                "short_name": "Sentinel",
+                "title": "the Boundary",
+                "favor_actions": {"positive": [], "negative": []},
+            }
+        ]
+
+    with pytest.raises(KeyError, match="layer_1_gift"):
+        await query_tools._query_patron_impl(make_context(), activities=activities, gods_loader=catalog)
+
+
 def test_emitted_query_info_schema_advertises_patron():
     parsed = ToolContext([query_tools.query_info]).parse_function_tools("anthropic", strict=True)
     tool = next(row for row in parsed if row["name"] == "query_info")
@@ -133,3 +166,5 @@ def test_emitted_query_info_schema_advertises_patron():
     assert len(kinds) == 10
     assert kinds.count("patron") == 1
     assert 'kind="patron"' in tool["description"]
+    assert "Only an active or narrated gift is granted" in tool["description"]
+    assert "an awaits_* gift is the god's promise, not yet a power" in tool["description"]

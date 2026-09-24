@@ -12,9 +12,9 @@ from speech_handles import completed_handle
 
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
+from companion_prompts import build_companion_cue
 from onboarding_background import OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
-from system_prompts import build_companion_cue
 
 
 def _session_data() -> SessionData:

@@ -29,7 +29,7 @@ def _companion_prompt_surfaces() -> dict[str, str]:
     that one call sees none of it — and it is where the DM is told which companion id
     begin_activity accepts.
     """
-    from system_prompts import build_companion_prompt
+    from companion_prompts import build_companion_prompt
 
     companions = ("companion_kael", "companion_lira", "companion_tam", "companion_sable")
     return {f"companion:{cid}": build_companion_prompt(cid, 5) for cid in companions}
@@ -76,10 +76,11 @@ class TestPromptToolConsistency:
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
         from exploration_agent import EXPLORATION_TOOLS
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
         from mode_tools import enter_mode
         from onboarding_agent import ONBOARDING_TOOLS
         from query_tools import query_info
-        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT
 
         agents = {
             "exploration": (build_system_prompt("loc"), EXPLORATION_TOOLS),
@@ -104,7 +105,7 @@ class TestPromptToolConsistency:
         begin_activity/resolve_activity iff DispatchAgent actually holds them."""
         from activity_tools import begin_activity, resolve_activity
         from dispatch_agent import DISPATCH_TOOLS
-        from system_prompts import DISPATCH_SYSTEM_PROMPT
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
 
         removed_activity_tools = (
             "query_training_programs",
@@ -134,7 +135,7 @@ class TestPromptToolConsistency:
         import typing
 
         from activity_payloads import ACTIVITY_VARIANTS
-        from system_prompts import DISPATCH_SYSTEM_PROMPT
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
 
         kinds = tuple(typing.get_args(v.model_fields["kind"].annotation)[0] for v in ACTIVITY_VARIANTS)
         # Guard the reflection itself: if the Literal ever stops resolving (e.g. the param
@@ -148,7 +149,8 @@ class TestPromptToolConsistency:
         now derive only from deterministic Resolves and the Stage. No gameplay prompt may
         still instruct the LLM to call either (prompt-tool drift bit production before,
         concern df5cc73b2473)."""
-        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT
 
         prompts = {
             "exploration": build_system_prompt("loc"),
@@ -171,7 +173,8 @@ class TestPromptToolConsistency:
         LLM reads. So every REGISTERED tool's description is scanned too — restore that sentence
         and the DM emits a call to a tool no agent holds, erroring out the combat-exit turn.
         """
-        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT
 
         prompts = {
             "exploration": build_system_prompt("loc"),
@@ -198,7 +201,8 @@ class TestPromptToolConsistency:
         Docstrings are scanned too, because that is exactly where the M28 drift lived
         (concern df5cc73b2473).
         """
-        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+        from mode_prompts import DISPATCH_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT
         from warm_prompts import REGION_REGISTER
 
         # The old call shape, verbatim. `mode=` is still the INTERNAL router's parameter

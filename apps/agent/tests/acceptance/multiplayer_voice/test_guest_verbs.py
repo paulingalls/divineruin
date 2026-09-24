@@ -98,7 +98,9 @@ async def test_guest_verbs_reach_persisted_party_rows(
     monkeypatch.setattr(
         check_resolution,
         "resolve_skill_check_dc",
-        lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+        lambda player, skill, dc, rng=None, *, ally_present: resolve(
+            player, skill, dc, FixedRng(20), ally_present=ally_present
+        ),
     )
     pool = await db.get_pool()
     harness = MultiplayerVoiceHarness(livekit_server)

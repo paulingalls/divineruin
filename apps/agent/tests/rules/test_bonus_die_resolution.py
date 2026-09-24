@@ -92,15 +92,15 @@ def test_save_autofail_does_not_consume_the_die():
 
 
 def test_skill_check_inspired_adds_die_and_consumes():
-    insp = resolve_skill_check_dc(_pc(INSPIRED), "athletics", 10, FixedRng(3))
-    plain = resolve_skill_check_dc(_pc([]), "athletics", 10, FixedRng(3))
+    insp = resolve_skill_check_dc(_pc(INSPIRED), "athletics", 10, FixedRng(3), ally_present=False)
+    plain = resolve_skill_check_dc(_pc([]), "athletics", 10, FixedRng(3), ally_present=False)
     assert insp.total == plain.total + 3
     assert insp.consumed_conditions == ("inspired",)
 
 
 def test_skill_check_blessed_does_not_apply():
-    blessed = resolve_skill_check_dc(_pc(BLESSED), "athletics", 10, FixedRng(3))
-    plain = resolve_skill_check_dc(_pc([]), "athletics", 10, FixedRng(3))
+    blessed = resolve_skill_check_dc(_pc(BLESSED), "athletics", 10, FixedRng(3), ally_present=False)
+    plain = resolve_skill_check_dc(_pc([]), "athletics", 10, FixedRng(3), ally_present=False)
     assert blessed.total == plain.total  # Blessed is not check-scoped
     assert blessed.consumed_conditions == ()
 
@@ -109,6 +109,6 @@ def test_skill_check_beyond_tier_autofail_does_not_consume_die():
     # A DC beyond the character's tier auto-fails without a roll (athletics is trained here, DC 28
     # needs master). The Inspired die must not be spent on a task that cannot succeed — mirrors the
     # save auto-fail gate.
-    res = resolve_skill_check_dc(_pc(INSPIRED), "athletics", 28, FixedRng(3))
+    res = resolve_skill_check_dc(_pc(INSPIRED), "athletics", 28, FixedRng(3), ally_present=False)
     assert res.roll == 0 and res.success is False  # beyond-tier auto-fail, no roll
     assert res.consumed_conditions == ()

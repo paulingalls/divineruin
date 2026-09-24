@@ -12,9 +12,9 @@ from typing import Any
 
 from base_agent import BaseGameAgent
 from blacksmith_tools import conclude_blacksmith
+from mode_prompts import BLACKSMITH_SYSTEM_PROMPT
 from query_tools import query_info
 from repair_item import repair_item
-from system_prompts import BLACKSMITH_SYSTEM_PROMPT
 
 BLACKSMITH_TOOLS = [
     # The forge's reason to exist: NPC-blacksmith item repair (M5.4).

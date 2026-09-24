@@ -8,9 +8,9 @@ from functools import partial
 from livekit.agents import AgentSession
 
 from companion_cue_events import publish_companion_cue
+from companion_prompts import build_companion_cue
 from session_data import SessionData
 from speech_delivery import deliver_speech
-from system_prompts import build_companion_cue
 from task_logging import log_task_failure
 
 logger = logging.getLogger("divineruin.onboarding_background")

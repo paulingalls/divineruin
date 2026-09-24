@@ -21,10 +21,18 @@ class GodWhisperProfile:
     speaking_style: str
     stinger_sound: str
     personality_prompt: str
+    displeasure_prompt: str
 
 
 FAVOR_WHISPER_THRESHOLD = 25
 FAVOR_WHISPER_COOLDOWN = 25
+
+
+def _required_displeasure(entry: dict) -> str:
+    prompt = entry["whisper_profile"]["displeasure_prompt"]
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError(f"{entry['god_id']} missing displeasure_prompt")
+    return prompt
 
 
 def _load_profiles() -> dict[str, GodWhisperProfile]:
@@ -39,6 +47,7 @@ def _load_profiles() -> dict[str, GodWhisperProfile]:
             speaking_style=entry["whisper_profile"]["speaking_style"],
             stinger_sound=entry["whisper_profile"]["stinger_sound"],
             personality_prompt=entry["whisper_profile"]["personality_prompt"],
+            displeasure_prompt=_required_displeasure(entry),
         )
         for entry in entries
     }
@@ -57,6 +66,7 @@ _DEFAULT_PROFILE = GodWhisperProfile(
     personality_prompt=(
         "You are an ancient, unknowable presence. Speak with vast, weary omniscience. Two sentences maximum."
     ),
+    displeasure_prompt="",
 )
 
 

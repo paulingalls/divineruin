@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, patch
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST
 
 from creation_prompts import CREATION_SYSTEM_PROMPT
-from system_prompts import DISPATCH_MODE_PROMPT, SYSTEM_PROMPT, build_system_prompt
+from mode_prompts import DISPATCH_MODE_PROMPT
+from system_prompts import SYSTEM_PROMPT, build_system_prompt
 from training_rules import get_midpoint_decision, resolve_midpoint_decision
 from voices import ROLE_VOICE_KEYS
 from warm_prompts import build_warm_layer, format_training_section

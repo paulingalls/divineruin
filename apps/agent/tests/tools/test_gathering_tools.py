@@ -243,6 +243,7 @@ class TestNodeRevealSignal:
         assert hidden is not None
         assert hidden.payload["element_id"] == "n1"
         assert hidden.payload["skill"] == "survival"
+        assert [e.payload["sound_name"] for e in events if e.event_type == E.PLAY_SOUND] == ["action_gather"]
 
     @pytest.mark.asyncio
     async def test_already_discovered_omits_hidden_revealed(self):

@@ -17,7 +17,8 @@
       "voice_emotion": "divine",
       "speaking_style": "precise, scholarly warmth",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Veythar, the Lorekeeper \u2014 god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true."
+      "personality_prompt": "You are Veythar, the Lorekeeper \u2014 god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true.",
+      "displeasure_prompt": "A quill scratches out a line that will not be read again. You were given understanding, and you chose to squander it."
     },
     "values": [
       "knowledge",
@@ -106,7 +107,14 @@
       ],
       "secret_agenda": "steering investigation away from the truth while searching for a way to seal the Veil"
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "veythar_lorekeepers_insight",
+      "name": "Lorekeeper's Insight",
+      "effect": "Once per short rest, reroll a failed Arcana, History, Investigation, Nature, or Religion check. Take the new result.",
+      "trigger": "After you fail one of those knowledge checks.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -130,7 +138,8 @@
       "voice_emotion": "divine",
       "speaking_style": "deep, direct, declarative",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Kaelen, the Ironhand \u2014 god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade."
+      "personality_prompt": "You are Kaelen, the Ironhand \u2014 god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade.",
+      "displeasure_prompt": "Steel rings once, then goes silent. You shamed the blade you carry."
     },
     "values": [
       "courage",
@@ -219,7 +228,14 @@
       ],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "kaelen_iron_resolve",
+      "name": "Iron Resolve",
+      "effect": "Gain +2 to attack rolls and saving throws until the end of your next turn.",
+      "trigger": "The first time you fall below 25% HP in an encounter.",
+      "recharge": "per_encounter",
+      "status": "awaits_binding"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -242,7 +258,8 @@
       "voice_emotion": "divine",
       "speaking_style": "warm, practical, grounding",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Aelora, the Hearthkeeper \u2014 god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure."
+      "personality_prompt": "You are Aelora, the Hearthkeeper \u2014 god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure.",
+      "displeasure_prompt": "The forge hisses as cold water strikes the iron. What you broke today, you will have to mend."
     },
     "values": [
       "community",
@@ -331,7 +348,15 @@
       ],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "aelora_hearthkeepers_bond",
+      "name": "Hearthkeeper's Bond",
+      "effect": "Gain +1 to all skill checks while you can see or hear an ally.",
+      "trigger": "While an ally is within sight or hearing.",
+      "recharge": "always",
+      "status": "active",
+      "mechanics": {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -354,7 +379,8 @@
       "voice_emotion": "divine",
       "speaking_style": "intimate, questions not answers",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Syrath, the Veilwatcher \u2014 god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge."
+      "personality_prompt": "You are Syrath, the Veilwatcher \u2014 god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge.",
+      "displeasure_prompt": "Did you hear the door ease shut behind you? Whose secret did you think you were keeping?"
     },
     "values": [
       "truth_hidden",
@@ -443,7 +469,14 @@
       ],
       "secret_agenda": "investigating the true cause of the Sundering \u2014 suspects deliberate action but not yet which god"
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "syrath_shadow_veil",
+      "name": "Shadow Veil",
+      "effect": "Become invisible for one round. Attacking or casting a spell ends the invisibility.",
+      "trigger": "When you invoke the gift.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -466,7 +499,8 @@
       "voice_emotion": "divine",
       "speaking_style": "quiet, calm, inevitable",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep."
+      "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep.",
+      "displeasure_prompt": "A slow breath goes out and is not drawn back. The threshold remembers what you did here."
     },
     "values": [
       "acceptance",
@@ -539,7 +573,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "mortaen_deaths_awareness",
+      "name": "Death's Awareness",
+      "effect": "Sense creatures within earshot at 25% HP or below. The DM can also narrate signs of violent death in this area within the past day.",
+      "trigger": "When a wounded creature is within earshot or you enter a place marked by recent violent death.",
+      "recharge": "always",
+      "status": "narrated"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -562,7 +603,8 @@
       "voice_emotion": "divine",
       "speaking_style": "primal, fierce, wild",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees."
+      "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees.",
+      "displeasure_prompt": "Thunder rolls low through the roots. The wild felt that, and it does not forgive quickly."
     },
     "values": [
       "growth",
@@ -635,7 +677,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "thyra_natures_pulse",
+      "name": "Nature's Pulse",
+      "effect": "Gain advantage on Perception and Survival checks in natural terrain. The DM narrates the health of the ecosystem without a check.",
+      "trigger": "While you are in natural terrain.",
+      "recharge": "always",
+      "status": "awaits_terrain"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -658,7 +707,8 @@
       "voice_emotion": "divine",
       "speaking_style": "stern, principled, incorruptible",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice."
+      "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice.",
+      "displeasure_prompt": "The scale's beam drops with a heavy clank. What you did has been weighed and found wanting."
     },
     "values": [
       "justice",
@@ -731,7 +781,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "valdris_weight_of_truth",
+      "name": "Weight of Truth",
+      "effect": "Compel an NPC to acknowledge a statement you believe is true. They need not agree or act, but cannot dismiss or ignore it.",
+      "trigger": "When you speak that statement to an NPC.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -754,7 +811,8 @@
       "voice_emotion": "divine",
       "speaking_style": "restless, adventurous, wind-swept",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind."
+      "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind.",
+      "displeasure_prompt": "A sail cracks and slackens in a dying wind. You turned from the horizon, and the tide turned from you."
     },
     "values": [
       "exploration",
@@ -827,7 +885,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "nythera_horizon_sense",
+      "name": "Horizon Sense",
+      "effect": "Know which way is north, how far you have traveled today, and the approximate distance to the nearest unexplored area.",
+      "trigger": "While you travel or seek new ground.",
+      "recharge": "always",
+      "status": "narrated"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -850,7 +915,8 @@
       "voice_emotion": "divine",
       "speaking_style": "compassionate, radiant, tireless",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night."
+      "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night.",
+      "displeasure_prompt": "A candle gutters in a quiet room. It grieves me to watch you choose the dark."
     },
     "values": [
       "compassion",
@@ -923,7 +989,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "orenthel_dawns_resilience",
+      "name": "Dawn's Resilience",
+      "effect": "Regain 2 HP when you heal another creature, whatever the source of the healing.",
+      "trigger": "When you heal another creature.",
+      "recharge": "always",
+      "status": "awaits_healing"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -946,7 +1019,8 @@
       "voice_emotion": "divine",
       "speaking_style": "enigmatic, riddling, unsettling",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Zhael, the Fatespinner \u2014 god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry."
+      "personality_prompt": "You are Zhael, the Fatespinner \u2014 god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry.",
+      "displeasure_prompt": "A thread snaps, and the loom falls still. One future closed today, and you did not see which."
     },
     "values": [
       "foresight",
@@ -1019,7 +1093,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "zhael_fates_thread",
+      "name": "Fate's Thread",
+      "effect": "After seeing any d20 result, force a reroll and choose which result stands.",
+      "trigger": "After you see your d20 result or someone else's.",
+      "recharge": "long_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null

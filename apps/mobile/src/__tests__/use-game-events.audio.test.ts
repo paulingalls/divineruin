@@ -2,6 +2,7 @@ import { test, expect, beforeEach, jest, mock, spyOn } from "bun:test";
 import * as Haptics from "expo-haptics";
 import combatSounds from "../../../../content/combat_sounds.json";
 import actionSounds from "../../../../content/action_sounds.json";
+import wireFixture from "../../../../packages/shared/fixtures/event_wire.json";
 import gods from "../../../../content/gods.json";
 import spells from "../../../../content/spells.json";
 
@@ -45,6 +46,7 @@ void mock.module("expo-audio", () => ({
 import { DICE_STINGER_DELAY_MS, handleGameEvent } from "@/audio/game-event-handler";
 import { lookupSound } from "@/audio/sound-registry";
 import { playSfx, releaseAllPlayers } from "@/audio/sfx-player";
+import * as sfxPlayer from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
@@ -74,7 +76,7 @@ test("every combat sound reaches the platform player", () => {
 });
 
 test("every action catalog sound reaches the platform player", () => {
-  expect(actionSounds).toHaveLength(21);
+  expect(actionSounds).toHaveLength(22);
   expect(new Set(actionSounds.map((row) => row.id))).toEqual(
     new Set([
       "action_travel",
@@ -93,6 +95,7 @@ test("every action catalog sound reaches the platform player", () => {
       "action_resolve_training_midpoint",
       "action_learn_recipe",
       "action_learn_spell",
+      "action_discover_reveal",
       "action_repair_item",
       "action_enter_mode_blacksmith",
       "action_enter_mode_dispatch",
@@ -101,6 +104,29 @@ test("every action catalog sound reaches the platform player", () => {
     ]),
   );
   for (const row of actionSounds) expectEventPlays(row.id);
+});
+
+test("discover fixture rolls share dice audio and only a reveal plays the cue", () => {
+  const events = wireFixture.events;
+  const played = spyOn(sfxPlayer, "playSfx").mockImplementation(() => {});
+  jest.useFakeTimers();
+  try {
+    const soundsFor = (...packets: Array<{ type: string; [key: string]: unknown }>) => {
+      played.mockClear();
+      for (const packet of packets) handleGameEvent(packet);
+      jest.advanceTimersByTime(DICE_STINGER_DELAY_MS + 1);
+      return played.mock.calls.map(([sound]) => sound);
+    };
+    const failed = soundsFor(events.discover_failed);
+    const noCandidate = soundsFor(events.discover_no_candidate);
+    const success = soundsFor(events.discover_success, events.discover_reveal_cue);
+    expect(failed).toEqual(["dice_roll"]);
+    expect(noCandidate).toEqual(failed);
+    expect(success).toEqual(["dice_roll", "action_discover_reveal"]);
+  } finally {
+    played.mockRestore();
+    jest.useRealTimers();
+  }
 });
 
 test("spell and god whisper content sounds reach the platform player", () => {
