@@ -223,6 +223,7 @@ async def _award_divine_favor_core(
                 # max favor watch a "+5" celebrate a bar that never moved — while update_quest's
                 # own rewards_applied entry reported the honest 0 to the DM.
                 "amount": actual_delta,
+                "requested_amount": amount,
                 "reason": reason,
                 # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
                 # to 100, so dropping it (as this payload used to) fabricated the bar's scale for

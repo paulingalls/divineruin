@@ -37,6 +37,7 @@
       "patron_id": "solwyn",
       "last_whisper_level": 20,
       "amount": 5,
+      "requested_amount": 5,
       "reason": "Quest 'The Greyvale Anomaly' stage completed",
       "max": 100,
       "player_id": "player_1"

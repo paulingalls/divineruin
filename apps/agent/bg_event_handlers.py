@@ -244,9 +244,14 @@ def handle_events(
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
             amount = ev.payload["amount"]
-            if amount < 0 and ev.payload.get("reason") != "neglect" and not sd.displeasure_whisper_queued:
+            requested_amount = ev.payload.get("requested_amount", amount)
+            if (
+                requested_amount < 0
+                and ev.payload.get("reason") != "neglect"
+                and not sd.displeasure_whisper_queued
+                and not any(speech.is_displeasure for speech in speech_queue)
+            ):
                 queue_god_whisper(ev.payload, sd, speech_queue, displeasure=True)
-                sd.displeasure_whisper_queued = True
             elif amount > 0 and should_trigger_whisper(new_level, last_whisper):
                 queue_god_whisper(ev.payload, sd, speech_queue)
 
