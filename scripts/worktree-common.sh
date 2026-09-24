@@ -137,9 +137,11 @@ wt_export_env() {
 }
 
 wt_env_value() {
-  local key="$1" file="${2:-$WT_ROOT/.env}" line value
+  local key="$1" file="${2:-$WT_ROOT/.env}" line matches value
   [ -r "$file" ] || return 1
-  line="$(grep -E "^${key}=" "$file" | tail -n1)" || return 1
+  # grep's own status, not a pipeline's: an absent key must return 1.
+  matches="$(grep -E "^${key}=" "$file")" || return 1
+  line="${matches##*$'\n'}"
   value="${line#*=}"
   case "$value" in
     \"*\") value="${value#\"}"; value="${value%\"}" ;;
