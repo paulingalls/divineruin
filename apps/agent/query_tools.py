@@ -361,6 +361,7 @@ async def _query_inventory_impl(
             {
                 "name": item.get("name"),
                 "type": item.get("type"),
+                "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "description": item.get("description"),
                 "rarity": item.get("rarity"),
                 "effects": item.get("effects", []),

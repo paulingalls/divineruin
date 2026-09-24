@@ -90,8 +90,9 @@ def shield_reaction(state, head: dict) -> str | None:
     """The post-roll spend that puts a shield in the blow's way, if the reactor is the one hit.
 
     A shield hit is accrued off the TARGET's inventory (combat_support reads
-    ``get_player_inventory(target.id)``), so a reactor who is not the target has no gear in that
-    call — reporting one would wear the wrong player's shield.
+    ``get_player_inventory(target.id)`` and selects equipped shield gear from its item and
+    material rows), so a reactor who is not the target has no gear in that call — reporting
+    one would wear the wrong player's shield.
     """
     target = _held_target(state, head)
     if target is None:

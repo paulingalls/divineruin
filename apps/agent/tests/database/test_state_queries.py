@@ -1,6 +1,7 @@
 """Tests for non-cached state queries (player, NPC dispositions, inventory, flags)."""
 
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -79,6 +80,7 @@ class TestStateQueries:
             return_value=[
                 {
                     "item_data": json.dumps({"id": "sword", "name": "Steel Sword"}),
+                    "material_data": None,
                     "slot_data": json.dumps({"quantity": 1, "equipped": True}),
                 }
             ]
@@ -90,6 +92,12 @@ class TestStateQueries:
         assert len(result) == 1
         assert result[0]["id"] == "sword"
         assert result[0]["slot_info"]["equipped"] is True
+
+    def test_item_material_catalog_intersection_is_crystal_flask(self):
+        content = Path(__file__).resolve().parents[4] / "content"
+        items = {row["id"] for row in json.loads((content / "items.json").read_text())}
+        materials = {row["id"] for row in json.loads((content / "materials_catalog.json").read_text())}
+        assert items & materials == {"crystal_flask"}
 
     @pytest.mark.asyncio
     async def test_get_npcs_at_location_queries_schedule(self):
