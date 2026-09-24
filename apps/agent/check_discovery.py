@@ -111,6 +111,8 @@ async def _check_discover_impl(
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     if not candidates:
+        # Silence here, or a success/fail sting on the real roll below, would tell the player
+        # whether anything is hidden; so both paths publish the same sting-less dice packet.
         result = check_resolution.resolve_cosmetic_skill_check(player, skill_lower)
         await publish_game_event(
             session.room,

@@ -6,9 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from check_discovery import _check_discover_impl
+from check_tools import _check_skill_impl
 from conditions import apply_condition
 from tools._discover_fixtures import DISCOVER_PLAYER, _make_discover_mocks, _roll
-from tools._helpers import _make_context, _make_mock_room
+from tools._helpers import _make_context, _make_mock_room, _skill_mocks
 
 FIXTURE = json.loads((Path(__file__).resolve().parents[4] / "packages/shared/fixtures/event_wire.json").read_text())[
     "events"
@@ -50,6 +51,19 @@ async def test_live_discover_wire_matches_fixture(case, die, player, expected):
     else:
         assert result["outcome"] == "not_found"
         mutations.set_player_flag.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ordinary_skill_check_roll_keeps_success():
+    room = _make_mock_room()
+    queries, mutations = _skill_mocks()
+    with patch("check_resolution.dice_roll", return_value=_roll(3)):
+        await _check_skill_impl(
+            _make_context(room=room), "perception", "moderate", "scanning", queries=queries, mutations=mutations
+        )
+    packet = json.loads(room.local_participant.publish_data.await_args_list[0].args[0])
+    assert set(packet) == set(FIXTURE["discover_failed"]) | {"success"}
+    assert packet["success"] is False
 
 
 @pytest.mark.asyncio
