@@ -1300,7 +1300,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     "class": "rend",
     "corruption_aura": 30,
     "resonance_on_death": 2,
-    "veil_effect": "Local sounds thin and the Veil strains near this creature.",
+    "veil_effect": "Nearby voices fall half a beat out of step, and the Veil frays along its route.",
     "vulnerable_to": [
       "radiant",
       "blessed_weapons",
@@ -1395,7 +1395,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     "class": "drift",
     "corruption_aura": 15,
     "resonance_on_death": 1,
-    "veil_effect": "Local sounds thin and the Veil strains near this creature.",
+    "veil_effect": "Warmth bleeds from the air around it, and the Veil thins wherever it lingers.",
     "vulnerable_to": [
       "radiant",
       "blessed_weapons",
@@ -1497,7 +1497,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     {
       "name": "Reality Collapse",
       "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground. Targets make a wisdom save.",
-      "narration_cue": "A deep pulse marks Reality Collapse.",
+      "narration_cue": "A deep groan splits the room as two versions of it grind together.",
       "recharge": "1/encounter",
       "audio": "hollow-warden-signature"
     }
@@ -1507,7 +1507,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     "class": "rend",
     "corruption_aura": 30,
     "resonance_on_death": 2,
-    "veil_effect": "Local sounds thin and the Veil strains near this creature.",
+    "veil_effect": "The Veil folds around its ward, so the guarded room holds two overlapping versions of itself.",
     "vulnerable_to": [
       "radiant",
       "blessed_weapons",
@@ -1674,7 +1674,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     {
       "name": "Rally",
       "description": "Command to allies: A sharp command steadies the line and sharpens their focus fire.",
-      "narration_cue": "A sharp voice gives the Rally order.",
+      "narration_cue": "A sharp whistle snaps the line back into step.",
       "recharge": "1/round",
       "audio": "ashmark-sergeant-rally",
       "kind": "command",
@@ -1685,7 +1685,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     {
       "name": "Accusation",
       "description": "Accusation to allies: Names the accused and directs the patrol's focus fire.",
-      "narration_cue": "A sharp voice gives the Accusation order.",
+      "narration_cue": "A barked name cracks across the patrol, and every blade turns.",
       "recharge": "1/round",
       "audio": "ashmark-sergeant-accusation",
       "kind": "accusation",
@@ -1855,7 +1855,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     {
       "name": "Bless",
       "description": "Command to allies: Murmured fervor steadies the cultists' hands.",
-      "narration_cue": "A sharp voice gives the Bless order.",
+      "narration_cue": "A low hum of fervor passes from cultist to cultist.",
       "recharge": "1/round",
       "audio": "cult-fanatic-bless",
       "kind": "command",
@@ -1966,7 +1966,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     {
       "name": "Mantle of Ruin",
       "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby. Targets make a constitution save.",
-      "narration_cue": "A deep pulse marks Mantle of Ruin.",
+      "narration_cue": "A cold hiss pours from the leader's hands as the light gutters.",
       "recharge": "1/encounter",
       "audio": "cult-leader-signature"
     }

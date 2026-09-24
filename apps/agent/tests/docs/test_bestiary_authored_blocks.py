@@ -99,11 +99,15 @@ def test_encounter_blocks_are_complete_and_in_nearest_tier():
             assert block["hollow"] is None
         for cue_name, cue in block["narration"].items():
             assert_sound_first(cue, (name, cue_name))
+        for group in ("passives", "actives", "reactions"):
+            for ability in block[group]:
+                assert_sound_first(ability["narration_cue"], (name, ability["name"]))
 
 
 def test_every_encounter_action_is_in_its_own_block():
+    blocks = authored_blocks()
     for name, source in source_enemies().items():
-        block = authored_blocks()[name]
+        block = blocks[name]
         actions = {row["name"]: row for row in (*block["attacks"], *block["actives"])}
         assert len(actions) == len(block["attacks"]) + len(block["actives"]), name
         assert "Seizing Grab" not in actions, name
