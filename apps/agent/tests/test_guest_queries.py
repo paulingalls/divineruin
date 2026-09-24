@@ -47,7 +47,15 @@ async def test_guest_patron_describes_guest_standing():
     )
 
     def catalog():
-        return [{"god_id": "sentinel", "short_name": "Sentinel", "title": "the Boundary", "favor_actions": {}}]
+        return [
+            {
+                "god_id": "sentinel",
+                "short_name": "Sentinel",
+                "title": "the Boundary",
+                "favor_actions": {},
+                "layer_1_gift": {"id": "sentinel_gift"},
+            }
+        ]
 
     with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_: None):
         result = json.loads(await _query_patron_impl(ctx, activities=activities, gods_loader=catalog))

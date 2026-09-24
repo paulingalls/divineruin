@@ -107,7 +107,14 @@
       ],
       "secret_agenda": "steering investigation away from the truth while searching for a way to seal the Veil"
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "veythar_lorekeepers_insight",
+      "name": "Lorekeeper's Insight",
+      "effect": "Once per short rest, reroll a failed Arcana, History, Investigation, Nature, or Religion check. Take the new result.",
+      "trigger": "After you fail one of those knowledge checks.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -221,7 +228,14 @@
       ],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "kaelen_iron_resolve",
+      "name": "Iron Resolve",
+      "effect": "Gain +2 to attack rolls and saving throws until the end of your next turn.",
+      "trigger": "The first time you fall below 25% HP in an encounter.",
+      "recharge": "per_encounter",
+      "status": "awaits_binding"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -334,7 +348,14 @@
       ],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "aelora_hearthkeepers_bond",
+      "name": "Hearthkeeper's Bond",
+      "effect": "Gain +1 to all skill checks while you can see or hear an ally.",
+      "trigger": "While an ally is within sight or hearing.",
+      "recharge": "always",
+      "status": "awaits_binding"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -447,7 +468,14 @@
       ],
       "secret_agenda": "investigating the true cause of the Sundering \u2014 suspects deliberate action but not yet which god"
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "syrath_shadow_veil",
+      "name": "Shadow Veil",
+      "effect": "Become invisible for one round. Attacking or casting a spell ends the invisibility.",
+      "trigger": "When you invoke the gift.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -544,7 +572,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "mortaen_deaths_awareness",
+      "name": "Death's Awareness",
+      "effect": "Sense creatures within earshot at 25% HP or below. The DM can also narrate signs of violent death in this area within the past day.",
+      "trigger": "When a wounded creature is within earshot or you enter a place marked by recent violent death.",
+      "recharge": "always",
+      "status": "narrated"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -641,7 +676,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "thyra_natures_pulse",
+      "name": "Nature's Pulse",
+      "effect": "Gain advantage on Perception and Survival checks in natural terrain. The DM narrates the health of the ecosystem without a check.",
+      "trigger": "While you are in natural terrain.",
+      "recharge": "always",
+      "status": "awaits_terrain"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -738,7 +780,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "valdris_weight_of_truth",
+      "name": "Weight of Truth",
+      "effect": "Compel an NPC to acknowledge a statement you believe is true. They need not agree or act, but cannot dismiss or ignore it.",
+      "trigger": "When you speak that statement to an NPC.",
+      "recharge": "short_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -835,7 +884,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "nythera_horizon_sense",
+      "name": "Horizon Sense",
+      "effect": "Know which way is north, how far you have traveled today, and the approximate distance to the nearest unexplored area.",
+      "trigger": "While you travel or seek new ground.",
+      "recharge": "always",
+      "status": "narrated"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -932,7 +988,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "orenthel_dawns_resilience",
+      "name": "Dawn's Resilience",
+      "effect": "Regain 2 HP when you heal another creature, whatever the source of the healing.",
+      "trigger": "When you heal another creature.",
+      "recharge": "always",
+      "status": "awaits_healing"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
@@ -1029,7 +1092,14 @@
       "active_concerns": [],
       "secret_agenda": null
     },
-    "layer_1_gift": null,
+    "layer_1_gift": {
+      "id": "zhael_fates_thread",
+      "name": "Fate's Thread",
+      "effect": "After seeing any d20 result, force a reroll and choose which result stands.",
+      "trigger": "After you see your d20 result or someone else's.",
+      "recharge": "long_rest",
+      "status": "awaits_rest"
+    },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
     "layer_4_synergy_matrix": null
