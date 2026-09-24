@@ -134,13 +134,18 @@ def test_moved_names_have_one_home_and_importers_are_current():
     ):
         tree = ast.parse((AGENT_DIR / f"{module_name}.py").read_text())
         defined = set()
+        imported = set()
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 defined.add(node.name)
             elif isinstance(node, ast.Assign):
                 defined.update(target.id for target in node.targets if isinstance(target, ast.Name))
+            elif isinstance(node, ast.ImportFrom):
+                imported.update(alias.asname or alias.name for alias in node.names)
         if module_name == "system_prompts":
             assert not (defined & moved)
+            # build_system_prompt calls build_companion_prompt; any other moved name here is a re-export shim.
+            assert imported & moved == {"build_companion_prompt"}
         else:
             assert moved <= defined
 
