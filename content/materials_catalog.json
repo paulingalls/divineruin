@@ -307,7 +307,7 @@
     "rarity": "rare",
     "source": "Condensed from a Hollow Weaver's unraveling; purify first.",
     "weight": 0.1,
-    "description": "A bead of nothing that the eye keeps sliding off of."
+    "description": "A bead of nothing that hums from the wrong side of your palm; the eye keeps sliding off it."
   },
   {
     "id": "hollow_shard",
@@ -337,7 +337,7 @@
     "rarity": "rare",
     "source": "Shed by a Veilrender as the Veil tears.",
     "weight": 0.2,
-    "description": "A glassy splinter that shows a wrong sky when held to the eye."
+    "description": "A glassy splinter that chimes like wind across a far sky; held to the eye, it shows that sky wrong."
   },
   {
     "id": "veilrender_carapace",
@@ -547,7 +547,7 @@
     "rarity": "rare",
     "source": "A scrap of torn Veil, painstakingly wound onto a spindle before it unravels.",
     "weight": 0.1,
-    "description": "A thread of nothing that the eye slides off; it weighs less than it should."
+    "description": "A thread of nothing that whispers as it unwinds; it weighs less than it should."
   },
   {
     "id": "living_stone",

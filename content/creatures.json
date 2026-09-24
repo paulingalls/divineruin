@@ -2347,7 +2347,7 @@
       "class": "rend",
       "corruption_aura": 30,
       "resonance_on_death": 1,
-      "veil_effect": "Reverb changes: small rooms echo like cathedrals, large spaces go acoustically dead, and footsteps sound wrong.",
+      "veil_effect": "Reverb characteristics change — small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
       "vulnerable_to": [
         "physical_damage"
       ]
@@ -2486,7 +2486,7 @@
       "class": "wrack",
       "corruption_aura": 10,
       "resonance_on_death": 2,
-      "veil_effect": "Within 30 ft temperature drops, shadows fall wrong, and sounds of the former person’s life sometimes echo.",
+      "veil_effect": "30 ft radius — temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
       "vulnerable_to": [
         "radiant",
         "blessed_weapons",
@@ -2636,7 +2636,7 @@
       "class": "wrack",
       "corruption_aura": 60,
       "resonance_on_death": 3,
-      "veil_effect": "Sound travels wrongly within 60 ft. Voices seem distant or muffled; acoustic space is rewritten.",
+      "veil_effect": "Sound doesn't travel correctly in 60 ft radius. Voices sound distant. Your own voice sounds muffled. Acoustic space is rewritten.",
       "vulnerable_to": [
         "radiant",
         "divine_intervention",
@@ -2666,7 +2666,7 @@
       "death": "implosion, silence, then returning sound",
       "special": {}
     },
-    "loot_table_id": "loot_veilrender",
+    "loot_table_id": "loot_hollow_veilrender",
     "xp_reward": 700,
     "home_region": "ashmark",
     "regions": [

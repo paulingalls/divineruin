@@ -803,7 +803,7 @@
     ]
   },
   {
-    "id": "loot_veilrender",
+    "id": "loot_hollow_veilrender",
     "description": "Veilrender spec harvest from the collapsed corruption field.",
     "hollow_residue": true,
     "drops": [

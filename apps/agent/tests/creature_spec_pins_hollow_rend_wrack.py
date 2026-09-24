@@ -70,9 +70,9 @@ VULNERABLE = {
 }
 VEIL = {
     "hollow_mawling": "Natural sounds distort within 15 ft. Footsteps echo wrong. Combat sounds arrive delayed.",
-    "hollow_weaver": "Reverb changes: small rooms echo like cathedrals, large spaces go acoustically dead, and footsteps sound wrong.",
-    "hollow_knight": "Within 30 ft temperature drops, shadows fall wrong, and sounds of the former person’s life sometimes echo.",
-    "hollow_veilrender": "Sound travels wrongly within 60 ft. Voices seem distant or muffled; acoustic space is rewritten.",
+    "hollow_weaver": "Reverb characteristics change — small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
+    "hollow_knight": "30 ft radius — temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
+    "hollow_veilrender": "Sound doesn't travel correctly in 60 ft radius. Voices sound distant. Your own voice sounds muffled. Acoustic space is rewritten.",
 }
 RULES = {
     "hollow_mawling": ("1d4 durability", "1d6 necrotic", "same tactic", "STR DC 13", "3+ mawlings"),
@@ -128,7 +128,7 @@ LOOT = {
         ),
     ),
     "hollow_veilrender": (
-        "loot_veilrender",
+        "loot_hollow_veilrender",
         (
             ("veilrender_carapace", "2d4", 1.0, ()),
             ("corruption_saturated_stone", "1d6", 1.0, ()),

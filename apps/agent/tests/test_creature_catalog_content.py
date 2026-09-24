@@ -8,6 +8,13 @@ import sys
 from pathlib import Path
 
 import pytest
+
+# Re-exported so pytest collects them: the pins module's name does not match test_*.py.
+from creature_spec_pins_hollow_rend_wrack import (  # noqa: F401
+    test_spec_loot_and_seed,
+    test_spec_mechanics,
+    test_spec_stats_hollow_and_attacks,
+)
 from creature_spec_pins_steppe_keldaran_sunward import ABILITIES as NEW_ABILITIES
 from creature_spec_pins_steppe_keldaran_sunward import BEHAVIOR as NEW_BEHAVIOR
 from creature_spec_pins_steppe_keldaran_sunward import LOOT as NEW_LOOT
