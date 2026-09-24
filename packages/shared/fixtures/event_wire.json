@@ -37,6 +37,7 @@
       "patron_id": "solwyn",
       "last_whisper_level": 20,
       "amount": 5,
+      "requested_amount": 5,
       "reason": "Quest 'The Greyvale Anomaly' stage completed",
       "max": 100,
       "player_id": "player_1"
@@ -85,6 +86,21 @@
       "critical": false,
       "dramatic": false,
       "context": ""
+    },
+    "discover_failed": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 3, "total": 9, "dramatic": false, "context": ""
+    },
+    "discover_no_candidate": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 3, "total": 9, "dramatic": false, "context": ""
+    },
+    "discover_success": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 15, "total": 21, "dramatic": false, "context": ""
+    },
+    "discover_reveal_cue": {
+      "type": "play_sound", "sound_name": "action_discover_reveal"
     }
   },
   "hollow_echo_bands": [

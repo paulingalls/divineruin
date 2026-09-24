@@ -133,7 +133,9 @@ async def _check_skill_impl(
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
 
-    result = check_resolution.resolve_skill_check(player, skill, difficulty)
+    result = check_resolution.resolve_skill_check(
+        player, skill, difficulty, ally_present=session.ally_present_for(player_id)
+    )
 
     await publish_game_event(
         session.room,
@@ -199,6 +201,7 @@ async def _check_skill_impl(
         "margin": result.margin,
         "narrative_hint": result.narrative_hint,
         "context": context_description,
+        **({"gift_name": result.gift_name} if result.gift_name else {}),
     }
     if adv is not None and adv.advanced:
         response["advancement"] = {

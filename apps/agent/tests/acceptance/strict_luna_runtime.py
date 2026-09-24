@@ -23,9 +23,10 @@ from creation_prompts import CREATION_SYSTEM_PROMPT
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from gameplay_llm import LUNA_MODEL, create_gameplay_llm, is_luna
+from mode_prompts import BLACKSMITH_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
 from onboarding_agent import ONBOARDING_TOOLS, OnboardingAgent
 from onboarding_prompt import build_onboarding_instructions
-from system_prompts import BLACKSMITH_SYSTEM_PROMPT, COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT, build_system_prompt
+from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 from voices import EMOTION_RATES, VOICE_ENV_VARS
 
 REPORT_PATH = Path("/tmp/divineruin_strict_luna_gameplay.jsonl")
@@ -195,7 +196,9 @@ async def run_luna_case(case) -> dict[str, Any]:
             resolve = check_resolution.resolve_skill_check_dc
             roll_context = patch(
                 "check_resolution.resolve_skill_check_dc",
-                side_effect=lambda player, skill, dc, rng=None: resolve(player, skill, dc, FixedRng(20)),
+                side_effect=lambda player, skill, dc, rng=None, *, ally_present: resolve(
+                    player, skill, dc, FixedRng(20), ally_present=ally_present
+                ),
             )
         with (
             roll_context,

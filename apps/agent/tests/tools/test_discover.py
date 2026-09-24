@@ -98,13 +98,15 @@ class TestCheckDiscover:
             )
         )
         assert result["outcome"] == "not_found"
-        mock_event.assert_not_called()
+        mock_event.assert_awaited_once()
+        assert mock_event.await_args.args[1] == E.DICE_ROLL
+        assert set(mock_event.await_args.args[2]) == {"roll_type", "skill", "roll", "total", "dramatic", "context"}
+        mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_no_candidate_search_is_retryable(self, mock_event):
-        # A search that finds NO matching element never rolled, so it must not block a
-        # retry — re-searching returns not_found again, not "Already searched".
+        # A cosmetic roll does not lock out a later search.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         first = json.loads(
@@ -119,7 +121,10 @@ class TestCheckDiscover:
         )
         assert first["outcome"] == "not_found"
         assert second["outcome"] == "not_found"
-        mock_event.assert_not_called()
+        assert mock_event.await_count == 2
+        assert all(call.args[1] == E.DICE_ROLL for call in mock_event.await_args_list)
+        assert not ctx.userdata.attempted_discoveries
+        mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_invalid_skill_raises(self):
@@ -181,13 +186,13 @@ class TestCheckDiscover:
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
             first_roll_calls = mock_dice.call_count
-            # Reword the target — the perception secret is already attempted, so no new roll.
+            # The secret remains locked out; the second roll is cosmetic.
             result = json.loads(
                 await _check_discover_impl(
                     ctx, "perception", "the shelf", content=content, queries=queries, mutations=mutations
                 )
             )
-            assert mock_dice.call_count == first_roll_calls  # no second roll
+            assert mock_dice.call_count == first_roll_calls + 1
         assert result["outcome"] == "not_found"
 
     @pytest.mark.asyncio
@@ -205,7 +210,9 @@ class TestCheckDiscover:
             )
         )
         assert result["outcome"] == "not_found"
-        mock_event.assert_not_called()
+        mock_event.assert_awaited_once()
+        assert mock_event.await_args.args[1] == E.DICE_ROLL
+        mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)

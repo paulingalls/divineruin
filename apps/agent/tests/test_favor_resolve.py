@@ -57,9 +57,11 @@ async def test_resolve_persists_real_delta_and_only_refreshes_on_gain(level, amo
         "patron_id",
         "last_whisper_level",
         "amount",
+        "requested_amount",
         "reason",
         "max",
         "player_id",
     }
+    assert payload["requested_amount"] == amount
     assert payload["amount"] == delta
     assert payload["new_level"] == expected

@@ -22,6 +22,7 @@ class PendingSpeech:
     created: float = field(default_factory=time, compare=False)
     stinger_sound: str | None = field(default=None, compare=False)
     recipient_id: str | None = field(default=None, compare=False)
+    is_displeasure: bool = field(default=False, compare=False)
     # May this be spoken while a fight is running? Default NO: the background process is
     # session-scoped since story-023, so it now runs THROUGH combat, and proactive speech
     # delivered there breaks the DM off mid-beat. Only a producer whose whole point is to reach

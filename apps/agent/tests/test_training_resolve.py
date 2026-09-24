@@ -8,7 +8,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
-from system_prompts import DISPATCH_MODE_PROMPT
+from mode_prompts import DISPATCH_MODE_PROMPT
 from training_rules import MidpointResult
 from training_tools import _resolve_training_midpoint_impl
 

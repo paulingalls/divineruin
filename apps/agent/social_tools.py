@@ -72,7 +72,9 @@ async def _check_social_impl(
     validated_player_conditions(player, player_id)
 
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
-    roll = check_resolution.resolve_skill_check_dc(player, skill_lower, base_dc, rng)
+    roll = check_resolution.resolve_skill_check_dc(
+        player, skill_lower, base_dc, rng, ally_present=session.ally_present_for(player_id)
+    )
     current = await resolve_disposition(npc_id, player_id, queries_mod=queries, content_mod=content)
     # The pure resolver fail-louds with ValueError on an off-ladder disposition (a corrupt
     # npc_dispositions row). db_tool only narrows ValueError-free errors, so convert it to a
@@ -155,5 +157,6 @@ async def _check_social_impl(
             "disposition_shift": outcome.disposition_shift,
             "previous_disposition": current,
             "new_disposition": outcome.new_disposition,
+            **({"gift_name": roll.gift_name} if roll.gift_name else {}),
         }
     )

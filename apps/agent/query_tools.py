@@ -78,8 +78,9 @@ async def query_info(
       rental price from that NPC; omit target_id for per-disposition daily prices.
     - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
-    - kind="patron": the current player's patron standing, progress, and authored favor action ids
-      (no target_id needed)."""
+    - kind="patron": the current player's patron standing, progress, authored favor action ids,
+      and Layer 1 gift (no target_id needed). Only an active or narrated gift is granted;
+      an awaits_* gift is the god's promise, not yet a power."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -157,6 +158,7 @@ async def _query_patron_impl(
             "next_tier": next_tier,
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
+            "layer_1_gift": patron["layer_1_gift"],
         }
     )
 

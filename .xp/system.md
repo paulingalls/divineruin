@@ -78,9 +78,7 @@ API cost) and runs only at the comprehensive push or sprint-close boundary.
 - Client sound ids are content-registered aliases: `content/combat_sounds.json`
   and `content/action_sounds.json` map an id to a bundled stem, loaded by Python
   and `sound-registry.ts`. A card adding an id or a new publish site names
-  `tests/acceptance/test_m22_audio_completeness_capstone.py` in Verify and runs
-  `bun run test:python` before handback: a new publish breaks exact-event-count
-  tests on the tool it touches (sprint-104: both surfaced only at pre-push).
+  `tests/acceptance/test_m22_audio_completeness_capstone.py` in Verify.
 - Session start is shared by many suites: a card touching `session_hydration.py`,
   `participant_lifecycle.py` or `agent.py`'s session setup names
   `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
@@ -199,8 +197,14 @@ lost review rounds to both halves of this, five times.
   was never written, and nothing in the handback said so. A red Verify is the one
   state a story cannot be handed over in.
 - RUN EVERY FOCUSED VERIFY THE CARD NAMES. Acceptance-related cards name a
-  relevant acceptance test in Verify. Whole Python unit coverage runs at story
-  close; whole real-LLM acceptance runs at the comprehensive release gate.
+  relevant acceptance test in Verify. Whole real-LLM acceptance runs at the
+  comprehensive release gate.
+- A STORY THAT TOUCHES `apps/agent` RUNS `bun run test:python` (about 60 s)
+  BEFORE HANDBACK. A focused Verify cannot see a test outside the card that mocks
+  the changed shape, a field it now reads, or the order of its outputs. Each one
+  cost a lead fix and a confirming review round at the land tier: 224 (sprint
+  105), and 225 (bus-before-client order) and 228 (a hand-built god catalog
+  missing `layer_1_gift`) in sprint 106.
 - IF A COMMAND WILL NOT RUN, SAY WHICH AND WHY in the handback. A phantom red
   from the wrong command is worse than a missing run: story-087's handback
   claimed "infrastructure contamination" from 3 failures that `bun run

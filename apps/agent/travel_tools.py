@@ -117,7 +117,9 @@ async def _travel_impl(
 
     roll = None
     if dc is not None:
-        roll = check_resolution.resolve_skill_check_dc(player, _NAV_SKILL, dc, rng)
+        roll = check_resolution.resolve_skill_check_dc(
+            player, _NAV_SKILL, dc, rng, ally_present=session.ally_present_for(speaker_id)
+        )
 
     result = travel_engine.resolve_travel_segment(
         mode=mode_lower,
@@ -209,4 +211,6 @@ async def _travel_impl(
     }
     if roll is not None:
         payload.update({"roll": roll.roll, "total": roll.total, "dc": result.dc, "margin": result.margin})
+        if roll.gift_name:
+            payload["gift_name"] = roll.gift_name
     return json.dumps(payload)

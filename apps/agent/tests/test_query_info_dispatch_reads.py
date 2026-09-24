@@ -6,9 +6,10 @@ import pytest
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+from mode_prompts import DISPATCH_MODE_PROMPT
 from query_tools import _query_info_impl
 from session_data import SessionData
-from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_MODE_PROMPT, build_system_prompt
+from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 
 
 @pytest.fixture

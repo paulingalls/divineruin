@@ -18,11 +18,11 @@ from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
 from dispatch_tools import conclude_dispatch
+from mode_prompts import DISPATCH_SYSTEM_PROMPT
 from movement_tools import move_player
 from query_tools import query_info
 from recipe_tools import learn
 from session_tools import end_session
-from system_prompts import DISPATCH_SYSTEM_PROMPT
 
 logger = logging.getLogger("divineruin.dispatch_agent")
 

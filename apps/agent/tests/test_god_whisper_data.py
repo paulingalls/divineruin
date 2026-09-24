@@ -1,9 +1,15 @@
 """Tests for god whisper profile data."""
 
+from unittest.mock import patch
+
+import pytest
+
+from _gods_content import load_gods
 from god_whisper_data import (
     FAVOR_WHISPER_COOLDOWN,
     FAVOR_WHISPER_THRESHOLD,
     GOD_WHISPER_PROFILES,
+    _load_profiles,
     get_god_profile,
     should_trigger_whisper,
 )
@@ -24,6 +30,36 @@ class TestGodWhisperProfiles:
             "zhael",
         }
         assert set(GOD_WHISPER_PROFILES.keys()) == expected
+
+    def test_real_roster_has_authored_displeasure_for_every_god(self):
+        entries = load_gods()
+        assert entries
+        assert set(GOD_WHISPER_PROFILES) == {entry["god_id"] for entry in entries}
+        assert len(entries) == 10
+        for entry in entries:
+            prompt = entry["whisper_profile"]["displeasure_prompt"]
+            assert prompt.strip(), entry["god_id"]
+            assert sum(prompt.count(mark) for mark in ".!?") <= 2, entry["god_id"]
+            assert GOD_WHISPER_PROFILES[entry["god_id"]].displeasure_prompt == prompt
+
+    def test_each_god_opens_displeasure_in_its_own_words(self):
+        # Ten lines that open alike make ten distinct gods sound like one voice.
+        openings = [
+            " ".join(entry["whisper_profile"]["displeasure_prompt"].lower().split()[:2]) for entry in load_gods()
+        ]
+        assert len(openings) == 10
+        assert len(set(openings)) == len(openings), sorted(openings)
+
+    @pytest.mark.parametrize("value", [None, "  "])
+    def test_missing_or_blank_displeasure_raises_at_load(self, value):
+        entry = {**load_gods()[0], "whisper_profile": {**load_gods()[0]["whisper_profile"]}}
+        if value is None:
+            del entry["whisper_profile"]["displeasure_prompt"]
+        else:
+            entry["whisper_profile"]["displeasure_prompt"] = value
+        with patch("god_whisper_data.load_gods", return_value=[entry]):
+            with pytest.raises((KeyError, ValueError)):
+                _load_profiles()
 
     def test_all_profiles_have_required_fields(self):
         for deity_id, profile in GOD_WHISPER_PROFILES.items():
