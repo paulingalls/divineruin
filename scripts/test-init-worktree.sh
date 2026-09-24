@@ -132,7 +132,7 @@ else
 fi
 
 (
-  set +o pipefail
+  set +o pipefail  # pre-push runs without pipefail, where grep|tail hid an absent key
   fixture="$(mktemp -d -t absent-offset)"
   trap 'rm -rf "$fixture"' EXIT
   while IFS= read -r var; do unset "$var"; done < <(git rev-parse --local-env-vars)
