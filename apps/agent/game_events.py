@@ -41,9 +41,10 @@ async def publish_game_event(
     payload: dict,
     event_bus: EventBus | None = None,
 ) -> None:
-    """Publish to the internal event bus independently of client delivery.
+    """Publish to the internal event bus first, so the background process sees
+    the event whether or not client delivery succeeds; transport errors still raise.
 
-    Skip the data channel if room is None. Wait up to 10 seconds for a
+    Skip the data channel if room is None. Wait up to MAX_CONNECT_WAIT_S for a
     disconnected room, then warn and skip the client send. Skip the event bus
     if event_bus is None.
     """
