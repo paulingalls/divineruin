@@ -3054,7 +3054,7 @@
     "actives": [
       {
         "name": "Reshape",
-        "description": "1/round free action: create, move or destroy a 20 ft × 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round.",
+        "description": "1/round free action: create, move or destroy a 20 ft × 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
         "narration_cue": "",
         "recharge": "1/round",
         "audio": null

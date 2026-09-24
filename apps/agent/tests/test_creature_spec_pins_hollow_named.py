@@ -34,16 +34,16 @@ SPEC = {
 }
 ATTACKS = {
     "hollow_choir": (
-        ("Memory Scream", "area", 60, 0, "3d8", "psychic", "WIS save DC 18"),
-        ("Dissonant Chord", "ranged", 120, 10, "2d10+6", "psychic", "CON save DC 18"),
+        ("Memory Scream", "area", 60, 0, "3d8", "psychic", "WIS save DC 18", "WIS", 18, "stunned"),
+        ("Dissonant Chord", "ranged", 120, 10, "2d10+6", "psychic", "CON save DC 18", "CON", 18, None),
     ),
     "hollow_still": (
-        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)"),
-        ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20"),
+        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)", "WIS", 20, None),
+        ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20", "WIS", 20, None),
     ),
     "hollow_architect": (
-        ("Construct Slam", "melee", 15, 11, "3d10+5", "bludgeoning", "2d6 force"),
-        ("Geometry Strike", "ranged", 120, 10, "2d8+6", "force", "Auto-hit against targets touching"),
+        ("Construct Slam", "melee", 15, 11, "3d10+5", "bludgeoning", "2d6 force", None, None, None),
+        ("Geometry Strike", "ranged", 120, 10, "2d8+6", "force", "Auto-hit against targets touching", None, None, None),
     ),
 }
 ABILITIES = {
@@ -93,6 +93,7 @@ RULES = {
         "4d10 force",
         "2d4 minions",
         "3/round",
+        "Reshape costs 2 of 3/round",
     ),
 }
 RECHARGES = {
@@ -148,7 +149,7 @@ def assert_pin(row, key):
     assert validate_creature_stat_block(row) == []
     actual = row["attacks"]
     assert len(actual) == 2
-    for attack, (name, kind, reach, hit, damage, damage_type, rule) in zip(actual, ATTACKS[key], strict=True):
+    for attack, (*fields, rule, save, dc, condition) in zip(actual, ATTACKS[key], strict=True):
         assert (
             attack["name"],
             attack["type"],
@@ -156,14 +157,14 @@ def assert_pin(row, key):
             attack["to_hit"],
             attack["damage"],
             attack["damage_type"],
-        ) == (name, kind, reach, hit, damage, damage_type)
+        ) == tuple(fields)
         assert rule in attack["special"]
+        assert (attack.get("save"), attack.get("dc"), attack.get("applies_condition")) == (save, dc, condition)
+        assert "half_on_success" not in attack
     if key == "hollow_choir":
         assert "Deafened 1 minute" in actual[1]["special"]
-        assert "applies_condition" not in actual[1]
     if key == "hollow_still":
         assert "Charmed for 1 hour" in actual[0]["special"]
-        assert "applies_condition" not in actual[0]
 
 
 def test_named_spec_stats_attacks_abilities_and_validator():
@@ -199,7 +200,13 @@ def test_named_loot_materials_and_seed():
 
 def test_named_pins_reject_changed_stat_attack_and_loot():
     row = catalog("creatures.json")["hollow_choir"]
-    for mutate in (lambda x: x.__setitem__("hp", 201), lambda x: x["attacks"][0].__setitem__("reach", 61)):
+    for mutate in (
+        lambda x: x.__setitem__("hp", 201),
+        lambda x: x["attacks"][0].__setitem__("reach", 61),
+        lambda x: x["attacks"][0].__setitem__("dc", 17),
+        lambda x: x["attacks"][0].pop("applies_condition"),
+        lambda x: x["attacks"][1].__setitem__("applies_condition", "deafened"),
+    ):
         changed = copy.deepcopy(row)
         mutate(changed)
         with pytest.raises(AssertionError):
