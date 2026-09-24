@@ -179,6 +179,12 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
             _MATERIAL_ID if material else _ITEM_ID,
         )
         assert qty == 1
+        inventory_events = [e for e in sink.captured if e.event_type == E.INVENTORY_UPDATED]
+        assert len(inventory_events) == 1
+        assert inventory_events[0].payload["player_id"] == _PLAYER_ID
+        assert any(
+            row["id"] == (_MATERIAL_ID if material else _ITEM_ID) for row in inventory_events[0].payload["inventory"]
+        )
 
         # end_data surfaces the primary's own haul for the DM narration / response (solo: the
         # primary is the only participant, so primary_* equals the whole haul).

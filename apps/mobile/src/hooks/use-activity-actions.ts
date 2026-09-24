@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { catchupStore } from "@/stores/catchup-store";
+import { panelStore } from "@/stores/panel-store";
 import { API_BASE, authHeaders } from "@/utils/api";
 import { fetchCards } from "@/hooks/use-catchup";
 import { playSfx } from "@/audio/sfx-player";
@@ -52,6 +53,11 @@ export function useActivityActions() {
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+
+    const body = (await res.json()) as { material_quantities?: Record<string, number> };
+    if (type === "crafting" && body.material_quantities) {
+      panelStore.getState().applyMaterialQuantities(body.material_quantities);
     }
 
     // Refresh the feed to show the new in-progress card

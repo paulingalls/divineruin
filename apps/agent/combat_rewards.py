@@ -365,6 +365,11 @@ async def grant_victory_rewards(
         channel=channel,
         item_recipients=item_recipients,
     )
+    for player_id in sorted({recipient for recipient, _ in item_recipients}):
+        await channel.emit(
+            E.INVENTORY_UPDATED,
+            {"player_id": player_id, "inventory": await queries.get_player_inventory(player_id, conn=conn)},
+        )
     primary_currency_gold = await distribute_currency(
         spoils.currency_silver,
         seat_order,

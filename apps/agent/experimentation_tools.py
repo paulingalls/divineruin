@@ -27,11 +27,13 @@ from livekit.agents.voice import RunContext
 import db
 import db_mutations
 import db_queries
+import event_types as E
 import experimentation
 import experimentation_db
 import materials as materials_module
 import recipe_validation
 import recipes
+from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -98,32 +100,36 @@ async def _experiment_with_materials_impl(
             if outcome.success:
                 context.userdata.validate_acting_player(player_id)
                 await mutations_mod.add_player_known_recipe(player_id, match["id"], "experimentation", conn=conn)
-                return json.dumps(
-                    {
-                        "outcome": "success",
-                        "learned_recipe": match["id"],
-                        "produced_item": match["output_item"],
-                        "roll": outcome.roll,
-                        "dc": outcome.dc,
-                    }
-                )
-            return json.dumps(
-                {
+                result_payload = {
+                    "outcome": "success",
+                    "learned_recipe": match["id"],
+                    "produced_item": match["output_item"],
+                    "roll": outcome.roll,
+                    "dc": outcome.dc,
+                }
+            else:
+                result_payload = {
                     "outcome": "failure",
                     "learned_recipe": None,
                     "retryable": True,
                     "roll": outcome.roll,
                     "dc": outcome.dc,
                 }
-            )
-
-        # No recipe makes intended_output from these materials.
-        if await exp_db_mod.has_failed_experiment(player_id, intended_output, combo_key, conn=conn):
+        elif await exp_db_mod.has_failed_experiment(player_id, intended_output, combo_key, conn=conn):
             return json.dumps({"outcome": "already_tried", "learned_recipe": None, "consumed": False})
-        short = {mid: qty for mid, qty in materials.items() if available.get(mid, 0) < qty}
-        if short:
-            raise ToolError("You don't have the materials you described.")
-        await mutations_mod.consume_player_materials(player_id, materials, conn=conn)
-        context.userdata.validate_acting_player(player_id)
-        await exp_db_mod.record_failed_experiment(player_id, intended_output, combo_key, conn=conn)
-        return json.dumps({"outcome": "no_match", "learned_recipe": None, "consumed": True})
+        else:
+            short = {mid: qty for mid, qty in materials.items() if available.get(mid, 0) < qty}
+            if short:
+                raise ToolError("You don't have the materials you described.")
+            await mutations_mod.consume_player_materials(player_id, materials, conn=conn)
+            context.userdata.validate_acting_player(player_id)
+            await exp_db_mod.record_failed_experiment(player_id, intended_output, combo_key, conn=conn)
+            result_payload = {"outcome": "no_match", "learned_recipe": None, "consumed": True}
+
+    await publish_game_event(
+        context.userdata.room,
+        E.INVENTORY_UPDATED,
+        {"player_id": player_id, "inventory": await queries_mod.get_player_inventory(player_id)},
+        event_bus=context.userdata.event_bus,
+    )
+    return json.dumps(result_payload)

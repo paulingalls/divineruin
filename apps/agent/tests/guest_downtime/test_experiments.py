@@ -1,5 +1,6 @@
 import json
 import random
+from unittest.mock import MagicMock
 
 import pytest
 from sample_fixtures import make_db_mod
@@ -20,7 +21,10 @@ from . import (
 @pytest.mark.parametrize("match", [True, False], ids=["success", "no_match"])
 async def test_guest_experiment_consumes_own_materials_and_records_result(match):
     context, actor = guest_context()
-    queries = module(get_player=None, get_player_materials=None, get_player_known_recipe_ids=[])
+    context.userdata.event_bus = MagicMock()
+    queries = module(
+        get_player=None, get_player_materials=None, get_player_known_recipe_ids=[], get_player_inventory=[]
+    )
     queries.get_player.side_effect = lambda player_id, **_: {
         **player_by_id(player_id),
         "attributes": {"intelligence": 20},
@@ -55,6 +59,9 @@ async def test_guest_experiment_consumes_own_materials_and_records_result(match)
             )
         )
     assert mutations.consume_player_materials.await_args.args[0] == "player_2"
+    event = context.userdata.event_bus.publish.call_args.args[0]
+    assert event.event_type == "inventory_updated"
+    assert event.payload == {"player_id": "player_2", "inventory": []}
     if match:
         assert result["outcome"] == "success"
         assert mutations.add_player_known_recipe.await_args.args[0] == "player_2"

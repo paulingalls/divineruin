@@ -102,6 +102,21 @@ test("setInventory stores items", () => {
   expect(panelStore.getState().inventory[0].name).toBe("Steel Sword");
 });
 
+test("craft response quantities update held materials and remove depleted stacks", () => {
+  panelStore
+    .getState()
+    .setInventory([
+      { ...SAMPLE_ITEM, id: "iron_ingot", type: "material", quantity: 3 },
+      { ...SAMPLE_ITEM, id: "leather_strip", type: "material", quantity: 1 },
+      SAMPLE_ITEM,
+    ]);
+  panelStore.getState().applyMaterialQuantities({ iron_ingot: 1, leather_strip: 0 });
+  expect(panelStore.getState().inventory.map(({ id, quantity }) => [id, quantity])).toEqual([
+    ["iron_ingot", 1],
+    [SAMPLE_ITEM.id, SAMPLE_ITEM.quantity],
+  ]);
+});
+
 // --- Quests ---
 
 test("setQuests stores quests", () => {

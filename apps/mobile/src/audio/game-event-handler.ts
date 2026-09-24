@@ -480,6 +480,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case E.INVENTORY_UPDATED:
+      if (!isEventForLocalPlayer(event.player_id)) break;
       if (Array.isArray(event.inventory)) {
         panelStore
           .getState()

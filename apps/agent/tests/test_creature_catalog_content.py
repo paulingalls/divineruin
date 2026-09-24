@@ -24,6 +24,7 @@ from creature_spec_pins_underground_multi_region import BEHAVIOR as FINAL_BEHAVI
 from creature_spec_pins_underground_multi_region import LOOT as FINAL_LOOT
 from creature_spec_pins_underground_multi_region import MULTIATTACK as FINAL_MULTIATTACK
 from creature_spec_pins_underground_multi_region import SPEC as FINAL_SPEC
+from test_creature_distribution import FACTION_ENCOUNTER_IDS
 
 from creature_schema import validate_creature_stat_block
 
@@ -385,11 +386,30 @@ def test_spec_stats_regions_and_behavior():
     assert {attack["name"] for attack in rows["bandit"]["attacks"]} == {"Short Sword", "Light Crossbow"}
     assert {attack["name"] for attack in rows["bandit_captain"]["attacks"]} == {"Longsword", "Heavy Crossbow"}
     assert {attack["name"] for attack in rows["troll"]["attacks"]} == {"Claw", "Bite"}
-    greyvale = [rows[key] for key in SPEC if rows[key]["home_region"] == "greyvale"]
+    assert rows.keys() >= FACTION_ENCOUNTER_IDS
+    natural = [row for row in rows.values() if row["category"] != "hollow" and row["id"] not in FACTION_ENCOUNTER_IDS]
+    assert natural
+    greyvale = [row for row in natural if row["home_region"] == "greyvale"]
     assert greyvale
     assert all(row["tier"] == 1 for row in greyvale)
-    keldaran = [rows[key] for key in SPEC if rows[key]["home_region"] == "keldaran_mountains"]
+    keldaran = [row for row in natural if row["home_region"] == "keldaran_mountains"]
     assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
+
+
+def test_region_tier_walk_catches_new_natural_row(monkeypatch):
+    original_catalog = catalog
+
+    def with_bad_row(name):
+        rows = original_catalog(name)
+        if name == "creatures.json":
+            rows.append(
+                {**rows[0], "id": "unlisted_greyvale_elite", "category": "beast", "home_region": "greyvale", "tier": 3}
+            )
+        return rows
+
+    monkeypatch.setattr(sys.modules[__name__], "catalog", with_bad_row)
+    with pytest.raises(AssertionError):
+        test_spec_stats_regions_and_behavior()
 
 
 def drop_rows(table):

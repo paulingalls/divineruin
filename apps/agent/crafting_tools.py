@@ -34,6 +34,7 @@ import db_activity_queries
 import db_content_queries
 import db_mutations
 import db_queries
+import event_types as E
 import materials
 import preflight_pipeline
 import pricing_queries
@@ -42,6 +43,7 @@ import recipes
 import rules_engine
 import workspace
 from disposition import resolve_disposition
+from game_events import publish_game_event
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -400,6 +402,12 @@ async def _start_crafting_project_impl(
         context.userdata.validate_acting_player(player_id)
         activity_id = await mutations_mod.create_async_activity(player_id, data, conn=conn)
 
+    await publish_game_event(
+        context.userdata.room,
+        E.INVENTORY_UPDATED,
+        {"player_id": player_id, "inventory": await queries_mod.get_player_inventory(player_id)},
+        event_bus=context.userdata.event_bus,
+    )
     logger.info("start_crafting_project: player=%s recipe=%s activity=%s", player_id, recipe_id, activity_id)
     return json.dumps(
         {
