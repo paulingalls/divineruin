@@ -39,11 +39,15 @@ def validate_gifts(rows):
         assert isinstance(gift, dict), row["god_id"]
         assert set(gift) == GIFT_FIELDS, row["god_id"]
         assert all(isinstance(value, str) and value.strip() for value in gift.values()), row["god_id"]
-        assert gift["recharge"] in RECHARGES, row["god_id"]
-        assert gift["status"] in STATUSES, row["god_id"]
         assert (gift["recharge"], gift["status"]) == EXPECTED_GIFTS[row["god_id"]]
         gift_ids.append(gift["id"])
     assert len(gift_ids) == len(set(gift_ids))
+
+
+def test_expected_gift_table_uses_only_the_enums():
+    # validate_gifts pins each row to this table, so content is in the enums only if the table is.
+    assert {recharge for recharge, _ in EXPECTED_GIFTS.values()} <= RECHARGES
+    assert {status for _, status in EXPECTED_GIFTS.values()} <= STATUSES
 
 
 def test_every_patron_has_authored_layer_1_gift():

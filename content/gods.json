@@ -575,7 +575,7 @@
     "layer_1_gift": {
       "id": "mortaen_deaths_awareness",
       "name": "Death's Awareness",
-      "effect": "Sense creatures within earshot below 25% HP. The DM can also narrate signs of violent death in this area within the past day.",
+      "effect": "Sense creatures within earshot at 25% HP or below. The DM can also narrate signs of violent death in this area within the past day.",
       "trigger": "When a wounded creature is within earshot or you enter a place marked by recent violent death.",
       "recharge": "always",
       "status": "narrated"
