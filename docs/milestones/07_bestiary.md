@@ -8,13 +8,13 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, two Tier 1 Hollow exemplars, all 19 spec-authored natural creatures, and internal catalog lookups are shipped. The DM query surface and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, all 9 spec-authored Hollow creatures, all 19 spec-authored natural creatures, and internal catalog lookups are shipped. The DM query surface and Hollow and encounter mechanics remain open. Existing encounter templates still use their own flat enemy blocks.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
 | M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
-| M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
+| M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
 
 **Material gaps:**
@@ -119,7 +119,7 @@ An attack's rider poison damage stays in `special`, while `damage` records its b
 
 **Inputs:** M7.1 (creature stat block schema with Hollow extensions), Phase 3 (Magic — Resonance system for resonance_on_death interaction).
 
-The catalog now includes Shadeling, Hollowmoth, Mawling, Hollow Weaver, Hollowed Knight, and Veilrender. The four newly added Rend and Wrack rows carry their spec stats, Hollow properties, narrated abilities, and spec loot tables. The Hollowed Knight catalog table is separate from its existing encounter reward table. Only an attack can carry `escape_dc`, so Mawling's Lunge active is also authored as a grapple attack; its Recharge 5-6 stays in `special`, which no engine reads yet. Combat resolution for the remaining special mechanics and the three Tier 4 creatures is still pending.
+The catalog includes all nine spec Hollow creatures, including the three Tier 4 Named. The Still's "1 per anchor" shard and "varies" memories are omitted because the loot quantity schema cannot represent them. Zone entities, anchors, terrain, legendary rules, and remaining custom mechanics remain Sprint 64 work. Choir Deafened and Still Charmed riders stay in `special` because their combat restrictions are not enforced yet; adding `applies_condition` would activate an incomplete producer. The Hollowed Knight catalog table is separate from its encounter reward table. Mawling's Lunge Recharge 5-6 remains in `special`, which the engine does not read yet.
 
 **Deliverables:**
 - 9 Hollow creatures with full stat blocks and special mechanics:
@@ -136,10 +136,10 @@ The catalog now includes Shadeling, Hollowmoth, Mawling, Hollow Weaver, Hollowed
 - Content: Hollow creatures in `content/creatures.json` with hollow-specific fields populated
 
 **Acceptance criteria:**
-- [ ] All 9 Hollow creatures have complete stat blocks with hollow nested fields populated
+- [x] All 9 Hollow creatures have complete stat blocks with hollow nested fields populated <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_spec_hollow_ids_have_complete_blocks -->
 - [ ] Corruption aura applies correctly based on distance and target saves
 - [ ] `resolve_resonance_on_death` feeds correct Resonance deltas to nearby casters
-- [ ] Each Hollow creature has a distinct veil_effect and vulnerability
+- [x] Each Hollow creature has a distinct veil_effect and vulnerability <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_hollow_veil_effects_and_vulnerabilities_are_pairwise_distinct -->
 - [ ] The Choir has custom multi-phase audio-zone combat behavior (not standard attack loop)
 - [ ] The Still has passive-until-attacked behavior with damage reflection
 - [ ] The Architect has terrain manipulation abilities that alter combat grid state

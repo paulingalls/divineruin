@@ -842,5 +842,113 @@
         ]
       }
     ]
+  },
+  {
+    "id": "loot_hollow_choir",
+    "description": "Choir core and released memories.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "choir_resonance_crystal",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "freed_memories",
+        "quantity": "1d6",
+        "chance": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_still",
+    "description": "The Still: non-integer per-anchor and varies drops omitted.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_architect",
+    "description": "Architect structure harvest.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "architect_blueprint_fragment",
+        "quantity": "1d4",
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "living_stone",
+        "quantity": "2d6",
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "void_touched_foundation",
+        "quantity": 1,
+        "chance": 0.5,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          },
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
   }
 ]

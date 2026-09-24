@@ -938,5 +938,35 @@
     "source": "Recovered from a Veilrender with expert Crafting; purify before use.",
     "weight": 1.0,
     "description": "A deep pulse sounds within this heavy core, more potent than a knight’s wrack core."
+  },
+  {
+    "id": "freed_memories",
+    "name": "Freed Memories",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Released when the Choir core breaks.",
+    "weight": 0.1,
+    "description": "A specific memory from someone consumed by the Choir."
+  },
+  {
+    "id": "architect_blueprint_fragment",
+    "name": "Architect's Blueprint Fragment",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Recovered from the Architect's structures.",
+    "weight": 0.1,
+    "description": "Patterns for impossible structures."
+  },
+  {
+    "id": "void_touched_foundation",
+    "name": "Void-touched Foundation",
+    "category": "hollow_residue",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Recovered from the Architect's central construction.",
+    "weight": 0.1,
+    "description": "A fragment of an unknown foundational structure."
   }
 ]
