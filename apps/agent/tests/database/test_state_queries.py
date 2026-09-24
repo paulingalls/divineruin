@@ -93,6 +93,23 @@ class TestStateQueries:
         assert result[0]["id"] == "sword"
         assert result[0]["slot_info"]["equipped"] is True
 
+    @pytest.mark.asyncio
+    async def test_get_player_inventory_raises_on_id_in_neither_catalog(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {
+                    "item_id": "ghost_blade",
+                    "item_data": None,
+                    "material_data": None,
+                    "slot_data": json.dumps({"quantity": 1}),
+                }
+            ]
+        )
+
+        with patch("db.get_pool", return_value=mock_pool), pytest.raises(ValueError, match="'ghost_blade'"):
+            await db_queries.get_player_inventory("p1")
+
     def test_item_material_catalog_intersection_is_crystal_flask(self):
         content = Path(__file__).resolve().parents[4] / "content"
         items = {row["id"] for row in json.loads((content / "items.json").read_text())}

@@ -19,9 +19,9 @@ logger = logging.getLogger("divineruin.tools")
 def _find_equipped(inventory: list[dict], item_type: str, name: str | None = None) -> dict | None:
     """Return the equipped inventory item of a given type (optionally matching a
     name), or None. Inventory includes material rows; only gear with a matching
-    type is eligible. Requires a durability_tier so the
-    caller can damage it; an equipped item missing one is skipped (None) rather than
-    blowing up the turn — durability is a side-effect, not worth failing over.
+    type is eligible. Requires a durability_tier so the caller can damage it; an
+    equipped item missing one is skipped (None) rather than blowing up the turn —
+    durability is a side-effect, not worth failing over.
     Ambiguous matches log and take the first."""
     matches = [
         it

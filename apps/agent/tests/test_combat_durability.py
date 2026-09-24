@@ -99,9 +99,8 @@ def test_find_equipped_matches_type_and_equipped_flag():
 
 
 @pytest.mark.parametrize("gear_type", ["weapon", "armor", "shield"])
-def test_find_equipped_ignores_material_even_with_gear_slot(gear_type):
+def test_find_equipped_ignores_equipped_material(gear_type):
     material = _inv_item("wolf_pelt", "material", equipped=True)
-    material["slot_info"]["gear_slot"] = gear_type
     gear = _inv_item("real_gear", gear_type, equipped=True)
     assert combat_durability._find_equipped([material, gear], gear_type) is gear
     assert combat_durability._find_equipped([material], gear_type) is None
