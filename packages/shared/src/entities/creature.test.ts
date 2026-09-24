@@ -54,6 +54,8 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
     "unknown_resistance_tag",
     "signature_without_name",
     "signature_without_description",
+    "active_kind_attack",
+    "attack_with_mark_kind",
   ])
     expect(invalid.some((row) => row.name === name)).toBe(true);
   expect(valid.length).toBeGreaterThan(0);

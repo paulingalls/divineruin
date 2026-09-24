@@ -2,6 +2,7 @@ import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
 import {
   RESISTANCE_TAG_VALUES,
+  validateEncounterActionKind,
   validateEncounterActionShape,
   type SignatureAbility,
 } from "./encounter";
@@ -90,7 +91,7 @@ const HOLLOW_CLASSES = ["drift", "rend", "wrack", "named"];
 const ATTRIBUTES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 const LOOT_IDS = new Set(lootTables.map((row) => row.id));
 type Shape = Record<string, unknown>;
-type Kind = "string" | "integer" | "object" | "array";
+type Kind = "string" | "integer" | "boolean" | "object" | "array";
 const isObject = (value: unknown): value is Shape =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -98,10 +99,17 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   const problems: string[] = [];
   if (!isObject(creature)) return ["creature: expected object"];
 
-  function field(obj: Shape, key: string, path: string, kind: Kind, nullable = false): unknown {
+  function field(
+    obj: Shape,
+    key: string,
+    path: string,
+    kind: Kind,
+    nullable = false,
+    required = true,
+  ): unknown {
     const name = path ? `${path}.${key}` : key;
     if (!(key in obj)) {
-      problems.push(`${name}: required`);
+      if (required) problems.push(`${name}: required`);
       return undefined;
     }
     const value = obj[key];
@@ -111,9 +119,11 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         ? typeof value === "string"
         : kind === "integer"
           ? Number.isInteger(value)
-          : kind === "object"
-            ? isObject(value)
-            : Array.isArray(value);
+          : kind === "boolean"
+            ? typeof value === "boolean"
+            : kind === "object"
+              ? isObject(value)
+              : Array.isArray(value);
     if (!valid) {
       problems.push(`${name}: expected ${kind}`);
       return undefined;
@@ -125,21 +135,14 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
       if (typeof value !== "string") problems.push(`${path}[${i}]: expected string`);
     });
   }
-  function optional(obj: Shape, key: string, path: string, kind: Kind | "boolean"): unknown {
-    if (!(key in obj)) return undefined;
-    const value = obj[key];
-    const valid =
-      kind === "string"
-        ? typeof value === "string"
-        : kind === "integer"
-          ? Number.isInteger(value)
-          : kind === "boolean"
-            ? typeof value === "boolean"
-            : kind === "object"
-              ? isObject(value)
-              : Array.isArray(value);
-    if (!valid) problems.push(`${path ? `${path}.` : ""}${key}: expected ${kind}`);
-    return valid ? value : undefined;
+  function combatEntry(action: Shape, path: string): void {
+    // combat_init runs both guards, in this order, on every action_pool entry.
+    try {
+      validateEncounterActionShape(action, `enemy '${path}'`);
+      validateEncounterActionKind(action, `enemy '${path}'`);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
   }
 
   for (const key of ["id", "name"]) field(creature, key, "", "string");
@@ -188,7 +191,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
       for (const key of ["damage", "damage_type"]) field(attack, key, path, "string");
       field(attack, "special", path, "string", true);
       field(attack, "audio", path, "string");
-      const properties = optional(attack, "properties", path, "array");
+      const properties = field(attack, "properties", path, "array", false, false);
       if (Array.isArray(properties)) strings(properties, `${path}.properties`);
       for (const [key, kind] of [
         ["applies_condition", "string"],
@@ -197,14 +200,8 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         ["half_on_success", "boolean"],
         ["escape_dc", "integer"],
       ] as const)
-        optional(attack, key, path, kind);
-      if (problems.length === before) {
-        try {
-          validateEncounterActionShape(attack, `enemy '${path}' action '${String(attack.name)}'`);
-        } catch (error) {
-          problems.push((error as Error).message);
-        }
-      }
+        field(attack, key, path, kind, false, false);
+      if (problems.length === before) combatEntry(attack, path);
     });
   field(creature, "multiattack", "", "string", true);
   for (const group of ["passives", "actives", "reactions"]) {
@@ -221,32 +218,27 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
           field(ability, key, path, "string");
         for (const key of ["recharge", "audio"]) field(ability, key, path, "string", true);
         if (group === "actives") {
-          const kind = optional(ability, "kind", path, "string");
-          const properties = optional(ability, "properties", path, "array");
+          const kind = field(ability, "kind", path, "string", false, false);
+          const properties = field(ability, "properties", path, "array", false, false);
           if (Array.isArray(properties)) strings(properties, `${path}.properties`);
           if (kind !== undefined && problems.length === before) {
-            try {
-              validateEncounterActionShape(ability, `enemy '${path}'`);
-              if (kind === "attack") problems.push(`${path}.kind: expected command|accusation`);
-            } catch (error) {
-              problems.push((error as Error).message);
-            }
+            combatEntry(ability, path);
+            if (problems.length === before && kind === "attack")
+              problems.push(`${path}.kind: expected command|accusation`);
           }
         }
       });
   }
-  const signature = optional(creature, "signature_ability", "", "object");
+  const signature = field(creature, "signature_ability", "", "object", false, false);
   if (isObject(signature))
     for (const key of ["name", "description"]) field(signature, key, "signature_ability", "string");
-  if ("resistance_tags" in creature) {
-    const tags = optional(creature, "resistance_tags", "", "array");
-    if (Array.isArray(tags))
-      for (const tag of tags)
-        if (!(RESISTANCE_TAG_VALUES as readonly unknown[]).includes(tag))
-          problems.push(
-            `enemy 'resistance_tags' resistance_tags '${String(tag)}' not in ('${RESISTANCE_TAG_VALUES.join("', '")}')`,
-          );
-  }
+  const tags = field(creature, "resistance_tags", "", "array", false, false);
+  if (Array.isArray(tags))
+    for (const tag of tags)
+      if (!(RESISTANCE_TAG_VALUES as readonly unknown[]).includes(tag))
+        problems.push(
+          `enemy 'resistance_tags' resistance_tags '${String(tag)}' not in ('${RESISTANCE_TAG_VALUES.join("', '")}')`,
+        );
   if (!("hollow" in creature)) problems.push("hollow: required");
   else if (category === "hollow") {
     const hollow = creature.hollow;

@@ -112,6 +112,7 @@ const SAVE_KEYS = new Set([
   "cha",
 ]);
 
+// Mirrors combat_init_validation._validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
 export function validateEncounterActionShape(
   action: {
     name?: unknown;
@@ -122,23 +123,13 @@ export function validateEncounterActionShape(
     half_on_success?: unknown;
     properties?: unknown;
     escape_dc?: unknown;
-    kind?: unknown;
-    damage_type?: unknown;
   },
-  context?: string,
+  enemy?: string,
 ): void {
-  const label = context ?? `action ${String(action.name)}`;
-  if (action.kind !== undefined) {
-    const kind = encounterActionKind(action);
-    if (kind !== "attack") {
-      const carried = ["damage", "damage_type", "applies_condition"].filter((key) => key in action);
-      if (carried.length)
-        throw new Error(
-          `${context ?? "enemy undefined"} ${kind} '${String(action.name)}' must not carry ['${carried.join("', '")}']: a mark action never rolls`,
-        );
-      return;
-    }
-  }
+  const label =
+    enemy === undefined
+      ? `action ${String(action.name)}`
+      : `${enemy} action ${pythonRepr(action.name)}`;
   if (
     Array.isArray(action.properties) &&
     action.properties.includes("grapple") &&
@@ -147,7 +138,7 @@ export function validateEncounterActionShape(
     throw new Error(
       `${label} grapple action needs an int 'escape_dc', got ${pythonRepr(action.escape_dc)}`,
     );
-  const condition = action.applies_condition;
+  const condition = action.applies_condition ?? undefined;
   if (condition !== undefined && !(CONDITION_NAMES as readonly unknown[]).includes(condition))
     throw new Error(`${label} applies_condition ${pythonRepr(condition)} is not a known condition`);
   const halfOnSuccess = action.half_on_success === true;
@@ -173,6 +164,22 @@ export function validateEncounterActionShape(
   ) {
     throw new Error(`${label} half_on_success needs non-zero 'damage'`);
   }
+}
+
+const MARK_FORBIDDEN_FIELDS = ["damage", "damage_type", "applies_condition"] as const;
+
+// Mirrors encounter_actions.validate_encounter_actions.
+export function validateEncounterActionKind(
+  action: { name?: unknown; kind?: unknown },
+  enemy: string,
+): void {
+  const kind = encounterActionKind(action);
+  if (kind === "attack") return;
+  const carried = MARK_FORBIDDEN_FIELDS.filter((key) => key in action);
+  if (carried.length)
+    throw new Error(
+      `${enemy} ${kind} ${pythonRepr(action.name)} must not carry ['${carried.join("', '")}']: a mark action never rolls`,
+    );
 }
 
 // A Boss's unique signature ability (authored content, not generated). derive_role_stats attaches

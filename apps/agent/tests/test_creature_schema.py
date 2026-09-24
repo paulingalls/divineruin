@@ -50,6 +50,8 @@ def test_shared_creature_corpus():
         "unknown_resistance_tag",
         "signature_without_name",
         "signature_without_description",
+        "active_kind_attack",
+        "attack_with_mark_kind",
     }
     assert {case["name"] for case in valid} >= {"all_combat_fields", "legacy_no_combat_fields"}
     assert set(corpus["condition_names"]) == set(CONDITION_CATALOG)
