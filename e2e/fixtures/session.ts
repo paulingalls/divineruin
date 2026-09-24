@@ -23,11 +23,7 @@ export const test = characterTest.extend<{
     await characterPage.goto("/session-test");
 
     // Wait for window.__DR to be exposed
-    await characterPage.waitForFunction(
-      () => typeof window.__DR?.handleGameEvent === "function",
-      null,
-      { timeout: 15_000 },
-    );
+    await characterPage.waitForFunction(() => typeof window.__DR?.handleGameEvent === "function");
 
     const injectEvent = async (event: GameEvent) => {
       await characterPage.evaluate((e) => {

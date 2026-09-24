@@ -69,7 +69,7 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // Clicking the control is a user gesture, so the browser allows play(); the
     // <audio>'s onPlay flips the section into its playing state.
     await page.getByRole("button", { name: "Play the sample" }).click();
-    await expect(player).toHaveClass(/audio-demo--playing/, { timeout: 10_000 });
+    await expect(player).toHaveClass(/audio-demo--playing/);
   });
 
   test("Premise cards reveal on scroll (hidden until in view, then shown)", async ({ page }) => {
@@ -87,7 +87,7 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     await expect(firstCard).toHaveCSS("opacity", "0");
     await firstCard.scrollIntoViewIfNeeded();
     // IntersectionObserver adds is-revealed, transitioning it to fully visible.
-    await expect(firstCard).toHaveClass(/is-revealed/, { timeout: 10_000 });
+    await expect(firstCard).toHaveClass(/is-revealed/);
     await expect(firstCard).toHaveCSS("opacity", "1");
   });
 

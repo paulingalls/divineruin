@@ -5,12 +5,12 @@ test.describe("Session panel interactions", () => {
     await sessionPage.injectSessionInit();
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
 
     await sessionPage.openPanel("inventory");
 
     // Verify items are visible
-    await expect(sessionPage.page.getByText("Health Potion")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Health Potion")).toBeVisible();
     await expect(sessionPage.page.getByText("Iron Longsword")).toBeVisible();
   });
 
@@ -18,40 +18,34 @@ test.describe("Session panel interactions", () => {
     await sessionPage.injectSessionInit();
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
 
     await sessionPage.openPanel("quests");
 
     const questName = sessionPage.page.getByText("The Missing Merchant");
-    await expect(questName).toBeVisible({ timeout: 10_000 });
+    await expect(questName).toBeVisible();
 
     // Quest rows start collapsed — click to expand and reveal the objective
     await questName.click();
-    await expect(sessionPage.page.getByText(/Ask around the tavern/)).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(sessionPage.page.getByText(/Ask around the tavern/)).toBeVisible();
   });
 
   test("panel can be dismissed", async ({ sessionPage }) => {
     await sessionPage.injectSessionInit();
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
 
     await sessionPage.openPanel("character");
 
     // Verify panel is open — the tab bar shows CHARACTER
-    await expect(sessionPage.page.getByText("CHARACTER", { exact: true })).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(sessionPage.page.getByText("CHARACTER", { exact: true })).toBeVisible();
 
     // Close via store (GestureDetector intercepts the ✕ click on web)
     await sessionPage.closePanel();
 
     // Panel should disappear
-    await expect(sessionPage.page.getByText("INVENTORY", { exact: true })).not.toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(sessionPage.page.getByText("INVENTORY", { exact: true })).not.toBeVisible();
   });
 
   test("inventory_updated replaces inventory items", async ({ sessionPage }) => {
@@ -59,7 +53,7 @@ test.describe("Session panel interactions", () => {
 
     // Initial inventory from session_init has Health Potion and Iron Longsword
     await sessionPage.openPanel("inventory");
-    await expect(sessionPage.page.getByText("Health Potion")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Health Potion")).toBeVisible();
 
     await sessionPage.closePanel();
 
@@ -96,7 +90,7 @@ test.describe("Session panel interactions", () => {
 
     await sessionPage.openPanel("inventory");
     // New items should be visible
-    await expect(sessionPage.page.getByText("Silver Dagger")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Silver Dagger")).toBeVisible();
     await expect(sessionPage.page.getByText("Mana Potion")).toBeVisible();
     // Old items should be gone (inventory is replaced, not merged)
     await expect(sessionPage.page.getByText("Health Potion")).not.toBeVisible();
