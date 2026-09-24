@@ -1,5 +1,4 @@
 import json
-from unittest.mock import MagicMock
 
 import pytest
 from sample_fixtures import make_db_mod
@@ -125,14 +124,12 @@ async def test_guest_rents_workspace_with_own_gold_and_disposition():
 @pytest.mark.asyncio
 async def test_guest_crafts_from_own_recipe_materials_and_slot():
     context, actor = guest_context()
-    context.userdata.event_bus = MagicMock()
     queries = module(
         get_player=None,
         get_inventory_item=None,
         get_player_known_recipe_ids=None,
         get_accessible_workspaces=None,
         get_player_materials=None,
-        get_player_inventory=[{"id": "iron_ingot", "slot_info": {"quantity": 0}}],
     )
     queries.get_player.side_effect = player_by_id
     queries.get_player_known_recipe_ids.side_effect = lambda player_id, **_: (
@@ -177,9 +174,6 @@ async def test_guest_crafts_from_own_recipe_materials_and_slot():
             )
         )
     assert result["activity_id"] == "guest_craft"
-    event = context.userdata.event_bus.publish.call_args.args[0]
-    assert event.event_type == "inventory_updated"
-    assert event.payload == {"player_id": "player_2", "inventory": [{"id": "iron_ingot", "slot_info": {"quantity": 0}}]}
     assert mutations.consume_player_materials.await_args.args[0] == "player_2"
     assert mutations.create_async_activity.await_args.args[0] == "player_2"
 

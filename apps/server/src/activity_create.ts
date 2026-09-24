@@ -372,7 +372,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return { error: slotCheck.error! } as const;
       }
 
-      const materialQuantities: Record<string, number> = {};
       // Verify and consume materials atomically for crafting. materialsToConsume
       // is the recipe's material-id list flattened by quantity, so tally it into
       // required counts and check/decrement owned quantities — a recipe needing
@@ -404,7 +403,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         // Consume by decrementing each stack; delete rows that hit zero.
         for (const [matId, need] of Object.entries(required)) {
           const remaining = (owned[matId] ?? 0) - need;
-          materialQuantities[matId] = remaining;
           if (remaining > 0) {
             await tx`
               UPDATE player_inventory
@@ -451,7 +449,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         VALUES (${activityId}, ${playerId}, ${data})
       `;
 
-      return { activityId, resolveAt: resolveAt.toISOString(), materialQuantities } as const;
+      return { activityId, resolveAt: resolveAt.toISOString() } as const;
     });
 
     if ("error" in txnResult) {
@@ -462,7 +460,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       activity_id: txnResult.activityId,
       status: "in_progress",
       resolve_at_estimate: txnResult.resolveAt,
-      material_quantities: txnResult.materialQuantities,
     });
   } catch (err) {
     logError("[activities] create failed:", err);

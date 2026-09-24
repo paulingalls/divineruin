@@ -36,7 +36,6 @@ def _start_project_case(player: dict, row_tier: str, required_tier: str):
     queries.get_player_known_recipe_ids = AsyncMock(return_value={"test_recipe"})
     queries.get_accessible_workspaces = AsyncMock(return_value={"forge"})
     queries.get_player_materials = AsyncMock(return_value={"iron_ingot": 2})
-    queries.get_player_inventory = AsyncMock(return_value=[])
 
     recipe = {
         "id": "test_recipe",

@@ -83,7 +83,6 @@ interface PanelState {
 
   setCharacterDetail: (detail: CharacterDetail) => void;
   setInventory: (items: InventoryItem[]) => void;
-  applyMaterialQuantities: (quantities: Record<string, number>) => void;
   setQuests: (quests: QuestView[]) => void;
   advanceQuest: (questId: string, newStage: number) => void;
   completeQuest: (questId: string) => void;
@@ -114,13 +113,6 @@ export const panelStore = createStore<PanelState>((set) => ({
   setCharacterDetail: (detail) => set({ characterDetail: detail }),
 
   setInventory: (items) => set({ inventory: items }),
-
-  applyMaterialQuantities: (quantities) =>
-    set((s) => ({
-      inventory: s.inventory
-        .filter((item) => !(item.id in quantities && quantities[item.id] === 0))
-        .map((item) => (item.id in quantities ? { ...item, quantity: quantities[item.id] } : item)),
-    })),
 
   setQuests: (quests) => set({ quests }),
 

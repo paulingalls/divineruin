@@ -58,9 +58,6 @@ _EXPERT = {**SAMPLE_PLAYER, "skill_tiers": {"survival": "expert", "nature": "exp
 def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
-    queries.get_player_inventory = AsyncMock(
-        return_value=[{"id": "sageroot", "type": "material", "slot_info": {"quantity": 1}}]
-    )
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()
     content = MagicMock()
@@ -119,10 +116,6 @@ class TestAmbientForage:
         dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
         assert dice.payload["roll_type"] == "gathering_check"
         assert dice.payload["skill"] == "survival"
-        inventory = next(e for e in published_events(ctx) if e.event_type == E.INVENTORY_UPDATED)
-        assert inventory.payload["player_id"] == ctx.userdata.acting_player_id
-        assert inventory.payload["inventory"] == [{"id": "sageroot", "type": "material", "slot_info": {"quantity": 1}}]
-        mocks[0].get_player_inventory.assert_awaited_once_with(ctx.userdata.acting_player_id)
 
     @pytest.mark.asyncio
     async def test_failed_roll_grants_nothing(self):
@@ -134,7 +127,6 @@ class TestAmbientForage:
         assert result["inventory_updated"] is False
         mocks[1].add_inventory_item.assert_not_awaited()
         assert ctx.userdata.session_items_found == []
-        assert not any(e.event_type == E.INVENTORY_UPDATED for e in published_events(ctx))
 
     @pytest.mark.asyncio
     async def test_material_type_routes_skill(self):

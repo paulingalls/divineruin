@@ -430,12 +430,8 @@ describe("handleCreateActivity", () => {
     });
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      status: string;
-      material_quantities: Record<string, number>;
-    };
+    const body = (await res.json()) as { status: string };
     expect(body.status).toBe("in_progress");
-    expect(body.material_quantities).toEqual({ iron_ingot: 1, leather_strip: 0 });
 
     // Assert the actual mutation shape, not just the result-stub count: the
     // surplus iron stack must be UPDATEd to remaining=1, and the depleted

@@ -148,12 +148,6 @@ async def _check_gather_impl(
     for name in found_names:
         session.record_item_found(player_id, name)
     if counts:
-        await publish_game_event(
-            session.room,
-            E.INVENTORY_UPDATED,
-            {"player_id": player_id, "inventory": await queries.get_player_inventory(player_id)},
-            event_bus=session.event_bus,
-        )
         await publish_action_sound(session, "action_gather")
 
     success = result.result != "nothing"

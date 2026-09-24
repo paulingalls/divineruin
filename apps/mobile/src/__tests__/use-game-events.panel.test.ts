@@ -3,8 +3,6 @@ import { handleGameEvent } from "@/audio/game-event-handler";
 import { panelStore } from "@/stores/panel-store";
 import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
-import { characterStore } from "@/stores/character-store";
-import { SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
@@ -121,22 +119,6 @@ test("inventory_updated populates panelStore inventory", () => {
   expect(inv).toHaveLength(1);
   expect(inv[0].name).toBe("Steel Sword");
   expect(inv[0].equipped).toBe(true);
-});
-
-test("inventory_updated ignores another player's inventory", () => {
-  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
-  handleGameEvent({ type: "inventory_updated", player_id: "player-2", inventory: [] });
-  expect(panelStore.getState().inventory).toEqual([]);
-  handleGameEvent({
-    type: "inventory_updated",
-    player_id: "player-1",
-    inventory: [
-      { id: "wolf_pelt", name: "Wolf Pelt", type: "material", slot_info: { quantity: 2 } },
-    ],
-  });
-  expect(panelStore.getState().inventory[0].quantity).toBe(2);
-  handleGameEvent({ type: "inventory_updated", player_id: "player-2", inventory: [] });
-  expect(panelStore.getState().inventory[0].id).toBe("wolf_pelt");
 });
 
 // --- handleGameEvent: session_init populates panelStore ---

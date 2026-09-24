@@ -53,7 +53,6 @@ def _craft_queries(
     mod.get_player_known_recipe_ids = AsyncMock(return_value={"iron_sword"} if recipe_known else set())
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field", "forge"})
     mod.get_player_materials = AsyncMock(return_value=materials or {"iron_ingot": 2})
-    mod.get_player_inventory = AsyncMock(return_value=[{"id": "iron_ingot", "slot_info": {"quantity": 0}}])
     # Portable-Lab ownership read (Commit 3): None = not owned; a stack row with quantity.
     mod.get_inventory_item = AsyncMock(return_value={"quantity": 1} if has_lab else None)
     return mod
