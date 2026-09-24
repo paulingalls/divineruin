@@ -41,12 +41,18 @@ async def publish_game_event(
     payload: dict,
     event_bus: EventBus | None = None,
 ) -> None:
-    """Publish a game event over the LiveKit data channel and optionally
-    to the internal event bus.
+    """Publish to the internal event bus independently of client delivery.
 
-    Silently skips the data channel if room is None (e.g. during tests).
-    Silently skips the event bus if event_bus is None (backward compat).
+    Skip the data channel if room is None. Wait up to 10 seconds for a
+    disconnected room, then warn and skip the client send. Skip the event bus
+    if event_bus is None.
     """
+    if event_bus is not None:
+        from event_bus import GameEvent
+
+        event_bus.publish(GameEvent(event_type=event_type, payload=payload))
+        logger.debug("Published %s event to event bus", event_type)
+
     if room is not None:
         if not room.isconnected():
             try:
@@ -57,12 +63,6 @@ async def publish_game_event(
         data = json.dumps({"type": event_type, **payload}).encode("utf-8")
         await room.local_participant.publish_data(data, reliable=True, topic="game_events")
         logger.debug("Published %s event to data channel", event_type)
-
-    if event_bus is not None:
-        from event_bus import GameEvent
-
-        event_bus.publish(GameEvent(event_type=event_type, payload=payload))
-        logger.debug("Published %s event to event bus", event_type)
 
 
 async def publish_hidden_revealed(
