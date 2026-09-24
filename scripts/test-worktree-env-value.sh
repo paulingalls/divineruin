@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-set -eu
-# No pipefail: pre-push runs without it, which is where grep|tail hid an absent key.
+set -eu +o pipefail
+# Pipefail off even if inherited: pre-push runs without it, which is where grep|tail hid an absent key.
 
 # wt_env_value / wt_select_offset: an ABSENT .env key falls through to the checkout
 # identity, a present-but-empty one is refused loudly, and a configured one is used.

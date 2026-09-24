@@ -28,6 +28,9 @@ bun run prepare >/dev/null || { echo "FAIL: prepare rewrote configured hooksPath
 cmp -s .git/config "$fixture/config-before" || { echo "FAIL: prepare changed configured Git config" >&2; exit 1; }
 rm .git/config.lock
 git config --local --unset core.hooksPath
+: > .git/config.lock
+if bun run prepare >/dev/null 2>&1; then echo "FAIL: prepare hid a failed hooksPath write" >&2; exit 1; fi
+rm .git/config.lock
 bun run prepare >/dev/null
 [ "$(git config --local --get core.hooksPath)" = .githooks ] || { echo "FAIL: prepare did not set hooksPath" >&2; exit 1; }
 echo "Prepare hooksPath tests passed."
