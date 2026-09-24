@@ -1228,7 +1228,7 @@ The companion NPC should be approximately 75% of the player's combat effectivene
 
 ## Encounter Creature Stat Blocks
 
-These authored spec blocks adapt the eight encounter-only enemy types. Encounter templates retain their flat combat entries; these blocks are not yet catalog rows.
+These authored spec blocks adapt the eight encounter-only enemy types. All eight are catalog rows; encounter templates retain their flat combat entries.
 
 ### Hollowed Scout
 
@@ -1304,7 +1304,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     "vulnerable_to": [
       "radiant",
       "blessed_weapons",
-      "divine"
+      "turn_undead_hollow"
     ]
   },
   "behavior": {
@@ -1398,8 +1398,8 @@ These authored spec blocks adapt the eight encounter-only enemy types. Encounter
     "veil_effect": "Warmth bleeds from the air around it, and the Veil thins wherever it lingers.",
     "vulnerable_to": [
       "radiant",
-      "blessed_weapons",
-      "divine"
+      "fire",
+      "area_damage"
     ]
   },
   "behavior": {

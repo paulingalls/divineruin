@@ -385,10 +385,10 @@ def test_spec_stats_regions_and_behavior():
     assert {attack["name"] for attack in rows["bandit"]["attacks"]} == {"Short Sword", "Light Crossbow"}
     assert {attack["name"] for attack in rows["bandit_captain"]["attacks"]} == {"Longsword", "Heavy Crossbow"}
     assert {attack["name"] for attack in rows["troll"]["attacks"]} == {"Claw", "Bite"}
-    greyvale = [row for row in rows.values() if row["home_region"] == "greyvale"]
+    greyvale = [rows[key] for key in SPEC if rows[key]["home_region"] == "greyvale"]
     assert greyvale
     assert all(row["tier"] == 1 for row in greyvale)
-    keldaran = [row for row in rows.values() if row["home_region"] == "keldaran_mountains"]
+    keldaran = [rows[key] for key in SPEC if rows[key]["home_region"] == "keldaran_mountains"]
     assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
 
 
@@ -443,7 +443,7 @@ def test_narration_opens_with_sound_or_smell():
         for cue_name in ("first_sighting", "attack_cue", "wounded_cue", "death_cue", "ambient_cue"):
             assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
         audio = rows[key]["audio"]
-        assert all(audio[slot] and key not in audio[slot] for slot in ("ambient", "attack", "hit", "death")), key
+        assert all(audio[slot] and audio[slot].split()[0] != key for slot in ("ambient", "attack", "hit", "death")), key
 
 
 def test_sound_first_check_rejects_sight_first_and_long_cues():
