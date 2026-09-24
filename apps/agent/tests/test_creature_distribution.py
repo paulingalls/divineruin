@@ -5,6 +5,13 @@ from collections import Counter
 from pathlib import Path
 
 CREATURES = Path(__file__).resolve().parents[3] / "content/creatures.json"
+FACTION_ENCOUNTER_IDS = {
+    "ashmark_soldier",
+    "ashmark_sergeant",
+    "cultist",
+    "cult_fanatic",
+    "cult_leader",
+}
 REGIONS = {
     "greyvale": 8,
     "thornveld": 8,
@@ -19,7 +26,9 @@ def test_natural_creature_distribution():
     assert CREATURES.is_file()
     rows = json.loads(CREATURES.read_text())
     assert isinstance(rows, list) and rows
-    natural = [row for row in rows if row["category"] != "hollow"]
+    ids = Counter(row["id"] for row in rows)
+    assert all(ids[creature_id] == 1 for creature_id in FACTION_ENCOUNTER_IDS)
+    natural = [row for row in rows if row["category"] != "hollow" and row["id"] not in FACTION_ENCOUNTER_IDS]
     assert natural and len(natural) == 19
     assert len({row["id"] for row in natural}) == len(natural)
     counts = Counter(region for row in natural for region in row["regions"])
