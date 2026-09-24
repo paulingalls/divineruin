@@ -161,7 +161,7 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 
 **Inputs:** M7.1-M7.3 (creature catalog), Phase 1 (Core — skill tiers for harvesting gates), Phase 5 (Crafting — for material-to-recipe pipeline integration).
 
-The Warden has no spec stat block. Its authored residue flag and Crafting:Expert harvest gate follow the rend table's residue precedent; they do not imply a spec drop for the Warden.
+The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_warden` and authors no drops of its own. The table's residue flag and Crafting:Expert harvest gate follow the rend table's residue precedent; they do not imply a spec drop for the Warden.
 
 **Deliverables:**
 - Loot generation: `generate_loot(creature, player_skills)` returning guaranteed drops plus probabilistic rolls
