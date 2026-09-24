@@ -29,6 +29,7 @@ ROWS = {
     ("ACTION_RESOLVE_TRAINING_MIDPOINT", "action_resolve_training_midpoint", "notification"),
     ("ACTION_LEARN_RECIPE", "action_learn_recipe", "discovery_chime"),
     ("ACTION_LEARN_SPELL", "action_learn_spell", "discovery_chime"),
+    ("ACTION_DISCOVER_REVEAL", "action_discover_reveal", "discovery_chime"),
     ("ACTION_REPAIR_ITEM", "action_repair_item", "shield_block"),
     ("ACTION_ENTER_MODE_BLACKSMITH", "action_enter_mode_blacksmith", "shield_block"),
     ("ACTION_ENTER_MODE_DISPATCH", "action_enter_mode_dispatch", "notification"),
@@ -39,7 +40,7 @@ ROWS = {
 
 def test_catalog_and_python_exports_match_fixed_rows():
     rows = json.loads(CONTENT.read_text())
-    assert len(rows) == len(ROWS) == 21
+    assert len(rows) == len(ROWS) == 22
     assert {(row["export"], row["id"], row["asset"]) for row in rows} == ROWS
     assert dict(ACTION_SOUND_EXPORTS) == {export: sound_id for export, sound_id, _ in ROWS}
     assert {sound_id for _, sound_id, _ in ROWS} == ACTION_SOUND_IDS

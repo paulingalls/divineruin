@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import event_types as E
 from check_discovery import _check_discover_impl
 from tools._discover_fixtures import (
     LOCATION_ARCH,
@@ -45,7 +46,9 @@ class TestCheckDiscover:
                 )
             )
         assert result["outcome"] == "not_found"
-        mock_event.assert_not_called()
+        mock_event.assert_awaited_once()
+        assert mock_event.await_args.args[1] == E.DICE_ROLL
+        mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
@@ -125,7 +128,9 @@ class TestCheckDiscover:
                 )
             )
         assert result["outcome"] == "not_found"
-        mock_event.assert_not_called()
+        mock_event.assert_awaited_once()
+        assert mock_event.await_args.args[1] == E.DICE_ROLL
+        mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)

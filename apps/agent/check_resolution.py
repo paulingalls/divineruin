@@ -312,6 +312,8 @@ def _resolve_skill_check_impl(
     skill: str,
     dc: int,
     rng: random.Random | None = None,
+    *,
+    spend_bonus_dice: bool = True,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     attr = SKILLS.get(skill_lower)
@@ -336,7 +338,7 @@ def _resolve_skill_check_impl(
     # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail
     # gate). Folded into the total via extra_modifier; the consumed condition is signalled for
     # story-003 to remove.
-    if _check_auto_fail(dc, tier):
+    if _check_auto_fail(dc, tier) or not spend_bonus_dice:
         bonus, consumed = 0, ()
     else:
         bonus, consumed = roll_bonus_dice(effects, "check", rng=rng)
@@ -388,6 +390,11 @@ def resolve_skill_check_dc(
     rather than a difficulty tier string.
     """
     return _resolve_skill_check_impl(player_data, skill, dc, rng)
+
+
+def resolve_cosmetic_skill_check(player_data: dict, skill: str) -> SkillCheckResult:
+    """Roll with ordinary penalties, without spending beneficial dice or checking a secret DC."""
+    return _resolve_skill_check_impl(player_data, skill, 0, spend_bonus_dice=False)
 
 
 # --- Skill advancement ---

@@ -85,6 +85,21 @@
       "critical": false,
       "dramatic": false,
       "context": ""
+    },
+    "discover_failed": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 3, "total": 9, "dramatic": false, "context": ""
+    },
+    "discover_no_candidate": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 3, "total": 9, "dramatic": false, "context": ""
+    },
+    "discover_success": {
+      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
+      "roll": 15, "total": 21, "dramatic": false, "context": ""
+    },
+    "discover_reveal_cue": {
+      "type": "play_sound", "sound_name": "action_discover_reveal"
     }
   },
   "hollow_echo_bands": [

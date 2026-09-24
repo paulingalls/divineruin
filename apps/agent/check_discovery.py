@@ -25,6 +25,7 @@ import db_mutations_conditions
 import db_queries
 import event_types as E
 import rules_engine
+from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
@@ -110,8 +111,22 @@ async def _check_discover_impl(
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     if not candidates:
-        # Nothing new to find with this approach (none scoped, or all already tried/found) —
-        # a valid "found nothing" outcome, not an error, and safely repeatable.
+        # Silence here, or a success/fail sting on the real roll below, would tell the player
+        # whether anything is hidden; so both paths publish the same sting-less dice packet.
+        result = check_resolution.resolve_cosmetic_skill_check(player, skill_lower)
+        await publish_game_event(
+            session.room,
+            E.DICE_ROLL,
+            {
+                "roll_type": "skill_check",
+                "skill": result.skill,
+                "roll": result.roll,
+                "total": result.total,
+                "dramatic": result.dramatic,
+                "context": result.context,
+            },
+            event_bus=session.event_bus,
+        )
         logger.info("check discover: target=%s skill=%s -> no candidate", target, skill_lower)
         return json.dumps({"outcome": "not_found", "skill": skill_lower, "target": target})
 
@@ -130,7 +145,6 @@ async def _check_discover_impl(
             "skill": result.skill,
             "roll": result.roll,
             "total": result.total,
-            "success": result.success,
             "dramatic": result.dramatic,
             "context": result.context,
         },
@@ -177,6 +191,7 @@ async def _check_discover_impl(
     session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
 
     if result.success:
+        await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_DISCOVER_REVEAL"])
         response["element_id"] = element_id
         response["description"] = element.get("description", "")
         loc_name = location.get("name", session.location_id)
