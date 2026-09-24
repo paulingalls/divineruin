@@ -117,6 +117,32 @@ test("parseGameEvent accepts payload at exactly 1 MB", () => {
 
 // --- Milestone 10.4a: Item art (parseInventoryItems) ---
 
+test("session_init preserves a material inventory row", () => {
+  handleGameEvent({
+    type: "session_init",
+    inventory: [
+      { id: "wolf_pelt", name: "Wolf Pelt", type: "material", slot_info: { quantity: 3 } },
+    ],
+  });
+  const [material] = panelStore.getState().inventory;
+  expect(material.name).toBe("Wolf Pelt");
+  expect(material.type).toBe("material");
+  expect(material.quantity).toBe(3);
+});
+
+test("inventory_updated preserves a material inventory row", () => {
+  handleGameEvent({
+    type: "inventory_updated",
+    inventory: [
+      { id: "wolf_pelt", name: "Wolf Pelt", type: "material", slot_info: { quantity: 2 } },
+    ],
+  });
+  const [material] = panelStore.getState().inventory;
+  expect(material.name).toBe("Wolf Pelt");
+  expect(material.type).toBe("material");
+  expect(material.quantity).toBe(2);
+});
+
 test("parseInventoryItems extracts image_url to imageUrl", () => {
   handleGameEvent({
     type: "inventory_updated",

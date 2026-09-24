@@ -12,6 +12,45 @@ export type EncounterRole = (typeof ENCOUNTER_ROLE_VALUES)[number];
 // An absent `kind` is "attack"; social mark actions never roll or carry strike fields.
 export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command", "accusation"] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
+const pythonRepr = (value: unknown): string => {
+  if (value === undefined || value === null) return "None";
+  if (typeof value === "string") return `'${value}'`;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+};
+export const CONDITION_NAMES = [
+  "wounded",
+  "stunned",
+  "prone",
+  "grappled",
+  "restrained",
+  "incapacitated",
+  "paralyzed",
+  "poisoned",
+  "blessed",
+  "shielded",
+  "enraged",
+  "exhausted",
+  "blinded",
+  "frightened",
+  "charmed",
+  "deafened",
+  "shaken",
+  "petrified",
+  "cursed",
+  "inspired",
+  "hollowed",
+  "temporary_hollowed",
+] as const;
+export const RESISTANCE_TAG_VALUES = [
+  "pragmatic",
+  "emotional",
+  "suspicious",
+  "cowardly",
+  "devout",
+  "greedy",
+  "honorable",
+] as const;
 
 // One entry in an enemy's action_pool, as stored in encounter_templates.json. Matches the shape
 // combat_init.py reads plus the content `description` blurb.
@@ -45,10 +84,15 @@ export interface EncounterAccusationAction extends EncounterActionBase {
 export type EncounterAction =
   EncounterAttackAction | EncounterCommandAction | EncounterAccusationAction;
 
-export function encounterActionKind(action: { name: string; kind?: string }): EncounterActionKind {
-  const kind = action.kind ?? "attack";
-  if (!(ENCOUNTER_ACTION_KIND_VALUES as readonly string[]).includes(kind)) {
-    throw new Error(`action ${action.name} has unknown kind ${kind}`);
+export function encounterActionKind(action: {
+  name?: unknown;
+  kind?: unknown;
+}): EncounterActionKind {
+  const kind = action.kind === undefined ? "attack" : action.kind;
+  if (!(ENCOUNTER_ACTION_KIND_VALUES as readonly unknown[]).includes(kind)) {
+    throw new Error(
+      `action ${pythonRepr(action.name)} has unknown kind ${pythonRepr(kind)}; expected one of ('attack', 'command', 'accusation')`,
+    );
   }
   return kind as EncounterActionKind;
 }
@@ -68,24 +112,47 @@ const SAVE_KEYS = new Set([
   "cha",
 ]);
 
-export function validateEncounterActionShape(action: {
-  name?: unknown;
-  damage?: unknown;
-  applies_condition?: unknown;
-  save?: unknown;
-  dc?: unknown;
-  half_on_success?: unknown;
-}): void {
-  const label = `action ${String(action.name)}`;
-  const condition = action.applies_condition;
+// Mirrors combat_init_validation._validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
+export function validateEncounterActionShape(
+  action: {
+    name?: unknown;
+    damage?: unknown;
+    applies_condition?: unknown;
+    save?: unknown;
+    dc?: unknown;
+    half_on_success?: unknown;
+    properties?: unknown;
+    escape_dc?: unknown;
+  },
+  enemy?: string,
+): void {
+  const label =
+    enemy === undefined
+      ? `action ${String(action.name)}`
+      : `${enemy} action ${pythonRepr(action.name)}`;
+  if (
+    Array.isArray(action.properties) &&
+    action.properties.includes("grapple") &&
+    !Number.isInteger(action.escape_dc)
+  )
+    throw new Error(
+      `${label} grapple action needs an int 'escape_dc', got ${pythonRepr(action.escape_dc)}`,
+    );
+  const condition = action.applies_condition ?? undefined;
+  if (condition !== undefined && !(CONDITION_NAMES as readonly unknown[]).includes(condition))
+    throw new Error(`${label} applies_condition ${pythonRepr(condition)} is not a known condition`);
   const halfOnSuccess = action.half_on_success === true;
   if (condition !== undefined || halfOnSuccess) {
     const save = typeof action.save === "string" ? action.save.toLowerCase() : "";
     if (!SAVE_KEYS.has(save)) {
-      throw new Error(`${label} condition/save damage needs a valid save`);
+      throw new Error(
+        `${label} condition/save damage needs a valid 'save' attribute, got ${pythonRepr(action.save)}`,
+      );
     }
     if (!Number.isInteger(action.dc)) {
-      throw new Error(`${label} condition/save damage needs an integer dc`);
+      throw new Error(
+        `${label} condition/save damage needs an int 'dc', got ${pythonRepr(action.dc)}`,
+      );
     }
   }
   if (
@@ -95,8 +162,24 @@ export function validateEncounterActionShape(action: {
       action.damage === "0" ||
       action.damage === 0)
   ) {
-    throw new Error(`${label} half_on_success needs damage`);
+    throw new Error(`${label} half_on_success needs non-zero 'damage'`);
   }
+}
+
+const MARK_FORBIDDEN_FIELDS = ["damage", "damage_type", "applies_condition"] as const;
+
+// Mirrors encounter_actions.validate_encounter_actions.
+export function validateEncounterActionKind(
+  action: { name?: unknown; kind?: unknown },
+  enemy: string,
+): void {
+  const kind = encounterActionKind(action);
+  if (kind === "attack") return;
+  const carried = MARK_FORBIDDEN_FIELDS.filter((key) => key in action);
+  if (carried.length)
+    throw new Error(
+      `${enemy} ${kind} ${pythonRepr(action.name)} must not carry ['${carried.join("', '")}']: a mark action never rolls`,
+    );
 }
 
 // A Boss's unique signature ability (authored content, not generated). derive_role_stats attaches

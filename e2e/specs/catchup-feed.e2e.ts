@@ -28,7 +28,7 @@ test.describe("Catch-up feed", () => {
     await characterPage.waitForLoadState("domcontentloaded");
 
     // Activity title should appear
-    await expect(characterPage.getByText("Iron Sword")).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("Iron Sword")).toBeVisible();
 
     // Narration summary text should appear
     await expect(characterPage.getByText(/iron blade holds true/i)).toBeVisible();
@@ -67,9 +67,7 @@ test.describe("Catch-up feed", () => {
     await characterPage.waitForLoadState("domcontentloaded");
 
     // Training title should appear
-    await expect(characterPage.getByText("Strength Training").first()).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(characterPage.getByText("Strength Training").first()).toBeVisible();
 
     // Cleanup
     await queryDb(`DELETE FROM async_activities WHERE id = $1`, [activityId]);

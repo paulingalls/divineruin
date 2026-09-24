@@ -8,6 +8,13 @@ import sys
 from pathlib import Path
 
 import pytest
+
+# Re-exported so pytest collects them: the pins module's name does not match test_*.py.
+from creature_spec_pins_hollow_rend_wrack import (  # noqa: F401
+    test_spec_loot_and_seed,
+    test_spec_mechanics,
+    test_spec_stats_hollow_and_attacks,
+)
 from creature_spec_pins_steppe_keldaran_sunward import ABILITIES as NEW_ABILITIES
 from creature_spec_pins_steppe_keldaran_sunward import BEHAVIOR as NEW_BEHAVIOR
 from creature_spec_pins_steppe_keldaran_sunward import LOOT as NEW_LOOT
@@ -17,6 +24,7 @@ from creature_spec_pins_underground_multi_region import BEHAVIOR as FINAL_BEHAVI
 from creature_spec_pins_underground_multi_region import LOOT as FINAL_LOOT
 from creature_spec_pins_underground_multi_region import MULTIATTACK as FINAL_MULTIATTACK
 from creature_spec_pins_underground_multi_region import SPEC as FINAL_SPEC
+from test_creature_distribution import FACTION_ENCOUNTER_IDS
 
 from creature_schema import validate_creature_stat_block
 
@@ -378,11 +386,30 @@ def test_spec_stats_regions_and_behavior():
     assert {attack["name"] for attack in rows["bandit"]["attacks"]} == {"Short Sword", "Light Crossbow"}
     assert {attack["name"] for attack in rows["bandit_captain"]["attacks"]} == {"Longsword", "Heavy Crossbow"}
     assert {attack["name"] for attack in rows["troll"]["attacks"]} == {"Claw", "Bite"}
-    greyvale = [row for row in rows.values() if row["home_region"] == "greyvale"]
+    assert rows.keys() >= FACTION_ENCOUNTER_IDS
+    natural = [row for row in rows.values() if row["category"] != "hollow" and row["id"] not in FACTION_ENCOUNTER_IDS]
+    assert natural
+    greyvale = [row for row in natural if row["home_region"] == "greyvale"]
     assert greyvale
     assert all(row["tier"] == 1 for row in greyvale)
-    keldaran = [row for row in rows.values() if row["home_region"] == "keldaran_mountains"]
+    keldaran = [row for row in natural if row["home_region"] == "keldaran_mountains"]
     assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
+
+
+def test_region_tier_walk_catches_new_natural_row(monkeypatch):
+    original_catalog = catalog
+
+    def with_bad_row(name):
+        rows = original_catalog(name)
+        if name == "creatures.json":
+            rows.append(
+                {**rows[0], "id": "unlisted_greyvale_elite", "category": "beast", "home_region": "greyvale", "tier": 3}
+            )
+        return rows
+
+    monkeypatch.setattr(sys.modules[__name__], "catalog", with_bad_row)
+    with pytest.raises(AssertionError):
+        test_spec_stats_regions_and_behavior()
 
 
 def drop_rows(table):
@@ -430,11 +457,13 @@ def assert_sound_first(cue, label):
 
 def test_narration_opens_with_sound_or_smell():
     rows = named_rows(catalog("creatures.json"))
-    for key in (*SPEC, "hollow_shadeling", "hollow_hollowmoth"):
+    assert rows
+    assert {"hollow_mawling", "hollow_weaver", "hollow_knight", "hollow_veilrender"} <= rows.keys()
+    for key in rows:
         for cue_name in ("first_sighting", "attack_cue", "wounded_cue", "death_cue", "ambient_cue"):
             assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
         audio = rows[key]["audio"]
-        assert all(audio[slot] and key not in audio[slot] for slot in ("ambient", "attack", "hit", "death")), key
+        assert all(audio[slot] and audio[slot].split()[0] != key for slot in ("ambient", "attack", "hit", "death")), key
 
 
 def test_sound_first_check_rejects_sight_first_and_long_cues():

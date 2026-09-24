@@ -2123,5 +2123,1753 @@
       "keldaran_mountains",
       "drathian_steppe"
     ]
+  },
+  {
+    "id": "hollow_mawling",
+    "name": "Mawling",
+    "category": "hollow",
+    "tier": 2,
+    "description": "Probes defenses, feints, retreats from strong resistance, returns from different angle. In groups of 3+, one flanks while others engage. Uses Lunge to grab isolated targets.",
+    "level": 4,
+    "hp": 38,
+    "ac": 13,
+    "speed": 35,
+    "attributes": {
+      "STR": 14,
+      "DEX": 15,
+      "CON": 13,
+      "INT": 3,
+      "WIS": 10,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "DEX",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 5,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": "Reach 10 ft (unnaturally long limbs)",
+        "audio": "hlw_claw"
+      },
+      {
+        "name": "Dissolution Maw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 5,
+        "damage": "2d6+2",
+        "damage_type": "necrotic",
+        "special": "DC 13 CON save or item in hand takes 1d4 durability damage",
+        "audio": "hlw_dissolution_maw"
+      },
+      {
+        "name": "Lunge",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 5,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": "Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.",
+        "audio": "hlw_lunge",
+        "properties": [
+          "grapple"
+        ],
+        "escape_dc": 13
+      }
+    ],
+    "multiattack": "2 attacks — one Claw and one Dissolution Maw",
+    "passives": [
+      {
+        "name": "Unsettling Silence",
+        "description": "Mawlings make no vocalizations. Advantage on Stealth in low-light.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Dissolution Field",
+        "description": "Creatures starting turn grappled by a mawling take 1d6 necrotic automatically.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Adaptive Learning",
+        "description": "If the same tactic is used against this mawling twice in one encounter, it gains advantage on saves/AC against that tactic for the rest of the fight.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Lunge",
+        "description": "Move 15 ft toward target + Claw with advantage. Hit: target grappled (STR DC 13 escape).",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Scatter",
+        "description": "Requires 3+ mawlings. All mawlings reposition 15 ft without provoking reactions. Coordinated flank.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 5,
+      "resonance_on_death": 1,
+      "veil_effect": "Natural sounds distort within 15 ft. Footsteps echo wrong. Combat sounds arrive delayed.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "divine_spells"
+      ]
+    },
+    "behavior": {
+      "tactics": "Probes defenses, feints, retreats from strong resistance, returns from different angle. In groups of 3+, one flanks while others engage. Uses Lunge to grab isolated targets.",
+      "morale": "retreats_at_25_percent_if_alone",
+      "group_size": "pair_or_pack_3_6",
+      "environment": [
+        "Ashmark",
+        "Greyvale ruins",
+        "corrupted zones",
+        "corrupted dungeons"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A scrape marks three footfalls where there should be two. A nearly human shape approaches on joints that bend backward, with a tear where its face should be.",
+      "attack_cue": "A wet rasp tears through the air as its hand reaches too far. The air shimmers behind it.",
+      "wounded_cue": "A thin crackle follows the mawling as it staggers and flickers, momentarily transparent.",
+      "death_cue": "A soft crunch folds its limbs inward. A dark smear remains, carrying the smell of absence.",
+      "ambient_cue": "A scrape counts three steps where there should be two. A pause follows, then silence."
+    },
+    "audio": {
+      "ambient": "wrong footfall loop",
+      "attack": "wet pulling dissolution",
+      "hit": "impact on semi-solid mass",
+      "death": "organic collapse and static burst",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_mawling",
+    "xp_reward": 100,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_weaver",
+    "name": "Hollow Weaver",
+    "category": "hollow",
+    "tier": 2,
+    "description": "Anchors to a location and warps space. Left undisturbed for 1 hour, converts a building into a spatial labyrinth.",
+    "level": 5,
+    "hp": 28,
+    "ac": 11,
+    "speed": 10,
+    "attributes": {
+      "STR": 6,
+      "DEX": 8,
+      "CON": 14,
+      "INT": 6,
+      "WIS": 14,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Spatial Lash",
+        "type": "melee",
+        "reach": 15,
+        "to_hit": 4,
+        "damage": "1d6+2",
+        "damage_type": "force",
+        "special": "The space between the weaver and target compresses violently",
+        "audio": "hlw_spatial_lash"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Spatial Distortion",
+        "description": "Warps space in a 30 ft radius. Ranged attacks have disadvantage. Movement through the zone costs double; terrain is perception-based, not physical.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Anchored",
+        "description": "Attaches to a surface and does not move voluntarily. It must be approached.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Fragile Form",
+        "description": "Vulnerable to all physical damage. Easy to kill if reached.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Rearrange",
+        "description": "Shift one doorway, corridor, or passage within 30 ft to a different real location. Creatures in the passage arrive at the new destination.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Spatial Fold",
+        "description": "Target within 30 ft: WIS save DC 13 or teleport 30 ft in random direction. If destination is solid matter, take 2d6 force and move to nearest open space.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 30,
+      "resonance_on_death": 1,
+      "veil_effect": "Reverb characteristics change — small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
+      "vulnerable_to": [
+        "physical_damage"
+      ]
+    },
+    "behavior": {
+      "tactics": "Anchors to a location and warps space. Left undisturbed for 1 hour, converts a building into a spatial labyrinth.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary",
+      "environment": [
+        "Greyvale ruins",
+        "corrupted buildings",
+        "dungeons near Ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A low hum bends the echo in the corridor. A doorway that was ten feet away now seems thirty, and the passage bends around something anchored ahead.",
+      "attack_cue": "A compressed-air thud strikes as the space between you and the weaver folds.",
+      "wounded_cue": "A wavering hum breaks as the room briefly snaps back to normal dimensions, then warps again.",
+      "death_cue": "A sharp snap sounds like a taut wire breaking. Walls settle back into place and the room sounds normal again.",
+      "ambient_cue": "A low glass-rim hum carries through the building. Each footstep returns from the wrong direction."
+    },
+    "audio": {
+      "ambient": "glass-rim hum and spatial reverb",
+      "attack": "compressed air burst",
+      "hit": "thin impact",
+      "death": "wire snap then normal acoustics",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_weaver",
+    "xp_reward": 150,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_knight",
+    "name": "Hollowed Knight",
+    "category": "hollow",
+    "tier": 3,
+    "description": "Holds chokepoints, sends lesser Hollow to probe, flanks, and targets healers and casters first.",
+    "level": 8,
+    "hp": 85,
+    "ac": 16,
+    "speed": 30,
+    "attributes": {
+      "STR": 18,
+      "DEX": 12,
+      "CON": 16,
+      "INT": 8,
+      "WIS": 10,
+      "CHA": 6
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Corrupted Blade",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d10+4",
+        "damage_type": "slashing",
+        "special": "Plus 1d6 necrotic. On crit: DC 14 CON save or Stage 1 Hollowed condition.",
+        "audio": "hlw_corrupted_blade"
+      },
+      {
+        "name": "Shield Slam",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 7,
+        "damage": "1d6+4",
+        "damage_type": "bludgeoning",
+        "special": "DC 14 STR save or knocked prone.",
+        "audio": "hlw_shield_slam",
+        "applies_condition": "prone",
+        "save": "STR",
+        "dc": 14
+      }
+    ],
+    "multiattack": "2 attacks with Corrupted Blade",
+    "passives": [
+      {
+        "name": "Remnant Tactics",
+        "description": "Uses combat techniques from former life. Takes Dodge when outnumbered and uses terrain for advantage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Corrupted Resilience",
+        "description": "Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Fragment Voice",
+        "description": "Occasionally speaks from its former life. First time former allies hear this: WIS save DC 12 or Shaken, disadvantage on next attack. Cosmetic thereafter.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Command Lesser",
+        "kind": "command",
+        "description": "As a bonus action, direct up to 4 Drift or Rend Hollow within 60 ft to focus a target or reposition.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Dissolution Strike",
+        "description": "Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Unholy Fortitude",
+        "description": "At 0 HP, CON save DC 10. On success drop to 1 HP; DC increases by 5 each time.",
+        "narration_cue": "",
+        "recharge": "passive trigger",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "wrack",
+      "corruption_aura": 10,
+      "resonance_on_death": 2,
+      "veil_effect": "30 ft radius — temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "divine_spells",
+        "turn_undead_hollow"
+      ]
+    },
+    "behavior": {
+      "tactics": "Holds chokepoints, sends lesser Hollow to probe, flanks, and targets healers and casters first.",
+      "morale": "fights_to_destruction",
+      "group_size": "solitary_with_mawlings_or_shadelings",
+      "environment": [
+        "Ashmark front",
+        "corrupted settlements",
+        "deep dungeons"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Armor creaks with an unnaturally regular gait. Ashmark issue plate closes in, its wearer moving with practiced precision and a head that turns too far.",
+      "attack_cue": "A blade whistles with a soldier’s practiced timing. Necrotic energy sizzles along its edge.",
+      "wounded_cue": "A confused human breath catches beneath the helmet as the knight staggers. Then the bellows rhythm returns.",
+      "death_cue": "Armor clatters to the ground. One nearly human breath follows, then silence.",
+      "ambient_cue": "Armor creaks in measured steps. Beneath it, breathing rasps like bellows."
+    },
+    "audio": {
+      "ambient": "mechanical breathing and armor creak",
+      "attack": "blade swing and necrotic sizzle",
+      "hit": "corrupted armor impact",
+      "death": "armor collapse, human breath, silence",
+      "special": {
+        "fragment_voice": "HLW-006 corrupted voice variant"
+      }
+    },
+    "loot_table_id": "loot_hollowed_knight_catalog",
+    "xp_reward": 450,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "underground"
+    ]
+  },
+  {
+    "id": "hollow_veilrender",
+    "name": "Veilrender",
+    "category": "hollow",
+    "tier": 3,
+    "description": "Advances 100 yards per day converting territory. In combat stands ground and uses area denial. Radiant damage or Veil Ward suppresses regeneration.",
+    "level": 10,
+    "hp": 120,
+    "ac": 14,
+    "speed": 10,
+    "attributes": {
+      "STR": 22,
+      "DEX": 4,
+      "CON": 20,
+      "INT": 3,
+      "WIS": 12,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "STR",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Crushing Mass",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 8,
+        "damage": "3d8+6",
+        "damage_type": "bludgeoning",
+        "special": "Push target 10 ft. Structures take double damage.",
+        "audio": "hlw_crushing_mass"
+      },
+      {
+        "name": "Corruption Wave",
+        "type": "area",
+        "reach": 30,
+        "to_hit": 0,
+        "damage": "2d8",
+        "damage_type": "necrotic",
+        "special": "30 ft cone. Half damage on successful DC 16 CON save; failed save causes Poisoned for 1 round.",
+        "audio": "hlw_corruption_wave",
+        "applies_condition": "poisoned",
+        "save": "CON",
+        "dc": 16,
+        "half_on_success": true
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Corruption Field",
+        "description": "Permanent 60 ft radius. Creatures starting turn inside take 1d4 necrotic (CON save DC 14 negates). Organic matter degrades; plants die, water darkens, stone becomes brittle.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Regeneration",
+        "description": "Regains 10 HP at start of each turn. Radiant damage or Veil Ward suppresses for 1 round.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Siege Monster",
+        "description": "Deals double damage to structures and objects.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Massive",
+        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft × 15 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Reality Crush",
+        "description": "20 ft radius centered on veilrender: DEX save DC 16. Failure: 4d8 force and prone; success: half damage, not prone. Ground cracks and structures collapse.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Corruption Pulse",
+        "description": "60 ft radius: CON save DC 16. Failure: 3d6 necrotic and Stage 1 Hollowed; success: half, no Hollowed.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Absorb Magic",
+        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost × 3. Radiant spells bypass this.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "wrack",
+      "corruption_aura": 60,
+      "resonance_on_death": 3,
+      "veil_effect": "Sound doesn't travel correctly in 60 ft radius. Voices sound distant. Your own voice sounds muffled. Acoustic space is rewritten.",
+      "vulnerable_to": [
+        "radiant",
+        "divine_intervention",
+        "veil_ward_artifacts"
+      ]
+    },
+    "behavior": {
+      "tactics": "Advances 100 yards per day converting territory. In combat stands ground and uses area denial. Radiant damage or Veil Ward suppresses regeneration.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary_with_drift",
+      "environment": [
+        "Ashmark front",
+        "corrupted territories"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A subsonic hum builds over minutes until your own voice sounds far away. A building-sized mass advances through an area where every sound arrives wrong.",
+      "attack_cue": "A vast thud presses down as the mass falls forward. The air muffles your scream.",
+      "wounded_cue": "A crack snaps across its surface, followed by a low grinding sound as the gap seals again.",
+      "death_cue": "A deep groan swallows the field. Silence hangs over the hollow it leaves in the earth.",
+      "ambient_cue": "A low hum presses beneath conversation. Your companion’s voice sounds distant at arm’s length."
+    },
+    "audio": {
+      "ambient": "HLW-002 heavy subsonic drone and acoustic distortion",
+      "attack": "massive impact and corruption wave",
+      "hit": "dull thud on immense mass",
+      "death": "implosion, silence, then returning sound",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_veilrender",
+    "xp_reward": 700,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollow_choir",
+    "name": "The Choir",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A moving zone of auditory hallucination with no visible form.",
+    "level": 16,
+    "hp": 200,
+    "ac": 18,
+    "speed": 30,
+    "attributes": {
+      "STR": 1,
+      "DEX": 18,
+      "CON": 18,
+      "INT": 14,
+      "WIS": 20,
+      "CHA": 22
+    },
+    "save_proficiencies": [
+      "WIS",
+      "CHA",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Memory Scream",
+        "type": "area",
+        "reach": 60,
+        "to_hit": 0,
+        "damage": "3d8",
+        "damage_type": "psychic",
+        "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+        "audio": "hlw_memory_scream",
+        "save": "WIS",
+        "dc": 18,
+        "applies_condition": "stunned"
+      },
+      {
+        "name": "Dissonant Chord",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 10,
+        "damage": "2d10+6",
+        "damage_type": "psychic",
+        "special": "CON save DC 18 or Deafened 1 minute.",
+        "audio": "hlw_dissonant_chord",
+        "save": "CON",
+        "dc": 18
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "No Physical Form",
+        "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Aura of Lost Voices",
+        "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Memory Predator",
+        "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Resonance Core",
+        "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Stolen Melody",
+        "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Cacophony",
+        "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Silence Void",
+        "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Harmonic Shield",
+        "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 600,
+      "resonance_on_death": 5,
+      "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+      "vulnerable_to": [
+        "radiant",
+        "psychic",
+        "silence_effects"
+      ]
+    },
+    "behavior": {
+      "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary",
+      "environment": [
+        "Ashmark deep territory",
+        "Voidmaw edges",
+        "corrupted emotional sites"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+      "attack_cue": "A screech carries a torn memory back through static.",
+      "wounded_cue": "A hum stutters into silence, then returns angrier.",
+      "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+      "ambient_cue": "A hum of almost remembered music calls your name."
+    },
+    "audio": {
+      "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_choir",
+    "xp_reward": 3000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollow_still",
+    "name": "The Still",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A beautiful square-mile zone that absorbs those who stay.",
+    "level": 18,
+    "hp": 250,
+    "ac": 20,
+    "speed": 0,
+    "attributes": {
+      "STR": 1,
+      "DEX": 1,
+      "CON": 22,
+      "INT": 16,
+      "WIS": 22,
+      "CHA": 24
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS",
+      "CHA"
+    ],
+    "attacks": [
+      {
+        "name": "Serenity's Touch",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 0,
+        "damage": "2d6",
+        "damage_type": "psychic",
+        "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+        "audio": "hlw_serenitys_touch",
+        "save": "WIS",
+        "dc": 20
+      },
+      {
+        "name": "Perfect Memory",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 12,
+        "damage": "3d8",
+        "damage_type": "psychic",
+        "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+        "audio": "hlw_perfect_memory",
+        "save": "WIS",
+        "dc": 20
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Zone Entity",
+        "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Paradise Trap",
+        "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Gentle Absorption",
+        "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "No Hostility",
+        "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Illusory Perfection",
+        "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Rejection",
+        "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Final Stillness",
+        "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 2980,
+      "resonance_on_death": 6,
+      "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+      "vulnerable_to": [
+        "radiant",
+        "divine",
+        "fire",
+        "loud_sound"
+      ]
+    },
+    "behavior": {
+      "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+      "morale": "cannot_flee",
+      "group_size": "solitary_stationary",
+      "environment": [
+        "Ashmark deep territory",
+        "Voidmaw edge"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+      "attack_cue": "A whistle changes key as an anchor is threatened.",
+      "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+      "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+      "ambient_cue": "A hum settles into precisely what you want to hear."
+    },
+    "audio": {
+      "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_still",
+    "xp_reward": 5000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollow_architect",
+    "name": "The Architect",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A builder of impossible structures that weaponizes its domain.",
+    "level": 20,
+    "hp": 300,
+    "ac": 19,
+    "speed": 40,
+    "attributes": {
+      "STR": 20,
+      "DEX": 14,
+      "CON": 20,
+      "INT": 22,
+      "WIS": 18,
+      "CHA": 16
+    },
+    "save_proficiencies": [
+      "INT",
+      "CON",
+      "WIS",
+      "CHA"
+    ],
+    "attacks": [
+      {
+        "name": "Construct Slam",
+        "type": "melee",
+        "reach": 15,
+        "to_hit": 11,
+        "damage": "3d10+5",
+        "damage_type": "bludgeoning",
+        "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
+        "audio": "hlw_construct_slam"
+      },
+      {
+        "name": "Geometry Strike",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 10,
+        "damage": "2d8+6",
+        "damage_type": "force",
+        "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures.",
+        "audio": "hlw_geometry_strike"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Architect's Domain",
+        "description": "Within 0.5 mile, walls, floors and ceilings shift each round; other creatures treat it as difficult terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Incorporeal Movement",
+        "description": "Passes through its own structures, not natural terrain or other structures.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Legendary Resistance",
+        "description": "3/day: turn a failed save into a success.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Alien Intelligence",
+        "description": "INT 22; plans, adapts, anticipates, and avoids repeating failed strategies.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Reshape",
+        "description": "1/round free action: create, move or destroy a 20 ft × 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Entomb",
+        "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Cathedral",
+        "description": "1/encounter. Create a 60 ft radius cathedral; DEX save DC 20 or 4d10 force. Architect gains +2 AC and saves until it leaves or dies.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Summon Constructs",
+        "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Shift Wall",
+        "description": "Legendary action, cost 1 of 3/round: move wall up to 30 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Geometry Strike",
+        "description": "Legendary action, cost 2 of 3/round: make one Geometry Strike attack.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Reactive Architecture",
+        "description": "On ranged attack or spell, raise a wall (AC 19, 30 HP) as reaction; wall takes hit.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 2640,
+      "resonance_on_death": 8,
+      "veil_effect": "Construction sounds arise from no tool or worker: patient scraping and rhythmic percussion.",
+      "vulnerable_to": [
+        "radiant",
+        "divine",
+        "siege_weapons"
+      ]
+    },
+    "behavior": {
+      "tactics": "Builds constantly; when threatened uses every surface as a weapon. Below half HP Reshape rises to 2/round.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary_with_constructs",
+      "environment": [
+        "Voidmaw edge",
+        "deep Ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A scrape of stone rises as new bridges connect nothing; no worker is near.",
+      "attack_cue": "A grind of stone announces a wall moving deliberately toward you.",
+      "wounded_cue": "A crack splits a tower; construction sounds turn urgent.",
+      "death_cue": "A groan passes through every structure as it collapses; the final building sound fades.",
+      "ambient_cue": "A scrape of stone and rhythmic building sounds arise from empty air."
+    },
+    "audio": {
+      "ambient": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "attack": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "hit": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "death": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_architect",
+    "xp_reward": 5000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollowed_scout",
+    "name": "Hollowed Scout",
+    "category": "hollow",
+    "tier": 2,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale"
+    ],
+    "description": "A scout returned from the Veil with practiced footwork and an empty voice.",
+    "level": 5,
+    "hp": 32,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 15,
+      "DEX": 14,
+      "CON": 14,
+      "INT": 8,
+      "WIS": 12,
+      "CHA": 4
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Corrupted Blade",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "hollowed-scout-corrupted-blade"
+      },
+      {
+        "name": "Hollow Echo",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d6",
+        "damage_type": "psychic",
+        "special": null,
+        "audio": "hollowed-scout-hollow-echo"
+      },
+      {
+        "name": "Relentless Advance",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d4",
+        "damage_type": "bludgeoning",
+        "special": null,
+        "audio": "hollowed-scout-relentless-advance"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 30,
+      "resonance_on_death": 2,
+      "veil_effect": "Nearby voices fall half a beat out of step, and the Veil frays along its route.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "turn_undead_hollow"
+      ]
+    },
+    "behavior": {
+      "tactics": "Presses the nearest isolated target, alternating sword cuts with disorienting echoes.",
+      "morale": "Fights to destruction.",
+      "group_size": "pair",
+      "environment": [
+        "ashmark",
+        "greyvale"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Wrong footsteps scrape the stone before a familiar scout steps into view.",
+      "attack_cue": "A blade whistles through the air as its voice repeats a lost name.",
+      "wounded_cue": "A hollow rasp leaks from the rents in its armor.",
+      "death_cue": "A brittle crack sounds as the scout folds into ash.",
+      "ambient_cue": "A scrape of uneven footsteps carries along an empty route."
+    },
+    "audio": {
+      "ambient": "hollow_wrong_footsteps",
+      "attack": "hollowed-scout-attack",
+      "hit": "hollowed-scout-hit",
+      "death": "hollowed-scout-death",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_rend",
+    "xp_reward": 125
+  },
+  {
+    "id": "hollow_wisp",
+    "name": "Hollow Wisp",
+    "category": "hollow",
+    "tier": 1,
+    "home_region": "underground",
+    "regions": [
+      "underground",
+      "greyvale"
+    ],
+    "description": "A thin drift of stolen warmth that gathers around living breath.",
+    "level": 3,
+    "hp": 18,
+    "ac": 12,
+    "speed": 40,
+    "attributes": {
+      "STR": 1,
+      "DEX": 16,
+      "CON": 10,
+      "INT": 12,
+      "WIS": 14,
+      "CHA": 10
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Draining Touch",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 4,
+        "damage": "2d6",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "hollow-wisp-draining-touch"
+      },
+      {
+        "name": "Hollow Drain",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 4,
+        "damage": "1d8",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "hollow-wisp-hollow-drain"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "hollow": {
+      "class": "drift",
+      "corruption_aura": 15,
+      "resonance_on_death": 1,
+      "veil_effect": "Warmth bleeds from the air around it, and the Veil thins wherever it lingers.",
+      "vulnerable_to": [
+        "radiant",
+        "fire",
+        "area_damage"
+      ]
+    },
+    "behavior": {
+      "tactics": "Slips past a front line to drain exposed casters.",
+      "morale": "Dissipates only when destroyed.",
+      "group_size": "pair",
+      "environment": [
+        "underground",
+        "greyvale"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A thin hum gathers near the floor, carrying the smell of cold iron.",
+      "attack_cue": "A hiss follows its touch as warmth drains from skin.",
+      "wounded_cue": "The hum stutters and a sharp ozone smell escapes it.",
+      "death_cue": "A soft crack breaks the silence as the wisp vanishes.",
+      "ambient_cue": "A faint whine circles the room without a source."
+    },
+    "audio": {
+      "ambient": "hollow_whisper",
+      "attack": "hollow-wisp-attack",
+      "hit": "hollow-wisp-hit",
+      "death": "hollow-wisp-death",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_drift",
+    "xp_reward": 40
+  },
+  {
+    "id": "hollow_warden",
+    "name": "Hollow Warden",
+    "category": "hollow",
+    "tier": 2,
+    "home_region": "underground",
+    "regions": [
+      "underground"
+    ],
+    "description": "A fixed guardian that folds the space around a ruined threshold.",
+    "level": 7,
+    "hp": 55,
+    "ac": 15,
+    "speed": 25,
+    "attributes": {
+      "STR": 16,
+      "DEX": 10,
+      "CON": 16,
+      "INT": 12,
+      "WIS": 14,
+      "CHA": 8
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Void Lash",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "2d6",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "hollow-warden-void-lash"
+      },
+      {
+        "name": "Reality Fracture",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d8",
+        "damage_type": "psychic",
+        "special": null,
+        "audio": "hollow-warden-reality-fracture"
+      },
+      {
+        "name": "Absorb",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d6",
+        "damage_type": "necrotic",
+        "special": "Healing: regain HP equal to damage dealt.",
+        "audio": "hollow-warden-absorb"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "signature_ability": {
+      "name": "Reality Collapse",
+      "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
+      "save": "wisdom"
+    },
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 30,
+      "resonance_on_death": 2,
+      "veil_effect": "The Veil folds around its ward, so the guarded room holds two overlapping versions of itself.",
+      "vulnerable_to": [
+        "radiant",
+        "blessed_weapons",
+        "divine"
+      ]
+    },
+    "behavior": {
+      "tactics": "Holds a doorway, lashes at intruders and feeds on wounded targets.",
+      "morale": "Never abandons its ward.",
+      "group_size": "solitary",
+      "environment": [
+        "underground"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A deep metallic groan rolls through the ruined doorway.",
+      "attack_cue": "A void lash snaps and the air falls silent.",
+      "wounded_cue": "A grinding pulse beats unevenly beneath the stone.",
+      "death_cue": "A heavy crack splits the stillness as the Warden unravels.",
+      "ambient_cue": "A low hum throbs behind the walls."
+    },
+    "audio": {
+      "ambient": "hollow_deep_resonance",
+      "attack": "hollow-warden-attack",
+      "hit": "hollow-warden-hit",
+      "death": "hollow-warden-death",
+      "special": {
+        "Reality Collapse": "hollow-warden-signature"
+      }
+    },
+    "loot_table_id": "loot_hollow_warden",
+    "xp_reward": 200
+  },
+  {
+    "id": "ashmark_soldier",
+    "name": "Ashmark Soldier",
+    "category": "humanoid",
+    "tier": 2,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ],
+    "description": "A drilled Ashmark infantry fighter with a sword and shield.",
+    "level": 5,
+    "hp": 28,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 14,
+      "DEX": 12,
+      "CON": 14,
+      "INT": 10,
+      "WIS": 11,
+      "CHA": 10
+    },
+    "save_proficiencies": [
+      "STR"
+    ],
+    "attacks": [
+      {
+        "name": "Longsword",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "1d8+2",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "ashmark-soldier-longsword"
+      },
+      {
+        "name": "Shield Bash",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 0,
+        "damage": "0",
+        "damage_type": "none",
+        "special": "Target STRENGTH save DC 12 or prone.",
+        "audio": "ashmark-soldier-shield-bash",
+        "applies_condition": "prone",
+        "save": "strength",
+        "dc": 12
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Keeps formation and bashes a foe prone for the next soldier.",
+      "morale": "Withdraws on the sergeant’s order or when outnumbered.",
+      "group_size": "patrol_3_5",
+      "environment": [
+        "ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Shield rims clatter in step before the patrol rounds the corner.",
+      "attack_cue": "Steel clatters against a guard as the soldier drives forward.",
+      "wounded_cue": "A labored breath slips through the soldier’s helm.",
+      "death_cue": "Armor rattles against the ground as the soldier falls.",
+      "ambient_cue": "Boots scrape in a measured patrol rhythm beyond the door."
+    },
+    "audio": {
+      "ambient": "ashmark_soldier_advance",
+      "attack": "ashmark-soldier-attack",
+      "hit": "ashmark-soldier-hit",
+      "death": "ashmark-soldier-death",
+      "special": {}
+    },
+    "loot_table_id": "loot_humanoid_soldier",
+    "xp_reward": 100
+  },
+  {
+    "id": "ashmark_sergeant",
+    "name": "Ashmark Sergeant",
+    "category": "humanoid",
+    "tier": 2,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ],
+    "description": "An Ashmark patrol commander whose orders concentrate the line.",
+    "level": 6,
+    "hp": 38,
+    "ac": 14,
+    "speed": 30,
+    "attributes": {
+      "STR": 15,
+      "DEX": 12,
+      "CON": 15,
+      "INT": 11,
+      "WIS": 12,
+      "CHA": 13
+    },
+    "save_proficiencies": [
+      "STR"
+    ],
+    "attacks": [
+      {
+        "name": "Greatsword",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 6,
+        "damage": "2d6+2",
+        "damage_type": "slashing",
+        "special": null,
+        "audio": "ashmark-sergeant-greatsword"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [
+      {
+        "name": "Rally",
+        "description": "Command to allies: A sharp command steadies the line and sharpens their focus fire.",
+        "narration_cue": "A sharp whistle snaps the line back into step.",
+        "recharge": "1/round",
+        "audio": "ashmark-sergeant-rally",
+        "kind": "command",
+        "properties": [
+          "buff"
+        ]
+      },
+      {
+        "name": "Accusation",
+        "description": "Accusation to allies: Names the accused and directs the patrol's focus fire.",
+        "narration_cue": "A barked name cracks across the patrol, and every blade turns.",
+        "recharge": "1/round",
+        "audio": "ashmark-sergeant-accusation",
+        "kind": "accusation",
+        "properties": []
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Marks a target, rallies allies and closes with a greatsword.",
+      "morale": "Orders retreat if the patrol loses half its strength.",
+      "group_size": "one_per_patrol",
+      "environment": [
+        "ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A sharp whistle cuts across the patrol’s marching cadence.",
+      "attack_cue": "A sharp whistle rises over the greatsword’s swing.",
+      "wounded_cue": "A rough rasp interrupts the next command.",
+      "death_cue": "A sword clatters down as the sergeant falls silent.",
+      "ambient_cue": "Clipped commands rasp through the camp."
+    },
+    "audio": {
+      "ambient": "ashmark_sergeant_order",
+      "attack": "ashmark-sergeant-attack",
+      "hit": "ashmark-sergeant-hit",
+      "death": "ashmark-sergeant-death",
+      "special": {
+        "Rally": "ashmark-sergeant-rally",
+        "Accusation": "ashmark-sergeant-accusation"
+      }
+    },
+    "loot_table_id": "loot_humanoid_soldier",
+    "xp_reward": 150
+  },
+  {
+    "id": "cultist",
+    "name": "Cultist",
+    "category": "humanoid",
+    "tier": 1,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "ashmark"
+    ],
+    "description": "A nervous initiate carrying a notched ritual dagger.",
+    "level": 1,
+    "hp": 10,
+    "ac": 11,
+    "speed": 30,
+    "attributes": {
+      "STR": 11,
+      "DEX": 12,
+      "CON": 11,
+      "INT": 10,
+      "WIS": 11,
+      "CHA": 10
+    },
+    "save_proficiencies": [
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Ritual Dagger",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d4+1",
+        "damage_type": "piercing",
+        "special": null,
+        "audio": "cultist-ritual-dagger"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Surrounds a distracted target while senior cultists chant.",
+      "morale": "Flees when the leader falls.",
+      "group_size": "cell_3_6",
+      "environment": [
+        "greyvale",
+        "ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A nervous rasp leaks from the chamber before the initiate appears.",
+      "attack_cue": "A dagger scrapes stone as the cultist lunges.",
+      "wounded_cue": "A ragged breath breaks the ritual chant.",
+      "death_cue": "A metal blade clatters away from the fallen cultist.",
+      "ambient_cue": "A low rasp repeats the same broken prayer."
+    },
+    "audio": {
+      "ambient": "cult_murmur",
+      "attack": "cultist-attack",
+      "hit": "cultist-hit",
+      "death": "cultist-death",
+      "special": {}
+    },
+    "loot_table_id": "loot_humanoid_cultist",
+    "xp_reward": 20
+  },
+  {
+    "id": "cult_fanatic",
+    "name": "Cult Fanatic",
+    "category": "humanoid",
+    "tier": 1,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "ashmark"
+    ],
+    "description": "A ritual enforcer who channels fervor through touch and command.",
+    "level": 3,
+    "hp": 19,
+    "ac": 13,
+    "speed": 30,
+    "attributes": {
+      "STR": 11,
+      "DEX": 12,
+      "CON": 13,
+      "INT": 12,
+      "WIS": 15,
+      "CHA": 13
+    },
+    "save_proficiencies": [
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Mace",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "1d6",
+        "damage_type": "bludgeoning",
+        "special": null,
+        "audio": "cult-fanatic-mace"
+      },
+      {
+        "name": "Inflict Wounds",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 4,
+        "damage": "2d8",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "cult-fanatic-inflict-wounds"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [
+      {
+        "name": "Bless",
+        "description": "Command to allies: Murmured fervor steadies the cultists' hands.",
+        "narration_cue": "A low hum of fervor passes from cultist to cultist.",
+        "recharge": "1/round",
+        "audio": "cult-fanatic-bless",
+        "kind": "command",
+        "properties": [
+          "buff"
+        ]
+      }
+    ],
+    "reactions": [],
+    "hollow": null,
+    "behavior": {
+      "tactics": "Blesses allies before closing to deliver necrotic wounds.",
+      "morale": "Fights to death while the leader stands.",
+      "group_size": "pair_in_cell",
+      "environment": [
+        "greyvale",
+        "ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A steady chant fills the hall with the smell of tallow.",
+      "attack_cue": "A mace thuds as the chant rises into a shout.",
+      "wounded_cue": "The chant catches on a wet breath.",
+      "death_cue": "A final syllable rasps out as the fanatic drops.",
+      "ambient_cue": "A low hum of blessing threads through the room."
+    },
+    "audio": {
+      "ambient": "cult_chant",
+      "attack": "cult-fanatic-attack",
+      "hit": "cult-fanatic-hit",
+      "death": "cult-fanatic-death",
+      "special": {
+        "Bless": "cult-fanatic-bless"
+      }
+    },
+    "loot_table_id": "loot_humanoid_cultist",
+    "xp_reward": 45
+  },
+  {
+    "id": "cult_leader",
+    "name": "Cult Leader",
+    "category": "humanoid",
+    "tier": 2,
+    "home_region": "greyvale",
+    "regions": [
+      "greyvale",
+      "ashmark"
+    ],
+    "description": "A cell leader who shapes shadow into bolts and a suffocating mantle.",
+    "level": 8,
+    "hp": 48,
+    "ac": 14,
+    "speed": 30,
+    "attributes": {
+      "STR": 9,
+      "DEX": 14,
+      "CON": 13,
+      "INT": 16,
+      "WIS": 13,
+      "CHA": 14
+    },
+    "save_proficiencies": [
+      "WIS"
+    ],
+    "attacks": [
+      {
+        "name": "Shadow Bolt",
+        "type": "ranged",
+        "reach": 30,
+        "to_hit": 6,
+        "damage": "2d6",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "cult-leader-shadow-bolt"
+      },
+      {
+        "name": "Hold Person",
+        "type": "ranged",
+        "reach": 60,
+        "to_hit": 0,
+        "damage": "0",
+        "damage_type": "none",
+        "special": "Target WISDOM save DC 12 or paralyzed.",
+        "audio": "cult-leader-hold-person",
+        "applies_condition": "paralyzed",
+        "save": "wisdom",
+        "dc": 12
+      },
+      {
+        "name": "Dark Pulse",
+        "type": "area",
+        "reach": 15,
+        "to_hit": 0,
+        "damage": "1d10",
+        "damage_type": "necrotic",
+        "special": null,
+        "audio": "cult-leader-dark-pulse"
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "signature_ability": {
+      "name": "Mantle of Ruin",
+      "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
+      "save": "constitution"
+    },
+    "hollow": null,
+    "behavior": {
+      "tactics": "Pins one intruder with Hold Person and strikes clustered foes with dark force.",
+      "morale": "Fights until the cell breaks, then escapes if possible.",
+      "group_size": "one_per_cell",
+      "environment": [
+        "greyvale",
+        "ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A measured hum silences the cell’s whispers.",
+      "attack_cue": "A hiss of cold air follows the shadow bolt.",
+      "wounded_cue": "The incantation falters between painful breaths.",
+      "death_cue": "A hollow crack sounds as the mantle gutters out.",
+      "ambient_cue": "A soft rasp carries beyond the closed door."
+    },
+    "audio": {
+      "ambient": "cult_leader_incant",
+      "attack": "cult-leader-attack",
+      "hit": "cult-leader-hit",
+      "death": "cult-leader-death",
+      "special": {
+        "Mantle of Ruin": "cult-leader-signature"
+      }
+    },
+    "loot_table_id": "loot_cult_leader",
+    "xp_reward": 180
   }
 ]

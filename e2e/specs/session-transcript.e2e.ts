@@ -9,7 +9,7 @@ test.describe("Transcript entries", () => {
     });
 
     const view = sessionPage.page.getByTestId("transcript-view");
-    await expect(view).toBeVisible({ timeout: 10_000 });
+    await expect(view).toBeVisible();
     await expect(
       sessionPage.page.getByText("The ancient door creaks open before you."),
     ).toBeVisible();
@@ -22,7 +22,7 @@ test.describe("Transcript entries", () => {
       text: "I push open the door.",
     });
 
-    await expect(sessionPage.page.getByText("You")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("You")).toBeVisible();
     await expect(sessionPage.page.getByText("I push open the door.")).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe("Transcript entries", () => {
     });
 
     // Component replaces underscores with spaces
-    await expect(sessionPage.page.getByText("Elder Mirael")).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("Elder Mirael")).toBeVisible();
     await expect(sessionPage.page.getByText("Welcome, traveler.")).toBeVisible();
   });
 
@@ -56,9 +56,7 @@ test.describe("Transcript entries", () => {
       text: "Warm light fills the passage.",
     });
 
-    await expect(sessionPage.page.getByText("The cave is dark and cold.")).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(sessionPage.page.getByText("The cave is dark and cold.")).toBeVisible();
     await expect(sessionPage.page.getByText("I light a torch.")).toBeVisible();
     await expect(sessionPage.page.getByText("Warm light fills the passage.")).toBeVisible();
   });
@@ -70,8 +68,6 @@ test.describe("Transcript entries", () => {
       text: "Skill check: Athletics DC 14",
     });
 
-    await expect(sessionPage.page.getByText("Skill check: Athletics DC 14")).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(sessionPage.page.getByText("Skill check: Athletics DC 14")).toBeVisible();
   });
 });

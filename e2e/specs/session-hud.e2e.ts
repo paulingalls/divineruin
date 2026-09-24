@@ -13,7 +13,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const overlay = sessionPage.page.getByTestId("dice-roll-overlay");
-    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(overlay).toBeVisible();
     await expect(sessionPage.page.getByText("SUCCESS")).toBeVisible();
     await expect(sessionPage.page.getByText("ATTACK")).toBeVisible();
   });
@@ -30,7 +30,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const overlay = sessionPage.page.getByTestId("dice-roll-overlay");
-    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(overlay).toBeVisible();
     await expect(sessionPage.page.getByText("FAILURE")).toBeVisible();
   });
 
@@ -44,7 +44,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const overlay = sessionPage.page.getByTestId("item-card-overlay");
-    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(overlay).toBeVisible();
     await expect(sessionPage.page.getByText("Moonstone Amulet")).toBeVisible();
     await expect(sessionPage.page.getByText("RARE")).toBeVisible();
   });
@@ -59,7 +59,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const toast = sessionPage.page.getByTestId("quest-update-toast");
-    await expect(toast).toBeVisible({ timeout: 10_000 });
+    await expect(toast).toBeVisible();
     await expect(sessionPage.page.getByText("The Missing Merchant")).toBeVisible();
   });
 
@@ -74,7 +74,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const toast = sessionPage.page.getByTestId("xp-toast");
-    await expect(toast).toBeVisible({ timeout: 10_000 });
+    await expect(toast).toBeVisible();
     await expect(sessionPage.page.getByText("+150 XP")).toBeVisible();
   });
 
@@ -89,7 +89,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const overlay = sessionPage.page.getByTestId("level-up-overlay");
-    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(overlay).toBeVisible();
     await expect(sessionPage.page.getByText("LEVEL UP")).toBeVisible();
     await expect(sessionPage.page.getByText("4")).toBeVisible();
   });
@@ -104,7 +104,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const toast = sessionPage.page.getByTestId("divine-favor-toast");
-    await expect(toast).toBeVisible({ timeout: 10_000 });
+    await expect(toast).toBeVisible();
     await expect(sessionPage.page.getByText("+5 DIVINE FAVOR")).toBeVisible();
   });
 
@@ -113,7 +113,7 @@ test.describe("Session HUD overlays", () => {
 
     // Verify initial location
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
     await expect(bar.getByText(/GREYVALE/)).toBeVisible();
 
     // Change location
@@ -126,7 +126,7 @@ test.describe("Session HUD overlays", () => {
       ambient_sounds: "forest_night",
     });
 
-    await expect(bar.getByText(/ASHEN WEALD/)).toBeVisible({ timeout: 10_000 });
+    await expect(bar.getByText(/ASHEN WEALD/)).toBeVisible();
   });
 
   test("combat tracker shows on combat_ui_update", async ({ sessionPage }) => {
@@ -156,14 +156,14 @@ test.describe("Session HUD overlays", () => {
     });
 
     const tracker = sessionPage.page.getByTestId("combat-tracker");
-    await expect(tracker).toBeVisible({ timeout: 10_000 });
+    await expect(tracker).toBeVisible();
     await expect(sessionPage.page.getByText("ROUND 2")).toBeVisible();
     await expect(sessionPage.page.getByText("Edrin")).toBeVisible();
     await expect(sessionPage.page.getByText("Goblin Scout")).toBeVisible();
 
     // End combat — tracker disappears
     await sessionPage.injectEvent({ type: "combat_ended" });
-    await expect(tracker).not.toBeVisible({ timeout: 10_000 });
+    await expect(tracker).not.toBeVisible();
   });
 
   test("creation cards show on creation_cards event", async ({ sessionPage }) => {
@@ -192,7 +192,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const row = sessionPage.page.getByTestId("creation-card-row");
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible();
     await expect(sessionPage.page.getByText("Who Are You?")).toBeVisible();
     await expect(sessionPage.page.getByText("Human")).toBeVisible();
     await expect(sessionPage.page.getByText("Elf")).toBeVisible();
@@ -203,7 +203,7 @@ test.describe("Session HUD overlays", () => {
     await sessionPage.injectSessionInit();
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
 
     // Change HP — the bar element should still be present
     await sessionPage.injectEvent({
@@ -220,7 +220,7 @@ test.describe("Session HUD overlays", () => {
     await sessionPage.injectSessionInit();
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
-    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toBeVisible();
 
     // Add a buff status effect
     await sessionPage.injectEvent({
@@ -231,7 +231,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const dot = bar.getByTestId("status-effect-bless_1");
-    await expect(dot).toBeVisible({ timeout: 10_000 });
+    await expect(dot).toBeVisible();
 
     // Remove the status effect
     await sessionPage.injectEvent({
@@ -240,7 +240,7 @@ test.describe("Session HUD overlays", () => {
       effect_id: "bless_1",
     });
 
-    await expect(dot).not.toBeVisible({ timeout: 10_000 });
+    await expect(dot).not.toBeVisible();
   });
 
   test("overlay auto-dismisses after TTL", async ({ sessionPage }) => {
@@ -256,10 +256,10 @@ test.describe("Session HUD overlays", () => {
     });
 
     const toast = sessionPage.page.getByTestId("xp-toast");
-    await expect(toast).toBeVisible({ timeout: 10_000 });
+    await expect(toast).toBeVisible();
 
     // Wait for TTL + animation buffer
-    await expect(toast).not.toBeVisible({ timeout: 10_000 });
+    await expect(toast).not.toBeVisible();
   });
 
   test("creation_card_selected highlights chosen card", async ({ sessionPage }) => {
@@ -288,7 +288,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     const row = sessionPage.page.getByTestId("creation-card-row");
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible();
 
     await sessionPage.injectEvent({
       type: "creation_card_selected",
@@ -304,7 +304,7 @@ test.describe("Session HUD overlays", () => {
   test("corruption overlay appears on hollow_corruption_changed", async ({ sessionPage }) => {
     // At level 0, corruption overlay is not rendered
     const overlay = sessionPage.page.getByTestId("corruption-overlay");
-    await expect(overlay).not.toBeVisible({ timeout: 5_000 });
+    await expect(overlay).not.toBeVisible();
 
     // Set corruption to level 2
     await sessionPage.injectEvent({
@@ -312,6 +312,6 @@ test.describe("Session HUD overlays", () => {
       level: 2,
     });
 
-    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(overlay).toBeVisible();
   });
 });

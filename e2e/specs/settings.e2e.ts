@@ -7,9 +7,7 @@ test.describe("Settings screen", () => {
     await authenticatedPage.waitForLoadState("domcontentloaded");
 
     // Assert settings title
-    await expect(authenticatedPage.getByText("SETTINGS")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(authenticatedPage.getByText("SETTINGS")).toBeVisible();
 
     // Assert volume labels
     for (const label of ["VOICE", "MUSIC", "AMBIENCE", "EFFECTS", "UI"]) {
@@ -25,8 +23,6 @@ test.describe("Settings screen", () => {
     // Click sign out — should redirect to auth screen
     await signOutButton.click();
 
-    await expect(authenticatedPage.getByText("Listen to the dark")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(authenticatedPage.getByText("Listen to the dark")).toBeVisible();
   });
 });

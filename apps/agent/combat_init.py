@@ -220,9 +220,10 @@ async def _start_combat_locked(
     participants: list[CombatParticipant] = []
     for mid, row in member_players:
         try:
-            traits = item_effects.combat_traits(await queries.get_player_inventory(mid))
+            inventory = await queries.get_player_inventory(mid)
+            traits = item_effects.combat_traits([item for item in inventory if item.get("type") != "material"])
         except ValueError as error:
-            raise ToolError(f"Player {mid!r} has malformed inventory effects: {error}") from error
+            raise ToolError(f"Player {mid!r} has malformed inventory: {error}") from error
         row_hp = row.get("hp", {})
         player_class = row.get("class")
         if not isinstance(player_class, str):

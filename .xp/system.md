@@ -87,6 +87,14 @@ API cost) and runs only at the comprehensive push or sprint-close boundary.
 - Checking a box in `docs/milestones/*.md` also moves the README phase count, the
   REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
   docs pins red on all three (sprint-105).
+- pytest collects only `test_*.py`. A pin module named otherwise (e.g.
+  `creature_spec_pins_*.py`) may hold DATA a collected test imports, never test
+  functions: sprint-062 story-130's pins ran only through its Verify, so no tier
+  would have caught a later card breaking them.
+- A sprint-header rule that a LATER card's walk enforces binds the card that
+  AUTHORS the data too: name the check in that card's AC. Sprint-062: story-132
+  authored three Hollow troops with one shared `vulnerable_to`; the header's
+  pairwise-distinct rule surfaced only at story-133's plan review, after sign-off.
 - DB changes ship as migrations; `content/*.json` changes require a reseed, or
   strict loaders fail server startup.
 - Content is written for the ear: short sentences, sound and smell before sight.
@@ -240,6 +248,14 @@ After merge, these commands install the committed graph:
 If land merges and then push fails, inspect HEAD and the close record before
 retrying: the story worktree may already be removed. Never reformat with stale
 tools to satisfy an upgraded lock.
+Two clones ship to one origin (sprint-062): a land takes its base from the LOCAL
+trunk branch but merges `origin/<trunk>`, so after the other clone releases run
+`git fetch origin main:main` before landing, or land lists every file the other
+release touched as unreviewed. After merging main into a sprint branch, run the
+frozen installs above before pushing: the python lane's workspace-report test
+reds on "installed package is missing". A story worktree cut before a
+worktree-validator change tears down with its old scripts and fails; run
+`bun run worktree:teardown --sweep` from the primary checkout afterwards.
 
 **Worktree bootstrap**: `bash scripts/init-worktree.sh`
 
