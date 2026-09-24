@@ -2672,5 +2672,477 @@
     "regions": [
       "ashmark"
     ]
+  },
+  {
+    "id": "hollow_choir",
+    "name": "The Choir",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A moving zone of auditory hallucination with no visible form.",
+    "level": 16,
+    "hp": 200,
+    "ac": 18,
+    "speed": 30,
+    "attributes": {
+      "STR": 1,
+      "DEX": 18,
+      "CON": 18,
+      "INT": 14,
+      "WIS": 20,
+      "CHA": 22
+    },
+    "save_proficiencies": [
+      "WIS",
+      "CHA",
+      "CON"
+    ],
+    "attacks": [
+      {
+        "name": "Memory Scream",
+        "type": "area",
+        "reach": 60,
+        "to_hit": 0,
+        "damage": "3d8",
+        "damage_type": "psychic",
+        "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+        "audio": "hlw_memory_scream",
+        "save": "WIS",
+        "dc": 18,
+        "applies_condition": "stunned"
+      },
+      {
+        "name": "Dissonant Chord",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 10,
+        "damage": "2d10+6",
+        "damage_type": "psychic",
+        "special": "CON save DC 18 or Deafened 1 minute.",
+        "audio": "hlw_dissonant_chord",
+        "save": "CON",
+        "dc": 18
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "No Physical Form",
+        "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Aura of Lost Voices",
+        "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Memory Predator",
+        "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Resonance Core",
+        "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Stolen Melody",
+        "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Cacophony",
+        "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Silence Void",
+        "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Harmonic Shield",
+        "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 600,
+      "resonance_on_death": 5,
+      "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+      "vulnerable_to": [
+        "radiant",
+        "psychic",
+        "silence_effects"
+      ]
+    },
+    "behavior": {
+      "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary",
+      "environment": [
+        "Ashmark deep territory",
+        "Voidmaw edges",
+        "corrupted emotional sites"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+      "attack_cue": "A screech carries a torn memory back through static.",
+      "wounded_cue": "A hum stutters into silence, then returns angrier.",
+      "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+      "ambient_cue": "A hum of almost remembered music calls your name."
+    },
+    "audio": {
+      "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_choir",
+    "xp_reward": 3000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollow_still",
+    "name": "The Still",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A beautiful square-mile zone that absorbs those who stay.",
+    "level": 18,
+    "hp": 250,
+    "ac": 20,
+    "speed": 0,
+    "attributes": {
+      "STR": 1,
+      "DEX": 1,
+      "CON": 22,
+      "INT": 16,
+      "WIS": 22,
+      "CHA": 24
+    },
+    "save_proficiencies": [
+      "CON",
+      "WIS",
+      "CHA"
+    ],
+    "attacks": [
+      {
+        "name": "Serenity's Touch",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 0,
+        "damage": "2d6",
+        "damage_type": "psychic",
+        "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+        "audio": "hlw_serenitys_touch",
+        "save": "WIS",
+        "dc": 20
+      },
+      {
+        "name": "Perfect Memory",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 12,
+        "damage": "3d8",
+        "damage_type": "psychic",
+        "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+        "audio": "hlw_perfect_memory",
+        "save": "WIS",
+        "dc": 20
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Zone Entity",
+        "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Paradise Trap",
+        "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Gentle Absorption",
+        "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "No Hostility",
+        "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Illusory Perfection",
+        "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Rejection",
+        "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Final Stillness",
+        "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      }
+    ],
+    "reactions": [],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 2980,
+      "resonance_on_death": 6,
+      "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+      "vulnerable_to": [
+        "radiant",
+        "divine",
+        "fire",
+        "loud_sound"
+      ]
+    },
+    "behavior": {
+      "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+      "morale": "cannot_flee",
+      "group_size": "solitary_stationary",
+      "environment": [
+        "Ashmark deep territory",
+        "Voidmaw edge"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+      "attack_cue": "A whistle changes key as an anchor is threatened.",
+      "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+      "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+      "ambient_cue": "A hum settles into precisely what you want to hear."
+    },
+    "audio": {
+      "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_still",
+    "xp_reward": 5000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
+  },
+  {
+    "id": "hollow_architect",
+    "name": "The Architect",
+    "category": "hollow",
+    "tier": 4,
+    "description": "A builder of impossible structures that weaponizes its domain.",
+    "level": 20,
+    "hp": 300,
+    "ac": 19,
+    "speed": 40,
+    "attributes": {
+      "STR": 20,
+      "DEX": 14,
+      "CON": 20,
+      "INT": 22,
+      "WIS": 18,
+      "CHA": 16
+    },
+    "save_proficiencies": [
+      "INT",
+      "CON",
+      "WIS",
+      "CHA"
+    ],
+    "attacks": [
+      {
+        "name": "Construct Slam",
+        "type": "melee",
+        "reach": 15,
+        "to_hit": 11,
+        "damage": "3d10+5",
+        "damage_type": "bludgeoning",
+        "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
+        "audio": "hlw_construct_slam"
+      },
+      {
+        "name": "Geometry Strike",
+        "type": "ranged",
+        "reach": 120,
+        "to_hit": 10,
+        "damage": "2d8+6",
+        "damage_type": "force",
+        "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures.",
+        "audio": "hlw_geometry_strike"
+      }
+    ],
+    "multiattack": null,
+    "passives": [
+      {
+        "name": "Architect's Domain",
+        "description": "Within 0.5 mile, walls, floors and ceilings shift each round; other creatures treat it as difficult terrain.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Incorporeal Movement",
+        "description": "Passes through its own structures, not natural terrain or other structures.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Legendary Resistance",
+        "description": "3/day: turn a failed save into a success.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Alien Intelligence",
+        "description": "INT 22; plans, adapts, anticipates, and avoids repeating failed strategies.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "actives": [
+      {
+        "name": "Reshape",
+        "description": "1/round free action: create, move or destroy a 20 ft × 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
+        "narration_cue": "",
+        "recharge": "1/round",
+        "audio": null
+      },
+      {
+        "name": "Entomb",
+        "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
+        "narration_cue": "",
+        "recharge": "5-6",
+        "audio": null
+      },
+      {
+        "name": "Cathedral",
+        "description": "1/encounter. Create a 60 ft radius cathedral; DEX save DC 20 or 4d10 force. Architect gains +2 AC and saves until it leaves or dies.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Summon Constructs",
+        "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+        "narration_cue": "",
+        "recharge": "1/encounter",
+        "audio": null
+      },
+      {
+        "name": "Shift Wall",
+        "description": "Legendary action, cost 1 of 3/round: move wall up to 30 ft.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      },
+      {
+        "name": "Geometry Strike",
+        "description": "Legendary action, cost 2 of 3/round: make one Geometry Strike attack.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Reactive Architecture",
+        "description": "On ranged attack or spell, raise a wall (AC 19, 30 HP) as reaction; wall takes hit.",
+        "narration_cue": "",
+        "recharge": null,
+        "audio": null
+      }
+    ],
+    "hollow": {
+      "class": "named",
+      "corruption_aura": 2640,
+      "resonance_on_death": 8,
+      "veil_effect": "Construction sounds arise from no tool or worker: patient scraping and rhythmic percussion.",
+      "vulnerable_to": [
+        "radiant",
+        "divine",
+        "siege_weapons"
+      ]
+    },
+    "behavior": {
+      "tactics": "Builds constantly; when threatened uses every surface as a weapon. Below half HP Reshape rises to 2/round.",
+      "morale": "fights_until_destroyed",
+      "group_size": "solitary_with_constructs",
+      "environment": [
+        "Voidmaw edge",
+        "deep Ashmark"
+      ]
+    },
+    "narration": {
+      "first_sighting": "A scrape of stone rises as new bridges connect nothing; no worker is near.",
+      "attack_cue": "A grind of stone announces a wall moving deliberately toward you.",
+      "wounded_cue": "A crack splits a tower; construction sounds turn urgent.",
+      "death_cue": "A groan passes through every structure as it collapses; the final building sound fades.",
+      "ambient_cue": "A scrape of stone and rhythmic building sounds arise from empty air."
+    },
+    "audio": {
+      "ambient": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "attack": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "hit": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "death": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_architect",
+    "xp_reward": 5000,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark"
+    ]
   }
 ]
