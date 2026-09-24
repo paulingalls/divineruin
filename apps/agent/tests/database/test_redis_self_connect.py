@@ -3,6 +3,7 @@ import os
 import socket
 import uuid
 from typing import ClassVar
+from unittest.mock import AsyncMock
 
 import pytest
 import redis.asyncio as aioredis
@@ -77,3 +78,19 @@ async def test_real_valkey_get_reads_value():
     finally:
         db._redis = previous
         await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_non_string_reply_that_is_not_an_echo_is_not_called_a_self_connect(caplog):
+    client = AsyncMock()
+    client.get = AsyncMock(return_value=["GET", "another-key"])
+    client.connection_pool.disconnect = AsyncMock()
+    previous = db._redis
+    db._redis = client
+    try:
+        assert await db._cache_get("self-connect-key") is None
+        assert db._redis is None
+        assert any(record.msg == db.DESYNCED_REPLY_LOG for record in caplog.records)
+        assert "TCP self-connect" not in caplog.text
+    finally:
+        db._redis = previous
