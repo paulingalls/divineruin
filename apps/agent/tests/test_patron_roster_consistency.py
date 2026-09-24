@@ -135,7 +135,6 @@ def test_layer_2_through_4_placeholders_exist_and_are_null():
     until then they must be present and null so authoring has one canonical place.
     """
     placeholders = (
-        "layer_1_gift",
         "layer_2_resonance",
         "layer_3_tier_abilities",
         "layer_4_synergy_matrix",
