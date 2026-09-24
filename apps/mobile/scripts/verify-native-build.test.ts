@@ -24,9 +24,14 @@ function fixture(): Fixture {
   const deps: NativeBuildDeps = {
     loadRootEnvironment: () =>
       Promise.resolve({
-        IOS_SIMULATOR_UDID: UDID,
         EXPO_PUBLIC_API_URL: API_URL,
       }),
+    resolveOwnedSimulator: (requested) => {
+      calls.push(`resolve ${requested ?? "unset"}`);
+      if (requested && requested !== UDID)
+        return Promise.reject(new Error("IOS_SIMULATOR_UDID must name the owned simulator"));
+      return Promise.resolve(UDID);
+    },
     requireNonemptyFile: (path) => {
       calls.push(`file ${path}`);
       return Promise.resolve();
@@ -101,6 +106,7 @@ describe("runNativeBuild", () => {
     await runNativeBuild(options(deps));
 
     expect(calls).toEqual([
+      "resolve unset",
       `file ${ROOT}/apps/mobile/.maestro/launch.yaml`,
       `file ${ROOT}/apps/mobile/.maestro/auth-form.yaml`,
       `simulator ${UDID}`,
@@ -119,12 +125,15 @@ describe("runNativeBuild", () => {
     expect(cleaned).toEqual(["metro", TEMP]);
   });
 
-  test("process environment overrides root .env without writing it", async () => {
+  test("accepts an explicit owned UDID and rejects a foreign one before boot", async () => {
     const { deps, calls } = fixture();
-    const override = "A2080000-0000-0000-0000-000000000099";
-    await runNativeBuild(options(deps, { IOS_SIMULATOR_UDID: override }));
-    expect(calls).toContain(`simulator ${override}`);
-    expect(calls.some((call) => call.startsWith(`acceptance ${override} `))).toBe(true);
+    await runNativeBuild(options(deps, { IOS_SIMULATOR_UDID: UDID }));
+    expect(calls).toContain(`simulator ${UDID}`);
+    const foreign = fixture();
+    expect(
+      await failure(runNativeBuild(options(foreign.deps, { IOS_SIMULATOR_UDID: "FOREIGN" }))),
+    ).toContain("owned simulator");
+    expect(foreign.calls).toEqual(["resolve FOREIGN"]);
   });
 
   test.each([
@@ -135,9 +144,9 @@ describe("runNativeBuild", () => {
       },
     ],
     [
-      "IOS_SIMULATOR_UDID",
+      "owned simulator",
       (deps: NativeBuildDeps) => {
-        deps.loadRootEnvironment = () => Promise.resolve({ EXPO_PUBLIC_API_URL: API_URL });
+        deps.resolveOwnedSimulator = () => Promise.reject(new Error("owned simulator unavailable"));
       },
     ],
     [

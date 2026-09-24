@@ -24,6 +24,7 @@ async function fixture() {
     JSON.stringify({
       dependencies: {
         expo: "57.0.24",
+        "expo-build-properties": "57.0.21",
         "@livekit/react-native": "2.12.0",
         "@livekit/react-native-webrtc": "144.1.2",
       },
@@ -31,13 +32,29 @@ async function fixture() {
   );
   await writeFile(
     join(root, "apps/mobile/app.json"),
-    JSON.stringify({ expo: { plugins: ["expo-router", "expo-audio"] } }),
+    JSON.stringify({
+      expo: {
+        plugins: [
+          "expo-router",
+          ["expo-build-properties", { ios: { enableSceneSupport: true } }],
+          "expo-audio",
+        ],
+      },
+    }),
   );
   return root;
 }
 
 function expoConfig(overrides: Record<string, unknown> = {}) {
-  return { name: "divineruin", plugins: ["expo-router", "expo-audio"], ...overrides };
+  return {
+    name: "divineruin",
+    plugins: [
+      "expo-router",
+      ["expo-build-properties", { ios: { enableSceneSupport: true } }],
+      "expo-audio",
+    ],
+    ...overrides,
+  };
 }
 
 function eslintConfig(): Array<Record<string, unknown>> {
@@ -142,10 +159,46 @@ describe("verifySdk57Baseline", () => {
   test.each([
     ["useHermesV1", { useHermesV1: false }],
     ["buildReactNativeFromSource", { buildReactNativeFromSource: true }],
-    ["expo-build-properties", { plugins: ["expo-build-properties"] }],
   ])("rejects evaluated SDK 56 config: %s", async (expected, mutation) => {
     const root = await fixture();
     expect(await failure(verify(root, expoConfig(mutation)))).toContain(expected);
+  });
+
+  test("requires the Xcode 27 scene opt-in in both authored and evaluated config", async () => {
+    const root = await fixture();
+    expect(
+      await failure(verify(root, expoConfig({ plugins: ["expo-router", "expo-audio"] }))),
+    ).toMatch(/scene support/);
+    await writeFile(
+      join(root, "apps/mobile/app.json"),
+      JSON.stringify({ expo: { plugins: ["expo-router", "expo-audio"] } }),
+    );
+    expect(await failure(verify(root))).toMatch(/scene support/);
+    await writeFile(
+      join(root, "apps/mobile/app.json"),
+      JSON.stringify({
+        expo: {
+          plugins: [
+            "expo-router",
+            ["expo-build-properties", { ios: { enableSceneSupport: false } }],
+          ],
+        },
+      }),
+    );
+    expect(await failure(verify(root))).toMatch(/scene support/);
+
+    const undeclared = await fixture();
+    await writeFile(
+      join(undeclared, "apps/mobile/package.json"),
+      JSON.stringify({
+        dependencies: {
+          expo: "57.0.24",
+          "@livekit/react-native": "2.12.0",
+          "@livekit/react-native-webrtc": "144.1.2",
+        },
+      }),
+    );
+    expect(await failure(verify(undeclared))).toMatch(/scene support/);
   });
 
   test("requires a reachable nonempty evaluated Expo plugin corpus", async () => {

@@ -27,6 +27,11 @@ const enoent = () => Promise.reject(new Error("ENOENT"));
 function deps(overrides: Partial<GateDeps> = {}): GateDeps {
   return {
     env: {},
+    resolveOwnedSimulator: (requested) => {
+      if (requested && requested !== TARGET_UDID)
+        return Promise.reject(new Error("IOS_SIMULATOR_UDID must name the owned simulator"));
+      return Promise.resolve(TARGET_UDID);
+    },
     runSimctl: result(SIMCTL_NONE_BOOTED),
     runAdb: result(ADB_EMPTY),
     probeRequestedIos: result(false),
@@ -42,7 +47,15 @@ describe("runGate", () => {
     expect(gate.stdout).toMatch(/skip/i);
   });
 
-  test("strict lane requires an explicit iOS simulator UDID", async () => {
+  test("a non-strict skip reports a failed device probe", async () => {
+    const gate = await runGate(
+      deps({ runSimctl: () => Promise.reject(new Error("CoreSimulator is wedged")) }),
+    );
+    expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
+    expect(gate.stdout).toContain("xcrun simctl probe failed: CoreSimulator is wedged");
+  });
+
+  test("strict lane resolves the owned simulator without an explicit UDID", async () => {
     let probed = false;
     let invoked = false;
     const gate = await runGate(
@@ -60,10 +73,39 @@ describe("runGate", () => {
         },
       }),
     );
+    expect(gate.exitCode).toBe(0);
+    expect(probed).toBe(true);
+    expect(invoked).toBe(true);
+  });
+
+  test("strict lane rejects a foreign UDID before probe or Maestro", async () => {
+    let probed = false;
+    let invoked = false;
+    const gate = await runGate(
+      deps({
+        env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: "FOREIGN" },
+        probeRequestedIos: () => {
+          probed = true;
+          return Promise.resolve(true);
+        },
+        runMaestro: () => {
+          invoked = true;
+          return Promise.resolve(0);
+        },
+      }),
+    );
     expect(gate.exitCode).toBe(1);
-    expect(gate.stderr).toMatch(/IOS_SIMULATOR_UDID/);
+    expect(gate.stderr).toMatch(/owned simulator/);
     expect(probed).toBe(false);
     expect(invoked).toBe(false);
+  });
+
+  test("an empty explicit UDID cannot fall through to broad device detection", async () => {
+    const gate = await runGate(
+      deps({ env: { IOS_SIMULATOR_UDID: " " }, runSimctl: result(SIMCTL_SIBLINGS_BOOTED) }),
+    );
+    expect(gate.exitCode).toBe(1);
+    expect(gate.maestroInvoked).toBe(false);
   });
 
   test("booted siblings and Android cannot satisfy an unavailable requested target", async () => {
@@ -197,11 +239,7 @@ describe("requested simulator selection", () => {
   const devices = parseSimulatorDevices(SIMCTL_JSON);
 
   test("flattens every runtime bucket and reds on an empty corpus", () => {
-    expect(devices.map((device) => device.udid)).toEqual([
-      "SIBLING-1",
-      TARGET_UDID,
-      "SIBLING-2",
-    ]);
+    expect(devices.map((device) => device.udid)).toEqual(["SIBLING-1", TARGET_UDID, "SIBLING-2"]);
     expect(() => parseSimulatorDevices(JSON.stringify({ devices: {} }))).toThrow(/no simulator/);
   });
 

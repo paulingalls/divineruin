@@ -2,6 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { OwnedProcesses, withOwnedProcesses } from "./native-transport-processes";
+import { createRealOwnedSimulatorDeps, resolveOwnedSimulator } from "./owned-simulator";
 
 import {
   assertTransportResult,
@@ -11,15 +12,19 @@ import {
   type TransportResult,
 } from "../src/audio/native-transport-observation";
 
-export const OWNED_SIMULATOR_UDID = "DC457949-200B-479A-95FD-611E33210F12";
 const BUNDLE_ID = "com.divineruin.app";
 const SCENARIOS = ["none", "withhold-audio", "withhold-event"] as const;
 type Fault = (typeof SCENARIOS)[number];
-type PrepareNativeApp = (
+export type PrepareNativeApp = (
   scope: OwnedProcesses,
   repoRoot: string,
   env: Record<string, string | undefined>,
 ) => Promise<void>;
+export interface NativeTransportDeps {
+  resolveOwned: (requestedUdid?: string) => Promise<string>;
+  prepareNativeApp: PrepareNativeApp;
+  requireTarget: (scope: OwnedProcesses, repoRoot: string, udid: string) => Promise<void>;
+}
 
 interface OwnedProcess {
   exited: Promise<number>;
@@ -30,12 +35,6 @@ function definedEnv(env: Record<string, string | undefined>): Record<string, str
   return Object.fromEntries(
     Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
-}
-
-function required(env: Record<string, string | undefined>, name: string): string {
-  const value = env[name]?.trim();
-  if (!value) throw new Error(`${name} is required for native transport verification`);
-  return value;
 }
 
 export function developmentClientUrl(port: number): string {
@@ -324,23 +323,19 @@ async function runScenario(
 export async function runNativeTransport(
   repoRoot: string,
   processEnv: Record<string, string | undefined>,
-  selectedFault?: Fault,
-  prepareNativeApp: PrepareNativeApp = buildCurrentNativeApp,
+  selectedFault: Fault | undefined,
+  deps: NativeTransportDeps,
 ): Promise<void> {
   await withOwnedProcesses(async (scope) => {
-    const udid = required(processEnv, "IOS_SIMULATOR_UDID");
-    if (udid !== OWNED_SIMULATOR_UDID) {
-      throw new Error(
-        `IOS_SIMULATOR_UDID must be the sprint-owned simulator ${OWNED_SIMULATOR_UDID}`,
-      );
-    }
-    await prepareNativeApp(scope, repoRoot, processEnv);
-    await requireTargetSimulator(scope, repoRoot, udid);
+    const udid = await deps.resolveOwned(processEnv.IOS_SIMULATOR_UDID);
+    const env = { ...processEnv, IOS_SIMULATOR_UDID: udid };
+    await deps.prepareNativeApp(scope, repoRoot, env);
+    await deps.requireTarget(scope, repoRoot, udid);
     const flow = join(repoRoot, "apps/mobile/.maestro/native-transport.yaml");
     if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");
     for (const fault of selectedFault ? [selectedFault] : SCENARIOS) {
       scope.signal.throwIfAborted();
-      await runScenario(scope, repoRoot, processEnv, udid, fault);
+      await runScenario(scope, repoRoot, env, udid, fault);
     }
   });
 }
@@ -350,5 +345,10 @@ if (import.meta.main) {
   const faultArg = process.argv.indexOf("--fault");
   const selected = faultArg >= 0 ? (process.argv[faultArg + 1] as Fault) : undefined;
   if (selected && !SCENARIOS.includes(selected)) throw new Error(`unknown fault: ${selected}`);
-  await runNativeTransport(repoRoot, process.env, selected);
+  const ownedDeps = createRealOwnedSimulatorDeps(repoRoot);
+  await runNativeTransport(repoRoot, process.env, selected, {
+    resolveOwned: (requested) => resolveOwnedSimulator(ownedDeps, requested),
+    prepareNativeApp: buildCurrentNativeApp,
+    requireTarget: requireTargetSimulator,
+  });
 }

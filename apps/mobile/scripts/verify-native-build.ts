@@ -11,6 +11,7 @@ export interface CommandResult {
 export interface NativeBuildDeps {
   loadRootEnvironment: (repoRoot: string) => Promise<Record<string, string | undefined>>;
   requireNonemptyFile: (path: string) => Promise<void>;
+  resolveOwnedSimulator: (requestedUdid?: string) => Promise<string>;
   ensureSimulator: (udid: string) => Promise<void>;
   probeBackend: (url: string) => Promise<void>;
   createWorkspace: (repoRoot: string) => Promise<string>;
@@ -76,7 +77,8 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
   const { deps, repoRoot } = options;
   const fileEnv = await deps.loadRootEnvironment(repoRoot);
   const env = { ...fileEnv, ...options.processEnv };
-  const udid = required(env, "IOS_SIMULATOR_UDID");
+  const udid = await deps.resolveOwnedSimulator(env.IOS_SIMULATOR_UDID);
+  env.IOS_SIMULATOR_UDID = udid;
   const apiUrl = required(env, "EXPO_PUBLIC_API_URL");
   const sourceMobile = join(repoRoot, "apps/mobile");
 

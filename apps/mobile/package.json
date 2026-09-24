@@ -34,6 +34,7 @@
     "expo": "57.0.24",
     "expo-asset": "57.0.18",
     "expo-audio": "57.0.5",
+    "expo-build-properties": "57.0.21",
     "expo-crypto": "57.0.3",
     "expo-dev-client": "57.0.19",
     "expo-device": "57.0.2",
