@@ -443,7 +443,7 @@ def test_narration_opens_with_sound_or_smell():
         for cue_name in ("first_sighting", "attack_cue", "wounded_cue", "death_cue", "ambient_cue"):
             assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
         audio = rows[key]["audio"]
-        assert all(audio[slot] and audio[slot] != key for slot in ("ambient", "attack", "hit", "death")), key
+        assert all(audio[slot] and audio[slot].split()[0] != key for slot in ("ambient", "attack", "hit", "death")), key
 
 
 def test_sound_first_check_rejects_sight_first_and_long_cues():
