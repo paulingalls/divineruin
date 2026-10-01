@@ -30,7 +30,7 @@ LANES = {
 def source_files(root):
     files = []
     for directory, dirs, names in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in EXCLUDED]
+        dirs[:] = [d for d in dirs if d not in EXCLUDED and not (Path(directory) / d / "pyvenv.cfg").is_file()]
         files.extend(Path(directory) / name for name in names if Path(name).suffix in {".py", ".ts", ".tsx"})
     return files
 

@@ -302,3 +302,20 @@ def test_effect_inventory_subeffects_and_real_resolvers():
             changed["effects"] = changed["effects"].replace(effect, "")
             with pytest.raises(AssertionError):
                 assert_effect_inventory(catalog(), entries)
+
+
+def test_public_validator_walk_excludes_detected_virtualenvs(tmp_path):
+    from creature_public_validator_walk import source_files
+
+    vendor = tmp_path / "scripts/audio/.venv-sa3"
+    source = tmp_path / "scripts/audio/.local-source/validator.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("validator = True\n")
+    vendor.mkdir(parents=True)
+    (vendor / "pyvenv.cfg").write_text("home = /test/python\n")
+    installed = vendor / "lib/site-packages/vendor/tests/test_validator.py"
+    installed.parent.mkdir(parents=True)
+    installed.write_text("_validate_enemy_action_shapes = True\n")
+    assert source_files(tmp_path) == [source]
+    (vendor / "pyvenv.cfg").unlink()
+    assert set(source_files(tmp_path)) == {source, installed}
