@@ -1,15 +1,17 @@
 import check_resolution_save
 import combat_grapple
 import conditions
+from action_contracts import validate_action_extensions
 from creature_tiers import TIER_LEVEL_RANGES
 from social_resolution import RESISTANCE_TAGS
 
 
-def _validate_enemy_action_shapes(enemies: list[dict]) -> None:
+def validate_enemy_action_shapes(enemies: list[dict]) -> None:
     """Fail loud when an enemy condition or save-damage action cannot resolve."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            validate_action_extensions(action, enemy.get("id", "action"))
             combat_grapple.validate_grapple_action(action, label)
             cond = action.get("applies_condition")
             half_on_success = action.get("half_on_success") is True
@@ -27,11 +29,11 @@ def _validate_enemy_action_shapes(enemies: list[dict]) -> None:
                 raise ValueError(f"{label} half_on_success needs non-zero 'damage'")
 
 
-def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
+def validate_enemy_resistance_tags(enemies: list[dict]) -> None:
     """Fail loud if any enemy's Tier-3 ``resistance_tags`` are malformed — the load-boundary guard.
 
     Encounter templates have no strict loader, so this closes the gap for the M15 de-escalation
-    resistance profile the same way ``_validate_enemy_action_shapes`` does for condition actions
+    resistance profile the same way ``validate_enemy_action_shapes`` does for condition actions
     (and mirroring npcs.py's default_disposition/resistance_tags guard). ``resistance_tags`` is
     optional (an enemy without it simply can't be de-escalated); when present it must be a list of
     canonical ``social_resolution.RESISTANCE_TAGS`` — an unknown tag would silently no-op the

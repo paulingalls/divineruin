@@ -3400,7 +3400,8 @@
     "signature_ability": {
       "name": "Reality Collapse",
       "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
-      "save": "wisdom"
+      "save": "wisdom",
+      "narration_cue": "A thunderous crack splits the room before overlapping walls wrench apart."
     },
     "hollow": {
       "class": "rend",
@@ -3841,7 +3842,8 @@
     "signature_ability": {
       "name": "Mantle of Ruin",
       "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
-      "save": "constitution"
+      "save": "constitution",
+      "narration_cue": "A low rushing hiss pours from the leader's hands before shadow smothers the light."
     },
     "hollow": null,
     "behavior": {

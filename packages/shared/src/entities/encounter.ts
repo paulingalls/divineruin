@@ -1,6 +1,8 @@
 // Encounter templates carry combat and currency overlays around the bestiary
 // CreatureStatBlock base in creature.ts. Their current enemy shape remains distinct.
 
+import { validateActionExtensions, type ActionExtensions, type Recharge } from "./action_contracts";
+
 import type { Attributes } from "./role_archetype";
 
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
@@ -10,7 +12,13 @@ export type EncounterRole = (typeof ENCOUNTER_ROLE_VALUES)[number];
 
 // The kinds an enemy action resolves as, mirrored from apps/agent/encounter_actions.py (constraint 7).
 // An absent `kind` is "attack"; social mark actions never roll or carry strike fields.
-export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command", "accusation"] as const;
+export const ENCOUNTER_ACTION_KIND_VALUES = [
+  "attack",
+  "command",
+  "accusation",
+  "healing",
+  "prepare_attack",
+] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 const pythonRepr = (value: unknown): string => {
   if (value === undefined || value === null) return "None";
@@ -71,6 +79,9 @@ export interface EncounterAttackAction extends EncounterActionBase {
   dc?: number;
   half_on_success?: boolean;
   escape_dc?: number;
+  advantage?: boolean;
+  duration?: number;
+  recharge?: Recharge;
 }
 
 export interface EncounterCommandAction extends EncounterActionBase {
@@ -81,8 +92,26 @@ export interface EncounterAccusationAction extends EncounterActionBase {
   kind: "accusation";
 }
 
+export interface EncounterHealingAction extends EncounterActionBase {
+  kind: "healing";
+  target_group: "allied_bandits";
+  healing: string;
+  recharge?: Recharge;
+}
+
+export interface EncounterPrepareAttackAction extends EncounterActionBase {
+  kind: "prepare_attack";
+  advantage: true;
+  on_hit: { applies_condition: string; duration: number };
+  recharge?: Recharge;
+}
+
 export type EncounterAction =
-  EncounterAttackAction | EncounterCommandAction | EncounterAccusationAction;
+  | EncounterAttackAction
+  | EncounterCommandAction
+  | EncounterAccusationAction
+  | EncounterHealingAction
+  | EncounterPrepareAttackAction;
 
 export function encounterActionKind(action: {
   name?: unknown;
@@ -91,7 +120,7 @@ export function encounterActionKind(action: {
   const kind = action.kind === undefined ? "attack" : action.kind;
   if (!(ENCOUNTER_ACTION_KIND_VALUES as readonly unknown[]).includes(kind)) {
     throw new Error(
-      `action ${pythonRepr(action.name)} has unknown kind ${pythonRepr(kind)}; expected one of ('attack', 'command', 'accusation')`,
+      `action ${pythonRepr(action.name)} has unknown kind ${pythonRepr(kind)}; expected one of ('${ENCOUNTER_ACTION_KIND_VALUES.join("', '")}')`,
     );
   }
   return kind as EncounterActionKind;
@@ -112,9 +141,9 @@ const SAVE_KEYS = new Set([
   "cha",
 ]);
 
-// Mirrors combat_init_validation._validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
+// Mirrors combat_init_validation.validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
 export function validateEncounterActionShape(
-  action: {
+  action: ActionExtensions & {
     name?: unknown;
     damage?: unknown;
     applies_condition?: unknown;
@@ -130,6 +159,7 @@ export function validateEncounterActionShape(
     enemy === undefined
       ? `action ${String(action.name)}`
       : `${enemy} action ${pythonRepr(action.name)}`;
+  validateActionExtensions(action, enemy?.replace(/^enemy '(.*)'$/, "$1") ?? "action");
   if (
     Array.isArray(action.properties) &&
     action.properties.includes("grapple") &&
@@ -170,11 +200,12 @@ const MARK_FORBIDDEN_FIELDS = ["damage", "damage_type", "applies_condition"] as 
 
 // Mirrors encounter_actions.validate_encounter_actions.
 export function validateEncounterActionKind(
-  action: { name?: unknown; kind?: unknown },
+  action: ActionExtensions & { name?: unknown; kind?: unknown },
   enemy: string,
 ): void {
   const kind = encounterActionKind(action);
-  if (kind === "attack") return;
+  validateActionExtensions(action, enemy.replace(/^enemy '(.*)'$/, "$1"));
+  if (kind !== "command" && kind !== "accusation") return;
   const carried = MARK_FORBIDDEN_FIELDS.filter((key) => key in action);
   if (carried.length)
     throw new Error(

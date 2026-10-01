@@ -1,3 +1,4 @@
+import type { Recharge } from "./action_contracts";
 import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
 import {
@@ -5,6 +6,9 @@ import {
   validateEncounterActionKind,
   validateEncounterActionShape,
   type SignatureAbility,
+  type EncounterAttackAction,
+  type EncounterHealingAction,
+  type EncounterPrepareAttackAction,
 } from "./encounter";
 
 // Encounter currency uses hollow_<class>; this base bestiary category is hollow. M7.2 (the regional
@@ -26,8 +30,8 @@ export interface CreatureStatBlock {
   attacks: Attack[];
   multiattack: string | null;
   passives: Ability[];
-  actives: Ability[];
-  signature_ability?: SignatureAbility;
+  actives: ActiveAbility[];
+  signature_ability?: CatalogSignatureAbility;
   resistance_tags?: (typeof RESISTANCE_TAG_VALUES)[number][];
   reactions: Ability[];
   hollow: Hollow | null;
@@ -65,6 +69,9 @@ export interface Attack {
   dc?: number;
   half_on_success?: boolean;
   escape_dc?: number;
+  advantage?: boolean;
+  duration?: number;
+  recharge?: Recharge;
 }
 
 export interface Ability {
@@ -75,6 +82,19 @@ export interface Ability {
   audio: string | null;
   kind?: "command" | "accusation";
   properties?: string[];
+}
+
+export type ActiveAbility =
+  | Ability
+  | (Omit<Ability, "kind" | "recharge"> &
+      (
+        | (Omit<EncounterAttackAction, "properties" | "kind"> & { kind: "attack" })
+        | Omit<EncounterHealingAction, "properties">
+        | Omit<EncounterPrepareAttackAction, "properties">
+      ));
+
+export interface CatalogSignatureAbility extends SignatureAbility {
+  narration_cue: string;
 }
 
 export interface Hollow {
@@ -136,7 +156,6 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     });
   }
   function combatEntry(action: Shape, path: string): void {
-    // combat_init runs both guards, in this order, on every action_pool entry.
     try {
       validateEncounterActionShape(action, `enemy '${path}'`);
       validateEncounterActionKind(action, `enemy '${path}'`);
@@ -201,6 +220,8 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         ["escape_dc", "integer"],
       ] as const)
         field(attack, key, path, kind, false, false);
+      if ("kind" in attack && attack.kind !== "attack")
+        problems.push(`${path}.kind: expected attack`);
       if (problems.length === before) combatEntry(attack, path);
     });
   field(creature, "multiattack", "", "string", true);
@@ -216,22 +237,35 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         }
         for (const key of ["name", "description", "narration_cue"])
           field(ability, key, path, "string");
-        for (const key of ["recharge", "audio"]) field(ability, key, path, "string", true);
+        field(ability, "audio", path, "string", true);
+        if (
+          group !== "actives" ||
+          !["attack", "healing", "prepare_attack"].includes(ability.kind as string)
+        )
+          field(ability, "recharge", path, "string", true);
         if (group === "actives") {
           const kind = field(ability, "kind", path, "string", false, false);
           const properties = field(ability, "properties", path, "array", false, false);
           if (Array.isArray(properties)) strings(properties, `${path}.properties`);
           if (kind !== undefined && problems.length === before) {
-            combatEntry(ability, path);
-            if (problems.length === before && kind === "attack")
-              problems.push(`${path}.kind: expected command|accusation`);
+            if (
+              kind === "attack" &&
+              ability.damage === "0" &&
+              ability.applies_condition &&
+              !("duration" in ability)
+            )
+              problems.push(`${path}.duration: invalid`);
+            else combatEntry(ability, path);
           }
         }
       });
   }
   const signature = field(creature, "signature_ability", "", "object", false, false);
-  if (isObject(signature))
+  if (isObject(signature)) {
     for (const key of ["name", "description"]) field(signature, key, "signature_ability", "string");
+    if (typeof signature.narration_cue !== "string" || !signature.narration_cue.trim())
+      problems.push("signature_ability.narration_cue: invalid");
+  }
   const tags = field(creature, "resistance_tags", "", "array", false, false);
   if (Array.isArray(tags))
     for (const tag of tags)

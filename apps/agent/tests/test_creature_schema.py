@@ -6,6 +6,7 @@ import pytest
 
 from conditions import CONDITION_CATALOG
 from creature_schema import validate_creature_stat_block
+from encounter_actions import ACTION_KINDS
 from social_resolution import RESISTANCE_TAGS
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -22,6 +23,9 @@ def assert_corpus_floors(valid, invalid):
 def test_corpus_floors():
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert set(corpus["action_kinds"]) == set(ACTION_KINDS)
+    assert {case["name"] for case in valid} >= REQUIRED_VALID
+    assert {case["name"] for case in invalid} >= REQUIRED_INVALID
     with pytest.raises(AssertionError):
         assert_corpus_floors([], invalid)
     with pytest.raises(AssertionError):
@@ -34,6 +38,9 @@ def test_shared_creature_corpus():
     assert CORPUS.is_file()
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert set(corpus["action_kinds"]) == set(ACTION_KINDS)
+    assert {case["name"] for case in valid} >= REQUIRED_VALID
+    assert {case["name"] for case in invalid} >= REQUIRED_INVALID
     assert {case["name"] for case in invalid} >= {
         "missing_regions",
         "empty_regions",
@@ -117,3 +124,13 @@ def test_every_spec_field_is_required():
             assert validate_creature_stat_block(block) == [f"{name}: required"], case["name"]
             checked.add(name)
     assert {"reactions", "hollow.class", "attacks[0].damage", "actives[0].narration_cue"} <= checked
+
+
+@pytest.mark.parametrize("case", json.loads(CORPUS.read_text())["invalid"], ids=lambda row: row["name"])
+def test_isolated_contract_guard(case):
+    assert validate_creature_stat_block(case["block"]) == case["expected"]
+
+
+CASE_IDS = json.loads((CORPUS.parent / "creature_contract_case_ids.json").read_text())
+REQUIRED_VALID = set(CASE_IDS["valid"])
+REQUIRED_INVALID = set(CASE_IDS["invalid"])
