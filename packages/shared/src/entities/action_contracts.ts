@@ -9,6 +9,11 @@ export type ActionExtensions = {
   damage?: unknown;
   damage_type?: unknown;
   kind?: unknown;
+  applies_condition?: unknown;
+  save?: unknown;
+  dc?: unknown;
+  half_on_success?: unknown;
+  escape_dc?: unknown;
   target_group?: unknown;
   healing?: unknown;
   on_hit?: unknown;
@@ -44,6 +49,24 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
     if (action.kind === "attack") {
       for (const key of ["damage", "damage_type"] as const)
         if (typeof action[key] !== "string") invalid(`${path}.${key}`);
+    }
+    if (action.kind === "attack") {
+      for (const key of [
+        "applies_condition",
+        "save",
+        "dc",
+        "half_on_success",
+        "escape_dc",
+      ] as const) {
+        if (!(key in action)) continue;
+        const valid =
+          key === "half_on_success"
+            ? typeof action[key] === "boolean"
+            : key === "dc" || key === "escape_dc"
+              ? Number.isInteger(action[key])
+              : typeof action[key] === "string";
+        if (!valid) invalid(`${path}.${key}`);
+      }
     }
     if (action.kind === "attack" && action.damage === "0") {
       const condition = (action as Record<string, unknown>).applies_condition;

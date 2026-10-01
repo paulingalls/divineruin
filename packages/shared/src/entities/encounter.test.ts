@@ -222,8 +222,10 @@ for (const row of contractCorpus.valid.filter((r) =>
       expect(() => validateEncounterActionKind(action, "enemy 'fixture'")).not.toThrow();
     }
   });
-for (const row of contractCorpus.invalid.filter((r) =>
-  /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name),
+for (const row of contractCorpus.invalid.filter(
+  (r) =>
+    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name) ||
+    (r.name.startsWith("active_attack_") && r.name.includes("_type_")),
 ))
   test(`structured_recharge action_advantage active_contract rejection ${row.name}`, () => {
     const actions = row.block.actives.length ? row.block.actives : row.block.attacks;

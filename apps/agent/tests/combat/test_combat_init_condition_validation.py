@@ -223,6 +223,7 @@ def test_structured_recharge_action_advantage_active_contract(case):
         r
         for r in CONTRACT_CORPUS["invalid"]
         if r["name"].startswith(("recharge_", "advantage_", "active_healing_", "active_prepare_attack_", "mark_"))
+        or (r["name"].startswith("active_attack_") and "_type_" in r["name"])
     ],
     ids=lambda r: r["name"],
 )

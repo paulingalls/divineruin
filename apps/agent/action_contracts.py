@@ -50,6 +50,13 @@ def validate_action_extensions(action: dict, path: str) -> None:
             for key in ("damage", "damage_type"):
                 if not isinstance(action.get(key), str):
                     invalid(f"{path}.{key}")
+        if action.get("kind") == "attack":
+            for key in ("applies_condition", "save", "dc", "half_on_success", "escape_dc"):
+                if key not in action:
+                    continue
+                expected = bool if key == "half_on_success" else int if key in ("dc", "escape_dc") else str
+                if type(action[key]) is not expected:
+                    invalid(f"{path}.{key}")
         if action.get("kind") == "attack" and action.get("damage") == "0":
             if not isinstance(action.get("applies_condition"), str) or not action["applies_condition"]:
                 invalid(f"{path}.applies_condition")

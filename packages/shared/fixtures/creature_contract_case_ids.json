@@ -226,6 +226,18 @@
     "active_attack_missing_applies_condition",
     "active_attack_missing_save",
     "active_attack_missing_dc",
-    "active_attack_zero_wrong_damage_type"
+    "active_attack_zero_wrong_damage_type",
+    "active_attack_half_on_success_type_0",
+    "active_attack_half_on_success_type_1",
+    "active_attack_half_on_success_type_2",
+    "active_attack_save_type_0",
+    "active_attack_save_type_1",
+    "active_attack_dc_type_0",
+    "active_attack_dc_type_1",
+    "active_attack_dc_type_2",
+    "active_attack_escape_dc_type_0",
+    "active_attack_escape_dc_type_1",
+    "active_attack_escape_dc_type_2",
+    "active_attack_applies_condition_type_0"
   ]
 }
