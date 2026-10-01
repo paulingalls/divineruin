@@ -2,7 +2,8 @@
 # Reap ORPHANED per-run test containers left behind when a test/push run was
 # SIGKILL'd (uncatchable) or SIGTERM'd before its EXIT/TERM trap could finish
 # `docker rm -f`. scripts/test-env.sh names each run's containers
-# `divineruin-test-<pid>-{pg,redis}` (PID-keyed so overlapping pushes never
+# `divineruin-test-<pid>-{pg,redis}`; acceptance Postgres adds a UUID suffix
+# (PID-keyed so overlapping pushes never
 # collide); that same <pid> lets us tell a DEAD run's leftovers from a LIVE
 # concurrent run's containers.
 #
@@ -34,8 +35,8 @@ _names="$(
 _swept=0
 while IFS= read -r name; do
   [ -z "$name" ] && continue
-  # Exact shape: <prefix>-test-<pid>-<pg|redis>. Capture <pid>.
-  if [[ "$name" =~ ^(divineruin|dr)-test-([0-9]+)-(pg|redis)$ ]]; then
+  # Acceptance fixtures add a UUID so multiple databases in one process coexist.
+  if [[ "$name" =~ ^(divineruin|dr)-test-([0-9]+)-(pg(-[0-9a-f]{32})?|redis)$ ]]; then
     pid="${BASH_REMATCH[2]}"
     # `ps -p` probes existence regardless of process OWNER — unlike `kill -0`,
     # which fails with EPERM (not ESRCH) on another user's PID and would make us

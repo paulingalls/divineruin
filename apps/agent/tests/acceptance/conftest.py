@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from uuid import uuid4
 
 import asyncpg
 import docker
@@ -119,13 +120,17 @@ async def _apply_migrations_and_seed(dsn: str) -> None:
         await conn.close()
 
 
+def _owned_postgres_container():
+    from testcontainers.community.postgres import PostgresContainer
+
+    return PostgresContainer(_PG_IMAGE).with_name(f"divineruin-test-{os.getpid()}-pg-{uuid4().hex}")
+
+
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[str]:
     """Boot a per-run Postgres testcontainer (ryuk disabled); yield its asyncpg DSN."""
     _require_docker_or_skip()
-    from testcontainers.community.postgres import PostgresContainer
-
-    with PostgresContainer(_PG_IMAGE) as pg:
+    with _owned_postgres_container() as pg:
         # testcontainers yields a SQLAlchemy/psycopg2 URL; asyncpg wants a bare scheme.
         dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
         yield dsn
@@ -143,9 +148,7 @@ def fresh_migrated_db() -> Iterator[str]:
     """Unlike the session-wide `migrated_db`, this database is never seeded: each case
     measures exactly what its own seed run writes."""
     _require_docker_or_skip()
-    from testcontainers.community.postgres import PostgresContainer
-
-    with PostgresContainer(_PG_IMAGE) as pg:
+    with _owned_postgres_container() as pg:
         dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
 
         async def migrate():
