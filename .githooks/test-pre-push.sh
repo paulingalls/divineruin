@@ -147,6 +147,20 @@ done
 run_case "work-acceptance" "$work_ref" "apps/agent/tests/acceptance/test_magic.py" lint
 run_case "work-acceptance-fixture" "$work_ref" "apps/agent/tests/acceptance/fixtures/player_voice.wav" lint
 run_case "work-acceptance-and-source" "$work_ref" $'apps/agent/tests/acceptance/test_magic.py\napps/agent/agent.py' lint
+for path in packages/shared/fixtures/creature_blocks.json \
+  apps/mobile/src/__tests__/fixtures/favor-neglect-event.json \
+  apps/agent/tests/fixtures/prompt_split_baseline.json \
+  apps/agent/tests/native_transport/session_init_fixture.json; do
+  if [ ! -f "$path" ]; then
+    echo "  FAIL: test-data corpus missing $path"
+    FAIL=$((FAIL + 1))
+  else
+    run_case "work-test-data-$path" "$work_ref" "$path" lint
+    run_case "main-test-data-$path" "refs/heads/main aaa refs/heads/main bbb" "$path" full
+  fi
+done
+run_case "work-shared-nonfixture-json" "$work_ref" "packages/shared/runtime.json" full
+run_case "work-agent-config" "$work_ref" "apps/agent/pyrightconfig.json" full
 run_case "work-manifest" "$work_ref" "package.json" full
 run_case "work-migration" "$work_ref" "apps/server/migrations/001.sql" full
 run_case "work-e2e" "$work_ref" "e2e/game.spec.ts" full
