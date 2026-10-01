@@ -31,20 +31,20 @@ roles:               # harness/model[/effort]; the lead overrides per story in p
                      # effort: low | medium | high | xhigh | max
                      # SPRINT-049 OPEN: the write-and-fix roles moved to codex; the
                      # judgment roles stayed claude. The split is the experiment.
-  lead: claude/opus/high
-  executor: codex/gpt-6-sol/medium
-  reviewer: claude/opus/high       # the wall. sprint-047 open: the shipped slate-reviewer
+  lead: claude/claude-opus-5-5/medium
+  executor: codex/gpt-6.1-sol/medium
+  reviewer: claude/claude-opus-5-5/medium       # the wall. sprint-047 open: the shipped slate-reviewer
                                    # charter found a false construction premise, a vacuous
                                    # AC and an unusable grep gate that the lead's own pass
                                    # missed.
-  plan-reviewer: claude/opus/high  # scripts/plan_review.py; a teammate runs it itself
-  planner: codex/gpt-6-sol/medium  # read-only implementation plan for a multi-file story
-  slate-reviewer: codex/gpt-6-sol/medium  # the fresh reader over the sprint slate
-  card-refresher: claude/opus      # rewrites a card's stale HEAD claims before it is minted
-  finder: claude/opus/high     # the four round-1 stages of `close.py sprint <id> review`;
-  verifier: claude/opus/high   # each falls back to `reviewer` when its key is absent, so
-  fixer: codex/gpt-6-sol/medium  # an older config keeps working untouched.
-  closer: claude/opus/medium   # verifier is adversarial (kills false positives); closer
+  plan-reviewer: claude/claude-opus-5-5/medium  # scripts/plan_review.py; a teammate runs it itself
+  planner: codex/gpt-6.1-sol/medium  # read-only implementation plan for a multi-file story
+  slate-reviewer: codex/gpt-6.1-sol/medium  # the fresh reader over the sprint slate
+  card-refresher: claude/claude-opus-5-5/low      # rewrites a card's stale HEAD claims before it is minted
+  finder: claude/claude-opus-5-5/medium     # the four round-1 stages of `close.py sprint <id> review`;
+  verifier: claude/claude-opus-5-5/medium   # each falls back to `reviewer` when its key is absent, so
+  fixer: codex/gpt-6.1-sol/medium  # an older config keeps working untouched.
+  closer: claude/claude-opus-5-5/medium   # verifier is adversarial (kills false positives); closer
                                # is judgment over an already-verified set.
 
 tests:
