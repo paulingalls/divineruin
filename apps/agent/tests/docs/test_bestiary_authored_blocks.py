@@ -129,6 +129,52 @@ def test_every_encounter_action_is_in_its_own_block():
             if "kind" in action:
                 assert authored["kind"] == action["kind"]
                 assert action["kind"] in authored["description"].lower()
-        assert block.get("signature_ability") == source.get("signature_ability"), name
         if name == "Hollow Warden":
             assert "healing" in actions["Absorb"]["special"].lower()
+
+
+def assert_signatures(rows, blocks):
+    from test_creature_spec_pins_encounter_authored import SIGNATURE_PINS
+
+    for key, pin in SIGNATURE_PINS.items():
+        matches = [row for row in rows if row["id"] == key]
+        assert len(matches) == 1
+        signature = matches[0]["signature_ability"]
+        assert blocks[key]["signature_ability"] == signature == pin
+        for field in ("name", "description", "save"):
+            assert signature[field] == pin[field]
+        assert_sound_first(signature["narration_cue"], key)
+
+
+def test_signatures_match_catalog_and_preserve_mechanics():
+    rows = json.loads((ROOT / "content/creatures.json").read_text())
+    blocks = {block["id"]: block for block in authored_blocks().values()}
+    assert_signatures(rows, blocks)
+
+
+def test_signature_preservation_falsifiers():
+    import copy
+
+    import pytest
+    from test_creature_spec_pins_encounter_authored import PINS, SIGNATURE_PINS, assert_pins
+
+    catalog = json.loads((ROOT / "content/creatures.json").read_text())
+    authored = {block["id"]: block for block in authored_blocks().values()}
+    for key in SIGNATURE_PINS:
+        for side in ("catalog", "authored", "both"):
+            for field in ("name", "description", "save", "narration_cue", None):
+                rows, blocks = copy.deepcopy(catalog), copy.deepcopy(authored)
+                row = next(row for row in rows if row["id"] == key)
+                targets = [row] if side == "catalog" else [blocks[key]] if side == "authored" else [row, blocks[key]]
+                for target in targets:
+                    if field:
+                        target["signature_ability"][field] = "Changed"
+                    else:
+                        del target["signature_ability"]
+                with pytest.raises((AssertionError, KeyError)):
+                    assert_signatures(rows, blocks)
+                for target in targets:
+                    with pytest.raises(AssertionError):
+                        assert_pins(target, PINS[key])
+        with pytest.raises(AssertionError):
+            assert_sound_first("Grey shapes close the gap. A thunderous crack follows.", key)

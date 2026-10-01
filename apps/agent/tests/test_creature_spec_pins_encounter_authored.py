@@ -134,6 +134,22 @@ PINS = {
 }
 
 
+SIGNATURE_PINS = {
+    "hollow_warden": {
+        "name": "Reality Collapse",
+        "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
+        "save": "wisdom",
+        "narration_cue": "A thunderous crack splits the room before overlapping walls wrench apart.",
+    },
+    "cult_leader": {
+        "name": "Mantle of Ruin",
+        "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
+        "save": "constitution",
+        "narration_cue": "A low rushing hiss pours from the leader's hands before shadow smothers the light.",
+    },
+}
+
+
 def authored_blocks():
     source = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
     marker = "## Encounter Creature Stat Blocks"
@@ -167,6 +183,8 @@ def assert_pins(row, pin):
     assert all(not {"properties", "half_on_success", "escape_dc"} & a.keys() for a in row["attacks"])
     assert "resistance_tags" not in row
     actual_signature = row.get("signature_ability")
+    if row["id"] in SIGNATURE_PINS:
+        assert actual_signature == SIGNATURE_PINS[row["id"]]
     assert ((actual_signature["name"], actual_signature.get("save")) if actual_signature else None) == signature
     assert (tuple(row["hollow"]["vulnerable_to"]) if row["hollow"] else None) == vulnerabilities
 

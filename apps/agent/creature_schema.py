@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from combat_init_validation import _validate_enemy_action_shapes, _validate_enemy_resistance_tags
+from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from encounter_actions import validate_encounter_actions
 from world_regions import REGION_IDS
 
@@ -46,10 +46,9 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 problems.append(f"{path}[{i}]: expected string")
 
     def combat_entry(action: dict, path: str) -> None:
-        # combat_init runs both guards, in this order, on every action_pool entry.
         enemies = [{"id": path, "action_pool": [action]}]
         try:
-            _validate_enemy_action_shapes(enemies)
+            validate_enemy_action_shapes(enemies)
             validate_encounter_actions(enemies)
         except ValueError as exc:
             problems.append(str(exc))
@@ -111,6 +110,8 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 ("escape_dc", "integer"),
             ):
                 field(attack, key, path, kind, required=False)
+            if "kind" in attack and attack["kind"] != "attack":
+                problems.append(f"{path}.kind: expected attack")
             if len(problems) == before:
                 combat_entry(attack, path)
     field(creature, "multiattack", "", "string", True)
@@ -125,25 +126,35 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                     continue
                 for key in ("name", "description", "narration_cue"):
                     field(ability, key, path, "string")
-                for key in ("recharge", "audio"):
-                    field(ability, key, path, "string", True)
+                field(ability, "audio", path, "string", True)
+                if group != "actives" or ability.get("kind") not in ("attack", "healing", "prepare_attack"):
+                    field(ability, "recharge", path, "string", True)
                 if group == "actives":
                     kind = field(ability, "kind", path, "string", required=False)
                     properties = field(ability, "properties", path, "array", required=False)
                     if isinstance(properties, list):
                         strings(properties, f"{path}.properties")
                     if kind is not None and len(problems) == before:
-                        combat_entry(ability, path)
-                        if len(problems) == before and kind == "attack":
-                            problems.append(f"{path}.kind: expected command|accusation")
+                        if (
+                            kind == "attack"
+                            and ability.get("damage") == "0"
+                            and ability.get("applies_condition")
+                            and "duration" not in ability
+                        ):
+                            problems.append(f"{path}.duration: invalid")
+                        else:
+                            combat_entry(ability, path)
     signature = field(creature, "signature_ability", "", "object", required=False)
     if isinstance(signature, dict):
         for key in ("name", "description"):
             field(signature, key, "signature_ability", "string")
+        cue = signature.get("narration_cue")
+        if not isinstance(cue, str) or not cue.strip():
+            problems.append("signature_ability.narration_cue: invalid")
     tags = field(creature, "resistance_tags", "", "array", required=False)
     if isinstance(tags, list):
         try:
-            _validate_enemy_resistance_tags([{"id": "resistance_tags", "resistance_tags": tags}])
+            validate_enemy_resistance_tags([{"id": "resistance_tags", "resistance_tags": tags}])
         except ValueError as exc:
             problems.append(str(exc))
     if "hollow" not in creature:

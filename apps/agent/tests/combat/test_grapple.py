@@ -13,7 +13,7 @@ import combat_prompts
 import combat_turn
 import conditions
 from check_resolution_attack import AttackResult
-from combat_init import _start_combat_impl, _validate_enemy_action_shapes
+from combat_init import _start_combat_impl, validate_enemy_action_shapes
 from combat_support import _participant_summary
 from declaration_payloads import ManeuverDecl
 from declarations import ManeuverIntent
@@ -42,7 +42,7 @@ def test_real_mawling_grapple_actions_author_escape_dc_13():
         ("mawling_1", "Seizing Grab", 13),
         ("mawling_2", "Seizing Grab", 13),
     ]
-    _validate_enemy_action_shapes(_mawlings())
+    validate_enemy_action_shapes(_mawlings())
 
 
 @pytest.mark.asyncio

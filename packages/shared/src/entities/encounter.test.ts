@@ -5,6 +5,7 @@ import {
   ENCOUNTER_ROLE_VALUES,
   encounterActionKind,
   validateEncounterActionShape,
+  validateEncounterActionKind,
   validateEncounterEnemyTier,
   type Encounter,
 } from "./encounter";
@@ -12,12 +13,6 @@ import {
 const actionShapes = (await Bun.file(
   new URL("../../fixtures/enemy_action_shapes.json", import.meta.url),
 ).json()) as Record<string, Record<string, unknown>>;
-
-// Conformance test for content/encounter_templates.json (Phase 4 M4.7 / story-001). The JSON row
-// IS the cross-language contract apps/agent/combat_init.py parses to build CombatParticipants; this
-// test guards the role overlay's shape independent of that loader and serves as the compile-time
-// shape check for the Encounter type (rows are cast to Encounter, so interface drift breaks
-// `tsc --noEmit` / `bun test`).
 
 const encounters = (await Bun.file(
   new URL("../../../../content/encounter_templates.json", import.meta.url),
@@ -75,8 +70,6 @@ describe("encounter_templates.json — encounter-role overlay", () => {
   });
 });
 
-// The action `kind` is mirrored from apps/agent/encounter_actions.py (constraint 7): absent means
-// "attack", and every other kind is a mark action that never rolls, so it carries no strike fields.
 describe("encounter_templates.json — enemy action kinds", () => {
   const actions = encounters.flatMap((enc) =>
     enc.enemies.flatMap((enemy) =>
@@ -206,3 +199,38 @@ describe("authored creature tiers", () => {
     );
   });
 });
+
+const contractCorpus = (await Bun.file(
+  new URL("../../fixtures/creature_blocks.json", import.meta.url),
+).json()) as {
+  valid: {
+    name: string;
+    block: { actives: Record<string, unknown>[]; attacks: Record<string, unknown>[] };
+  }[];
+  invalid: {
+    name: string;
+    field?: string;
+    block: { actives: Record<string, unknown>[]; attacks: Record<string, unknown>[] };
+  }[];
+};
+for (const row of contractCorpus.valid.filter((r) =>
+  /^(recharge_|advantage_|active_)/.test(r.name),
+))
+  test(`structured_recharge action_advantage active_contract ${row.name}`, () => {
+    for (const action of row.block.actives.length ? row.block.actives : row.block.attacks) {
+      expect(() => validateEncounterActionShape(action)).not.toThrow();
+      expect(() => validateEncounterActionKind(action, "enemy 'fixture'")).not.toThrow();
+    }
+  });
+for (const row of contractCorpus.invalid.filter((r) =>
+  /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name),
+))
+  test(`structured_recharge action_advantage active_contract rejection ${row.name}`, () => {
+    const actions = row.block.actives.length ? row.block.actives : row.block.attacks;
+    expect(() => {
+      for (const action of actions) {
+        validateEncounterActionShape(action);
+        validateEncounterActionKind(action, "enemy 'fixture'");
+      }
+    }).toThrow(row.field);
+  });

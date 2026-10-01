@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
 import { REGION_IDS } from "./region";
-import { CONDITION_NAMES, RESISTANCE_TAG_VALUES } from "./encounter";
+import { CONDITION_NAMES, RESISTANCE_TAG_VALUES, ENCOUNTER_ACTION_KIND_VALUES } from "./encounter";
 
 type Case = {
   name: string;
@@ -18,6 +18,7 @@ const corpus = parseCreatureJson(
   region_ids: string[];
   condition_names: string[];
   resistance_tags: string[];
+  action_kinds: string[];
 };
 const catalog = (await Bun.file(
   new URL("../../../../content/loot_tables.json", import.meta.url),
@@ -29,6 +30,7 @@ test("canonical region ids match the shared corpus", () => {
   expect([...REGION_IDS] as string[]).toEqual(corpus.region_ids);
 });
 test("combat vocabularies match the Python corpus", () => {
+  expect(corpus.action_kinds).toEqual([...ENCOUNTER_ACTION_KIND_VALUES]);
   expect(corpus.condition_names.length).toBe(22);
   expect(corpus.resistance_tags.length).toBe(7);
   expect(([...CONDITION_NAMES] as string[]).sort()).toEqual([...corpus.condition_names].sort());
@@ -37,7 +39,14 @@ test("combat vocabularies match the Python corpus", () => {
   );
 });
 
+const caseIds = (await Bun.file(
+  new URL("../../fixtures/creature_contract_case_ids.json", import.meta.url),
+).json()) as { valid: string[]; invalid: string[] };
+const requiredValid = caseIds.valid;
+const requiredInvalid = caseIds.invalid;
 function checkCorpus(valid: Case[], invalid: Case[]): void {
+  for (const name of requiredValid) expect(valid.some((row) => row.name === name)).toBe(true);
+  for (const name of requiredInvalid) expect(invalid.some((row) => row.name === name)).toBe(true);
   for (const name of [
     "missing_regions",
     "empty_regions",
@@ -176,4 +185,53 @@ test("every spec field is required", () => {
     }
   for (const name of ["reactions", "hollow.class", "attacks[0].damage", "actives[0].narration_cue"])
     expect(checked.has(name)).toBe(true);
+});
+
+for (const row of corpus.invalid)
+  test(`isolated_contract_guard ${row.name}`, () => {
+    expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
+  });
+
+import type { ActiveAbility, CatalogSignatureAbility } from "./creature";
+const typedActives = [
+  {
+    name: "Dirt",
+    description: "Dirt",
+    narration_cue: "A hiss.",
+    audio: null,
+    kind: "attack",
+    damage: "0",
+    damage_type: "none",
+    applies_condition: "blinded",
+    save: "dexterity",
+    dc: 12,
+    duration: 1,
+  },
+  {
+    name: "Rally",
+    description: "Rally",
+    narration_cue: "A shout.",
+    audio: null,
+    kind: "healing",
+    target_group: "allied_bandits",
+    healing: "1d8",
+  },
+  {
+    name: "Prepare",
+    description: "Prepare",
+    narration_cue: "A hiss.",
+    audio: null,
+    kind: "prepare_attack",
+    advantage: true,
+    on_hit: { applies_condition: "blinded", duration: 1 },
+  },
+] satisfies ActiveAbility[];
+const typedSignature = {
+  name: "Move",
+  description: "Move",
+  narration_cue: "A crack.",
+} satisfies CatalogSignatureAbility;
+test("exported active contracts", () => {
+  expect(typedActives).toHaveLength(3);
+  expect(typedSignature.narration_cue).toBe("A crack.");
 });
