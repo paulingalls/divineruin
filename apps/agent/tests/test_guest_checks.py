@@ -38,7 +38,7 @@ def actors():
 def setup(rows):
     ctx = make_context(party_member_ids=["player_2"])
     ctx.userdata.event_bus = MagicMock()
-    queries = MagicMock()
+    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))
     queries.get_player = AsyncMock(side_effect=lambda pid: rows[pid])
     return ctx, queries
 

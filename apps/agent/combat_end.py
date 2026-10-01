@@ -23,6 +23,7 @@ from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
+from inventory_refresh import inventory_payload
 from region_types import REGION_CITY
 from reputation import reputation_shift
 from session_data import CombatState, SessionData
@@ -278,6 +279,13 @@ async def _end_combat_db(
         {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": rewards.spoils.xp_total},
         event_bus=session.event_bus,
     )
+    for pid in sorted({pid for pid, _ in rewards.item_recipients}):
+        await sink.emit(
+            session.room,
+            E.INVENTORY_UPDATED,
+            await inventory_payload(pid, queries=queries, conn=conn),
+            event_bus=session.event_bus,
+        )
     await _publish_sounds(session, [_STINGER_SOUND[outcome]], sink=sink)
 
     return {

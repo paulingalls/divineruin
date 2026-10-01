@@ -57,6 +57,7 @@ _EXPERT = {**SAMPLE_PLAYER, "skill_tiers": {"survival": "expert", "nature": "exp
 
 def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_player = AsyncMock(return_value=player)
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()

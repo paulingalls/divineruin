@@ -1,6 +1,8 @@
+import { Participant, ParticipantKind } from "livekit-client";
 import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import {
+  type DataChannelEvent,
   parseGameEvent,
   parseCombatant,
   MAX_EVENT_PAYLOAD_BYTES,
@@ -188,4 +190,134 @@ test("parseInventoryItems omits imageUrl when no image_url", () => {
   const inv = panelStore.getState().inventory;
   expect(inv).toHaveLength(1);
   expect(inv[0].imageUrl).toBeUndefined();
+});
+
+type InventoryRow = Record<string, unknown> & {
+  id: string;
+  name: string;
+  type: string;
+  slot_info: { quantity: number };
+};
+
+type InventoryFixture = {
+  owners: string[];
+  initial?: Record<string, InventoryRow[]>;
+  sender?: { sid: string; identity: string; isAgent: boolean; kind: ParticipantKind };
+  steps: {
+    received: DataChannelEvent[];
+    received_bytes?: number[][];
+    expected: Record<string, InventoryRow[]>;
+  }[];
+};
+
+test("committed inventory payloads reach independent consumers", async () => {
+  const { applyInventorySnapshot } = await import("@/audio/inventory-refresh");
+  const { parseInventoryItems } = await import("@/audio/game-event-parsing");
+  const { handleGameEventMessage } = await import("@/audio/game-event-handler");
+  const { authStore } = await import("@/stores/auth-store");
+  const { createStore } = await import("zustand/vanilla");
+  const path = process.env.LIVE_MATERIAL_INVENTORY_FIXTURE;
+  const fixture: InventoryFixture = path
+    ? ((await Bun.file(path).json()) as InventoryFixture)
+    : {
+        owners: ["one", "two"],
+        steps: [
+          {
+            received: [
+              {
+                type: "inventory_updated",
+                player_id: "one",
+                inventory: [
+                  {
+                    id: "wolf_pelt",
+                    name: "Wolf Pelt",
+                    type: "material",
+                    slot_info: { quantity: 2 },
+                  },
+                ],
+              },
+            ],
+            expected: {
+              one: [
+                {
+                  id: "wolf_pelt",
+                  name: "Wolf Pelt",
+                  type: "material",
+                  slot_info: { quantity: 2 },
+                },
+              ],
+              two: [],
+            },
+          },
+        ],
+      };
+  expect(fixture.owners.length).toBeGreaterThan(1);
+  expect(fixture.steps.length).toBeGreaterThan(0);
+  if (path) {
+    expect(fixture.sender?.isAgent).toBe(true);
+    expect(Object.keys(fixture.initial ?? {}).sort()).toEqual([...fixture.owners].sort());
+  }
+  const consumers = [fixture.owners[0], fixture.owners[0], fixture.owners[1]].map((owner) => ({
+    owner,
+    store: createStore<{ inventory: ReturnType<typeof parseInventoryItems> }>(() => ({
+      inventory: parseInventoryItems(fixture.initial?.[owner] ?? []),
+    })),
+  }));
+  let snapshots = 0;
+  const previous: Record<string, Record<string, unknown>[]> = Object.fromEntries(
+    fixture.owners.map((owner: string) => [owner, fixture.initial?.[owner] ?? []]),
+  );
+  const sender = new Participant(
+    fixture.sender?.sid ?? "PA_unit_agent",
+    fixture.sender?.identity ?? "unit-agent",
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    fixture.sender?.kind ?? ParticipantKind.AGENT,
+  );
+  expect(sender.isAgent).toBe(true);
+  for (const step of fixture.steps) {
+    for (const event of step.received) {
+      if (event.type === "inventory_updated") snapshots++;
+      for (const consumer of consumers) {
+        applyInventorySnapshot(event, consumer.owner, (inventory) =>
+          consumer.store.setState({ inventory }),
+        );
+      }
+    }
+    for (const consumer of consumers) {
+      expect(
+        consumer.store
+          .getState()
+          .inventory.map((item) => [item.id, item.name, item.type, item.quantity]),
+      ).toEqual(
+        step.expected[consumer.owner].map((item) => [
+          item.id,
+          item.name,
+          item.type,
+          item.slot_info.quantity,
+        ]),
+      );
+      expect(consumer.store.getState().inventory).toEqual(
+        parseInventoryItems(step.expected[consumer.owner]),
+      );
+    }
+    for (const owner of fixture.owners) {
+      authStore.setState({ playerId: owner });
+      panelStore.getState().setInventory(parseInventoryItems(previous[owner]));
+      for (const [index, event] of step.received.entries()) {
+        const bytes = step.received_bytes?.[index];
+        if (path && !bytes) throw new Error("Fixture omitted received game_events bytes");
+        handleGameEventMessage({
+          payload: bytes ? new Uint8Array(bytes) : encode(event),
+          from: sender,
+        });
+      }
+      expect(panelStore.getState().inventory).toEqual(parseInventoryItems(step.expected[owner]));
+      previous[owner] = step.expected[owner];
+      panelStore.getState().reset();
+    }
+  }
+  expect(snapshots).toBeGreaterThan(0);
 });

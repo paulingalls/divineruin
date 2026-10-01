@@ -213,13 +213,14 @@ class TestTransactGain:
             queries=mock_queries,
             content=mock_content,
         )
-        # Two events: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
         first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
-        assert first_call["type"] == E.INVENTORY_UPDATED
-        assert "inventory" in first_call
+        assert first_call["type"] == E.ITEM_ACQUIRED
+        assert "name" in first_call
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == E.ITEM_ACQUIRED
+        assert second_call["type"] == E.INVENTORY_UPDATED
+        assert second_call["player_id"] == "player_1"
+        assert second_call["inventory"] == [SAMPLE_ITEM]
 
 
 class TestTransactLose:
