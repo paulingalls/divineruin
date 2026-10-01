@@ -402,3 +402,36 @@ async def test_guest_declared_defeat_uses_primary_anchor():
     assert revive.await_args is not None
     assert revive.await_args.args[0]["player_id"] == "player_1"
     assert ctx.userdata.combat_state is None
+
+
+async def test_combat_snapshot_excludes_currency_only_seats():
+    ctx = make_context(room=make_mock_room())
+    _add_second_member(ctx)
+    cs = _make_combat_state(enemy_fallen=True)
+    guest = copy.deepcopy(cs.participants[0])
+    guest.id = "player_2"
+    cs.participants.insert(1, guest)
+    ctx.userdata.combat_state = cs
+    spoils = EncounterSpoils(currency_silver=200, loot_pool=[{"item_id": "relic", "quantity": 1}])
+    queries = snapshot_queries()
+    mutations = combat_end_mutations()
+    mutations.add_inventory_item = AsyncMock()
+    mutations.update_player_gold = AsyncMock()
+    with (
+        patch("pricing_queries.get_economy_pricing", AsyncMock(return_value={"silver_per_gold": 10})),
+        patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),
+        patch("db_content_queries.get_item", AsyncMock(return_value={"name": "Sun Relic"})),
+        patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
+    ):
+        await _end_combat_impl(
+            ctx,
+            "victory",
+            mutations=mutations,
+            queries=queries,
+            db_mod=checked_commit_db(_fake_db_mod(), ctx.userdata.room),
+        )
+    events = published_payloads(ctx.userdata.room)
+    assert {e["player_id"] for e in events if e["type"] == "currency_gained"} == {"player_1", "player_2"}
+    assert [e for e in events if e["type"] == "inventory_updated"] == [
+        {"type": "inventory_updated", "player_id": "player_1", "inventory": [{"id": "player_1"}]}
+    ]

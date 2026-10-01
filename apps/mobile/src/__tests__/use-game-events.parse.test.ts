@@ -278,12 +278,30 @@ test("committed inventory payloads reach independent consumers", async () => {
   );
   expect(sender.isAgent).toBe(true);
   for (const step of fixture.steps) {
-    for (const event of step.received) {
+    const decoded = (
+      step.received_bytes ?? step.received.map((event) => Array.from(encode(event)))
+    ).map((bytes) => {
+      const event = parseGameEvent(new Uint8Array(bytes));
+      expect(event).not.toBeNull();
+      return event!;
+    });
+    if (path) {
+      expect(step.received_bytes?.length).toBeGreaterThan(0);
+      expect(decoded).toEqual(step.received);
+    }
+    for (const event of decoded) {
+      expect(event.type).not.toBe("session_init");
       if (event.type === "inventory_updated") snapshots++;
       for (const consumer of consumers) {
-        applyInventorySnapshot(event, consumer.owner, (inventory) =>
-          consumer.store.setState({ inventory }),
-        );
+        const before = consumer.store.getState().inventory;
+        if (consumer.owner !== process.env.LIVE_MATERIAL_INVENTORY_IGNORE_CONSUMER) {
+          applyInventorySnapshot(event, consumer.owner, (inventory) =>
+            consumer.store.setState({ inventory }),
+          );
+        }
+        if (event.type === "inventory_updated" && event.player_id !== consumer.owner) {
+          expect(consumer.store.getState().inventory).toEqual(before);
+        }
       }
     }
     for (const consumer of consumers) {

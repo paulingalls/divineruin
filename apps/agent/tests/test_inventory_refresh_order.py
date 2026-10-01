@@ -156,8 +156,9 @@ async def test_gather_refusal_no_gain_and_rollback_emit_no_snapshot(guest, failu
     mocks[0].get_player_inventory.assert_not_awaited()
 
 
+@pytest.mark.parametrize("guest", [False, True])
 @pytest.mark.parametrize("failure", ["duplicate", "refusal", "rollback"])
-async def test_experiment_duplicate_refusal_and_rollback_emit_no_snapshot(failure):
+async def test_experiment_duplicate_refusal_and_rollback_emit_no_snapshot(failure, guest):
     from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
@@ -179,20 +180,22 @@ async def test_experiment_duplicate_refusal_and_rollback_emit_no_snapshot(failur
             raise RuntimeError("commit failed")
 
         kwargs["db_mod"].transaction = transaction
-    context = make_context(room=make_mock_room())
+    context = make_context(room=make_mock_room(), party_member_ids=["guest"])
     context.userdata.event_bus = MagicMock()
-    if failure == "duplicate":
-        await _experiment_with_materials_impl(context, {"oak_wood": 1}, "unknown_output", **kwargs)
-    else:
-        with pytest.raises(ToolError if failure == "refusal" else RuntimeError):
+    with context.userdata._bind_authenticated_actor("guest" if guest else "player_1", 1, lambda *_: None):
+        if failure == "duplicate":
             await _experiment_with_materials_impl(context, {"oak_wood": 1}, "unknown_output", **kwargs)
-    assert published_payloads(context.userdata.room) == []
-    context.userdata.event_bus.publish.assert_not_called()
-    mods["queries"].get_player_inventory.assert_not_awaited()
+        else:
+            with pytest.raises(ToolError if failure == "refusal" else RuntimeError):
+                await _experiment_with_materials_impl(context, {"oak_wood": 1}, "unknown_output", **kwargs)
+        assert published_payloads(context.userdata.room) == []
+        context.userdata.event_bus.publish.assert_not_called()
+        mods["queries"].get_player_inventory.assert_not_awaited()
 
 
+@pytest.mark.parametrize("guest", [False, True])
 @pytest.mark.parametrize("failure", ["refusal", "rollback"])
-async def test_craft_refusal_and_rollback_emit_no_snapshot(failure):
+async def test_craft_refusal_and_rollback_emit_no_snapshot(failure, guest):
     from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
@@ -213,21 +216,22 @@ async def test_craft_refusal_and_rollback_emit_no_snapshot(failure):
             raise RuntimeError("commit failed")
 
         db_mod.transaction = transaction
-    context = make_context(room=make_mock_room())
+    context = make_context(room=make_mock_room(), party_member_ids=["guest"])
     context.userdata.event_bus = MagicMock()
-    with pytest.raises(ToolError if failure == "refusal" else RuntimeError):
-        await _start_crafting_project_impl(
-            context,
-            "iron_sword",
-            db_mod=db_mod,
-            queries_mod=queries,
-            mutations_mod=MagicMock(
-                consume_player_materials=AsyncMock(), create_async_activity=AsyncMock(return_value="c1")
-            ),
-            activity_mod=_activity(),
-            recipes_mod=_recipes_mod(_recipe()),
-            materials_mod=_materials_mod(),
-        )
-    assert published_payloads(context.userdata.room) == []
-    context.userdata.event_bus.publish.assert_not_called()
-    queries.get_player_inventory.assert_not_awaited()
+    with context.userdata._bind_authenticated_actor("guest" if guest else "player_1", 1, lambda *_: None):
+        with pytest.raises(ToolError if failure == "refusal" else RuntimeError):
+            await _start_crafting_project_impl(
+                context,
+                "iron_sword",
+                db_mod=db_mod,
+                queries_mod=queries,
+                mutations_mod=MagicMock(
+                    consume_player_materials=AsyncMock(), create_async_activity=AsyncMock(return_value="c1")
+                ),
+                activity_mod=_activity(),
+                recipes_mod=_recipes_mod(_recipe()),
+                materials_mod=_materials_mod(),
+            )
+        assert published_payloads(context.userdata.room) == []
+        context.userdata.event_bus.publish.assert_not_called()
+        queries.get_player_inventory.assert_not_awaited()

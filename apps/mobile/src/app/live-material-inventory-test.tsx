@@ -38,7 +38,7 @@ function ReplayInventory() {
       if (
         loaded.runId !== runId ||
         loaded.owners.length !== 2 ||
-        loaded.steps.length !== 6 ||
+        loaded.steps.length !== 7 ||
         !loaded.sender.isAgent
       ) {
         throw new Error("Fixture has no usable committed inventory sequence");
