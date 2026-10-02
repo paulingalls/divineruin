@@ -38,6 +38,7 @@ import dice
 import racial_resonance
 import resonance_events
 from combat_support import _handle_hp_zero, _publish_sounds
+from kaelen_gift import trigger_iron_resolve
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -107,11 +108,13 @@ async def _inner_fire_locked(
         new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
         overkill = max(0, fire_damage - participant.hp_current)
-        new_hp = max(0, participant.hp_current - fire_damage)
+        hp_before = participant.hp_current
+        new_hp = max(0, hp_before - fire_damage)
         session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
+        gift_triggered = trigger_iron_resolve(session, participant, hp_before)
 
         # The zero-HP transition has ONE owner. Self-damage knocks on the same door as a blow;
         # bypassing it is what left a burned-out Draethar at 0 HP with is_fallen False, invisible
@@ -163,6 +166,7 @@ async def _inner_fire_locked(
 
     return json.dumps(
         {
+            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
             # The participant's HP, not the burn's arithmetic: a Hollowed rise restores the echo

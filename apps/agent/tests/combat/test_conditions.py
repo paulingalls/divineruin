@@ -54,7 +54,7 @@ def test_catalog_has_all_21_spec_conditions():
     assert set(ALL_CONDITIONS) <= set(CONDITION_CATALOG)
     assert len(ALL_CONDITIONS) == 21
     assert "temporary_hollowed" in CONDITION_CATALOG
-    assert len(CONDITION_CATALOG) == 22
+    assert len(CONDITION_CATALOG) == 23
 
 
 @pytest.mark.parametrize("condition_type", ALL_CONDITIONS)
@@ -379,3 +379,12 @@ def test_effects_surfaces_both_beneficial_dice_concurrently():
 def test_effects_no_bonus_die_for_non_beneficial_condition():
     effects = get_condition_effects(apply_condition([], "poisoned"))
     assert effects.bonus_dice == ()
+
+
+def test_iron_resolve_metadata():
+    spec = CONDITION_CATALOG.get("iron_resolve")
+    assert spec is not None
+    assert spec.check_modifier == 2
+    assert spec.clearance == "end_of_next_turn"
+    assert not spec.persists_across_encounters
+    assert spec.bonus_die is None
