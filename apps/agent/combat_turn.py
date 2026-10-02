@@ -95,7 +95,7 @@ async def _declare_phase_locked(
     # An empty declarations payload is a ValueError from the engine — surface it as a
     # ToolError so the DM re-prompts rather than crashing combat.
     try:
-        combat_spatial_declarations.preflight_state(cs, session.acting_player_id)
+        combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
     except ValueError as e:
         raise ToolError(str(e)) from e
@@ -104,7 +104,7 @@ async def _declare_phase_locked(
     session.combat_state = next_state
 
     response = {
-        "spatial": combat_spatial.response_facts(next_state, session.acting_player_id),
+        "spatial": combat_spatial.response_facts(next_state, session.acting_player_id, session.primary_player_id),
         "beat": next_state.beat,
         "round": next_state.round_number,
         "participants": _participant_roster(next_state.participants),
@@ -166,7 +166,7 @@ async def _resolve_phase_locked(
     if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
         raise ToolError(f"Not at the resolution or narration beat (current beat: {cs.beat}). Call declare_phase first.")
     try:
-        combat_spatial_declarations.preflight_state(cs, session.acting_player_id)
+        combat_spatial_declarations.preflight_state(cs)
     except ValueError as error:
         raise ToolError(str(error)) from error
     resolving_allies = cs.beat == combat_phase.PhaseBeat.RESOLUTION
@@ -418,7 +418,7 @@ async def _resolve_phase_locked(
         return handoff
 
     response = {
-        "spatial": combat_spatial.response_facts(state, session.acting_player_id),
+        "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,
         "packets": packet_summaries,

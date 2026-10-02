@@ -319,10 +319,13 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
         spatial = deepcopy(state.spatial)
         calls = ctx.userdata.room.local_participant.publish_data.call_count
         with patch("check_resolution.dice_roll") as roll:
-            with pytest.raises((ToolError, ValueError)):
+            with pytest.raises(ToolError):
                 await combat_turn._resolve_phase_impl(ctx)
         roll.assert_not_called()
         assert ctx.userdata.combat_state.spatial == spatial
+        if not held:
+            # A refused stored declaration reopens the declaration beat; RESOLUTION would refuse forever.
+            before = {**before, "beat": "declaration", "pending_declarations": {}}
         assert await persisted(state.combat_id) == before
         assert ctx.userdata.room.local_participant.publish_data.call_count == calls
 
@@ -398,7 +401,7 @@ async def test_invalid_spatial_refuses_without_write(spatial_entry, stage, defec
     events = ctx.userdata.room.local_participant.publish_data.call_count
     with patch("db_mutations.save_combat_state", wraps=db_mutations.save_combat_state) as save:
         with patch("check_resolution.dice_roll") as roll:
-            with pytest.raises((ToolError, ValueError)):
+            with pytest.raises(ToolError):
                 if stage == "declare":
                     await combat_turn._declare_phase_impl(ctx, {pid: {"type": "defend"}})
                 else:

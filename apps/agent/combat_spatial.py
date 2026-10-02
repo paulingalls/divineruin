@@ -137,5 +137,8 @@ def facts(state, origin_id):
     }
 
 
-def response_facts(state, origin_id):
-    return facts(state, origin_id) if state.spatial is not None else None
+def response_facts(state, acting_id, primary_id):
+    if state.spatial is None:
+        return None
+    # A member who joined mid-fight has no position; the session owner entered with the party.
+    return facts(state, acting_id if acting_id in state.spatial["positions"] else primary_id)

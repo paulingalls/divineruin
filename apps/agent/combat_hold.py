@@ -23,7 +23,6 @@ import combat_marks as combat_marks
 import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
-import combat_spatial_declarations
 import event_types as E
 import reaction_gate
 import reaction_spend
@@ -223,9 +222,6 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
     # The DM came back, so whatever window we were paused on has closed. Capture it on the way
     # out: a reaction spent at that window changes the held blow, and this is the one moment where
     # the spend exists and the blow has not been applied yet (story-018).
-    combat_spatial_declarations.preflight(
-        state, [(head["actor_id"], _held_declaration(head)) for head in state.held_actions]
-    )
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
     reacted, reaction_packets = None, []
@@ -249,7 +245,6 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
 
     while state.held_actions:
         head = state.held_actions[0]
-        combat_spatial_declarations.preflight(state, [(head["actor_id"], _held_declaration(head))])
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None

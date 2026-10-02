@@ -2,7 +2,7 @@
 
 from combat_spatial import distance, point, position, require_spatial
 from condition_restrictions import cannot_act, speed_zero
-from declarations import DeclarationType
+from declarations import DeclarationType, resolve_declaration
 
 
 def is_move(declaration):
@@ -56,13 +56,14 @@ def apply_move(state, actor, declaration):
     }
 
 
-def preflight_state(state, origin_id):
-    from declarations import resolve_declaration
+def preflight_state(state):
+    """Refuse a corrupt record or held move before a transaction opens.
 
+    Pending declarations are left to the in-transaction check, whose refusal reopens the declaration beat.
+    """
     if state.spatial is not None:
-        position(require_spatial(state), origin_id)
-    pending = list(state.pending_declarations.items())
-    held = [(head["actor_id"], head["declaration"]) for head in state.held_actions]
-    for actor_id, raw in [*pending, *held]:
+        require_spatial(state)
+    for head in state.held_actions:
+        raw = head["declaration"]
         if raw.get("action") == "move" or "destination" in raw:
-            preflight(state, [(actor_id, resolve_declaration(raw))])
+            preflight(state, [(head["actor_id"], resolve_declaration(raw))])

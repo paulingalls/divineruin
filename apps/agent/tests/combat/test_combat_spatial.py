@@ -41,7 +41,7 @@ def test_unknown_position_refuses():
     with pytest.raises(ValueError):
         position({"positions": {}, "locations": {}}, "missing")
     with pytest.raises(ValueError):
-        validate_scene({"enemies": [{"id": "a"}]})
+        validate_scene({"enemies": [{"id": "a", "creature_id": "bandit", "role": "standard"}]})
 
 
 def spatial_state(speed=30):
@@ -266,12 +266,12 @@ def test_move_wire_refuses_invalid_coordinate(value):
         lambda s: s["scene_placement"]["zones"].update(zone={"center_id": "a", "radius_ft": -1}),
         lambda s: s["scene_placement"]["zones"].update(zone={"center_id": "unknown", "radius_ft": 1}),
         lambda s: s["scene_placement"]["zones"].update(zone={"radius_ft": 1}),
-        lambda s: s["enemies"].append({"id": "a"}),
+        lambda s: s["enemies"].append({"id": "a", "creature_id": "bandit", "role": "standard"}),
     ],
 )
 def test_invalid_scene_guards(mutate):
     scene = {
-        "enemies": [{"id": "a"}],
+        "enemies": [{"id": "a", "creature_id": "bandit", "role": "standard"}],
         "scene_placement": {
             "party_start": pos(),
             "companion_start": pos(),
@@ -289,7 +289,7 @@ def test_entry_builder_validates_authored_scene():
     from combat_spatial_entry import build_spatial
 
     scene = {
-        "enemies": [{"id": "b"}],
+        "enemies": [{"id": "b", "creature_id": "bandit", "role": "standard"}],
         "scene_placement": {
             "party_start": pos(),
             "companion_start": pos(),
@@ -301,3 +301,17 @@ def test_entry_builder_validates_authored_scene():
     }
     with pytest.raises(ValueError):
         build_spatial(scene, [("a", {"speed": 30})], [{"id": "b", "speed": 20}])
+
+
+async def test_unpositioned_acting_member_can_still_declare():
+    from unittest.mock import AsyncMock
+
+    from sample_fixtures import make_context
+
+    from combat_turn import _declare_phase_impl
+
+    ctx = make_context("a", party_member_ids=["late"])
+    ctx.userdata.combat_state = spatial_state()
+    with ctx.userdata._bind_authenticated_actor("late", 1, lambda *_args: None):
+        result = json.loads(await _declare_phase_impl(ctx, {"a": move()}, mutations=AsyncMock()))
+    assert result["spatial"]["origin_id"] == "a"
