@@ -11,7 +11,19 @@ def assert_reference_fixture_walk(root):
     paths = sorted(root.rglob("*.py"))
     assert paths, "missing Python fixture corpus"
     trees = {path: ast.parse(path.read_text()) for path in paths}
+    parent_maps = {
+        path: {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+        for path, tree in trees.items()
+    }
     references = []
+
+    def bindings(scope):
+        pending = list(ast.iter_child_nodes(scope))
+        while pending:
+            item = pending.pop()
+            yield item
+            if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                pending.extend(ast.iter_child_nodes(item))
 
     def dictionary(node):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
@@ -28,8 +40,8 @@ def assert_reference_fixture_walk(root):
         edge = (path, node.id)
         assert edge not in trail, f"cyclic fixture producer: {edge}"
         assignments = [
-            item.value
-            for item in ast.walk(scope)
+            item
+            for item in bindings(scope)
             if isinstance(item, (ast.Assign, ast.AnnAssign))
             and item.lineno < node.lineno
             and any(
@@ -38,8 +50,15 @@ def assert_reference_fixture_walk(root):
             )
         ]
         if assignments:
-            return resolve(assignments[-1], path, scope, (*trail, edge))
-        for item in ast.walk(trees[path]):
+            latest = max(assignments, key=lambda item: item.lineno)
+            ancestor = parent_maps[path][latest]
+            while ancestor is not scope:
+                assert not isinstance(
+                    ancestor, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.TryStar, ast.Match)
+                ), f"conditional fixture producer: {path}:{latest.lineno} {node.id}"
+                ancestor = parent_maps[path][ancestor]
+            return resolve(latest.value, path, scope, (*trail, edge))
+        for item in bindings(trees[path]):
             if isinstance(item, ast.ImportFrom) and item.module:
                 for alias in item.names:
                     if (alias.asname or alias.name) == node.id:
@@ -50,7 +69,7 @@ def assert_reference_fixture_walk(root):
         raise AssertionError(f"unresolved fixture producer: {path}:{node.lineno} {node.id}")
 
     for path, tree in trees.items():
-        parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+        parents = parent_maps[path]
         for node in ast.walk(tree):
             if not isinstance(node, ast.Dict) and not (
                 isinstance(node, ast.Call)

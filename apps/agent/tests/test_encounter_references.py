@@ -440,3 +440,31 @@ def test_catalog_projection_rejects_reference_overrides(tmp_path, monkeypatch):
     monkeypatch.setattr(sample_fixtures, "CONTENT_ROOT", tmp_path)
     with pytest.raises(ValueError, match="forbidden reference fields"):
         sample_fixtures.catalog_encounters()
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_reference_walk_does_not_resolve_from_unrelated_scopes(tmp_path, nested):
+    valid = '[{"id": "one", "creature_id": "bandit", "role": "standard"}]'
+    lines = [
+        'enemies = [{"id": "old", "hp": 7}]',
+        "def unrelated():",
+        f"    enemies = {valid}",
+        'entry = {"enemies": enemies}',
+    ]
+    if nested:
+        lines = ["def producer():", *["    " + line for line in lines]]
+    (tmp_path / "producer.py").write_text("\n".join(lines))
+    (tmp_path / "valid.py").write_text(f'entry = {{"enemies": {valid}}}')
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+
+
+def test_reference_walk_refuses_conditional_producer(tmp_path):
+    (tmp_path / "producer.py").write_text(
+        'enemies = [{"id": "old", "hp": 7}]\n'
+        "if flag:\n"
+        '    enemies = [{"id": "one", "creature_id": "bandit", "role": "standard"}]\n'
+        'entry = {"enemies": enemies}'
+    )
+    with pytest.raises(AssertionError, match="conditional fixture producer"):
+        assert_reference_fixture_walk(tmp_path)
