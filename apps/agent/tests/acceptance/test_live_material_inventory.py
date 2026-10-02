@@ -247,6 +247,7 @@ async def live_capture(reset_db_pool, material_rooms, tmp_path):
             "committed inventory payloads reach independent consumers",
         ],
         env={**os.environ, "LIVE_MATERIAL_INVENTORY_FIXTURE": str(path)},
+        cwd=Path(__file__).resolve().parents[4],
         capture_output=True,
         text=True,
     )
@@ -314,6 +315,7 @@ def test_bridge_rejects_empty_delivery_and_wrong_inventory(fault, tmp_path):
             "committed inventory payloads reach independent consumers",
         ],
         env={**os.environ, "LIVE_MATERIAL_INVENTORY_FIXTURE": str(path)},
+        cwd=Path(__file__).resolve().parents[4],
         capture_output=True,
         text=True,
     )
@@ -348,6 +350,7 @@ def assert_received_fault_fails_contents(live_capture, fault, tmp_path):
             "LIVE_MATERIAL_INVENTORY_FIXTURE": str(path),
             "LIVE_MATERIAL_INVENTORY_IGNORE_CONSUMER": owner if fault == "ignore" else "",
         },
+        cwd=Path(__file__).resolve().parents[4],
         capture_output=True,
         text=True,
     )
