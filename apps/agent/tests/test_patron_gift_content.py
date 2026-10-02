@@ -6,7 +6,7 @@ from _gods_content import load_gods
 
 EXPECTED_GIFTS = {
     "veythar": ("short_rest", "awaits_rest"),
-    "kaelen": ("per_encounter", "awaits_binding"),
+    "kaelen": ("per_encounter", "active"),
     "aelora": ("always", "active"),
     "syrath": ("short_rest", "awaits_rest"),
     "mortaen": ("always", "narrated"),
@@ -37,11 +37,13 @@ def validate_gifts(rows):
         assert "layer_1_gift" in row, row["god_id"]
         gift = row["layer_1_gift"]
         assert isinstance(gift, dict), row["god_id"]
-        expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] == "aelora" else set())
+        expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] in {"aelora", "kaelen"} else set())
         assert set(gift) == expected_fields, row["god_id"]
         assert all(isinstance(gift[field], str) and gift[field].strip() for field in GIFT_FIELDS), row["god_id"]
         if row["god_id"] == "aelora":
             assert gift["mechanics"] == {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
+        if row["god_id"] == "kaelen":
+            assert gift["mechanics"] == {"kind": "low_hp_surge", "threshold": 0.25, "amount": 2, "duration_phases": 2}
         assert (gift["recharge"], gift["status"]) == EXPECTED_GIFTS[row["god_id"]]
         gift_ids.append(gift["id"])
     assert len(gift_ids) == len(set(gift_ids))
@@ -109,5 +111,32 @@ def test_gift_validator_rejects_defects(defect):
         mechanics[{"wrong_kind": "kind", "wrong_amount": "amount", "wrong_requires": "requires"}[defect]] = "wrong"
     elif defect == "extra_mechanics":
         rows[0]["layer_1_gift"]["mechanics"] = {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
+    with pytest.raises(AssertionError):
+        validate_gifts(rows)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("kind", "wrong"),
+        ("threshold", 0.3),
+        ("amount", 3),
+        ("duration_phases", 1),
+        ("extra", 1),
+        ("status", "awaits_binding"),
+        ("mechanics", None),
+    ],
+)
+def test_kaelen_validator_rejects_defects(field, value):
+    from copy import deepcopy
+
+    rows = deepcopy(load_gods())
+    gift = next(row for row in rows if row["god_id"] == "kaelen")["layer_1_gift"]
+    if field == "mechanics":
+        gift.pop(field, None)
+    elif field == "status":
+        gift[field] = value
+    else:
+        gift.setdefault("mechanics", {})[field] = value
     with pytest.raises(AssertionError):
         validate_gifts(rows)

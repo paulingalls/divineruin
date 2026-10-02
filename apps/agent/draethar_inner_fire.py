@@ -35,9 +35,13 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import dice
+import event_types as E
 import racial_resonance
 import resonance_events
 from combat_support import _handle_hp_zero, _publish_sounds
+from combat_ui_update import build_combat_ui_update
+from game_events import publish_game_event
+from kaelen_gift import trigger_iron_resolve
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -107,11 +111,13 @@ async def _inner_fire_locked(
         new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
         overkill = max(0, fire_damage - participant.hp_current)
-        new_hp = max(0, participant.hp_current - fire_damage)
+        hp_before = participant.hp_current
+        new_hp = max(0, hp_before - fire_damage)
         session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
+        gift_triggered = trigger_iron_resolve(session, participant, hp_before)
 
         # The zero-HP transition has ONE owner. Self-damage knocks on the same door as a blow;
         # bypassing it is what left a burned-out Draethar at 0 HP with is_fallen False, invisible
@@ -161,8 +167,17 @@ async def _inner_fire_locked(
         # this an idempotent re-write of the already-saved state.
         await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
 
+    if gift_triggered:
+        await publish_game_event(
+            session.room,
+            E.COMBAT_UI_UPDATE,
+            build_combat_ui_update(session.combat_state),
+            event_bus=session.event_bus,
+        )
+
     return json.dumps(
         {
+            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
             # The participant's HP, not the burn's arithmetic: a Hollowed rise restores the echo

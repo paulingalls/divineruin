@@ -24,6 +24,7 @@ from combat_enemy_active import apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from condition_restrictions import cannot_act
+from kaelen_gift import trigger_iron_resolve
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -260,6 +261,7 @@ async def apply_attack_result(
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
+    gift_triggered = trigger_iron_resolve(session, target, hp_before)
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
@@ -361,6 +363,8 @@ async def apply_attack_result(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if gift_triggered:
+        response["gift_triggered"] = gift_triggered
     if save_damage:
         save_outcome = "succeeded" if attack_result.save_success else "failed"
         session.record_event(

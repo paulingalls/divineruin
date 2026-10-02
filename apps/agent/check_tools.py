@@ -242,7 +242,12 @@ async def _check_save_impl(
         raise ToolError(f"Player '{player_id}' not found.")
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
-    validated_player_conditions(player, player_id)
+    row_conditions = validated_player_conditions(player, player_id)
+    if session.combat_state is not None:
+        participant = session.combat_state.get_participant(player_id)
+        if participant is not None:
+            surge = [condition for condition in participant.conditions if condition["type"] == "iron_resolve"]
+            player = {**player, "conditions": [*row_conditions, *surge]}
 
     try:
         result = check_resolution_save.resolve_saving_throw(player, save_type, dc, effect_on_fail)
