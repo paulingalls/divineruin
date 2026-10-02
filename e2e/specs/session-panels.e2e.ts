@@ -3,6 +3,9 @@ import { test, expect } from "../fixtures/session.js";
 test.describe("Session panel interactions", () => {
   test("inventory panel shows items after session_init", async ({ sessionPage }) => {
     await sessionPage.injectSessionInit();
+    expect(
+      await sessionPage.page.evaluate(() => window.__DR!.inventory().map((item) => item.id)),
+    ).toEqual(["item_health_potion", "item_iron_longsword"]);
 
     const bar = sessionPage.page.getByTestId("persistent-bar");
     await expect(bar).toBeVisible();
@@ -89,6 +92,10 @@ test.describe("Session panel interactions", () => {
         },
       ],
     });
+
+    expect(
+      await sessionPage.page.evaluate(() => window.__DR!.inventory().map((item) => item.id)),
+    ).toEqual(["item_silver_dagger", "item_mana_potion"]);
 
     await sessionPage.openPanel("inventory");
     // New items should be visible
