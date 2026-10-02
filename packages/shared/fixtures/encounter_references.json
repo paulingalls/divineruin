@@ -978,6 +978,7 @@
       "apps/agent/tests/test_enter_mode.py",
       "apps/agent/tests/test_guest_activation.py",
       "apps/agent/tests/test_music_tool.py",
+      "apps/agent/tests/test_seed_content.py",
       "apps/agent/tests/test_seed_creature_tiers.py",
       "apps/agent/tests/test_seed_encounter_references.py",
       "apps/agent/tests/test_skill_tier_hydration.py"

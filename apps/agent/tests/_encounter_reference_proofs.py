@@ -1,4 +1,5 @@
 import json
+from typing import cast
 
 import pytest
 
@@ -13,6 +14,14 @@ def assert_reference_fixture_walk(root):
     trees = {path: ast.parse(path.read_text()) for path in paths}
     parent_maps = {
         path: {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+        for path, tree in trees.items()
+    }
+    import_nodes = {
+        path: [item for item in ast.walk(tree) if isinstance(item, (ast.Import, ast.ImportFrom))]
+        for path, tree in trees.items()
+    }
+    scopes = {
+        path: [tree, *[item for item in ast.walk(tree) if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))]]
         for path, tree in trees.items()
     }
     references = []
@@ -34,8 +43,88 @@ def assert_reference_fixture_walk(root):
             )
         return node
 
+    def reject_mutations(node, path, scope, imported_names=(), checked=None):
+        checked = set() if checked is None else checked
+        key = (path, id(scope), id(node), tuple(imported_names))
+        if key in checked:
+            return
+        checked.add(key)
+        names = set(imported_names)
+        items = list(bindings(scope))
+        changed = True
+        while changed:
+            changed = False
+            for item in items:
+                if not isinstance(item, (ast.Assign, ast.AnnAssign)):
+                    continue
+                value = item.value
+                value_root = value
+                while isinstance(value_root, (ast.Subscript, ast.Attribute)):
+                    value_root = value_root.value
+                if (node is not None and value is node) or (
+                    isinstance(value_root, ast.Name) and value_root.id in names
+                ):
+                    for target in item.targets if isinstance(item, ast.Assign) else [item.target]:
+                        if isinstance(target, ast.Name) and target.id not in names:
+                            names.add(target.id)
+                            changed = True
+        for item in items:
+            targets = []
+            if isinstance(item, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = item.targets if isinstance(item, ast.Assign) else [item.target]
+            elif isinstance(item, ast.Delete):
+                targets = item.targets
+            elif (
+                isinstance(item, ast.Call)
+                and isinstance(item.func, ast.Attribute)
+                and item.func.attr
+                in {
+                    "append",
+                    "extend",
+                    "insert",
+                    "pop",
+                    "remove",
+                    "clear",
+                    "update",
+                    "setdefault",
+                    "__setitem__",
+                    "__delitem__",
+                }
+            ):
+                targets = [item.func.value]
+            for target in targets:
+                if isinstance(target, ast.Name) and not isinstance(item, (ast.Call, ast.Delete)):
+                    continue
+                while isinstance(target, (ast.Subscript, ast.Attribute)):
+                    target = target.value
+                assert not (isinstance(target, ast.Name) and target.id in names), (
+                    f"mutated fixture producer: {path}:{cast(ast.stmt | ast.expr, item).lineno} {target.id}"
+                )
+
+        if scope is trees[path] and names:
+            module = str(path.relative_to(root).with_suffix("")).replace("/", ".")
+            for consumer in trees:
+                imports = {
+                    alias.asname or alias.name
+                    for item in import_nodes[consumer]
+                    if isinstance(item, ast.ImportFrom) and item.module in {module, f"{root.name}.{module}"}
+                    for alias in item.names
+                    if alias.name in names
+                }
+                imports.update(
+                    alias.asname or alias.name.split(".")[0]
+                    for item in import_nodes[consumer]
+                    if isinstance(item, ast.Import)
+                    for alias in item.names
+                    if alias.name in {module, f"{root.name}.{module}"}
+                )
+                if imports:
+                    for consumer_scope in scopes[consumer]:
+                        reject_mutations(None, consumer, consumer_scope, sorted(imports), checked)
+
     def resolve(node, path, scope, trail=()):
         if not isinstance(node, ast.Name):
+            reject_mutations(node, path, scope)
             return dictionary(node)
         edge = (path, node.id)
         assert edge not in trail, f"cyclic fixture producer: {edge}"
@@ -91,11 +180,13 @@ def assert_reference_fixture_walk(root):
                 and parent.func.id == "validate_encounter_references"
             ):
                 continue
+            original_node = node
             node = dictionary(node)
             assert isinstance(node, ast.Dict)
             for key, value in zip(node.keys, node.values, strict=True):
                 if not isinstance(key, ast.Constant) or key.value != "enemies":
                     continue
+                reject_mutations(original_node, path, scope)
                 enemies = resolve(value, path, scope)
                 assert isinstance(enemies, ast.List) and enemies.elts, (path, node.lineno, "empty/non-list enemies")
                 for expression in enemies.elts:

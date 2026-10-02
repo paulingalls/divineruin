@@ -1,3 +1,4 @@
+import { panelStore } from "@/stores/panel-store";
 import { createStore } from "zustand/vanilla";
 import { getItem, setItem, removeItem } from "@/utils/secure-kv";
 import { pendingInviteStore } from "@/stores/pending-invite-store";
@@ -77,3 +78,13 @@ export const authStore = createStore<AuthState>((set) => ({
     });
   },
 }));
+
+authStore.subscribe((state, previous) => {
+  if (
+    state.playerId !== previous.playerId ||
+    (previous.phase === "authenticated" && state.phase !== "authenticated")
+  ) {
+    panelStore.getState().setInventory([]);
+    panelStore.getState().setInventoryRefreshError(null);
+  }
+});

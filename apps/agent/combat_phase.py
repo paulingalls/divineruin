@@ -369,7 +369,13 @@ def _wrap(state: CombatState) -> WrapOutcome:
     ``tick_conditions_due``; the engine never rolls them."""
     tick_conditions_due: list[dict] = []
     for p in state.participants:
-        survivors, save_events = tick_conditions(p.conditions)
+        ticking = [
+            {**c, "duration": c["duration"] + 1}
+            if c.get("inflicted_round") == state.round_number and c.get("duration") is not None
+            else c
+            for c in p.conditions
+        ]
+        survivors, save_events = tick_conditions(ticking)
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
 

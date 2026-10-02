@@ -30,6 +30,15 @@ def _land_condition_on_one(
     cond_target.conditions = conditions.apply_condition(
         cond_target.conditions, cond_type, source=source, duration=duration
     )
+    if (
+        duration is not None
+        and not attacker.is_ally
+        and attacker.type == "enemy"
+        and (cond_target.type != "enemy" or cond_target.is_ally)
+    ):
+        for condition in cond_target.conditions:
+            if condition["type"] == cond_type:
+                condition["inflicted_round"] = state.round_number
     landed = conditions.has_condition(cond_target.conditions, cond_type)
     if landed and cannot_act(({"type": cond_type},)):
         released = combat_grapple.release_from_grappler(state, cond_target.id)

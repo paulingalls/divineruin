@@ -41,13 +41,24 @@ function startRefresh() {
     const abort = new AbortController();
     controller = abort;
     const current = () => canFetch() && epoch === startEpoch;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
-      const res = await fetch(`${API_BASE}/api/inventory`, {
-        headers: { Authorization: `Bearer ${context.token}` },
-        signal: abort.signal,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const snapshot = parseHttpInventory(await res.json(), context.playerId!);
+      const snapshot = await Promise.race([
+        (async () => {
+          const res = await fetch(`${API_BASE}/api/inventory`, {
+            headers: { Authorization: `Bearer ${context.token}` },
+            signal: abort.signal,
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return parseHttpInventory(await res.json(), context.playerId!);
+        })(),
+        new Promise<never>((_, reject) => {
+          deadline = setTimeout(() => {
+            abort.abort();
+            reject(new Error("Inventory request timed out"));
+          }, 10000);
+        }),
+      ]);
       if (!current()) return;
       if (panelStore.getState().inventoryGeneration !== context.generation) {
         fresh = true;
@@ -64,6 +75,7 @@ function startRefresh() {
             .setInventoryRefreshError("Inventory refresh failed. Retrying in five seconds.");
       }
     } finally {
+      if (deadline !== undefined) clearTimeout(deadline);
       pending = false;
       controller = undefined;
       if (fresh && canFetch()) void refresh();

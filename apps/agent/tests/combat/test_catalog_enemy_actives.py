@@ -65,8 +65,8 @@ def test_captain_actives_are_produced_and_declarable():
     advance_combat_phase(state, declarations={actor.id: {"type": "ability", "action": "Rally"}})
 
 
-async def prepared(seed=0):
-    state, actor, packet = setup(DIRTY)
+async def prepared(seed=0, action=DIRTY):
+    state, actor, packet = setup(action)
     actor.action_pool.append({"name": "Scimitar", "damage": "1d1", "damage_type": "slashing"})
     ability(packet)
     d = deps(seed)
@@ -77,7 +77,13 @@ async def prepared(seed=0):
 
 
 async def test_dirty_fighting_next_attack_advantage_and_one_round_blind():
-    state, _actor, packet, d = await prepared()
+    import json
+    from pathlib import Path
+
+    catalog = json.loads((Path(__file__).parents[4] / "content/creatures.json").read_text())
+    captain = next(row for row in catalog if row["id"] == "bandit_captain")
+    dirty = next(action for action in captain["actives"] if action["name"] == "Dirty Fighting")
+    state, _actor, packet, d = await prepared(action=dirty)
     summary = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert summary["roll"] == 14
     assert summary["condition_inflicted"] == "blinded"
@@ -85,6 +91,25 @@ async def test_dirty_fighting_next_attack_advantage_and_one_round_blind():
     second = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert second["roll"] == 13
     assert "condition_inflicted" not in second
+    from combat_state import CombatState
+
+    state = CombatState.from_dict(state.to_dict())
+    state = await wrap(state)
+    from conditions import get_condition_effects
+
+    assert "attack" in get_condition_effects(state.participants[0].conditions).disadvantage_scopes
+    player_packet = SimpleNamespace(
+        actor_id=state.participants[0].id,
+        declaration=Declaration(type=DeclarationType.ATTACK, action="Longsword", target_id=state.participants[1].id),
+    )
+    state.participants[1].hp_current = state.participants[1].hp_max = 100
+    player_deps = deps(5)
+    player_hit = await _resolve_one_packet(make_context().userdata, state, player_packet, **player_deps)
+    assert player_hit["roll"] == 9
+    unblinded = copy.deepcopy(state)
+    unblinded.participants[0].conditions = []
+    normal_hit = await _resolve_one_packet(make_context().userdata, unblinded, player_packet, **deps(5))
+    assert normal_hit["roll"] == 20
     state = await wrap(state)
     assert not state.participants[0].conditions
 
@@ -251,6 +276,8 @@ async def test_condition_action_honors_authored_duration():
     with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):
         summary = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
     assert summary["condition_inflicted"] == "blinded"
+    assert state.participants[0].conditions[0]["duration"] == 1
+    state = await wrap(state)
     assert state.participants[0].conditions[0]["duration"] == 1
     state = await wrap(state)
     assert not state.participants[0].conditions

@@ -19,9 +19,16 @@ const { useInventoryRefresh } = await import("../hooks/use-inventory-refresh");
 const originalFetch = globalThis.fetch;
 const originalInterval = globalThis.setInterval;
 const originalClear = globalThis.clearInterval;
+const originalTimeout = globalThis.setTimeout;
+const originalClearTimeout = globalThis.clearTimeout;
+let deadline: { callback: () => void; at: number } | undefined;
 let now = 0;
 let interval: { callback: () => void; next: number; ms: number } | undefined;
-let requests: { resolve: (response: Response) => void; reject: (error: Error) => void }[];
+let requests: {
+  resolve: (response: Response) => void;
+  reject: (error: Error) => void;
+  signal?: AbortSignal | null;
+}[];
 let tree: ReactTestRenderer | undefined;
 const item = (id: string) => ({ id, name: id, slot_info: { quantity: 1 } });
 const snapshot = (id: string, owner = "A") =>
@@ -47,20 +54,35 @@ async function tick(ms: number) {
       interval.next += interval.ms;
       interval.callback();
     }
+    if (deadline && now >= deadline.at) {
+      const callback = deadline.callback;
+      deadline = undefined;
+      callback();
+    }
   });
 }
 beforeEach(() => {
   (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   now = 0;
   interval = undefined;
+  deadline = undefined;
+  globalThis.setTimeout = ((callback: () => void, ms: number) => {
+    if (ms !== 10000) return originalTimeout(callback, ms);
+    deadline = { callback, at: now + ms };
+    return -1;
+  }) as unknown as typeof setTimeout;
+  globalThis.clearTimeout = ((id: ReturnType<typeof setTimeout>) => {
+    if (Number(id) === -1) deadline = undefined;
+    else originalClearTimeout(id);
+  }) as typeof clearTimeout;
   requests = [];
   appState = "active";
   panelStore.getState().reset();
   authStore.setState({ phase: "authenticated", playerId: "A", token: "token-A" });
   globalThis.fetch = mock(
-    () =>
+    (_url: unknown, options?: RequestInit) =>
       new Promise<Response>((resolve, reject) => {
-        requests.push({ resolve, reject });
+        requests.push({ resolve, reject, signal: options?.signal });
       }),
   ) as unknown as typeof fetch;
   globalThis.setInterval = ((callback: () => void, ms: number) => {
@@ -79,6 +101,8 @@ afterEach(async () => {
   globalThis.fetch = originalFetch;
   globalThis.setInterval = originalInterval;
   globalThis.clearInterval = originalClear;
+  globalThis.setTimeout = originalTimeout;
+  globalThis.clearTimeout = originalClearTimeout;
 });
 test("opening any HUD refreshes, foreground polls at five seconds and allows one in-flight", async () => {
   await mount();
@@ -275,3 +299,63 @@ test("a phase-only auth ABA rejects the pending GET", async () => {
   expect(panelStore.getState().inventory).toEqual([]);
   expect(requests).toHaveLength(2);
 });
+
+test("accepted prior-owner inventory and error are cleared across real logout and failed new-owner refresh", async () => {
+  panelStore.getState().setInventory([{ id: "private_A" } as never]);
+  panelStore.getState().setInventoryRefreshError("A error");
+  await authStore.getState().logout();
+  expect(panelStore.getState().inventory).toEqual([]);
+  expect(panelStore.getState().inventoryRefreshError).toBeNull();
+  await authStore.getState().setAuthenticated("token-B", "account-B", "B");
+  panelStore.getState().openPanel();
+  await mount();
+  await flush(() => requests[0].reject(new Error("offline")));
+  expect(panelStore.getState().inventory).toEqual([]);
+  expect(panelStore.getState().inventoryRefreshError).toContain("Inventory refresh failed");
+});
+
+test.each(["fetch", "body"])(
+  "never-settling %s has a deadline and scheduled retry",
+  async (stage) => {
+    panelStore.getState().openPanel();
+    await mount();
+    if (stage === "body") {
+      await flush(() =>
+        requests[0].resolve({ ok: true, json: () => new Promise(() => {}) } as Response),
+      );
+    }
+    await tick(5000);
+    expect(requests).toHaveLength(1);
+    await tick(5000);
+    expect(panelStore.getState().inventoryRefreshError).toContain("Inventory refresh failed");
+    expect(requests[0].signal?.aborted).toBe(true);
+    await tick(5000);
+    expect(requests).toHaveLength(2);
+    await flush(() => requests[1].resolve(snapshot("recovered")));
+    expect(panelStore.getState().inventory[0]?.id).toBe("recovered");
+    expect(panelStore.getState().inventoryRefreshError).toBeNull();
+    if (stage === "fetch") {
+      await flush(() => requests[0].resolve(snapshot("late")));
+      expect(panelStore.getState().inventory[0]?.id).toBe("recovered");
+    }
+  },
+);
+
+test("direct player transition clears accepted prior-owner contents and error", async () => {
+  panelStore.getState().setInventory([{ id: "private_A" } as never]);
+  panelStore.getState().setInventoryRefreshError("A error");
+  await authStore.getState().setAuthenticated("token-B", "account-B", "B");
+  expect(panelStore.getState().inventory).toEqual([]);
+  expect(panelStore.getState().inventoryRefreshError).toBeNull();
+});
+
+test.each(["loading", "unauthenticated"] as const)(
+  "leaving authentication for %s clears accepted data without a player-id change",
+  (phase) => {
+    panelStore.getState().setInventory([{ id: "private_A" } as never]);
+    panelStore.getState().setInventoryRefreshError("A error");
+    authStore.setState({ phase });
+    expect(panelStore.getState().inventory).toEqual([]);
+    expect(panelStore.getState().inventoryRefreshError).toBeNull();
+  },
+);

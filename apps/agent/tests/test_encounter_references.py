@@ -139,7 +139,13 @@ async def test_corrupt_catalog_fails_before_effects(defect, monkeypatch, mock_co
         "enemies": [{"id": "first", "creature_id": "bandit", "role": "standard"}],
     }
     if defect == "second_reference":
-        template["enemies"].append({"id": "second", "creature_id": "unknown", "role": "standard"})
+        template = {
+            **template,
+            "enemies": [
+                {"id": "first", "creature_id": "bandit", "role": "standard"},
+                {"id": "second", "creature_id": "unknown", "role": "standard"},
+            ],
+        }
     mutations, queries, content = _make_start_combat_mocks()
     content.get_encounter_template = AsyncMock(return_value=template)
     content.load_creature_enemy = load_creature_enemy
