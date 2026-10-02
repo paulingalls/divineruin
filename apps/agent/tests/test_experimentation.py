@@ -147,6 +147,7 @@ def _seams(*, recipes_list, known_ids, available, alloc_satisfied=True):
     """Assemble the mocked *_mod seams for the experiment tool. Returns (kwargs, conn, mods)."""
     db_mod, conn = make_db_mod()
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", **SAMPLE_PLAYER})
     queries.get_player_materials = AsyncMock(return_value=available)
     queries.get_player_known_recipe_ids = AsyncMock(return_value=list(known_ids))

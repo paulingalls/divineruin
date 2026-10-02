@@ -129,6 +129,7 @@ async def test_guest_crafts_from_own_recipe_materials_and_slot():
         get_inventory_item=None,
         get_player_known_recipe_ids=None,
         get_accessible_workspaces=None,
+        get_player_inventory=[],
         get_player_materials=None,
     )
     queries.get_player.side_effect = player_by_id
@@ -297,6 +298,7 @@ async def test_stale_crafting_create_activity():
         get_inventory_item=None,
         get_player_known_recipe_ids=None,
         get_accessible_workspaces=None,
+        get_player_inventory=[],
         get_player_materials=None,
     )
     queries.get_player.side_effect = player_by_id

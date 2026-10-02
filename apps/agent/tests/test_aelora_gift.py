@@ -159,7 +159,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
             lifecycle = _live_party(ctx.userdata, "guest", *(["player_1"] if present == "host_live" else []))
             actor = ctx.userdata._bind_authenticated_actor("guest", 1, lambda _pid, _gen: None)
         row = {**player("aelora"), "player_id": "guest" if guest_mode else "player_1", "flags": {}}
-        queries = MagicMock(get_player=AsyncMock(return_value=row))
+        queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]), get_player=AsyncMock(return_value=row))
         mutations = MagicMock(
             update_skill_advancement=AsyncMock(),
             set_player_flag=AsyncMock(),

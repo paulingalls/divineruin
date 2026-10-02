@@ -195,6 +195,7 @@ class TestUpdateQuest:
         mock_content.get_quest = AsyncMock(return_value=quest)
         mock_content.get_item = AsyncMock(return_value=None)
         mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_queries.get_player_quest = AsyncMock(return_value=player_quest)
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_mutations = MagicMock()

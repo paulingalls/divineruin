@@ -109,7 +109,6 @@ def _combat_mocks():
     mutations.update_player_hp = AsyncMock()
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     return mutations, queries, break_mod
@@ -273,6 +272,7 @@ async def test_gather_tool_consumes_and_persists_atomically():
 
     player = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")}
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_player = AsyncMock(return_value=player)
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()
@@ -312,6 +312,7 @@ async def test_gather_tool_no_condition_does_not_persist():
     from gathering_tools import _check_gather_impl
 
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()
