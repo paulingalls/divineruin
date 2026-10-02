@@ -48,7 +48,7 @@ test.describe("Session panel interactions", () => {
     await expect(sessionPage.page.getByText("INVENTORY", { exact: true })).not.toBeVisible();
   });
 
-  test("inventory_updated replaces inventory items", async ({ sessionPage }) => {
+  test("inventory_updated replaces inventory items", async ({ sessionPage, testCharacter }) => {
     await sessionPage.injectSessionInit();
 
     // Initial inventory from session_init has Health Potion and Iron Longsword
@@ -60,6 +60,8 @@ test.describe("Session panel interactions", () => {
     // Inject inventory_updated with different items
     await sessionPage.injectEvent({
       type: "inventory_updated",
+      player_id: testCharacter.playerId,
+      inventory_revision: "2",
       inventory: [
         {
           id: "item_silver_dagger",
@@ -94,5 +96,39 @@ test.describe("Session panel interactions", () => {
     await expect(sessionPage.page.getByText("Mana Potion")).toBeVisible();
     // Old items should be gone (inventory is replaced, not merged)
     await expect(sessionPage.page.getByText("Health Potion")).not.toBeVisible();
+
+    await sessionPage.closePanel();
+    for (const scope of [
+      { inventory_revision: "3" },
+      { player_id: "another-owner", inventory_revision: "3" },
+      { player_id: testCharacter.playerId, inventory_revision: "1" },
+    ]) {
+      await sessionPage.injectEvent({ type: "inventory_updated", inventory: [], ...scope });
+    }
+    await expect(
+      sessionPage.injectEvent({
+        type: "inventory_updated",
+        player_id: testCharacter.playerId,
+        inventory_revision: "invalid",
+        inventory: [],
+      }),
+    ).rejects.toThrow(/Invalid inventory snapshot/);
+    expect(
+      await sessionPage.page.evaluate(() => window.__DR!.inventory().map((item) => item.id)),
+    ).toEqual(["item_silver_dagger", "item_mana_potion"]);
+
+    const refresh = sessionPage.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/inventory" &&
+        response.request().method() === "GET",
+    );
+    await sessionPage.openPanel("inventory");
+    expect(await (await refresh).json()).toMatchObject({
+      player_id: testCharacter.playerId,
+      inventory_revision: "2",
+      inventory: [{ id: "item_silver_dagger" }, { id: "item_mana_potion" }],
+    });
+    await expect(sessionPage.page.getByText("Silver Dagger")).toBeVisible();
+    await expect(sessionPage.page.getByText("Mana Potion")).toBeVisible();
   });
 });
