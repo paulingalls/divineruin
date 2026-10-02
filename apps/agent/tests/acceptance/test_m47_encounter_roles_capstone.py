@@ -43,8 +43,6 @@ import encounter_budget
 import encounter_loot
 from encounter_roles import _is_active_ability
 
-# Oversized weapon: min damage 60 (60d6) exceeds the boss's derived 56 HP, so every declared attack
-# is a guaranteed one-shot regardless of the real damage roll — a deterministic, bounded loop.
 _BIG_WEAPON = {"name": "Capstone Greatblade", "damage": "100d6", "damage_type": "slashing", "properties": []}
 
 _ENCOUNTER = "cult_cell"
@@ -53,7 +51,7 @@ _BOSS_ID = "cult_leader"
 
 async def _seed_capstone_player(pool, player_id: str) -> None:
     """Seed a player with the one-shot weapon (combat_init builds the action_pool from equipment
-    entries carrying `damage`) and a huge HP pool so it survives the 7-enemy crossfire to victory."""
+    entries carrying `damage`) and a huge HP pool so it survives the enemy crossfire to victory."""
     await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
     await pool.execute(
         "UPDATE players SET data = jsonb_set(jsonb_set(data, '{equipment}', $2::jsonb), '{hp}', $3::jsonb) "
@@ -86,8 +84,6 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
     assert cs is not None and cs.beat == "declaration"
     assert await pool.fetchrow("SELECT 1 FROM combat_instances WHERE combat_id = $1", cs.combat_id) is not None
 
-    # Minion (cultist): half HP (floor 9*0.5=4), softened modifiers, NO active abilities (the basic
-    # attack is kept so it can still act, but actives are stripped — AC2).
     minion = _by_id(cs, "cultist_1")
     assert minion.role == "minion"
     assert minion.hp_current == 5 and minion.hp_max == 5
@@ -101,7 +97,6 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
     assert standard.hp_current == 19
     assert standard.attack_mod == 0 and standard.damage_mult == 1.0 and standard.dc_mod == 0
 
-    # Boss (cult_leader): doubled HP (28*2=56), boosted modifiers, one legendary action + signature.
     boss = _by_id(cs, _BOSS_ID)
     assert boss.role == "boss"
     assert boss.hp_current == 96 and boss.hp_max == 96
@@ -144,7 +139,7 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
     boss_legendary_through_rounds = False
     result: str | tuple = ""
     with patch("check_resolution.dice_roll", return_value=_d20(20)):  # every attack hits; damage is real
-        for _ in range(20):  # safety bound; 7 enemies one-shot one-per-round -> ~7 rounds
+        for _ in range(20):
             cs = ctx.userdata.combat_state
             living = [p for p in cs.participants if p.type == "enemy" and not p.is_fallen]
             target = next(t for t in target_order if any(p.id == t and not p.is_fallen for p in cs.participants))
@@ -164,7 +159,6 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
     _agent, json_str = result
     payload = json.loads(json_str)
     assert payload["outcome"] == "victory"
-    # Role XP multiplier applied ONCE across all roles: 2*150 + 4*int(40*0.5) + int(300*2.0) = 980.
     assert payload["xp_total"] == 425
     # humanoid standards + boss carry coin (minions add 0), so the pooled drop is positive (gold,
     # converted from the silver drop at the grant boundary — story-008).

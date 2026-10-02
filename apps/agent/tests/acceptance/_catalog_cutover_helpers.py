@@ -67,12 +67,12 @@ async def started(reset_db_pool, monkeypatch):
     pool = await db.get_pool()
     sessions = []
 
-    async def start(encounter_id, level=None, companion=None):
+    async def start(encounter_id, level=None, companion=None, player_class="warrior"):
         pid = f"cutover_{uuid4().hex}"
         await seed_player(pool, player_id=pid, class_="warrior")
         level = level or TARGETS[encounter_id][0]
         created = build_character_data(
-            "Strength reference", "draethar", "warrior", None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
+            "Strength reference", "draethar", player_class, None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
         )
         created["player_id"] = pid
         await pool.execute("UPDATE players SET data = $2::jsonb WHERE player_id = $1", pid, json.dumps(created))
@@ -86,7 +86,7 @@ async def started(reset_db_pool, monkeypatch):
                 conn=cast(asyncpg.Connection, conn),
                 pending_events=pending_events,
             )
-        hp = calculate_max_hp("warrior", level, attribute_modifier(created["attributes"]["constitution"]))
+        hp = calculate_max_hp(player_class, level, attribute_modifier(created["attributes"]["constitution"]))
         await pool.execute(
             "UPDATE players SET data = jsonb_set(data, '{hp}', $2::jsonb) WHERE player_id = $1",
             pid,
@@ -159,3 +159,135 @@ async def assert_boundary_result(ctx, result, combat_id, companion, xp_before):
         raise AssertionError("unknown boundary result")
     assert packets, "boundary must produce usable packets"
     assert any(packet.get("actor_id") == companion for packet in packets), "companion must participate"
+
+
+async def complete_reference_combat(ctx):
+    from acceptance._capstone_helpers import _d20, _resolve_round
+
+    import combat_turn
+
+    combat_id = ctx.userdata.combat_state.combat_id
+    with patch("check_resolution.dice_roll", return_value=_d20(20)), reference_damage():
+        for _ in range(20):
+            state = ctx.userdata.combat_state
+            actor = state.get_participant(ctx.userdata.player_id)
+            target = next(p for p in state.participants if p.type == "enemy" and not p.is_fallen)
+            await combat_turn._declare_phase_impl(
+                ctx, {actor.id: {"type": "attack", "action": actor.action_pool[0]["name"], "target_id": target.id}}
+            )
+            result = await _resolve_round(ctx)
+            if isinstance(result, tuple):
+                assert json.loads(result[1])["outcome"] == "victory"
+                assert ctx.userdata.combat_state is None
+                assert await db_mutations.load_combat_state(combat_id) is None
+                return
+    raise AssertionError("referenced encounter did not reach a committed victory")
+
+
+async def assert_catalog_effects(started):
+    from acceptance._capstone_helpers import _d20, _resolve_round
+    from livekit.agents.llm import ToolError
+
+    import combat_turn
+    import conditions
+    from combat_marks import attack_bonus
+
+    for encounter, enemy_id, name, condition, face in [
+        ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone", 1),
+        ("ruins_mawling_pair", "mawling_1", "Lunge", "grappled", 13),
+    ]:
+        ctx, roster = await started(encounter)
+        pid = ctx.userdata.player_id
+        produced = next(p for p in roster["participants"] if p["id"] == enemy_id)
+        assert name in produced["actions"]
+        await combat_turn._declare_phase_impl(
+            ctx, {pid: {"type": "defend"}, enemy_id: {"type": "attack", "action": name, "target_id": pid}}
+        )
+        with patch("check_resolution.dice_roll", return_value=_d20(face)), reference_damage():
+            result = await _resolve_round(ctx)
+        packet = next(p for p in result["packets"] if p["actor_id"] == enemy_id)
+        assert packet["condition_inflicted"] == condition
+        state = ctx.userdata.combat_state
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert saved is not None and saved.to_dict() == state.to_dict()
+        player = saved.get_participant(pid)
+        assert player is not None
+        assert conditions.has_condition(player.conditions, condition)
+        if condition == "grappled":
+            assert next(c for c in player.conditions if c["type"] == condition)["source"] == enemy_id
+            with pytest.raises(ToolError, match="grappled"):
+                await combat_turn._declare_phase_impl(ctx, {pid: {"type": "retreat"}})
+            await combat_turn._declare_phase_impl(
+                ctx, {pid: {"type": "maneuver", "maneuver_intent": "escape", "target_id": enemy_id}}
+            )
+            with patch("random.randint", return_value=20):
+                escaped = await _resolve_round(ctx)
+            assert any(p.get("escape") == "escaped" for p in escaped["packets"])
+            assert not conditions.has_condition(ctx.userdata.combat_state.get_participant(pid).conditions, condition)
+
+    ctx, roster = await started("ashmark_patrol")
+    pid, source_id = ctx.userdata.player_id, "ashmark_sergeant"
+    producer = next(p for p in roster["participants"] if p["id"] == source_id)
+    assert {"name": "Rally", "kind": "command"} in producer["mark_actions"]
+    await combat_turn._declare_phase_impl(ctx, {source_id: {"type": "attack", "action": "Rally", "target_id": pid}})
+    import combat_marks
+
+    original_mark = combat_marks.resolve_mark_action
+
+    def observe_mark(state, source, target, kind, **kwargs):
+        outcome = original_mark(state, source, target, kind, **kwargs)
+        assert state.focus_marks[pid] == {"source_id": source_id, "kind": "command"}
+        assert attack_bonus(state, state.get_participant("ashmark_soldier_1"), target) == 2
+        return outcome
+
+    with patch("combat_marks.resolve_mark_action", side_effect=observe_mark) as mark:
+        result = await _resolve_round(ctx)
+    mark.assert_called_once()
+    assert any(p.get("kind") == "command" for p in result["packets"])
+    assert ctx.userdata.combat_state.focus_marks == {}
+
+    import db_queries
+    from ability_tools import _request_ability_activation_impl
+
+    ctx, roster = await started("ruins_mawling_pair", player_class="rogue")
+    pid = ctx.userdata.player_id
+    assert "Lunge" in next(p for p in roster["participants"] if p["id"] == "mawling_1")["actions"]
+    before = await db_queries.get_player(pid)
+    assert before is not None
+    from rules_engine import calculate_max_pools
+
+    pools = calculate_max_pools(
+        "rogue", before["level"], {k: attribute_modifier(v) for k, v in before["attributes"].items()}
+    )
+    assert pools.stamina is not None
+    pool = await db.get_pool()
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{stamina}', $2::jsonb) WHERE player_id = $1",
+        pid,
+        json.dumps({"current": pools.stamina, "max": pools.stamina}),
+    )
+    before = await db_queries.get_player(pid)
+    assert before is not None
+    hp_before = ctx.userdata.combat_state.get_participant(pid).hp_current
+    await combat_turn._declare_phase_impl(ctx, {"mawling_1": {"type": "attack", "action": "Lunge", "target_id": pid}})
+    with patch("check_resolution.dice_roll", return_value=_d20(13)), reference_damage():
+        for _ in range(16):
+            raw = await combat_turn._resolve_phase_impl(ctx)
+            assert isinstance(raw, str), "reaction combat must continue"
+            payload = json.loads(raw)
+            window = payload.get("next", {}).get("waiting_on")
+            if window and window["stage"] == "post_roll":
+                assert "rogue_slippery" in ctx.userdata.combat_state.get_participant(pid).reaction_ids
+                with ctx.userdata._bind_authenticated_actor(pid, 1, lambda *_args: None):
+                    await _request_ability_activation_impl(ctx, "rogue_slippery")
+                break
+        else:
+            raise AssertionError("catalog Lunge never offered a post-roll reaction")
+        result = await _resolve_round(ctx)
+    assert any(p.get("mechanical_effect") == "grapple_escaped" for p in result["packets"])
+    player = ctx.userdata.combat_state.get_participant(pid)
+    assert player.hp_current < hp_before
+    assert not conditions.has_condition(player.conditions, "grappled")
+    after = await db_queries.get_player(pid)
+    assert after is not None
+    assert before["stamina"]["current"] - after["stamina"]["current"] == 3

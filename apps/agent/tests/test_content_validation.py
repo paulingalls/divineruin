@@ -235,11 +235,10 @@ _ENEMY_REQUIRED_FIELDS = (
     "catalog_audio",
 )
 _ATTRIBUTE_KEYS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
-# Fixed inline compositions within the audit-spec ranges.
 _NEW_ENCOUNTER_ENEMY_COUNTS = {
     "bandit_ambush": 5,  # 4 Bandits + 1 Bandit Captain
-    "ashmark_patrol": 3,  # 4 Ashmark Soldiers + 1 Ashmark Sergeant
-    "cult_cell": 4,  # 2 Cult Fanatics + 4 Cultists + 1 Cult Leader
+    "ashmark_patrol": 3,
+    "cult_cell": 4,
     "hollow_corrupted_settlement": 4,
 }
 

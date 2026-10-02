@@ -31,7 +31,7 @@
   "invalid": [
     {
       "name": "id_empty",
-      "field": "id",
+      "field": "id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -46,7 +46,7 @@
     },
     {
       "name": "id_blank",
-      "field": "id",
+      "field": "id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -61,7 +61,7 @@
     },
     {
       "name": "id_type",
-      "field": "id",
+      "field": "id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -76,7 +76,7 @@
     },
     {
       "name": "id_null",
-      "field": "id",
+      "field": "id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -91,7 +91,7 @@
     },
     {
       "name": "id_missing",
-      "field": "id",
+      "field": "id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -105,7 +105,7 @@
     },
     {
       "name": "creature_id_empty",
-      "field": "creature_id",
+      "field": "creature_id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -120,7 +120,7 @@
     },
     {
       "name": "creature_id_blank",
-      "field": "creature_id",
+      "field": "creature_id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -135,7 +135,7 @@
     },
     {
       "name": "creature_id_type",
-      "field": "creature_id",
+      "field": "creature_id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -150,7 +150,7 @@
     },
     {
       "name": "creature_id_null",
-      "field": "creature_id",
+      "field": "creature_id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -165,7 +165,7 @@
     },
     {
       "name": "creature_id_missing",
-      "field": "creature_id",
+      "field": "creature_id must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -179,7 +179,7 @@
     },
     {
       "name": "role_empty",
-      "field": "role",
+      "field": "role must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -194,7 +194,7 @@
     },
     {
       "name": "role_blank",
-      "field": "role",
+      "field": "role must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -209,7 +209,7 @@
     },
     {
       "name": "role_type",
-      "field": "role",
+      "field": "role must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -224,7 +224,7 @@
     },
     {
       "name": "role_null",
-      "field": "role",
+      "field": "role must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -239,7 +239,7 @@
     },
     {
       "name": "role_missing",
-      "field": "role",
+      "field": "role must be a nonempty string",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -318,7 +318,7 @@
     },
     {
       "name": "enemies_empty",
-      "field": "enemies",
+      "field": "enemies must be a nonempty list",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -327,16 +327,18 @@
     },
     {
       "name": "enemies_type",
-      "field": "enemies",
+      "field": "enemies must be a nonempty list",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
-        "enemies": {}
+        "enemies": {
+          "not": "a list"
+        }
       }
     },
     {
       "name": "enemies_null",
-      "field": "enemies",
+      "field": "enemies must be a nonempty list",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -345,7 +347,7 @@
     },
     {
       "name": "enemies_missing",
-      "field": "enemies",
+      "field": "enemies must be a nonempty list",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1
@@ -353,7 +355,7 @@
     },
     {
       "name": "enemy_type",
-      "field": "enemy",
+      "field": "expected reference object",
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
@@ -735,6 +737,28 @@
             "creature_id": "hollow_shadeling",
             "role": "standard"
           }
+        ]
+      }
+    },
+    {
+      "name": "enemy_null",
+      "field": "expected reference object",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          null
+        ]
+      }
+    },
+    {
+      "name": "enemy_array",
+      "field": "expected reference object",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          []
         ]
       }
     }

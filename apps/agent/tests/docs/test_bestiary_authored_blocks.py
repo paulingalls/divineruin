@@ -120,9 +120,14 @@ def test_every_encounter_action_is_in_its_own_block():
         assert len(actions) == len(block["attacks"]) + len(block["actives"]), name
         assert "Seizing Grab" not in actions, name
         assert all("escape_dc" not in action for action in block["attacks"]), name
+        assert {a["name"] for a in source["action_pool"]} == {
+            a["name"] for a in (*block["attacks"], *block["actives"]) if a in block["attacks"] or "kind" in a
+        }, name
         for action in source["action_pool"]:
             assert action["name"] in actions, (name, action["name"])
             authored = actions[action["name"]]
+            for field in ("applies_condition", "save", "dc", "kind", "escape_dc", "advantage", "recharge", "duration"):
+                assert action.get(field) == authored.get(field), (name, action["name"], field)
             if "damage" in action:
                 assert authored["damage"] == action["damage"], (name, action["name"])
                 assert authored["damage_type"] == action["damage_type"], (name, action["name"])
@@ -186,3 +191,35 @@ def test_signature_preservation_falsifiers():
                         assert_pins(target, PINS[key])
         with pytest.raises(AssertionError):
             assert_sound_first("Grey shapes close the gap. A thunderous crack follows.", key)
+
+
+def test_action_mechanics_deletion_falsifiers(monkeypatch):
+    import sys
+    from copy import deepcopy
+
+    import pytest
+
+    sources = source_enemies()
+    for name, source in sources.items():
+        for index, action in enumerate(source["action_pool"]):
+            for field in (
+                None,
+                "applies_condition",
+                "save",
+                "dc",
+                "kind",
+                "escape_dc",
+                "advantage",
+                "recharge",
+                "duration",
+            ):
+                if field is not None and field not in action:
+                    continue
+                mutated = deepcopy(sources)
+                if field is None:
+                    mutated[name]["action_pool"].pop(index)
+                else:
+                    del mutated[name]["action_pool"][index][field]
+                monkeypatch.setattr(sys.modules[__name__], "source_enemies", lambda mutated=mutated: mutated)
+                with pytest.raises(AssertionError):
+                    test_every_encounter_action_is_in_its_own_block()

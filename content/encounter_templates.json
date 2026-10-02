@@ -168,7 +168,7 @@
   {
     "id": "cult_cell",
     "name": "Cult Cell",
-    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while two fanatics sway in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
+    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while a fanatic sways in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
     "difficulty": "hard",
     "enemies": [
       {
@@ -197,7 +197,7 @@
   {
     "id": "hollow_corrupted_settlement",
     "name": "Hollow-Corrupted Settlement",
-    "description": "The village still stands, after a fashion. Doors hang open on dark rooms, and the things that were neighbors drift between the houses. A Hollowed Knight stands in the square where a well used to be, mawlings circling its feet while shadelings pour from the broken windows at its silent command.",
+    "description": "The village still stands, after a fashion. Doors hang open on dark rooms, and the things that were neighbors drift between the houses. A Hollowed Knight stands in the square where a well used to be, a mawling circling its feet while shadelings pour from the broken windows at its silent command.",
     "difficulty": "hard",
     "enemies": [
       {

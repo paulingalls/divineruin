@@ -45,7 +45,7 @@ async def test_start_reference_failures_have_no_side_effects(case, monkeypatch, 
     from sample_fixtures import load_test_creature
 
     content.load_creature_enemy = load_test_creature
-    initiative = MagicMock()
+    initiative = MagicMock(wraps=combat_init.combat_resolution.roll_initiative)
     event = AsyncMock()
     sound = AsyncMock()
     monkeypatch.setattr(combat_init.combat_resolution, "roll_initiative", initiative)
@@ -142,7 +142,7 @@ async def test_corrupt_catalog_fails_before_effects(defect, monkeypatch, mock_co
     mutations, queries, content = _make_start_combat_mocks()
     content.get_encounter_template = AsyncMock(return_value=template)
     content.load_creature_enemy = load_creature_enemy
-    initiative = MagicMock()
+    initiative = MagicMock(wraps=combat_init.combat_resolution.roll_initiative)
     event, sound = AsyncMock(), AsyncMock()
     monkeypatch.setattr(combat_init.combat_resolution, "roll_initiative", initiative)
     monkeypatch.setattr(combat_init, "publish_game_event", event)
@@ -155,3 +155,122 @@ async def test_corrupt_catalog_fails_before_effects(defect, monkeypatch, mock_co
     for mock in (initiative, event, sound, mutations.save_combat_state, mock_combat_agent_factory):
         mock.assert_not_called()
     assert ctx.userdata.combat_state is None and not ctx.userdata.in_combat
+
+
+def assert_reference_fixture_walk(root):
+    import ast
+
+    paths = sorted(root.rglob("*.py"))
+    assert paths, "missing Python fixture corpus"
+    references = []
+    for path in paths:
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not isinstance(node, ast.Dict):
+                continue
+            for key, value in zip(node.keys, node.values, strict=True):
+                if not isinstance(key, ast.Constant) or key.value != "enemies" or not isinstance(value, ast.List):
+                    continue
+                for enemy in value.elts:
+                    if isinstance(enemy, ast.Dict):
+                        fields = {k.value for k in enemy.keys if isinstance(k, ast.Constant)}
+                        assert fields == {"id", "creature_id", "role"}, (path, enemy.lineno, fields)
+                        references.append((path, enemy.lineno))
+    assert references, "missing combat-entry fixture references"
+    return references
+
+
+def test_reference_corpora_and_discovered_fixture_absence():
+    assert len(CASES["invalid"]) >= 50 and len(CASES["valid"]) >= 2 and CASES["fixture_catalog"]
+    fixtures = assert_reference_fixture_walk(ROOT / "apps/agent/tests")
+    assert any(path.name == "sample_fixtures.py" for path, _ in fixtures)
+    assert any(path.name == "test_start_combat.py" for path, _ in fixtures)
+    for case in CASES["valid"]:
+        validate_encounter_references(case, CATALOG)
+
+
+def test_reference_fixture_walk_rejects_missing_empty_and_moved_flat_fixture(tmp_path):
+    with pytest.raises(AssertionError, match="missing Python"):
+        assert_reference_fixture_walk(tmp_path / "missing")
+    (tmp_path / "empty.py").write_text("x = {}")
+    with pytest.raises(AssertionError, match="missing combat-entry"):
+        assert_reference_fixture_walk(tmp_path)
+    moved = tmp_path / "new_directory"
+    moved.mkdir()
+    fixture = moved / "fixture.py"
+    fixture.write_text('x = {"enemies": [{"id": "one", "hp": 7}]}')
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+    fixture.write_text('x = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "standard"}]}')
+    assert assert_reference_fixture_walk(tmp_path) == [(fixture, 1)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "no_state",
+        "dead_player",
+        "no_save",
+        "stale_save",
+        "no_packets",
+        "no_companion",
+        "defeat",
+        "no_reward",
+        "live_victory",
+        "saved_victory",
+        "unpaid_victory",
+        "unknown",
+    ],
+)
+async def test_boundary_result_refuses_uncommitted_or_unusable_outcomes(defect, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from acceptance._catalog_cutover_helpers import assert_boundary_result
+    from combat._helpers import _make_combat_state
+    from sample_fixtures import make_context, make_mock_room
+
+    import db_mutations
+    import db_queries
+
+    ctx = make_context(room=make_mock_room())
+    state = _make_combat_state()
+    ctx.userdata.combat_state = state
+    load = AsyncMock(return_value=state)
+    monkeypatch.setattr(db_mutations, "load_combat_state", load)
+    monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"xp": 2}))
+    result = {"packets": [{"actor_id": "companion"}]}
+    if defect in {"defeat", "no_reward", "live_victory", "saved_victory", "unpaid_victory"}:
+        ctx.userdata.combat_state = None
+        load.return_value = None
+        outcome = {"outcome": "victory", "xp_total": 1}
+        result = (None, json.dumps(outcome))
+        await ctx.userdata.room.local_participant.publish_data(json.dumps({"packets": [{"actor_id": "companion"}]}))
+        if defect == "defeat":
+            outcome["outcome"] = "defeat"
+        elif defect == "no_reward":
+            outcome["xp_total"] = 0
+        elif defect == "live_victory":
+            ctx.userdata.combat_state = state
+        elif defect == "saved_victory":
+            load.return_value = state
+        elif defect == "unpaid_victory":
+            monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"xp": 1}))
+        result = (None, json.dumps(outcome))
+    elif defect == "no_state":
+        ctx.userdata.combat_state = None
+    elif defect == "dead_player":
+        player = state.get_participant(ctx.userdata.player_id)
+        assert player is not None
+        player.hp_current = 0
+    elif defect == "no_save":
+        load.return_value = None
+    elif defect == "stale_save":
+        load.return_value = _make_combat_state(player_hp=1)
+    elif defect == "no_packets":
+        result = {"packets": []}
+    elif defect == "no_companion":
+        result = {"packets": [{"actor_id": ctx.userdata.player_id}]}
+    elif defect == "unknown":
+        result = None
+    with pytest.raises(AssertionError):
+        await assert_boundary_result(ctx, result, state.combat_id, "companion", 1)

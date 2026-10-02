@@ -131,7 +131,7 @@ async def test_missing_catalog_row_has_no_side_effects(reset_db_pool, monkeypatc
     original = await query_creature_by_id("hollow_wisp")
     ctx = make_context(pid, room=make_mock_room())
     baseline = await pool.fetchval("SELECT count(*) FROM combat_instances")
-    initiative = MagicMock()
+    initiative = MagicMock(wraps=combat_init.combat_resolution.roll_initiative)
     monkeypatch.setattr(combat_init.combat_resolution, "roll_initiative", initiative)
     try:
         await pool.execute("DELETE FROM creatures WHERE id = $1", original["id"])
@@ -295,22 +295,9 @@ async def test_absent_companion_boundary(started, encounter_id, level):
 
 
 async def test_catalog_declarations_execute(started):
-    for encounter_id, enemy_id, name, kind in [
-        ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "attack"),
-        ("ruins_mawling_pair", "mawling_1", "Lunge", "attack"),
-        ("ashmark_patrol", "ashmark_sergeant", "Rally", "attack"),
-    ]:
-        ctx, roster = await started(encounter_id)
-        pid = ctx.userdata.player_id
-        produced = next(p for p in roster["participants"] if p["id"] == enemy_id)
-        assert name in produced["actions"]
-        await combat_turn._declare_phase_impl(
-            ctx, {pid: {"type": "defend"}, enemy_id: {"type": kind, "action": name, "target_id": pid}}
-        )
-        with patch("check_resolution.dice_roll", return_value=_d20(13)):
-            result = await _resolve_round(ctx)
-        payload = result
-        assert any(packet["actor_id"] == enemy_id and packet.get("action") == name for packet in payload["packets"])
+    from acceptance._catalog_cutover_helpers import assert_catalog_effects
+
+    await assert_catalog_effects(started)
 
 
 async def test_ashmark_stance_and_quest_identity(started):
@@ -337,12 +324,24 @@ async def test_ashmark_stance_and_quest_identity(started):
         for i, stage in enumerate(quest["stages"])
         if stage.get("completion_conditions", {}).get("encounter") == "hollow_patrol_greyvale"
     )
+    from acceptance._catalog_cutover_helpers import complete_reference_combat
+
+    victorious, _ = await started(quest["stages"][index]["completion_conditions"]["encounter"], level=14)
+    await complete_reference_combat(victorious)
+    pid = victorious.userdata.player_id
+    before = await db_queries.get_player(pid)
+    assert before is not None
     await db_mutations.set_player_quest(pid, quest["id"], {"current_stage": index, "status": "active"}, conn=pool)
-    result = json.loads(await _update_quest_impl(allied, quest["id"], index + 1))
+    result = json.loads(await _update_quest_impl(victorious, quest["id"], index + 1))
     assert result["quest_id"] == quest["id"]
     advanced = await db_queries.get_player_quest(pid, quest["id"])
     assert advanced is not None
     assert advanced["current_stage"] == index + 1
+    rewarded = await db_queries.get_player(pid)
+    assert rewarded is not None
+    assert rewarded["xp"] - before["xp"] == quest["stages"][index]["on_complete"]["xp"]
+    inventory = await db_queries.get_player_inventory(pid)
+    assert any(item["id"] == "hollow_bone_fragment" for item in inventory)
 
 
 @pytest.mark.parametrize("companion", ["companion_kael", "companion_lira", "companion_tam", "companion_sable"])
