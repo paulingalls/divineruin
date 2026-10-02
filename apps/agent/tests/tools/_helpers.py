@@ -76,3 +76,14 @@ SAMPLE_LOCATION = {
     "tags": ["guild"],
     "conditions": {},
 }
+
+
+def _social_mocks(recorded: str | None = "neutral"):
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    queries.get_npc_disposition = AsyncMock(return_value=recorded)
+    mutations = MagicMock()
+    mutations.set_npc_disposition = AsyncMock()
+    content = MagicMock()
+    content.get_npc = AsyncMock(return_value={"id": "merchant_1", "default_disposition": "neutral"})
+    return queries, mutations, content

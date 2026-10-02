@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat.test_voice_condition_restrictions import attack, charm_state
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import abilities
 import combat_ability
@@ -183,7 +184,7 @@ async def test_silenced_social_communication_refuses_before_queries():
 
     from social_tools import _check_social_impl
 
-    state = charm_state()
+    state = place_actors(charm_state(), "npc")
     assert state.spatial is not None
     state.spatial["zones"] = {"quiet": {"kind": "silence", "center_id": "other", "radius_ft": 0}}
     ctx = make_context()
@@ -252,7 +253,7 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
     import travel_tools
     from tools._helpers import SAMPLE_PLAYER
 
-    state = charm_state()
+    state = place_actors(charm_state(), "npc") if producer == "social" else charm_state()
     state.participants[0].conditions = [{"type": "deafened"}, {"type": "inspired"}]
     ctx = make_context()
     ctx.userdata.combat_state = state

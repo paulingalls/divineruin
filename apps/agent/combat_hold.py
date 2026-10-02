@@ -168,16 +168,9 @@ def _attack_action(state, head: dict) -> dict | None:
 
 
 def _replay_resolver(head: dict):
-    """A resolver that returns the HELD roll instead of rolling a new one.
+    from combat_attack_roll import held_reaction_ac
 
-    The apply half runs through the untouched ``_resolve_one_packet``, so a held action resolves
-    down exactly the trunk path — dramatic context, durability, riders, first_attack_resolved —
-    rather than through a second copy of that branch that could drift from it (AC6).
-
-    Fails loud if the effective AC has moved since the roll: the summary would otherwise report a
-    target_ac the roll was never made against. Nothing in this card changes AC mid-pause; a future
-    reaction that does (story-018) must re-roll or re-derive, never silently mismatch.
-    """
+    held_reaction_ac(head)
     attack_result, held_ac = deserialize_roll(head["roll"])
 
     def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0, target_conditions=()):
@@ -269,7 +262,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
 
                 if action is not None and head["roll"] is None:
                     _assert_single_swing(state, head, action)
-                    head["roll"] = serialize_roll(*_roll(state, head, action, packet_deps["resolver"]))
+                    contribution = combat_reaction_effect.ac_bonus(state, head)
+                    rolled = _roll(state, head, action, packet_deps["resolver"], contribution)
+                    head.update(roll=serialize_roll(*rolled), reaction_ac_bonus=contribution)
 
                 if head["roll"] is not None and POST_ROLL not in head["opened"]:
                     head["opened"].append(POST_ROLL)
@@ -316,7 +311,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
     return summaries
 
 
-def _roll(state, head: dict, action: dict, resolver):
+def _roll(state, head: dict, action: dict, resolver, reaction_ac_bonus):
     """Roll the held swing WITHOUT touching HP — the post-roll window is pre-damage."""
     declaration = _held_declaration(head)
     attacker = state.get_participant(head["actor_id"])
@@ -326,7 +321,7 @@ def _roll(state, head: dict, action: dict, resolver):
         attacker,
         action,
         target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + combat_reaction_effect.ac_bonus(state, head),
+        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
         enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
         is_first_attack_of_combat=not state.first_attack_resolved,
         resolver=resolver,

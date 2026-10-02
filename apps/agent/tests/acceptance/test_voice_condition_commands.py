@@ -26,7 +26,7 @@ from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import CombatParticipant, CombatState, SessionData
 from session_startup import GameplayInputOwner, gameplay_room_options
 
-CASES = ("deafened_sight", "silenced_cast", "silenced_legal", "outside_cast", "guest_sight")
+CASES = ("deafened_sight", "silenced_cast", "silenced_legal", "outside_cast", "guest_sight", "silenced_social")
 
 
 def scene(host, guest, case):
@@ -38,14 +38,22 @@ def scene(host, guest, case):
         actors[1 if case == "guest_sight" else 0].conditions = [
             {"type": "deafened", "duration": 3, "source": "fixture"}
         ]
+    if case == "silenced_social":
+        actors.append(
+            CombatParticipant(
+                id="merchant_1", name="Merchant", type="enemy", initiative=10, hp_current=20, hp_max=20, ac=12
+            )
+        )
     positions = {host: {"x": 0, "y": 0, "z": 0}, guest: {"x": 50, "y": 0, "z": 0}}
+    if case == "silenced_social":
+        positions["merchant_1"] = {"x": 50, "y": 0, "z": 0}
     return CombatState(
         combat_id="voice-" + host,
         participants=actors,
         initiative_order=[host, guest],
         spatial={
             "positions": positions,
-            "speeds": {host: 30, guest: 30},
+            "speeds": {pid: 30 for pid in positions},
             "locations": {"quiet_center": {"x": 0 if case.startswith("silenced") else 100, "y": 0, "z": 0}},
             "zones": {"quiet": {"kind": "silence", "center_id": "quiet_center", "radius_ft": 10}},
         },
@@ -74,6 +82,14 @@ def commands(case, host):
             ]
         },
     )
+    if case == "silenced_social":
+        return [
+            (
+                "check",
+                {"roll": {"kind": "social", "npc_id": "merchant_1", "skill": "persuasion", "difficulty": "easy"}},
+            ),
+            save,
+        ]
     if case == "silenced_cast":
         return [cast_spell, save]
     if case == "outside_cast":
@@ -160,7 +176,12 @@ async def test_microphone_reaches_real_gameplay_verb_and_dm_receipt(case, liveki
             assert any(turn.participant_identity == speaker and turn.text == "continue second" for turn in transcripts)
             assert_receipt_floor(model)
             outputs = list(model.receipts.values())
-            if case == "silenced_cast":
+            if case == "silenced_social":
+                refusal, legal = outputs
+                assert refusal.name == "check" and refusal.is_error and "silenced" in refusal.output
+                assert legal.name == "check" and not legal.is_error
+                assert "cannot speak" in model.narration
+            elif case == "silenced_cast":
                 refusal = next(output for output in outputs if output.name == "declare_phase")
                 assert refusal.is_error and "silenced" in refusal.output
                 assert "cannot speak" in model.narration

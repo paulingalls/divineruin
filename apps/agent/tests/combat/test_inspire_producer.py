@@ -1,5 +1,4 @@
 import json
-from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -55,12 +54,6 @@ def _inspire_ability(applies_condition: str | None = "inspired") -> Ability:
         narration_cue="A few ringing words.",
         applies_condition=applies_condition,
     )
-
-
-def _inspire_reaction() -> Ability:
-    """The bard_inspire row reshaped as a REACTION — the one ability shape that still reaches the
-    unlocked activation path mid-fight after story-055's non-reaction refusal on _impl."""
-    return replace(_inspire_ability(), ability_type="reaction", window="on_ally_targeted")
 
 
 def _bard(player_id: str = "bard_1", conditions_list: list | None = None) -> dict:
@@ -215,7 +208,7 @@ async def test_ooc_ability_no_applies_condition_does_not_persist():
 @pytest.mark.asyncio
 async def test_in_combat_producer_does_not_persist_to_players_data():
     response, cond_mut, _gp = await _activate(
-        _inspire_reaction(),
+        _inspire_ability(),
         caster=_bard(),
         in_combat=True,
         entry=ability_tools._request_ability_activation_unlocked,

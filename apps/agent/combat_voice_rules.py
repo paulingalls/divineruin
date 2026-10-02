@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from declarations import Declaration
     from session_data import CombatParticipant, CombatState
 
+import ability_voice_rules
 import combat_grapple
 import condition_voice_rules
 import spells
@@ -60,13 +61,19 @@ def guard_declaration(state: CombatState, actor: CombatParticipant, decl: Declar
                 base, _variant = ability
                 if base.spell_id is not None:
                     guard_spell(state, actor.id, spells.get_spell(base.spell_id), decl.target_id, decl.target_ids)
-                elif base.applies_condition == "inspired":
-                    condition_voice_rules.spoken_buff_targets("inspired", state, actor.id, targets)
-                elif base.applies_condition not in BENEFICIAL_CONDITIONS:
-                    require_hostile_targets(state, actor, targets)
+                else:
+                    if base.applies_condition == "inspired":
+                        targets = condition_voice_rules.spoken_buff_targets("inspired", state, actor.id, targets)
+                    ability_voice_rules.policy(base.id)
+                    if base.applies_condition != "inspired":
+                        ability_voice_rules.require_ability_delivery(base.id, state, actor.id, targets)
+                    if base.applies_condition not in BENEFICIAL_CONDITIONS:
+                        require_hostile_targets(state, actor, targets)
                 return
             if decl.action.lower() == "de_escalate":
-                require_speech(state, actor.id)
+                from combat_deescalation import eligible_argument_targets
+
+                eligible_argument_targets(state, actor.id)
             else:
                 guard_spell(state, actor.id, spells.get_spell(decl.action), decl.target_id, decl.target_ids)
         else:

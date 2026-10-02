@@ -16,6 +16,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import communication_voice_rules
 import condition_voice_rules
 import db
 import db_content_queries
@@ -30,7 +31,6 @@ from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
 from session_data import SessionData
-from spell_voice_rules import require_speech
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -66,17 +66,31 @@ async def _check_social_impl(
         raise ToolError(f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}")
 
     session: SessionData = context.userdata
-    try:
-        require_speech(session.combat_state, session.acting_player_id)
-    except ValueError as e:
-        raise ToolError(str(e)) from e
     player_id = session.acting_player_id
+    if session.combat_state is not None:
+        try:
+            communication_voice_rules.require_delivery(
+                communication_voice_rules.CommunicationKind.SPOKEN, session.combat_state, player_id, [npc_id]
+            )
+        except ValueError as e:
+            raise ToolError(str(e)) from e
     player = await queries.get_player(player_id)
     if player is None:
         raise ToolError(f"Player '{player_id}' not found.")
     # Same read-boundary guard as the skill/save modes (M4.4 story-008): a corrupt conditions
     # row otherwise reaches get_condition_effects as a raw KeyError, not a DM-narratable error.
     validated_player_conditions(player, player_id)
+
+    try:
+        communication_voice_rules.require_delivery(
+            communication_voice_rules.CommunicationKind.SPOKEN,
+            session.combat_state,
+            player_id,
+            [npc_id],
+            rows={player_id: player},
+        )
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
     roll = check_resolution.resolve_skill_check_dc(

@@ -9,13 +9,13 @@ from livekit.agents.llm import ToolError
 import ability_persistence
 import check_resolution
 import combat_resolution
+import communication_voice_rules
 import condition_voice_rules
 import conditions
 import event_types as E
 import social_resolution
 from combat_events import emit_or_publish
 from session_data import CombatParticipant, CombatState, SessionData
-from spell_voice_rules import require_speech
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
 _DEESCALATE_FOCUS_COST = 3
@@ -24,7 +24,24 @@ _DEESCALATE_FOCUS_COST = 3
 MAX_DEESCALATION_ROUNDS = 4
 
 
-def _gate_deescalation(player: dict, state) -> None:
+def eligible_argument_targets(state, speaker_id):
+    targets = [
+        p
+        for p in state.participants
+        if p.type == "enemy"
+        and not p.is_fallen
+        and state.deescalation_scene.cumulative_shift.get(p.id, 0) < combat_resolution.SURRENDER_THRESHOLD
+    ]
+    for target in targets:
+        communication_voice_rules.actor_conditions(state, target.id)
+    communication_voice_rules.require_source(state, speaker_id)
+    eligible = [target for target in targets if communication_voice_rules.can_hear(state, target.id)]
+    if not eligible:
+        raise communication_voice_rules.DeliveryRefused("No eligible enemies can hear the argument")
+    return eligible
+
+
+def _gate_deescalation(player: dict, state, *, round_counter: int | None = None) -> None:
     """Declare-time fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
 
     Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state writes so
@@ -32,7 +49,8 @@ def _gate_deescalation(player: dict, state) -> None:
     multiple rounds (M15 story-002), so the once-per-encounter MVP lockout becomes a per-round cap:
     once the scene has run MAX_DEESCALATION_ROUNDS rounds the group won't hear more. Focus is still
     spent (and gated) per round."""
-    if state.deescalation_scene.round_counter >= MAX_DEESCALATION_ROUNDS:
+    current_round = state.deescalation_scene.round_counter if round_counter is None else round_counter
+    if current_round >= MAX_DEESCALATION_ROUNDS:
         raise ToolError("The enemies have stopped listening — no more arguments will land.")
     have = (player.get("focus") or {}).get("current", 0)
     if have < _DEESCALATE_FOCUS_COST:
@@ -106,7 +124,13 @@ async def _resolve_deescalation_packet(
     # play this already fired at the declare-time gate (_prevalidate_ability_focus) with NO writes, so
     # a bad category never reaches here mid-phase; the check stays for direct callers/tests as a
     # defensive fail-loud boundary before any Focus spend.
-    require_speech(state, attacker.id)
+    targets = eligible_argument_targets(state, attacker.id)
+    pre_phase_round = (
+        session.combat_state.deescalation_scene.round_counter
+        if isinstance(session.combat_state, CombatState)
+        else state.deescalation_scene.round_counter
+    )
+    _gate_deescalation(player, state, round_counter=pre_phase_round)
     argument_type = _validate_argument_type(decl)
 
     have = (player.get("focus") or {}).get("current", 0)
@@ -137,7 +161,6 @@ async def _resolve_deescalation_packet(
     # threshold it is LATCHED — leaving it out of this round means a later bad roll can never regress it
     # below the threshold, so the whole-group gate can actually coincide. Combined with the resolver's
     # floor-at-0 (finding #1), a hostile holdout's progress can't bank negative either.
-    targets = [e for e in living if scene.cumulative_shift.get(e.id, 0) < combat_resolution.SURRENDER_THRESHOLD]
     per_enemy: list[dict] = []
     for e in targets:
         disposition = scene.enemy_dispositions.get(e.id, "hostile")
@@ -166,11 +189,6 @@ async def _resolve_deescalation_packet(
     # ``state`` is a deep copy), so a working counter still equal to the pre-phase value means no
     # earlier de_escalate advanced it this phase. When the session isn't a real CombatState (unit
     # drivers that pass ``state`` directly), fall back to always advancing — one packet per call there.
-    pre_phase_round = (
-        session.combat_state.deescalation_scene.round_counter
-        if isinstance(session.combat_state, CombatState)
-        else scene.round_counter
-    )
     if scene.round_counter == pre_phase_round:
         scene.round_counter += 1
     # Whole-group surrender: combat ends only when EVERY living enemy has crossed the threshold

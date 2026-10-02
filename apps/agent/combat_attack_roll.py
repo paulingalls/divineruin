@@ -83,3 +83,12 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
     }
+
+
+def held_reaction_ac(head: dict) -> int:
+    contribution = head.get("reaction_ac_bonus")
+    if type(contribution) is not int or contribution not in (0, 2):
+        raise ValueError(
+            "Rolled held action requires explicit valid reaction AC contribution; reset/reseed old snapshots"
+        )
+    return contribution
