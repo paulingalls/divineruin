@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[4]
 @pytest.mark.parametrize("fixture_name", ["postgres_container", "fresh_migrated_db", "both"])
 @pytest.mark.parametrize("exit_mode", ["kill", "normal"])
 def test_sweep_reaps_killed_postgres_fixture_but_preserves_live_owner(fixture_name, exit_mode):
-    from acceptance.conftest import _require_docker_or_skip
+    from acceptance._postgres_fixtures import _require_docker_or_skip
 
     _require_docker_or_skip()
     client = docker.from_env()
@@ -81,12 +81,12 @@ def test_sweep_reaps_killed_postgres_fixture_but_preserves_live_owner(fixture_na
 
 
 if __name__ == "__main__":
-    from acceptance import conftest
+    from acceptance import _postgres_fixtures
     from testcontainers.core.labels import SESSION_ID
 
     print(json.dumps(SESSION_ID), flush=True)
     fixture_names = ["postgres_container", "fresh_migrated_db"] if sys.argv[1] == "both" else [sys.argv[1]]
-    fixtures = [getattr(conftest, name).__wrapped__() for name in fixture_names]
+    fixtures = [getattr(_postgres_fixtures, name).__wrapped__() for name in fixture_names]
     client = docker.from_env()
     try:
         for fixture in fixtures:
