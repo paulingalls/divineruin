@@ -48,10 +48,23 @@ def _node(node_id: str, *, location_id: str, resource_type: str) -> dict:
 
 
 def _base_tables(nodes: list[dict], *, resource_table=None) -> dict[str, list[dict]]:
-    # A single valid location + a 2-material catalog; only gathering rows vary per test.
+    content = Path(__file__).resolve().parents[3] / "content"
+    encounter = json.loads((content / "encounter_templates.json").read_text())[0]
+    creature_ids = {enemy["creature_id"] for enemy in encounter["enemies"]}
+    creatures = [row for row in json.loads((content / "creatures.json").read_text()) if row["id"] in creature_ids]
+    loot_ids = {row["loot_table_id"] for row in creatures}
+    loot = [row for row in json.loads((content / "loot_tables.json").read_text()) if row["id"] in loot_ids]
+    drop_ids = {drop["item_id"] for row in loot for drop in row["drops"]}
+    items = json.loads((content / "items.json").read_text())
+    materials = json.loads((content / "materials_catalog.json").read_text())
     return {
+        "encounter_templates": [{"id": encounter["id"], "data": json.dumps(encounter)}],
+        "creatures": [{"id": row["id"], "data": json.dumps(row)} for row in creatures],
+        "loot_tables": [{"id": row["id"], "data": json.dumps(row)} for row in loot],
+        "items": [{"id": row["id"]} for row in items if row["id"] in drop_ids],
         "locations": [_loc("greyvale_north", resource_table=resource_table)],
-        "materials_catalog": [{"id": "medicinal_herb"}, {"id": "iron_ore"}],
+        "materials_catalog": [{"id": "medicinal_herb"}, {"id": "iron_ore"}]
+        + [{"id": row["id"]} for row in materials if row["id"] in drop_ids],
         "gathering_nodes": nodes,
     }
 

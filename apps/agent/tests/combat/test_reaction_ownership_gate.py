@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _activate, _resolution_state, _resolve_deps
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import load_test_creature, make_context
 
 import combat_phase
 import combat_turn
@@ -158,7 +158,15 @@ def _start_mocks(player_class, player_level=6):
         get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
-        get_encounter_template=AsyncMock(return_value={"id": "empty_road", "name": "Empty Road", "enemies": []})
+        load_creature_enemy=load_test_creature,
+        get_encounter_template=AsyncMock(
+            return_value={
+                "id": "empty_road",
+                "name": "Empty Road",
+                "recommended_party_level": 1,
+                "enemies": [{"id": "foe", "creature_id": "fixture_goblin", "role": "standard"}],
+            }
+        ),
     )
     return mutations, queries, content
 

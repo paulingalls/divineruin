@@ -314,3 +314,22 @@ def test_party_reward_multiplier_rejects_empty_party() -> None:
     # silent 0.5x nerf.
     with pytest.raises(ValueError, match="party_size"):
         party_reward_multiplier(0)
+
+
+def test_hollow_wrack_currency_contract():
+    class Fixed(random.Random):
+        def __init__(self, chance):
+            self.chance = chance
+
+        def random(self):
+            return self.chance
+
+        def randint(self, low, high):
+            return 3
+
+    for chance, standard, boss in ((0.149, 18, 76), (0.15, 0, 40)):
+        assert calculate_currency_drop("hollow_wrack", 3, "standard", Fixed(chance)) == standard
+        assert calculate_currency_drop("hollow_wrack", 3, "boss", Fixed(chance)) == boss
+        assert calculate_currency_drop("hollow_wrack", 3, "minion", Fixed(chance)) == 0
+    with pytest.raises(ValueError, match="Unknown creature category"):
+        calculate_currency_drop("hollow_bogus", 3, "standard", Fixed(0))

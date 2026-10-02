@@ -5,6 +5,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import (
     _WARRIOR_MILESTONES,
@@ -51,6 +52,8 @@ async def _complete_warrior_quest_stage(level, xp, xp_reward):
     content.get_quest = AsyncMock(return_value=quest)
     content.get_item = AsyncMock(return_value=None)
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
     queries.get_player = AsyncMock(return_value=player)
     mutations = MagicMock()
@@ -88,6 +91,8 @@ async def test_quest_level_up_payload_carries_archetype_hp_gains():
     content.get_quest = AsyncMock(return_value=QUEST)
     content.get_item = AsyncMock(return_value=None)
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player_quest = AsyncMock(return_value={"current_stage": 1})
     queries.get_player = AsyncMock(return_value=player)
     mutations = MagicMock()
@@ -175,6 +180,8 @@ def _completion_mocks(current_stage: int):
     content.get_item = AsyncMock(return_value={"name": "Prize"})
     content.get_scenes_batch = AsyncMock(return_value={})
     queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player_quest = AsyncMock(return_value={"current_stage": current_stage})
     queries.get_player = AsyncMock(return_value=GUILD_PLAYER)
     mutations = MagicMock()

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import load_test_creature, make_context
 
 import conditions
 import rules_engine
@@ -27,21 +27,11 @@ _ATTRS = {
 }
 
 _ENCOUNTER = {
+    "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
     "difficulty": "easy",
-    "enemies": [
-        {
-            "id": "goblin_1",
-            "name": "Goblin",
-            "level": 1,
-            "tier": 1,
-            "ac": 13,
-            "hp": 7,
-            "attributes": _ATTRS,
-            "action_pool": [],
-        },
-    ],
+    "enemies": [{"id": "goblin_1", "creature_id": "fixture_goblin", "role": "standard"}],
 }
 
 
@@ -67,6 +57,7 @@ async def _run_start(player):
         get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
+        load_creature_enemy=load_test_creature,
         get_encounter_template=AsyncMock(return_value=_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
     )

@@ -1,7 +1,4 @@
-// Encounter templates carry combat and currency overlays around the bestiary
-// CreatureStatBlock base in creature.ts. Their current enemy shape remains distinct.
-
-import type { Attributes } from "./role_archetype";
+import { validateActionExtensions, type ActionExtensions, type Recharge } from "./action_contracts";
 
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
 // so adding a role here updates both the type and the conformance test (which imports the array).
@@ -10,7 +7,13 @@ export type EncounterRole = (typeof ENCOUNTER_ROLE_VALUES)[number];
 
 // The kinds an enemy action resolves as, mirrored from apps/agent/encounter_actions.py (constraint 7).
 // An absent `kind` is "attack"; social mark actions never roll or carry strike fields.
-export const ENCOUNTER_ACTION_KIND_VALUES = ["attack", "command", "accusation"] as const;
+export const ENCOUNTER_ACTION_KIND_VALUES = [
+  "attack",
+  "command",
+  "accusation",
+  "healing",
+  "prepare_attack",
+] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 const pythonRepr = (value: unknown): string => {
   if (value === undefined || value === null) return "None";
@@ -52,8 +55,7 @@ export const RESISTANCE_TAG_VALUES = [
   "honorable",
 ] as const;
 
-// One entry in an enemy's action_pool, as stored in encounter_templates.json. Matches the shape
-// combat_init.py reads plus the content `description` blurb.
+// Runtime actions translated from the creature catalog.
 interface EncounterActionBase {
   name: string;
   properties: string[];
@@ -71,6 +73,12 @@ export interface EncounterAttackAction extends EncounterActionBase {
   dc?: number;
   half_on_success?: boolean;
   escape_dc?: number;
+  attack_source?: "catalog";
+  self_heal?: "damage_dealt";
+  to_hit?: number;
+  advantage?: boolean;
+  duration?: number;
+  recharge?: Recharge;
 }
 
 export interface EncounterCommandAction extends EncounterActionBase {
@@ -81,8 +89,26 @@ export interface EncounterAccusationAction extends EncounterActionBase {
   kind: "accusation";
 }
 
+export interface EncounterHealingAction extends EncounterActionBase {
+  kind: "healing";
+  target_group: "allied_bandits";
+  healing: string;
+  recharge?: Recharge;
+}
+
+export interface EncounterPrepareAttackAction extends EncounterActionBase {
+  kind: "prepare_attack";
+  advantage: true;
+  on_hit: { applies_condition: string; duration: number };
+  recharge?: Recharge;
+}
+
 export type EncounterAction =
-  EncounterAttackAction | EncounterCommandAction | EncounterAccusationAction;
+  | EncounterAttackAction
+  | EncounterCommandAction
+  | EncounterAccusationAction
+  | EncounterHealingAction
+  | EncounterPrepareAttackAction;
 
 export function encounterActionKind(action: {
   name?: unknown;
@@ -91,7 +117,7 @@ export function encounterActionKind(action: {
   const kind = action.kind === undefined ? "attack" : action.kind;
   if (!(ENCOUNTER_ACTION_KIND_VALUES as readonly unknown[]).includes(kind)) {
     throw new Error(
-      `action ${pythonRepr(action.name)} has unknown kind ${pythonRepr(kind)}; expected one of ('attack', 'command', 'accusation')`,
+      `action ${pythonRepr(action.name)} has unknown kind ${pythonRepr(kind)}; expected one of ('${ENCOUNTER_ACTION_KIND_VALUES.join("', '")}')`,
     );
   }
   return kind as EncounterActionKind;
@@ -112,9 +138,9 @@ const SAVE_KEYS = new Set([
   "cha",
 ]);
 
-// Mirrors combat_init_validation._validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
+// Mirrors combat_init_validation.validate_enemy_action_shapes; `enemy` is its `enemy 'id'` prefix.
 export function validateEncounterActionShape(
-  action: {
+  action: ActionExtensions & {
     name?: unknown;
     damage?: unknown;
     applies_condition?: unknown;
@@ -130,6 +156,7 @@ export function validateEncounterActionShape(
     enemy === undefined
       ? `action ${String(action.name)}`
       : `${enemy} action ${pythonRepr(action.name)}`;
+  validateActionExtensions(action, enemy?.replace(/^enemy '(.*)'$/, "$1") ?? "action");
   if (
     Array.isArray(action.properties) &&
     action.properties.includes("grapple") &&
@@ -170,11 +197,12 @@ const MARK_FORBIDDEN_FIELDS = ["damage", "damage_type", "applies_condition"] as 
 
 // Mirrors encounter_actions.validate_encounter_actions.
 export function validateEncounterActionKind(
-  action: { name?: unknown; kind?: unknown },
+  action: ActionExtensions & { name?: unknown; kind?: unknown },
   enemy: string,
 ): void {
   const kind = encounterActionKind(action);
-  if (kind === "attack") return;
+  validateActionExtensions(action, enemy.replace(/^enemy '(.*)'$/, "$1"));
+  if (kind !== "command" && kind !== "accusation") return;
   const carried = MARK_FORBIDDEN_FIELDS.filter((key) => key in action);
   if (carried.length)
     throw new Error(
@@ -199,25 +227,15 @@ export interface StanceGate {
 
 export interface EncounterEnemy {
   id: string;
-  name: string;
-  level: number;
-  tier: number;
-  ac: number;
-  hp: number;
-  attributes: Attributes;
-  action_pool: EncounterAction[];
-  xp_value: number;
-  sound_signature?: string;
-  // Encounter-role overlay (M4.7). Optional: an untagged enemy derives as "standard" (identity).
-  role?: EncounterRole;
-  signature_ability?: SignatureAbility; // Boss only
-  legendary_actions?: number; // Boss only (1/round)
+  creature_id: string;
+  role: "minion" | "standard" | "elite" | "boss";
 }
 
 export interface Encounter {
   id: string;
   name: string;
   description?: string;
+  recommended_party_level: number;
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
@@ -236,5 +254,39 @@ export function validateEncounterEnemyTier(
     throw new Error(
       `encounter '${encounterId}' enemy '${String(enemy.id)}' has invalid tier ${String(enemy.tier)}`,
     );
+  }
+}
+
+export function validateEncounterReferences(
+  encounter: unknown,
+  creatureIds?: ReadonlySet<string>,
+): void {
+  if (!encounter || typeof encounter !== "object") throw new Error("encounter must be an object");
+  const row = encounter as Record<string, unknown>;
+  const label = `encounter '${String(row.id)}'`;
+  const level = row.recommended_party_level;
+  if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 20)
+    throw new Error(`${label}: recommended_party_level must be an integer 1-20`);
+  if (!Array.isArray(row.enemies) || !row.enemies.length)
+    throw new Error(`${label}: enemies must be a nonempty list`);
+  const seen = new Set<string>();
+  for (const [index, value] of row.enemies.entries()) {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new Error(`${label} enemy ${index}: expected reference object`);
+    const enemy = value as Record<string, unknown>;
+    const context = `${label} enemy '${typeof enemy.id === "string" ? enemy.id : index}'`;
+    for (const field of ["id", "creature_id", "role"]) {
+      if (typeof enemy[field] !== "string" || !enemy[field].trim())
+        throw new Error(`${context}: ${field} must be a nonempty string`);
+    }
+    const extra = Object.keys(enemy).filter((key) => !["id", "creature_id", "role"].includes(key));
+    if (extra.length) throw new Error(`${context}: forbidden reference fields ${extra.join(", ")}`);
+    const id = enemy.id as string;
+    if (seen.has(id)) throw new Error(`${context}: duplicate id`);
+    seen.add(id);
+    if (!["minion", "standard", "elite", "boss"].includes(enemy.role as string))
+      throw new Error(`${context}: unsupported role '${String(enemy.role)}'`);
+    if (creatureIds && !creatureIds.has(enemy.creature_id as string))
+      throw new Error(`${context}: unknown creature_id '${String(enemy.creature_id)}'`);
   }
 }

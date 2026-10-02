@@ -16,6 +16,7 @@ from combat.test_combat_tx_integrity import (
     _no_durability_queries,
     _tx_victory_state,
 )
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 
 import combat_end
@@ -86,6 +87,16 @@ def _equipped_weapon_queries(weapon_id: str) -> MagicMock:
     queries = combat_end_queries()
     queries.get_player_inventory = AsyncMock(
         return_value=[
+            {
+                "id": weapon_id,
+                "type": "weapon",
+                "durability_tier": "standard",
+                "slot_info": {"equipped": True, "current_hits": 10},
+            }
+        ]
+    )
+    queries.get_inventory_snapshot = snapshot_query(
+        [
             {
                 "id": weapon_id,
                 "type": "weapon",

@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
 from creature_schema import validate_creature_stat_block
 from dice import roll
+from encounter_references import validate_encounter_references
 from rules_engine import SKILL_TIER_ORDER, SKILLS
 from world_effect_targets import is_valid_disposition_target
 
@@ -160,6 +161,12 @@ class InvalidContent(Exception):
 
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
+    reference_path = CONTENT_DIR / "encounter_templates.json"
+    catalog_path = CONTENT_DIR / "creatures.json"
+    for path in (reference_path, catalog_path):
+        if not path.exists() or not json.loads(path.read_text()):
+            raise InvalidContent(f"{path.name}: expected nonempty reference corpus")
+    catalog = {row["id"]: row for row in json.loads(catalog_path.read_text())}
     for filename, table in TABLE_MAP.items():
         filepath = CONTENT_DIR / filename
         if not filepath.exists():
@@ -182,6 +189,12 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
             ]
             if problems:
                 raise InvalidContent("\n".join(problems))
+        if table == "encounter_templates":
+            try:
+                for entity in entities:
+                    validate_encounter_references(entity, catalog)
+            except ValueError as error:
+                raise InvalidContent(str(error)) from error
         for entity in entities:
             await conn.execute(query, entity[pk_field], json.dumps(entity))
         counts[table] = len(entities)
@@ -194,6 +207,9 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     errors: list[str] = []
 
     creature_rows = await conn.fetch("SELECT id, data FROM creatures")
+    catalog = {row["id"]: json.loads(row["data"]) for row in creature_rows}
+    if not catalog:
+        errors.append("creatures: expected nonempty reference corpus")
     for row in creature_rows:
         errors.extend(f"{row['id']}: {error}" for error in validate_creature_stat_block(json.loads(row["data"])))
 
@@ -290,22 +306,28 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                 errors.append(f"Loot table '{row['id']}' references ambiguous drop '{item_ref}'")
 
     encounter_data_rows = await conn.fetch("SELECT id, data FROM encounter_templates")
+    if not encounter_data_rows:
+        errors.append("encounter_templates: expected nonempty reference corpus")
     for row in encounter_data_rows:
         data = json.loads(row["data"])
-        for enemy in data.get("enemies", []):
-            enemy_id = enemy.get("id", "?")
+        try:
+            validate_encounter_references(data, catalog)
+        except ValueError as error:
+            errors.append(str(error))
+            continue
+        for reference in data["enemies"]:
+            enemy = catalog[reference["creature_id"]]
+            label = f"Encounter '{row['id']}' enemy '{reference['id']}' creature '{reference['creature_id']}'"
             tier = enemy.get("tier")
             if type(tier) is not int or not 1 <= tier <= 4:
-                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' has invalid tier {tier!r}")
+                errors.append(f"{label} has invalid tier {tier!r}")
             if not enemy.get("category"):
-                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'category'")
+                errors.append(f"{label} is missing a 'category'")
             loot_ref = enemy.get("loot_table_id")
             if not loot_ref:
-                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'loot_table_id'")
+                errors.append(f"{label} is missing a 'loot_table_id'")
             elif loot_ref not in loot_table_ids:
-                errors.append(
-                    f"Encounter '{row['id']}' enemy '{enemy_id}' references unknown loot_table_id '{loot_ref}'"
-                )
+                errors.append(f"{label} references unknown loot_table_id '{loot_ref}'")
 
     # Gathering (M4.8 story-015): every gathering_node's location_id must resolve to a locations row
     # and its resource_type to a materials_catalog row; every location resource_table entry must also

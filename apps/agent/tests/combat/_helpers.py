@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from _combat_end_fixtures import combat_end_mutations
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_db_mod
 
 import combat_turn
@@ -191,6 +192,7 @@ def _resolve_deps(damage=3):
     wrapper runs without a real connection."""
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
+    queries.get_inventory_snapshot = snapshot_query([])
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
     queries.get_player = AsyncMock(

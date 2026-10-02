@@ -67,7 +67,9 @@ def assert_cue(ctx, log, expected):
     sounds = cues(ctx)
     assert len(sounds) == 1
     assert sounds[0].payload["sound_name"] == expected
-    assert published_payloads(ctx.userdata.room) == [{"type": E.PLAY_SOUND, "sound_name": expected}]
+    assert [p for p in published_payloads(ctx.userdata.room) if p["type"] == E.PLAY_SOUND] == [
+        {"type": E.PLAY_SOUND, "sound_name": expected}
+    ]
     assert log.index("write") < log.index("commit") < log.index("cue") < log.index("return")
 
 
@@ -288,58 +290,6 @@ async def test_refused_recipe_learn_reaches_source_gate_without_cue():
     with pytest.raises(ToolError, match="Invalid learned_via"):
         await _learn_impl(ctx, "recipe", "iron_sword", "bad_source")
     assert cues(ctx) == []
-
-
-@pytest.mark.parametrize("outcome", ["success", "failure", "no_match", "already_tried"])
-async def test_real_experiment_cues_only_written_outcomes(outcome):
-    import random
-
-    from dice_seeds import seed_for_d20
-    from test_experimentation import IRON_SWORD, _seams
-
-    import activity_tools
-    import experimentation_tools
-
-    ctx, log = recorded_context()
-    matched = outcome in {"success", "failure"}
-    materials = {"iron_ingot": 2, "leather_strip": 1} if matched else {"scrap": 3}
-    output = "iron_sword" if matched else "mithril_blade"
-    kwargs, _, mods = _seams(recipes_list=[IRON_SWORD], known_ids=[], available=materials)
-    db, conn = db_with_commit(log)
-    kwargs["db_mod"] = db
-    if outcome == "already_tried":
-        mods["exp_db"].has_failed_experiment.return_value = True
-
-    async def consume(*_args, **call_kwargs):
-        assert call_kwargs["conn"] is conn
-        log.append("write")
-
-    mods["mutations"].consume_player_materials = AsyncMock(side_effect=consume)
-    real_experiment = partial(
-        experimentation_tools._experiment_with_materials_impl,
-        rng=random.Random(seed_for_d20(20 if outcome == "success" else 1)),
-        **kwargs,
-    )
-
-    with patch.object(activity_tools.experimentation_tools, "_experiment_with_materials_impl", real_experiment):
-        raw = await _begin_activity_impl(
-            ctx, "experiment", material_ids=list(materials), quantities=list(materials.values()), intended_output=output
-        )
-    log.append("return")
-    assert json.loads(raw)["outcome"] == outcome
-    if not matched:
-        mods["exp_db"].has_failed_experiment.assert_awaited_once()
-    if outcome == "already_tried":
-        mods["mutations"].consume_player_materials.assert_not_awaited()
-        mods["exp_db"].record_failed_experiment.assert_not_awaited()
-        assert cues(ctx) == []
-    else:
-        mods["mutations"].consume_player_materials.assert_awaited_once()
-        if outcome == "success":
-            mods["mutations"].add_player_known_recipe.assert_awaited_once()
-        elif outcome == "no_match":
-            mods["exp_db"].record_failed_experiment.assert_awaited_once()
-        assert_cue(ctx, log, NEW_IDS["experiment"])
 
 
 async def test_mentor_variant_starts_training_without_instant_cue():

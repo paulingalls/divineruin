@@ -30,6 +30,7 @@ from action_sound_content import publish_action_sound
 from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
+from inventory_refresh import publish_inventory
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -149,8 +150,6 @@ async def _check_gather_impl(
 
     for name in found_names:
         session.record_item_found(player_id, name)
-    if counts:
-        await publish_action_sound(session, "action_gather")
 
     success = result.result != "nothing"
     await publish_game_event(
@@ -177,6 +176,10 @@ async def _check_gather_impl(
             skill=skill,
             event_bus=session.event_bus,
         )
+
+    if counts:
+        await publish_inventory(session, player_id, queries=queries)
+        await publish_action_sound(session, "action_gather")
 
     session.record_event(f"Gather ({skill}): {result.narrative_cue}")
     return json.dumps(

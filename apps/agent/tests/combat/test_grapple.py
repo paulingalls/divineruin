@@ -6,20 +6,20 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from combat._helpers import _ctx_at_resolution, _make_combat_state, _resolve_deps, _resolve_round
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import combat_conditions_persist
 import combat_prompts
 import combat_turn
 import conditions
 from check_resolution_attack import AttackResult
-from combat_init import _start_combat_impl, _validate_enemy_action_shapes
+from combat_init import _start_combat_impl, validate_enemy_action_shapes
 from combat_support import _participant_summary
 from declaration_payloads import ManeuverDecl
 from declarations import ManeuverIntent
 from tests.combat.test_start_combat import _make_start_combat_mocks
 
-_CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
+_CATALOG = catalog_encounters()
 
 
 def _encounter() -> dict:
@@ -39,10 +39,10 @@ def test_real_mawling_grapple_actions_author_escape_dc_13():
     ]
 
     assert [(enemy_id, action["name"], action.get("escape_dc")) for enemy_id, action in grapples] == [
-        ("mawling_1", "Seizing Grab", 13),
-        ("mawling_2", "Seizing Grab", 13),
+        ("mawling_1", "Lunge", 13),
+        ("mawling_2", "Lunge", 13),
     ]
-    _validate_enemy_action_shapes(_mawlings())
+    validate_enemy_action_shapes(_mawlings())
 
 
 @pytest.mark.asyncio
@@ -57,7 +57,16 @@ async def test_combat_start_validation_refuses_grapple_without_integer_escape_dc
     else:
         grab["escape_dc"] = bad_dc
     mutations, queries, content = _make_start_combat_mocks()
-    content.get_encounter_template.return_value = encounter
+    content.get_encounter_template.return_value = next(
+        row
+        for row in json.loads((Path(__file__).resolve().parents[4] / "content/encounter_templates.json").read_text())
+        if row["id"] == encounter["id"]
+    )
+
+    async def load(creature_id, **kwargs):
+        return next(enemy for enemy in encounter["enemies"] if enemy["id"] == kwargs["enemy_id"])
+
+    content.load_creature_enemy = load
 
     with pytest.raises(ToolError, match="escape_dc"):
         await _start_combat_impl(
@@ -80,7 +89,7 @@ def _grapple_round_state():
     state.beat = "resolution"
     state.pending_declarations = {
         "player_1": {"type": "defend"},
-        enemy.id: {"type": "attack", "action": "Seizing Grab", "target_id": "player_1"},
+        enemy.id: {"type": "attack", "action": "Lunge", "target_id": "player_1"},
     }
     return state
 
@@ -112,7 +121,7 @@ async def test_seizing_grab_hit_lands_sourced_grapple_and_surfaces_it_to_dm():
     state = _grapple_round_state()
     ctx = _ctx_at_resolution(state=state)
     result = await _resolve_round(ctx, **_resolve_deps(damage=2))
-    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Lunge")
     assert packet["damage"] == 2
     assert packet["condition_inflicted"] == "grappled"
     final_state = ctx.userdata.combat_state
@@ -136,7 +145,7 @@ async def test_seizing_grab_blocked_by_item_names_the_immunity_source():
 
     result = await _resolve_round(ctx, **_resolve_deps(damage=2))
 
-    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Lunge")
     assert packet["condition_immune"] == "grappled"
     assert packet["condition_immunity_source"] == "Anchor Ring"
     assert not conditions.has_condition(player.conditions, "grappled")
@@ -157,7 +166,7 @@ async def test_a_later_seizing_grab_keeps_the_prior_source_and_reports_grapple_h
     player = ctx.userdata.combat_state.get_participant("player_1")
     grapples = [condition for condition in player.conditions if condition["type"] == "grappled"]
     assert [condition["source"] for condition in grapples] == ["mawling_1"]
-    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Lunge")
     assert packet["grapple_held"] is True
     assert "condition_inflicted" not in packet
 
@@ -167,7 +176,7 @@ async def test_seizing_grab_that_drops_its_target_lands_no_grapple():
     state = _grapple_round_state()
     ctx = _ctx_at_resolution(state=state)
     result = await _resolve_round(ctx, **_resolve_deps(damage=25))
-    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Lunge")
     player = ctx.userdata.combat_state.get_participant("player_1")
     assert packet["target_fallen"] is True
     assert not conditions.has_condition(player.conditions, "grappled")
@@ -181,7 +190,7 @@ async def test_seizing_grab_miss_lands_nothing():
     deps = {**_resolve_deps(), "resolver": _miss_resolver()}
     result = await _resolve_round(ctx, **deps)
 
-    packet = next(packet for packet in result["packets"] if packet.get("action") == "Seizing Grab")
+    packet = next(packet for packet in result["packets"] if packet.get("action") == "Lunge")
     assert packet["hit"] is False
     assert "condition_inflicted" not in packet
     assert "grapple_held" not in packet

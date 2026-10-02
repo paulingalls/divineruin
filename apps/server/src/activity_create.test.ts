@@ -1,11 +1,18 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
 import {
   dbMockFactory,
-  setQueryStubs,
+  setQueryStubs as setBaseQueryStubs,
+  type QueryStub,
   resetMockDb,
   getCapturedQueries,
   makeRequest,
 } from "./activities-test-mock.ts";
+function setQueryStubs(stubs: QueryStub[]) {
+  setBaseQueryStubs([
+    ...stubs,
+    { match: "LEFT JOIN items", result: [{ inventory_revision: "7", item_id: null }] },
+  ]);
+}
 
 void mock.module("./db.ts", dbMockFactory);
 

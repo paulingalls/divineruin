@@ -1,0 +1,15 @@
+appId: com.divineruin.app
+---
+- openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Continue"
+    optional: true
+- openLink: ${ROUTE_URL}
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "HTTP quantity 2"
+    timeout: 50000
+- assertVisible: "Oak Wood, 2"
+- pressKey: Home

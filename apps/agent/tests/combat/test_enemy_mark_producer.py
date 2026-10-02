@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, load_test_creature, make_context
 
 from combat_init import _start_combat_impl
 from combat_prompts import COMBAT_PROMPT
@@ -24,7 +24,7 @@ def _encounter(encounter_id: str) -> dict:
 @pytest.mark.parametrize(
     ("encounter_id", "expected"),
     [
-        ("bandit_ambush", {"bandit_captain": [{"name": "Press the Attack", "kind": "command"}]}),
+        ("bandit_ambush", {}),
         (
             "ashmark_patrol",
             {
@@ -38,7 +38,6 @@ def _encounter(encounter_id: str) -> dict:
             "cult_cell",
             {
                 "cult_fanatic_1": [{"name": "Bless", "kind": "command"}],
-                "cult_fanatic_2": [{"name": "Bless", "kind": "command"}],
             },
         ),
         (
@@ -58,6 +57,7 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
         get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
+        load_creature_enemy=load_test_creature,
         get_encounter_template=AsyncMock(return_value=encounter),
         get_faction=AsyncMock(return_value=_THORNWATCH),
     )
@@ -68,7 +68,8 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
     assert isinstance(raw, tuple)
     roster = {participant["id"]: participant for participant in json.loads(raw[1])["participants"]}
 
-    for enemy in encounter["enemies"]:
+    produced = next(row for row in catalog_encounters() if row["id"] == encounter_id)
+    for enemy in produced["enemies"]:
         assert roster[enemy["id"]]["actions"] == [action["name"] for action in enemy["action_pool"]]
         assert roster[enemy["id"]]["mark_actions"] == expected.get(enemy["id"], [])
     assert roster["player_1"]["mark_actions"] == []

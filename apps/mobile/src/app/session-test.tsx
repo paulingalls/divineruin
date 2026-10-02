@@ -1,3 +1,5 @@
+import { useActivityActions } from "@/hooks/use-activity-actions";
+import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
 /**
  * Test-only session route — renders the HUD component tree without LiveKit.
  *
@@ -27,12 +29,18 @@ import { portraitStore } from "@/stores/portrait-store";
 import { BrandColors, Spacing } from "@/constants/theme";
 
 export default function SessionTestScreen() {
+  useInventoryRefresh();
+  const { startActivity, submitDecision } = useActivityActions();
   const router = useRouter();
   const phase = useStore(sessionStore, (s) => s.phase);
 
   // Expose handleGameEvent and helpers for Playwright injection; cleanup on unmount
   useEffect(() => {
+    if (!__DEV__) return;
     window.__DR = {
+      startActivity,
+      submitDecision,
+      inventory: () => panelStore.getState().inventory,
       handleGameEvent,
       openPanel: (tab: PanelTab) => panelStore.getState().openPanel(tab),
       closePanel: () => panelStore.getState().closePanel(),
@@ -47,7 +55,7 @@ export default function SessionTestScreen() {
       panelStore.getState().reset();
       portraitStore.getState().reset();
     };
-  }, []);
+  }, [startActivity, submitDecision]);
 
   // Navigate to summary screen when session ends (mirrors session.tsx)
   useEffect(() => {

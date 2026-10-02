@@ -7,54 +7,23 @@ resolver modifier fields (attack_mod/dc_mod/damage_mult) are populated. Fast lan
 mocked, no real PG.
 """
 
+from copy import deepcopy
+
 import pytest
-from sample_fixtures import make_context
+from sample_fixtures import TEST_CREATURES, make_context
 
 from combat_init import _start_combat_impl
+from creature_combat import translate_creature
 from tests.combat.test_start_combat import SAMPLE_PLAYER, _make_start_combat_mocks
 
-# A mixed-role encounter: one Minion (a basic attack + an active ability to strip) and one Boss
-# (an authored signature ability + a legendary scaffold).
 ROLE_ENCOUNTER = {
     "id": "role_mix",
     "name": "Role Mix",
     "difficulty": "hard",
+    "recommended_party_level": 7,
     "enemies": [
-        {
-            "id": "shadeling_1",
-            "name": "Shadeling",
-            "role": "minion",
-            "category": "hollow_drift",
-            "loot_table_id": "loot_hollow_drift",
-            "level": 2,
-            "tier": 1,
-            "ac": 13,
-            "hp": 16,
-            "attributes": {"strength": 8, "dexterity": 12, "constitution": 10},
-            "action_pool": [
-                {"name": "Claw", "damage": "1d6", "damage_type": "slashing", "properties": []},
-                {"name": "Wail", "damage": "0", "damage_type": "none", "properties": ["debuff"]},
-            ],
-            "xp_value": 50,
-            "resistance_tags": ["cowardly"],
-        },
-        {
-            "id": "warden_1",
-            "name": "Hollow Warden",
-            "role": "boss",
-            "category": "hollow_rend",
-            "loot_table_id": "loot_hollow_warden",
-            "level": 4,
-            "tier": 3,
-            "ac": 14,
-            "hp": 20,
-            "attributes": {"strength": 16, "dexterity": 10, "constitution": 16},
-            "action_pool": [
-                {"name": "Void Lash", "damage": "2d6", "damage_type": "necrotic", "properties": []},
-            ],
-            "xp_value": 200,
-            "signature_ability": {"name": "Corruption Pulse", "description": "AoE necrotic burst."},
-        },
+        {"id": "shadeling_1", "creature_id": "hollow_shadeling", "role": "minion"},
+        {"id": "warden_1", "creature_id": "hollow_warden", "role": "boss"},
     ],
 }
 
@@ -62,6 +31,27 @@ ROLE_ENCOUNTER = {
 async def _run_and_get_participants():
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     mock_content.get_encounter_template.return_value = ROLE_ENCOUNTER
+
+    async def load(creature_id, **kwargs):
+        row = deepcopy(TEST_CREATURES[creature_id])
+        if creature_id == "hollow_shadeling":
+            row["resistance_tags"] = ["cowardly"]
+            row["actives"] = [
+                {
+                    "name": "Wail",
+                    "description": "Test-only command.",
+                    "narration_cue": "A sharp crack rings out.",
+                    "audio": "test-wail",
+                    "recharge": {"kind": "round", "uses": 1},
+                    "kind": "command",
+                    "properties": [],
+                }
+            ]
+            base = translate_creature(row, **{**kwargs, "role": "standard"})
+            assert "Wail" in [action["name"] for action in base["action_pool"]]
+        return translate_creature(row, **kwargs)
+
+    mock_content.load_creature_enemy = load
     ctx = make_context()
     await _start_combat_impl(
         ctx,
@@ -81,10 +71,10 @@ async def test_minion_participant_is_halved_and_stripped():
     parts = await _run_and_get_participants()
     minion = parts["shadeling_1"]
     assert minion["role"] == "minion"
-    assert minion["hp_max"] == 8  # 16 * 0.5
-    assert minion["hp_current"] == 8
-    assert minion["ac"] == 12  # 13 - 1
-    assert {a["name"] for a in minion["action_pool"]} == {"Claw"}  # Wail (active) stripped
+    assert minion["hp_max"] == 4
+    assert minion["hp_current"] == 4
+    assert minion["ac"] == 9
+    assert {a["name"] for a in minion["action_pool"]} == {"Corrosive Touch"}
     assert minion["attack_mod"] == 0
     assert minion["dc_mod"] == -1
     assert minion["damage_mult"] == 0.75
@@ -96,14 +86,14 @@ async def test_boss_participant_is_doubled_with_signature_and_legendary():
     parts = await _run_and_get_participants()
     boss = parts["warden_1"]
     assert boss["role"] == "boss"
-    assert boss["hp_max"] == 40  # 20 * 2.0
-    assert boss["ac"] == 16  # 14 + 2
-    assert boss["xp_value"] == 400  # 200 * 2.0
+    assert boss["hp_max"] == 110
+    assert boss["ac"] == 17
+    assert boss["xp_value"] == 400
     assert boss["attack_mod"] == 2
     assert boss["dc_mod"] == 2
     assert boss["damage_mult"] == 1.5
     assert boss["legendary_actions"] == 1
-    assert boss["signature_ability"]["name"] == "Corruption Pulse"
+    assert boss["signature_ability"]["name"] == "Reality Collapse"
 
 
 @pytest.mark.asyncio
@@ -149,8 +139,7 @@ async def test_player_participant_has_empty_loot_fields():
 async def test_enemy_participants_carry_authored_tier():
     parts = await _run_and_get_participants()
     assert parts["shadeling_1"]["tier"] == 1
-    # Level 4 derives T1 (player bands) or T2 (the retired enemy-level bands); 3 is only authored.
-    assert parts["warden_1"]["tier"] == 3
+    assert parts["warden_1"]["tier"] == 2
 
 
 def test_saved_participant_requires_tier_key():

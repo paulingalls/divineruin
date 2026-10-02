@@ -11,6 +11,7 @@ import { TopBar } from "@/components/hud/top-bar";
 import { CatchUpList } from "@/components/catchup-list";
 import { ActivityLauncher } from "@/components/activity-launcher";
 import { PanelShell } from "@/components/hud/panel-shell";
+import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
 import { useCharacter } from "@/hooks/use-character";
 import { useCatchUp } from "@/hooks/use-catchup";
 import { useActivityActions } from "@/hooks/use-activity-actions";
@@ -25,6 +26,7 @@ import { BrandColors, MaxContentWidth, Spacing, Radius, FontStyles } from "@/con
 const LANDSCAPE_THRESHOLD = 1.2;
 
 export default function HomeScreen() {
+  useInventoryRefresh();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const isLandscape = width / height > LANDSCAPE_THRESHOLD;

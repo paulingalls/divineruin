@@ -168,6 +168,10 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
                 rng=FakeRng(die=4),
             )
 
+        snapshots = [e.payload for e in sink.captured if e.event_type == E.INVENTORY_UPDATED]
+        assert snapshots == [await db_queries.get_inventory_snapshot(_PLAYER_ID)]
+        assert [e.event_type for e in sink.captured][-3:] == [E.COMBAT_ENDED, E.INVENTORY_UPDATED, E.PLAY_SOUND]
+
         # Currency converted sp -> gp and added to players.data.gold (5 + 0.4 = 5.4).
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == pytest.approx(5.4)

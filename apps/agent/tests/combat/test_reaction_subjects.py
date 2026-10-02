@@ -1,9 +1,9 @@
 """Social reactions are offered only for the held action they can affect."""
 
-import json
 from pathlib import Path
 
 import pytest
+from sample_fixtures import catalog_encounters
 
 import combat_hold
 import reaction_spend
@@ -30,7 +30,7 @@ def _participant(pid: str, *, kind: str, reactions=(), category="", attributes=N
     )
 
 
-def _paused(*, action_kind="attack", stage=reaction_windows.PRE_ROLL, target_id="player_1", enemy=None):
+def _paused(*, action_kind="attack", stage=reaction_windows.PRE_ROLL, target_id: str | None = "player_1", enemy=None):
     player = _participant(
         "player_1",
         kind="player",
@@ -122,13 +122,14 @@ def test_objection_refuses_post_roll_and_hollow_actors():
 
 
 def test_hollow_identity_is_literal_and_covers_every_authored_hollow_category():
-    assert frozenset({"hollow_drift", "hollow_rend"}) == HOLLOW_CATEGORIES
+    assert frozenset({"hollow_drift", "hollow_rend", "hollow_wrack"}) == HOLLOW_CATEGORIES
     assert is_hollow(_participant("drift", kind="enemy", category="hollow_drift"))
     assert is_hollow(_participant("rend", kind="enemy", category="hollow_rend"))
+    assert is_hollow(_participant("wrack", kind="enemy", category="hollow_wrack"))
     assert is_hollow(_participant("echo", kind="temporary_hollowed", category=""))
     assert not is_hollow(_participant("new", kind="enemy", category="hollow_new"))
 
-    encounters = json.loads(_CONTENT.read_text())
+    encounters = catalog_encounters()
     authored = {
         enemy["category"]
         for encounter in encounters
@@ -157,3 +158,15 @@ def test_an_unresolvable_targeted_action_opens_no_reaction_window(declaration):
     state = _paused()
     state.held_actions = [{"seq": 0, "actor_id": "enemy_1", "declaration": declaration}]
     assert combat_hold._opens_windows(state, state.held_actions[0]) is False
+
+
+@pytest.mark.parametrize("kind", ["healing", "prepare_attack"])
+def test_healing_preparation_never_produce_attack_or_social_subjects(kind):
+    action = {"kind": kind}
+    assert reaction_windows.pre_roll_triggers(action) == ("on_enemy_action",)
+    assert reaction_windows.post_roll_triggers(action, hit=True) == ()
+    assert reaction_windows.post_roll_triggers(action, hit=False) == ()
+    state = _paused(action_kind=kind, target_id=None)
+    assert state.open_window is not None
+    state.open_window["triggers"] = list(reaction_windows.pre_roll_triggers(action))
+    assert _ids(state) == {"diplomat_objection"}

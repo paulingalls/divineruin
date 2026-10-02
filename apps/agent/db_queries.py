@@ -9,7 +9,7 @@ import logging
 import asyncpg
 
 import db
-from asset_utils import compute_item_image_url
+from db_inventory_snapshot import get_inventory_snapshot as get_inventory_snapshot
 from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.db")
@@ -213,8 +213,10 @@ async def get_targets_at_location(
 
 
 async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> list[dict]:
-    _conn = conn or await db.get_pool()
-    rows = await _conn.fetch(
+    from db_inventory_snapshot import project_inventory
+
+    connection = conn or await db.get_pool()
+    rows = await connection.fetch(
         """
         SELECT pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
         FROM player_inventory pi
@@ -224,22 +226,7 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
         """,
         player_id,
     )
-    results = []
-    for row in rows:
-        if row["item_data"] is not None:
-            item = json.loads(row["item_data"])
-        elif row["material_data"] is not None:
-            item = json.loads(row["material_data"])
-            item["type"] = "material"
-        else:
-            raise ValueError(f"Inventory id {row['item_id']!r} has no item or material catalog entry")
-        slot = json.loads(row["slot_data"])
-        item["slot_info"] = slot
-        image_url = compute_item_image_url(item)
-        if image_url:
-            item["image_url"] = image_url
-        results.append(item)
-    return results
+    return project_inventory(rows)
 
 
 async def get_skill_advancement(

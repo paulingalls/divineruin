@@ -21,7 +21,6 @@ import type {
   ResonanceState,
 } from "@/stores/hud-store";
 import {
-  parseInventoryItems,
   parseCombatant,
   parseGameEvent,
   VALID_MUSIC_STATES,
@@ -30,6 +29,7 @@ import {
   VALID_HOLLOW_ECHO_BANDS,
 } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
+import { applyInventorySnapshot } from "./inventory-refresh";
 import { handleSessionInit } from "./game-event-session-init";
 import { handleTranscriptPortraits, showCompanionPortrait } from "./transcript-portrait-gate";
 
@@ -480,11 +480,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case E.INVENTORY_UPDATED:
-      if (Array.isArray(event.inventory)) {
-        panelStore
-          .getState()
-          .setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
-      }
+      applyInventorySnapshot(event);
       break;
 
     default:

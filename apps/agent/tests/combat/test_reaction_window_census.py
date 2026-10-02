@@ -13,6 +13,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from sample_fixtures import catalog_encounters
+
 import abilities
 import reaction_windows
 
@@ -74,12 +76,10 @@ _WINDOW_CENSUS = {
 # The `grapple` branch hangs on two content rows that are the SAME action twice. A content edit
 # dropping Seizing Grab strands rogue_slippery and spy_slippery with nothing going red anywhere
 # else, so the carriers are pinned as a literal.
-_GRAPPLE_CARRIERS = [("mawling_1", "Seizing Grab"), ("mawling_2", "Seizing Grab")]
+_GRAPPLE_CARRIERS = [("mawling_1", "Lunge"), ("mawling_2", "Lunge"), ("mawling_1", "Lunge")]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
-    ("bandit_ambush", "bandit_captain", "Press the Attack"),
     ("cult_cell", "cult_fanatic_1", "Bless"),
-    ("cult_cell", "cult_fanatic_2", "Bless"),
     ("hollow_corrupted_settlement", "hollowed_knight", "Command Lesser"),
 ]
 _ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
@@ -94,12 +94,12 @@ def _reaction_rows() -> list[dict]:
 
 def _enemy_actions() -> list[dict]:
     """Every action_pool entry across all encounter templates — the whole enemy vocabulary."""
-    templates = json.loads((_CONTENT / "encounter_templates.json").read_text())
+    templates = catalog_encounters()
     return [action for tpl in templates for enemy in tpl.get("enemies", []) for action in enemy.get("action_pool", [])]
 
 
 def _grapple_carriers() -> list[tuple[str, str]]:
-    templates = json.loads((_CONTENT / "encounter_templates.json").read_text())
+    templates = catalog_encounters()
     return [
         (enemy["id"], action["name"])
         for tpl in templates
@@ -110,7 +110,7 @@ def _grapple_carriers() -> list[tuple[str, str]]:
 
 
 def _kind_carriers(kind: str) -> list[tuple[str, str, str]]:
-    templates = json.loads((_CONTENT / "encounter_templates.json").read_text())
+    templates = catalog_encounters()
     return sorted(
         (template["id"], enemy["id"], action["name"])
         for template in templates

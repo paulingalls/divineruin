@@ -14,9 +14,6 @@ from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
-# The six attribute save names (full form) — the SSOT for save-name validation across the resolver
-# (resolve_saving_throw) and the content load-guard (combat_init._validate_enemy_action_shapes),
-# so the two can't disagree on the valid format.
 VALID_SAVE_NAMES = frozenset(_ATTR_FULL.values())
 
 

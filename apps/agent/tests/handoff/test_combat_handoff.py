@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _combat_end_fixtures import combat_end_mutations
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
+from inventory_snapshot_fixture import snapshot_query
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, load_test_creature, make_db_mod
 from sample_fixtures import make_context as _make_context
 
 from base_agent import BaseGameAgent
@@ -25,7 +26,9 @@ class TestStartCombatHandoff:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")
@@ -53,7 +56,9 @@ class TestStartCombatHandoff:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")
@@ -89,7 +94,9 @@ class TestCombatHandoffContext:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")
@@ -124,7 +131,9 @@ class TestCombatHandoffContext:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")
@@ -166,7 +175,9 @@ class TestCombatHandoffContext:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")

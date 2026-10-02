@@ -129,6 +129,8 @@ async def test_guest_crafts_from_own_recipe_materials_and_slot():
         get_inventory_item=None,
         get_player_known_recipe_ids=None,
         get_accessible_workspaces=None,
+        get_player_inventory=[],
+        get_inventory_snapshot={"player_id": "player_2", "inventory_revision": "1", "inventory": []},
         get_player_materials=None,
     )
     queries.get_player.side_effect = player_by_id
@@ -174,6 +176,7 @@ async def test_guest_crafts_from_own_recipe_materials_and_slot():
             )
         )
     assert result["activity_id"] == "guest_craft"
+    queries.get_inventory_snapshot.assert_awaited_once_with("player_2")
     assert mutations.consume_player_materials.await_args.args[0] == "player_2"
     assert mutations.create_async_activity.await_args.args[0] == "player_2"
 
@@ -297,6 +300,8 @@ async def test_stale_crafting_create_activity():
         get_inventory_item=None,
         get_player_known_recipe_ids=None,
         get_accessible_workspaces=None,
+        get_player_inventory=[],
+        get_inventory_snapshot={"player_id": "player_2", "inventory_revision": "1", "inventory": []},
         get_player_materials=None,
     )
     queries.get_player.side_effect = player_by_id

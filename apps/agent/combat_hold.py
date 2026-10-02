@@ -16,17 +16,19 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 """
 
 import logging
-from dataclasses import replace
+from uuid import uuid4
 
 import combat_enhancers
-import combat_marks
+import combat_marks as combat_marks
 import combat_reaction_contest
 import combat_reaction_effect
+import combat_recharge
 import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
+from combat_action_availability import begin_execution, replay_valid
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
@@ -56,6 +58,7 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
     return [
         {
             "seq": seq,
+            "execution_id": uuid4().hex,
             "actor_id": packet.actor_id,
             "initiative": packet.initiative,
             "declaration": dict(state.pending_declarations.get(packet.actor_id, {})),
@@ -111,6 +114,13 @@ def _is_wasted(state, head: dict) -> bool:
     if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
+    action = _find_action(actor, declaration.action)
+    if (
+        action is not None
+        and not replay_valid(state, head, actor, action, declaration)
+        and not combat_recharge.available(actor, action)
+    ):
+        return True
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
@@ -118,25 +128,15 @@ def _is_wasted(state, head: dict) -> bool:
 
 
 def _opens_windows(state, head: dict) -> bool:
-    """Does this held action open reaction windows at all?
-
-    Only a held action that NAMES A TARGET does. Every trigger the pre-roll window emits is a
-    claim that someone was targeted (``on_targeted`` / ``on_ally_targeted``), so opening it for an
-    enemy DEFEND — or any other untargeted declaration declare_phase accepts for an enemy — would
-    ship a descriptor that contradicts itself: triggers saying a blow is coming beside a null
-    ``target_id``, and a player burning the round's one reaction on a foe that merely braced
-    (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
-
-    A targeted action must also name a real action_pool row. Pausing on a declaration that later
-    resolves to nothing would offer reactions for no action and can strand a legacy reload.
-    """
+    """Offer windows only for executable pool actions; declaration-only no-ops cannot be interrupted."""
     if _is_wasted(state, head):
         return False
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
-    return (
-        declaration.target_id is not None and actor is not None and _find_action(actor, declaration.action) is not None
-    )
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is not None and action_kind(action) in ("healing", "prepare_attack"):
+        return True
+    return declaration.target_id is not None and action is not None
 
 
 def _attack_action(state, head: dict) -> dict | None:
@@ -253,7 +253,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             if opens:
                 if PRE_ROLL not in head["opened"]:
                     head["opened"].append(PRE_ROLL)
-                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                    actor = state.get_participant(head["actor_id"])
+                    window_action = _find_action(actor, _held_declaration(head).action)
+                    assert window_action is not None
+                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(window_action))
                     if reaction_gate.offers_for_window(state, candidate):
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
@@ -313,7 +316,7 @@ def _roll(state, head: dict, action: dict, resolver):
     declaration = _held_declaration(head)
     attacker = state.get_participant(head["actor_id"])
     target = state.get_participant(declaration.target_id)
-    attacker = replace(attacker, attack_mod=attacker.attack_mod + combat_marks.attack_bonus(state, attacker, target))
+    action = begin_execution(state, attacker, action, declaration, head)
     return roll_attack(
         attacker,
         action,
@@ -322,6 +325,7 @@ def _roll(state, head: dict, action: dict, resolver):
         enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
         is_first_attack_of_combat=not state.first_attack_resolved,
         resolver=resolver,
+        combat_state=state,
     )
 
 
@@ -385,5 +389,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
+        _held_head=head if head.get("execution_receipt") is not None else None,
         **deps,
     )

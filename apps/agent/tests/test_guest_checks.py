@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import SAMPLE_PLAYER, FixedRng, make_context, make_db_mod
 
 from check_discovery import _check_discover_impl
@@ -38,7 +39,7 @@ def actors():
 def setup(rows):
     ctx = make_context(party_member_ids=["player_2"])
     ctx.userdata.event_bus = MagicMock()
-    queries = MagicMock()
+    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([]))
     queries.get_player = AsyncMock(side_effect=lambda pid: rows[pid])
     return ctx, queries
 

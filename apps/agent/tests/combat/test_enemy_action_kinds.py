@@ -7,7 +7,6 @@ save-based condition row instead (test_hold_person_paralysis.py).
 """
 
 import ast
-import json
 import random
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import check_resolution_attack
 import combat_hold
@@ -24,7 +23,7 @@ from combat_phase import ResolutionPacket
 from declarations import Declaration, DeclarationType
 
 _AGENT_DIR = Path(__file__).resolve().parents[2]
-_CATALOG = json.loads((_AGENT_DIR.parents[1] / "content" / "encounter_templates.json").read_text())
+_CATALOG = catalog_encounters()
 
 
 def _content_actions() -> list[tuple[str, str, dict]]:
@@ -66,9 +65,7 @@ def test_the_five_orders_are_the_command_carriers():
     )
     assert carriers == [
         ("ashmark_patrol", "ashmark_sergeant", "Rally"),
-        ("bandit_ambush", "bandit_captain", "Press the Attack"),
         ("cult_cell", "cult_fanatic_1", "Bless"),
-        ("cult_cell", "cult_fanatic_2", "Bless"),
         ("hollow_corrupted_settlement", "hollowed_knight", "Command Lesser"),
     ]
 

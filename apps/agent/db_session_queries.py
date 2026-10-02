@@ -101,7 +101,7 @@ async def get_session_init_payload(player_id: str) -> dict:
 
     location, inventory, quests, map_progress = await asyncio.gather(
         db_content_queries.get_location(location_id) if location_id else asyncio.sleep(0),
-        db_queries.get_player_inventory(player_id),
+        db_queries.get_inventory_snapshot(player_id),
         db_queries.get_active_player_quests(player_id),
         db_activity_queries.get_player_map_progress(player_id),
     )
@@ -126,7 +126,7 @@ async def get_session_init_payload(player_id: str) -> dict:
         "character": player,
         "location": location if location_id else None,
         "quests": quests,
-        "inventory": inventory,
+        **inventory,
         "map_progress": map_progress,
         "world_state": {"time": "evening"},
         "portraits": portraits,

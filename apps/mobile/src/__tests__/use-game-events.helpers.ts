@@ -1,3 +1,4 @@
+import { authStore } from "@/stores/auth-store";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore, type CharacterSummary } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
@@ -36,6 +37,7 @@ export const SAMPLE_CHARACTER: CharacterSummary = {
 };
 
 export function resetStores(): void {
+  authStore.setState({ phase: "unauthenticated", playerId: null, token: null, accountId: null });
   sessionStore.getState().reset();
   characterStore.getState().clear();
   hudStore.getState().reset();

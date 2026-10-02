@@ -6,6 +6,7 @@ from pathlib import Path
 
 import asyncpg
 import pytest
+from test_creature_spec_pins_encounter_authored import SIGNATURE_PINS
 
 import db
 from creature_catalog import CreatureNotFoundError, query_creature_by_id, query_creatures_by_region
@@ -48,6 +49,21 @@ def test_catalog_columns_and_indexes(fresh_migrated_db):
             await seed_content.seed(conn)
             rows = await conn.fetch("SELECT id, data, name, category, tier, level FROM creatures ORDER BY id")
             assert_catalog_rows(rows)
+            for key, pin in SIGNATURE_PINS.items():
+                matches = [row for row in rows if row["id"] == key]
+                assert len(matches) == 1
+                assert json.loads(matches[0]["data"])["signature_ability"] == pin
+                for cue in (None, ""):
+                    damaged_signature = {**pin}
+                    if cue is None:
+                        del damaged_signature["narration_cue"]
+                    else:
+                        damaged_signature["narration_cue"] = cue
+                    payload = json.loads(matches[0]["data"])
+                    payload["signature_ability"] = damaged_signature
+                    await conn.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", key, json.dumps(payload))
+                    assert f"{key}: signature_ability.narration_cue: invalid" in await seed_content.validate(conn)
+                await conn.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", key, matches[0]["data"])
             for row in rows:
                 data = json.loads(row["data"])
                 assert (row["name"], row["category"], row["tier"], row["level"]) == (
@@ -82,6 +98,8 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
                 return conn
 
             monkeypatch.setattr(db, "get_pool", get_pool)
+            for key, pin in SIGNATURE_PINS.items():
+                assert (await query_creature_by_id(key))["signature_ability"] == pin
             shadeling = await query_creature_by_id("hollow_shadeling")
             assert shadeling["id"] == "hollow_shadeling"
             assert shadeling["regions"] == ["ashmark", "greyvale"]
@@ -103,6 +121,26 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
             assert "scratch_tier_two" in greyvale_tier_two
             assert not greyvale_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
             assert "scratch_tier_two" not in {row["id"] for row in await query_creatures_by_region("ashmark")}
+        finally:
+            await conn.close()
+
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize("creature_id", list(SIGNATURE_PINS))
+def test_signature_survives_real_seed_and_query(fresh_migrated_db, monkeypatch, creature_id):
+    async def check():
+        conn = await asyncpg.connect(fresh_migrated_db)
+        try:
+            await seed_content.seed(conn)
+            raw = await conn.fetchval("SELECT data FROM creatures WHERE id = $1", creature_id)
+            assert json.loads(raw)["signature_ability"] == SIGNATURE_PINS[creature_id]
+
+            async def get_pool():
+                return conn
+
+            monkeypatch.setattr(db, "get_pool", get_pool)
+            assert (await query_creature_by_id(creature_id))["signature_ability"] == SIGNATURE_PINS[creature_id]
         finally:
             await conn.close()
 

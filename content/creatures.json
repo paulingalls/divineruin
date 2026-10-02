@@ -538,8 +538,18 @@
         "name": "Dirty Fighting",
         "description": "1/encounter: throw dirt or sand. Target is Blinded for 1 round unless it passes a DEX save DC 12.",
         "narration_cue": "Dirt scatters with a dry hiss before the target cries out.",
-        "recharge": "1/encounter",
-        "audio": "bandit_dirty_fighting"
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": "bandit_dirty_fighting",
+        "kind": "attack",
+        "damage": "0",
+        "damage_type": "none",
+        "applies_condition": "blinded",
+        "save": "DEX",
+        "dc": 12,
+        "duration": 1
       }
     ],
     "reactions": [],
@@ -1966,15 +1976,30 @@
         "name": "Rally",
         "description": "All allied bandits within 30 ft regain 1d8 HP.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "healing",
+        "target_group": "allied_bandits",
+        "healing": "1d8"
       },
       {
         "name": "Dirty Fighting",
         "description": "Advantage on next attack; on hit, target Blinded 1 round.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "prepare_attack",
+        "advantage": true,
+        "on_hit": {
+          "applies_condition": "blinded",
+          "duration": 1
+        }
       }
     ],
     "reactions": [],
@@ -2179,7 +2204,13 @@
         "properties": [
           "grapple"
         ],
-        "escape_dc": 13
+        "escape_dc": 13,
+        "advantage": true,
+        "recharge": {
+          "kind": "roll",
+          "die": 6,
+          "threshold": 5
+        }
       }
     ],
     "multiattack": "2 attacks — one Claw and one Dissolution Maw",
@@ -2463,7 +2494,10 @@
         "kind": "command",
         "description": "As a bonus action, direct up to 4 Drift or Rend Hollow within 60 ft to focus a target or reposition.",
         "narration_cue": "",
-        "recharge": "1/round",
+        "recharge": {
+          "kind": "round",
+          "uses": 1
+        },
         "audio": null
       },
       {
@@ -3390,7 +3424,8 @@
         "damage": "1d6",
         "damage_type": "necrotic",
         "special": "Healing: regain HP equal to damage dealt.",
-        "audio": "hollow-warden-absorb"
+        "audio": "hollow-warden-absorb",
+        "self_heal": "damage_dealt"
       }
     ],
     "multiattack": null,
@@ -3400,7 +3435,8 @@
     "signature_ability": {
       "name": "Reality Collapse",
       "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
-      "save": "wisdom"
+      "save": "wisdom",
+      "narration_cue": "A thunderous crack splits the room before overlapping walls wrench apart."
     },
     "hollow": {
       "class": "rend",
@@ -3564,7 +3600,10 @@
         "name": "Rally",
         "description": "Command to allies: A sharp command steadies the line and sharpens their focus fire.",
         "narration_cue": "A sharp whistle snaps the line back into step.",
-        "recharge": "1/round",
+        "recharge": {
+          "kind": "round",
+          "uses": 1
+        },
         "audio": "ashmark-sergeant-rally",
         "kind": "command",
         "properties": [
@@ -3575,7 +3614,10 @@
         "name": "Accusation",
         "description": "Accusation to allies: Names the accused and directs the patrol's focus fire.",
         "narration_cue": "A barked name cracks across the patrol, and every blade turns.",
-        "recharge": "1/round",
+        "recharge": {
+          "kind": "round",
+          "uses": 1
+        },
         "audio": "ashmark-sergeant-accusation",
         "kind": "accusation",
         "properties": []
@@ -3735,7 +3777,10 @@
         "name": "Bless",
         "description": "Command to allies: Murmured fervor steadies the cultists' hands.",
         "narration_cue": "A low hum of fervor passes from cultist to cultist.",
-        "recharge": "1/round",
+        "recharge": {
+          "kind": "round",
+          "uses": 1
+        },
         "audio": "cult-fanatic-bless",
         "kind": "command",
         "properties": [
@@ -3841,7 +3886,8 @@
     "signature_ability": {
       "name": "Mantle of Ruin",
       "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
-      "save": "constitution"
+      "save": "constitution",
+      "narration_cue": "A low rushing hiss pours from the leader's hands before shadow smothers the light."
     },
     "hollow": null,
     "behavior": {

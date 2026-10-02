@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import mock_txn
 
@@ -255,6 +256,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
 
@@ -271,17 +273,15 @@ class TestTransactGainSendsFullInventory:
             content=mock_content,
         )
 
-        # Should have been called twice: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
 
-        # First call: inventory_updated with full array
-        first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
+        first_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
         assert first_call["type"] == E.INVENTORY_UPDATED
+        assert first_call["player_id"] == "player_1"
         assert "inventory" in first_call
         assert isinstance(first_call["inventory"], list)
 
-        # Second call: item_acquired
-        second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
+        second_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert second_call["name"] == "Trail Rations"
 
@@ -295,6 +295,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_WITH_ART)
 
@@ -311,7 +312,7 @@ class TestTransactGainSendsFullInventory:
             content=mock_content,
         )
 
-        second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
+        second_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert "image_url" in second_call
         assert second_call["image_url"].startswith("/api/assets/images/img_")
@@ -326,6 +327,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
 
@@ -342,6 +344,6 @@ class TestTransactGainSendsFullInventory:
             content=mock_content,
         )
 
-        second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
+        second_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert "image_url" not in second_call

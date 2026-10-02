@@ -1,3 +1,4 @@
+import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
 import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -90,6 +91,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   const reconnecting = useStore(sessionStore, (s) => s.reconnecting);
 
   useGameEvents();
+  useInventoryRefresh();
   useDuckingBridge();
 
   const toggleMute = () => {

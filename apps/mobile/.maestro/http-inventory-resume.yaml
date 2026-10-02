@@ -1,0 +1,17 @@
+appId: com.divineruin.app
+---
+- openLink: ${ROUTE_URL}
+- extendedWaitUntil:
+    visible: "HTTP quantity 3"
+    timeout: 10000
+- assertVisible: "Oak Wood, 3"
+- tapOn: "Hold next GET"
+- assertVisible: "GET held"
+- tapOn: "Commit immediate snapshot"
+- assertVisible: "Immediate snapshot applied"
+- assertVisible: "HTTP quantity 4"
+- tapOn: "Release old GET"
+- assertVisible: "Old GET released"
+- assertVisible: "HTTP quantity 4"
+- assertNotVisible: "HTTP quantity 3"
+- takeScreenshot: http-inventory
