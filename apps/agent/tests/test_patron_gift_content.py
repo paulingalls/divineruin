@@ -27,6 +27,12 @@ STATUSES = {
     "narrated",
 }
 
+EXPECTED_MECHANICS = {
+    "aelora": {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"},
+    "kaelen": {"kind": "low_hp_surge", "threshold": 0.25, "amount": 2, "duration_phases": 2},
+}
+MECHANICS_KINDS = {mechanics["kind"] for mechanics in EXPECTED_MECHANICS.values()}
+
 
 def validate_gifts(rows):
     ids = [row["god_id"] for row in rows]
@@ -37,13 +43,11 @@ def validate_gifts(rows):
         assert "layer_1_gift" in row, row["god_id"]
         gift = row["layer_1_gift"]
         assert isinstance(gift, dict), row["god_id"]
-        expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] in {"aelora", "kaelen"} else set())
+        expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] in EXPECTED_MECHANICS else set())
         assert set(gift) == expected_fields, row["god_id"]
         assert all(isinstance(gift[field], str) and gift[field].strip() for field in GIFT_FIELDS), row["god_id"]
-        if row["god_id"] == "aelora":
-            assert gift["mechanics"] == {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
-        if row["god_id"] == "kaelen":
-            assert gift["mechanics"] == {"kind": "low_hp_surge", "threshold": 0.25, "amount": 2, "duration_phases": 2}
+        if row["god_id"] in EXPECTED_MECHANICS:
+            assert gift["mechanics"] == EXPECTED_MECHANICS[row["god_id"]]
         assert (gift["recharge"], gift["status"]) == EXPECTED_GIFTS[row["god_id"]]
         gift_ids.append(gift["id"])
     assert len(gift_ids) == len(set(gift_ids))
