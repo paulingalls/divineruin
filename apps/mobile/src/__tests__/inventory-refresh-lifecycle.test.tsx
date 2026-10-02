@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import React from "react";
 import { FlatList } from "react-native";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
@@ -41,24 +41,8 @@ void mock.module("@/hooks/useSessionToken", () => ({
 }));
 void mock.module("@/hooks/use-game-events", () => ({ useGameEvents: () => {} }));
 void mock.module("@/hooks/use-ducking-bridge", () => ({ useDuckingBridge: () => {} }));
-void mock.module("@/audio/audio-config", () => ({
-  configureAudioSession: () => Promise.resolve(),
-}));
-void mock.module("@/audio/sfx-player", () => ({ releaseAllPlayers: () => {}, playSfx: () => {} }));
-void mock.module("@/audio/soundscape-player", () => ({
-  startSoundscapeEngine: () => {},
-  stopSoundscapeEngine: () => {},
-}));
-void mock.module("@/audio/music-player", () => ({
-  startMusicEngine: () => {},
-  stopMusicEngine: () => {},
-}));
-void mock.module("@/audio/narration-player", () => ({
-  stopNarration: () => {},
-  playNarration: () => {},
-  onNarrationStateChange: () => () => {},
-}));
-void mock.module("@/audio/game-event-handler", () => ({ handleGameEvent: () => {} }));
+// Bun module mocks persist across test files. The hook mocks isolate voice
+// subscriptions without replacing receiver or audio implementations.
 void mock.module("@/components/themed-text", () => ({ ThemedText: host }));
 void mock.module("@/components/invite-button", () => ({ InviteButton: host }));
 void mock.module("@/components/transcript-view", () => ({ TranscriptView: host }));
@@ -86,13 +70,28 @@ const { default: Session } = await import("../app/session");
 void mock.module("@/components/hud/panels/inventory-panel", () => ({ InventoryPanel: host }));
 const { default: HttpFixture } = await import("../app/http-inventory-test");
 const { default: Harness } = await import("../app/session-test");
-const originalFetch = globalThis.fetch;
+const actEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+let originalFetch: typeof fetch;
+let originalAuth: ReturnType<typeof authStore.getState>;
+let originalWindow: typeof window;
+let originalActEnvironment: boolean | undefined;
 let tree: ReactTestRenderer;
+beforeEach(() => {
+  originalFetch = globalThis.fetch;
+  originalAuth = authStore.getState();
+  originalWindow = globalThis.window;
+  originalActEnvironment = actEnvironment.IS_REACT_ACT_ENVIRONMENT;
+  actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
+  globalThis.window = {} as Window & typeof globalThis;
+});
 afterEach(async () => {
   await act(() => {
     tree.unmount();
   });
   globalThis.fetch = originalFetch;
+  authStore.setState(originalAuth, true);
+  globalThis.window = originalWindow;
+  actEnvironment.IS_REACT_ACT_ENVIRONMENT = originalActEnvironment;
   panelStore.getState().reset();
 });
 test.each([
@@ -102,9 +101,6 @@ test.each([
 ] as const)(
   "%s session mounts polling while voice is disconnected and stops on unmount",
   async (_name, Screen) => {
-    (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
-      true;
-    globalThis.window = {} as Window & typeof globalThis;
     authStore.setState({ phase: "authenticated", token: "token", playerId: "owner" });
     panelStore.getState().reset();
     panelStore.getState().openPanel();
@@ -185,6 +181,7 @@ test("overlapping home and session HUDs share a request and survive one consumer
 });
 
 test("selected inventory details follow replacement/removal and still show refresh errors", async () => {
+  authStore.setState({ phase: "authenticated", token: "token", playerId: "owner" });
   const item = {
     id: "sword",
     name: "Old sword",

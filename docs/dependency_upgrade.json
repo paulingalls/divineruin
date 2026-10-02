@@ -954,6 +954,19 @@
     {
       "project": "apps/mobile",
       "group": "devDependencies",
+      "name": "@types/react-test-renderer",
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.0",
+      "registry_snapshot_date": "2026-10-02",
+      "held_by": null,
+      "reason": "Registry latest observed 2026-10-02; direct test types already installed for the lifecycle renderer. Historical native evidence remains the accepted 2026-09-19 record."
+    },
+    {
+      "project": "apps/mobile",
+      "group": "devDependencies",
       "name": "expo-mcp",
       "requested": "~0.2.1",
       "locked": "0.2.4",
@@ -962,6 +975,19 @@
       "registry_latest": "0.2.4",
       "held_by": null,
       "reason": null
+    },
+    {
+      "project": "apps/mobile",
+      "group": "devDependencies",
+      "name": "react-test-renderer",
+      "requested": "19.2.6",
+      "locked": "19.2.6",
+      "installed": "19.2.6",
+      "candidate": "19.2.6",
+      "registry_latest": "19.3.0",
+      "registry_snapshot_date": "2026-10-02",
+      "held_by": "react@19.2.6 shared cohort",
+      "reason": "Renderer stays at the installed React 19.2.6 runtime version. Registry latest observed 2026-10-02; historical native evidence remains the accepted 2026-09-19 record."
     },
     {
       "project": "apps/mobile",
