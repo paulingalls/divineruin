@@ -48,14 +48,34 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
       '{id: "one", creature_id: "bandit"}',
       '{id: "one", role: "standard"}',
       '{creature_id: "bandit", role: "standard"}',
-      ...["hp", "ac", "tier", "action_pool"].map(
-        (field) => `{id: "one", creature_id: "bandit", role: "standard", ${field}: 1}`,
-      ),
+      ...[
+        "hp",
+        "ac",
+        "level",
+        "tier",
+        "name",
+        "attributes",
+        "action_pool",
+        "xp_value",
+        "loot_table_id",
+        "category",
+        "sound_signature",
+        "signature_ability",
+        "legendary_actions",
+        "currency",
+        "audio",
+        "narration",
+        "override",
+      ].map((field) => `{id: "one", creature_id: "bandit", role: "standard", ${field}: 1}`),
     ];
     writeFileSync(
       path,
-      `import type { EncounterEnemy } from ${JSON.stringify(module)};\n` +
-        entries.map((entry, index) => `const entry${index}: EncounterEnemy = ${entry};`).join("\n"),
+      `import type { EncounterEnemy, Encounter } from ${JSON.stringify(module)};\n` +
+        entries
+          .map((entry, index) => `const entry${index}: EncounterEnemy = ${entry};`)
+          .join("\n") +
+        '\nconst correct: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], recommended_party_level:1};' +
+        '\nconst missingLevel: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0]};',
     );
     const program = ts.createProgram([path], {
       noEmit: true,
@@ -68,7 +88,7 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
     const errors = ts
       .getPreEmitDiagnostics(program)
       .filter((error) => error.file?.fileName === path);
-    expect(errors).toHaveLength(entries.length - 1);
+    expect(errors).toHaveLength(entries.length);
     expect(errors.every((error) => error.code === 2741 || error.code === 2353)).toBe(true);
   } finally {
     rmSync(directory, { recursive: true, force: true });

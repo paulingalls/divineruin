@@ -113,8 +113,9 @@ def test_encounter_blocks_are_complete_and_in_nearest_tier():
 
 
 def test_every_encounter_action_is_in_its_own_block():
-    blocks = authored_blocks()
-    for name, source in source_enemies().items():
+    blocks, sources = authored_blocks(), source_enemies()
+    assert set(blocks) == set(sources) == NAMES
+    for name, source in sources.items():
         block = blocks[name]
         actions = {row["name"]: row for row in (*block["attacks"], *block["actives"])}
         assert len(actions) == len(block["attacks"]) + len(block["actives"]), name
@@ -126,11 +127,19 @@ def test_every_encounter_action_is_in_its_own_block():
         for action in source["action_pool"]:
             assert action["name"] in actions, (name, action["name"])
             authored = actions[action["name"]]
-            for field in ("applies_condition", "save", "dc", "kind", "escape_dc", "advantage", "recharge", "duration"):
+            for field in (
+                "damage",
+                "damage_type",
+                "applies_condition",
+                "save",
+                "dc",
+                "kind",
+                "escape_dc",
+                "advantage",
+                "recharge",
+                "duration",
+            ):
                 assert action.get(field) == authored.get(field), (name, action["name"], field)
-            if "damage" in action:
-                assert authored["damage"] == action["damage"], (name, action["name"])
-                assert authored["damage_type"] == action["damage_type"], (name, action["name"])
             if "applies_condition" in action:
                 assert authored["applies_condition"] == action["applies_condition"]
                 assert authored["save"] == action["save"]
@@ -204,6 +213,8 @@ def test_action_mechanics_deletion_falsifiers(monkeypatch):
         for index, action in enumerate(source["action_pool"]):
             for field in (
                 None,
+                "damage",
+                "damage_type",
                 "applies_condition",
                 "save",
                 "dc",
@@ -221,5 +232,41 @@ def test_action_mechanics_deletion_falsifiers(monkeypatch):
                 else:
                     del mutated[name]["action_pool"][index][field]
                 monkeypatch.setattr(sys.modules[__name__], "source_enemies", lambda mutated=mutated: mutated)
+                with pytest.raises(AssertionError):
+                    test_every_encounter_action_is_in_its_own_block()
+
+
+def test_action_corpus_floors_and_authored_text_falsifiers(monkeypatch):
+    import sys
+    from copy import deepcopy
+
+    import pytest
+
+    module = sys.modules[__name__]
+    sources, blocks = source_enemies(), authored_blocks()
+    with monkeypatch.context() as patch:
+        patch.setattr(module, "source_enemies", lambda: {})
+        with pytest.raises(AssertionError):
+            test_every_encounter_action_is_in_its_own_block()
+    with monkeypatch.context() as patch:
+        patch.setattr(module, "authored_blocks", lambda: {})
+        with pytest.raises(AssertionError):
+            test_every_encounter_action_is_in_its_own_block()
+    for name, source in sources.items():
+        for action in source["action_pool"]:
+            field = (
+                "special"
+                if "applies_condition" in action or action["name"] == "Absorb"
+                else ("description" if "kind" in action else None)
+            )
+            if field is None:
+                continue
+            mutated = deepcopy(blocks)
+            authored = next(
+                a for a in (*mutated[name]["attacks"], *mutated[name]["actives"]) if a["name"] == action["name"]
+            )
+            authored[field] = "Changed."
+            with monkeypatch.context() as patch:
+                patch.setattr(module, "authored_blocks", lambda mutated=mutated: mutated)
                 with pytest.raises(AssertionError):
                     test_every_encounter_action_is_in_its_own_block()

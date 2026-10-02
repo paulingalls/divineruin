@@ -199,7 +199,7 @@ async def assert_catalog_effects(started):
         ctx, roster = await started(encounter)
         pid = ctx.userdata.player_id
         produced = next(p for p in roster["participants"] if p["id"] == enemy_id)
-        assert name in produced["actions"]
+        name = next(action for action in produced["actions"] if action == name)
         await combat_turn._declare_phase_impl(
             ctx, {pid: {"type": "defend"}, enemy_id: {"type": "attack", "action": name, "target_id": pid}}
         )
@@ -229,7 +229,21 @@ async def assert_catalog_effects(started):
     pid, source_id = ctx.userdata.player_id, "ashmark_sergeant"
     producer = next(p for p in roster["participants"] if p["id"] == source_id)
     assert {"name": "Rally", "kind": "command"} in producer["mark_actions"]
-    await combat_turn._declare_phase_impl(ctx, {source_id: {"type": "attack", "action": "Rally", "target_id": pid}})
+    # The mark-consumer diagnostic needs Rally to resolve before the consuming strike.
+    state = ctx.userdata.combat_state
+    state.get_participant(source_id).initiative = max(p.initiative for p in state.participants) + 1
+    command = next(action["name"] for action in producer["mark_actions"] if action["kind"] == "command")
+    soldier = next(p for p in roster["participants"] if p["id"] == "ashmark_soldier_1")
+    strike = next(name for name in soldier["actions"] if name == "Longsword")
+    await combat_turn._declare_phase_impl(
+        ctx,
+        {
+            pid: {"type": "defend"},
+            source_id: {"type": "attack", "action": command, "target_id": pid},
+            soldier["id"]: {"type": "attack", "action": strike, "target_id": pid},
+            "ashmark_soldier_2": {"type": "defend"},
+        },
+    )
     import combat_marks
 
     original_mark = combat_marks.resolve_mark_action
@@ -240,11 +254,20 @@ async def assert_catalog_effects(started):
         assert attack_bonus(state, state.get_participant("ashmark_soldier_1"), target) == 2
         return outcome
 
-    with patch("combat_marks.resolve_mark_action", side_effect=observe_mark) as mark:
+    with (
+        patch("combat_marks.resolve_mark_action", side_effect=observe_mark) as mark,
+        patch("check_resolution.dice_roll", return_value=_d20(13)),
+        reference_damage(),
+    ):
         result = await _resolve_round(ctx)
     mark.assert_called_once()
     assert any(p.get("kind") == "command" for p in result["packets"])
+    attack = next(p for p in result["packets"] if p["actor_id"] == soldier["id"])
+    assert attack["attack_total"] == 21, attack
+    assert attack["damage"] > 0
     assert ctx.userdata.combat_state.focus_marks == {}
+    saved = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
+    assert saved is not None and saved.focus_marks == {}
 
     import db_queries
     from ability_tools import _request_ability_activation_impl
@@ -291,3 +314,48 @@ async def assert_catalog_effects(started):
     after = await db_queries.get_player(pid)
     assert after is not None
     assert before["stamina"]["current"] - after["stamina"]["current"] == 3
+
+
+async def assert_catalog_grapple_release(started):
+    from acceptance._capstone_helpers import _d20, _resolve_round
+
+    import combat_turn
+    import conditions
+
+    ctx, roster = await started("ruins_mawling_pair", companion="companion_kael")
+    pid = ctx.userdata.player_id
+    declarations = {pid: {"type": "defend"}, "companion_kael": {"type": "defend"}}
+    for source, target in [("mawling_1", pid), ("mawling_2", "companion_kael")]:
+        produced = next(p for p in roster["participants"] if p["id"] == source)
+        name = next(name for name in produced["actions"] if name == "Lunge")
+        declarations[source] = {"type": "attack", "action": name, "target_id": target}
+    await combat_turn._declare_phase_impl(ctx, declarations)
+    with patch("check_resolution.dice_roll", return_value=_d20(20)), reference_damage():
+        await _resolve_round(ctx)
+    state = ctx.userdata.combat_state
+    for source, target in [("mawling_1", pid), ("mawling_2", "companion_kael")]:
+        condition = next(c for c in state.get_participant(target).conditions if c["type"] == "grappled")
+        assert condition["source"] == source
+        assert next(a for a in state.get_participant(source).action_pool if a["name"] == "Lunge")["escape_dc"] == 13
+    state.get_participant("mawling_1").hp_current = 1
+    actor = state.get_participant(pid)
+    await combat_turn._declare_phase_impl(
+        ctx,
+        {
+            pid: {"type": "attack", "action": actor.action_pool[0]["name"], "target_id": "mawling_1"},
+            "companion_kael": {"type": "defend"},
+            "mawling_1": {"type": "defend"},
+            "mawling_2": {"type": "defend"},
+        },
+    )
+    with patch("check_resolution.dice_roll", return_value=_d20(20)), reference_damage():
+        result = await _resolve_round(ctx)
+    packet = next(p for p in result["packets"] if p["actor_id"] == pid)
+    assert packet["target_fallen"] is True
+    assert packet["released_from_grapple"] == [pid], "catalog_grapple_release"
+    saved = await db_mutations.load_combat_state(state.combat_id)
+    assert saved is not None and saved.to_dict() == ctx.userdata.combat_state.to_dict()
+    player, ally = saved.get_participant(pid), saved.get_participant("companion_kael")
+    assert player is not None and ally is not None
+    assert not conditions.has_condition(player.conditions, "grappled")
+    assert next(c for c in ally.conditions if c["type"] == "grappled")["source"] == "mawling_2"

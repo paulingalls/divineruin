@@ -302,9 +302,11 @@ async def load_test_creature(creature_id, **kwargs):
 
 def catalog_encounters():
     from creature_combat import translate_creature
+    from encounter_references import validate_encounter_references
 
     templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
     for template in templates:
+        validate_encounter_references(template, TEST_CREATURES)
         template["enemies"] = [
             translate_creature(
                 TEST_CREATURES[ref["creature_id"]], encounter_id=template["id"], enemy_id=ref["id"], role=ref["role"]

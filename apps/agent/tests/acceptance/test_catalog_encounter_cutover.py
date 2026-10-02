@@ -295,9 +295,10 @@ async def test_absent_companion_boundary(started, encounter_id, level):
 
 
 async def test_catalog_declarations_execute(started):
-    from acceptance._catalog_cutover_helpers import assert_catalog_effects
+    from acceptance._catalog_cutover_helpers import assert_catalog_effects, assert_catalog_grapple_release
 
     await assert_catalog_effects(started)
+    await assert_catalog_grapple_release(started)
 
 
 async def test_ashmark_stance_and_quest_identity(started):
@@ -352,6 +353,8 @@ async def test_actual_companion_committed_outcome(started, companion, encounter_
     import dice
 
     ctx, _ = await started(encounter_id, companion=companion)
+    before = await db_queries.get_player(ctx.userdata.player_id)
+    assert before is not None
     combat_id = ctx.userdata.combat_state.combat_id
     damage_rng = random.Random(138)
     outcome = None
@@ -408,7 +411,10 @@ async def test_actual_companion_committed_outcome(started, companion, encounter_
     assert outcome["xp_total"] > 0
     rewarded = await db_queries.get_player(ctx.userdata.player_id)
     assert rewarded is not None
-    assert rewarded["xp"] > 0
+    assert rewarded["xp"] > before["xp"]
+    profile = get_companion_profile(companion)
+    events = [json.loads(c.args[0]) for c in ctx.userdata.room.local_participant.publish_data.call_args_list]
+    assert any(e.get("type") == E.DICE_ROLL and e.get("attacker") == profile.name for e in events)
 
 
 @pytest.mark.parametrize(

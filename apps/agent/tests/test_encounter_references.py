@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from _encounter_reference_proofs import assert_reference_corpus_inventory, assert_reference_fixture_walk
 
 from encounter_references import validate_encounter_references
 
@@ -148,6 +149,9 @@ async def test_corrupt_catalog_fails_before_effects(defect, monkeypatch, mock_co
     monkeypatch.setattr(combat_init, "publish_game_event", event)
     monkeypatch.setattr(combat_init, "_publish_sounds", sound)
     ctx = make_context()
+    ctx.userdata.party.primary.weapon_used = True
+    ctx.userdata.party.primary.draethar_inner_fire_used = True
+    before = (list(ctx.userdata.recent_events), ctx.userdata.pre_combat_agent_type, ctx.userdata.party.to_dict())
     with pytest.raises(ToolError):
         await combat_init._start_combat_impl(
             ctx, "fixture", "corrupt", mutations=mutations, queries=queries, content=content
@@ -155,28 +159,11 @@ async def test_corrupt_catalog_fails_before_effects(defect, monkeypatch, mock_co
     for mock in (initiative, event, sound, mutations.save_combat_state, mock_combat_agent_factory):
         mock.assert_not_called()
     assert ctx.userdata.combat_state is None and not ctx.userdata.in_combat
-
-
-def assert_reference_fixture_walk(root):
-    import ast
-
-    paths = sorted(root.rglob("*.py"))
-    assert paths, "missing Python fixture corpus"
-    references = []
-    for path in paths:
-        for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.Dict):
-                continue
-            for key, value in zip(node.keys, node.values, strict=True):
-                if not isinstance(key, ast.Constant) or key.value != "enemies" or not isinstance(value, ast.List):
-                    continue
-                for enemy in value.elts:
-                    if isinstance(enemy, ast.Dict):
-                        fields = {k.value for k in enemy.keys if isinstance(k, ast.Constant)}
-                        assert fields == {"id", "creature_id", "role"}, (path, enemy.lineno, fields)
-                        references.append((path, enemy.lineno))
-    assert references, "missing combat-entry fixture references"
-    return references
+    assert (
+        list(ctx.userdata.recent_events),
+        ctx.userdata.pre_combat_agent_type,
+        ctx.userdata.party.to_dict(),
+    ) == before
 
 
 def test_reference_corpora_and_discovered_fixture_absence():
@@ -292,3 +279,164 @@ def test_reference_walk_refuses_unresolved_flat_producers(tmp_path, producer):
     (tmp_path / "indirect.py").write_text(producer)
     with pytest.raises(AssertionError):
         assert_reference_fixture_walk(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "producer",
+    [
+        'enemy = {"id": "one", "creature_id": "bandit", "role": "standard"}\nentry = {"enemies": [enemy]}',
+        'enemies = [{"id": "one", "creature_id": "bandit", "role": "standard"}]\nentry = {"enemies": enemies}',
+        'from catalog_fixture import enemies\nentry = {"enemies": enemies}',
+    ],
+)
+def test_reference_walk_accepts_resolved_reference_producers(tmp_path, producer):
+    (tmp_path / "catalog_fixture.py").write_text(
+        'enemies = [{"id": "one", "creature_id": "bandit", "role": "standard"}]'
+    )
+    (tmp_path / "entry.py").write_text(producer)
+    assert assert_reference_fixture_walk(tmp_path)
+
+
+@pytest.mark.parametrize("defect", ["empty", "missing_import", "cycle", "call", "invalid_role", "missing_id", "spread"])
+def test_reference_walk_corpus_floors(tmp_path, defect):
+    sources = {
+        "empty": 'entry = {"enemies": []}',
+        "spread": 'entry = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "standard", **overrides}]}',
+        "missing_import": 'from missing import enemies\nentry = {"enemies": enemies}',
+        "cycle": 'one = two\ntwo = one\nentry = {"enemies": two}',
+        "call": 'entry = {"enemies": produce()}',
+        "invalid_role": 'entry = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "named"}]}',
+        "missing_id": 'entry = {"enemies": [{"creature_id": "bandit", "role": "standard"}]}',
+    }
+    (tmp_path / "entry.py").write_text(sources[defect])
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "hp",
+        "ac",
+        "level",
+        "tier",
+        "name",
+        "attributes",
+        "action_pool",
+        "xp_value",
+        "loot_table_id",
+        "category",
+        "sound_signature",
+        "signature_ability",
+        "legendary_actions",
+        "currency",
+        "audio",
+        "narration",
+        "override",
+    ],
+)
+def test_reference_walk_rejects_inline_fields(tmp_path, field):
+    moved = tmp_path / "moved"
+    moved.mkdir()
+    (moved / "producer.py").write_text(
+        f'enemy = {{"id": "one", "creature_id": "bandit", "role": "standard", "{field}": 1}}\n'
+        'enemies = [enemy]\nentry = {"enemies": enemies}'
+    )
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_start_validation_precedes_each_effect(monkeypatch, mock_combat_agent_factory):
+    await test_corrupt_catalog_fails_before_effects("second_reference", monkeypatch, mock_combat_agent_factory)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("victory", [False, True])
+async def test_boundary_result_accepts_committed_controls(victory, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from acceptance._catalog_cutover_helpers import assert_boundary_result
+    from combat._helpers import _make_combat_state
+    from sample_fixtures import make_context, make_mock_room
+
+    import db_mutations
+    import db_queries
+
+    ctx = make_context(room=make_mock_room())
+    state = _make_combat_state()
+    ctx.userdata.combat_state = None if victory else state
+    monkeypatch.setattr(db_mutations, "load_combat_state", AsyncMock(return_value=None if victory else state))
+    monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"xp": 2}))
+    if victory:
+        await ctx.userdata.room.local_participant.publish_data(json.dumps({"packets": [{"actor_id": "companion"}]}))
+        result = (None, json.dumps({"outcome": "victory", "xp_total": 1}))
+    else:
+        result = {"packets": [{"actor_id": "companion"}]}
+    await assert_boundary_result(ctx, result, state.combat_id, "companion", 1)
+
+
+def test_reference_inventory_has_reachable_corpus_floors(tmp_path):
+    import shutil
+
+    assert_reference_corpus_inventory(ROOT)
+    for directory in ("content", "packages/shared", "apps/agent/tests"):
+        shutil.copytree(ROOT / directory, tmp_path / directory)
+    for file in ("scripts/seed_content.py", "apps/agent/combat_init.py", "apps/agent/encounter_references.py"):
+        target = tmp_path / file
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / file, target)
+    assert_reference_corpus_inventory(tmp_path)
+    for file, replacement in [
+        ("content/creatures.json", "[]"),
+        ("content/encounter_templates.json", "[]"),
+        ("packages/shared/fixtures/encounter_references.json", None),
+        ("packages/shared/src/entities/encounter.ts", None),
+        ("scripts/seed_content.py", None),
+        ("apps/agent/combat_init.py", None),
+        ("apps/agent/tests/sample_fixtures.py", None),
+    ]:
+        target = tmp_path / file
+        original = target.read_bytes()
+        target.unlink() if replacement is None else target.write_text(replacement)
+        try:
+            with pytest.raises(AssertionError):
+                assert_reference_corpus_inventory(tmp_path)
+        finally:
+            target.write_bytes(original)
+
+
+def test_reference_walk_validates_dictionary_constructor_producers(tmp_path):
+    (tmp_path / "valid.py").write_text(
+        'entry = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "standard"}]}'
+    )
+    fixture = tmp_path / "constructor.py"
+    fixture.write_text('entry = dict(enemies=[dict(id="one", hp=7)])')
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+    fixture.write_text('entry = dict(enemies=[dict(id="one", creature_id="bandit", role="standard")])')
+    assert assert_reference_fixture_walk(tmp_path)
+
+
+def test_reference_walk_does_not_exempt_analyzer_named_fixture_functions(tmp_path):
+    (tmp_path / "valid.py").write_text(
+        'entry = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "standard"}]}'
+    )
+    (tmp_path / "moved.py").write_text(
+        'def assert_reference_fixture_walk():\n    entry = {"enemies": [{"id": "one", "hp": 7}]}'
+    )
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
+
+
+def test_catalog_projection_rejects_reference_overrides(tmp_path, monkeypatch):
+    import sample_fixtures
+
+    templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
+    templates[0]["enemies"][0]["hp"] = 7
+    content = tmp_path / "content"
+    content.mkdir()
+    (content / "encounter_templates.json").write_text(json.dumps(templates))
+    monkeypatch.setattr(sample_fixtures, "CONTENT_ROOT", tmp_path)
+    with pytest.raises(ValueError, match="forbidden reference fields"):
+        sample_fixtures.catalog_encounters()
