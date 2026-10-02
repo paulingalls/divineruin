@@ -7,18 +7,20 @@ import {
 } from "./verify-live-material-inventory";
 
 function capture(runId: string) {
-  const event = { type: "inventory_updated", player_id: "one", inventory: [] };
   return {
     runId,
     owners: ["one", "two"],
     initial: { one: [], two: [] },
     sender: { isAgent: true, identity: "agent", kind: 4 },
-    steps: phases.map((phase) => ({
-      phase,
-      received: [event],
-      received_bytes: [Array.from(new TextEncoder().encode(JSON.stringify(event)))],
-      expected: { one: [], two: [] },
-    })),
+    steps: phases.map((phase) => {
+      const event = { type: "inventory_updated", player_id: "one", inventory: [] };
+      return {
+        phase,
+        received: [event],
+        received_bytes: [Array.from(new TextEncoder().encode(JSON.stringify(event)))],
+        expected: { one: [], two: [] },
+      };
+    }),
   };
 }
 
@@ -284,3 +286,46 @@ for (const fault of ["initial", "same-owner", "extra-owner"]) {
     expect(calls).toEqual([]);
   });
 }
+
+for (const type of [undefined, null, 4, false, {}, []]) {
+  test(`rejects a received event with non-string type: ${JSON.stringify(type)}`, async () => {
+    const { deps, calls, setFixture } = harness();
+    deps.acceptance = (_scope, _path, id) => {
+      const fixture = capture(id);
+      const step = fixture.steps[0];
+      const event = { ...step.received[0], type };
+      (step.received as unknown[])[0] = event;
+      step.received_bytes[0] = Array.from(new TextEncoder().encode(JSON.stringify(event)));
+      setFixture(fixture);
+      return Promise.resolve();
+    };
+    expect(await failure(execute(deps))).toContain("usable");
+    expect(calls).toEqual([]);
+  });
+}
+
+test("rejects invalid UTF-8 even when permissive decoding matches the event", async () => {
+  const { deps, calls, setFixture } = harness();
+  deps.acceptance = (_scope, _path, id) => {
+    const fixture = capture(id);
+    const step = fixture.steps[0];
+    step.received[0].player_id = "\uFFFD";
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...step.received[0], player_id: "x" }));
+    bytes[bytes.indexOf("x".charCodeAt(0))] = 255;
+    step.received_bytes[0] = Array.from(bytes);
+    setFixture(fixture);
+    return Promise.resolve();
+  };
+  expect(await failure(execute(deps))).toContain("usable");
+  expect(calls).toEqual([]);
+});
+
+test("cancellation during successful cleanup cannot report verification success", async () => {
+  const { deps } = harness();
+  const stop = deps.stop.bind(deps);
+  deps.stop = async (scope, child) => {
+    scope.controller.abort(new Error("cancelled cleanup"));
+    await stop(scope, child);
+  };
+  expect(await failure(execute(deps))).toContain("cancelled cleanup");
+});
