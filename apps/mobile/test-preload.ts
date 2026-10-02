@@ -12,6 +12,8 @@ mock.module("react-native", () => ({
   View: "View",
   Text: "Text",
   FlatList: "FlatList",
+  ScrollView: "ScrollView",
+  useWindowDimensions: () => ({ width: 400, height: 800 }),
   Pressable: "Pressable",
   // select() mirrors RN's resolution order: exact OS key, then native, then default.
   Platform: {

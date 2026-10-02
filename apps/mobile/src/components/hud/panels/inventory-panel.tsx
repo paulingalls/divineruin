@@ -31,11 +31,20 @@ function ItemTile({ item, onPress }: { item: InventoryItem; onPress: () => void 
   );
 }
 
-function ItemDetail({ item, onBack }: { item: InventoryItem; onBack: () => void }) {
+function ItemDetail({
+  item,
+  onBack,
+  error,
+}: {
+  item: InventoryItem;
+  onBack: () => void;
+  error: string | null;
+}) {
   const rarityColor = RARITY_COLORS[item.rarity] ?? BrandColors.ash;
 
   return (
     <ScrollView style={styles.detailContainer} contentContainerStyle={styles.detailContent}>
+      {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
       <Pressable onPress={onBack} hitSlop={8}>
         <ThemedText style={styles.backButton}>{"\u2190"} Back</ThemedText>
       </Pressable>
@@ -77,7 +86,8 @@ function ItemDetail({ item, onBack }: { item: InventoryItem; onBack: () => void 
 export function InventoryPanel() {
   const inventory = useStore(panelStore, (s) => s.inventory);
   const error = useStore(panelStore, (s) => s.inventoryRefreshError);
-  const [selected, setSelected] = useState<InventoryItem | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = inventory.find((item) => item.id === selectedId);
 
   const totalWeight = useMemo(
     () => inventory.reduce((sum, item) => sum + item.weight * item.quantity, 0),
@@ -86,7 +96,7 @@ export function InventoryPanel() {
   const weightRatio = Math.min(totalWeight / MAX_CARRY_WEIGHT, 1);
 
   if (selected) {
-    return <ItemDetail item={selected} onBack={() => setSelected(null)} />;
+    return <ItemDetail item={selected} error={error} onBack={() => setSelectedId(null)} />;
   }
 
   return (
@@ -97,7 +107,7 @@ export function InventoryPanel() {
         numColumns={NUM_COLUMNS}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.gridContent}
-        renderItem={({ item }) => <ItemTile item={item} onPress={() => setSelected(item)} />}
+        renderItem={({ item }) => <ItemTile item={item} onPress={() => setSelectedId(item.id)} />}
         ListEmptyComponent={
           <View style={styles.empty}>
             <ThemedText style={styles.emptyText}>No items</ThemedText>

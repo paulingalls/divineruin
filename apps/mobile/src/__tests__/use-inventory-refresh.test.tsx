@@ -194,6 +194,11 @@ test.each([
   { player_id: "A", inventory: [{ id: "invalid-slot", name: "invalid-slot", slot_info: true }] },
   { player_id: "A", inventory: [{ id: "array-slot", name: "array-slot", slot_info: [] }] },
   { player_id: "A", inventory: [{ id: "bad-quantity", name: "bad", slot_info: { quantity: -1 } }] },
+  { player_id: "A", inventory: [{ id: "zero-quantity", name: "bad", slot_info: { quantity: 0 } }] },
+  {
+    player_id: "A",
+    inventory: [{ id: "string-quantity", name: "bad", slot_info: { quantity: "2" } }],
+  },
 ])("invalid HTTP snapshot preserves data and surfaces failure: %j", async (data) => {
   panelStore.getState().setInventory([{ id: "cached" } as never]);
   panelStore.getState().openPanel();
@@ -223,3 +228,50 @@ test.each(["background", "close"])(
     expect(requests).toHaveLength(2);
   },
 );
+
+test.each([{ playerId: "B" }, { token: "rotated" }, { phase: "loading" as const }])(
+  "a single auth transition rejects the pending GET: %j",
+  async (change) => {
+    panelStore.getState().openPanel();
+    await mount();
+    await flush(() => authStore.setState(change));
+    await flush(() => requests[0].resolve(snapshot("obsolete")));
+    expect(panelStore.getState().inventory).toEqual([]);
+    expect(requests).toHaveLength(change.phase ? 1 : 2);
+  },
+);
+
+test("failure of a superseded GET fetches fresh without reporting a stale error", async () => {
+  panelStore.getState().openPanel();
+  await mount();
+  await flush(() => panelStore.getState().setInventory([{ id: "newer" } as never]));
+  await flush(() => requests[0].reject(new Error("old request failed")));
+  expect(panelStore.getState().inventory[0]?.id).toBe("newer");
+  expect(panelStore.getState().inventoryRefreshError).toBeNull();
+  expect(requests).toHaveLength(2);
+});
+
+test("HTTP failure with a well-formed snapshot still preserves inventory and reports error", async () => {
+  panelStore.getState().setInventory([{ id: "cached" } as never]);
+  panelStore.getState().openPanel();
+  await mount();
+  await flush(() =>
+    requests[0].resolve(
+      Response.json({ player_id: "A", inventory: [item("refused")] }, { status: 500 }),
+    ),
+  );
+  expect(panelStore.getState().inventory[0]?.id).toBe("cached");
+  expect(panelStore.getState().inventoryRefreshError).toContain("Inventory refresh failed");
+});
+
+test("a phase-only auth ABA rejects the pending GET", async () => {
+  panelStore.getState().openPanel();
+  await mount();
+  await flush(() => {
+    authStore.setState({ phase: "loading" });
+    authStore.setState({ phase: "authenticated" });
+  });
+  await flush(() => requests[0].resolve(snapshot("obsolete")));
+  expect(panelStore.getState().inventory).toEqual([]);
+  expect(requests).toHaveLength(2);
+});

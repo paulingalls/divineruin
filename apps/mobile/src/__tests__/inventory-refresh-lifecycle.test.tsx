@@ -1,8 +1,9 @@
 import { afterEach, expect, mock, test } from "bun:test";
 import React from "react";
+import { FlatList } from "react-native";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { authStore } from "../stores/auth-store";
-import { panelStore } from "../stores/panel-store";
+import { panelStore, type InventoryItem } from "../stores/panel-store";
 
 const host = ({ children }: { children?: React.ReactNode }) =>
   React.createElement("div", null, children);
@@ -52,7 +53,11 @@ void mock.module("@/audio/music-player", () => ({
   startMusicEngine: () => {},
   stopMusicEngine: () => {},
 }));
-void mock.module("@/audio/narration-player", () => ({ stopNarration: () => {} }));
+void mock.module("@/audio/narration-player", () => ({
+  stopNarration: () => {},
+  playNarration: () => {},
+  onNarrationStateChange: () => () => {},
+}));
 void mock.module("@/audio/game-event-handler", () => ({ handleGameEvent: () => {} }));
 void mock.module("@/components/themed-text", () => ({ ThemedText: host }));
 void mock.module("@/components/invite-button", () => ({ InviteButton: host }));
@@ -66,6 +71,17 @@ void mock.module("@/components/hud/persistent-bar", () => ({ PersistentBar: host
 void mock.module("@/components/hud/overlay-manager", () => ({ OverlayManager: host }));
 void mock.module("@/components/hud/panel-shell", () => ({ PanelShell: host }));
 void mock.module("@/constants/location-art-registry", () => ({ LOADING_ART: "unused" }));
+void mock.module("@/hooks/use-character", () => ({ useCharacter: () => ({ loading: false }) }));
+void mock.module("@/hooks/use-catchup", () => ({
+  useCatchUp: () => {},
+  fetchCards: () => Promise.resolve(),
+}));
+void mock.module("@/components/themed-view", () => ({ ThemedView: host }));
+void mock.module("@/components/title-bar", () => ({ TitleBar: host }));
+void mock.module("@/components/catchup-list", () => ({ CatchUpList: host }));
+void mock.module("@/components/activity-launcher", () => ({ ActivityLauncher: host }));
+const { default: Home } = await import("../app/index");
+const { InventoryPanel } = await import("../components/hud/panels/inventory-panel");
 const { default: Session } = await import("../app/session");
 void mock.module("@/components/hud/panels/inventory-panel", () => ({ InventoryPanel: host }));
 const { default: HttpFixture } = await import("../app/http-inventory-test");
@@ -80,6 +96,7 @@ afterEach(async () => {
   panelStore.getState().reset();
 });
 test.each([
+  ["home", Home],
   ["production", Session],
   ["harness", Harness],
 ] as const)(
@@ -137,4 +154,70 @@ test("native fixture auth is transient and restores identity on unmount", async 
     authStore.setState({ setAuthenticated: originalAuthenticate });
     routeParams = {};
   }
+});
+
+test("overlapping home and session HUDs share a request and survive one consumer unmount", async () => {
+  authStore.setState({ phase: "authenticated", token: "token", playerId: "owner" });
+  panelStore.getState().openPanel();
+  const fetcher = mock(() => Promise.resolve(Response.json({ player_id: "owner", inventory: [] })));
+  globalThis.fetch = fetcher as unknown as typeof fetch;
+  await act(() => {
+    tree = create(
+      <>
+        <Home />
+        <Session />
+      </>,
+    );
+  });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  await act(() => {
+    tree.update(
+      <>
+        <Home />
+      </>,
+    );
+  });
+  await act(() => {
+    panelStore.getState().closePanel();
+    panelStore.getState().openPanel();
+  });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+test("selected inventory details follow replacement/removal and still show refresh errors", async () => {
+  const item = {
+    id: "sword",
+    name: "Old sword",
+    rarity: "common",
+    effects: [],
+    quantity: 1,
+    weight: 1,
+    type: "weapon",
+    description: "",
+    lore: "",
+    value_base: 1,
+    equipped: false,
+  } satisfies InventoryItem;
+  panelStore.getState().setInventory([item]);
+  await act(() => {
+    tree = create(<InventoryPanel />);
+  });
+  const { renderItem } = tree.root.findByType(FlatList).props as {
+    renderItem: (input: { item: InventoryItem }) => React.ReactElement<{ onPress: () => void }>;
+  };
+  const tile = renderItem({ item });
+  await act(() => {
+    tile.props.onPress();
+  });
+  await act(() => {
+    panelStore.getState().setInventory([{ ...item, name: "Fresh sword", weight: 3 }]);
+    panelStore.getState().setInventoryRefreshError("Refresh unavailable");
+  });
+  expect(JSON.stringify(tree.toJSON())).toContain("Fresh sword");
+  expect(JSON.stringify(tree.toJSON())).toContain("Refresh unavailable");
+  expect(JSON.stringify(tree.toJSON())).not.toContain("Old sword");
+  await act(() => {
+    panelStore.getState().setInventory([]);
+  });
+  expect(tree.root.findByType(FlatList).props.data).toEqual([]);
 });

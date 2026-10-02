@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { authStore } from "@/stores/auth-store";
 import { catchupStore } from "@/stores/catchup-store";
 import { API_BASE } from "@/utils/api";
 import { fetchCards } from "@/hooks/use-catchup";
@@ -12,6 +13,18 @@ import {
 
 export function useActivityActions() {
   const [decisionLoading, setDecisionLoading] = useState(false);
+  useEffect(
+    () =>
+      authStore.subscribe((state, previous) => {
+        if (
+          state.playerId !== previous.playerId ||
+          state.token !== previous.token ||
+          state.phase !== previous.phase
+        )
+          setDecisionLoading(false);
+      }),
+    [],
+  );
 
   const submitDecision = useCallback(async (activityId: string, decisionId: string) => {
     const context = inventoryRequestContext();

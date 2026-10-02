@@ -5,9 +5,12 @@ import { authStore } from "../stores/auth-store";
 import { panelStore } from "../stores/panel-store";
 import { catchupStore } from "../stores/catchup-store";
 const sound = mock(() => {});
-void mock.module("@/audio/sfx-player", () => ({ playSfx: sound }));
+void mock.module("@/audio/sfx-player", () => ({ playSfx: sound, releaseAllPlayers: () => {} }));
 void mock.module("@/audio/haptics", () => ({ hapticSuccess: () => {} }));
-void mock.module("@/hooks/use-catchup", () => ({ fetchCards: () => Promise.resolve() }));
+void mock.module("@/hooks/use-catchup", () => ({
+  fetchCards: () => Promise.resolve(),
+  useCatchUp: () => {},
+}));
 const { useActivityActions } = await import("../hooks/use-activity-actions");
 let actions: ReturnType<typeof useActivityActions>;
 let tree: ReactTestRenderer;
@@ -81,14 +84,17 @@ for (const kind of ["create", "keep"] as const) {
     await act(() => {
       pending = invoke();
     });
-    authStore.setState({ playerId: "B", token: "B" });
-    authStore.setState({ playerId: "A", token: "A" });
+    await act(() => {
+      authStore.setState({ playerId: "B", token: "B" });
+      authStore.setState({ playerId: "A", token: "A" });
+    });
     await act(async () => {
       resolve(response());
       await pending;
     });
     expect(panelStore.getState().inventory).toEqual([]);
     expect(sound).not.toHaveBeenCalledWith("success_sting");
+    expect(actions.decisionLoading).toBe(false);
   });
   test(`${kind} refused response preserves inventory and reports no success`, async () => {
     panelStore.getState().setInventory([{ id: "cached" } as never]);
@@ -118,3 +124,46 @@ test("accepted craft without a valid committed snapshot does not claim success",
   });
   expect(panelStore.getState().inventory).toEqual([]);
 });
+
+test.each([{ playerId: "B" }, { token: "rotated" }, { phase: "unauthenticated" as const }])(
+  "a single auth transition invalidates pending keep and clears loading: %j",
+  async (change) => {
+    let pending!: Promise<unknown>;
+    await act(() => {
+      pending = actions.submitDecision("craft", "keep");
+    });
+    expect(actions.decisionLoading).toBe(true);
+    await act(() => {
+      authStore.setState(change);
+    });
+    expect(actions.decisionLoading).toBe(false);
+    await act(async () => {
+      resolve(response());
+      await pending;
+    });
+    expect(panelStore.getState().inventory).toEqual([]);
+    expect(sound).not.toHaveBeenCalledWith("success_sting");
+  },
+);
+
+test.each(["create", "keep"])(
+  "%s refuses an HTTP failure even with a valid inventory body",
+  async (kind) => {
+    panelStore.getState().setInventory([{ id: "cached" } as never]);
+    let pending!: Promise<unknown>;
+    await act(() => {
+      pending =
+        kind === "create"
+          ? actions.startActivity("crafting", {})
+          : actions.submitDecision("craft", "keep");
+      void pending.catch(() => {});
+    });
+    const data: unknown = await response().json();
+    await act(async () => {
+      resolve(Response.json(data, { status: 400 }));
+      await pending.catch(() => {});
+    });
+    expect(panelStore.getState().inventory[0]?.id).toBe("cached");
+    expect(sound).not.toHaveBeenCalledWith("success_sting");
+  },
+);
