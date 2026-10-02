@@ -27,13 +27,14 @@ one is `.xp/system.md` → Constraint case law.
    in Python and TypeScript; a guard on one side certifies nothing about the
    other. Verify names both files, or the DIRECTORY — never one file whose tests
    a later split can silently narrow. Verify names focused, stable behavior
-   checks; broad suites belong to story/full tiers unless they cover a distinct
-   AC those tiers miss. `test:all` stays OUT of Verify (human 2026-09-06).
+   checks; broad regression belongs only to the full tier. `test:all` stays OUT
+   of Verify (human 2026-09-06).
    An acceptance harness, combat declaration or band card names focused
    acceptance coverage in Verify. A card that checks a milestone box or edits
-   a doc names tests/docs and test_milestone_status_consistency.py in Verify.
-   The story tier runs all Python unit tests;
-   the full tier runs acceptance.
+   a doc names focused tests/docs checks and
+   test_milestone_status_consistency.py in Verify.
+   Verify runs focused AC checks; the story tier runs static checks. Broad
+   regression runs only in the full tier once at sprint close (human 2026-10-01).
 8. **Replacing a literal means an inventory, not a path.** A card that replaces
    a hardcoded id — a companion, a tier tuple, a name — lists every site of that
    literal repo-wide (code, prompts, content, tests) or says which it leaves and
