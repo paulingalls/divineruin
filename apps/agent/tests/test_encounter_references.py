@@ -274,3 +274,21 @@ async def test_boundary_result_refuses_uncommitted_or_unusable_outcomes(defect, 
         result = None
     with pytest.raises(AssertionError):
         await assert_boundary_result(ctx, result, state.combat_id, "companion", 1)
+
+
+@pytest.mark.parametrize(
+    "producer",
+    [
+        'flat = {"id": "old", "hp": 7}\nentry = {"enemies": [flat]}',
+        'flat = [{"id": "old", "hp": 7}]\nentry = {"enemies": flat}',
+        'from legacy import enemies\nentry = {"enemies": enemies}',
+    ],
+)
+def test_reference_walk_refuses_unresolved_flat_producers(tmp_path, producer):
+    (tmp_path / "valid.py").write_text(
+        'entry = {"enemies": [{"id": "one", "creature_id": "bandit", "role": "standard"}]}'
+    )
+    (tmp_path / "legacy.py").write_text('enemies = [{"id": "old", "hp": 7}]')
+    (tmp_path / "indirect.py").write_text(producer)
+    with pytest.raises(AssertionError):
+        assert_reference_fixture_walk(tmp_path)
