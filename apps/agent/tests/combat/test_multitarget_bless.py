@@ -32,6 +32,8 @@ def _bless3(applies_condition: str | None = "blessed") -> Spell:
     """A divine Bless (resonance 0, focus 0) capped at 3 targets — clears the gates with only the
     multi-target producer hook active."""
     return Spell(
+        verbal=True,
+        hostile=False,
         id="divine_bless",
         name="Bless",
         source="divine",
@@ -249,6 +251,8 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
     # A spell with no max_targets is single-target only: target_ids is refused (closes the revival
     # Hollow-gate bypass — revival spells have no max_targets, so multi-target on them is rejected).
     uncapped = Spell(
+        verbal=True,
+        hostile=False,
         id="divine_revivify",
         name="Revivify",
         source="divine",

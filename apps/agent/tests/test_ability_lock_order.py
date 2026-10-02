@@ -172,6 +172,8 @@ def _bless_spell() -> Spell:
     and the union pre-lock covers {caster + targets}. Source/tier kept arcane-simple; the condition
     value is irrelevant here (the real producer is mocked out)."""
     return Spell(
+        verbal=True,
+        hostile=True,
         id="test_bless",
         name="Test Bless",
         source="arcane",

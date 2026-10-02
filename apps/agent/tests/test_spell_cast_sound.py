@@ -19,6 +19,8 @@ from spells import Spell
 
 def _spell(*, spell_id: str = "test_spell", sound_id: str = "impact_arcane") -> Spell:
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name="Test Spell",
         source="arcane",

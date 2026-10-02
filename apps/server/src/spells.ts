@@ -66,6 +66,10 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     throw new Error(`${ctx}.narration_cue is not a string`);
   }
 
+  for (const field of ["verbal", "hostile"] as const) {
+    if (typeof data[field] !== "boolean") throw new Error(`${ctx}.${field} is not a boolean`);
+  }
+
   return {
     id,
     name: data.name,
@@ -74,6 +78,8 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     focus_cost: requireInteger(data.focus_cost, `${ctx}.focus_cost`),
     mechanics: data.mechanics,
     narration_cue: data.narration_cue,
+    verbal: data.verbal as boolean,
+    hostile: data.hostile as boolean,
   };
 }
 

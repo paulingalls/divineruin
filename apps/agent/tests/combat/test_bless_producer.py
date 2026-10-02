@@ -37,6 +37,8 @@ _BLESS_ROW = {
     "name": "Bless",
     "source": "divine",
     "spell_tier": "minor",
+    "verbal": True,
+    "hostile": False,
     "focus_cost": 2,
     "mechanics": "An ally gains +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their name and your patron hears — warmth settling into bones.",
@@ -78,6 +80,8 @@ def _bless_spell(applies_condition: str | None = "blessed", *, focus_cost: int =
     with no side-effects but the producer hook — only applies_condition matters here. Bump
     focus_cost to exercise the affordability gate (Spell is frozen, so set it at construction)."""
     return Spell(
+        verbal=True,
+        hostile=False,
         id="divine_bless",
         name="Bless",
         source="divine",

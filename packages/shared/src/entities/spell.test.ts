@@ -21,7 +21,7 @@ import type { Spell, SpellSource, SpellTier } from "./spell";
 // non-gating metadata.)
 //
 // These are compile-time shape conformance tests plus a structural guard: the
-// fixture pins the exact 7-field shape, so accidentally widening the interface
+// fixture pins the exact 9-field shape, so accidentally widening the interface
 // (adding a field with no reader) turns this red. The 4 deliberate omissions are
 // documented as asserted data, not just prose — when a real TS reader lands (e.g.
 // story-007, a mobile character-sheet spell list), move the now-consumed field out
@@ -35,6 +35,8 @@ const arcaneBolt: Spell = {
   focus_cost: 0,
   mechanics: "Ranged spell attack for 1d10 force damage. Scales with level.",
   narration_cue: "A dart of raw force snaps from your fingertips.",
+  verbal: true,
+  hostile: true,
 };
 
 // The exact field set the TS type mirrors — the fields a TS consumer reads.
@@ -46,6 +48,8 @@ const SPELL_FIELDS = [
   "focus_cost",
   "mechanics",
   "narration_cue",
+  "verbal",
+  "hostile",
 ] as const;
 
 // M3.3 fields present on the Python Spell dataclass but INTENTIONALLY omitted
@@ -76,7 +80,7 @@ const OMITTED_M33_FIELDS: ReadonlyArray<{ field: string; reason: string }> = [
 ];
 
 describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () => {
-  test("a 7-field spell compiles and reads back", () => {
+  test("a 9-field spell compiles and reads back", () => {
     expect(arcaneBolt.id).toBe("arcane_bolt");
     expect(arcaneBolt.source).toBe("arcane");
     expect(arcaneBolt.spell_tier).toBe("cantrip");
@@ -85,7 +89,7 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
     expect(arcaneBolt.narration_cue).toContain("force");
   });
 
-  test("the TS Spell mirrors exactly the 7 reader-backed fields", () => {
+  test("the TS Spell mirrors exactly the 9 reader-backed fields", () => {
     // Structural guard: if the interface is widened, the fixture gains a key and
     // this fails — forcing a reader-or-revert decision (no forward-wired dead state).
     expect(Object.keys(arcaneBolt).sort()).toEqual([...SPELL_FIELDS].sort());

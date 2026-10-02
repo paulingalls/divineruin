@@ -67,6 +67,8 @@ def _spell(
     resonance: int = 3,
 ) -> Spell:
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name="Test Spell",
         source=source,

@@ -32,4 +32,6 @@ export interface Spell {
   focus_cost: number;
   mechanics: string;
   narration_cue: string;
+  verbal: boolean;
+  hostile: boolean;
 }

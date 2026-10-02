@@ -26,6 +26,8 @@ from spells import Spell, SpellSource, SpellTier
 
 def _spell(spell_id="arcane_fireball", *, tier: SpellTier = "standard", source: SpellSource = "arcane"):
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name="Fireball",
         source=source,

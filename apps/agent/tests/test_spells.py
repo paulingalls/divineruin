@@ -50,6 +50,8 @@ _FIREBALL_ROW = {
     "name": "Fireball",
     "source": "arcane",
     "spell_tier": "major",
+    "verbal": True,
+    "hostile": True,
     "focus_cost": 5,
     "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, half on success.",
     "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed.",
@@ -65,6 +67,8 @@ _BLESS_ROW = {
     "name": "Bless",
     "source": "divine",
     "spell_tier": "minor",
+    "verbal": True,
+    "hostile": True,
     "focus_cost": 2,
     "mechanics": "Up to 3 allies gain +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
@@ -237,6 +241,8 @@ def test_spell_defaults_allow_in_code_construction_without_m33_args():
     # fixtures) keep working without supplying the M3.3 args; strictness lives in
     # parse_spell_row, not the dataclass.
     s = Spell(
+        verbal=True,
+        hostile=True,
         id="x",
         name="X",
         source="arcane",
@@ -434,3 +440,26 @@ async def test_load_spells_populates_from_pool(monkeypatch):
     assert is_loaded() is True
     assert get_spell("arcane_fireball").focus_cost == 5
     assert get_spell("divine_bless").source == "divine"
+
+
+@pytest.mark.parametrize("field", ["verbal", "hostile"])
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "false", [], {}])
+def test_spell_speech_and_hostility_are_strict_booleans(field, value):
+    row = {**_FIREBALL_ROW, "verbal": True, "hostile": True, field: value}
+    with pytest.raises(ValueError, match=field):
+        parse_spell_row(row["id"], row)
+
+
+@pytest.mark.parametrize("field", ["verbal", "hostile"])
+def test_spell_speech_and_hostility_are_required(field):
+    row = {**_FIREBALL_ROW, "verbal": True, "hostile": True}
+    del row[field]
+    with pytest.raises(ValueError, match=field):
+        parse_spell_row(row["id"], row)
+
+
+@pytest.mark.parametrize("verbal,hostile", [(True, False), (False, True)])
+def test_spell_speech_and_hostility_survive_loading(verbal, hostile):
+    row = {**_FIREBALL_ROW, "verbal": verbal, "hostile": hostile}
+    spell = parse_spell_row(row["id"], row)
+    assert (spell.verbal, spell.hostile) == (verbal, hostile)

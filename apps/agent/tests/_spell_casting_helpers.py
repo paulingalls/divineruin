@@ -45,6 +45,8 @@ def _spell(
     # fixture. Pass resonance= to control it (0 for cantrips, a formula-deviating value
     # to prove the catalog wins). concentration= flags a concentration spell (story-006).
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name=name,
         source=source,
