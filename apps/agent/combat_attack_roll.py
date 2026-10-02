@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_marks
+import condition_voice_rules
 import conditions
 from dramatic import DramaticContext, evaluate_dramatic_context
 
@@ -26,6 +27,7 @@ def roll_attack(
         "conditions": attacker.conditions,
     }
 
+    attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
     effective_ac = target.ac + target_ac_bonus + target_condition_ac
     attack_result = resolver.resolve_attack(

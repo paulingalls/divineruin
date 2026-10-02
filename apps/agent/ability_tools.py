@@ -26,6 +26,7 @@ import abilities
 import ability_persistence
 import combat_hold
 import condition_produce
+import condition_voice_rules
 import conditions
 import db
 import db_mutations_conditions
@@ -209,6 +210,21 @@ async def _request_ability_activation_unlocked(
                 variant = variants_mod.get_variant(ability_id, variant_id)
             except ValueError as e:
                 raise ToolError(str(e)) from e
+        if ability.applies_condition == "inspired":
+            try:
+                eligible = condition_voice_rules.spoken_buff_targets(
+                    "inspired",
+                    session.combat_state,
+                    player_id,
+                    target_ids or [target_id or player_id],
+                    rows=locked_rows,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
+            if target_ids is not None:
+                target_ids = eligible
+            else:
+                target_id = eligible[0]
         cost = variant.cost if variant is not None else ability.cost
 
         # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct

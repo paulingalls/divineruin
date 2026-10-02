@@ -9,11 +9,13 @@ from livekit.agents.llm import ToolError
 import ability_persistence
 import check_resolution
 import combat_resolution
+import condition_voice_rules
 import conditions
 import event_types as E
 import social_resolution
 from combat_events import emit_or_publish
 from session_data import CombatParticipant, CombatState, SessionData
+from spell_voice_rules import require_speech
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
 _DEESCALATE_FOCUS_COST = 3
@@ -104,6 +106,7 @@ async def _resolve_deescalation_packet(
     # play this already fired at the declare-time gate (_prevalidate_ability_focus) with NO writes, so
     # a bad category never reaches here mid-phase; the check stays for direct callers/tests as a
     # defensive fail-loud boundary before any Focus spend.
+    require_speech(state, attacker.id)
     argument_type = _validate_argument_type(decl)
 
     have = (player.get("focus") or {}).get("current", 0)
@@ -116,11 +119,12 @@ async def _resolve_deescalation_packet(
     # (M4.8 story-011). Consume the signalled die ONCE off the participant; the mutation rides the
     # phase's save_combat_state, so there is no permanent +1d4 and it applies to at most one round.
     argument = check_resolution.resolve_skill_check_dc(
-        {**player, "conditions": attacker.conditions},
+        condition_voice_rules.roll_data(player, state, attacker.id),
         "persuasion",
         combat_resolution.DEESCALATE_BASE_DC,
         rng,
         ally_present=session.ally_present_for(attacker.id),
+        hearing_only=False,
     )
     argument_total = argument.total
     if argument.consumed_conditions:

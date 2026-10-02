@@ -3,6 +3,7 @@
 import random
 
 import combat_grapple
+import combat_voice_rules
 import conditions
 from combat_condition_landing import _land_condition_on_one
 from condition_restrictions import declaration_costs
@@ -11,6 +12,7 @@ from rules_engine import attribute_modifier
 
 
 def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
+    combat_voice_rules.guard_declaration(state, attacker, decl)
     roller = rng or random
     target = state.get_participant(decl.target_id)
     if target is None:

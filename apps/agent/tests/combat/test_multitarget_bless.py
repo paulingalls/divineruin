@@ -16,6 +16,7 @@ import pytest
 from combat.test_bless_producer import _caster  # reuse the OOC caster-dict builder
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import combat_ability
 import conditions
@@ -275,17 +276,25 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
 
 
 def _combat_state_with_allies() -> CombatState:
-    return CombatState(
-        combat_id="c_mt",
-        participants=[
-            CombatParticipant(
-                id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
-            ),
-            CombatParticipant(id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13),
-            CombatParticipant(id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13),
-            CombatParticipant(id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13),
-        ],
-        initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+    return place_actors(
+        CombatState(
+            combat_id="c_mt",
+            participants=[
+                CombatParticipant(
+                    id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+                ),
+                CombatParticipant(
+                    id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
+                ),
+                CombatParticipant(
+                    id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13
+                ),
+                CombatParticipant(
+                    id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13
+                ),
+            ],
+            initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+        )
     )
 
 

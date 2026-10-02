@@ -1,5 +1,7 @@
 """Restriction classification and shared condition-derived combat predicates."""
 
+from condition_sources import no_hostile_source
+from condition_voice_rules import auto_fail_hearing_perception, no_spoken_buffs
 from conditions import get_condition_effects
 
 NOT_ENFORCED: dict[str, dict[str, object]] = {
@@ -8,9 +10,6 @@ NOT_ENFORCED: dict[str, dict[str, object]] = {
     "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified"}},
     "damage_reduction": {"waits_on": "producer", "carriers": {"shielded"}},
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
-    "no_hostile_source": {"waits_on": "producer", "carriers": {"charmed"}},
-    "auto_fail_hearing_perception": {"waits_on": "producer", "carriers": {"deafened"}},
-    "no_spoken_buffs": {"waits_on": "producer", "carriers": {"deafened"}},
     "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded"}},
     "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed"}},
     "hallucinations": {"waits_on": "producer", "carriers": {"hollowed"}},
@@ -62,15 +61,21 @@ def speed_zero(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, .
     return _carriers(active_conditions, "speed_0")
 
 
-def attack_consumed_conditions(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, ...]:
+def attack_consumed_conditions(
+    active_conditions: list[dict] | tuple[dict, ...], *, spoken_buffs_eligible: bool = True
+) -> tuple[str, ...]:
     return tuple(
         condition["type"]
         for condition in active_conditions
-        if {"consumed_on_use", "one_time"} & get_condition_effects([condition]).restrictions
+        if (condition["type"] != "inspired" or (spoken_buffs_eligible and not no_spoken_buffs(active_conditions)))
+        and {"consumed_on_use", "one_time"} & get_condition_effects([condition]).restrictions
     )
 
 
 RESTRICTION_ENFORCERS = {
+    "no_hostile_source": no_hostile_source,
+    "auto_fail_hearing_perception": auto_fail_hearing_perception,
+    "no_spoken_buffs": no_spoken_buffs,
     "skip_phase": cannot_act,
     "incoming_advantage": incoming_advantage,
     "incoming_melee_advantage": incoming_melee_advantage,

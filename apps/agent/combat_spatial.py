@@ -48,8 +48,13 @@ def validate_maps(positions, locations, zones):
         for right in points:
             distance(left, right)
     for zone in mapping(zones, "zones").values():
-        if not isinstance(zone, dict) or set(zone) != {"center_id", "radius_ft"}:
-            raise ValueError("zone requires center_id and radius_ft")
+        if not isinstance(zone, dict) or set(zone) not in (
+            {"center_id", "radius_ft"},
+            {"kind", "center_id", "radius_ft"},
+        ):
+            raise ValueError("zone requires center_id and radius_ft, optionally kind=silence")
+        if "kind" in zone and zone["kind"] != "silence":
+            raise ValueError("zone kind must be silence")
         center = zone["center_id"]
         if not isinstance(center, str) or center not in positions.keys() | locations.keys():
             raise ValueError("unknown zone center")

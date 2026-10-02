@@ -23,6 +23,7 @@ import combat_marks as combat_marks
 import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
+import combat_voice_rules
 import event_types as E
 import reaction_gate
 import reaction_spend
@@ -114,6 +115,10 @@ def _is_wasted(state, head: dict) -> bool:
     if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
+    try:
+        combat_voice_rules.guard_declaration(state, actor, declaration)
+    except ValueError:
+        return True
     action = _find_action(actor, declaration.action)
     if (
         action is not None

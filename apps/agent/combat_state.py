@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 
 import combat_reaction_contest
 import combat_spatial
+import condition_sources
 import reaction_spend
 import reaction_windows
 from combat_participant import CombatParticipant
@@ -106,6 +107,7 @@ class CombatState:
         rows written before they existed fall back to the dataclass defaults via data.get(...).
         ``beat`` stays a plain str — combat_phase is NOT imported here, to avoid the
         session_data <-> combat_phase cycle the class docstring notes."""
+        condition_sources.validate_combat_sources(data["participants"])
         reactions_available = reaction_spend.normalize(data.get("reactions_available", {}))
         held_actions = combat_reaction_contest.normalize_held_actions(data.get("held_actions", []), reactions_available)
         for participant in data["participants"]:

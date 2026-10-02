@@ -42,6 +42,7 @@ from livekit.agents.voice import RunContext
 import ability_persistence
 import cast_modifiers
 import character_spells
+import combat_voice_rules
 import condition_produce
 import conditions
 import db
@@ -278,6 +279,12 @@ async def _resolve_cast(
         for tid in target_ids:
             _validate_id(tid, "target_id")
     player_id = caster.player_id
+
+    try:
+        voice_spell = spells_mod.get_spell(spell_id)
+        combat_voice_rules.guard_spell(session.combat_state, player_id, voice_spell, target_id, target_ids)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
     locked_rows: dict[str, dict] | None = None
     if player is None:

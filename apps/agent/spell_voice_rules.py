@@ -1,4 +1,13 @@
-"""Authored spell area classification; no inference from mechanics prose."""
+"""Authored spell classification and position-scoped speech rules."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from session_data import CombatState
+
+import combat_spatial
 
 AREA_SPELLS = frozenset(
     {
@@ -104,3 +113,20 @@ def is_area_spell(spell_id: str) -> bool:
     if spell_id in NON_AREA_SPELLS:
         return False
     raise ValueError(f"Unclassified spell {spell_id!r}")
+
+
+def is_silenced(state: CombatState | None, actor_id: str) -> bool:
+    if state is None:
+        return False
+    spatial = combat_spatial.require_spatial(state)
+    origin = combat_spatial.position(spatial, actor_id)
+    return any(
+        zone.get("kind") == "silence"
+        and combat_spatial.inside(origin, combat_spatial.position(spatial, zone["center_id"]), zone["radius_ft"])
+        for zone in spatial["zones"].values()
+    )
+
+
+def require_speech(state: CombatState | None, actor_id: str) -> None:
+    if is_silenced(state, actor_id):
+        raise ValueError(f"{actor_id} is silenced and cannot speak")

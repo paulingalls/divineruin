@@ -1,32 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import type { Spell, SpellSource, SpellTier } from "./spell";
 
-// Tests for the M3.3 Spell catalog type (content/spells.json row shape).
-//
-// READER-GATED MIRROR (story-005, decision spell-ts-reader-gated). The Python
-// Spell dataclass (apps/agent/spells.py) carries 12 fields — the 7 below PLUS 5
-// fields with no TS reader (resonance_by_source, terrain_effects, audio_cue,
-// concentration, sound_id). This TS type mirrors ONLY the fields a TS consumer
-// actually reads. Investigation (story-005) found ZERO TS readers of the original
-// 4: the Spell type is server-only (parsed by apps/server spells.ts, only
-// focus_cost is read — by abilities.ts cost composition), never serialized over
-// REST or the LiveKit data channel, never imported by mobile/web. Adding the 4
-// fields here would be forward-wired dead state (risk
-// inventory-richness-forward-wired). story-003 (M17) adds a 5th, sound_id: it is
-// read by the Python DM agent's own catalog + emitted over the LiveKit data
-// channel as PLAY_SOUND(sound_id) (story-004), then resolved client-side by the
-// mobile sound registry — never by apps/server or this TS Spell entity, so it
-// stays reader-gated too. The Python loader stays the fail-loud SSOT. (A 6th M3.3
-// field, level_requirement, was deleted entirely in story-008 as orphaned
-// non-gating metadata.)
-//
-// These are compile-time shape conformance tests plus a structural guard: the
-// fixture pins the exact 9-field shape, so accidentally widening the interface
-// (adding a field with no reader) turns this red. The 4 deliberate omissions are
-// documented as asserted data, not just prose — when a real TS reader lands (e.g.
-// story-007, a mobile character-sheet spell list), move the now-consumed field out
-// of OMITTED_M33_FIELDS and into the interface in the same change.
-
 const arcaneBolt: Spell = {
   id: "arcane_bolt",
   name: "Arcane Bolt",
@@ -39,23 +13,19 @@ const arcaneBolt: Spell = {
   hostile: true,
 };
 
-// The exact field set the TS type mirrors — the fields a TS consumer reads.
-const SPELL_FIELDS = [
-  "id",
-  "name",
-  "source",
-  "spell_tier",
-  "focus_cost",
-  "mechanics",
-  "narration_cue",
-  "verbal",
-  "hostile",
-] as const;
+const SPELL_FIELDS = {
+  id: true,
+  name: true,
+  source: true,
+  spell_tier: true,
+  focus_cost: true,
+  mechanics: true,
+  narration_cue: true,
+  verbal: true,
+  hostile: true,
+} as const satisfies Record<keyof Spell, true>;
+const readerSpell: Required<Spell> = arcaneBolt;
 
-// M3.3 fields present on the Python Spell dataclass but INTENTIONALLY omitted
-// here for lack of any TS reader (decision spell-ts-reader-gated). Each entry
-// records why it has no TS consumer today; add it to the interface only when a
-// reader lands.
 const OMITTED_M33_FIELDS: ReadonlyArray<{ field: string; reason: string }> = [
   {
     field: "resonance_by_source",
@@ -87,12 +57,12 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
     expect(arcaneBolt.focus_cost).toBe(0);
     expect(arcaneBolt.mechanics).toContain("force damage");
     expect(arcaneBolt.narration_cue).toContain("force");
+    expect(readerSpell.verbal).toBe(true);
+    expect(readerSpell.hostile).toBe(true);
   });
 
   test("the TS Spell mirrors exactly the 9 reader-backed fields", () => {
-    // Structural guard: if the interface is widened, the fixture gains a key and
-    // this fails — forcing a reader-or-revert decision (no forward-wired dead state).
-    expect(Object.keys(arcaneBolt).sort()).toEqual([...SPELL_FIELDS].sort());
+    expect(Object.keys(arcaneBolt).sort()).toEqual(Object.keys(SPELL_FIELDS).sort());
   });
 
   test("the 5 M3.3/M17 fields are intentionally omitted for lack of a TS reader", () => {
@@ -104,11 +74,9 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
       "concentration",
       "sound_id",
     ]);
-    // None of the omitted fields leaked onto the mirrored shape.
     for (const field of omitted) {
       expect(Object.keys(arcaneBolt)).not.toContain(field);
     }
-    // Every omission carries a documented reason.
     for (const { reason } of OMITTED_M33_FIELDS) {
       expect(reason.length).toBeGreaterThan(0);
     }

@@ -18,6 +18,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 from session_data import CombatState
 from spell_casting import _cast_spell_impl
@@ -42,7 +43,7 @@ def _combat_state() -> CombatState:
     """A minimal CombatState — its mere presence flips session.in_combat True
     (session_data.py: in_combat == combat_state is not None). The cast path reads
     only the property, never the combat internals, so empty participants suffice."""
-    return CombatState(combat_id="combat_1", participants=[], initiative_order=[])
+    return place_actors(CombatState(combat_id="combat_1", participants=[], initiative_order=[]), "player_1")
 
 
 def _player(focus: int = 10, level: int = 5, race: str | None = None) -> dict:

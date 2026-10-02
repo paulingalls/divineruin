@@ -21,6 +21,7 @@ from livekit.agents.voice import RunContext
 import check_payloads
 import check_resolution
 import check_resolution_save
+import condition_voice_rules
 import db
 import db_content_queries
 import db_mutations
@@ -33,7 +34,8 @@ import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
 from check_payloads import CheckPayload
-from condition_consume import consume_beneficial_conditions
+from condition_consume import consume_beneficial_conditions, serialize_combat_check
+from condition_voice_rules import validate_hearing_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
@@ -79,6 +81,7 @@ async def _check_impl(
     notation: str = "",
     context_description: str = "",
     npc_id: str = "",
+    hearing_only: bool = False,
     *,
     queries=db_queries,
     mutations=db_mutations,
@@ -87,14 +90,22 @@ async def _check_impl(
 ) -> str:
     if mode == "skill":
         return await _check_skill_impl(
-            context, skill, difficulty, context_description, queries=queries, mutations=skill_mutations
+            context,
+            skill,
+            difficulty,
+            context_description,
+            hearing_only=hearing_only,
+            queries=queries,
+            mutations=skill_mutations,
         )
     if mode == "social":
         return await _check_social_impl(
             context, npc_id, skill, difficulty, queries=queries, mutations=mutations, content=content
         )
     if mode == "discover":
-        return await _check_discover_impl(context, skill, target, content=content, queries=queries, mutations=mutations)
+        return await _check_discover_impl(
+            context, skill, target, hearing_only=hearing_only, content=content, queries=queries, mutations=mutations
+        )
     if mode == "save":
         return await _check_save_impl(context, save_type, dc, effect_on_fail, queries=queries)
     if mode == "dice":
@@ -104,17 +115,23 @@ async def _check_impl(
     raise ToolError(f"Unknown check mode {mode!r}; expected one of: {', '.join(VALID_CHECK_MODES)}.")
 
 
+@serialize_combat_check
 async def _check_skill_impl(
     context: RunContext[SessionData],
     skill: str,
     difficulty: str,
     context_description: str,
     *,
+    hearing_only: bool = False,
     queries=db_queries,
     mutations=db_mutations_skill_advancement,
     db_mod=db,
     conditions_mutations=db_mutations_conditions,
 ) -> str:
+    try:
+        validate_hearing_check(skill, hearing_only)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
     logger.info("check skill: skill=%s, difficulty=%s, context=%s", skill, difficulty, context_description)
     _cap_str(context_description, 500, "context_description")
     session: SessionData = context.userdata
@@ -134,8 +151,23 @@ async def _check_skill_impl(
     validated_player_conditions(player, player_id)
 
     result = check_resolution.resolve_skill_check(
-        player, skill, difficulty, ally_present=session.ally_present_for(player_id)
+        condition_voice_rules.roll_data(player, session.combat_state, player_id),
+        skill,
+        difficulty,
+        ally_present=session.ally_present_for(player_id),
+        hearing_only=hearing_only,
     )
+
+    if result.auto_fail:
+        return json.dumps(
+            {
+                "outcome": "automatic_failure",
+                "skill": result.skill,
+                "roll": 0,
+                "narrative_hint": result.narrative_hint,
+                "context": context_description,
+            }
+        )
 
     await publish_game_event(
         session.room,
@@ -156,6 +188,7 @@ async def _check_skill_impl(
     # consumed a beneficial die (M4.8 story-003), the advancement write AND the condition removal run
     # in ONE transaction so a half-applied check can't occur (concern 42c4e9c2a23b); the common
     # no-consume path keeps the single tx-free write exactly as before.
+    consumed_state = None
     if result.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)
@@ -168,7 +201,14 @@ async def _check_skill_impl(
                 queries=queries,
                 mutations=mutations,
             )
-            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations, conn=conn)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                result.consumed_conditions,
+                conditions_mutations,
+                conn=conn,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
     else:
         session.validate_acting_player(player_id)
         adv = await skill_persistence.apply_skill_use_with_persistence(
@@ -179,6 +219,9 @@ async def _check_skill_impl(
             queries=queries,
             mutations=mutations,
         )
+
+    if consumed_state is not None:
+        session.combat_state = consumed_state
 
     if adv is not None and adv.advanced:
         await publish_game_event(
@@ -221,6 +264,7 @@ async def _check_skill_impl(
     return json.dumps(response)
 
 
+@serialize_combat_check
 async def _check_save_impl(
     context: RunContext[SessionData],
     save_type: str,
@@ -229,6 +273,7 @@ async def _check_save_impl(
     *,
     queries=db_queries,
     conditions_mutations=db_mutations_conditions,
+    db_mod=db,
 ) -> str:
     logger.info("check save: save_type=%s, dc=%d, effect_on_fail=%s", save_type, dc, effect_on_fail)
     _cap_str(effect_on_fail, 256, "effect_on_fail")
@@ -245,16 +290,28 @@ async def _check_save_impl(
     validated_player_conditions(player, player_id)
 
     try:
-        result = check_resolution_save.resolve_saving_throw(player, save_type, dc, effect_on_fail)
+        result = check_resolution_save.resolve_saving_throw(
+            condition_voice_rules.roll_data(player, session.combat_state, player_id), save_type, dc, effect_on_fail
+        )
     except ValueError as e:
         raise ToolError(str(e)) from e
 
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
+    consumed_state = None
     if result.consumed_conditions:
         session.validate_acting_player(player_id)
-        await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
+        consumed_state = await consume_beneficial_conditions(
+            player_id,
+            result.consumed_conditions,
+            conditions_mutations,
+            combat_state=session.combat_state,
+            db_mod=db_mod,
+        )
+
+    if consumed_state is not None:
+        session.combat_state = consumed_state
 
     await publish_game_event(
         session.room,

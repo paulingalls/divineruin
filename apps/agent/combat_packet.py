@@ -21,6 +21,7 @@ import combat_marks
 import combat_recharge
 import combat_resolution
 import combat_spatial_declarations
+import combat_voice_rules
 import conditions
 import spell_casting
 import spell_knowledge
@@ -120,6 +121,10 @@ async def _prevalidate_ability_focus(
             if player is None:
                 raise ToolError(f"Unknown player: {actor_id}")
             players_by_id[actor_id] = player
+        try:
+            combat_voice_rules.guard_declaration(state, actor, decl)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
         action = decl.action
         resolved_ability = declared_ability(action)
         if resolved_ability is not None:
@@ -232,6 +237,11 @@ async def _resolve_one_packet(
     if blocked := cannot_act(attacker.conditions):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    try:
+        combat_voice_rules.guard_declaration(state, attacker, decl)
+    except ValueError as e:
+        return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
     if decl.type is DeclarationType.DEFEND:
         return {

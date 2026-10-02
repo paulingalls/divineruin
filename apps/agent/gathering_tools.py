@@ -17,6 +17,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import condition_voice_rules
 import db
 import db_content_queries
 import db_mutations
@@ -27,7 +28,7 @@ import event_types as E
 import gathering
 import rules_engine
 from action_sound_content import publish_action_sound
-from condition_consume import consume_beneficial_conditions
+from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
@@ -49,6 +50,7 @@ REGION_GATHERING_DC: dict[str, int] = {
 }
 
 
+@serialize_combat_check
 async def _check_gather_impl(
     context: RunContext[SessionData],
     material_type: str,
@@ -91,7 +93,12 @@ async def _check_gather_impl(
         raise ToolError(f"No gathering DC for region {region!r}.")
 
     roll = check_resolution.resolve_skill_check_dc(
-        player, skill, dc, rng, ally_present=session.ally_present_for(player_id)
+        condition_voice_rules.roll_data(player, session.combat_state, player_id),
+        skill,
+        dc,
+        rng,
+        ally_present=session.ally_present_for(player_id),
+        hearing_only=False,
     )
     resource_table = {rarity: tuple(ids) for rarity, ids in (resource_table_raw or {}).items()}
     result = gathering.resolve_gathering(
@@ -128,6 +135,7 @@ async def _check_gather_impl(
     # One transaction so the gather commits atomically: a partial write (node depleted but
     # materials not granted, or granted without depletion) would dupe or lose items in the
     # persistent economy. The conn= seams on both mutation modules thread the tx connection.
+    consumed_state = None
     async with db_mod.transaction() as conn:
         session.validate_acting_player(player_id)
         if node is not None:
@@ -146,8 +154,17 @@ async def _check_gather_impl(
         # with the node depletion + inventory grant.
         if roll.consumed_conditions:
             session.validate_acting_player(player_id)
-            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations, conn=conn)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                roll.consumed_conditions,
+                conditions_mutations,
+                conn=conn,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
 
+    if consumed_state is not None:
+        session.combat_state = consumed_state
     for name in found_names:
         session.record_item_found(player_id, name)
 

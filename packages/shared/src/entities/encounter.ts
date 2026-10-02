@@ -297,12 +297,16 @@ export interface SpatialPoint {
   y: number;
   z: number;
 }
+export type SpatialZone =
+  | { center_id: string; radius_ft: number }
+  | { kind: "silence"; center_id: string; radius_ft: number };
+
 export interface ScenePlacement {
   party_start: SpatialPoint;
   companion_start: SpatialPoint;
   actors: Record<string, SpatialPoint>;
   locations: Record<string, SpatialPoint>;
-  zones: Record<string, { center_id: string; radius_ft: number }>;
+  zones: Record<string, SpatialZone>;
 }
 
 function spatialMap(value: unknown): Record<string, unknown> {
@@ -357,7 +361,10 @@ export function validateScenePlacement(encounter: unknown): void {
   for (const value of Object.values(zones)) {
     const zone = spatialMap(value);
     if (
-      Object.keys(zone).sort().join(",") !== "center_id,radius_ft" ||
+      !["center_id,radius_ft", "center_id,kind,radius_ft"].includes(
+        Object.keys(zone).sort().join(","),
+      ) ||
+      (Object.hasOwn(zone, "kind") && zone.kind !== "silence") ||
       typeof zone.center_id !== "string" ||
       !(Object.hasOwn(actors, zone.center_id) || Object.hasOwn(locations, zone.center_id)) ||
       typeof zone.radius_ft !== "number" ||

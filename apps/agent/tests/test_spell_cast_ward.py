@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from _spell_casting_helpers import _cast, _cast_echo, _known, _player, _spell
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 from combat_phase import PhaseBeat, advance_combat_phase
 from session_data import CombatState
@@ -67,12 +68,16 @@ class TestCastSpellWardThroughRealResolver:
     _WARD = {"source": "cleric", "rounds_remaining": None}
 
     def _warded_combat(self) -> CombatState:
-        return CombatState(
-            combat_id="c_nonvacuous",
-            participants=[],
-            initiative_order=[],
-            location_id="accord_guild_hall",
-            veil_ward=self._WARD,
+        return place_actors(
+            CombatState(
+                combat_id="c_nonvacuous",
+                participants=[],
+                initiative_order=[],
+                location_id="accord_guild_hall",
+                veil_ward=self._WARD,
+            ),
+            "player_1",
+            "player_2",
         )
 
     async def test_encounter_ward_halves_generation_via_real_resolver(self):
@@ -174,13 +179,17 @@ class TestPartyWideWardedEncounter:
 
     def _ctx_with_warded_combat(self, rounds_remaining: int):
         ctx = make_context(party_member_ids=["player_2"])
-        ctx.userdata.combat_state = CombatState(
-            combat_id="c_party",
-            participants=[],
-            initiative_order=[],
-            location_id="accord_guild_hall",
-            veil_ward={"source": "paladin", "rounds_remaining": rounds_remaining},
-            beat=PhaseBeat.WRAP,
+        ctx.userdata.combat_state = place_actors(
+            CombatState(
+                combat_id="c_party",
+                participants=[],
+                initiative_order=[],
+                location_id="accord_guild_hall",
+                veil_ward={"source": "paladin", "rounds_remaining": rounds_remaining},
+                beat=PhaseBeat.WRAP,
+            ),
+            "player_1",
+            "player_2",
         )
         return ctx
 

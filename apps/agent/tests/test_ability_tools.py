@@ -208,6 +208,9 @@ class TestActivation:
             if ability.spell_id is not None:
                 spells.get_spell(match.group(1))
             state = _make_combat_state()
+            from voice_condition_fixtures import place_actors
+
+            place_actors(state)
             state.beat = PhaseBeat.DECLARATION
             declaration = {"player_1": {"type": "ability", "action": match.group(1), "target_id": "goblin_scout_1"}}
             advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree

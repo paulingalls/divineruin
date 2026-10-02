@@ -20,7 +20,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, model_validator
+
+from condition_voice_rules import validate_hearing_check
 
 # "any" is the no-category member: gathering.gathering_skill takes None for general
 # foraging, and an optional field would cost a union slot (ADR 0008 rule 2).
@@ -34,6 +36,14 @@ class SkillCheck(BaseModel):
     skill: str = Field(description="The skill being used, e.g. athletics or arcana.")
     difficulty: str = Field(description="One of trivial, easy, moderate, hard, very_hard, extreme, legendary.")
     context_description: str = Field(description="What the player is attempting, in a short phrase.")
+    hearing_only: StrictBool = Field(
+        description="True only when Perception depends exclusively on hearing. False for sight, mixed senses or other skills."
+    )
+
+    @model_validator(mode="after")
+    def valid_hearing_skill(self):
+        validate_hearing_check(self.skill, self.hearing_only)
+        return self
 
 
 class SocialCheck(BaseModel):
@@ -52,6 +62,14 @@ class DiscoverCheck(BaseModel):
     kind: Literal["discover"]
     skill: str = Field(description="The approach, e.g. perception or investigation.")
     target: str = Field(description="The visible feature being examined, e.g. notice_board.")
+    hearing_only: StrictBool = Field(
+        description="True only when Perception depends exclusively on hearing. False for sight, mixed senses or other skills."
+    )
+
+    @model_validator(mode="after")
+    def valid_hearing_skill(self):
+        validate_hearing_check(self.skill, self.hearing_only)
+        return self
 
 
 class SaveCheck(BaseModel):
@@ -95,11 +113,12 @@ def to_impl_args(roll: CheckVariant) -> tuple[str, dict]:
             "skill": roll.skill,
             "difficulty": roll.difficulty,
             "context_description": roll.context_description,
+            "hearing_only": roll.hearing_only,
         }
     if isinstance(roll, SocialCheck):
         return "social", {"npc_id": roll.npc_id, "skill": roll.skill, "difficulty": roll.difficulty}
     if isinstance(roll, DiscoverCheck):
-        return "discover", {"skill": roll.skill, "target": roll.target}
+        return "discover", {"skill": roll.skill, "target": roll.target, "hearing_only": roll.hearing_only}
     if isinstance(roll, SaveCheck):
         return "save", {"save_type": roll.save_type, "dc": roll.dc, "effect_on_fail": roll.effect_on_fail}
     if isinstance(roll, DiceRoll):
