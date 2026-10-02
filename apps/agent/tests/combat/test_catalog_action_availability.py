@@ -193,6 +193,7 @@ def test_unlimited_attack_stays_available():
         {"remaining": 2, "round": 1},
         {"remaining": True, "round": 1},
         {"remaining": 0, "round": None},
+        {"remaining": 0, "round": 0},
     ],
 )
 def test_malformed_action_ledger_fails_loud(entry):
@@ -233,3 +234,30 @@ async def test_legacy_unrolled_held_action_resumes_with_one_execution_id():
     assert result[0]["condition_inflicted"] == "grappled"
     assert state.participants[1].action_ledger["lunge"]["remaining"] == 0
     d["resolver"].resolve_attack.assert_called_once()
+
+
+@pytest.mark.parametrize("recharge", [None, {"kind": "encounter", "uses": 2}])
+async def test_pending_held_execution_refuses_direct_call_even_with_available_uses(recharge):
+    action = {**LUNGE}
+    if recharge is None:
+        action.pop("recharge")
+    else:
+        action["recharge"] = recharge
+    state, actor, packet = setup(action)
+    hold(state, actor)
+    d = deps()
+    session = make_context().userdata
+    await combat_hold.pump(session, state, packet_deps=d)
+    await combat_hold.pump(session, state, packet_deps=d)
+    before = state.to_dict()
+    calls = d["sink"].emit.call_count
+    summary = await _resolve_one_packet(session, state, packet, **d)
+    assert not summary["resolved"]
+    assert state.to_dict() == before
+    assert d["resolver"].resolve_attack.call_count == 1
+    assert d["sink"].emit.call_count == calls
+    result = await combat_hold.pump(session, state, packet_deps=d)
+    assert result[0]["resolved"]
+    assert d["resolver"].resolve_attack.call_count == 1
+    if recharge is not None:
+        assert actor.action_ledger["lunge"]["remaining"] == 1

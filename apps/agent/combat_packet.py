@@ -247,16 +247,21 @@ async def _resolve_one_packet(
         else None
     )
 
-    if not attacker.is_ally and action is not None and action_kind(action) in ("healing", "prepare_attack"):
-        if not combat_recharge.available(attacker, action):
-            return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
-        action = begin_execution(state, attacker, action, decl)
-        return resolve_active(state, attacker, action, decl)
-
     if action is not None:
         replay = _held_head is not None and replay_valid(state, _held_head, attacker, action, decl)
-        if (_held_head is not None and not replay) or (not replay and not combat_recharge.available(attacker, action)):
+        pending_execution = any(
+            head.get("actor_id") == attacker.id and head.get("execution_receipt") is not None
+            for head in state.held_actions
+        )
+        if (
+            (_held_head is not None and not replay)
+            or (_held_head is None and pending_execution)
+            or (not replay and not combat_recharge.available(attacker, action))
+        ):
             return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
+        if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
+            action = begin_execution(state, attacker, action, decl)
+            return resolve_active(state, attacker, action, decl)
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if replay:
             assert _held_head is not None

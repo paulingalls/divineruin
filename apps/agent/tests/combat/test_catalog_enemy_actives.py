@@ -254,3 +254,51 @@ async def test_condition_action_honors_authored_duration():
     assert state.participants[0].conditions[0]["duration"] == 1
     state = await wrap(state)
     assert not state.participants[0].conditions
+
+
+@pytest.mark.parametrize("action", [RALLY, DIRTY])
+@pytest.mark.parametrize("objection", [False, True])
+async def test_captain_actives_offer_only_catch_all_before_execution(action, objection):
+    import reaction_gate
+    import reaction_spend
+
+    state, actor, _packet = setup(action)
+    actor.creature_id = "bandit_captain"
+    actor.hp_current = 1
+    hold(state, actor)
+    state.participants[0].reaction_ids = ["diplomat_objection", "skirmisher_sidestep", "marshal_countermand"]
+    state.pending_declarations[actor.id] = {"type": "ability", "action": action["name"]}
+    state.held_actions[0]["declaration"] = state.pending_declarations[actor.id]
+    d = deps()
+    session = make_context().userdata
+    assert await combat_hold.pump(session, state, packet_deps=d) == []
+    assert state.open_window is not None
+    assert state.open_window["stage"] == "pre_roll"
+    assert state.open_window["target_id"] is None
+    assert state.open_window["triggers"] == ["on_enemy_action"]
+    assert [row["id"] for row in reaction_gate.offered_reactions(state)] == ["diplomat_objection"]
+    assert actor.hp_current == 1
+    assert actor.pending_preparation is None
+    assert action["name"] in _participant_summary(actor)["actions"]
+    if objection:
+        from unittest.mock import MagicMock
+
+        state.participants[0].attributes["charisma"] = 18
+        actor.attributes["wisdom"] = 10
+        state.reactions_available["player_1"] = reaction_spend.spend(
+            "diplomat_objection", state.open_window, held_seq=state.held_actions[0]["seq"]
+        )
+        result = await combat_hold.pump(
+            session, state, packet_deps=d, contest_rng=SimpleNamespace(randint=MagicMock(side_effect=[20, 1]))
+        )
+        assert result[-1]["hesitated"]
+        assert actor.hp_current == 1
+        assert actor.pending_preparation is None
+        assert action["name"] in _participant_summary(actor)["actions"]
+    else:
+        result = await combat_hold.pump(session, state, packet_deps=d)
+        assert result[0]["resolved"]
+        assert action["name"] not in _participant_summary(actor)["actions"]
+    assert not state.held_actions
+    assert state.open_window is None
+    d["resolver"].resolve_attack.assert_not_called()

@@ -128,25 +128,14 @@ def _is_wasted(state, head: dict) -> bool:
 
 
 def _opens_windows(state, head: dict) -> bool:
-    """Does this held action open reaction windows at all?
-
-    Only a held action that NAMES A TARGET does. Every trigger the pre-roll window emits is a
-    claim that someone was targeted (``on_targeted`` / ``on_ally_targeted``), so opening it for an
-    enemy DEFEND — or any other untargeted declaration declare_phase accepts for an enemy — would
-    ship a descriptor that contradicts itself: triggers saying a blow is coming beside a null
-    ``target_id``, and a player burning the round's one reaction on a foe that merely braced
-    (constraint 6). Such an action still POPS through the ordinary resolver, unpaused.
-
-    A targeted action must also name a real action_pool row. Pausing on a declaration that later
-    resolves to nothing would offer reactions for no action and can strand a legacy reload.
-    """
+    """Offer windows only for executable pool actions; declaration-only no-ops cannot be interrupted."""
     if _is_wasted(state, head):
         return False
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
     if action is not None and action_kind(action) in ("healing", "prepare_attack"):
-        return False
+        return True
     return declaration.target_id is not None and action is not None
 
 
@@ -264,7 +253,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             if opens:
                 if PRE_ROLL not in head["opened"]:
                     head["opened"].append(PRE_ROLL)
-                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(action or {}))
+                    actor = state.get_participant(head["actor_id"])
+                    window_action = _find_action(actor, _held_declaration(head).action)
+                    assert window_action is not None
+                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(window_action))
                     if reaction_gate.offers_for_window(state, candidate):
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
