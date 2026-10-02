@@ -84,10 +84,19 @@ class EventSink:
         self.captured.append(BufferedEvent(room, event_type, payload, event_bus))
 
     async def flush(self) -> None:
-        """Publish every buffered event in order, then clear. Call ONLY after the tx commits."""
-        for ev in self.captured:
-            await publish_game_event(ev.room, ev.event_type, ev.payload, event_bus=ev.event_bus)
-        self.captured.clear()
+        """Attempt the committed batch in order, clear it, then raise the first publish error."""
+        first_error: Exception | None = None
+        try:
+            for ev in self.captured:
+                try:
+                    await publish_game_event(ev.room, ev.event_type, ev.payload, event_bus=ev.event_bus)
+                except Exception as error:
+                    if first_error is None:
+                        first_error = error
+        finally:
+            self.captured.clear()
+        if first_error is not None:
+            raise first_error
 
 
 async def emit_or_publish(
