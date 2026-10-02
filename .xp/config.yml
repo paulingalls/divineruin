@@ -1,7 +1,8 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
-#                    # Applies to every Codex role during the Sprint 63 experiment.
+#                    # LIVE since sprint-049 open: executor, planner, slate-reviewer and fixer
+#                    # are codex/*, so this posture now governs four roles.
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
