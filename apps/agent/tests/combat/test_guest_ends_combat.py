@@ -10,7 +10,7 @@ from combat._helpers import _ctx_at_resolution, _fake_db_mod, _make_combat_state
 from combat.test_combat_init_multiplayer import _add_second_member, _second_member_row
 from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
 from livekit.agents.llm import ToolError
-from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room
+from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
 
 from combat_end import _end_combat_db, _end_combat_impl
 from combat_events import EventSink
@@ -18,6 +18,37 @@ from combat_init import _start_combat_impl
 from combat_rewards import EncounterSpoils
 from session_end import run_guest_departure, run_session_end
 from session_summary import generate_session_summary
+
+
+def snapshot_queries():
+    return combat_end_queries(get_player_inventory=AsyncMock(side_effect=lambda pid, **kw: [{"id": pid}]))
+
+
+def checked_commit_db(db_mod, room):
+    transaction = db_mod.transaction
+
+    @asynccontextmanager
+    async def checked():
+        count = room.local_participant.publish_data.call_count
+        async with transaction() as conn:
+            yield conn
+            assert room.local_participant.publish_data.call_count == count
+
+    return MagicMock(transaction=checked)
+
+
+def assert_owner_snapshots_after_combat(room):
+    events = published_payloads(room)
+    snapshots = [event for event in events if event["type"] == "inventory_updated"]
+    assert snapshots == [
+        {"type": "inventory_updated", "player_id": pid, "inventory": [{"id": pid}]} for pid in ["player_1", "player_2"]
+    ]
+    assert [event["type"] for event in events][-4:] == [
+        "combat_ended",
+        "inventory_updated",
+        "inventory_updated",
+        "play_sound",
+    ]
 
 
 async def named_recap(sd, player_id):
@@ -124,9 +155,13 @@ async def test_guest_end_combat_commits_and_cannot_pay_twice():
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
-        _, raw = await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=_fake_db_mod())
+        _, raw = await _end_combat_impl(
+            ctx, "victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod()
+        )
         with pytest.raises(ToolError, match="Not in combat"):
-            await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=_fake_db_mod())
+            await _end_combat_impl(
+                ctx, "victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod()
+            )
     assert json.loads(raw)["outcome"] == "victory"
     assert ctx.userdata.combat_state is None
     mutations.delete_combat_state.assert_awaited_once()
@@ -189,7 +224,7 @@ async def test_combat_faction_outcome_reaches_each_member(speaker, outcome, enem
 
 @pytest.mark.asyncio
 async def test_guest_end_combat_grants_each_members_loot_and_coin():
-    ctx = make_context()
+    ctx = make_context(room=make_mock_room())
     _add_second_member(ctx)
     cs = _make_combat_state(enemy_fallen=True)
     guest = copy.deepcopy(cs.participants[0])
@@ -216,12 +251,17 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
             ):
                 with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
                     _, raw = await _end_combat_impl(
-                        ctx, "victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod()
+                        ctx,
+                        "victory",
+                        mutations=mutations,
+                        queries=snapshot_queries(),
+                        db_mod=checked_commit_db(_fake_db_mod(), ctx.userdata.room),
                     )
     assert [call.args[:2] for call in mutations.add_inventory_item.await_args_list] == [
         ("player_1", "relic"),
         ("player_2", "gem"),
     ]
+    assert_owner_snapshots_after_combat(ctx.userdata.room)
     assert ctx.userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
     assert ctx.userdata.player_summary_metrics["player_2"]["items_found"] == ["Blue Gem"]
     assert ctx.userdata.session_items_found == ["Sun Relic"]
@@ -244,9 +284,11 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
     state.participants.insert(0, host)
     state.initiative_order.insert(0, "player_1")
     state.pending_declarations["player_1"] = {"type": "defend"}
-    ctx = _ctx_at_resolution(state=state)
+    ctx = _ctx_at_resolution(state=state, room=make_mock_room())
     _add_second_member(ctx)
     deps = _resolve_deps(damage=10)
+    deps["queries"].get_player_inventory = snapshot_queries().get_player_inventory
+    deps["db_mod"] = checked_commit_db(deps["db_mod"], ctx.userdata.room)
     spoils = EncounterSpoils(
         xp_total=50, loot_pool=[{"item_id": "relic", "quantity": 1}, {"item_id": "gem", "quantity": 1}]
     )
@@ -272,6 +314,7 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
         ("player_1", "relic"),
         ("player_2", "gem"),
     ]
+    assert_owner_snapshots_after_combat(ctx.userdata.room)
     assert ctx.userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
     assert ctx.userdata.player_summary_metrics["player_2"]["items_found"] == ["Blue Gem"]
     assert (await named_recap(ctx.userdata, "player_1"))["items_found"] == ["Sun Relic"]
@@ -284,7 +327,7 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
 
 @pytest.mark.asyncio
 async def test_identical_combat_drops_count_one_display_name():
-    ctx = make_context()
+    ctx = make_context(room=make_mock_room())
     ctx.userdata.combat_state = _make_combat_state(enemy_fallen=True)
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
@@ -294,7 +337,10 @@ async def test_identical_combat_drops_count_one_display_name():
         patch("db_content_queries.get_item", AsyncMock(return_value={"name": "Sun Relic"})),
         patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
     ):
-        await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=_fake_db_mod())
+        await _end_combat_impl(ctx, "victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod())
+    assert [e for e in published_payloads(ctx.userdata.room) if e["type"] == "inventory_updated"] == [
+        {"type": "inventory_updated", "player_id": "player_1", "inventory": []}
+    ]
     assert mutations.add_inventory_item.await_count == 2
     assert ctx.userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
     assert ctx.userdata.session_items_found == ["Sun Relic"]
@@ -303,7 +349,7 @@ async def test_identical_combat_drops_count_one_display_name():
 
 @pytest.mark.asyncio
 async def test_combat_commit_failure_records_no_items():
-    ctx = make_context()
+    ctx = make_context(room=make_mock_room())
     _add_second_member(ctx)
     cs = _make_combat_state(enemy_fallen=True)
     guest = copy.deepcopy(cs.participants[0])
@@ -327,6 +373,7 @@ async def test_combat_commit_failure_records_no_items():
     ):
         with pytest.raises(RuntimeError, match="commit failed"):
             await _end_combat_impl(ctx, "victory", mutations=mutations, db_mod=db_mod)
+    assert published_payloads(ctx.userdata.room) == []
     assert mutations.add_inventory_item.await_count == 2
     assert ctx.userdata.combat_state is cs
     assert ctx.userdata.session_items_found == []
@@ -355,3 +402,36 @@ async def test_guest_declared_defeat_uses_primary_anchor():
     assert revive.await_args is not None
     assert revive.await_args.args[0]["player_id"] == "player_1"
     assert ctx.userdata.combat_state is None
+
+
+async def test_combat_snapshot_excludes_currency_only_seats():
+    ctx = make_context(room=make_mock_room())
+    _add_second_member(ctx)
+    cs = _make_combat_state(enemy_fallen=True)
+    guest = copy.deepcopy(cs.participants[0])
+    guest.id = "player_2"
+    cs.participants.insert(1, guest)
+    ctx.userdata.combat_state = cs
+    spoils = EncounterSpoils(currency_silver=200, loot_pool=[{"item_id": "relic", "quantity": 1}])
+    queries = snapshot_queries()
+    mutations = combat_end_mutations()
+    mutations.add_inventory_item = AsyncMock()
+    mutations.update_player_gold = AsyncMock()
+    with (
+        patch("pricing_queries.get_economy_pricing", AsyncMock(return_value={"silver_per_gold": 10})),
+        patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),
+        patch("db_content_queries.get_item", AsyncMock(return_value={"name": "Sun Relic"})),
+        patch("db_content_queries.get_material_definition", AsyncMock(return_value=None)),
+    ):
+        await _end_combat_impl(
+            ctx,
+            "victory",
+            mutations=mutations,
+            queries=queries,
+            db_mod=checked_commit_db(_fake_db_mod(), ctx.userdata.room),
+        )
+    events = published_payloads(ctx.userdata.room)
+    assert {e["player_id"] for e in events if e["type"] == "currency_gained"} == {"player_1", "player_2"}
+    assert [e for e in events if e["type"] == "inventory_updated"] == [
+        {"type": "inventory_updated", "player_id": "player_1", "inventory": [{"id": "player_1"}]}
+    ]

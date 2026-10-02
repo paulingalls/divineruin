@@ -22,6 +22,7 @@ appId: com.divineruin.app
 - tapOn:
     id: "email-input"
 - inputText: "acceptance@divineruin.test"
+- pressKey: Enter
 - tapOn:
     text: "SEND CODE"
 # Wait for the code-input testID rather than the "000000" placeholder text —

@@ -49,6 +49,7 @@ def _craft_queries(
         player["skill_tiers"] = {"crafting": tier}
     if player_class is not None:
         player["class"] = player_class
+    mod.get_player_inventory = AsyncMock(return_value=[])
     mod.get_player = AsyncMock(return_value=player)
     mod.get_player_known_recipe_ids = AsyncMock(return_value={"iron_sword"} if recipe_known else set())
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field", "forge"})

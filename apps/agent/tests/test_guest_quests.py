@@ -27,6 +27,9 @@ def quest_case(stages, progress=None):
     quest = {"name": "Guest Quest", "stages": stages}
     content = MagicMock(get_quest=AsyncMock(return_value=quest), get_item=AsyncMock(return_value=None))
     queries = MagicMock(
+        get_player_inventory=AsyncMock(
+            side_effect=lambda pid: [{"id": "relic", "name": "Sun Relic", "slot_info": {"quantity": 3}}]
+        ),
         get_player_quest=AsyncMock(side_effect=lambda pid, *_args, **_kw: rows.get(pid)),
         get_player=AsyncMock(side_effect=lambda pid, **_kw: {**GUILD_PLAYER, "player_id": pid}),
     )

@@ -19,6 +19,7 @@ import progression_tools
 from combat_events import EventSink
 from db_errors import db_tool
 from game_events import publish_game_event
+from inventory_refresh import publish_inventory
 from quest_world_effects import _apply_world_effects
 from session_data import SessionData
 from tool_support import _validate_id
@@ -94,7 +95,6 @@ async def _update_quest_impl(
 
     rewards_applied = []
     item_recipients: list[tuple[str, str]] = []
-    item_names: dict[str, str] = {}
     pending_events: list[tuple[str, dict]] = []
     outcome = None
     # Who the reward passes ACTUALLY paid — the marker set is derived from their own output, never
@@ -269,7 +269,6 @@ async def _update_quest_impl(
                 if item_id:
                     item = await content.get_item(item_id)
                     item_name = item.get("name", item_id) if item else item_id
-                    item_names[item_id] = item_name
                     for pid in eligible_ids:
                         await mutations.add_inventory_item(pid, item_id, qty, conn=conn)
                         item_recipients.append((pid, item_name))
@@ -332,22 +331,10 @@ async def _update_quest_impl(
     for pid, level in pending_corruption.items():
         session.member_state(pid).corruption_level = level
 
-    for reward in rewards_applied:
-        if reward["type"] == "item":
-            pending_events.append(
-                (
-                    E.INVENTORY_UPDATED,
-                    {
-                        "action": "added",
-                        "item_id": reward["item_id"],
-                        "item_name": item_names[reward["item_id"]],
-                        "quantity": reward["quantity"],
-                    },
-                )
-            )
-
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+    for pid in sorted({pid for pid, _ in item_recipients}):
+        await publish_inventory(session, pid, queries=queries)
 
     quest_name = quest.get("name", quest_id)
     # The DM's warm memory of what it just paid out. Folding the award tools onto Resolves

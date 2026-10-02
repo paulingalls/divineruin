@@ -29,7 +29,11 @@ LIVE_SELF="divineruin-test-${SELF_PID}-redis"
 LIVE_ROOT="divineruin-test-1-pg"            # PID 1: alive but not ours
 MALFORMED="divineruin-test-notapid-pg"      # non-numeric → no match → untouched
 
-ALL=("$DEAD_A" "$DEAD_B" "$LIVE_SELF" "$LIVE_ROOT" "$MALFORMED")
+DEAD_ACCEPTANCE="divineruin-test-${DEAD_PID}-pg-0123456789abcdef0123456789abcdef"
+LIVE_ACCEPTANCE="divineruin-test-${SELF_PID}-pg-0123456789abcdef0123456789abcdef"
+BAD_SUFFIX="divineruin-test-${DEAD_PID}-pg-unowned"
+
+ALL=("$DEAD_ACCEPTANCE" "$LIVE_ACCEPTANCE" "$BAD_SUFFIX" "$DEAD_A" "$DEAD_B" "$LIVE_SELF" "$LIVE_ROOT" "$MALFORMED")
 
 # The fixture names are machine-global (the sweep regex needs a PID in the name, and one must be
 # PID 1), so two checkouts' pre-push runs would create and remove each other's fixtures. mkdir is
@@ -53,16 +57,24 @@ acquire_lock() {
   echo "$$" > "$LOCK/pid"
 }
 
-cleanup() {
+remove_fixtures() {
   for n in "${ALL[@]}"; do docker rm -f "$n" >/dev/null 2>&1; done
+}
+
+cleanup() {
+  remove_fixtures
   [ "$(cat "$LOCK/pid" 2>/dev/null)" = "$$" ] && rm -rf "$LOCK"
 }
 acquire_lock
 trap cleanup EXIT
 
 # Fresh slate, then create all fixtures.
-cleanup
+remove_fixtures
 for n in "${ALL[@]}"; do
+  if [ "$(cat "$LOCK/pid" 2>/dev/null)" != "$$" ]; then
+    echo "FAIL: fixture provisioning lost the harness lock"
+    exit 1
+  fi
   if ! docker create --name "$n" "$IMAGE" >/dev/null 2>&1; then
     echo "FAIL: could not create fixture container $n"
     exit 1
@@ -90,6 +102,9 @@ assert "$DEAD_A"   "yes"   # dead owner, current prefix → reaped
 assert "$DEAD_B"   "yes"   # dead owner, legacy prefix → reaped
 assert "$LIVE_SELF" "no"   # our own live PID → skipped
 assert "$LIVE_ROOT" "no"   # other-user live PID → skipped (ps, not kill -0)
+assert "$DEAD_ACCEPTANCE" "yes"
+assert "$LIVE_ACCEPTANCE" "no"
+assert "$BAD_SUFFIX" "no"
 assert "$MALFORMED" "no"   # non-numeric pid → never matched, untouched
 
 echo ""
