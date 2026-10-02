@@ -74,6 +74,11 @@ interface PanelState {
 
   characterDetail: CharacterDetail | null;
   inventory: InventoryItem[];
+  inventoryGeneration: number;
+  inventoryRefreshError: string | null;
+  inventoryRefreshRequest: number;
+  setInventoryRefreshError: (error: string | null) => void;
+  requestInventoryRefresh: () => void;
   quests: QuestView[];
   mapProgress: MapNode[];
 
@@ -97,12 +102,15 @@ const INITIAL_STATE = {
   activeTab: "character" as PanelTab,
   characterDetail: null,
   inventory: [],
+  inventoryRefreshError: null,
   quests: [],
   mapProgress: [],
 };
 
 export const panelStore = createStore<PanelState>((set) => ({
   ...INITIAL_STATE,
+  inventoryGeneration: 0,
+  inventoryRefreshRequest: 0,
 
   openPanel: (tab) => set((s) => ({ isOpen: true, activeTab: tab ?? s.activeTab })),
 
@@ -112,7 +120,11 @@ export const panelStore = createStore<PanelState>((set) => ({
 
   setCharacterDetail: (detail) => set({ characterDetail: detail }),
 
-  setInventory: (items) => set({ inventory: items }),
+  setInventory: (items) =>
+    set((s) => ({ inventory: items, inventoryGeneration: s.inventoryGeneration + 1 })),
+  setInventoryRefreshError: (error) => set({ inventoryRefreshError: error }),
+  requestInventoryRefresh: () =>
+    set((s) => ({ inventoryRefreshRequest: s.inventoryRefreshRequest + 1 })),
 
   setQuests: (quests) => set({ quests }),
 
@@ -172,5 +184,5 @@ export const panelStore = createStore<PanelState>((set) => ({
       return { mapProgress: newNodes };
     }),
 
-  reset: () => set({ ...INITIAL_STATE }),
+  reset: () => set((s) => ({ ...INITIAL_STATE, inventoryGeneration: s.inventoryGeneration + 1 })),
 }));

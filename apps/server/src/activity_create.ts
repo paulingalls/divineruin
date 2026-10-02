@@ -1,3 +1,4 @@
+import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
 import {
@@ -449,7 +450,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         VALUES (${activityId}, ${playerId}, ${data})
       `;
 
-      return { activityId, resolveAt: resolveAt.toISOString() } as const;
+      const snapshot =
+        activityType === "crafting" ? await inventorySnapshot(playerId, tx) : undefined;
+      return { activityId, resolveAt: resolveAt.toISOString(), snapshot } as const;
     });
 
     if ("error" in txnResult) {
@@ -460,6 +463,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       activity_id: txnResult.activityId,
       status: "in_progress",
       resolve_at_estimate: txnResult.resolveAt,
+      ...txnResult.snapshot,
     });
   } catch (err) {
     logError("[activities] create failed:", err);

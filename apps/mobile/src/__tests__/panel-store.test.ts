@@ -212,3 +212,13 @@ test("reset clears all state", () => {
   expect(panelStore.getState().quests).toHaveLength(0);
   expect(panelStore.getState().mapProgress).toHaveLength(0);
 });
+
+test("inventory generation advances for snapshots and reset, never unrelated writes", () => {
+  const first = panelStore.getState().inventoryGeneration;
+  panelStore.getState().setInventory([]);
+  expect(panelStore.getState().inventoryGeneration).toBe(first + 1);
+  panelStore.getState().openPanel();
+  expect(panelStore.getState().inventoryGeneration).toBe(first + 1);
+  panelStore.getState().reset();
+  expect(panelStore.getState().inventoryGeneration).toBe(first + 2);
+});

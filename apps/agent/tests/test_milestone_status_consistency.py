@@ -50,3 +50,57 @@ def test_remaining_position_is_the_sum_of_the_readme_table():
         sum(int(r["met"]) for r in rows),
         sum(int(r["total"]) for r in rows),
     )
+
+
+def test_phase7_capstone_preserves_checked_scope_and_summary():
+    text = (_MILESTONES / "07_bestiary.md").read_text()
+    expected = {"7.1": (9, 0), "7.2": (11, 0), "7.3": (2, 8), "7.4": (0, 11)}
+    sections = re.split(r"^### Milestone (7\.\d) —[^\n]+", text, flags=re.M)
+    assert len(sections) == 9, "Phase 7 milestone corpus moved or emptied"
+    for number, body in zip(sections[1::2], sections[2::2], strict=True):
+        checked = re.findall(r"^- \[x\] (.*)", body, re.M)
+        unchecked = re.findall(r"^- \[ \]", body, re.M)
+        assert (len(checked), len(unchecked)) == expected[number]
+        summary = re.search(rf"\| M{number} —[^|]+\| (\d+) \| (\d+) \| (\d+) \|", text)
+        assert summary and tuple(map(int, summary.groups())) == (len(checked), 0, len(unchecked))
+        if number == "7.3":
+            assert all(
+                line.startswith(("All 9 Hollow creatures", "Each Hollow creature has a distinct veil_effect"))
+                for line in checked
+            )
+
+
+def test_phase7_capstone_names_cutover_refresh_and_deferred_mechanics():
+    text = (_MILESTONES / "07_bestiary.md").read_text()
+    for phrase in (
+        "catalog references",
+        "persisted snapshots",
+        "agent snapshots",
+        "committed HTTP",
+        "authenticated GET /api/inventory",
+        "open/resume",
+        "five seconds",
+        "foreground",
+        "generation",
+        "refresh error",
+        "retry",
+        "narrative-only",
+        "command",
+        "accusation",
+        "restrictions",
+        "terrain",
+        "zone",
+        "legendary",
+        "Named",
+        "deferred",
+    ):
+        assert phrase in text, f"Missing capstone contract: {phrase}"
+    assert "Named creatures have catalog data; their custom runtime encounters remain deferred." in text
+    assert (
+        "Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice."
+        in text
+    )
+    assert "story-136 owns" not in text.lower()
+    spec = (_MILESTONES.parent / "game_mechanics/game_mechanics_bestiary.md").read_text()
+    assert "Combat Effect Inventory" in spec
+    assert "command social focus/narration; no automatic healing or spell buff dice" in spec

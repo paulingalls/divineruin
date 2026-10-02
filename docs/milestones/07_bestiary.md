@@ -4,11 +4,11 @@
 
 Defines the full creature catalog, from stat block schema through regional creatures, Hollow special mechanics, and the encounter builder. Provides the DM agent with a complete library of adversaries and the tools to assemble balanced encounters.
 
-## Audit Status (Sprint-060)
+## Catalog Cutover Status (Sprint-063)
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, all 9 spec-authored Hollow creatures, all 19 spec-authored natural creatures, eight encounter creature catalog rows, and internal catalog lookups are shipped. The DM query surface and Hollow and encounter mechanics remain open. All ten authored encounters use catalog references with explicit roles and recommended party levels; combat entry expands them into persisted snapshots.
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, all 9 spec-authored Hollow creatures, all 19 spec-authored natural creatures, eight encounter creature catalog rows, and internal catalog lookups are shipped. The public creature-query tool, remaining Hollow mechanics, harvesting and generated encounter builder remain open. All ten authored encounters use catalog references with explicit roles and recommended party levels; combat entry expands them into persisted snapshots.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
@@ -16,6 +16,10 @@ Defines the full creature catalog, from stat block schema through regional creat
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
+
+**Catalog cutover and inventory refresh:** All ten encounters store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Unimplemented condition restrictions (including Deafened and Charmed), custom terrain and zone behavior, anchors, forced movement and legendary mechanics remain deferred. The three Named creatures have catalog data; their custom runtime encounters remain deferred.
+
+Material changes publish immediate owner-scoped agent snapshots after commit. HTTP crafting consumption and keep grants return a full committed HTTP snapshot to the initiator. Other devices use authenticated GET /api/inventory on HUD open/resume and every five seconds while foreground with any HUD panel open, independently of voice connectivity. Background, closed HUD and unmount stop polling. Snapshot generation rejects an older pending GET or mutation snapshot after an immediate update; auth transitions invalidate pending responses. A refresh error preserves inventory and displays retry status; the next scheduled poll retries. The five-second cross-device delay is the accepted tradeoff; no room registry or server packet impersonates the agent.
 
 **Material gaps:**
 - **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block still needs optional `role` (Minion/Standard/Elite/Boss/Named) and Boss-only `legendary_actions[]` for the Phase-7 catalog. Optional `signature_ability` now has a typed catalog home; M4.7 already derives roles from authored templates.
@@ -46,7 +50,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
-- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Story-136 owns the new runtime paths and story-137 the structured catalog producers. All ten templates now use catalog references. Rows without optional extensions remain valid.
+- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Combat executes the supported attack, healing, preparation and limited-use paths; catalog expansion exposes their IDs and authored cues to the DM. All ten templates now use catalog references. Rows without optional extensions remain valid.
 
 **Acceptance criteria:**
 - [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->

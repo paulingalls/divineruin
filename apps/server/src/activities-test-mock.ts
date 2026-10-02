@@ -17,6 +17,11 @@
 // use) keeps the binding ours while the resolution logic + state stay shared here.
 export type QueryStub = { match: string | RegExp; result: unknown[] };
 
+let commit: (() => Promise<void>) | undefined;
+export function controlCommit(next: () => Promise<void>): void {
+  commit = next;
+}
+
 let stubs: QueryStub[] = [];
 let consumed: boolean[] = [];
 let capturedQueries: { sql: string; values: unknown[] }[] = [];
@@ -50,7 +55,9 @@ export function dbMockFactory(): { sql: unknown } {
   const mockSql = Object.assign(mockTaggedTemplate, {
     close: () => Promise.resolve(),
     begin: async (fn: (tx: typeof mockTaggedTemplate) => Promise<unknown>) => {
-      return fn(mockSql);
+      const result = await fn(mockSql);
+      await commit?.();
+      return result;
     },
   });
   // Support sql(values) call form for IN expressions (distinct from tagged template calls)
@@ -76,6 +83,7 @@ export function setQueryStubs(next: QueryStub[]): void {
 
 /** Reset all mock state — call in beforeEach. */
 export function resetMockDb(): void {
+  commit = undefined;
   stubs = [];
   consumed = [];
   capturedQueries = [];

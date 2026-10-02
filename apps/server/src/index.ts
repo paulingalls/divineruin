@@ -1,3 +1,4 @@
+import { handleGetInventory } from "./inventory-api.ts";
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleCreateInvite, handleRedeemInvite } from "./invite.ts";
@@ -171,6 +172,12 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
   }
 
   // --- Activity routes (auth required) ---
+
+  if (path === "/api/inventory" && req.method === "GET") {
+    const auth = await requireAuth(req);
+    if (auth instanceof Response) return withCors(auth);
+    return withCors(await handleGetInventory(req, auth.playerId));
+  }
 
   if (path === "/api/activities" && req.method === "POST") {
     const auth = await requireAuth(req);
