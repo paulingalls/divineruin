@@ -4,8 +4,9 @@ import math
 import random
 
 import pytest
-from creature_combat_helpers import ATTRIBUTES, ROOT, participant, row, selected
+from creature_combat_helpers import ATTRIBUTES, ROOT, catalog, participant, row, selected
 
+from check_resolution_attack import resolve_attack
 from combat_state import CombatState
 from combat_support import _participant_roster
 from creature_combat import translate_creature
@@ -207,4 +208,19 @@ def test_boss_signature_does_not_alias_source():
     before = copy.deepcopy(source)
     enemy = translate(source, "boss")
     enemy["signature_ability"]["description"] = "changed"
+    assert source == before
+
+
+@pytest.mark.parametrize("species", ["hollow_hollowmoth", "rock_viper"])
+@pytest.mark.parametrize("damage", [None, "7"])
+def test_catalog_flat_damage_reaches_real_dice_consumer(species, damage):
+    source = next(r for r in catalog() if r["id"] == species)
+    if damage is not None:
+        source["attacks"][0]["damage"] = damage
+    before = copy.deepcopy(source)
+    enemy = translate(source)
+    action = enemy["action_pool"][0]
+    result = resolve_attack(enemy, action, target_ac=0, target_hp=10, rng=random.Random(0))
+    assert result.hit and not result.critical_success
+    assert result.damage == int(source["attacks"][0]["damage"])
     assert source == before

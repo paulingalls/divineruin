@@ -105,3 +105,18 @@ def test_special_text_does_not_drive_actions():
     after = translate(changed)["action_pool"]
     for a, b in zip(before, after, strict=True):
         assert {k: v for k, v in a.items() if k != "special"} == {k: v for k, v in b.items() if k != "special"}
+
+
+def test_unknown_attribute_fails_with_identity():
+    source = row("bandit")
+    source["attributes"]["LUCK"] = 10
+    with pytest.raises(ValueError, match=r"bandit.*enc137.*enemy137.*attributes.*LUCK"):
+        translate(source)
+
+
+def test_zero_flat_damage_cannot_pass_usable_attack_floor():
+    source = row("bandit")
+    source["attacks"] = [{**source["attacks"][0], "damage": "00"}]
+    source["actives"] = []
+    with pytest.raises(ValueError, match=r"bandit.*enc137.*enemy137.*no usable damaging attack"):
+        translate(source)

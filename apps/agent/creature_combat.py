@@ -21,6 +21,10 @@ _CATEGORIES = {"humanoid", "beast", "construct", "undead"}
 
 def _action(source):
     action = deepcopy(source)
+    damage = action.get("damage")
+    if isinstance(damage, str) and damage.isdecimal():
+        amount = int(damage)
+        action["damage"] = f"1d1+{amount - 1}" if amount else "0"
     properties = list(action.get("properties", []))
     if action.get("type") == "ranged":
         properties.append("ranged")
@@ -63,6 +67,9 @@ def _translate(row, encounter_id, enemy_id, role):
         category = f"hollow_{cls}"
     elif category not in _CATEGORIES:
         raise ValueError(f"unsupported category {category!r}")
+    unknown_attributes = set(row["attributes"]) - _ATTRIBUTES.keys()
+    if unknown_attributes:
+        raise ValueError(f"attributes: unknown keys {sorted(unknown_attributes)!r}")
     if any(save not in _ATTRIBUTES for save in row["save_proficiencies"]):
         raise ValueError("save_proficiencies: unknown attribute")
     actions = [_action(a) for a in row["attacks"]]
