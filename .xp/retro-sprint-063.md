@@ -28,3 +28,8 @@ classified the new Python E2E corpus in the existing source-walk floor tests.
 
 The temporary all-Codex/GPT-6.1-Sol role experiment remains through the initial
 PR. Restore the original role block afterward while keeping the new test policy.
+
+Human close scope: triage Sprint 63 findings. XP 0.33.0 surfaced historical
+review notes during close; the older backlog remains unchanged for a separate
+cleanup. This is a scope exception to historical triage, not a claim that those
+findings are fixed or dropped. All current sprint findings have dispositions.
