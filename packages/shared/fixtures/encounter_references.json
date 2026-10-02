@@ -981,6 +981,7 @@
       "apps/agent/tests/test_seed_content.py",
       "apps/agent/tests/test_seed_creature_tiers.py",
       "apps/agent/tests/test_seed_encounter_references.py",
+      "apps/agent/tests/test_seed_gathering_validation.py",
       "apps/agent/tests/test_skill_tier_hydration.py"
   ]
 }
