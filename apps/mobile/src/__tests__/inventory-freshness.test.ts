@@ -107,3 +107,13 @@ test("revision cache refuses direct snapshots for a different bound owner", () =
   expect(panelStore.getState().inventory[0]?.quantity).toBe(3);
   expect(panelStore.getState().inventoryOwner).toBe("owner");
 });
+
+test("legacy packet cannot populate an authenticated cache after HUD reset", () => {
+  panelStore.getState().reset();
+  handleGameEventMessage({
+    payload: encode({ type: "inventory_updated", inventory: snapshot("1", 3).inventory }),
+    from: agent,
+  });
+  expect(panelStore.getState().inventory).toEqual([]);
+  expect(panelStore.getState().inventoryRevision).toBeNull();
+});
