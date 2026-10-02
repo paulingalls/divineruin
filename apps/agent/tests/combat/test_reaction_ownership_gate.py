@@ -146,6 +146,7 @@ def _start_mocks(player_class, player_level=6):
     queries = MagicMock(
         get_player=AsyncMock(
             return_value={
+                "speed": 30,
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
@@ -161,6 +162,13 @@ def _start_mocks(player_class, player_level=6):
         load_creature_enemy=load_test_creature,
         get_encounter_template=AsyncMock(
             return_value={
+                "scene_placement": {
+                    "party_start": {"x": 0, "y": 0, "z": 0},
+                    "companion_start": {"x": 0, "y": 5, "z": 0},
+                    "actors": {"foe": {"x": 20, "y": 0, "z": 0}},
+                    "locations": {},
+                    "zones": {},
+                },
                 "id": "empty_road",
                 "name": "Empty Road",
                 "recommended_party_level": 1,

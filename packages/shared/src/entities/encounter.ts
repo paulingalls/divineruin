@@ -239,6 +239,7 @@ export interface Encounter {
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
+  scene_placement: ScenePlacement;
 }
 
 export function validateEncounterEnemyTier(
@@ -288,5 +289,81 @@ export function validateEncounterReferences(
       throw new Error(`${context}: unsupported role '${String(enemy.role)}'`);
     if (creatureIds && !creatureIds.has(enemy.creature_id as string))
       throw new Error(`${context}: unknown creature_id '${String(enemy.creature_id)}'`);
+  }
+}
+
+export interface SpatialPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+export interface ScenePlacement {
+  party_start: SpatialPoint;
+  companion_start: SpatialPoint;
+  actors: Record<string, SpatialPoint>;
+  locations: Record<string, SpatialPoint>;
+  zones: Record<string, { center_id: string; radius_ft: number }>;
+}
+
+function spatialMap(value: unknown): Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some((key) => !key.trim())
+  )
+    throw new Error("spatial map requires nonempty IDs");
+  return value as Record<string, unknown>;
+}
+function spatialPoint(value: unknown): void {
+  const row = spatialMap(value);
+  if (
+    Object.keys(row).sort().join(",") !== "x,y,z" ||
+    Object.values(row).some((v) => typeof v !== "number" || !Number.isFinite(v))
+  )
+    throw new Error("point requires finite x, y, z");
+}
+export function validateScenePlacement(encounter: unknown): void {
+  const row = spatialMap(encounter);
+  const scene = spatialMap(row.scene_placement);
+  if (Object.keys(scene).sort().join(",") !== "actors,companion_start,locations,party_start,zones")
+    throw new Error("scene_placement requires explicit starts, actors, locations and zones");
+  spatialPoint(scene.party_start);
+  spatialPoint(scene.companion_start);
+  const actors = spatialMap(scene.actors),
+    locations = spatialMap(scene.locations),
+    zones = spatialMap(scene.zones);
+  if (!Array.isArray(row.enemies)) throw new Error("missing enemies");
+  const enemyIds = row.enemies.map((e) => spatialMap(e).id);
+  if (
+    new Set(enemyIds).size !== enemyIds.length ||
+    Object.keys(actors).length !== enemyIds.length ||
+    enemyIds.some((id) => typeof id !== "string" || !Object.hasOwn(actors, id))
+  )
+    throw new Error("scene must cover every enemy exactly");
+  for (const value of [...Object.values(actors), ...Object.values(locations)]) spatialPoint(value);
+  const points = [
+    scene.party_start,
+    scene.companion_start,
+    ...Object.values(actors),
+    ...Object.values(locations),
+  ] as SpatialPoint[];
+  for (const a of points)
+    for (const b of points)
+      if (!Number.isFinite(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)))
+        throw new Error("nonfinite distance");
+  const ids = [...Object.keys(actors), ...Object.keys(locations), ...Object.keys(zones)];
+  if (new Set(ids).size !== ids.length) throw new Error("spatial IDs must be unique");
+  for (const value of Object.values(zones)) {
+    const zone = spatialMap(value);
+    if (
+      Object.keys(zone).sort().join(",") !== "center_id,radius_ft" ||
+      typeof zone.center_id !== "string" ||
+      !(Object.hasOwn(actors, zone.center_id) || Object.hasOwn(locations, zone.center_id)) ||
+      typeof zone.radius_ft !== "number" ||
+      !Number.isFinite(zone.radius_ft) ||
+      zone.radius_ft < 0
+    )
+      throw new Error("zone requires a known center and finite nonnegative radius");
   }
 }

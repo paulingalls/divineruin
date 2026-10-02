@@ -292,6 +292,7 @@ def test_hp_and_name_passthrough():
 
 def _start_combat_player(stored_conditions=None):
     return {
+        "speed": 30,
         "player_id": "player_1",
         "name": "Kael",
         "class": "warrior",
@@ -305,6 +306,13 @@ def _start_combat_player(stored_conditions=None):
 
 
 _START_ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"goblin_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",

@@ -84,7 +84,7 @@ def _translate(row, encounter_id, enemy_id, role):
         if "kind" in source:
             actions.append(_action(source))
             names.add(source["name"])
-    enemy = {key: deepcopy(row[key]) for key in ("name", "hp", "ac", "level", "tier", "loot_table_id")}
+    enemy = {key: deepcopy(row[key]) for key in ("name", "hp", "ac", "level", "tier", "loot_table_id", "speed")}
     enemy.update(
         id=enemy_id,
         creature_id=row["id"],

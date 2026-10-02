@@ -110,6 +110,7 @@ def make_mock_room():
 
 
 SAMPLE_PLAYER = {
+    "speed": 30,
     "player_id": "player_1",
     "name": "Arwen",
     "class": "skirmisher",
@@ -137,6 +138,13 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"dire_wolf_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "wolf_pack",
     "name": "Wolf Pack",
@@ -147,6 +155,7 @@ SAMPLE_ENCOUNTER = {
 # Generic guild-hall player for mutation/progression/quest tool tests.
 # Distinct from SAMPLE_PLAYER (Arwen): level 1, xp 0, and a valid archetype.
 GUILD_PLAYER = {
+    "speed": 30,
     "player_id": "player_1",
     "name": "Kael",
     "class": "warrior",

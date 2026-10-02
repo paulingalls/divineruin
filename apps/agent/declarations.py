@@ -62,6 +62,7 @@ class Declaration:
     # several ally participants at once; None for a single-target/self declaration. The cap is
     # enforced at the declare-gate (combat_packet) via spells.normalize_target_list, not here.
     target_ids: list[str] | None = None
+    destination: dict | None = None
     ac_bonus: int = 0
     rider: str | None = None
     # M15 story-002: the Tier-3 argument category a de_escalate ABILITY makes (one of
@@ -105,11 +106,18 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
+    if decl_type is DeclarationType.MANEUVER and action == "move":
+        from combat_spatial import point
+
+        point(raw.get("destination"))
+    elif "destination" in raw:
+        raise ValueError("destination is only valid for move")
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
     raw_maneuver_intent = raw.get("maneuver_intent")
     maneuver_intent = ManeuverIntent(raw_maneuver_intent) if raw_maneuver_intent is not None else None
     return Declaration(
         type=decl_type,
+        destination=raw.get("destination"),
         action=action,
         target_id=target_id,
         target_ids=raw.get("target_ids"),

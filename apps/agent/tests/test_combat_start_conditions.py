@@ -27,6 +27,13 @@ _ATTRS = {
 }
 
 _ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"goblin_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
@@ -38,6 +45,7 @@ _ENCOUNTER = {
 def _player(*, stored_conditions=None, skill_tiers=None):
     """A players.data dict — conditions ride it (get_player returns the whole data dict)."""
     return {
+        "speed": 30,
         "player_id": "player_1",
         "name": "Kael",
         "class": "warrior",

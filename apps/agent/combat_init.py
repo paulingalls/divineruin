@@ -14,6 +14,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import combat_enhancers
 import combat_resolution
+import combat_spatial
 import conditions
 import db_content_queries
 import db_mutations
@@ -22,6 +23,7 @@ import event_types as E
 import item_effects
 import rules_engine
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
+from combat_spatial_entry import build_spatial
 from combat_support import _participant_roster, _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
@@ -92,6 +94,12 @@ async def _start_combat_locked(
     encounter = await content.get_encounter_template(encounter_id)
     if encounter is None:
         raise ToolError(f"Encounter template '{encounter_id}' not found.")
+
+    try:
+        validate_encounter_references(encounter)
+        combat_spatial.validate_scene(encounter)
+    except ValueError as error:
+        raise ToolError(str(error)) from error
 
     player = await queries.get_player(actor_id)
     if player is None:
@@ -208,6 +216,18 @@ async def _start_combat_locked(
                 "attributes": companion_scaled.attributes,
             }
         )
+
+    try:
+        spatial = build_spatial(
+            encounter,
+            member_players,
+            enemies,
+            (session.companion.id, profile.speed)
+            if companion_scaled is not None and session.companion is not None
+            else None,
+        )
+    except ValueError as error:
+        raise ToolError(str(error)) from error
 
     # Roll initiative and build lookup
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
@@ -357,6 +377,7 @@ async def _start_combat_locked(
         current_turn_index=0,
         location_id=session.location_id,
         faction_id=combat_faction_id,
+        spatial=spatial,
     )
 
     # Persist and update session
@@ -405,6 +426,7 @@ async def _start_combat_locked(
     session.record_event(f"Combat started: {encounter.get('name', encounter_id)}")
 
     response = {
+        "spatial": combat_spatial.facts(combat_state, actor_id),
         "combat_id": combat_id,
         "encounter_name": encounter.get("name", encounter_id),
         "encounter_description": encounter_description,
@@ -432,6 +454,8 @@ async def _start_combat_locked(
         parts.append(companion_voice_directive(session.companion))
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
+
+    parts.append(f"Spatial facts: {json.dumps(response['spatial'])}")
 
     combat_ctx = ChatContext()
     combat_ctx.add_message(role="system", content=" ".join(parts))
