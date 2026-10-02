@@ -261,8 +261,10 @@ class TestEnemyAbilityDispatch:
         packet = MagicMock(actor_id="goblin_scout_1", declaration=decl)
         session = make_context().userdata
 
-        with patch("combat_packet._resolve_enemy_condition_packet") as mock_enemy_cond:
-            with patch("combat_packet._resolve_attack_packet", return_value={"hit": False, "critical": False}):
+        with patch("combat_enemy_action._resolve_enemy_condition_packet") as mock_enemy_cond:
+            with patch(
+                "combat_packet._resolve_attack_packet", return_value={"hit": False, "critical": False}
+            ) as attack:
                 await _resolve_one_packet(
                     session,
                     state,
@@ -273,7 +275,8 @@ class TestEnemyAbilityDispatch:
                     concentration_break_mod=MagicMock(),
                 )
 
-        mock_enemy_cond.assert_not_called()  # ally never routed through the hostile inflict path
+        mock_enemy_cond.assert_not_called()
+        attack.assert_awaited_once()
 
     async def test_enemy_ability_without_applies_condition_still_wasted(self):
         state = _make_combat_state()
