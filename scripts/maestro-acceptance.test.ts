@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { lookupOwnedSimulator } from "../apps/mobile/scripts/owned-simulator";
 
 import {
   type GateDeps,
@@ -11,13 +12,6 @@ import {
 const TARGET_UDID = "A2080000-0000-0000-0000-000000000001";
 const ADB_EMPTY = "List of devices attached\n\n";
 const ADB_ANDROID = "List of devices attached\nemulator-5554\tdevice\n";
-const SIMCTL_NONE_BOOTED =
-  "== Devices ==\n-- iOS 26.5 --\n    story-208-sdk57 (TARGET) (Shutdown)\n";
-const SIMCTL_SIBLINGS_BOOTED =
-  "== Devices ==\n-- iOS 26.5 --\n" +
-  "    story-045-legacy3-e2e (SIBLING-1) (Booted)\n" +
-  "    story-058-legacy3-e2e (SIBLING-2) (Booted)\n";
-
 const result =
   <T>(value: T) =>
   () =>
@@ -28,11 +22,11 @@ function deps(overrides: Partial<GateDeps> = {}): GateDeps {
   return {
     env: {},
     resolveOwnedSimulator: (requested) => {
-      if (requested && requested !== TARGET_UDID)
+      if (requested !== undefined && requested !== TARGET_UDID)
         return Promise.reject(new Error("IOS_SIMULATOR_UDID must name the owned simulator"));
       return Promise.resolve(TARGET_UDID);
     },
-    runSimctl: result(SIMCTL_NONE_BOOTED),
+    lookupOwnedSimulator: result({ name: "divineruin-native-clone", device: undefined }),
     runAdb: result(ADB_EMPTY),
     probeRequestedIos: result(false),
     runMaestro: () => Promise.resolve(0),
@@ -48,11 +42,9 @@ describe("runGate", () => {
   });
 
   test("a non-strict skip reports a failed device probe", async () => {
-    const gate = await runGate(
-      deps({ runSimctl: () => Promise.reject(new Error("CoreSimulator is wedged")) }),
-    );
+    const gate = await runGate(deps({ runAdb: () => Promise.reject(new Error("adb is wedged")) }));
     expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
-    expect(gate.stdout).toContain("xcrun simctl probe failed: CoreSimulator is wedged");
+    expect(gate.stdout).toContain("adb devices probe failed: adb is wedged");
   });
 
   test("strict lane resolves the owned simulator without an explicit UDID", async () => {
@@ -61,7 +53,6 @@ describe("runGate", () => {
     const gate = await runGate(
       deps({
         env: { REQUIRE_EMULATOR: "1" },
-        runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
         runAdb: result(ADB_ANDROID),
         probeRequestedIos: () => {
           probed = true;
@@ -101,11 +92,14 @@ describe("runGate", () => {
   });
 
   test("an empty explicit UDID cannot fall through to broad device detection", async () => {
-    const gate = await runGate(
-      deps({ env: { IOS_SIMULATOR_UDID: " " }, runSimctl: result(SIMCTL_SIBLINGS_BOOTED) }),
-    );
-    expect(gate.exitCode).toBe(1);
-    expect(gate.maestroInvoked).toBe(false);
+    for (const requested of ["", " "]) {
+      const gate = await runGate(
+        deps({ env: { IOS_SIMULATOR_UDID: requested }, runAdb: result(ADB_ANDROID) }),
+      );
+      expect(gate.exitCode).toBe(1);
+      expect(gate.stderr).toMatch(/owned simulator/);
+      expect(gate.maestroInvoked).toBe(false);
+    }
   });
 
   test("booted siblings and Android cannot satisfy an unavailable requested target", async () => {
@@ -113,7 +107,6 @@ describe("runGate", () => {
     const gate = await runGate(
       deps({
         env: { REQUIRE_EMULATOR: "1", IOS_SIMULATOR_UDID: TARGET_UDID },
-        runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
         runAdb: result(ADB_ANDROID),
         probeRequestedIos: (udid) => {
           expect(udid).toBe(TARGET_UDID);
@@ -163,23 +156,13 @@ describe("runGate", () => {
     );
   });
 
-  test("keeps broad device detection for the non-strict developer lane", async () => {
-    for (const available of [
-      { runSimctl: result(SIMCTL_SIBLINGS_BOOTED), runAdb: result(ADB_EMPTY) },
-      { runSimctl: result(SIMCTL_NONE_BOOTED), runAdb: result(ADB_ANDROID) },
-    ]) {
-      const gate = await runGate(deps(available));
-      expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: true });
-    }
-  });
-
   test("defaults to launch only and adds auth when the backend is required", async () => {
     const seen: string[][] = [];
     for (const env of [{}, { REQUIRE_BACKEND: "1" }]) {
       await runGate(
         deps({
           env,
-          runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+          runAdb: result(ADB_ANDROID),
           runMaestro: (_udid, flows) => {
             seen.push(flows);
             return Promise.resolve(0);
@@ -194,7 +177,7 @@ describe("runGate", () => {
     for (const exit of [7, null]) {
       const gate = await runGate(
         deps({
-          runSimctl: result(SIMCTL_SIBLINGS_BOOTED),
+          runAdb: result(ADB_ANDROID),
           runMaestro: () => Promise.resolve(exit) as unknown as Promise<number>,
         }),
       );
@@ -204,8 +187,15 @@ describe("runGate", () => {
   });
 
   test("treats missing detector tools as absent in the non-strict lane", async () => {
-    const gate = await runGate(deps({ runSimctl: enoent, runAdb: enoent }));
+    const gate = await runGate(
+      deps({
+        lookupOwnedSimulator: () =>
+          lookupOwnedSimulator({ cloneId: result("48517b6c883b"), run: enoent }),
+        runAdb: enoent,
+      }),
+    );
     expect(gate).toMatchObject({ exitCode: 0, maestroInvoked: false });
+    expect(gate.stdout).toContain("divineruin-native-48517b6c883b");
   });
 
   test("surfaces requested-device probe diagnostics without invoking Maestro", async () => {
@@ -221,8 +211,6 @@ describe("runGate", () => {
   });
 });
 
-// Shape mirrors `xcrun simctl list devices --json`: runtime-keyed buckets whose
-// rows carry udid/state/isAvailable.
 const SIMCTL_JSON = JSON.stringify({
   devices: {
     "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [

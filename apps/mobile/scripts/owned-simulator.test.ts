@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { resolveOwnedSimulator, type OwnedSimulatorDeps } from "./owned-simulator";
+import {
+  lookupOwnedSimulator,
+  resolveOwnedSimulator,
+  type OwnedSimulatorDeps,
+} from "./owned-simulator";
 
 const NAME = "divineruin-native-clone-one";
 const RUNTIMES = {
@@ -160,4 +164,49 @@ test("create failure and mismatched created identity fail without selecting a st
   mismatched.deps.run = (command) =>
     command.includes("create") ? Promise.resolve("STOCK") : originalMismatched(command);
   expect(await failure(resolveOwnedSimulator(mismatched.deps))).toMatch(/does not belong/);
+});
+
+test("owned lookup is read only for absent shutdown and booted devices", async () => {
+  for (const devices of [[], [STOCK], [OWNED], [{ ...OWNED, state: "Booted" }]]) {
+    const { deps, calls } = fixture(devices);
+    const found = await lookupOwnedSimulator(deps);
+    expect(found.name).toBe(NAME);
+    expect(found.device?.udid).toBe(
+      devices.some((device) => device.name === NAME) ? "OWNED" : undefined,
+    );
+    expect(calls).toEqual([["xcrun", "simctl", "list", "devices", "--json"]]);
+  }
+});
+test("owned lookup rejects duplicate unavailable invalid and malformed identity", async () => {
+  for (const devices of [
+    [OWNED, OWNED],
+    [{ ...OWNED, isAvailable: false }],
+    [{ ...OWNED, udid: " " }],
+    [{ ...OWNED, state: "Creating" }],
+  ]) {
+    expect(await failure(lookupOwnedSimulator(fixture(devices).deps))).toMatch(
+      /multiple owned|unusable/,
+    );
+  }
+  for (const raw of ["{}", "invalid", '{"devices":[]}', '{"devices":{"runtime":{}}}']) {
+    const { deps } = fixture([]);
+    deps.run = () => Promise.resolve(raw);
+    expect(await failure(lookupOwnedSimulator(deps))).toMatch(/devices|JSON/);
+  }
+  const { deps } = fixture([]);
+  deps.cloneId = () => Promise.resolve(" ");
+  expect(await failure(lookupOwnedSimulator(deps))).toContain("clone ID is empty");
+});
+
+test("owned lookup accepts an empty devices map without creating", async () => {
+  const calls: string[][] = [];
+  const found = await lookupOwnedSimulator({
+    cloneId: () => Promise.resolve("clone-one"),
+    run: (command) => {
+      calls.push(command);
+      return Promise.resolve('{"devices":{}}');
+    },
+  });
+  expect(found).toEqual({ name: NAME, device: undefined });
+  expect(calls).toEqual([["xcrun", "simctl", "list", "devices", "--json"]]);
 });
