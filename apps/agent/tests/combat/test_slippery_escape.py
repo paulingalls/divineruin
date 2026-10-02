@@ -1,12 +1,11 @@
 import copy
-import json
 import logging
-from pathlib import Path
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _pause_at, _reaction_packet
+from sample_fixtures import catalog_encounters
 
 import combat_prompts
 import combat_reaction_effect
@@ -15,7 +14,7 @@ import reaction_spend
 import reaction_windows
 from session_data import CombatParticipant
 
-_CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
+_CATALOG = catalog_encounters()
 
 
 def _grab() -> dict:
@@ -24,7 +23,7 @@ def _grab() -> dict:
         for encounter in _CATALOG
         for enemy in encounter["enemies"]
         for action in enemy["action_pool"]
-        if enemy["id"] == "mawling_1" and action["name"] == "Seizing Grab"
+        if enemy["id"] == "mawling_1" and action["name"] == "Lunge"
     )
 
 
@@ -39,7 +38,7 @@ def _state(enemy_id: str = "mawling_1"):
     state.initiative_order = ["player_1", enemy.id]
     state.pending_declarations = {
         player.id: {"type": "defend"},
-        enemy.id: {"type": "attack", "action": "Seizing Grab", "target_id": player.id},
+        enemy.id: {"type": "attack", "action": "Lunge", "target_id": player.id},
     }
     player.reaction_ids = ["rogue_slippery"]
     return state
@@ -177,7 +176,7 @@ def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():
     head = {
         "seq": 4,
         "actor_id": "mawling_1",
-        "declaration": {"type": "attack", "action": "Seizing Grab", "target_id": "player_1"},
+        "declaration": {"type": "attack", "action": "Lunge", "target_id": "player_1"},
     }
     window = reaction_windows.open_window_for(
         round_number=1,

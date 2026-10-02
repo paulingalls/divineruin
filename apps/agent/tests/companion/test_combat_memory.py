@@ -4,7 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import mock_txn
+from sample_fixtures import load_test_creature, mock_txn
 
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 
@@ -33,21 +33,10 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
-    "enemies": [
-        {
-            "id": "goblin_1",
-            "name": "Goblin Scout",
-            "level": 1,
-            "tier": 1,
-            "ac": 13,
-            "hp": 7,
-            "attributes": {"strength": 8, "dexterity": 14},
-            "action_pool": [{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": []}],
-            "xp_value": 50,
-        }
-    ],
+    "enemies": [{"id": "goblin_1", "creature_id": "fixture_goblin", "role": "standard"}],
 }
 
 
@@ -62,6 +51,7 @@ class TestCompanionInCombat:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context()
@@ -100,6 +90,7 @@ class TestCompanionInCombat:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context()
@@ -126,6 +117,7 @@ class TestCompanionInCombat:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context()

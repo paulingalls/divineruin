@@ -145,6 +145,15 @@ async def test_non_durable_item_not_repairable():
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
+async def test_material_refused_by_name_without_writes():
+    item = {"id": "wolf_pelt", "name": "Wolf Pelt", "type": "material", "slot_info": {"quantity": 3}}
+    kwargs, mutations, inv_mutations = _repair_kwargs(item=item)
+    with pytest.raises(ToolError, match=r"Wolf Pelt.*material"):
+        await repair_item._repair_item_impl(make_context(), "wolf_pelt", "grimjaw", **kwargs)
+    mutations.update_player_gold.assert_not_awaited()
+    inv_mutations.update_item_durability.assert_not_awaited()
+
+
 async def test_malformed_durability_tier_raises_toolerror_not_valueerror():
     kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier="indestructible", current_hits=2))
     with pytest.raises(ToolError, match="unrepairable durability tier"):

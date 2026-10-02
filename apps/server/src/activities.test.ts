@@ -217,7 +217,6 @@ describe("handleGetActivity", () => {
 
 describe("handleActivityDecision", () => {
   test("submits decision on resolved activity", async () => {
-    // Only the SELECT returns rows; the inventory upsert + status UPDATE resolve to [].
     setQueryStubs([
       {
         match: "FROM async_activities",
@@ -237,6 +236,18 @@ describe("handleActivityDecision", () => {
           },
         ],
       },
+      {
+        match: "LEFT JOIN items",
+        result: [
+          {
+            inventory_revision: "1",
+            item_id: "iron_sword",
+            item_data: { id: "iron_sword", name: "Iron Sword", type: "weapon" },
+            material_data: null,
+            slot_data: { quantity: 1 },
+          },
+        ],
+      },
     ]);
 
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
@@ -245,6 +256,11 @@ describe("handleActivityDecision", () => {
     const body = (await res.json()) as { status: string; decision: string };
     expect(body.status).toBe("collected");
     expect(body.decision).toBe("keep");
+    expect(body).toMatchObject({
+      player_id: "player_1",
+      inventory_revision: "1",
+      inventory: [{ id: "iron_sword", slot_info: { quantity: 1 } }],
+    });
   });
 
   test("rejects missing decision_id", async () => {

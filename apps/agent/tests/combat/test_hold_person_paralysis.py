@@ -5,14 +5,12 @@ path Hollow Shriek already uses. paralyzed carries the tick_save its spell row d
 turn"): a landed condition has no duration, so without the re-save the paralysis would never end.
 """
 
-import json
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import check_resolution_attack
 import concentration_break
@@ -21,7 +19,7 @@ from combat_phase import ResolutionPacket
 from conditions import apply_condition, tick_conditions
 from declarations import Declaration, DeclarationType
 
-_CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
+_CATALOG = catalog_encounters()
 
 
 def _hold_person() -> dict:

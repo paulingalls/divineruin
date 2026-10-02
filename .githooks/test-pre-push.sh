@@ -147,11 +147,26 @@ done
 run_case "work-acceptance" "$work_ref" "apps/agent/tests/acceptance/test_magic.py" lint
 run_case "work-acceptance-fixture" "$work_ref" "apps/agent/tests/acceptance/fixtures/player_voice.wav" lint
 run_case "work-acceptance-and-source" "$work_ref" $'apps/agent/tests/acceptance/test_magic.py\napps/agent/agent.py' lint
-run_case "work-manifest" "$work_ref" "package.json" full
-run_case "work-migration" "$work_ref" "apps/server/migrations/001.sql" full
-run_case "work-e2e" "$work_ref" "e2e/game.spec.ts" full
-run_case "work-gate" "$work_ref" "scripts/test-all.ts" full
-run_case "work-unknown" "$work_ref" "elsewhere/new.ts" full
+for path in packages/shared/fixtures/creature_blocks.json \
+  apps/mobile/src/__tests__/fixtures/favor-neglect-event.json \
+  apps/agent/tests/fixtures/prompt_split_baseline.json \
+  apps/agent/tests/native_transport/session_init_fixture.json; do
+  if [ ! -f "$path" ]; then
+    echo "  FAIL: test-data corpus missing $path"
+    FAIL=$((FAIL + 1))
+  else
+    run_case "work-test-data-$path" "$work_ref" "$path" lint
+    run_case "main-test-data-$path" "refs/heads/main aaa refs/heads/main bbb" "$path" full
+  fi
+done
+run_case "work-shared-nonfixture-json" "$work_ref" "packages/shared/runtime.json" lint
+run_case "work-agent-config" "$work_ref" "apps/agent/pyrightconfig.json" lint
+run_case "work-manifest" "$work_ref" "package.json" lint
+run_case "work-migration" "$work_ref" "apps/server/migrations/001.sql" lint
+run_case "work-e2e" "$work_ref" "e2e/game.spec.ts" lint
+run_case "work-xp-config" "$work_ref" ".xp/config.yml" lint
+run_case "work-gate" "$work_ref" "scripts/test-all.ts" lint
+run_case "work-unknown" "$work_ref" "elsewhere/new.ts" lint
 run_case "work-failing-diff" "$work_ref" "__FAIL__" full
 run_case "work-unknown-diff-status" "$work_ref" $'U\tapps/server/src/x.ts' full
 run_case "main-source" "refs/heads/main aaa refs/heads/main bbb" "apps/server/src/x.ts" full
@@ -162,8 +177,8 @@ run_case "tag-source" "refs/tags/v1 aaa refs/tags/v1 bbb" "apps/server/src/x.ts"
 run_case "unknown-tag-with-docs-branch" $'refs/tags/nightly aaa refs/tags/nightly '"$zero"$'\nrefs/heads/story-095 aaa refs/heads/story-095 bbb' "docs/file.md" full
 run_case "main-docs" "refs/heads/main aaa refs/heads/main bbb" "README.md" skip
 run_case "mixed-refs" $'refs/heads/story-095 aaa refs/heads/story-095 bbb\nrefs/heads/main aaa refs/heads/main bbb' "apps/server/src/x.ts" full
-run_case "rename-out" "$work_ref" $'R100\tapps/server/src/old.ts\tpackage.json' full
-run_case "rename-in" "$work_ref" $'R100\tpackage.json\tapps/server/src/new.ts' full
+run_case "rename-out" "$work_ref" $'R100\tapps/server/src/old.ts\tpackage.json' lint
+run_case "rename-in" "$work_ref" $'R100\tpackage.json\tapps/server/src/new.ts' lint
 
 full_out=$(bash "$HOOK" __prepush_harness__ __prepush_harness__ docs full </dev/null 2>&1)
 if echo "$full_out" | grep -q TESTS_RAN; then
@@ -185,11 +200,11 @@ git -C "$rename_repo" add .
 git -C "$rename_repo" commit -qm initial
 git -C "$rename_repo" mv package.json apps/server/src/package.json
 rename_diff=$(git -C "$rename_repo" diff --cached --name-status -M HEAD)
-run_case "real-rename-in" "$work_ref" "$rename_diff" full
+run_case "real-rename-in" "$work_ref" "$rename_diff" lint
 git -C "$rename_repo" reset --hard -q HEAD
 git -C "$rename_repo" mv apps/server/src/old.ts bun.lock
 rename_diff=$(git -C "$rename_repo" diff --cached --name-status -M HEAD)
-run_case "real-rename-out" "$work_ref" "$rename_diff" full
+run_case "real-rename-out" "$work_ref" "$rename_diff" lint
 rm -rf "$rename_repo"
 
 mask_file=$(mktemp)

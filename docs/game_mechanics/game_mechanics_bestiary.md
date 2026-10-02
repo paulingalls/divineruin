@@ -1225,3 +1225,849 @@ The companion NPC should be approximately 75% of the player's combat effectivene
 ## Design Decisions Log (Bestiary)
 
 > **Extracted to `game_mechanics_decisions.md`.** Decisions 24-29 cover the bestiary and material systems.
+
+## Combat Effect Inventory
+
+This is the story-138 composition inventory and input to story-137. The source column is the audited catalog object, not an executable action pool. Current resolver bindings describe supported base mechanics; scheduled contracts require story-136 runtime and story-137 producers. Narrative abilities do not implicitly execute. No selected species currently authors reactions. Range, area and movement remain DM-adjudicated.
+
+| Species | Group | Name | Audited source | Status | Effects / representation | Resolver / scheduled story | Deferred reason | Duplicate of |
+|---|---|---|---|---|---|---|---|---|
+| hollow_shadeling | attacks | Corrosive Touch | {"name":"Corrosive Touch","type":"melee","reach":5,"to_hit":3,"damage":"1d4+1","damage_type":"necrotic","special":"Organic materials (wood, leather) take double damage","audio":"hlw_corrosive_touch"} | mixed | Base necrotic damage; organic material double damage | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | No item/material-target damage path | none |
+| hollow_shadeling | passives | Amorphous | {"name":"Amorphous","description":"Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.","narration_cue":"","recharge":null,"audio":null} | deferred | Narrow1 inch movement; grapple/restraint immunity | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_shadeling | passives | Corruption Trail | {"name":"Corruption Trail","description":"Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.","narration_cue":"","recharge":null,"audio":null} | deferred | Organic surface damage1 necrotic; visible marks | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_shadeling | passives | Sunlight Sensitivity | {"name":"Sunlight Sensitivity","description":"In direct sunlight: disadvantage on attacks and -2 AC.","narration_cue":"","recharge":null,"audio":null} | deferred | Direct sunlight attack disadvantage; AC minus2 | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| bandit | attacks | Short Sword | {"name":"Short Sword","type":"melee","reach":5,"to_hit":4,"damage":"1d6+2","damage_type":"slashing","special":null,"audio":"bandit_short_sword"} | executable | Base 1d6+2 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| bandit | attacks | Light Crossbow | {"name":"Light Crossbow","type":"ranged","reach":80,"to_hit":4,"damage":"1d8+2","damage_type":"piercing","special":null,"audio":"bandit_light_crossbow"} | executable | Base 1d8+2 piercing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| bandit | actives | Dirty Fighting | {"name":"Dirty Fighting","description":"1/encounter: throw dirt or sand. Target is Blinded for 1 round unless it passes a DEX save DC 12.","narration_cue":"Dirt scatters with a dry hiss before the target cries out.","recharge":{"kind":"encounter","uses":1},"audio":"bandit_dirty_fighting","kind":"attack","damage":"0","damage_type":"none","applies_condition":"blinded","save":"DEX","dc":12,"duration":1} | executable | kind attack; damage0/type none; blinded DEX DC12 duration1; encounter uses1 | combat_enemy_action._resolve_enemy_condition_packet | none | none |
+| bandit_captain | attacks | Longsword | {"name":"Longsword","type":"melee","reach":5,"to_hit":6,"damage":"1d8+3","damage_type":"slashing","special":null,"audio":"bandit_captain_longsword"} | executable | Base 1d8+3 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| bandit_captain | attacks | Heavy Crossbow | {"name":"Heavy Crossbow","type":"ranged","reach":100,"to_hit":6,"damage":"1d10+3","damage_type":"piercing","special":null,"audio":"bandit_captain_heavy_crossbow"} | executable | Base 1d10+3 piercing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| bandit_captain | actives | Rally | {"name":"Rally","description":"All allied bandits within 30 ft regain 1d8 HP.","narration_cue":"","recharge":{"kind":"encounter","uses":1},"audio":null,"kind":"healing","target_group":"allied_bandits","healing":"1d8"} | mixed | kind healing; target_group allied_bandits; healing1d8; encounter uses1; 30 ft DM adjudicated | combat_enemy_active.resolve_active / combat_enemy_active.heal | 30 ft range is DM adjudicated | none |
+| bandit_captain | actives | Dirty Fighting | {"name":"Dirty Fighting","description":"Advantage on next attack; on hit, target Blinded 1 round.","narration_cue":"","recharge":{"kind":"encounter","uses":1},"audio":null,"kind":"prepare_attack","advantage":true,"on_hit":{"applies_condition":"blinded","duration":1}} | executable | kind prepare_attack; next attack advantage true; on_hit blinded duration1; encounter uses1 | combat_enemy_active.resolve_active / combat_enemy_active.apply_prepared_hit | none | none |
+| bandit_captain | passives | Leadership Aura | {"name":"Leadership Aura","description":"Bandits within 30 ft gain +1 to attack rolls.","narration_cue":"","recharge":null,"audio":null} | deferred | Allied bandits within30 ft attack plus1 | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| bandit_captain | passives | Cunning Action | {"name":"Cunning Action","description":"Can Dash, Disengage, or Hide as a bonus action.","narration_cue":"","recharge":null,"audio":null} | deferred | Bonus action Dash/Disengage/Hide | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| bandit_captain | multiattack | 2 attacks with Longsword or 2 Crossbow shots | "2 attacks with Longsword or 2 Crossbow shots" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
+| hollow_mawling | attacks | Claw | {"name":"Claw","type":"melee","reach":10,"to_hit":5,"damage":"1d8+2","damage_type":"slashing","special":"Reach 10 ft (unnaturally long limbs)","audio":"hlw_claw"} | executable | Base damage; reach 10 ft DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_mawling | attacks | Dissolution Maw | {"name":"Dissolution Maw","type":"melee","reach":5,"to_hit":5,"damage":"2d6+2","damage_type":"necrotic","special":"DC 13 CON save or item in hand takes 1d4 durability damage","audio":"hlw_dissolution_maw"} | mixed | Base damage; CON DC13 item durability 1d4 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | No held-item durability save rider | none |
+| hollow_mawling | attacks | Lunge | {"name":"Lunge","type":"melee","reach":10,"to_hit":5,"damage":"1d8+2","damage_type":"slashing","special":"Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.","audio":"hlw_lunge","properties":["grapple"],"escape_dc":13,"advantage":true,"recharge":{"kind":"roll","die":6,"threshold":5}} | mixed | Single Claw damage; grapple escape_dc13; advantage true; recharge roll d6 threshold5; 15 ft movement DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137; combat_grapple; advantage/recharge136 | 15 ft movement is DM adjudicated | none |
+| hollow_mawling | actives | Lunge | {"name":"Lunge","description":"Move 15 ft toward target + Claw with advantage. Hit: target grappled (STR DC 13 escape).","narration_cue":"","recharge":"5-6","audio":null} | duplicate | Same grapple/advantage/recharge Claw; zero additional executable actions | attacks/Lunge; producer137 deduplicates | 15 ft movement DM adjudicated | attacks/Lunge |
+| hollow_mawling | actives | Scatter | {"name":"Scatter","description":"Requires 3+ mawlings. All mawlings reposition 15 ft without provoking reactions. Coordinated flank.","narration_cue":"","recharge":"1/encounter","audio":null} | deferred | Requires3+ mawlings; all reposition15 ft; no reactions; coordinated flank | future custom mechanics | No group reposition/flank/reaction suppression consumer | none |
+| hollow_mawling | passives | Unsettling Silence | {"name":"Unsettling Silence","description":"Mawlings make no vocalizations. Advantage on Stealth in low-light.","narration_cue":"","recharge":null,"audio":null} | deferred | No vocalization; low-light Stealth advantage | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_mawling | passives | Dissolution Field | {"name":"Dissolution Field","description":"Creatures starting turn grappled by a mawling take 1d6 necrotic automatically.","narration_cue":"","recharge":null,"audio":null} | deferred | Start turn grappled automatic1d6 necrotic | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_mawling | passives | Adaptive Learning | {"name":"Adaptive Learning","description":"If the same tactic is used against this mawling twice in one encounter, it gains advantage on saves/AC against that tactic for the rest of the fight.","narration_cue":"","recharge":null,"audio":null} | deferred | Repeated tactic twice grants defensive save/AC advantage for encounter | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_mawling | multiattack | 2 attacks — one Claw and one Dissolution Maw | "2 attacks — one Claw and one Dissolution Maw" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
+| hollow_knight | attacks | Corrupted Blade | {"name":"Corrupted Blade","type":"melee","reach":5,"to_hit":7,"damage":"1d10+4","damage_type":"slashing","special":"Plus 1d6 necrotic. On crit: DC 14 CON save or Stage 1 Hollowed condition.","audio":"hlw_corrupted_blade"} | mixed | Base damage; extra1d6 necrotic; crit CON DC14 Stage1 Hollowed | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | No crit-conditioned corruption/extra damage consumer | none |
+| hollow_knight | attacks | Shield Slam | {"name":"Shield Slam","type":"melee","reach":5,"to_hit":7,"damage":"1d6+4","damage_type":"bludgeoning","special":"DC 14 STR save or knocked prone.","audio":"hlw_shield_slam","applies_condition":"prone","save":"STR","dc":14} | executable | Damage and STR DC14 prone | combat_enemy_action.resolve_combined_attack_action; producer137 | none | none |
+| hollow_knight | actives | Command Lesser | {"name":"Command Lesser","kind":"command","description":"As a bonus action, direct up to 4 Drift or Rend Hollow within 60 ft to focus a target or reposition.","narration_cue":"","recharge":{"kind":"round","uses":1},"audio":null} | mixed | kind command; directs up to4 Drift/Rend within60 ft; bonus action | combat_marks.resolve_mark_action; availability136; producer137 | Range, count and bonus-action economy DM adjudicated | none |
+| hollow_knight | actives | Dissolution Strike | {"name":"Dissolution Strike","description":"Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.","narration_cue":"","recharge":"5-6","audio":null} | deferred | Next attack extra3d6 necrotic; ignore resistance; on-hit5 ft corrupted terrain1 minute | future custom mechanics | No extra damage/resistance override/terrain consumer | none |
+| hollow_knight | actives | Unholy Fortitude | {"name":"Unholy Fortitude","description":"At 0 HP, CON save DC 10. On success drop to 1 HP; DC increases by 5 each time.","narration_cue":"","recharge":"passive trigger","audio":null} | deferred | At0 HP CON DC10 to1 HP; DC escalates5 each use | future custom mechanics | No zero-HP interception or escalating save state | none |
+| hollow_knight | passives | Remnant Tactics | {"name":"Remnant Tactics","description":"Uses combat techniques from former life. Takes Dodge when outnumbered and uses terrain for advantage.","narration_cue":"","recharge":null,"audio":null} | deferred | Dodge outnumbered; terrain advantage decision behavior | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_knight | passives | Corrupted Resilience | {"name":"Corrupted Resilience","description":"Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.","narration_cue":"","recharge":null,"audio":null} | deferred | Resistance nonmagical slashing/piercing/bludgeoning; magic full damage | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_knight | passives | Fragment Voice | {"name":"Fragment Voice","description":"Occasionally speaks from its former life. First time former allies hear this: WIS save DC 12 or Shaken, disadvantage on next attack. Cosmetic thereafter.","narration_cue":"","recharge":null,"audio":null} | deferred | First former-ally contact WIS DC12 Shaken; next attack disadvantage; later cosmetic | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_knight | multiattack | 2 attacks with Corrupted Blade | "2 attacks with Corrupted Blade" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
+| hollowed_scout | attacks | Corrupted Blade | {"name":"Corrupted Blade","type":"melee","reach":5,"to_hit":6,"damage":"1d8+2","damage_type":"slashing","special":null,"audio":"hollowed-scout-corrupted-blade"} | executable | Base 1d8+2 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollowed_scout | attacks | Hollow Echo | {"name":"Hollow Echo","type":"melee","reach":5,"to_hit":6,"damage":"1d6","damage_type":"psychic","special":null,"audio":"hollowed-scout-hollow-echo"} | executable | Base 1d6 psychic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollowed_scout | attacks | Relentless Advance | {"name":"Relentless Advance","type":"melee","reach":5,"to_hit":6,"damage":"1d4","damage_type":"bludgeoning","special":null,"audio":"hollowed-scout-relentless-advance"} | executable | Base 1d4 bludgeoning damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_wisp | attacks | Draining Touch | {"name":"Draining Touch","type":"ranged","reach":30,"to_hit":4,"damage":"2d6","damage_type":"necrotic","special":null,"audio":"hollow-wisp-draining-touch"} | executable | Ranged base damage; no inferred healing | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_wisp | attacks | Hollow Drain | {"name":"Hollow Drain","type":"ranged","reach":30,"to_hit":4,"damage":"1d8","damage_type":"necrotic","special":null,"audio":"hollow-wisp-hollow-drain"} | executable | Ranged base damage; no inferred healing | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_warden | attacks | Void Lash | {"name":"Void Lash","type":"melee","reach":5,"to_hit":6,"damage":"2d6","damage_type":"necrotic","special":null,"audio":"hollow-warden-void-lash"} | executable | Base 2d6 necrotic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_warden | attacks | Reality Fracture | {"name":"Reality Fracture","type":"melee","reach":5,"to_hit":6,"damage":"1d8","damage_type":"psychic","special":null,"audio":"hollow-warden-reality-fracture"} | executable | Base 1d8 psychic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_warden | attacks | Absorb | {"name":"Absorb","type":"melee","reach":5,"to_hit":6,"damage":"1d6","damage_type":"necrotic","special":"Healing: regain HP equal to damage dealt.","audio":"hollow-warden-absorb","self_heal":"damage_dealt"} | executable | Base damage; actual damage dealt self-healing | check_resolution_attack.resolve_attack / combat_enemy_active.heal | none | none |
+| hollow_warden | signature_ability | Reality Collapse | {"name":"Reality Collapse","description":"The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.","save":"wisdom","narration_cue":"A thunderous crack splits the room before overlapping walls wrench apart."} | narrative | Preserve name/description/save; sound-first cue135; DM signature options | combat_phase._boss_legendaries | No custom room/forced movement/area mechanical resolver | none |
+| ashmark_soldier | attacks | Longsword | {"name":"Longsword","type":"melee","reach":5,"to_hit":6,"damage":"1d8+2","damage_type":"slashing","special":null,"audio":"ashmark-soldier-longsword"} | executable | Base 1d8+2 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| ashmark_soldier | attacks | Shield Bash | {"name":"Shield Bash","type":"melee","reach":5,"to_hit":0,"damage":"0","damage_type":"none","special":"Target STRENGTH save DC 12 or prone.","audio":"ashmark-soldier-shield-bash","applies_condition":"prone","save":"strength","dc":12} | executable | Zero damage; STR DC12 prone | combat_enemy_action._resolve_enemy_condition_packet; producer137 | none | none |
+| ashmark_sergeant | attacks | Greatsword | {"name":"Greatsword","type":"melee","reach":5,"to_hit":6,"damage":"2d6+2","damage_type":"slashing","special":null,"audio":"ashmark-sergeant-greatsword"} | executable | Base 2d6+2 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| ashmark_sergeant | actives | Rally | {"name":"Rally","description":"Command to allies: A sharp command steadies the line and sharpens their focus fire.","narration_cue":"A sharp whistle snaps the line back into step.","recharge":{"kind":"round","uses":1},"audio":"ashmark-sergeant-rally","kind":"command","properties":["buff"]} | executable | command social focus/narration; no automatic healing or spell buff dice | combat_marks.resolve_mark_action; availability136; producer137 | none | none |
+| ashmark_sergeant | actives | Accusation | {"name":"Accusation","description":"Accusation to allies: Names the accused and directs the patrol's focus fire.","narration_cue":"A barked name cracks across the patrol, and every blade turns.","recharge":{"kind":"round","uses":1},"audio":"ashmark-sergeant-accusation","kind":"accusation","properties":[]} | executable | accusation social focus/narration; no automatic healing or spell buff dice | combat_marks.resolve_mark_action; availability136; producer137 | none | none |
+| cultist | attacks | Ritual Dagger | {"name":"Ritual Dagger","type":"melee","reach":5,"to_hit":4,"damage":"1d4+1","damage_type":"piercing","special":null,"audio":"cultist-ritual-dagger"} | executable | Base 1d4+1 piercing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| cult_fanatic | attacks | Mace | {"name":"Mace","type":"melee","reach":5,"to_hit":4,"damage":"1d6","damage_type":"bludgeoning","special":null,"audio":"cult-fanatic-mace"} | executable | Base 1d6 bludgeoning damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| cult_fanatic | attacks | Inflict Wounds | {"name":"Inflict Wounds","type":"melee","reach":5,"to_hit":4,"damage":"2d8","damage_type":"necrotic","special":null,"audio":"cult-fanatic-inflict-wounds"} | executable | Base 2d8 necrotic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| cult_fanatic | actives | Bless | {"name":"Bless","description":"Command to allies: Murmured fervor steadies the cultists' hands.","narration_cue":"A low hum of fervor passes from cultist to cultist.","recharge":{"kind":"round","uses":1},"audio":"cult-fanatic-bless","kind":"command","properties":["buff"]} | executable | command social focus/narration; no automatic healing or spell buff dice | combat_marks.resolve_mark_action; availability136; producer137 | none | none |
+| cult_leader | attacks | Shadow Bolt | {"name":"Shadow Bolt","type":"ranged","reach":30,"to_hit":6,"damage":"2d6","damage_type":"necrotic","special":null,"audio":"cult-leader-shadow-bolt"} | executable | Base 2d6 necrotic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| cult_leader | attacks | Hold Person | {"name":"Hold Person","type":"ranged","reach":60,"to_hit":0,"damage":"0","damage_type":"none","special":"Target WISDOM save DC 12 or paralyzed.","audio":"cult-leader-hold-person","applies_condition":"paralyzed","save":"wisdom","dc":12} | executable | Zero damage; WIS DC12 paralyzed | combat_enemy_action._resolve_enemy_condition_packet; producer137 | none | none |
+| cult_leader | attacks | Dark Pulse | {"name":"Dark Pulse","type":"area","reach":15,"to_hit":0,"damage":"1d10","damage_type":"necrotic","special":null,"audio":"cult-leader-dark-pulse"} | executable | Base damage; area property137; area/range DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| cult_leader | signature_ability | Mantle of Ruin | {"name":"Mantle of Ruin","description":"Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.","save":"constitution","narration_cue":"A low rushing hiss pours from the leader's hands before shadow smothers the light."} | narrative | Preserve name/description/save; sound-first cue135; DM signature options | combat_phase._boss_legendaries | No custom room/forced movement/area mechanical resolver | none |
+
+Structured recharge is `{kind: "roll", die: 6, threshold: 5}`, `{kind: "encounter", uses: 1}`, or `{kind: "round", uses: 1}`. Thresholds are integers 1–6; uses are positive integers. Attacks may carry boolean `advantage`. Typed condition-only actives require positive integer `duration`; legacy encounter attack duration remains optional. Executable active kinds are `attack`, `healing`, and `prepare_attack`; social `command` and `accusation` and untyped narrative abilities retain nullable textual recharge. Healing accepts positive `NdM` with an optional nonnegative `+bonus`. Preparation carries `advantage: true` and a known-condition `on_hit` rider with positive integer duration. Every present catalog signature requires a nonblank cue; legacy encounter-template signatures remain cue-optional until story-138.
+
+## Encounter Creature Stat Blocks
+
+These authored spec blocks adapt the eight encounter-only enemy types. All eight are catalog rows; encounter templates retain their flat combat entries.
+
+### Hollowed Scout
+
+```json
+{
+  "id": "hollowed_scout",
+  "name": "Hollowed Scout",
+  "category": "hollow",
+  "tier": 2,
+  "home_region": "ashmark",
+  "regions": [
+    "ashmark",
+    "greyvale"
+  ],
+  "description": "A scout returned from the Veil with practiced footwork and an empty voice.",
+  "level": 5,
+  "hp": 32,
+  "ac": 13,
+  "speed": 30,
+  "attributes": {
+    "STR": 15,
+    "DEX": 14,
+    "CON": 14,
+    "INT": 8,
+    "WIS": 12,
+    "CHA": 4
+  },
+  "save_proficiencies": [
+    "CON",
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Corrupted Blade",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d8+2",
+      "damage_type": "slashing",
+      "special": null,
+      "audio": "hollowed-scout-corrupted-blade"
+    },
+    {
+      "name": "Hollow Echo",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d6",
+      "damage_type": "psychic",
+      "special": null,
+      "audio": "hollowed-scout-hollow-echo"
+    },
+    {
+      "name": "Relentless Advance",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d4",
+      "damage_type": "bludgeoning",
+      "special": null,
+      "audio": "hollowed-scout-relentless-advance"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "hollow": {
+    "class": "rend",
+    "corruption_aura": 30,
+    "resonance_on_death": 2,
+    "veil_effect": "Nearby voices fall half a beat out of step, and the Veil frays along its route.",
+    "vulnerable_to": [
+      "radiant",
+      "blessed_weapons",
+      "turn_undead_hollow"
+    ]
+  },
+  "behavior": {
+    "tactics": "Presses the nearest isolated target, alternating sword cuts with disorienting echoes.",
+    "morale": "Fights to destruction.",
+    "group_size": "pair",
+    "environment": [
+      "ashmark",
+      "greyvale"
+    ]
+  },
+  "narration": {
+    "first_sighting": "Wrong footsteps scrape the stone before a familiar scout steps into view.",
+    "attack_cue": "A blade whistles through the air as its voice repeats a lost name.",
+    "wounded_cue": "A hollow rasp leaks from the rents in its armor.",
+    "death_cue": "A brittle crack sounds as the scout folds into ash.",
+    "ambient_cue": "A scrape of uneven footsteps carries along an empty route."
+  },
+  "audio": {
+    "ambient": "hollow_wrong_footsteps",
+    "attack": "hollowed-scout-attack",
+    "hit": "hollowed-scout-hit",
+    "death": "hollowed-scout-death",
+    "special": {}
+  },
+  "loot_table_id": "loot_hollow_rend",
+  "xp_reward": 125
+}
+```
+
+### Hollow Wisp
+
+```json
+{
+  "id": "hollow_wisp",
+  "name": "Hollow Wisp",
+  "category": "hollow",
+  "tier": 1,
+  "home_region": "underground",
+  "regions": [
+    "underground",
+    "greyvale"
+  ],
+  "description": "A thin drift of stolen warmth that gathers around living breath.",
+  "level": 3,
+  "hp": 18,
+  "ac": 12,
+  "speed": 40,
+  "attributes": {
+    "STR": 1,
+    "DEX": 16,
+    "CON": 10,
+    "INT": 12,
+    "WIS": 14,
+    "CHA": 10
+  },
+  "save_proficiencies": [
+    "CON",
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Draining Touch",
+      "type": "ranged",
+      "reach": 30,
+      "to_hit": 4,
+      "damage": "2d6",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "hollow-wisp-draining-touch"
+    },
+    {
+      "name": "Hollow Drain",
+      "type": "ranged",
+      "reach": 30,
+      "to_hit": 4,
+      "damage": "1d8",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "hollow-wisp-hollow-drain"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "hollow": {
+    "class": "drift",
+    "corruption_aura": 15,
+    "resonance_on_death": 1,
+    "veil_effect": "Warmth bleeds from the air around it, and the Veil thins wherever it lingers.",
+    "vulnerable_to": [
+      "radiant",
+      "fire",
+      "area_damage"
+    ]
+  },
+  "behavior": {
+    "tactics": "Slips past a front line to drain exposed casters.",
+    "morale": "Dissipates only when destroyed.",
+    "group_size": "pair",
+    "environment": [
+      "underground",
+      "greyvale"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A thin hum gathers near the floor, carrying the smell of cold iron.",
+    "attack_cue": "A hiss follows its touch as warmth drains from skin.",
+    "wounded_cue": "The hum stutters and a sharp ozone smell escapes it.",
+    "death_cue": "A soft crack breaks the silence as the wisp vanishes.",
+    "ambient_cue": "A faint whine circles the room without a source."
+  },
+  "audio": {
+    "ambient": "hollow_whisper",
+    "attack": "hollow-wisp-attack",
+    "hit": "hollow-wisp-hit",
+    "death": "hollow-wisp-death",
+    "special": {}
+  },
+  "loot_table_id": "loot_hollow_drift",
+  "xp_reward": 40
+}
+```
+
+### Hollow Warden
+
+```json
+{
+  "id": "hollow_warden",
+  "name": "Hollow Warden",
+  "category": "hollow",
+  "tier": 2,
+  "home_region": "underground",
+  "regions": [
+    "underground"
+  ],
+  "description": "A fixed guardian that folds the space around a ruined threshold.",
+  "level": 7,
+  "hp": 55,
+  "ac": 15,
+  "speed": 25,
+  "attributes": {
+    "STR": 16,
+    "DEX": 10,
+    "CON": 16,
+    "INT": 12,
+    "WIS": 14,
+    "CHA": 8
+  },
+  "save_proficiencies": [
+    "CON",
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Void Lash",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "2d6",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "hollow-warden-void-lash"
+    },
+    {
+      "name": "Reality Fracture",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d8",
+      "damage_type": "psychic",
+      "special": null,
+      "audio": "hollow-warden-reality-fracture"
+    },
+    {
+      "name": "Absorb",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d6",
+      "damage_type": "necrotic",
+      "special": "Healing: regain HP equal to damage dealt.",
+      "audio": "hollow-warden-absorb",
+      "self_heal": "damage_dealt"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "signature_ability": {
+    "name": "Reality Collapse",
+    "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
+    "save": "wisdom",
+    "narration_cue": "A thunderous crack splits the room before overlapping walls wrench apart."
+  },
+  "hollow": {
+    "class": "rend",
+    "corruption_aura": 30,
+    "resonance_on_death": 2,
+    "veil_effect": "The Veil folds around its ward, so the guarded room holds two overlapping versions of itself.",
+    "vulnerable_to": [
+      "radiant",
+      "blessed_weapons",
+      "divine"
+    ]
+  },
+  "behavior": {
+    "tactics": "Holds a doorway, lashes at intruders and feeds on wounded targets.",
+    "morale": "Never abandons its ward.",
+    "group_size": "solitary",
+    "environment": [
+      "underground"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A deep metallic groan rolls through the ruined doorway.",
+    "attack_cue": "A void lash snaps and the air falls silent.",
+    "wounded_cue": "A grinding pulse beats unevenly beneath the stone.",
+    "death_cue": "A heavy crack splits the stillness as the Warden unravels.",
+    "ambient_cue": "A low hum throbs behind the walls."
+  },
+  "audio": {
+    "ambient": "hollow_deep_resonance",
+    "attack": "hollow-warden-attack",
+    "hit": "hollow-warden-hit",
+    "death": "hollow-warden-death",
+    "special": {
+      "Reality Collapse": "hollow-warden-signature"
+    }
+  },
+  "loot_table_id": "loot_hollow_warden",
+  "xp_reward": 200
+}
+```
+
+### Ashmark Soldier
+
+```json
+{
+  "id": "ashmark_soldier",
+  "name": "Ashmark Soldier",
+  "category": "humanoid",
+  "tier": 2,
+  "home_region": "ashmark",
+  "regions": [
+    "ashmark"
+  ],
+  "description": "A drilled Ashmark infantry fighter with a sword and shield.",
+  "level": 5,
+  "hp": 28,
+  "ac": 13,
+  "speed": 30,
+  "attributes": {
+    "STR": 14,
+    "DEX": 12,
+    "CON": 14,
+    "INT": 10,
+    "WIS": 11,
+    "CHA": 10
+  },
+  "save_proficiencies": [
+    "STR"
+  ],
+  "attacks": [
+    {
+      "name": "Longsword",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "1d8+2",
+      "damage_type": "slashing",
+      "special": null,
+      "audio": "ashmark-soldier-longsword"
+    },
+    {
+      "name": "Shield Bash",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 0,
+      "damage": "0",
+      "damage_type": "none",
+      "special": "Target STRENGTH save DC 12 or prone.",
+      "audio": "ashmark-soldier-shield-bash",
+      "applies_condition": "prone",
+      "save": "strength",
+      "dc": 12
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "hollow": null,
+  "behavior": {
+    "tactics": "Keeps formation and bashes a foe prone for the next soldier.",
+    "morale": "Withdraws on the sergeant’s order or when outnumbered.",
+    "group_size": "patrol_3_5",
+    "environment": [
+      "ashmark"
+    ]
+  },
+  "narration": {
+    "first_sighting": "Shield rims clatter in step before the patrol rounds the corner.",
+    "attack_cue": "Steel clatters against a guard as the soldier drives forward.",
+    "wounded_cue": "A labored breath slips through the soldier’s helm.",
+    "death_cue": "Armor rattles against the ground as the soldier falls.",
+    "ambient_cue": "Boots scrape in a measured patrol rhythm beyond the door."
+  },
+  "audio": {
+    "ambient": "ashmark_soldier_advance",
+    "attack": "ashmark-soldier-attack",
+    "hit": "ashmark-soldier-hit",
+    "death": "ashmark-soldier-death",
+    "special": {}
+  },
+  "loot_table_id": "loot_humanoid_soldier",
+  "xp_reward": 100
+}
+```
+
+### Ashmark Sergeant
+
+```json
+{
+  "id": "ashmark_sergeant",
+  "name": "Ashmark Sergeant",
+  "category": "humanoid",
+  "tier": 2,
+  "home_region": "ashmark",
+  "regions": [
+    "ashmark"
+  ],
+  "description": "An Ashmark patrol commander whose orders concentrate the line.",
+  "level": 6,
+  "hp": 38,
+  "ac": 14,
+  "speed": 30,
+  "attributes": {
+    "STR": 15,
+    "DEX": 12,
+    "CON": 15,
+    "INT": 11,
+    "WIS": 12,
+    "CHA": 13
+  },
+  "save_proficiencies": [
+    "STR"
+  ],
+  "attacks": [
+    {
+      "name": "Greatsword",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 6,
+      "damage": "2d6+2",
+      "damage_type": "slashing",
+      "special": null,
+      "audio": "ashmark-sergeant-greatsword"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [
+    {
+      "name": "Rally",
+      "description": "Command to allies: A sharp command steadies the line and sharpens their focus fire.",
+      "narration_cue": "A sharp whistle snaps the line back into step.",
+      "recharge": {
+        "kind": "round",
+        "uses": 1
+      },
+      "audio": "ashmark-sergeant-rally",
+      "kind": "command",
+      "properties": [
+        "buff"
+      ]
+    },
+    {
+      "name": "Accusation",
+      "description": "Accusation to allies: Names the accused and directs the patrol's focus fire.",
+      "narration_cue": "A barked name cracks across the patrol, and every blade turns.",
+      "recharge": {
+        "kind": "round",
+        "uses": 1
+      },
+      "audio": "ashmark-sergeant-accusation",
+      "kind": "accusation",
+      "properties": []
+    }
+  ],
+  "reactions": [],
+  "hollow": null,
+  "behavior": {
+    "tactics": "Marks a target, rallies allies and closes with a greatsword.",
+    "morale": "Orders retreat if the patrol loses half its strength.",
+    "group_size": "one_per_patrol",
+    "environment": [
+      "ashmark"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A sharp whistle cuts across the patrol’s marching cadence.",
+    "attack_cue": "A sharp whistle rises over the greatsword’s swing.",
+    "wounded_cue": "A rough rasp interrupts the next command.",
+    "death_cue": "A sword clatters down as the sergeant falls silent.",
+    "ambient_cue": "Clipped commands rasp through the camp."
+  },
+  "audio": {
+    "ambient": "ashmark_sergeant_order",
+    "attack": "ashmark-sergeant-attack",
+    "hit": "ashmark-sergeant-hit",
+    "death": "ashmark-sergeant-death",
+    "special": {
+      "Rally": "ashmark-sergeant-rally",
+      "Accusation": "ashmark-sergeant-accusation"
+    }
+  },
+  "loot_table_id": "loot_humanoid_soldier",
+  "xp_reward": 150
+}
+```
+
+### Cultist
+
+```json
+{
+  "id": "cultist",
+  "name": "Cultist",
+  "category": "humanoid",
+  "tier": 1,
+  "home_region": "greyvale",
+  "regions": [
+    "greyvale",
+    "ashmark"
+  ],
+  "description": "A nervous initiate carrying a notched ritual dagger.",
+  "level": 1,
+  "hp": 10,
+  "ac": 11,
+  "speed": 30,
+  "attributes": {
+    "STR": 11,
+    "DEX": 12,
+    "CON": 11,
+    "INT": 10,
+    "WIS": 11,
+    "CHA": 10
+  },
+  "save_proficiencies": [
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Ritual Dagger",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 4,
+      "damage": "1d4+1",
+      "damage_type": "piercing",
+      "special": null,
+      "audio": "cultist-ritual-dagger"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "hollow": null,
+  "behavior": {
+    "tactics": "Surrounds a distracted target while senior cultists chant.",
+    "morale": "Flees when the leader falls.",
+    "group_size": "cell_3_6",
+    "environment": [
+      "greyvale",
+      "ashmark"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A nervous rasp leaks from the chamber before the initiate appears.",
+    "attack_cue": "A dagger scrapes stone as the cultist lunges.",
+    "wounded_cue": "A ragged breath breaks the ritual chant.",
+    "death_cue": "A metal blade clatters away from the fallen cultist.",
+    "ambient_cue": "A low rasp repeats the same broken prayer."
+  },
+  "audio": {
+    "ambient": "cult_murmur",
+    "attack": "cultist-attack",
+    "hit": "cultist-hit",
+    "death": "cultist-death",
+    "special": {}
+  },
+  "loot_table_id": "loot_humanoid_cultist",
+  "xp_reward": 20
+}
+```
+
+### Cult Fanatic
+
+```json
+{
+  "id": "cult_fanatic",
+  "name": "Cult Fanatic",
+  "category": "humanoid",
+  "tier": 1,
+  "home_region": "greyvale",
+  "regions": [
+    "greyvale",
+    "ashmark"
+  ],
+  "description": "A ritual enforcer who channels fervor through touch and command.",
+  "level": 3,
+  "hp": 19,
+  "ac": 13,
+  "speed": 30,
+  "attributes": {
+    "STR": 11,
+    "DEX": 12,
+    "CON": 13,
+    "INT": 12,
+    "WIS": 15,
+    "CHA": 13
+  },
+  "save_proficiencies": [
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Mace",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 4,
+      "damage": "1d6",
+      "damage_type": "bludgeoning",
+      "special": null,
+      "audio": "cult-fanatic-mace"
+    },
+    {
+      "name": "Inflict Wounds",
+      "type": "melee",
+      "reach": 5,
+      "to_hit": 4,
+      "damage": "2d8",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "cult-fanatic-inflict-wounds"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [
+    {
+      "name": "Bless",
+      "description": "Command to allies: Murmured fervor steadies the cultists' hands.",
+      "narration_cue": "A low hum of fervor passes from cultist to cultist.",
+      "recharge": {
+        "kind": "round",
+        "uses": 1
+      },
+      "audio": "cult-fanatic-bless",
+      "kind": "command",
+      "properties": [
+        "buff"
+      ]
+    }
+  ],
+  "reactions": [],
+  "hollow": null,
+  "behavior": {
+    "tactics": "Blesses allies before closing to deliver necrotic wounds.",
+    "morale": "Fights to death while the leader stands.",
+    "group_size": "pair_in_cell",
+    "environment": [
+      "greyvale",
+      "ashmark"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A steady chant fills the hall with the smell of tallow.",
+    "attack_cue": "A mace thuds as the chant rises into a shout.",
+    "wounded_cue": "The chant catches on a wet breath.",
+    "death_cue": "A final syllable rasps out as the fanatic drops.",
+    "ambient_cue": "A low hum of blessing threads through the room."
+  },
+  "audio": {
+    "ambient": "cult_chant",
+    "attack": "cult-fanatic-attack",
+    "hit": "cult-fanatic-hit",
+    "death": "cult-fanatic-death",
+    "special": {
+      "Bless": "cult-fanatic-bless"
+    }
+  },
+  "loot_table_id": "loot_humanoid_cultist",
+  "xp_reward": 45
+}
+```
+
+### Cult Leader
+
+```json
+{
+  "id": "cult_leader",
+  "name": "Cult Leader",
+  "category": "humanoid",
+  "tier": 2,
+  "home_region": "greyvale",
+  "regions": [
+    "greyvale",
+    "ashmark"
+  ],
+  "description": "A cell leader who shapes shadow into bolts and a suffocating mantle.",
+  "level": 8,
+  "hp": 48,
+  "ac": 14,
+  "speed": 30,
+  "attributes": {
+    "STR": 9,
+    "DEX": 14,
+    "CON": 13,
+    "INT": 16,
+    "WIS": 13,
+    "CHA": 14
+  },
+  "save_proficiencies": [
+    "WIS"
+  ],
+  "attacks": [
+    {
+      "name": "Shadow Bolt",
+      "type": "ranged",
+      "reach": 30,
+      "to_hit": 6,
+      "damage": "2d6",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "cult-leader-shadow-bolt"
+    },
+    {
+      "name": "Hold Person",
+      "type": "ranged",
+      "reach": 60,
+      "to_hit": 0,
+      "damage": "0",
+      "damage_type": "none",
+      "special": "Target WISDOM save DC 12 or paralyzed.",
+      "audio": "cult-leader-hold-person",
+      "applies_condition": "paralyzed",
+      "save": "wisdom",
+      "dc": 12
+    },
+    {
+      "name": "Dark Pulse",
+      "type": "area",
+      "reach": 15,
+      "to_hit": 0,
+      "damage": "1d10",
+      "damage_type": "necrotic",
+      "special": null,
+      "audio": "cult-leader-dark-pulse"
+    }
+  ],
+  "multiattack": null,
+  "passives": [],
+  "actives": [],
+  "reactions": [],
+  "signature_ability": {
+    "name": "Mantle of Ruin",
+    "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
+    "save": "constitution",
+    "narration_cue": "A low rushing hiss pours from the leader's hands before shadow smothers the light."
+  },
+  "hollow": null,
+  "behavior": {
+    "tactics": "Pins one intruder with Hold Person and strikes clustered foes with dark force.",
+    "morale": "Fights until the cell breaks, then escapes if possible.",
+    "group_size": "one_per_cell",
+    "environment": [
+      "greyvale",
+      "ashmark"
+    ]
+  },
+  "narration": {
+    "first_sighting": "A measured hum silences the cell’s whispers.",
+    "attack_cue": "A hiss of cold air follows the shadow bolt.",
+    "wounded_cue": "The incantation falters between painful breaths.",
+    "death_cue": "A hollow crack sounds as the mantle gutters out.",
+    "ambient_cue": "A soft rasp carries beyond the closed door."
+  },
+  "audio": {
+    "ambient": "cult_leader_incant",
+    "attack": "cult-leader-attack",
+    "hit": "cult-leader-hit",
+    "death": "cult-leader-death",
+    "special": {
+      "Mantle of Ruin": "cult-leader-signature"
+    }
+  },
+  "loot_table_id": "loot_cult_leader",
+  "xp_reward": 180
+}
+```

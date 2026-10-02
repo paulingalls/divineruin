@@ -1,3 +1,6 @@
+import { Participant, ParticipantKind } from "livekit-client";
+import type { ReceivedDataMessage } from "@/livekit";
+import { panelStore } from "@/stores/panel-store";
 import { test, expect, beforeEach } from "bun:test";
 import { isDmSender, handleGameEventMessage } from "@/audio/game-event-handler";
 import { characterStore } from "@/stores/character-store";
@@ -57,4 +60,24 @@ test("a packet with no sender is dropped", () => {
     from: undefined,
   });
   expect(sessionStore.getState().locationContext).toBeNull();
+});
+
+test("forged inventory snapshot cannot bypass the agent sender gate", () => {
+  const before = panelStore.getState().inventoryGeneration;
+  handleGameEventMessage({
+    payload: encode({
+      type: "inventory_updated",
+      inventory: [{ id: "forged", name: "Forged", slot_info: { quantity: 1 } }],
+    }),
+    from: new Participant(
+      "PA_forged",
+      "another-player",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ParticipantKind.STANDARD,
+    ),
+  } satisfies ReceivedDataMessage);
+  expect(panelStore.getState().inventoryGeneration).toBe(before);
 });

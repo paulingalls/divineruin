@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import (
     SAMPLE_ITEM,
@@ -145,6 +146,7 @@ class TestTransactGain:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         ctx = _make_context()
         result = json.loads(
             await _transact_impl(
@@ -201,6 +203,7 @@ class TestTransactGain:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         room = _make_mock_room()
         ctx = _make_context(room=room)
         await _transact_impl(
@@ -213,13 +216,14 @@ class TestTransactGain:
             queries=mock_queries,
             content=mock_content,
         )
-        # Two events: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
         first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
-        assert first_call["type"] == E.INVENTORY_UPDATED
-        assert "inventory" in first_call
+        assert first_call["type"] == E.ITEM_ACQUIRED
+        assert "name" in first_call
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == E.ITEM_ACQUIRED
+        assert second_call["type"] == E.INVENTORY_UPDATED
+        assert second_call["player_id"] == "player_1"
+        assert second_call["inventory"] == [SAMPLE_ITEM]
 
 
 class TestTransactLose:
@@ -235,6 +239,7 @@ class TestTransactLose:
         mock_queries = MagicMock()
         mock_queries.get_inventory_item = AsyncMock(return_value=slot)
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         mock_inventory_mutations = MagicMock()
         mock_inventory_mutations.transact_inventory = AsyncMock(return_value=remaining)
         return mock_conn, mock_db, mock_content, mock_queries, mock_inventory_mutations

@@ -4,7 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from conditions import CONDITION_CATALOG
 from creature_schema import validate_creature_stat_block
+from encounter_actions import ACTION_KINDS
+from social_resolution import RESISTANCE_TAGS
 
 ROOT = Path(__file__).resolve().parents[3]
 CORPUS = ROOT / "packages/shared/fixtures/creature_blocks.json"
@@ -20,6 +23,9 @@ def assert_corpus_floors(valid, invalid):
 def test_corpus_floors():
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert set(corpus["action_kinds"]) == set(ACTION_KINDS)
+    assert {case["name"] for case in valid} >= REQUIRED_VALID
+    assert {case["name"] for case in invalid} >= REQUIRED_INVALID
     with pytest.raises(AssertionError):
         assert_corpus_floors([], invalid)
     with pytest.raises(AssertionError):
@@ -32,13 +38,33 @@ def test_shared_creature_corpus():
     assert CORPUS.is_file()
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
+    assert set(corpus["action_kinds"]) == set(ACTION_KINDS)
+    assert {case["name"] for case in valid} >= REQUIRED_VALID
+    assert {case["name"] for case in invalid} >= REQUIRED_INVALID
     assert {case["name"] for case in invalid} >= {
         "missing_regions",
         "empty_regions",
         "unknown_region",
         "missing_home_region",
         "unknown_home_region",
+        "unknown_active_kind",
+        "mark_with_damage",
+        "condition_without_save",
+        "condition_without_dc",
+        "unknown_condition",
+        "half_without_damage",
+        "grapple_without_escape_dc",
+        "unknown_resistance_tag",
+        "signature_without_name",
+        "signature_without_description",
+        "active_kind_attack",
+        "attack_with_mark_kind",
     }
+    assert {case["name"] for case in valid} >= {"all_combat_fields", "legacy_no_combat_fields"}
+    assert set(corpus["condition_names"]) == set(CONDITION_CATALOG)
+    assert set(corpus["resistance_tags"]) == set(RESISTANCE_TAGS)
+    assert len(corpus["condition_names"]) == len(CONDITION_CATALOG)
+    assert len(corpus["resistance_tags"]) == len(RESISTANCE_TAGS)
     assert_corpus_floors(valid, invalid)
     derived = [case for case in valid if case.get("spec_derived")]
     assert {case["name"] for case in derived} >= {"spec_shadeling", "spec_hollowmoth", "spec_bandit"}
@@ -51,6 +77,8 @@ def test_shared_creature_corpus():
         assert validate_creature_stat_block(case["block"]) == [], case["name"]
     for case in invalid:
         assert case["expected"]
+        if "field" in case:
+            assert all(case["field"] in reason for reason in case["expected"]), case["name"]
         assert validate_creature_stat_block(case["block"]) == case["expected"], case["name"]
 
 
@@ -96,3 +124,23 @@ def test_every_spec_field_is_required():
             assert validate_creature_stat_block(block) == [f"{name}: required"], case["name"]
             checked.add(name)
     assert {"reactions", "hollow.class", "attacks[0].damage", "actives[0].narration_cue"} <= checked
+
+
+@pytest.mark.parametrize("case", json.loads(CORPUS.read_text())["invalid"], ids=lambda row: row["name"])
+def test_isolated_contract_guard(case):
+    assert validate_creature_stat_block(case["block"]) == case["expected"]
+
+
+CASE_IDS = json.loads((CORPUS.parent / "creature_contract_case_ids.json").read_text())
+REQUIRED_VALID = set(CASE_IDS["valid"])
+REQUIRED_INVALID = set(CASE_IDS["invalid"])
+
+
+@pytest.mark.parametrize("field,value", [("attack_source", "bad"), ("self_heal", "raw_damage")])
+def test_catalog_runtime_extensions_use_creature_public_boundary(field, value):
+    block = copy.deepcopy(json.loads(CORPUS.read_text())["valid"][0]["block"])
+    attack = block["attacks"][0]
+    attack.update(attack_source="catalog", self_heal="damage_dealt")
+    assert validate_creature_stat_block(block) == []
+    attack[field] = value
+    assert any(field in problem for problem in validate_creature_stat_block(block))

@@ -698,5 +698,257 @@
         ]
       }
     ]
+  },
+  {
+    "id": "loot_hollow_mawling",
+    "description": "Mawling harvest: a rend shard and occasionally its dissolution membrane.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "rend_shard",
+        "quantity": 1,
+        "chance": 0.75,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "dissolution_membrane",
+        "quantity": 1,
+        "chance": 0.25,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          },
+          {
+            "skill": "arcana",
+            "tier": "trained"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_weaver",
+    "description": "Weaver harvest: spatial residue and a rare woven void fragment.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "spatial_residue",
+        "quantity": 1,
+        "chance": 1.0,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "woven_void_fragment",
+        "quantity": 1,
+        "chance": 0.25,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_hollowed_knight_catalog",
+    "description": "Hollowed Knight spec harvest and tainted salvage.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "corrupted_armor_fragments",
+        "quantity": "1d4",
+        "chance": 1.0,
+        "requires": []
+      },
+      {
+        "item_id": "wrack_core",
+        "quantity": 1,
+        "chance": 0.5,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "remnant_identity",
+        "quantity": 1,
+        "chance": 0.25,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "trained"
+          }
+        ]
+      },
+      {
+        "item_id": "salvageable_weapon",
+        "quantity": 1,
+        "chance": 0.75,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_veilrender",
+    "description": "Veilrender spec harvest from the collapsed corruption field.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "veilrender_carapace",
+        "quantity": "2d4",
+        "chance": 1.0,
+        "requires": []
+      },
+      {
+        "item_id": "corruption_saturated_stone",
+        "quantity": "1d6",
+        "chance": 1.0,
+        "requires": []
+      },
+      {
+        "item_id": "wrack_core_large",
+        "quantity": 1,
+        "chance": 0.75,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "veil_shard",
+        "quantity": 1,
+        "chance": 0.25,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_choir",
+    "description": "Choir core and released memories.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "choir_resonance_crystal",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "freed_memories",
+        "quantity": "1d6",
+        "chance": 1,
+        "requires": []
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_still",
+    "description": "The Still: non-integer per-anchor and varies drops omitted.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loot_hollow_architect",
+    "description": "Architect structure harvest.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "architect_blueprint_fragment",
+        "quantity": "1d4",
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "living_stone",
+        "quantity": "2d6",
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "void_touched_foundation",
+        "quantity": 1,
+        "chance": 0.5,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          },
+          {
+            "skill": "crafting",
+            "tier": "expert"
+          }
+        ]
+      }
+    ]
   }
 ]

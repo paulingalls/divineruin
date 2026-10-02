@@ -2,100 +2,21 @@
   {
     "id": "shadeling_cluster",
     "name": "Shadeling Cluster",
-    "description": "Three smears of wrongness drifting low across the ground. They move like smoke — formless, slow, but the grass withers beneath them and the air goes cold where they pass. Individually fragile. Together, a creeping threat that dissolves what it touches.",
+    "description": "Two smears of wrongness drifting low across the ground. They move like smoke — formless, slow, but the grass withers beneath them and the air goes cold where they pass. Individually fragile. Together, a creeping threat that dissolves what it touches.",
     "difficulty": "easy",
     "enemies": [
       {
         "id": "shadeling_1",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 10,
-        "hp": 6,
-        "attributes": {
-          "strength": 4,
-          "dexterity": 12,
-          "constitution": 10,
-          "intelligence": 2,
-          "wisdom": 8,
-          "charisma": 1
-        },
-        "action_pool": [
-          {
-            "name": "Corrosive Touch",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
-          }
-        ],
-        "xp_value": 25,
-        "sound_signature": "hollow_static_hiss",
-        "role": "standard",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "creature_id": "hollow_shadeling",
+        "role": "standard"
       },
       {
         "id": "shadeling_2",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 10,
-        "hp": 6,
-        "attributes": {
-          "strength": 4,
-          "dexterity": 12,
-          "constitution": 10,
-          "intelligence": 2,
-          "wisdom": 8,
-          "charisma": 1
-        },
-        "action_pool": [
-          {
-            "name": "Corrosive Touch",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
-          }
-        ],
-        "xp_value": 25,
-        "sound_signature": "hollow_static_hiss",
-        "role": "standard",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_3",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 10,
-        "hp": 6,
-        "attributes": {
-          "strength": 4,
-          "dexterity": 12,
-          "constitution": 10,
-          "intelligence": 2,
-          "wisdom": 8,
-          "charisma": 1
-        },
-        "action_pool": [
-          {
-            "name": "Corrosive Touch",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
-          }
-        ],
-        "xp_value": 25,
-        "sound_signature": "hollow_static_hiss",
-        "role": "standard",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "creature_id": "hollow_shadeling",
+        "role": "standard"
       }
-    ]
+    ],
+    "recommended_party_level": 1
   },
   {
     "id": "ruins_mawling_pair",
@@ -105,83 +26,16 @@
     "enemies": [
       {
         "id": "mawling_1",
-        "name": "Mawling",
-        "level": 2,
-        "tier": 2,
-        "ac": 13,
-        "hp": 18,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 5,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Grasping Maw",
-            "damage": "1d8+2",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The opening where a face should be lunges forward — what it touches begins to dissolve"
-          },
-          {
-            "name": "Seizing Grab",
-            "damage": "1d4",
-            "damage_type": "bludgeoning",
-            "properties": ["grapple"],
-            "escape_dc": 13,
-            "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
-          }
-        ],
-        "xp_value": 100,
-        "sound_signature": "hollow_wrong_footsteps",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend",
-        "resistance_tags": ["cowardly"]
+        "creature_id": "hollow_mawling",
+        "role": "standard"
       },
       {
         "id": "mawling_2",
-        "name": "Mawling",
-        "level": 2,
-        "tier": 2,
-        "ac": 13,
-        "hp": 18,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 5,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Grasping Maw",
-            "damage": "1d8+2",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The opening where a face should be lunges forward — what it touches begins to dissolve"
-          },
-          {
-            "name": "Seizing Grab",
-            "damage": "1d4",
-            "damage_type": "bludgeoning",
-            "properties": ["grapple"],
-            "escape_dc": 13,
-            "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
-          }
-        ],
-        "xp_value": 100,
-        "sound_signature": "hollow_wrong_footsteps",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend",
-        "resistance_tags": ["pragmatic"]
+        "creature_id": "hollow_mawling",
+        "role": "standard"
       }
-    ]
+    ],
+    "recommended_party_level": 5
   },
   {
     "id": "hollowed_scout",
@@ -191,49 +45,11 @@
     "enemies": [
       {
         "id": "hollowed_scout_1",
-        "name": "Hollowed Scout",
-        "level": 3,
-        "tier": 1,
-        "ac": 15,
-        "hp": 35,
-        "attributes": {
-          "strength": 15,
-          "dexterity": 14,
-          "constitution": 14,
-          "intelligence": 8,
-          "wisdom": 12,
-          "charisma": 4
-        },
-        "action_pool": [
-          {
-            "name": "Corrupted Blade",
-            "damage": "1d8+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "The sword swings with technique you recognize — guild-trained, precise. But the follow-through bends in a way no living swordsman would"
-          },
-          {
-            "name": "Hollow Echo",
-            "damage": "1d6",
-            "damage_type": "psychic",
-            "properties": [],
-            "description": "A fragment of speech slips out — a name, a plea — and the sound of it hits harder than the blade"
-          },
-          {
-            "name": "Relentless Advance",
-            "damage": "1d4",
-            "damage_type": "bludgeoning",
-            "properties": [],
-            "description": "It doesn't stop. It walks through your guard the way water flows around stone"
-          }
-        ],
-        "xp_value": 250,
-        "sound_signature": "hollow_wrong_footsteps",
-        "role": "elite",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "creature_id": "hollowed_scout",
+        "role": "elite"
       }
-    ]
+    ],
+    "recommended_party_level": 4
   },
   {
     "id": "hollow_wisp",
@@ -243,150 +59,35 @@
     "enemies": [
       {
         "id": "hollow_wisp_1",
-        "name": "Hollow Wisp",
-        "level": 3,
-        "tier": 1,
-        "ac": 14,
-        "hp": 22,
-        "attributes": {
-          "strength": 1,
-          "dexterity": 16,
-          "constitution": 10,
-          "intelligence": 12,
-          "wisdom": 14,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Draining Touch",
-            "damage": "2d6",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A tendril of pale light lashes out, sapping warmth from flesh"
-          },
-          {
-            "name": "Hollow Drain",
-            "damage": "1d8",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "The wisp pulses and a wave of emptiness washes over its victim"
-          }
-        ],
-        "xp_value": 200,
-        "sound_signature": "hollow_whisper",
-        "role": "standard",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "creature_id": "hollow_wisp",
+        "role": "standard"
       }
-    ]
+    ],
+    "recommended_party_level": 2
   },
   {
     "id": "hollow_patrol_greyvale",
     "name": "Hollow Patrol",
     "description": "A hunting pack of Hollow creatures — one larger Rend flanked by two drifting shades. They move in eerie coordination, the Rend leading while the Drifts circle like pale wolves.",
-    "difficulty": "moderate",
+    "difficulty": "hard",
     "enemies": [
       {
-        "id": "hollow_rend_1",
-        "name": "Hollow Rend",
-        "level": 2,
-        "tier": 1,
-        "ac": 13,
-        "hp": 15,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 12,
-          "constitution": 13,
-          "intelligence": 6,
-          "wisdom": 10,
-          "charisma": 5
-        },
-        "action_pool": [
-          {
-            "name": "Claw Swipe",
-            "damage": "1d6+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A limb that shouldn't bend that way rakes forward with jagged edges"
-          },
-          {
-            "name": "Hollow Shriek",
-            "damage": "0",
-            "damage_type": "psychic",
-            "properties": ["control"],
-            "description": "A sound that isn't a sound — pressure behind the eyes, a ringing that tastes of metal",
-            "applies_condition": "frightened",
-            "save": "wisdom",
-            "dc": 12
-          }
-        ],
-        "xp_value": 100,
-        "sound_signature": "hollow_growl",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "id": "mawling_1",
+        "creature_id": "hollow_mawling",
+        "role": "standard"
       },
       {
-        "id": "hollow_drift_1",
-        "name": "Hollow Drift",
-        "level": 1,
-        "tier": 1,
-        "ac": 11,
-        "hp": 8,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 14,
-          "constitution": 10,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Draining Touch",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A wisp of dark light grazes your skin and warmth drains from the contact point"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "hollow_whisper",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "id": "shadeling_1",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
       },
       {
-        "id": "hollow_drift_2",
-        "name": "Hollow Drift",
-        "level": 1,
-        "tier": 1,
-        "ac": 11,
-        "hp": 8,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 14,
-          "constitution": 10,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Draining Touch",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A wisp of dark light grazes your skin and warmth drains from the contact point"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "hollow_whisper",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "id": "shadeling_2",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
       }
-    ]
+    ],
+    "recommended_party_level": 3
   },
   {
     "id": "ruins_guardian",
@@ -396,55 +97,11 @@
     "enemies": [
       {
         "id": "hollow_warden_1",
-        "name": "Hollow Warden",
-        "level": 4,
-        "tier": 1,
-        "ac": 15,
-        "hp": 45,
-        "attributes": {
-          "strength": 16,
-          "dexterity": 10,
-          "constitution": 16,
-          "intelligence": 12,
-          "wisdom": 14,
-          "charisma": 8
-        },
-        "action_pool": [
-          {
-            "name": "Void Lash",
-            "damage": "2d6",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A tendril of absolute darkness whips forward — where it passes, the air goes silent"
-          },
-          {
-            "name": "Reality Fracture",
-            "damage": "1d8",
-            "damage_type": "psychic",
-            "properties": [],
-            "description": "The Warden strikes the ground and for a heartbeat the world splits — two versions of the room overlap, neither quite real"
-          },
-          {
-            "name": "Absorb",
-            "damage": "1d6",
-            "damage_type": "necrotic",
-            "properties": ["healing"],
-            "description": "The Warden's wounds close as dark energy flows from its victim into its form"
-          }
-        ],
-        "xp_value": 450,
-        "sound_signature": "hollow_deep_resonance",
-        "role": "boss",
-        "signature_ability": {
-          "name": "Reality Collapse",
-          "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
-          "save": "wisdom"
-        },
-        "legendary_actions": 1,
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_warden"
+        "creature_id": "hollow_warden",
+        "role": "boss"
       }
-    ]
+    ],
+    "recommended_party_level": 7
   },
   {
     "id": "bandit_ambush",
@@ -453,197 +110,32 @@
     "difficulty": "moderate",
     "enemies": [
       {
+        "id": "bandit_captain",
+        "creature_id": "bandit_captain",
+        "role": "elite"
+      },
+      {
         "id": "bandit_1",
-        "name": "Bandit",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 11,
-        "attributes": {
-          "strength": 12,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 9,
-          "wisdom": 10,
-          "charisma": 9
-        },
-        "action_pool": [
-          {
-            "name": "Shortsword",
-            "damage": "1d6+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A quick, practiced thrust from a chipped blade"
-          },
-          {
-            "name": "Light Crossbow",
-            "damage": "1d8",
-            "damage_type": "piercing",
-            "properties": ["ranged"],
-            "description": "A bolt loosed from cover before the rush"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "bandit_snarl",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_bandit"
+        "creature_id": "bandit",
+        "role": "minion"
       },
       {
         "id": "bandit_2",
-        "name": "Bandit",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 11,
-        "attributes": {
-          "strength": 12,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 9,
-          "wisdom": 10,
-          "charisma": 9
-        },
-        "action_pool": [
-          {
-            "name": "Shortsword",
-            "damage": "1d6+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A quick, practiced thrust from a chipped blade"
-          },
-          {
-            "name": "Light Crossbow",
-            "damage": "1d8",
-            "damage_type": "piercing",
-            "properties": ["ranged"],
-            "description": "A bolt loosed from cover before the rush"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "bandit_snarl",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_bandit"
+        "creature_id": "bandit",
+        "role": "minion"
       },
       {
         "id": "bandit_3",
-        "name": "Bandit",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 11,
-        "attributes": {
-          "strength": 12,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 9,
-          "wisdom": 10,
-          "charisma": 9
-        },
-        "action_pool": [
-          {
-            "name": "Shortsword",
-            "damage": "1d6+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A quick, practiced thrust from a chipped blade"
-          },
-          {
-            "name": "Light Crossbow",
-            "damage": "1d8",
-            "damage_type": "piercing",
-            "properties": ["ranged"],
-            "description": "A bolt loosed from cover before the rush"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "bandit_snarl",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_bandit"
+        "creature_id": "bandit",
+        "role": "minion"
       },
       {
         "id": "bandit_4",
-        "name": "Bandit",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 11,
-        "attributes": {
-          "strength": 12,
-          "dexterity": 13,
-          "constitution": 12,
-          "intelligence": 9,
-          "wisdom": 10,
-          "charisma": 9
-        },
-        "action_pool": [
-          {
-            "name": "Shortsword",
-            "damage": "1d6+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A quick, practiced thrust from a chipped blade"
-          },
-          {
-            "name": "Light Crossbow",
-            "damage": "1d8",
-            "damage_type": "piercing",
-            "properties": ["ranged"],
-            "description": "A bolt loosed from cover before the rush"
-          }
-        ],
-        "xp_value": 50,
-        "sound_signature": "bandit_snarl",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_bandit"
-      },
-      {
-        "id": "bandit_captain",
-        "name": "Bandit Captain",
-        "level": 3,
-        "tier": 1,
-        "ac": 14,
-        "hp": 26,
-        "attributes": {
-          "strength": 15,
-          "dexterity": 14,
-          "constitution": 14,
-          "intelligence": 11,
-          "wisdom": 11,
-          "charisma": 13
-        },
-        "action_pool": [
-          {
-            "name": "Scimitar",
-            "damage": "1d6+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A curved blade that flashes in two quick arcs"
-          },
-          {
-            "name": "Heavy Crossbow",
-            "damage": "1d10+1",
-            "damage_type": "piercing",
-            "properties": ["ranged"],
-            "description": "Held back from the line, picking targets"
-          },
-          {
-            "name": "Press the Attack",
-            "kind": "command",
-            "properties": ["buff"],
-            "description": "A barked order rallies the bandits to focus their strikes"
-          }
-        ],
-        "xp_value": 200,
-        "sound_signature": "bandit_captain_bark",
-        "role": "elite",
-        "category": "humanoid",
-        "loot_table_id": "loot_bandit_captain"
+        "creature_id": "bandit",
+        "role": "minion"
       }
-    ]
+    ],
+    "recommended_party_level": 5
   },
   {
     "id": "ashmark_patrol",
@@ -656,822 +148,79 @@
     },
     "enemies": [
       {
+        "id": "ashmark_sergeant",
+        "creature_id": "ashmark_sergeant",
+        "role": "elite"
+      },
+      {
         "id": "ashmark_soldier_1",
-        "name": "Ashmark Soldier",
-        "level": 3,
-        "tier": 1,
-        "ac": 15,
-        "hp": 24,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 12,
-          "constitution": 14,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Longsword",
-            "damage": "1d8+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A disciplined cut held in formation"
-          },
-          {
-            "name": "Shield Bash",
-            "damage": "0",
-            "damage_type": "none",
-            "properties": [],
-            "description": "A braced shove to break the enemy's footing",
-            "applies_condition": "prone",
-            "save": "strength",
-            "dc": 12
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_soldier"
+        "creature_id": "ashmark_soldier",
+        "role": "standard"
       },
       {
         "id": "ashmark_soldier_2",
-        "name": "Ashmark Soldier",
-        "level": 3,
-        "tier": 1,
-        "ac": 15,
-        "hp": 24,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 12,
-          "constitution": 14,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Longsword",
-            "damage": "1d8+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A disciplined cut held in formation"
-          },
-          {
-            "name": "Shield Bash",
-            "damage": "0",
-            "damage_type": "none",
-            "properties": [],
-            "description": "A braced shove to break the enemy's footing",
-            "applies_condition": "prone",
-            "save": "strength",
-            "dc": 12
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_soldier"
-      },
-      {
-        "id": "ashmark_soldier_3",
-        "name": "Ashmark Soldier",
-        "level": 3,
-        "tier": 1,
-        "ac": 15,
-        "hp": 24,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 12,
-          "constitution": 14,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Longsword",
-            "damage": "1d8+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A disciplined cut held in formation"
-          },
-          {
-            "name": "Shield Bash",
-            "damage": "0",
-            "damage_type": "none",
-            "properties": [],
-            "description": "A braced shove to break the enemy's footing",
-            "applies_condition": "prone",
-            "save": "strength",
-            "dc": 12
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_soldier"
-      },
-      {
-        "id": "ashmark_soldier_4",
-        "name": "Ashmark Soldier",
-        "level": 3,
-        "tier": 1,
-        "ac": 15,
-        "hp": 24,
-        "attributes": {
-          "strength": 14,
-          "dexterity": 12,
-          "constitution": 14,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Longsword",
-            "damage": "1d8+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A disciplined cut held in formation"
-          },
-          {
-            "name": "Shield Bash",
-            "damage": "0",
-            "damage_type": "none",
-            "properties": [],
-            "description": "A braced shove to break the enemy's footing",
-            "applies_condition": "prone",
-            "save": "strength",
-            "dc": 12
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_soldier"
-      },
-      {
-        "id": "ashmark_sergeant",
-        "name": "Ashmark Sergeant",
-        "level": 4,
-        "tier": 1,
-        "ac": 16,
-        "hp": 32,
-        "attributes": {
-          "strength": 15,
-          "dexterity": 12,
-          "constitution": 15,
-          "intelligence": 11,
-          "wisdom": 12,
-          "charisma": 13
-        },
-        "action_pool": [
-          {
-            "name": "Greatsword",
-            "damage": "2d6+2",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A two-handed arc meant to end the exchange quickly"
-          },
-          {
-            "name": "Rally",
-            "kind": "command",
-            "properties": ["buff"],
-            "description": "A sharp command steadies the line and sharpens their focus fire"
-          },
-          {
-            "name": "Accusation",
-            "kind": "accusation",
-            "properties": [],
-            "description": "Names the accused and directs the patrol's focus fire"
-          }
-        ],
-        "xp_value": 250,
-        "sound_signature": "ashmark_sergeant_order",
-        "role": "elite",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_soldier"
+        "creature_id": "ashmark_soldier",
+        "role": "standard"
       }
-    ]
+    ],
+    "recommended_party_level": 6
   },
   {
     "id": "cult_cell",
     "name": "Cult Cell",
-    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while two fanatics sway in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
+    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while a fanatic sways in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
     "difficulty": "hard",
     "enemies": [
       {
-        "id": "cult_fanatic_1",
-        "name": "Cult Fanatic",
-        "level": 3,
-        "tier": 1,
-        "ac": 13,
-        "hp": 22,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 13,
-          "intelligence": 12,
-          "wisdom": 15,
-          "charisma": 13
-        },
-        "action_pool": [
-          {
-            "name": "Mace",
-            "damage": "1d6",
-            "damage_type": "bludgeoning",
-            "properties": [],
-            "description": "A heavy ritual head swung in time with the chant"
-          },
-          {
-            "name": "Bless",
-            "kind": "command",
-            "properties": ["buff"],
-            "description": "Murmured fervor steadies the cultists' hands"
-          },
-          {
-            "name": "Inflict Wounds",
-            "damage": "2d8",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A grasping touch that withers what it holds"
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "cult_chant",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
+        "id": "cult_leader",
+        "creature_id": "cult_leader",
+        "role": "boss"
       },
       {
-        "id": "cult_fanatic_2",
-        "name": "Cult Fanatic",
-        "level": 3,
-        "tier": 1,
-        "ac": 13,
-        "hp": 22,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 13,
-          "intelligence": 12,
-          "wisdom": 15,
-          "charisma": 13
-        },
-        "action_pool": [
-          {
-            "name": "Mace",
-            "damage": "1d6",
-            "damage_type": "bludgeoning",
-            "properties": [],
-            "description": "A heavy ritual head swung in time with the chant"
-          },
-          {
-            "name": "Bless",
-            "kind": "command",
-            "properties": ["buff"],
-            "description": "Murmured fervor steadies the cultists' hands"
-          },
-          {
-            "name": "Inflict Wounds",
-            "damage": "2d8",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A grasping touch that withers what it holds"
-          }
-        ],
-        "xp_value": 150,
-        "sound_signature": "cult_chant",
-        "role": "standard",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
+        "id": "cult_fanatic_1",
+        "creature_id": "cult_fanatic",
+        "role": "standard"
       },
       {
         "id": "cultist_1",
-        "name": "Cultist",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 9,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 11,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Ritual Dagger",
-            "damage": "1d4+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A notched blade gripped in both shaking hands"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "cult_murmur",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
+        "creature_id": "cultist",
+        "role": "minion"
       },
       {
         "id": "cultist_2",
-        "name": "Cultist",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 9,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 11,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Ritual Dagger",
-            "damage": "1d4+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A notched blade gripped in both shaking hands"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "cult_murmur",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
-      },
-      {
-        "id": "cultist_3",
-        "name": "Cultist",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 9,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 11,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Ritual Dagger",
-            "damage": "1d4+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A notched blade gripped in both shaking hands"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "cult_murmur",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
-      },
-      {
-        "id": "cultist_4",
-        "name": "Cultist",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 9,
-        "attributes": {
-          "strength": 11,
-          "dexterity": 12,
-          "constitution": 11,
-          "intelligence": 10,
-          "wisdom": 11,
-          "charisma": 10
-        },
-        "action_pool": [
-          {
-            "name": "Ritual Dagger",
-            "damage": "1d4+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A notched blade gripped in both shaking hands"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "cult_murmur",
-        "role": "minion",
-        "category": "humanoid",
-        "loot_table_id": "loot_humanoid_cultist"
-      },
-      {
-        "id": "cult_leader",
-        "name": "Cult Leader",
-        "level": 4,
-        "tier": 1,
-        "ac": 12,
-        "hp": 28,
-        "attributes": {
-          "strength": 9,
-          "dexterity": 14,
-          "constitution": 13,
-          "intelligence": 16,
-          "wisdom": 13,
-          "charisma": 14
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Bolt",
-            "damage": "2d6",
-            "damage_type": "necrotic",
-            "properties": ["ranged"],
-            "description": "A lance of cold dark flung from the back of the chamber"
-          },
-          {
-            "name": "Hold Person",
-            "damage": "0",
-            "damage_type": "none",
-            "properties": ["control"],
-            "description": "A word that locks a victim's limbs mid-step",
-            "applies_condition": "paralyzed",
-            "save": "wisdom",
-            "dc": 12
-          },
-          {
-            "name": "Dark Pulse",
-            "damage": "1d10",
-            "damage_type": "necrotic",
-            "properties": ["aoe"],
-            "description": "The sigil flares and rot washes outward in a ring"
-          }
-        ],
-        "xp_value": 300,
-        "sound_signature": "cult_leader_incant",
-        "role": "boss",
-        "signature_ability": {
-          "name": "Mantle of Ruin",
-          "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
-          "save": "constitution"
-        },
-        "legendary_actions": 1,
-        "category": "humanoid",
-        "loot_table_id": "loot_cult_leader"
+        "creature_id": "cultist",
+        "role": "minion"
       }
-    ]
+    ],
+    "recommended_party_level": 8
   },
   {
     "id": "hollow_corrupted_settlement",
     "name": "Hollow-Corrupted Settlement",
-    "description": "The village still stands, after a fashion. Doors hang open on dark rooms, and the things that were neighbors drift between the houses. A Hollowed Knight stands in the square where a well used to be, mawlings circling its feet while shadelings pour from the broken windows at its silent command.",
+    "description": "The village still stands, after a fashion. Doors hang open on dark rooms, and the things that were neighbors drift between the houses. A Hollowed Knight stands in the square where a well used to be, a mawling circling its feet while shadelings pour from the broken windows at its silent command.",
     "difficulty": "hard",
     "enemies": [
       {
         "id": "hollowed_knight",
-        "name": "Hollowed Knight",
-        "level": 4,
-        "tier": 3,
-        "ac": 16,
-        "hp": 40,
-        "attributes": {
-          "strength": 16,
-          "dexterity": 11,
-          "constitution": 16,
-          "intelligence": 9,
-          "wisdom": 12,
-          "charisma": 7
-        },
-        "action_pool": [
-          {
-            "name": "Corrupted Blade",
-            "damage": "1d10+3",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A rusted greatsword that drags a tail of grey light"
-          },
-          {
-            "name": "Command Lesser",
-            "kind": "command",
-            "properties": ["buff"],
-            "description": "A silent pulse marshals the shadelings and mawlings to a single target"
-          },
-          {
-            "name": "Despair Aura",
-            "damage": "1d6",
-            "damage_type": "psychic",
-            "properties": ["aoe"],
-            "description": "The weight of what it used to be presses on everyone near"
-          }
-        ],
-        "xp_value": 400,
-        "sound_signature": "hollow_knight_groan",
-        "role": "boss",
-        "signature_ability": {
-          "name": "Corruption Pulse",
-          "description": "A silent shockwave of grey rot expands from the knight, and the Hollow reaches for whatever it touches.",
-          "save": "constitution"
-        },
-        "legendary_actions": 1,
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollowed_knight"
+        "creature_id": "hollow_knight",
+        "role": "standard"
       },
       {
-        "id": "mawling_1",
-        "name": "Mawling",
-        "level": 2,
-        "tier": 2,
-        "ac": 13,
-        "hp": 14,
-        "attributes": {
-          "strength": 13,
-          "dexterity": 13,
-          "constitution": 13,
-          "intelligence": 5,
-          "wisdom": 9,
-          "charisma": 4
-        },
-        "action_pool": [
-          {
-            "name": "Bite",
-            "damage": "1d6+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A too-wide mouth clamps shut"
-          },
-          {
-            "name": "Pounce",
-            "damage": "1d4+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A low lunge that rakes as it passes"
-          }
-        ],
-        "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "id": "hollow_rend_1",
+        "creature_id": "hollow_mawling",
+        "role": "minion"
       },
       {
-        "id": "mawling_2",
-        "name": "Mawling",
-        "level": 2,
-        "tier": 2,
-        "ac": 13,
-        "hp": 14,
-        "attributes": {
-          "strength": 13,
-          "dexterity": 13,
-          "constitution": 13,
-          "intelligence": 5,
-          "wisdom": 9,
-          "charisma": 4
-        },
-        "action_pool": [
-          {
-            "name": "Bite",
-            "damage": "1d6+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A too-wide mouth clamps shut"
-          },
-          {
-            "name": "Pounce",
-            "damage": "1d4+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A low lunge that rakes as it passes"
-          }
-        ],
-        "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "id": "hollow_drift_1",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
       },
       {
-        "id": "mawling_3",
-        "name": "Mawling",
-        "level": 2,
-        "tier": 2,
-        "ac": 13,
-        "hp": 14,
-        "attributes": {
-          "strength": 13,
-          "dexterity": 13,
-          "constitution": 13,
-          "intelligence": 5,
-          "wisdom": 9,
-          "charisma": 4
-        },
-        "action_pool": [
-          {
-            "name": "Bite",
-            "damage": "1d6+1",
-            "damage_type": "piercing",
-            "properties": [],
-            "description": "A too-wide mouth clamps shut"
-          },
-          {
-            "name": "Pounce",
-            "damage": "1d4+1",
-            "damage_type": "slashing",
-            "properties": [],
-            "description": "A low lunge that rakes as it passes"
-          }
-        ],
-        "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech",
-        "role": "standard",
-        "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
-      },
-      {
-        "id": "shadeling_1",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_2",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_3",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_4",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_5",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
-      },
-      {
-        "id": "shadeling_6",
-        "name": "Shadeling",
-        "level": 1,
-        "tier": 1,
-        "ac": 12,
-        "hp": 7,
-        "attributes": {
-          "strength": 6,
-          "dexterity": 15,
-          "constitution": 9,
-          "intelligence": 4,
-          "wisdom": 10,
-          "charisma": 3
-        },
-        "action_pool": [
-          {
-            "name": "Shadow Claw",
-            "damage": "1d4",
-            "damage_type": "necrotic",
-            "properties": [],
-            "description": "A cold raking of half-there talons"
-          }
-        ],
-        "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion",
-        "category": "hollow_drift",
-        "loot_table_id": "loot_hollow_drift"
+        "id": "hollow_drift_2",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
       }
-    ]
+    ],
+    "recommended_party_level": 14
   }
 ]

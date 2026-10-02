@@ -5,6 +5,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, mock_txn
 from session_lifecycle._helpers import _make_context
 
@@ -166,6 +167,7 @@ class TestMetricsAccumulation:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
 
@@ -191,7 +193,10 @@ class TestMetricsAccumulation:
         mock_db = MagicMock()
         mock_db.transaction = lambda: mock_txn(MagicMock())
         mock_mutations = MagicMock(add_inventory_item=AsyncMock())
-        mock_queries = MagicMock(get_player_inventory=AsyncMock(return_value=[SAMPLE_ITEM]))
+        mock_queries = MagicMock(
+            get_player_inventory=AsyncMock(return_value=[SAMPLE_ITEM]),
+            get_inventory_snapshot=snapshot_query([SAMPLE_ITEM]),
+        )
         mock_content = MagicMock(get_item=AsyncMock(return_value=SAMPLE_ITEM))
         ctx = make_context(party_member_ids=["player_2"])
         deps = dict(db_mod=mock_db, mutations=mock_mutations, queries=mock_queries, content=mock_content)
@@ -302,6 +307,7 @@ class TestSessionLifecycleIntegration:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)

@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
@@ -35,6 +36,8 @@ def _start_project_case(player: dict, row_tier: str, required_tier: str):
     queries.get_inventory_item = AsyncMock(return_value=None)
     queries.get_player_known_recipe_ids = AsyncMock(return_value={"test_recipe"})
     queries.get_accessible_workspaces = AsyncMock(return_value={"forge"})
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player_materials = AsyncMock(return_value={"iron_ingot": 2})
 
     recipe = {
@@ -111,6 +114,17 @@ def _repair_item_case(player: dict, row_tier: str, required_tier: str):
     queries.get_npcs_at_location = AsyncMock(return_value=[{"id": "blacksmith"}])
     queries.get_player_inventory = AsyncMock(
         return_value=[
+            {
+                "id": "test_item",
+                "name": "Test Item",
+                "rarity": "common",
+                "durability_tier": "reinforced" if required_tier == "expert" else "standard",
+                "slot_info": {"current_hits": 1},
+            }
+        ]
+    )
+    queries.get_inventory_snapshot = snapshot_query(
+        [
             {
                 "id": "test_item",
                 "name": "Test Item",

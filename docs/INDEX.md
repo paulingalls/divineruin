@@ -224,16 +224,16 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 ---
 
-## dependency_upgrade.md (224 lines)
+## dependency_upgrade.md (226 lines)
 
 Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Python environments | 7-38 | Python environment and lockfile inventory. |
-| Bun workspace | 39-124 | Release age policy: 604800 seconds. |
-| Independent browser toolchain | 125-192 | Browser toolchain dependencies and validation. |
-| Historical validation outcomes | 193-224 | Recorded compatibility checks and test results. |
+| Bun workspace | 39-126 | Release age policy: 604800 seconds. |
+| Independent browser toolchain | 127-194 | Browser toolchain dependencies and validation. |
+| Historical validation outcomes | 195-226 | Recorded compatibility checks and test results. |
 
 ---
 
@@ -542,7 +542,7 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (1227 lines)
+## game_mechanics/game_mechanics_bestiary.md (2073 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
@@ -553,7 +553,9 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 | Natural Creatures | 609-1146 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
 | Material Catalog Summary | 1147-1193 | Material values and crafting uses for all creature drops |
 | Encounter Building Guidelines | 1194-1224 | Tier-based scaling, solo player math, companion effectiveness |
-| Design Decisions Log (Bestiary) | 1225-1227 | Bestiary decisions (24-29) |
+| Design Decisions Log (Bestiary) | 1225-1228 | Bestiary decisions (24-29) |
+| Combat Effect Inventory | 1229-1291 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
+| Encounter Creature Stat Blocks | 1292-2073 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 
@@ -906,7 +908,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/07_bestiary.md (194 lines)
+## milestones/07_bestiary.md (201 lines)
 
 ---
 

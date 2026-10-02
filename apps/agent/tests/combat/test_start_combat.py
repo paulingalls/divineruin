@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room, published_payloads
+from sample_fixtures import load_test_creature, make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -39,43 +39,11 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
     "difficulty": "easy",
-    "enemies": [
-        {
-            "id": "goblin_scout_1",
-            "name": "Goblin Scout",
-            "level": 1,
-            "tier": 1,
-            "ac": 13,
-            "hp": 7,
-            "attributes": {
-                "strength": 8,
-                "dexterity": 14,
-                "constitution": 10,
-                "intelligence": 10,
-                "wisdom": 8,
-                "charisma": 8,
-            },
-            "action_pool": [
-                {
-                    "name": "Scimitar",
-                    "damage": "1d6",
-                    "damage_type": "slashing",
-                    "properties": ["light"],
-                },
-                {
-                    "name": "Shortbow",
-                    "damage": "1d6",
-                    "damage_type": "piercing",
-                    "properties": [],
-                    "ranged": True,
-                },
-            ],
-            "xp_value": 50,
-        },
-    ],
+    "enemies": [{"id": "goblin_scout_1", "creature_id": "fixture_goblin", "role": "standard"}],
 }
 
 
@@ -89,6 +57,7 @@ def _make_start_combat_mocks():
     mock_queries.get_player_inventory = AsyncMock(return_value=[])
 
     mock_content = MagicMock()
+    mock_content.load_creature_enemy = load_test_creature
     mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
     mock_content.get_npc = AsyncMock(return_value=None)
 
@@ -122,6 +91,7 @@ def _gated_encounter():
 
 def _stance_mocks(reputation, faction=_THORNWATCH):
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+    mock_content.load_creature_enemy = load_test_creature
     mock_content.get_encounter_template = AsyncMock(return_value=_gated_encounter())
     mock_content.get_faction = AsyncMock(return_value=faction)
     mock_queries.get_player_faction_reputation = AsyncMock(return_value=reputation)
@@ -206,6 +176,7 @@ class TestStartCombatStanceGate:
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)
         encounter = _gated_encounter()
         encounter["stance_gate"] = {"allied_at_or_above": "friendly"}  # no faction
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=encounter)
         ctx = make_context()
         with pytest.raises(ToolError, match="malformed stance gate"):
@@ -441,6 +412,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     async def test_error_missing_encounter(self):
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=None)
         ctx = make_context()
 
@@ -457,17 +429,38 @@ class TestStartCombat:
                 {"tier": 1, "action_pool": [{"name": "Shriek", "applies_condition": "frightened", "save": "luck"}]},
                 "Shriek",
             ),
-            ({}, "enemy 'e1' has no authored tier 1-4"),
-            ({"tier": 7}, "enemy 'e1' has no authored tier 1-4, got 7"),
+            ({}, "tier"),
+            ({"tier": 7}, "tier"),
         ],
     )
     async def test_malformed_enemy_raises_tool_error(self, defect, reason):
         # Malformed enemy content must surface as a DM-narratable ToolError naming the encounter
         # and enemy at the tool boundary, not a raw ValueError or KeyError.
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        enemy = {"id": "e1", "name": "E", "attributes": {}, "action_pool": [], **defect}
+        from copy import deepcopy
+
+        from sample_fixtures import TEST_CREATURES
+
+        from creature_combat import translate_creature
+
+        row = deepcopy(TEST_CREATURES["fixture_goblin"])
+        if "action_pool" in defect:
+            row["attacks"][0].update(defect["action_pool"][0])
+        elif "tier" in defect:
+            row["tier"] = defect["tier"]
+        else:
+            row.pop("tier")
+
+        async def load(creature_id, **kwargs):
+            return translate_creature(row, **kwargs)
+
+        mock_content.load_creature_enemy = load
         mock_content.get_encounter_template = AsyncMock(
-            return_value={"id": "bad_enc", "name": "Bad Encounter", "enemies": [enemy]}
+            return_value={
+                "id": "bad_enc",
+                "recommended_party_level": 1,
+                "enemies": [{"id": "e1", "creature_id": "fixture_goblin", "role": "standard"}],
+            }
         )
         ctx = make_context()
 

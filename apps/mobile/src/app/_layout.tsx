@@ -102,6 +102,8 @@ export default function RootLayout() {
                 stashes the code, and routes to sign-in (see join.tsx). */}
             <Stack.Screen name="join" />
             {__DEV__ && <Stack.Screen name="native-transport-test" />}
+            {__DEV__ && <Stack.Screen name="live-material-inventory-test" />}
+            {__DEV__ && <Stack.Screen name="http-inventory-test" />}
           </Stack>
           <GrainOverlay />
         </GestureHandlerRootView>
@@ -120,6 +122,8 @@ export default function RootLayout() {
           <Stack.Screen name="session" />
           {__DEV__ && <Stack.Screen name="session-test" />}
           {__DEV__ && <Stack.Screen name="native-transport-test" />}
+          {__DEV__ && <Stack.Screen name="live-material-inventory-test" />}
+          {__DEV__ && <Stack.Screen name="http-inventory-test" />}
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />
         </Stack>

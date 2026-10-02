@@ -18,6 +18,7 @@ Real-PG tests (those requesting dev_db_pool) are skipped so they exercise the re
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import GUILD_PLAYER
 
 import db_mutations_conditions
@@ -44,6 +45,7 @@ def combat_end_queries(**overrides) -> MagicMock:
     queries = MagicMock(
         get_player=AsyncMock(side_effect=lambda pid, conn=None, for_update=False: {**GUILD_PLAYER, "player_id": pid}),
         get_player_inventory=AsyncMock(return_value=[]),
+        get_inventory_snapshot=snapshot_query([]),
     )
     for name, value in overrides.items():
         setattr(queries, name, value)

@@ -12,6 +12,7 @@ def _land_condition_on_one(
     source: str,
     *,
     packet: dict,
+    duration: int | None = None,
 ) -> bool:
     """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
     adds the hostile caller). Self-target (``target_id`` None) falls back to the caster; a given id
@@ -26,7 +27,18 @@ def _land_condition_on_one(
         or (cond_type == "prone" and cond_target.prone_immunity)
     ):
         return False
-    cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
+    cond_target.conditions = conditions.apply_condition(
+        cond_target.conditions, cond_type, source=source, duration=duration
+    )
+    if (
+        duration is not None
+        and not attacker.is_ally
+        and attacker.type == "enemy"
+        and (cond_target.type != "enemy" or cond_target.is_ally)
+    ):
+        for condition in cond_target.conditions:
+            if condition["type"] == cond_type:
+                condition["inflicted_round"] = state.round_number
     landed = conditions.has_condition(cond_target.conditions, cond_type)
     if landed and cannot_act(({"type": cond_type},)):
         released = combat_grapple.release_from_grappler(state, cond_target.id)

@@ -20,25 +20,52 @@ export const test = characterTest.extend<{
   testCharacter: TestCharacter;
 }>({
   sessionPage: async ({ characterPage, testCharacter }, use) => {
+    let inventorySnapshot: {
+      player_id: string;
+      inventory_revision: string;
+      inventory: unknown[];
+    } = { player_id: testCharacter.playerId, inventory_revision: "0", inventory: [] };
+    // These HUD fixtures inject synthetic inventory; polling must read the same
+    // authority. Real database refresh is exercised by session-inventory-refresh.
+    await characterPage.route("**/api/inventory", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      await route.fulfill({ json: inventorySnapshot });
+    });
     await characterPage.goto("/session-test");
 
     // Wait for window.__DR to be exposed
-    await characterPage.waitForFunction(
-      () => typeof window.__DR?.handleGameEvent === "function",
-      null,
-      { timeout: 15_000 },
-    );
+    await characterPage.waitForFunction(() => typeof window.__DR?.handleGameEvent === "function");
 
     const injectEvent = async (event: GameEvent) => {
       await characterPage.evaluate((e) => {
         // Non-null: the fixture's waitForFunction above proves __DR is exposed.
         window.__DR!.handleGameEvent(e);
       }, event);
+      const character = event.character as { player_id?: unknown } | null | undefined;
+      if (
+        (event.type === "inventory_updated" || event.type === "session_init") &&
+        event.player_id === testCharacter.playerId &&
+        typeof event.inventory_revision === "string" &&
+        /^(0|[1-9][0-9]*)$/.test(event.inventory_revision) &&
+        Array.isArray(event.inventory) &&
+        (event.type !== "session_init" ||
+          typeof character?.player_id !== "string" ||
+          character.player_id === testCharacter.playerId) &&
+        BigInt(event.inventory_revision) > BigInt(inventorySnapshot.inventory_revision)
+      ) {
+        inventorySnapshot = {
+          player_id: testCharacter.playerId,
+          inventory_revision: event.inventory_revision,
+          inventory: event.inventory,
+        };
+      }
     };
 
     const injectSessionInit = async (overrides?: Record<string, unknown>) => {
       const base: GameEvent = {
         type: "session_init",
+        player_id: testCharacter.playerId,
+        inventory_revision: "1",
         character: {
           player_id: testCharacter.playerId,
           name: testCharacter.name,

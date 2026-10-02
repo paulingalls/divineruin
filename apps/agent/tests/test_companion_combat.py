@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, load_test_creature
 from sample_fixtures import make_context as _make_context
 
 from companion_profiles import get_companion_profile
@@ -25,6 +25,7 @@ def _mocks():
     queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
     queries.get_player_inventory = AsyncMock(return_value=[])
     content = MagicMock()
+    content.load_creature_enemy = load_test_creature
     content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
     content.get_npc = AsyncMock(return_value=None)
     return mutations, queries, content

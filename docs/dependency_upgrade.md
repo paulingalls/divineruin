@@ -102,7 +102,9 @@ Release age policy: 604800 seconds.
 | apps/mobile | dependencies | zustand | `^5.0.15` | 5.0.15 / 5.0.15 | 5.0.15 | 5.0.15 | Current |
 | apps/mobile | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
 | apps/mobile | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
+| apps/mobile | devDependencies | @types/react-test-renderer | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.0 | Registry latest observed 2026-10-02; direct test types already installed for the lifecycle renderer. Historical native evidence remains the accepted 2026-09-19 record. |
 | apps/mobile | devDependencies | expo-mcp | `~0.2.1` | 0.2.4 / 0.2.4 | 0.2.4 | 0.2.4 | Current |
+| apps/mobile | devDependencies | react-test-renderer | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react@19.2.6 shared cohort: Renderer stays at the installed React 19.2.6 runtime version. Registry latest observed 2026-10-02; historical native evidence remains the accepted 2026-09-19 record. |
 | apps/mobile | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by expo@57.0.24: TypeScript 6.0.3 is the verified workspace compiler for the SDK 57 cohort. |
 | apps/server | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Current |
 | apps/server | dependencies | @google/genai | `^2.22.0` | 2.22.0 / 2.22.0 | 2.22.0 | 2.23.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |

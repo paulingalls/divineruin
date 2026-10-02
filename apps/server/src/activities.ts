@@ -1,3 +1,4 @@
+import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
@@ -147,10 +148,12 @@ export async function handleActivityDecision(
         return { error: "Invalid decision", httpStatus: 400 } as const;
       }
 
+      let granted = false;
       const outcome = data.outcome as Record<string, unknown> | null;
       if (outcome && data.activity_type === "crafting") {
         const craftedItemId = outcome.crafted_item_id as string | null;
         if (craftedItemId && body.decision_id === "keep") {
+          granted = true;
           await tx`
             INSERT INTO player_inventory (player_id, item_id, data)
             VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
@@ -173,7 +176,8 @@ export async function handleActivityDecision(
         WHERE id = ${activityId}
       `;
 
-      return { activityId, decision: body.decision_id } as const;
+      const snapshot = granted ? await inventorySnapshot(playerId, tx) : undefined;
+      return { activityId, decision: body.decision_id, snapshot } as const;
     });
 
     if ("error" in txnResult) {
@@ -184,6 +188,7 @@ export async function handleActivityDecision(
       id: txnResult.activityId,
       status: "collected",
       decision: txnResult.decision,
+      ...txnResult.snapshot,
     });
   } catch (err) {
     logError("[activities] decision failed:", err);

@@ -54,7 +54,11 @@ def _mage_pool() -> AsyncMock:
     pool.fetchrow = AsyncMock(
         return_value={"data": json.dumps({"name": "Lyra", "location_id": "tavern", "class": "mage"})}
     )
-    pool.fetch = AsyncMock(return_value=[])
+    pool.fetch = AsyncMock(
+        side_effect=lambda query, *args: (
+            [{"inventory_revision": "0", "item_id": None}] if "inventory_revision" in query else []
+        )
+    )
     return pool
 
 

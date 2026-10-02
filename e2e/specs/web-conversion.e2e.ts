@@ -51,7 +51,7 @@ test.describe("Conversion sections (apps/web)", () => {
       .locator("nav.navbar")
       .getByRole("link", { name: /Request Early Access/i })
       .click();
-    await expect(page.locator("#waitlist")).toBeInViewport({ timeout: 5000 });
+    await expect(page.locator("#waitlist")).toBeInViewport();
   });
 
   test("a valid email submits to /api/waitlist, shows success, and dedupes in Postgres", async ({
@@ -76,9 +76,7 @@ test.describe("Conversion sections (apps/web)", () => {
       await page.getByRole("button", { name: /Request Veil-Key/i }).click();
 
       // Success state swaps in.
-      await expect(page.locator(".waitlist__success")).toContainText("A whisper, received", {
-        timeout: 5000,
-      });
+      await expect(page.locator(".waitlist__success")).toContainText("A whisper, received");
 
       // The submit fired a waitlist_submit analytics event (AC#4) without blocking the success
       // state above, and page_view fired at hydration. The event seam fires regardless of whether
@@ -100,7 +98,7 @@ test.describe("Conversion sections (apps/web)", () => {
       await page.goto(`${WEB}/`);
       await page.getByLabel("Email").fill(email);
       await page.getByRole("button", { name: /Request Veil-Key/i }).click();
-      await expect(page.locator(".waitlist__success")).toBeVisible({ timeout: 5000 });
+      await expect(page.locator(".waitlist__success")).toBeVisible();
 
       const after2 = await queryDb<{ count: string }>(
         "SELECT count(*)::text AS count FROM waitlist WHERE email = $1",

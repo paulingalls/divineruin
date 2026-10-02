@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import pytest
+from sample_fixtures import catalog_encounters
 
 from creature_tiers import tier_for_player_level
 from world_effect_targets import is_valid_disposition_target
@@ -38,7 +39,7 @@ def _load_json(filename: str) -> list[dict]:
     path = CONTENT_DIR / filename
     if not path.exists():
         pytest.skip(f"{filename} not found")
-    return json.loads(path.read_text())
+    return catalog_encounters() if filename == "encounter_templates.json" else json.loads(path.read_text())
 
 
 def _load_ids(filename: str, id_field: str = "id") -> set[str]:
@@ -231,15 +232,14 @@ _ENEMY_REQUIRED_FIELDS = (
     "attributes",
     "action_pool",
     "xp_value",
-    "sound_signature",
+    "catalog_audio",
 )
 _ATTRIBUTE_KEYS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
-# Fixed inline compositions within the audit-spec ranges.
 _NEW_ENCOUNTER_ENEMY_COUNTS = {
     "bandit_ambush": 5,  # 4 Bandits + 1 Bandit Captain
-    "ashmark_patrol": 5,  # 4 Ashmark Soldiers + 1 Ashmark Sergeant
-    "cult_cell": 7,  # 2 Cult Fanatics + 4 Cultists + 1 Cult Leader
-    "hollow_corrupted_settlement": 10,  # 1 Hollowed Knight + 3 Mawlings + 6 Shadelings
+    "ashmark_patrol": 3,
+    "cult_cell": 4,
+    "hollow_corrupted_settlement": 4,
 }
 
 
@@ -300,6 +300,7 @@ _VALID_ENEMY_CATEGORIES = {
     "beast",
     "hollow_drift",
     "hollow_rend",
+    "hollow_wrack",
     "construct",
     "undead",
     "named",
@@ -320,11 +321,11 @@ class TestLootAndCurrencyContent:
     def test_every_enemy_authors_expected_tier(self):
         path = CONTENT_DIR / "encounter_templates.json"
         assert path.is_file(), f"missing encounter corpus: {path}"
-        encounters = json.loads(path.read_text())
+        encounters = catalog_encounters()
         assert encounters
         rows = [(enc["id"], enemy) for enc in encounters for enemy in enc.get("enemies", [])]
-        assert len(rows) == 38
-        named = {"Shadeling": 1, "Mawling": 2, "Hollowed Knight": 3}
+        assert len(rows) == 26
+        named = {"Shadeling": 1, "Mawling": 2, "Hollowed Knight": 3, "Cult Fanatic": 1}
         carriers = {name: 0 for name in named}
         for enc_id, enemy in rows:
             label = f"encounter '{enc_id}' enemy '{enemy['id']}'"
@@ -404,7 +405,7 @@ class TestGatheringContent:
 
 # M13 (sprint-030 story-001): enemy hostile-condition content. Mirrors combat_init's fail-loud
 # guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
-_HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned"})
+_HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned", "prone", "paralyzed"})
 
 
 class TestEnemyHostileConditionContent:

@@ -5,23 +5,62 @@ import {
   ENCOUNTER_ROLE_VALUES,
   encounterActionKind,
   validateEncounterActionShape,
+  validateEncounterActionKind,
   validateEncounterEnemyTier,
   type Encounter,
+  type EncounterAction,
 } from "./encounter";
 
 const actionShapes = (await Bun.file(
   new URL("../../fixtures/enemy_action_shapes.json", import.meta.url),
 ).json()) as Record<string, Record<string, unknown>>;
 
-// Conformance test for content/encounter_templates.json (Phase 4 M4.7 / story-001). The JSON row
-// IS the cross-language contract apps/agent/combat_init.py parses to build CombatParticipants; this
-// test guards the role overlay's shape independent of that loader and serves as the compile-time
-// shape check for the Encounter type (rows are cast to Encounter, so interface drift breaks
-// `tsc --noEmit` / `bun test`).
-
-const encounters = (await Bun.file(
+const references = (await Bun.file(
   new URL("../../../../content/encounter_templates.json", import.meta.url),
 ).json()) as Encounter[];
+const catalog = (await Bun.file(
+  new URL("../../../../content/creatures.json", import.meta.url),
+).json()) as {
+  id: string;
+  name: string;
+  level: number;
+  tier: number;
+  ac: number;
+  hp: number;
+  xp_reward: number;
+  attributes: Record<string, number>;
+  signature_ability?: { name: string; description: string };
+  attacks: (Omit<EncounterAction, "properties"> & { type: string; properties?: string[] })[];
+  actives: (Omit<EncounterAction, "properties"> & { properties?: string[] })[];
+}[];
+const encounters = references.map((encounter) => ({
+  ...encounter,
+  enemies: encounter.enemies.map((reference) => {
+    const row = catalog.find((row) => row.id === reference.creature_id);
+    if (!row) throw new Error(reference.creature_id);
+    const actions = [
+      ...row.attacks,
+      ...row.actives.filter((a) => a.kind && a.kind !== "attack"),
+    ].map((a) => ({
+      ...a,
+      properties: [
+        ...(a.properties ?? []),
+        ...("type" in a && a.type === "ranged" ? ["ranged"] : []),
+      ],
+    }));
+    return {
+      ...row,
+      ...reference,
+      xp_value: row.xp_reward,
+      signature_ability: reference.role === "boss" ? row.signature_ability : undefined,
+      legendary_actions: reference.role === "boss" ? 1 : undefined,
+      action_pool:
+        reference.role === "minion"
+          ? actions.filter((a) => !("recharge" in a) && (!a.kind || a.kind === "attack"))
+          : actions,
+    };
+  }),
+}));
 
 describe("encounter_templates.json — encounter-role overlay", () => {
   test("catalog is non-empty", () => {
@@ -33,7 +72,7 @@ describe("encounter_templates.json — encounter-role overlay", () => {
       expect(Array.isArray(enc.enemies)).toBe(true);
       for (const enemy of enc.enemies) {
         expect(enemy.role).toBeDefined(); // content tags every enemy explicitly
-        expect([...ENCOUNTER_ROLE_VALUES]).toContain(enemy.role!);
+        expect([...ENCOUNTER_ROLE_VALUES]).toContain(enemy.role);
         expect(typeof enemy.id).toBe("string");
         expect(typeof enemy.name).toBe("string");
         expect(typeof enemy.level).toBe("number");
@@ -45,13 +84,17 @@ describe("encounter_templates.json — encounter-role overlay", () => {
     }
   });
 
-  test("every Boss authors a signature ability and one legendary action", () => {
+  test("Bosses retain catalog signatures and one legendary action", () => {
     const bosses = encounters.flatMap((e) => e.enemies).filter((en) => en.role === "boss");
     expect(bosses.length).toBeGreaterThan(0); // at least one Boss exists to overlay
+    expect(bosses.filter((boss) => boss.signature_ability)).toHaveLength(2);
     for (const boss of bosses) {
-      expect(boss.signature_ability).toBeDefined();
-      expect(typeof boss.signature_ability!.name).toBe("string");
-      expect(typeof boss.signature_ability!.description).toBe("string");
+      const source = catalog.find((row) => row.id === boss.creature_id)!;
+      expect(boss.signature_ability).toEqual(source.signature_ability);
+      if (boss.signature_ability) {
+        expect(typeof boss.signature_ability.name).toBe("string");
+        expect(typeof boss.signature_ability.description).toBe("string");
+      }
       expect(boss.legendary_actions).toBe(1);
     }
   });
@@ -75,8 +118,6 @@ describe("encounter_templates.json — encounter-role overlay", () => {
   });
 });
 
-// The action `kind` is mirrored from apps/agent/encounter_actions.py (constraint 7): absent means
-// "attack", and every other kind is a mark action that never rolls, so it carries no strike fields.
 describe("encounter_templates.json — enemy action kinds", () => {
   const actions = encounters.flatMap((enc) =>
     enc.enemies.flatMap((enemy) =>
@@ -95,7 +136,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
   });
 
-  test("the two Seizing Grabs author escape DC 13", () => {
+  test("catalog Lunge carriers author escape DC 13", () => {
     const carriers = actions
       .filter(({ action }) => action.properties.includes("grapple"))
       .map(({ enemyId, action }) => [
@@ -104,14 +145,17 @@ describe("encounter_templates.json — enemy action kinds", () => {
         "escape_dc" in action ? action.escape_dc : undefined,
       ]);
     expect(carriers).toEqual([
-      ["mawling_1", "Seizing Grab", 13],
-      ["mawling_2", "Seizing Grab", 13],
+      ["mawling_1", "Lunge", 13],
+      ["mawling_2", "Lunge", 13],
+      ["mawling_1", "Lunge", 13],
     ]);
   });
 
   test("a mark action carries no damage, damage type or applied condition", () => {
-    const marks = actions.filter(({ action }) => encounterActionKind(action) !== "attack");
-    expect(marks.length).toBe(6);
+    const marks = actions.filter(({ action }) =>
+      ["command", "accusation"].includes(encounterActionKind(action)),
+    );
+    expect(marks.length).toBe(4);
     for (const { action } of marks) {
       expect(Object.keys(action)).not.toContain("damage");
       expect(Object.keys(action)).not.toContain("damage_type");
@@ -125,9 +169,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
       .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
     expect(carriers.sort()).toEqual([
       "ashmark_patrol/ashmark_sergeant/Rally",
-      "bandit_ambush/bandit_captain/Press the Attack",
       "cult_cell/cult_fanatic_1/Bless",
-      "cult_cell/cult_fanatic_2/Bless",
       "hollow_corrupted_settlement/hollowed_knight/Command Lesser",
     ]);
   });
@@ -158,7 +200,7 @@ describe("enemy action resolution shapes", () => {
   // valid save/dc, so only the damage check can throw here.
   test("half_on_success without damage is refused", () => {
     expect(() => validateEncounterActionShape(actionShapes.invalid_half_without_damage!)).toThrow(
-      "needs damage",
+      "half_on_success needs non-zero 'damage'",
     );
   });
 });
@@ -190,8 +232,13 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(38);
-    const named: Record<string, number> = { Shadeling: 1, Mawling: 2, "Hollowed Knight": 3 };
+    expect(rows).toHaveLength(26);
+    const named: Record<string, number> = {
+      Shadeling: 1,
+      Mawling: 2,
+      "Hollowed Knight": 3,
+      "Cult Fanatic": 1,
+    };
     for (const [encId, enemy] of rows) {
       expect(() => validateEncounterEnemyTier(encId, enemy)).not.toThrow();
       expect(enemy.tier).toBe(named[enemy.name] ?? tierForPlayerLevel(enemy.level));
@@ -205,4 +252,88 @@ describe("authored creature tiers", () => {
       /bad_encounter.*bad_enemy/,
     );
   });
+});
+
+const contractCorpus = (await Bun.file(
+  new URL("../../fixtures/creature_blocks.json", import.meta.url),
+).json()) as {
+  valid: {
+    name: string;
+    block: { actives: Record<string, unknown>[]; attacks: Record<string, unknown>[] };
+  }[];
+  invalid: {
+    name: string;
+    field?: string;
+    block: { actives: Record<string, unknown>[]; attacks: Record<string, unknown>[] };
+  }[];
+};
+for (const row of contractCorpus.valid.filter((r) =>
+  /^(recharge_|advantage_|active_)/.test(r.name),
+))
+  test(`structured_recharge action_advantage active_contract ${row.name}`, () => {
+    for (const action of row.block.actives.length ? row.block.actives : row.block.attacks) {
+      expect(() => validateEncounterActionShape(action)).not.toThrow();
+      expect(() => validateEncounterActionKind(action, "enemy 'fixture'")).not.toThrow();
+    }
+  });
+for (const row of contractCorpus.invalid.filter(
+  (r) =>
+    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name) ||
+    (r.name.startsWith("active_attack_") && r.name.includes("_type_")),
+))
+  test(`structured_recharge action_advantage active_contract rejection ${row.name}`, () => {
+    const actions = row.block.actives.length ? row.block.actives : row.block.attacks;
+    expect(() => {
+      for (const action of actions) {
+        validateEncounterActionShape(action);
+        validateEncounterActionKind(action, "enemy 'fixture'");
+      }
+    }).toThrow(row.field);
+  });
+
+const catalogAction = {
+  name: "Bite",
+  attack_source: "catalog",
+  to_hit: 9,
+  damage: "1d8+2",
+  damage_type: "piercing",
+  properties: [],
+};
+test("catalog runtime extensions pass the public encounter boundary", () => {
+  expect(() => validateEncounterActionShape(catalogAction, "catalog")).not.toThrow();
+  for (const [field, value] of [
+    ["attack_source", "unknown"],
+    ["to_hit", true],
+    ["to_hit", undefined],
+    ["self_heal", "raw_damage"],
+  ]) {
+    expect(() =>
+      validateEncounterActionShape({ ...catalogAction, [field as string]: value }, "catalog"),
+    ).toThrow(field);
+  }
+});
+
+test("catalog runtime extensions reject contradictory action shapes", () => {
+  const rally = { name: "Rally", kind: "healing", target_group: "allied_bandits", healing: "1d8" };
+  expect(() =>
+    validateEncounterActionShape({ ...rally, attack_source: "catalog" }, "catalog"),
+  ).toThrow("attack_source");
+  expect(() =>
+    validateEncounterActionShape({ ...rally, self_heal: "damage_dealt" }, "catalog"),
+  ).toThrow("self_heal");
+  expect(() =>
+    validateEncounterActionShape(
+      {
+        name: "Blind",
+        kind: "attack",
+        damage: "0",
+        damage_type: "none",
+        applies_condition: "blinded",
+        save: "constitution",
+        dc: 12,
+        self_heal: "damage_dealt",
+      },
+      "catalog",
+    ),
+  ).toThrow("self_heal");
 });

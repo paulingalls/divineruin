@@ -98,6 +98,8 @@ async def _repair_item_impl(
         if item is None:
             raise ToolError(f"You aren't carrying '{item_id}' to repair.")
         name = item.get("name", item_id)
+        if item.get("type") == "material":
+            raise ToolError(f"{name} is a material and cannot be repaired.")
         durability_tier = item.get("durability_tier")
         if not durability_tier:
             raise ToolError(f"{name} has no durability and cannot be repaired.")

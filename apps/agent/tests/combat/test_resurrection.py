@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import _make_combat_state
+from inventory_snapshot_fixture import snapshot_query
 
 from death_cost import determine_death_cost
 from resurrection import (
@@ -228,6 +229,7 @@ class TestCombatEndDefeatWiring:
         queries = MagicMock(
             get_player=AsyncMock(return_value=_player()),
             get_player_inventory=AsyncMock(return_value=[]),
+            get_inventory_snapshot=snapshot_query([]),
         )
         mutations = combat_end_mutations()
 

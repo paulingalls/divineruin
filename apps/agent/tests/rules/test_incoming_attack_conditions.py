@@ -1,8 +1,7 @@
-import json
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from sample_fixtures import catalog_encounters
 
 import check_resolution_attack
 from combat_hold import _replay_resolver
@@ -108,7 +107,7 @@ def test_paralyzed_target_turns_a_non_20_melee_hit_into_a_critical():
 
 
 def _shadow_bolt() -> dict:
-    catalog = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
+    catalog = catalog_encounters()
     cult = next(encounter for encounter in catalog if encounter["id"] == "cult_cell")
     leader = next(enemy for enemy in cult["enemies"] if enemy["id"] == "cult_leader")
     return next(action for action in leader["action_pool"] if action["name"] == "Shadow Bolt")

@@ -1,10 +1,15 @@
+import { authStore } from "@/stores/auth-store";
 import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { panelStore } from "@/stores/panel-store";
 import { hudStore } from "@/stores/hud-store";
-import { resetStores } from "./use-game-events.helpers";
+import { characterStore } from "@/stores/character-store";
+import { SAMPLE_CHARACTER, resetStores } from "./use-game-events.helpers";
 
-beforeEach(resetStores);
+beforeEach(() => {
+  resetStores();
+  authStore.setState({ playerId: null, phase: "unauthenticated", token: null });
+});
 
 // --- handleGameEvent: quest_updated advances panelStore ---
 
@@ -329,4 +334,72 @@ test("location_changed adds visited location to panelStore map", () => {
   expect(market).toBeDefined();
   expect(market!.visited).toBe(true);
   expect(market!.connections).toEqual(["guild", "docks"]);
+});
+
+test("inventory_updated routes committed full snapshots by owner and replaces empty", () => {
+  authStore.setState({ playerId: "local" });
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: "local",
+    inventory_revision: "7",
+    inventory: [
+      { id: "wolf_pelt", name: "Wolf Pelt", type: "material", slot_info: { quantity: 3 } },
+    ],
+  });
+  expect(panelStore.getState().inventory.map((i) => [i.name, i.quantity])).toEqual([
+    ["Wolf Pelt", 3],
+  ]);
+  handleGameEvent({ type: "inventory_updated", player_id: "other", inventory: [] });
+  expect(panelStore.getState().inventory).toHaveLength(1);
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: "local",
+    inventory_revision: "8",
+    inventory: [],
+  });
+  expect(panelStore.getState().inventory).toEqual([]);
+});
+
+test("inventory_updated uses auth owner before character fallback", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  authStore.setState({ playerId: "auth-owner" });
+  const inventory = [{ id: "ore", name: "Iron Ore", type: "material", slot_info: { quantity: 4 } }];
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: SAMPLE_CHARACTER.playerId,
+    inventory_revision: "8",
+    inventory,
+  });
+  expect(panelStore.getState().inventory).toEqual([]);
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: "auth-owner",
+    inventory_revision: "7",
+    inventory,
+  });
+  expect(panelStore.getState().inventory[0].quantity).toBe(4);
+  authStore.setState({ playerId: null, phase: "unauthenticated", token: null });
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: SAMPLE_CHARACTER.playerId,
+    inventory_revision: "8",
+    inventory: [],
+  });
+  expect(panelStore.getState().inventory).toEqual([]);
+});
+
+test("inventory_updated ignores a scoped snapshot before local identity is known", () => {
+  authStore.setState({ playerId: null, phase: "unauthenticated", token: null });
+  characterStore.getState().clear();
+  handleGameEvent({
+    type: "inventory_updated",
+    player_id: "party-owner",
+    inventory: [{ id: "ore", name: "Ore", slot_info: { quantity: 1 } }],
+  });
+  expect(panelStore.getState().inventory).toEqual([]);
+  handleGameEvent({
+    type: "inventory_updated",
+    inventory: [{ id: "ore", name: "Ore", slot_info: { quantity: 1 } }],
+  });
+  expect(panelStore.getState().inventory.map((item) => item.id)).toEqual(["ore"]);
 });

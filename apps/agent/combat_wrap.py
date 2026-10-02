@@ -9,6 +9,7 @@ from dataclasses import replace
 
 import combat_grapple
 import combat_phase
+import combat_recharge
 import conditions
 import event_types as E
 import fatigue_narration
@@ -154,6 +155,7 @@ async def wrap_phase(
 
     ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
     if ended_outcome is None:
+        combat_recharge.recharge_round(state)
         # Combat continues: shed one step of Resonance per phase, per member against their OWN
         # pool (M14 story-004) — never a shared value, never double. WRAP is the canonical combat
         # decay clock (decision resonance-decay-phase-canonical) — cast-paced decay is suppressed

@@ -8,9 +8,11 @@ import ast
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from sample_fixtures import make_context
 
 import conditions
+from combat_enemy_active import heal
 from combat_support import _handle_hp_zero
 from session_data import CombatParticipant, CompanionState
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
@@ -303,6 +305,7 @@ class TestTheDoorIsTheOnlyDoor:
             # The nat-20 revive writes 1 UPWARD and clears is_fallen in the same block, so it
             # never leaves a participant at 0: an exit from the fallen state, not an entry to it.
             ("combat_death_save.py", "_request_death_save_locked"),
+            ("combat_enemy_active.py", "heal"),
         }
 
     def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):
@@ -314,3 +317,11 @@ class TestTheDoorIsTheOnlyDoor:
             ("combat_support.py", "_handle_hp_zero"),
             ("combat_death_save.py", "_request_death_save_locked"),
         }
+
+
+@pytest.mark.parametrize("amount, expected", [(-5, 3), (0, 3), (2, 5), (20, 7)])
+def test_healing_writer_only_raises_living_hp_and_caps(amount, expected):
+    target = CombatParticipant(id="enemy", name="Enemy", type="enemy", initiative=1, hp_current=3, hp_max=7, ac=10)
+    assert heal(target, amount) == expected - 3
+    assert target.hp_current == expected
+    assert not target.is_fallen

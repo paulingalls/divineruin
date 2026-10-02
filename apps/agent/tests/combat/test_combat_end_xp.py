@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver, _resolve_round
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import GUILD_PLAYER
 
 import archetypes
@@ -133,6 +134,7 @@ async def _run(session, cs, outcome="victory", *, players_by_id=None, conn=None,
     queries = AsyncMock()
     queries.get_player = AsyncMock(side_effect=lambda pid, conn=None, for_update=False: _row(pid))
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     sink = EventSink()
     conn = conn or MagicMock()
     end_data = await _end_combat_db(
@@ -477,7 +479,9 @@ async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
     ctx.session.current_agent = None
     ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
     ctx.userdata.combat_state = cs
-    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))  # no equipped items -> no durability
+    queries = MagicMock(
+        get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([])
+    )  # no equipped items -> no durability
     queries.get_player = db_queries.get_player  # the grant needs the REAL row read
     break_mod = MagicMock(break_concentration_on_damage=AsyncMock(return_value=None))
 

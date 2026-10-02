@@ -5,7 +5,7 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 311 / 538 acceptance criteria — 58%** (the sum of the per-phase counts in
+**Position: 313 / 538 acceptance criteria — 58%** (the sum of the per-phase counts in
 `README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 3, 4, 5 and 6 are
 complete. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.

@@ -10,7 +10,7 @@ Pure: a function of the action dict alone. It cannot see ownership or budget. Th
 checks each candidate window against the activation rules before pausing.
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-content/encounter_templates.json's action_pool entries — ranged, buff, grapple,
+catalog-derived runtime action_pool entries — ranged, buff, grapple,
 control, aoe, healing, or none — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
@@ -50,6 +50,8 @@ def pre_roll_triggers(action: dict) -> tuple[str, ...]:
     The targeting windows plus the catch-all. `on_condition_imposed` is not here: both its
     consumers escape a grapple that has already landed, which only the post-roll stage knows.
     """
+    if classify_action(action) in ("healing", "prepare_attack"):
+        return (CATCH_ALL,)
     return ("on_targeted", "on_ally_targeted", CATCH_ALL)
 
 
@@ -60,6 +62,8 @@ def post_roll_triggers(action: dict, *, hit: bool) -> tuple[str, ...]:
     write has not happened. A landed grapple additionally opens `on_condition_imposed`; a missed
     one imposes nothing.
     """
+    if classify_action(action) in ("healing", "prepare_attack"):
+        return ()
     if not hit:
         return ("on_enemy_miss", CATCH_ALL)
     triggers = ["on_hit", "on_ally_hit", CATCH_ALL]

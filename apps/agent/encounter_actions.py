@@ -5,7 +5,9 @@ they carry no damage, damage type or applied condition. The values are mirrored 
 packages/shared/src/entities/encounter.ts (constraint 7).
 """
 
-ACTION_KINDS = ("attack", "command", "accusation")
+from action_contracts import validate_action_extensions
+
+ACTION_KINDS = ("attack", "command", "accusation", "healing", "prepare_attack")
 _MARK_FORBIDDEN_FIELDS = ("damage", "damage_type", "applies_condition")
 
 
@@ -21,7 +23,8 @@ def validate_encounter_actions(enemies: list[dict]) -> None:
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             kind = action_kind(action)
-            if kind == "attack":
+            validate_action_extensions(action, enemy.get("id", "action"))
+            if kind not in ("command", "accusation"):
                 continue
             carried = [field for field in _MARK_FORBIDDEN_FIELDS if field in action]
             if carried:

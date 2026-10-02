@@ -39,7 +39,7 @@ test.describe("World sections (apps/web)", () => {
     await page.goto(`${WEB}/`);
     expect(await page.locator("#world").count()).toBe(1);
     await page.getByRole("link", { name: /Enter Aethos/ }).click();
-    await expect(page.locator("#world")).toBeInViewport({ timeout: 5000 });
+    await expect(page.locator("#world")).toBeInViewport();
   });
 
   test("reveals World cards on scroll (post-hydration enhancement works end to end)", async ({
@@ -48,7 +48,7 @@ test.describe("World sections (apps/web)", () => {
     await page.goto(`${WEB}/`);
     const firstPlace = page.locator(".world__place").first();
     await firstPlace.scrollIntoViewIfNeeded();
-    await expect(firstPlace).toHaveClass(/is-revealed/, { timeout: 5000 });
+    await expect(firstPlace).toHaveClass(/is-revealed/);
   });
 
   for (const [label, width] of [

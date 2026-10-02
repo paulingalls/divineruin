@@ -17,7 +17,7 @@ test.describe("Session lifecycle", () => {
 
     // Phase watcher in session-test.tsx auto-navigates to /session-summary
     const summaryScreen = sessionPage.page.getByTestId("session-summary-screen");
-    await expect(summaryScreen).toBeVisible({ timeout: 15_000 });
+    await expect(summaryScreen).toBeVisible();
     await expect(sessionPage.page.getByText("Session Complete")).toBeVisible();
     await expect(sessionPage.page.getByText(/explored the ruins/)).toBeVisible();
     await expect(sessionPage.page.getByText("RETURN HOME")).toBeVisible();
@@ -38,7 +38,7 @@ test.describe("Session lifecycle", () => {
     });
 
     const summaryScreen = sessionPage.page.getByTestId("session-summary-screen");
-    await expect(summaryScreen).toBeVisible({ timeout: 15_000 });
+    await expect(summaryScreen).toBeVisible();
 
     // Stats row shows correct values
     await expect(sessionPage.page.getByText("350")).toBeVisible();

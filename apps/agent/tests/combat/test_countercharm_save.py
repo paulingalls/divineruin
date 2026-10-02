@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _guarded_ally_state, _pause_at, _reaction_packet
+from sample_fixtures import catalog_encounters
 
 import reaction_windows
 from check_resolution_save import resolve_saving_throw
@@ -16,7 +17,7 @@ from conditions import apply_condition
 from dice import roll as roll_dice
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
-_ENCOUNTERS = json.loads((_CONTENT / "encounter_templates.json").read_text())
+_ENCOUNTERS = catalog_encounters()
 _REACTIONS = [
     row
     for row in json.loads((_CONTENT / "archetype_abilities.json").read_text())
@@ -26,6 +27,16 @@ _COUNTERCHARM = "bard_countercharm"
 
 
 def _action(enemy_id: str, name: str) -> dict:
+    if name == "Hollow Shriek":
+        return {
+            "name": name,
+            "damage": "0",
+            "damage_type": "none",
+            "properties": [],
+            "applies_condition": "frightened",
+            "save": "wisdom",
+            "dc": 13,
+        }
     return next(
         dict(action)
         for encounter in _ENCOUNTERS
@@ -142,10 +153,8 @@ def test_condition_action_inventory_stays_explicit():
     assert condition_actions == [
         ("ashmark_soldier_1", "Shield Bash", "prone"),
         ("ashmark_soldier_2", "Shield Bash", "prone"),
-        ("ashmark_soldier_3", "Shield Bash", "prone"),
-        ("ashmark_soldier_4", "Shield Bash", "prone"),
         ("cult_leader", "Hold Person", "paralyzed"),
-        ("hollow_rend_1", "Hollow Shriek", "frightened"),
+        ("hollowed_knight", "Shield Slam", "prone"),
     ]
     assert {row["id"] for row in _REACTIONS if row["window"] == "on_condition_imposed"} == {
         "rogue_slippery",

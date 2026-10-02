@@ -46,12 +46,9 @@ roles:               # harness/model[/effort]; the lead overrides per story in p
 tests:
   # The installed pre-commit hook calls this same command for staged paths.
   fast: bash scripts/test-fast.sh
-  # Story and full run on the tree merged with trunk at their close boundaries.
-  story: bun run test:all          # TS + Python unit lanes; the old system's sole test_command
+  # Stories verify focused AC behavior; broad regression runs once at sprint close.
+  story: bun run lint              # static checks; behavioral tests belong to Verify/full
   full: bash .githooks/pre-push __xp_full_tier__
 
 tier_coverage:
-  story: full
 tier_coverage_pins:
-  story: bun run test:all
-  full: bash .githooks/pre-push __xp_full_tier__

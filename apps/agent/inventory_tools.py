@@ -24,6 +24,7 @@ import event_types as E
 from asset_utils import compute_item_image_url
 from db_errors import db_tool
 from game_events import publish_game_event
+from inventory_refresh import publish_inventory
 from session_data import SessionData
 from tool_support import _cap_str, _validate_id, build_item_acquired_payload
 
@@ -97,14 +98,6 @@ async def _gain(session, player_id, item_id, delta, source, item, *, db_mod, mut
         session.validate_acting_player(player_id)
         await mutations.add_inventory_item(player_id, item_id, delta, conn=conn)
 
-    full_inventory = await queries.get_player_inventory(player_id)
-    await publish_game_event(
-        session.room,
-        E.INVENTORY_UPDATED,
-        {"inventory": full_inventory},
-        event_bus=session.event_bus,
-    )
-
     # ONE builder for every ITEM_ACQUIRED writer (tool_support): the combat-loot pass emits the
     # same shape from the same place, so the client's item card can never go blank on one path
     # while rendering on the other.
@@ -122,6 +115,8 @@ async def _gain(session, player_id, item_id, delta, source, item, *, db_mod, mut
         acquired_payload,
         event_bus=session.event_bus,
     )
+
+    await publish_inventory(session, player_id, queries=queries)
 
     suffix = f" ({source})" if source else ""
     session.record_event(f"Gained {delta}x {item_name}{suffix}")
@@ -148,17 +143,7 @@ async def _lose(session, player_id, item_id, delta, item, *, db_mod, inventory_m
         session.validate_acting_player(player_id)
         remaining = await inventory_mutations.transact_inventory(player_id, item_id, delta, conn=conn)
 
-    # Publish AFTER commit so a rolled-back txn emits nothing. The full inventory array
-    # is what drives the HUD refresh — the client re-renders only from event.inventory,
-    # so a partial decrement (5->3) would otherwise leave the panel stale. Payload mirrors
-    # _gain ({inventory} only); the DM-facing action/quantity live on the tool return below.
-    full_inventory = await queries.get_player_inventory(player_id)
-    await publish_game_event(
-        session.room,
-        E.INVENTORY_UPDATED,
-        {"inventory": full_inventory},
-        event_bus=session.event_bus,
-    )
+    await publish_inventory(session, player_id, queries=queries)
 
     session.record_event(f"Lost {magnitude}x {item_name}")
 

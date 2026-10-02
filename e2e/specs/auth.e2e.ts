@@ -9,9 +9,7 @@ test.describe("Auth flow", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Assert we're on the auth screen
-    await expect(page.getByText("Listen to the dark")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.getByText("Listen to the dark")).toBeVisible();
 
     // Fill email
     const emailInput = page.getByPlaceholder("adventurer@example.com");
@@ -23,7 +21,7 @@ test.describe("Auth flow", () => {
 
     // Wait for code input to appear
     const codeInput = page.getByPlaceholder("000000");
-    await expect(codeInput).toBeVisible({ timeout: 10_000 });
+    await expect(codeInput).toBeVisible();
 
     // Get verification code from DB
     const codes = await queryDb<{ code: string }>(
@@ -41,7 +39,7 @@ test.describe("Auth flow", () => {
     await page.getByText("VERIFY", { exact: true }).click();
 
     // Assert redirect to home screen
-    await expect(page.getByText("Your story is about to begin.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Your story is about to begin.")).toBeVisible();
 
     // Cleanup
     await cleanupAccountByEmail(email);

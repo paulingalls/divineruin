@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 import check_resolution_save
 import concentration_break
+import conditions
 import event_types as E
-from combat_ability import _resolve_condition_target, land_condition_on_participant
+from combat_ability import _attach_riders, _resolve_condition_target
 from combat_events import emit_or_publish
 from combat_support import SaveDamageResult, _resolve_attack_packet, apply_attack_result
 from condition_restrictions import cannot_act
@@ -50,17 +51,21 @@ async def _apply_condition_result(
     state,
     conn,
     concentration_break_mod,
+    duration=None,
 ) -> None:
     if result.success:
         summary["condition_resisted"] = cond_type
         return
-    if land_condition_on_participant(
+    from combat_condition_landing import _land_condition_on_one
+
+    if _land_condition_on_one(
         state,
+        target.id,
         attacker,
-        decl,
         cond_type,
         source=decl.action or "",
         packet=summary,
+        duration=duration,
     ):
         summary["condition_inflicted"] = cond_type
         if target.type == "player" and cannot_act(({"type": cond_type},)):
@@ -126,6 +131,7 @@ async def _resolve_enemy_condition_packet(
         state=state,
         conn=conn,
         concentration_break_mod=concentration_break_mod,
+        duration=action.get("duration"),
     )
     return summary
 
@@ -282,8 +288,91 @@ async def resolve_save_damage_action(
             state=state,
             conn=conn,
             concentration_break_mod=concentration_break_mod,
+            duration=action.get("duration"),
         )
     summary["actor_id"] = attacker.id
     summary["resolved"] = True
     summary["declaration_type"] = str(decl.type)
     return summary
+
+
+async def resolve_enemy_strike(
+    session,
+    attacker,
+    decl,
+    action,
+    *,
+    state,
+    packet,
+    conn,
+    mutations,
+    queries,
+    resolver,
+    concentration_break_mod,
+    sink,
+    reaction_ac_bonus,
+    shield_reaction,
+    reaction_save_advantage,
+    publish_roll,
+):
+    if not attacker.is_ally and action is not None and is_save_damage_action(action):
+        return await resolve_save_damage_action(
+            session,
+            attacker,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+
+    if not attacker.is_ally and action is not None and is_combined_attack_action(action):
+        target = state.get_participant(decl.target_id) if decl.target_id else None
+        if target is None:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
+        if target.is_fallen:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+        summary = await resolve_combined_attack_action(
+            session,
+            attacker,
+            target,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+            shield_reaction=shield_reaction,
+            enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
+            is_first_attack_of_combat=not state.first_attack_resolved,
+            reaction_save_advantage=reaction_save_advantage,
+            publish_roll=publish_roll,
+        )
+        if summary.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, summary["consumed_conditions"])
+        state.first_attack_resolved = True
+        summary["actor_id"] = packet.actor_id
+        summary["resolved"] = True
+        return _attach_riders(summary, attacker, decl)
+
+    if not attacker.is_ally and action is not None and action.get("applies_condition"):
+        return await _resolve_enemy_condition_packet(
+            session,
+            attacker,
+            decl,
+            action,
+            state=state,
+            conn=conn,
+            concentration_break_mod=concentration_break_mod,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+
+    return None

@@ -10,7 +10,7 @@ const SABLE_IDLE_LINE = new RegExp(chatterPool("companion_sable").map(escapeRegE
 test.describe("Home screen with character", () => {
   test("shows character summary and enter button", async ({ characterPage, testCharacter }) => {
     // Character name visible
-    await expect(characterPage.getByText(testCharacter.name)).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText(testCharacter.name)).toBeVisible();
 
     // ENTER AETHOS button (not AWAKEN — character exists)
     await expect(characterPage.getByText("ENTER AETHOS", { exact: true })).toBeVisible();
@@ -22,6 +22,6 @@ test.describe("Home screen with character", () => {
   test("shows the player's own companion idle chatter when no activities", async ({
     characterPage,
   }) => {
-    await expect(characterPage.getByText(SABLE_IDLE_LINE)).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText(SABLE_IDLE_LINE)).toBeVisible();
   });
 });

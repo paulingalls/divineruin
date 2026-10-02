@@ -6,21 +6,19 @@ test.describe("Navigation flows", () => {
     await characterPage.getByText("\u2699").click();
 
     // Settings screen should appear
-    await expect(characterPage.getByText("SETTINGS")).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("SETTINGS")).toBeVisible();
 
     // Click close button (×)
     await characterPage.getByText("\u2715").click();
 
     // Should return to home with character
-    await expect(characterPage.getByText("ENTER AETHOS", { exact: true })).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(characterPage.getByText("ENTER AETHOS", { exact: true })).toBeVisible();
   });
 
   test("settings volume sliders are interactive", async ({ characterPage }) => {
     // Open settings
     await characterPage.getByText("\u2699").click();
-    await expect(characterPage.getByText("SETTINGS")).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("SETTINGS")).toBeVisible();
 
     // Verify all volume labels and percentages are present
     const volumeBuses = ["VOICE", "MUSIC", "AMBIENCE", "EFFECTS", "UI"];
@@ -34,7 +32,7 @@ test.describe("Navigation flows", () => {
 
   test("settings shows account email", async ({ characterPage, testUser }) => {
     await characterPage.getByText("\u2699").click();
-    await expect(characterPage.getByText("SETTINGS")).toBeVisible({ timeout: 15_000 });
+    await expect(characterPage.getByText("SETTINGS")).toBeVisible();
 
     // Account section should show test user's email
     await expect(characterPage.getByText(testUser.email)).toBeVisible();
