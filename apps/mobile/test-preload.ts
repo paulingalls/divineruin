@@ -12,6 +12,7 @@ mock.module("react-native", () => ({
   View: "View",
   Text: "Text",
   FlatList: "FlatList",
+  Pressable: "Pressable",
   // select() mirrors RN's resolution order: exact OS key, then native, then default.
   Platform: {
     OS: "ios",
@@ -19,6 +20,7 @@ mock.module("react-native", () => ({
   },
   StyleSheet: { create: (s: any) => s },
   NativeModules: {},
+  AppState: { currentState: "active", addEventListener: () => ({ remove: () => {} }) },
 }));
 
 mock.module("@react-native-async-storage/async-storage", () => {

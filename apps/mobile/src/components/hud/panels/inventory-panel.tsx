@@ -76,6 +76,7 @@ function ItemDetail({ item, onBack }: { item: InventoryItem; onBack: () => void 
 
 export function InventoryPanel() {
   const inventory = useStore(panelStore, (s) => s.inventory);
+  const error = useStore(panelStore, (s) => s.inventoryRefreshError);
   const [selected, setSelected] = useState<InventoryItem | null>(null);
 
   const totalWeight = useMemo(
@@ -90,6 +91,7 @@ export function InventoryPanel() {
 
   return (
     <View style={styles.container}>
+      {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
       <FlatList
         data={inventory}
         numColumns={NUM_COLUMNS}
