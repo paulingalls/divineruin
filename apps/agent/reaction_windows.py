@@ -10,7 +10,7 @@ Pure: a function of the action dict alone. It cannot see ownership or budget. Th
 checks each candidate window against the activation rules before pausing.
 
 WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-content/encounter_templates.json's action_pool entries — ranged, buff, grapple,
+catalog-derived runtime action_pool entries — ranged, buff, grapple,
 control, aoe, healing, or none — and only `grapple` has a reaction consumer
 today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
 spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:

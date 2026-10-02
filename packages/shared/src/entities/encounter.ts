@@ -1,9 +1,4 @@
-// Encounter templates carry combat and currency overlays around the bestiary
-// CreatureStatBlock base in creature.ts. Their current enemy shape remains distinct.
-
 import { validateActionExtensions, type ActionExtensions, type Recharge } from "./action_contracts";
-
-import type { Attributes } from "./role_archetype";
 
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
 // so adding a role here updates both the type and the conformance test (which imports the array).
@@ -60,8 +55,7 @@ export const RESISTANCE_TAG_VALUES = [
   "honorable",
 ] as const;
 
-// One entry in an enemy's action_pool, as stored in encounter_templates.json. Matches the shape
-// combat_init.py reads plus the content `description` blurb.
+// Runtime actions translated from the creature catalog.
 interface EncounterActionBase {
   name: string;
   properties: string[];
@@ -233,25 +227,15 @@ export interface StanceGate {
 
 export interface EncounterEnemy {
   id: string;
-  name: string;
-  level: number;
-  tier: number;
-  ac: number;
-  hp: number;
-  attributes: Attributes;
-  action_pool: EncounterAction[];
-  xp_value: number;
-  sound_signature?: string;
-  // Encounter-role overlay (M4.7). Optional: an untagged enemy derives as "standard" (identity).
-  role?: EncounterRole;
-  signature_ability?: SignatureAbility; // Boss only
-  legendary_actions?: number; // Boss only (1/round)
+  creature_id: string;
+  role: "minion" | "standard" | "elite" | "boss";
 }
 
 export interface Encounter {
   id: string;
   name: string;
   description?: string;
+  recommended_party_level: number;
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
@@ -270,5 +254,39 @@ export function validateEncounterEnemyTier(
     throw new Error(
       `encounter '${encounterId}' enemy '${String(enemy.id)}' has invalid tier ${String(enemy.tier)}`,
     );
+  }
+}
+
+export function validateEncounterReferences(
+  encounter: unknown,
+  creatureIds?: ReadonlySet<string>,
+): void {
+  if (!encounter || typeof encounter !== "object") throw new Error("encounter must be an object");
+  const row = encounter as Record<string, unknown>;
+  const label = `encounter '${String(row.id)}'`;
+  const level = row.recommended_party_level;
+  if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 20)
+    throw new Error(`${label}: recommended_party_level must be an integer 1-20`);
+  if (!Array.isArray(row.enemies) || !row.enemies.length)
+    throw new Error(`${label}: enemies must be a nonempty list`);
+  const seen = new Set<string>();
+  for (const [index, value] of row.enemies.entries()) {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new Error(`${label} enemy ${index}: expected reference object`);
+    const enemy = value as Record<string, unknown>;
+    const context = `${label} enemy '${typeof enemy.id === "string" ? enemy.id : index}'`;
+    for (const field of ["id", "creature_id", "role"]) {
+      if (typeof enemy[field] !== "string" || !enemy[field].trim())
+        throw new Error(`${context}: ${field} must be a nonempty string`);
+    }
+    const extra = Object.keys(enemy).filter((key) => !["id", "creature_id", "role"].includes(key));
+    if (extra.length) throw new Error(`${context}: forbidden reference fields ${extra.join(", ")}`);
+    const id = enemy.id as string;
+    if (seen.has(id)) throw new Error(`${context}: duplicate id`);
+    seen.add(id);
+    if (!["minion", "standard", "elite", "boss"].includes(enemy.role as string))
+      throw new Error(`${context}: unsupported role '${String(enemy.role)}'`);
+    if (creatureIds && !creatureIds.has(enemy.creature_id as string))
+      throw new Error(`${context}: unknown creature_id '${String(enemy.creature_id)}'`);
   }
 }

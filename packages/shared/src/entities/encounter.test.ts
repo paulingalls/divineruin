@@ -8,15 +8,59 @@ import {
   validateEncounterActionKind,
   validateEncounterEnemyTier,
   type Encounter,
+  type EncounterAction,
 } from "./encounter";
 
 const actionShapes = (await Bun.file(
   new URL("../../fixtures/enemy_action_shapes.json", import.meta.url),
 ).json()) as Record<string, Record<string, unknown>>;
 
-const encounters = (await Bun.file(
+const references = (await Bun.file(
   new URL("../../../../content/encounter_templates.json", import.meta.url),
 ).json()) as Encounter[];
+const catalog = (await Bun.file(
+  new URL("../../../../content/creatures.json", import.meta.url),
+).json()) as {
+  id: string;
+  name: string;
+  level: number;
+  tier: number;
+  ac: number;
+  hp: number;
+  xp_reward: number;
+  attributes: Record<string, number>;
+  signature_ability?: { name: string; description: string };
+  attacks: (Omit<EncounterAction, "properties"> & { type: string; properties?: string[] })[];
+  actives: (Omit<EncounterAction, "properties"> & { properties?: string[] })[];
+}[];
+const encounters = references.map((encounter) => ({
+  ...encounter,
+  enemies: encounter.enemies.map((reference) => {
+    const row = catalog.find((row) => row.id === reference.creature_id);
+    if (!row) throw new Error(reference.creature_id);
+    const actions = [
+      ...row.attacks,
+      ...row.actives.filter((a) => a.kind && a.kind !== "attack"),
+    ].map((a) => ({
+      ...a,
+      properties: [
+        ...(a.properties ?? []),
+        ...("type" in a && a.type === "ranged" ? ["ranged"] : []),
+      ],
+    }));
+    return {
+      ...row,
+      ...reference,
+      xp_value: row.xp_reward,
+      signature_ability: reference.role === "boss" ? row.signature_ability : undefined,
+      legendary_actions: reference.role === "boss" ? 1 : undefined,
+      action_pool:
+        reference.role === "minion"
+          ? actions.filter((a) => !("recharge" in a) && (!a.kind || a.kind === "attack"))
+          : actions,
+    };
+  }),
+}));
 
 describe("encounter_templates.json — encounter-role overlay", () => {
   test("catalog is non-empty", () => {
@@ -28,7 +72,7 @@ describe("encounter_templates.json — encounter-role overlay", () => {
       expect(Array.isArray(enc.enemies)).toBe(true);
       for (const enemy of enc.enemies) {
         expect(enemy.role).toBeDefined(); // content tags every enemy explicitly
-        expect([...ENCOUNTER_ROLE_VALUES]).toContain(enemy.role!);
+        expect([...ENCOUNTER_ROLE_VALUES]).toContain(enemy.role);
         expect(typeof enemy.id).toBe("string");
         expect(typeof enemy.name).toBe("string");
         expect(typeof enemy.level).toBe("number");
@@ -40,13 +84,17 @@ describe("encounter_templates.json — encounter-role overlay", () => {
     }
   });
 
-  test("every Boss authors a signature ability and one legendary action", () => {
+  test("Bosses retain catalog signatures and one legendary action", () => {
     const bosses = encounters.flatMap((e) => e.enemies).filter((en) => en.role === "boss");
     expect(bosses.length).toBeGreaterThan(0); // at least one Boss exists to overlay
+    expect(bosses.filter((boss) => boss.signature_ability)).toHaveLength(2);
     for (const boss of bosses) {
-      expect(boss.signature_ability).toBeDefined();
-      expect(typeof boss.signature_ability!.name).toBe("string");
-      expect(typeof boss.signature_ability!.description).toBe("string");
+      const source = catalog.find((row) => row.id === boss.creature_id)!;
+      expect(boss.signature_ability).toEqual(source.signature_ability);
+      if (boss.signature_ability) {
+        expect(typeof boss.signature_ability.name).toBe("string");
+        expect(typeof boss.signature_ability.description).toBe("string");
+      }
       expect(boss.legendary_actions).toBe(1);
     }
   });
@@ -88,7 +136,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
   });
 
-  test("the two Seizing Grabs author escape DC 13", () => {
+  test("catalog Lunge carriers author escape DC 13", () => {
     const carriers = actions
       .filter(({ action }) => action.properties.includes("grapple"))
       .map(({ enemyId, action }) => [
@@ -97,14 +145,17 @@ describe("encounter_templates.json — enemy action kinds", () => {
         "escape_dc" in action ? action.escape_dc : undefined,
       ]);
     expect(carriers).toEqual([
-      ["mawling_1", "Seizing Grab", 13],
-      ["mawling_2", "Seizing Grab", 13],
+      ["mawling_1", "Lunge", 13],
+      ["mawling_2", "Lunge", 13],
+      ["mawling_1", "Lunge", 13],
     ]);
   });
 
   test("a mark action carries no damage, damage type or applied condition", () => {
-    const marks = actions.filter(({ action }) => encounterActionKind(action) !== "attack");
-    expect(marks.length).toBe(6);
+    const marks = actions.filter(({ action }) =>
+      ["command", "accusation"].includes(encounterActionKind(action)),
+    );
+    expect(marks.length).toBe(4);
     for (const { action } of marks) {
       expect(Object.keys(action)).not.toContain("damage");
       expect(Object.keys(action)).not.toContain("damage_type");
@@ -118,9 +169,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
       .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
     expect(carriers.sort()).toEqual([
       "ashmark_patrol/ashmark_sergeant/Rally",
-      "bandit_ambush/bandit_captain/Press the Attack",
       "cult_cell/cult_fanatic_1/Bless",
-      "cult_cell/cult_fanatic_2/Bless",
       "hollow_corrupted_settlement/hollowed_knight/Command Lesser",
     ]);
   });
@@ -183,8 +232,13 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(38);
-    const named: Record<string, number> = { Shadeling: 1, Mawling: 2, "Hollowed Knight": 3 };
+    expect(rows).toHaveLength(26);
+    const named: Record<string, number> = {
+      Shadeling: 1,
+      Mawling: 2,
+      "Hollowed Knight": 3,
+      "Cult Fanatic": 1,
+    };
     for (const [encId, enemy] of rows) {
       expect(() => validateEncounterEnemyTier(encId, enemy)).not.toThrow();
       expect(enemy.tier).toBe(named[enemy.name] ?? tierForPlayerLevel(enemy.level));

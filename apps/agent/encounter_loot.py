@@ -27,7 +27,7 @@ import random
 from dice import roll
 from encounter_roles import EncounterRole
 
-# Enemy creature categories (content/encounter_templates.json `category`). The currency-bearing
+# Enemy creature categories (catalog-derived runtime `category`). The currency-bearing
 # ones roll coin per the Currency Drop Rules; the rest carry none ("animals don't carry coin").
 _CURRENCY_CATEGORIES = frozenset({"humanoid", "hollow_rend", "hollow_wrack", "undead"})
 _NO_CURRENCY_CATEGORIES = frozenset({"beast", "hollow_drift", "construct", "named"})

@@ -1,0 +1,900 @@
+{
+  "valid": [
+    {
+      "id": "fixture",
+      "recommended_party_level": 1,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_shadeling",
+          "role": "standard"
+        }
+      ]
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 20,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_shadeling",
+          "role": "standard"
+        },
+        {
+          "id": "two",
+          "creature_id": "hollow_shadeling",
+          "role": "standard"
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "name": "id_empty",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "id_blank",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": " ",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "id_type",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": 1,
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "id_null",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": null,
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "id_missing",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "creature_id_empty",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "creature_id_blank",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": " ",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "creature_id_type",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": 1,
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "creature_id_null",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": null,
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "creature_id_missing",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_empty",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_blank",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": " "
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_type",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_null",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_missing",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown_creature",
+      "field": "creature_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "unknown",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_named",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "role_bogus",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "bogus"
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate_id",
+      "field": "id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          },
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "enemies_empty",
+      "field": "enemies",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": []
+      }
+    },
+    {
+      "name": "enemies_type",
+      "field": "enemies",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": {}
+      }
+    },
+    {
+      "name": "enemies_null",
+      "field": "enemies",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": null
+      }
+    },
+    {
+      "name": "enemies_missing",
+      "field": "enemies",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1
+      }
+    },
+    {
+      "name": "enemy_type",
+      "field": "enemy",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "inline_hp",
+      "field": "hp",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "hp": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_ac",
+      "field": "ac",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "ac": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_level",
+      "field": "level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "level": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_tier",
+      "field": "tier",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "tier": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_name",
+      "field": "name",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "name": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_attributes",
+      "field": "attributes",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "attributes": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_action_pool",
+      "field": "action_pool",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "action_pool": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_xp_value",
+      "field": "xp_value",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "xp_value": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_loot_table_id",
+      "field": "loot_table_id",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "loot_table_id": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_category",
+      "field": "category",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "category": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_sound_signature",
+      "field": "sound_signature",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "sound_signature": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_signature_ability",
+      "field": "signature_ability",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "signature_ability": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_legendary_actions",
+      "field": "legendary_actions",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "legendary_actions": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_currency",
+      "field": "currency",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "currency": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_audio",
+      "field": "audio",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "audio": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_narration",
+      "field": "narration",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "narration": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline_override",
+      "field": "override",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "override": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_true",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": true,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_false",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": false,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_fraction",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1.5,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_string",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": "1",
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_zero",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 0,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_upper",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 21,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "level_missing",
+      "field": "recommended_party_level",
+      "encounter": {
+        "id": "fixture",
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ]
+      }
+    }
+  ],
+  "fixture_catalog": [
+    {
+      "id": "fixture_goblin",
+      "name": "Goblin Scout",
+      "category": "humanoid",
+      "tier": 1,
+      "description": "An armed road robber who ambushes travelers and bargains when outmatched.",
+      "level": 1,
+      "hp": 7,
+      "ac": 13,
+      "speed": 30,
+      "attributes": {
+        "STR": 8,
+        "DEX": 14,
+        "CON": 10,
+        "INT": 10,
+        "WIS": 8,
+        "CHA": 8
+      },
+      "save_proficiencies": [
+        "DEX"
+      ],
+      "attacks": [
+        {
+          "name": "Scimitar",
+          "type": "melee",
+          "reach": 5,
+          "to_hit": 2,
+          "damage": "1d6",
+          "damage_type": "slashing",
+          "special": null,
+          "audio": "bandit_short_sword",
+          "properties": [
+            "light"
+          ],
+          "description": "A short blade."
+        },
+        {
+          "name": "Shortbow",
+          "type": "ranged",
+          "reach": 5,
+          "to_hit": 2,
+          "damage": "1d6",
+          "damage_type": "piercing",
+          "special": null,
+          "audio": "bandit_short_sword",
+          "properties": [],
+          "description": "A short bow."
+        }
+      ],
+      "multiattack": null,
+      "passives": [],
+      "actives": [],
+      "reactions": [],
+      "hollow": null,
+      "behavior": {
+        "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+        "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+        "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+        "environment": [
+          "Roads between settlements",
+          "forest ambush points",
+          "ruins"
+        ]
+      },
+      "narration": {
+        "first_sighting": "Leather creaks beyond the bend, and a crossbow string draws tight.",
+        "attack_cue": "A bowstring twangs as the bandit fires from cover.",
+        "wounded_cue": "A grunt escapes through clenched teeth as the bandit staggers.",
+        "death_cue": "A sword clatters on stone, followed by one last breath.",
+        "ambient_cue": "Low whistles trade between the trees on either side of the road."
+      },
+      "audio": {
+        "ambient": "low whistles and creaking leather",
+        "attack": "blade scrape or crossbow twang",
+        "hit": "pained grunt",
+        "death": "weapon clattering on stone",
+        "special": {}
+      },
+      "loot_table_id": "loot_bandit",
+      "xp_reward": 50,
+      "home_region": "greyvale",
+      "regions": [
+        "greyvale"
+      ]
+    },
+    {
+      "id": "fixture_wolf",
+      "name": "Dire Wolf",
+      "category": "humanoid",
+      "tier": 1,
+      "description": "An armed road robber who ambushes travelers and bargains when outmatched.",
+      "level": 2,
+      "hp": 15,
+      "ac": 14,
+      "speed": 30,
+      "attributes": {
+        "STR": 12,
+        "DEX": 14,
+        "CON": 12,
+        "INT": 10,
+        "WIS": 10,
+        "CHA": 10
+      },
+      "save_proficiencies": [
+        "DEX"
+      ],
+      "attacks": [
+        {
+          "name": "Bite",
+          "type": "melee",
+          "reach": 5,
+          "to_hit": 5,
+          "damage": "1d8+3",
+          "damage_type": "piercing",
+          "special": null,
+          "audio": "bandit_short_sword",
+          "properties": [],
+          "description": "A biting attack."
+        }
+      ],
+      "multiattack": null,
+      "passives": [],
+      "actives": [],
+      "reactions": [],
+      "hollow": null,
+      "behavior": {
+        "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+        "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+        "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+        "environment": [
+          "Roads between settlements",
+          "forest ambush points",
+          "ruins"
+        ]
+      },
+      "narration": {
+        "first_sighting": "Leather creaks beyond the bend, and a crossbow string draws tight.",
+        "attack_cue": "A bowstring twangs as the bandit fires from cover.",
+        "wounded_cue": "A grunt escapes through clenched teeth as the bandit staggers.",
+        "death_cue": "A sword clatters on stone, followed by one last breath.",
+        "ambient_cue": "Low whistles trade between the trees on either side of the road."
+      },
+      "audio": {
+        "ambient": "low whistles and creaking leather",
+        "attack": "blade scrape or crossbow twang",
+        "hit": "pained grunt",
+        "death": "weapon clattering on stone",
+        "special": {}
+      },
+      "loot_table_id": "loot_bandit",
+      "xp_reward": 100,
+      "home_region": "greyvale",
+      "regions": [
+        "greyvale"
+      ]
+    }
+  ]
+}

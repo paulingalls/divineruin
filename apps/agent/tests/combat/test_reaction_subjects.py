@@ -1,9 +1,9 @@
 """Social reactions are offered only for the held action they can affect."""
 
-import json
 from pathlib import Path
 
 import pytest
+from sample_fixtures import catalog_encounters
 
 import combat_hold
 import reaction_spend
@@ -122,13 +122,14 @@ def test_objection_refuses_post_roll_and_hollow_actors():
 
 
 def test_hollow_identity_is_literal_and_covers_every_authored_hollow_category():
-    assert frozenset({"hollow_drift", "hollow_rend"}) == HOLLOW_CATEGORIES
+    assert frozenset({"hollow_drift", "hollow_rend", "hollow_wrack"}) == HOLLOW_CATEGORIES
     assert is_hollow(_participant("drift", kind="enemy", category="hollow_drift"))
     assert is_hollow(_participant("rend", kind="enemy", category="hollow_rend"))
+    assert is_hollow(_participant("wrack", kind="enemy", category="hollow_wrack"))
     assert is_hollow(_participant("echo", kind="temporary_hollowed", category=""))
     assert not is_hollow(_participant("new", kind="enemy", category="hollow_new"))
 
-    encounters = json.loads(_CONTENT.read_text())
+    encounters = catalog_encounters()
     authored = {
         enemy["category"]
         for encounter in encounters

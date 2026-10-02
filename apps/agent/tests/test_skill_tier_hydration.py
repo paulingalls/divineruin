@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _resolve_deps, _resolve_round
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import load_test_creature, make_context, make_mock_room
 
 import conditions
 import db_mutations_skill_advancement
@@ -74,6 +74,7 @@ def _combat_dependencies(pool) -> tuple[MagicMock, Any, MagicMock]:
     mutations = MagicMock()
     mutations.save_combat_state = AsyncMock()
     content = MagicMock()
+    content.load_creature_enemy = load_test_creature
     content.get_encounter_template = AsyncMock(return_value=_ashmark_patrol())
     content.get_faction = AsyncMock(
         return_value={

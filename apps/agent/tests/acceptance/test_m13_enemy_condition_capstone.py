@@ -23,9 +23,13 @@ player takes no damage, keeping combat open (a JSON string result, not the end_c
 
 from __future__ import annotations
 
+import json
+from copy import deepcopy
 from unittest.mock import patch
 
+import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -36,8 +40,33 @@ import db
 import db_mutations
 
 _ENCOUNTER = "hollow_patrol_greyvale"
-_ENEMY_ID = "hollow_rend_1"
-_ACTION = "Hollow Shriek"
+_ENEMY_ID = "mawling_1"
+_ACTION = "Test Shriek"
+
+
+@pytest.fixture(autouse=True)
+async def test_authored_condition_catalog(reset_db_pool):
+    from creature_catalog import query_creature_by_id
+
+    pool = await db.get_pool()
+    original = await query_creature_by_id("hollow_mawling")
+    row = deepcopy(original)
+    row["attacks"].append(
+        {
+            **row["attacks"][0],
+            "name": _ACTION,
+            "damage": "0",
+            "damage_type": "none",
+            "applies_condition": "frightened",
+            "save": "wisdom",
+            "dc": 13,
+        }
+    )
+    await pool.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", row["id"], json.dumps(row))
+    try:
+        yield
+    finally:
+        await pool.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", original["id"], json.dumps(original))
 
 
 async def _start_and_declare(ctx, player_id: str) -> None:

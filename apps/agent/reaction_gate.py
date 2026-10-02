@@ -14,7 +14,7 @@ SELF_TARGETED_REACTION_WINDOWS = frozenset({"on_hit", "on_targeted", "on_conditi
 UNBOUND_REACTION_WINDOWS = frozenset(
     {"on_ally_hit", "on_ally_targeted", "on_enemy_miss", "on_enemy_move", "on_spell_cast", "on_enemy_action"}
 )
-HOLLOW_CATEGORIES = frozenset({"hollow_drift", "hollow_rend"})
+HOLLOW_CATEGORIES = frozenset({"hollow_drift", "hollow_rend", "hollow_wrack"})
 _SOCIAL_SUBJECTS = {
     "marshal_countermand": "command",
     "spy_plausible_deniability": "accusation",

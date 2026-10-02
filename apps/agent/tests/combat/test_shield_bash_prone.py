@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from combat._helpers import _resolve_deps, _resolve_round
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import conditions
 from combat_init import _start_combat_impl
@@ -42,8 +42,12 @@ async def _started_patrol(player=None):
 
 
 def test_all_four_shield_bashes_are_save_only_prone_and_longswords_are_unchanged():
-    soldiers = [enemy for enemy in _ashmark_patrol()["enemies"] if enemy["id"].startswith("ashmark_soldier_")]
-    assert len(soldiers) == 4
+    soldiers = [
+        enemy
+        for enemy in next(r for r in catalog_encounters() if r["id"] == "ashmark_patrol")["enemies"]
+        if enemy["id"].startswith("ashmark_soldier_")
+    ]
+    assert len(soldiers) == 2
     for soldier in soldiers:
         actions = {action["name"]: action for action in soldier["action_pool"]}
         assert actions["Longsword"]["damage"] == "1d8+2"

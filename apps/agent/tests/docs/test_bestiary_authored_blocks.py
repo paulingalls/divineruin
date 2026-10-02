@@ -6,6 +6,7 @@ from pathlib import Path
 
 from test_creature_catalog_content import assert_sound_first
 
+from creature_combat import translate_creature
 from creature_schema import validate_creature_stat_block
 from world_regions import REGION_IDS
 
@@ -33,8 +34,15 @@ BANDS = {
 
 def source_enemies():
     enemies = {}
+    catalog = {row["id"]: row for row in json.loads((ROOT / "content/creatures.json").read_text())}
     for encounter in json.loads(ENCOUNTERS.read_text()):
-        for enemy in encounter["enemies"]:
+        for reference in encounter["enemies"]:
+            enemy = translate_creature(
+                catalog[reference["creature_id"]],
+                encounter_id=encounter["id"],
+                enemy_id=reference["id"],
+                role="standard",
+            )
             if enemy["name"] in NAMES:
                 old = enemies.setdefault(enemy["name"], enemy)
                 assert old["action_pool"] == enemy["action_pool"], enemy["name"]

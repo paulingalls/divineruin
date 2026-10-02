@@ -3,7 +3,9 @@
 import json
 import random
 from contextlib import asynccontextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import event_types as E
@@ -135,29 +137,11 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "recommended_party_level": 1,
     "id": "wolf_pack",
     "name": "Wolf Pack",
     "difficulty": "moderate",
-    "enemies": [
-        {
-            "id": "dire_wolf_1",
-            "name": "Dire Wolf",
-            "level": 2,
-            "tier": 1,
-            "ac": 14,
-            "hp": 15,
-            "attributes": {"strength": 16, "dexterity": 14},
-            "action_pool": [
-                {
-                    "name": "Bite",
-                    "damage": "1d8+3",
-                    "damage_type": "piercing",
-                    "properties": [],
-                }
-            ],
-            "xp_value": 100,
-        },
-    ],
+    "enemies": [{"id": "dire_wolf_1", "creature_id": "fixture_wolf", "role": "standard"}],
 }
 
 # Generic guild-hall player for mutation/progression/quest tool tests.
@@ -294,3 +278,37 @@ def _milestones_mod_for(ladder, archetype_id):
         side_effect=lambda aid, level: by_level.get(level) if aid == archetype_id else None
     )
     return mod
+
+
+CONTENT_ROOT = Path(__file__).resolve().parents[3]
+TEST_CREATURES = {
+    row["id"]: row
+    for row in (
+        json.loads((CONTENT_ROOT / "content/creatures.json").read_text())
+        + json.loads((CONTENT_ROOT / "packages/shared/fixtures/encounter_references.json").read_text())[
+            "fixture_catalog"
+        ]
+    )
+}
+
+
+async def load_test_creature(creature_id, **kwargs):
+    from creature_combat import translate_creature
+
+    if creature_id not in TEST_CREATURES:
+        raise ValueError(f"unknown creature_id {creature_id!r}")
+    return translate_creature(deepcopy(TEST_CREATURES[creature_id]), **kwargs)
+
+
+def catalog_encounters():
+    from creature_combat import translate_creature
+
+    templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
+    for template in templates:
+        template["enemies"] = [
+            translate_creature(
+                TEST_CREATURES[ref["creature_id"]], encounter_id=template["id"], enemy_id=ref["id"], role=ref["role"]
+            )
+            for ref in template["enemies"]
+        ]
+    return templates
