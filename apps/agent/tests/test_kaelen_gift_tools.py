@@ -5,11 +5,12 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import SAMPLE_PLAYER, make_context
+from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
 from test_draethar_inner_fire import _combat_ctx, _invoke, _mocks, _player
 from test_kaelen_gift import player
 
 import conditions
+import event_types as E
 from check_resolution_attack import resolve_attack
 from check_tools import _check_impl
 from combat_support import apply_attack_result
@@ -120,3 +121,18 @@ def test_prompt_names_packet_gift():
     assert "gift_triggered" in COMBAT_SYSTEM_PROMPT
     assert "Kaelen's surge" in COMBAT_SYSTEM_PROMPT
     assert "Iron Resolve" in COMBAT_SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("damage", [1, 2])
+async def test_inner_fire_surges_reach_hud_before_next_phase(damage):
+    ctx = _combat_ctx(hp_current=6, room=make_mock_room())
+    ctx.userdata.party.primary.patron_id = "kaelen"
+    await _invoke(ctx, *_mocks(_player(hp_current=6), roll_total=damage))
+    updates = [event for event in published_payloads(ctx.userdata.room) if event["type"] == E.COMBAT_UI_UPDATE]
+    if damage == 1:
+        assert updates == []
+        return
+    assert updates
+    rendered = next(p for p in updates[-1]["combatants"] if p["id"] == "player_1")
+    assert rendered["hpCurrent"] == 4
+    assert rendered["conditions"] == [{"type": "iron_resolve", "source": "kaelen_iron_resolve", "stacks": 1}]

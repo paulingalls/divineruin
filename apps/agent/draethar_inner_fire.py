@@ -35,9 +35,12 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import dice
+import event_types as E
 import racial_resonance
 import resonance_events
 from combat_support import _handle_hp_zero, _publish_sounds
+from combat_ui_update import build_combat_ui_update
+from game_events import publish_game_event
 from kaelen_gift import trigger_iron_resolve
 from session_data import SessionData
 
@@ -163,6 +166,14 @@ async def _inner_fire_locked(
         # reload. Only fires when concentration actually broke (rare); a no-condition spell makes
         # this an idempotent re-write of the already-saved state.
         await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
+
+    if gift_triggered:
+        await publish_game_event(
+            session.room,
+            E.COMBAT_UI_UPDATE,
+            build_combat_ui_update(session.combat_state),
+            event_bus=session.event_bus,
+        )
 
     return json.dumps(
         {

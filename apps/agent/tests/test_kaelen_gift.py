@@ -129,3 +129,14 @@ def test_latch_serialization_and_legacy_default():
     legacy = CombatState.from_dict(raw).get_participant(target.id)
     assert legacy is not None
     assert not legacy.iron_resolve_spent
+
+
+def test_inactive_gift_refuses_without_spending(monkeypatch):
+    rows = deepcopy(_gods_content.load_gods())
+    next(row for row in rows if row["god_id"] == "kaelen")["layer_1_gift"]["status"] = "awaits_binding"
+    monkeypatch.setattr("kaelen_gift.load_gods", lambda: rows)
+    target = player()
+    with pytest.raises(ValueError, match="not active"):
+        trigger_iron_resolve(setup(), target, 10)
+    assert target.conditions == []
+    assert not target.iron_resolve_spent
