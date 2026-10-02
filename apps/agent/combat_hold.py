@@ -16,17 +16,19 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 """
 
 import logging
-from dataclasses import replace
+from uuid import uuid4
 
 import combat_enhancers
-import combat_marks
+import combat_marks as combat_marks
 import combat_reaction_contest
 import combat_reaction_effect
+import combat_recharge
 import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
+from combat_action_availability import begin_execution, replay_valid
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
@@ -56,6 +58,7 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
     return [
         {
             "seq": seq,
+            "execution_id": uuid4().hex,
             "actor_id": packet.actor_id,
             "initiative": packet.initiative,
             "declaration": dict(state.pending_declarations.get(packet.actor_id, {})),
@@ -111,6 +114,13 @@ def _is_wasted(state, head: dict) -> bool:
     if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
+    action = _find_action(actor, declaration.action)
+    if (
+        action is not None
+        and not replay_valid(state, head, actor, action, declaration)
+        and not combat_recharge.available(actor, action)
+    ):
+        return True
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
@@ -134,9 +144,10 @@ def _opens_windows(state, head: dict) -> bool:
         return False
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
-    return (
-        declaration.target_id is not None and actor is not None and _find_action(actor, declaration.action) is not None
-    )
+    action = _find_action(actor, declaration.action) if actor is not None else None
+    if action is not None and action_kind(action) in ("healing", "prepare_attack"):
+        return False
+    return declaration.target_id is not None and action is not None
 
 
 def _attack_action(state, head: dict) -> dict | None:
@@ -313,7 +324,7 @@ def _roll(state, head: dict, action: dict, resolver):
     declaration = _held_declaration(head)
     attacker = state.get_participant(head["actor_id"])
     target = state.get_participant(declaration.target_id)
-    attacker = replace(attacker, attack_mod=attacker.attack_mod + combat_marks.attack_bonus(state, attacker, target))
+    action = begin_execution(state, attacker, action, declaration, head)
     return roll_attack(
         attacker,
         action,
@@ -322,6 +333,7 @@ def _roll(state, head: dict, action: dict, resolver):
         enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
         is_first_attack_of_combat=not state.first_attack_resolved,
         resolver=resolver,
+        combat_state=state,
     )
 
 
@@ -385,5 +397,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
+        _held_head=head if head.get("execution_receipt") is not None else None,
         **deps,
     )

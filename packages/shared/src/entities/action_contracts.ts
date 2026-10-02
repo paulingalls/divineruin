@@ -3,6 +3,9 @@ import { CONDITION_NAMES } from "./encounter";
 export type Recharge =
   { kind: "roll"; die: 6; threshold: number } | { kind: "encounter" | "round"; uses: number };
 export type ActionExtensions = {
+  attack_source?: unknown;
+  to_hit?: unknown;
+  self_heal?: unknown;
   recharge?: unknown;
   advantage?: unknown;
   duration?: unknown;
@@ -40,6 +43,22 @@ export function validateRecharge(value: unknown, path: string): void {
 
 export function validateActionExtensions(action: ActionExtensions, path: string): void {
   const kind = action.kind === undefined ? "attack" : action.kind;
+  if ("attack_source" in action) {
+    if (kind !== "attack" || action.attack_source !== "catalog") invalid(`${path}.attack_source`);
+    const saveOnly =
+      action.half_on_success === true || action.damage === "0" || action.damage === 0;
+    if (!saveOnly && !Number.isInteger(action.to_hit)) invalid(`${path}.to_hit`);
+  }
+  if (
+    "self_heal" in action &&
+    (kind !== "attack" ||
+      action.self_heal !== "damage_dealt" ||
+      action.damage == null ||
+      action.damage === "" ||
+      action.damage === "0" ||
+      action.damage === 0)
+  )
+    invalid(`${path}.self_heal`);
   if (["attack", "healing", "prepare_attack"].includes(kind as string) && "recharge" in action)
     validateRecharge(action.recharge, `${path}.recharge`);
   if ("advantage" in action && typeof action.advantage !== "boolean") invalid(`${path}.advantage`);

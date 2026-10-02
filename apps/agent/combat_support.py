@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
 
@@ -15,12 +15,15 @@ import db_mutations
 import db_queries
 import event_types as E
 import reaction_windows
+from combat_action_availability import action_summary
+from combat_attack_roll import build_attack_dice_roll_payload, roll_attack
+from combat_attack_roll import deserialize_roll as deserialize_roll
+from combat_attack_roll import serialize_roll as serialize_roll
 from combat_durability import _accrue_durability, _find_equipped
+from combat_enemy_active import apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from condition_restrictions import cannot_act
-from dramatic import DramaticContext, evaluate_dramatic_context
-from encounter_actions import action_kind
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -48,12 +51,7 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "cannot_act": list(cannot_act(p.conditions)),
         "prone": conditions.has_condition(p.conditions, "prone"),
         "grappled_by": combat_grapple.grappler_id(p.conditions),
-        "actions": [action["name"] for action in p.action_pool],
-        "mark_actions": [
-            {"name": action["name"], "kind": action_kind(action)}
-            for action in p.action_pool
-            if action_kind(action) != "attack"
-        ],
+        **action_summary(p),
     }
 
 
@@ -166,6 +164,7 @@ async def _resolve_attack_packet(
         enemies_remaining=enemies_remaining,
         is_first_attack_of_combat=is_first_attack_of_combat,
         resolver=resolver,
+        combat_state=combat_state,
     )
     summary = await apply_attack_result(
         session,
@@ -200,105 +199,6 @@ async def _resolve_attack_packet(
             summary["condition_immune"] = "grappled"
             summary["condition_immunity_source"] = target.condition_immunities["grappled"]
     return summary
-
-
-def roll_attack(
-    attacker,
-    action: dict,
-    target,
-    *,
-    target_ac_bonus: int = 0,
-    enemies_remaining: int | None = None,
-    is_first_attack_of_combat: bool = False,
-    resolver=check_resolution_attack,
-) -> tuple:
-    """Roll ONE attack and return ``(AttackResult, effective_ac)`` — WITHOUT touching HP.
-
-    Pure and synchronous by design: no mutation, no await, no event. That is what lets the
-    Beat-3 hold pause between the roll and the impact (M29, story-016) — the post-roll reaction
-    window is PRE-DAMAGE, so the outcome must be known while the target is still untouched.
-    ``apply_attack_result`` is the other half; ``_resolve_attack_packet`` composes both.
-    """
-    attacker_data = {
-        "attributes": attacker.attributes,
-        "level": attacker.level,
-        # Attacker's active conditions (M4.3): resolve_attack folds Exhausted into the roll,
-        # Prone/Blinded into disadvantage, and Enraged into +2 damage.
-        "conditions": attacker.conditions,
-    }
-
-    # ``target_ac_bonus`` is the target's phase-scoped AC modifier (Defend's +2, M4.2);
-    # the live caller passes state.ac_modifiers[target.id]. Defaults to 0 for direct callers.
-    # The target's condition AC modifier (M4.3, e.g. Enraged -2 AC) makes them easier to hit.
-    target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
-    effective_ac = target.ac + target_ac_bonus + target_condition_ac
-    attack_result = resolver.resolve_attack(
-        attacker_data,
-        action,
-        effective_ac,
-        target.hp_current,
-        target_conditions=target.conditions,
-        # Encounter-role overlay (M4.7, story-001): a role-derived attacker carries a flat to-hit
-        # bonus and a damage multiplier (Elite/Boss boost, Minion soften). Players carry identity
-        # defaults, so the player attack path is unchanged.
-        attack_mod=attacker.attack_mod,
-        damage_mult=attacker.damage_mult,
-    )
-
-    # Dramatic-dice (M4.5, story-004): the resolver's intrinsic verdict (nat-20/nat-1/
-    # killing-blow) is the floor. If it didn't fire, PROMOTE on the encounter-context
-    # signals only the caller can see — the last enemy standing, or the opening strike.
-    # The caller supplies these (combat_packet._resolve_one_packet counts non-fallen
-    # enemies + tracks first attack); never downgrade an already-dramatic intrinsic verdict.
-    if not attack_result.dramatic:
-        verdict = evaluate_dramatic_context(
-            DramaticContext(
-                roll_type="attack",
-                enemies_remaining=enemies_remaining,
-                is_first_attack_of_combat=is_first_attack_of_combat,
-            )
-        )
-        if verdict.dramatic:
-            attack_result = replace(attack_result, dramatic=True, context=verdict.context)
-
-    return attack_result, effective_ac
-
-
-def serialize_roll(attack_result, effective_ac: int) -> dict:
-    """A rolled-but-unapplied attack as JSONB, for the held action it rides inside.
-
-    ``consumed_conditions`` is the one field JSON loses: it is a tuple, and a list coming back
-    would make the M4.8 single-use +1d4 die look unconsumed. It is emitted as a LIST here so the
-    serialized shape is already JSONB-native and a persisted state round-trips byte-identical
-    (asdict alone leaves a tuple, which json turns into a list only on the way out — so the state
-    written and the state reloaded would differ). ``deserialize_roll`` re-tuples it on the way back.
-    """
-    fields = asdict(attack_result)
-    fields["consumed_conditions"] = list(fields["consumed_conditions"])
-    return {"attack_result": fields, "effective_ac": effective_ac}
-
-
-def deserialize_roll(data: dict) -> tuple:
-    """The read-side inverse of ``serialize_roll`` — ``(AttackResult, effective_ac)``."""
-    fields = dict(data["attack_result"])
-    fields["consumed_conditions"] = tuple(fields.get("consumed_conditions") or ())
-    return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
-
-
-def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
-    return {
-        "roll_type": "attack",
-        "attacker": attacker.name,
-        "roll": attack_result.roll,
-        "modifier": attack_result.attack_modifier,
-        "total": attack_result.attack_total,
-        "success": attack_result.hit,
-        "narrative": attack_result.narrative_hint,
-        "damage": attack_result.damage,
-        "critical": attack_result.critical_success,
-        "dramatic": attack_result.dramatic,
-        "context": attack_result.context,
-    }
 
 
 @dataclass(frozen=True)
@@ -356,6 +256,10 @@ async def apply_attack_result(
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
+
+    self_healed = 0
+    if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
+        self_healed = heal(attacker, max(0, hp_before - target.hp_current))
 
     sounds: list[str] = []
     if save_damage and attack_result.damage > 0:
@@ -474,6 +378,11 @@ async def apply_attack_result(
             consumed_conditions=attack_result.consumed_conditions,
         )
         log_outcome = hit_miss
+    if action.get("self_heal") == "damage_dealt":
+        response["self_healed"] = self_healed
+        response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
+    if combat_state is not None:
+        apply_prepared_hit(combat_state, attacker, target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
     logger.info(

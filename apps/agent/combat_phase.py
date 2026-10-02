@@ -21,9 +21,11 @@ import combat_grapple
 import reaction_spend
 from combat_ability import _find_action, condition_ability
 from combat_ability_gate import declared_ability
+from combat_action_availability import require_available
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from conditions import tick_conditions
 from declarations import Declaration, DeclarationType, ManeuverIntent, resolve_declaration
+from encounter_actions import action_kind
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
 from veil_ward import tick_ward_rounds, ward_rounds_expired
@@ -176,6 +178,9 @@ def advance_combat_phase(
                     f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
                     f"available actions: {available}"
                 )
+            pool_action = _find_action(actor, declaration.action)
+            if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
+                require_available(actor, pool_action)
             if declaration.type is DeclarationType.ABILITY and actor.type == "player":
                 resolved_ability = declared_ability(declaration.action)
                 if resolved_ability is not None and condition_ability(resolved_ability) is None:
@@ -186,9 +191,15 @@ def advance_combat_phase(
                         )
                     raise ValueError(f"{declaration.action} is not declarable in combat")
             if declaration.type is DeclarationType.ABILITY and actor.type != "player":
-                # Resolution wastes every other non-player ABILITY (combat_ability._resolve_ability_packet).
                 pool_action = _find_action(actor, declaration.action)
-                if actor.is_ally or pool_action is None or not pool_action.get("applies_condition"):
+                if (
+                    actor.is_ally
+                    or pool_action is None
+                    or (
+                        not pool_action.get("applies_condition")
+                        and action_kind(pool_action) not in ("healing", "prepare_attack")
+                    )
+                ):
                     available = [action["name"] for action in actor.action_pool]
                     raise ValueError(
                         f"{actor.name} ({actor.id}) cannot declare ability {declaration.action!r}: only players "

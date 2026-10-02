@@ -18,6 +18,7 @@ import combat_ability_save
 import combat_enhancers
 import combat_maneuver
 import combat_marks
+import combat_recharge
 import combat_resolution
 import conditions
 import spell_casting
@@ -33,18 +34,14 @@ from combat_ability import (
     condition_ability,
 )
 from combat_ability_gate import declared_ability
+from combat_action_availability import begin_execution, replay_valid
 from combat_deescalation import (
     _gate_deescalation,
     _resolve_deescalation_packet,
     _validate_argument_type,
 )
-from combat_enemy_action import (
-    _resolve_enemy_condition_packet,
-    is_combined_attack_action,
-    is_save_damage_action,
-    resolve_combined_attack_action,
-    resolve_save_damage_action,
-)
+from combat_enemy_action import resolve_enemy_strike
+from combat_enemy_active import resolve_active
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
 from declarations import DeclarationType
@@ -201,6 +198,7 @@ async def _resolve_one_packet(
     grapple_blocked: bool = False,
     mark_cancelled: bool = False,
     publish_roll: bool = True,
+    _held_head=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -249,74 +247,52 @@ async def _resolve_one_packet(
         else None
     )
 
-    if not attacker.is_ally and action is not None and is_save_damage_action(action):
-        return await resolve_save_damage_action(
-            session,
-            attacker,
-            decl,
-            action,
-            state=state,
-            conn=conn,
-            mutations=mutations,
-            queries=queries,
-            concentration_break_mod=concentration_break_mod,
-            sink=sink,
-            reaction_save_advantage=reaction_save_advantage,
-        )
+    if not attacker.is_ally and action is not None and action_kind(action) in ("healing", "prepare_attack"):
+        if not combat_recharge.available(attacker, action):
+            return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
+        action = begin_execution(state, attacker, action, decl)
+        return resolve_active(state, attacker, action, decl)
 
-    if not attacker.is_ally and action is not None and is_combined_attack_action(action):
+    if action is not None:
+        replay = _held_head is not None and replay_valid(state, _held_head, attacker, action, decl)
+        if (_held_head is not None and not replay) or (not replay and not combat_recharge.available(attacker, action)):
+            return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
         target = state.get_participant(decl.target_id) if decl.target_id else None
-        if target is None:
-            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
-        if target.is_fallen:
-            return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
-        summary = await resolve_combined_attack_action(
+        if replay:
+            assert _held_head is not None
+            action = _held_head["executed_action"]
+        elif (
+            target is not None
+            and not target.is_fallen
+            and (
+                decl.type is DeclarationType.ATTACK
+                or action.get("applies_condition")
+                or action.get("half_on_success") is True
+            )
+        ):
+            action = begin_execution(state, attacker, action, decl)
+
+    if not attacker.is_ally and action is not None:
+        enemy_summary = await resolve_enemy_strike(
             session,
             attacker,
-            target,
             decl,
             action,
             state=state,
+            packet=packet,
             conn=conn,
             mutations=mutations,
             queries=queries,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
             sink=sink,
-            target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+            reaction_ac_bonus=reaction_ac_bonus,
             shield_reaction=shield_reaction,
-            enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
-            is_first_attack_of_combat=not state.first_attack_resolved,
             reaction_save_advantage=reaction_save_advantage,
             publish_roll=publish_roll,
         )
-        if summary.get("consumed_conditions"):
-            attacker.conditions = conditions.remove_conditions(attacker.conditions, summary["consumed_conditions"])
-        state.first_attack_resolved = True
-        summary["actor_id"] = packet.actor_id
-        summary["resolved"] = True
-        return _attach_riders(summary, attacker, decl)
-
-    # Remaining save-only enemy condition actions (M13): a HOSTILE actor (is_ally False — enemy or
-    # temporary_hollowed, never a player/companion ally) whose action_pool entry carries
-    # applies_condition inflicts a save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
-    # enemy pool actions as ATTACK (system_prompts.py:235 — "Ability" is a spell/ability id the
-    # caster knows, which pool actions are not), so gating this on ABILITY alone made the whole
-    # feature a no-op in real play. Deterministic mechanics: the engine, not the LLM's type choice,
-    # decides the effect. Fires for ATTACK or ABILITY; an action WITHOUT applies_condition falls
-    # through to the normal attack/ability path. (The opening-strike dramatic beat stays with the
-    # first real ATTACK — a save-based condition is not an attack roll, so it does not consume it.)
-    if not attacker.is_ally and action is not None and action.get("applies_condition"):
-        return await _resolve_enemy_condition_packet(
-            session,
-            attacker,
-            decl,
-            action,
-            state=state,
-            conn=conn,
-            concentration_break_mod=concentration_break_mod,
-            reaction_save_advantage=reaction_save_advantage,
-        )
+        if enemy_summary is not None:
+            return enemy_summary
 
     if decl.type is DeclarationType.ABILITY:
         # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which

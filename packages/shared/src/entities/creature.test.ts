@@ -235,3 +235,20 @@ test("exported active contracts", () => {
   expect(typedActives).toHaveLength(3);
   expect(typedSignature.narration_cue).toBe("A crack.");
 });
+
+test("catalog runtime extensions use the public creature boundary", () => {
+  const block = structuredClone(corpus.valid[0]!.block);
+  const attack = (block.attacks as Record<string, unknown>[])[0]!;
+  Object.assign(attack, { attack_source: "catalog", self_heal: "damage_dealt" });
+  expect(validateCreatureStatBlock(block)).toEqual([]);
+  for (const [field, value] of [
+    ["attack_source", "bad"],
+    ["self_heal", "raw_damage"],
+  ]) {
+    const invalid = structuredClone(block);
+    (invalid.attacks as Record<string, unknown>[])[0]![field!] = value;
+    expect(validateCreatureStatBlock(invalid).some((problem) => problem.includes(field!))).toBe(
+      true,
+    );
+  }
+});

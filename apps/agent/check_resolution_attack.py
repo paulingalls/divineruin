@@ -112,10 +112,19 @@ def resolve_attack(
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
     incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
-    atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
+    if "attack_source" in weapon and weapon["attack_source"] != "catalog":
+        raise ValueError("invalid attack_source")
+    catalog = weapon.get("attack_source") == "catalog"
+    if catalog and type(weapon.get("to_hit")) is not int:
+        raise ValueError("catalog attack requires integer to_hit")
+    base_modifier = weapon["to_hit"] if catalog else attack_modifier(attacker_data, weapon)
+    atk_mod = base_modifier + effects.check_modifier + attack_mod
     attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
     attack_advantage = (
-        "attack" in effects.advantage_scopes or incoming_advantage(target_conditions) or incoming_mode_advantage
+        weapon.get("advantage") is True
+        or "attack" in effects.advantage_scopes
+        or incoming_advantage(target_conditions)
+        or incoming_mode_advantage
     )
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
@@ -147,9 +156,8 @@ def resolve_attack(
         if critical:
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
-        # Damage adds the governing-attribute modifier once (even on a crit),
-        # never proficiency (spec: proficiency is attack-roll only).
-        damage += weapon_attribute_modifier(attacker_data, weapon)
+        if not catalog:
+            damage += weapon_attribute_modifier(attacker_data, weapon)
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
         damage += effects.damage_modifier

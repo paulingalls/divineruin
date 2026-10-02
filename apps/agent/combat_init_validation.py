@@ -9,6 +9,9 @@ from social_resolution import RESISTANCE_TAGS
 def validate_enemy_action_shapes(enemies: list[dict]) -> None:
     """Fail loud when an enemy condition or save-damage action cannot resolve."""
     for enemy in enemies:
+        names = [a["name"].casefold() for a in enemy.get("action_pool", [])]
+        if len(names) != len(set(names)):
+            raise ValueError(f"enemy {enemy.get('id')!r}: duplicate action names")
         for action in enemy.get("action_pool", []):
             label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
             validate_action_extensions(action, enemy.get("id", "action"))

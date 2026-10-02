@@ -20,10 +20,6 @@ Honest scope notes:
 - Damage is a MULTIPLIER (``damage_mult``) applied to the final rolled total at resolution
   (check_resolution_attack.resolve_attack), NOT a dice-notation rewrite. The doc's curated example
   dice (1d6+2 -> 1d4+1) are illustrative; the deterministic engine scales the rolled number.
-- ``enhance_abilities`` tags each active ability ``enhanced`` (and bumps a ``uses`` field where one
-  exists). Today's action dicts carry no frequency/uses field, so this is largely a marker until
-  richer per-ability enhancement content lands; the live Elite/Boss power comes from the HP/AC/
-  attack/dc/damage/xp deltas.
 - Boss ``signature_ability`` is AUTHORED content on the template enemy (not generated here);
   derivation attaches it and sets ``legendary_actions=1``. The signature's in-combat firing and the
   legendary-action runtime are story-003 — this story only scaffolds the fields.
@@ -115,10 +111,7 @@ _ACTIVE_PROPERTY_MARKERS = frozenset({"buff", "debuff", "aoe", "healing", "contr
 
 
 def _is_active_ability(action: dict) -> bool:
-    """An action is an active ability (vs. a basic weapon attack) when it is not attack-kind (a
-    command), deals no direct damage (``damage`` falsy or "0"/"0d0"), or carries an active-effect
-    property marker."""
-    if action_kind(action) != "attack":
+    if "recharge" in action or action_kind(action) != "attack":
         return True
     damage = str(action.get("damage", "")).strip()
     if damage in ("", "0", "0d0"):
@@ -149,6 +142,8 @@ def enhance_abilities(actives: list[dict]) -> list[dict]:
         copy["enhanced"] = True
         if isinstance(copy.get("uses"), int):
             copy["uses"] += 1
+        if "recharge" in copy and copy["recharge"]["kind"] in ("round", "encounter"):
+            copy["recharge"] = {**copy["recharge"], "uses": copy["recharge"]["uses"] + 1}
         enhanced.append(copy)
     return enhanced
 

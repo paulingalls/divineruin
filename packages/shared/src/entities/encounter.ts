@@ -79,6 +79,9 @@ export interface EncounterAttackAction extends EncounterActionBase {
   dc?: number;
   half_on_success?: boolean;
   escape_dc?: number;
+  attack_source?: "catalog";
+  self_heal?: "damage_dealt";
+  to_hit?: number;
   advantage?: boolean;
   duration?: number;
   recharge?: Recharge;
