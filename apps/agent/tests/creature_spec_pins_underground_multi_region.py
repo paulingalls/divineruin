@@ -279,8 +279,8 @@ ABILITIES = {
     "bandit_captain": (
         ("Bandits within 30 ft gain +1 to attack rolls.", "Can Dash, Disengage, or Hide as a bonus action."),
         (
-            ("All allied bandits within 30 ft regain 1d8 HP.", "1/encounter"),
-            ("Advantage on next attack; on hit, target Blinded 1 round.", "1/encounter"),
+            ("All allied bandits within 30 ft regain 1d8 HP.", {"kind": "encounter", "uses": 1}),
+            ("Advantage on next attack; on hit, target Blinded 1 round.", {"kind": "encounter", "uses": 1}),
         ),
     ),
     "thunderbird": (

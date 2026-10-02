@@ -51,6 +51,10 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "cannot_act": list(cannot_act(p.conditions)),
         "prone": conditions.has_condition(p.conditions, "prone"),
         "grappled_by": combat_grapple.grappler_id(p.conditions),
+        "creature_id": p.creature_id,
+        "catalog_narration": p.catalog_narration,
+        "catalog_audio": p.catalog_audio,
+        "deferred_effects": p.deferred_effects,
         **action_summary(p),
     }
 
