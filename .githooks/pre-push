@@ -97,6 +97,7 @@ else
     echo "  Prepare hooksPath self-test..."
     bash "$(dirname "$0")/../scripts/test-prepare-hookspath.sh"
     bash "$(dirname "$0")/../scripts/test-local-service-host.sh"
+    bash "$(dirname "$0")/../scripts/test-worktree-sweep-livekit.sh"
 
     # Typecheck + lint backstop. Pre-commit checks staged files and skips language
     # tools in fresh worktrees without deps. Fast-fail here (set -e),
@@ -120,6 +121,7 @@ else
     echo "  Worktree ownership self-test..."
     bash "$(dirname "$0")/../scripts/test-worktree-ownership.sh"
     bash "$(dirname "$0")/../scripts/test-worktree-url-ownership.sh"
+    bash "$(dirname "$0")/../scripts/test-worktree-sweep-livekit-docker.sh"
     echo "  Worktree listener ownership self-test..."
     bash "$(dirname "$0")/../scripts/test-worktree-listener-ownership.sh"
 
