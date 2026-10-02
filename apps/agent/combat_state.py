@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 
 import combat_reaction_contest
+import combat_spatial
 import reaction_spend
 import reaction_windows
 from combat_participant import CombatParticipant
@@ -86,6 +87,8 @@ class CombatState:
     # See reaction_windows.open_window_for for the shape.
     open_window: dict | None = None
 
+    spatial: dict | None = None
+
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
             if p.id == participant_id:
@@ -109,6 +112,11 @@ class CombatState:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
         return cls(
+            spatial=(
+                combat_spatial.validate_spatial(data["spatial"], [p["id"] for p in data["participants"]])
+                if data.get("spatial") is not None
+                else None
+            ),
             combat_id=data["combat_id"],
             participants=[CombatParticipant(**p) for p in data["participants"]],
             initiative_order=data["initiative_order"],

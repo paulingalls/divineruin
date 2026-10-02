@@ -12,6 +12,7 @@ import event_types as E
 from combat_init import _start_combat_impl
 
 SAMPLE_PLAYER = {
+    "speed": 30,
     "player_id": "player_1",
     "name": "Kael",
     "class": "warrior",
@@ -39,6 +40,13 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"goblin_scout_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
@@ -457,6 +465,13 @@ class TestStartCombat:
         mock_content.load_creature_enemy = load
         mock_content.get_encounter_template = AsyncMock(
             return_value={
+                "scene_placement": {
+                    "party_start": {"x": 0, "y": 0, "z": 0},
+                    "companion_start": {"x": 0, "y": 5, "z": 0},
+                    "actors": {"e1": {"x": 20, "y": 0, "z": 0}},
+                    "locations": {},
+                    "zones": {},
+                },
                 "id": "bad_enc",
                 "recommended_party_level": 1,
                 "enemies": [{"id": "e1", "creature_id": "fixture_goblin", "role": "standard"}],

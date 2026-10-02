@@ -26,6 +26,13 @@ async def test_seed_rejects_invalid_enemy_tier(tier):
                                 "id": "bad_encounter",
                                 "recommended_party_level": 1,
                                 "enemies": [{"id": "bad_enemy", "creature_id": "fixture_goblin", "role": "standard"}],
+                                "scene_placement": {
+                                    "party_start": {"x": 0, "y": 0, "z": 0},
+                                    "companion_start": {"x": 0, "y": 0, "z": 0},
+                                    "actors": {"bad_enemy": {"x": 20, "y": 0, "z": 0}},
+                                    "locations": {},
+                                    "zones": {},
+                                },
                             }
                         ),
                     }

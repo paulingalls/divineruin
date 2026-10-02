@@ -72,6 +72,20 @@ class ManeuverDecl(BaseModel):
     )
 
 
+class Destination(BaseModel):
+    x: float = Field(strict=True, allow_inf_nan=False)
+    y: float = Field(strict=True, allow_inf_nan=False)
+    z: float = Field(strict=True, allow_inf_nan=False)
+
+
+class MoveDecl(BaseModel):
+    """Move to an explicit point in feet, consuming the phase action."""
+
+    kind: Literal["move"]
+    actor_id: str
+    destination: Destination
+
+
 class DefendDecl(BaseModel):
     """Make no attack and gain +2 AC until the next phase."""
 
@@ -86,7 +100,7 @@ class RetreatDecl(BaseModel):
     actor_id: str = Field(description="The participant declaring this action.")
 
 
-DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, DefendDecl, RetreatDecl]
+DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
 DECL_VARIANTS: tuple[type[BaseModel], ...] = (
@@ -94,6 +108,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     AbilityDecl,
     InteractDecl,
     ManeuverDecl,
+    MoveDecl,
     DefendDecl,
     RetreatDecl,
 )
@@ -118,6 +133,13 @@ def _raw(decl: DeclVariant) -> dict:
         return raw
     if isinstance(decl, InteractDecl):
         return {"type": "interact", "action": decl.action}
+    if isinstance(decl, MoveDecl):
+        return {
+            "type": "maneuver",
+            "action": "move",
+            "target_id": decl.actor_id,
+            "destination": decl.destination.model_dump(),
+        }
     if isinstance(decl, ManeuverDecl):
         return {"type": "maneuver", "target_id": decl.target_id}
     if isinstance(decl, DefendDecl):

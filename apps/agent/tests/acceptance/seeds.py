@@ -23,6 +23,7 @@ async def _set_race(pool, player_id: str, race: str) -> None:
 
 _DEFAULT_PLAYER = {
     "name": "Acceptance Tester",
+    "speed": 30,
     "level": 2,
     "attributes": {
         "strength": 12,

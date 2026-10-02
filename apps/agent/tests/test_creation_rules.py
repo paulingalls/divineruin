@@ -475,3 +475,9 @@ class TestDataIntegrity:
         assert data["hp"]["current"] >= 1
         assert data["ac"] >= 10
         assert len(data["proficiencies"]) > 0
+
+
+def test_character_creation_persists_explicit_speed_30():
+    for race in RACES:
+        for class_id in CLASSES:
+            assert build_character_data("Test", race, class_id, None, "")["speed"] == 30

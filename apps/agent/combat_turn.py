@@ -17,6 +17,8 @@ import check_resolution_attack
 import check_resolution_save
 import combat_hold
 import combat_phase
+import combat_spatial
+import combat_spatial_declarations
 import combat_wrap
 import concentration_break
 import db
@@ -53,7 +55,8 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, maneuver, defend or retreat. Include the player, every
+    interact, maneuver, move, defend or retreat. Move names an explicit destination in feet and consumes
+    this phase action, limited to the actor's persisted speed. Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""
@@ -92,14 +95,16 @@ async def _declare_phase_locked(
     # An empty declarations payload is a ValueError from the engine — surface it as a
     # ToolError so the DM re-prompts rather than crashing combat.
     try:
+        combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    session.combat_state = next_state
     await mutations.save_combat_state(next_state.combat_id, next_state.to_dict())
+    session.combat_state = next_state
 
     response = {
+        "spatial": combat_spatial.response_facts(next_state, session.acting_player_id, session.primary_player_id),
         "beat": next_state.beat,
         "round": next_state.round_number,
         "participants": _participant_roster(next_state.participants),
@@ -160,6 +165,10 @@ async def _resolve_phase_locked(
     cs = _require_combat(session)
     if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
         raise ToolError(f"Not at the resolution or narration beat (current beat: {cs.beat}). Call declare_phase first.")
+    try:
+        combat_spatial_declarations.preflight_state(cs)
+    except ValueError as error:
+        raise ToolError(str(error)) from error
     resolving_allies = cs.beat == combat_phase.PhaseBeat.RESOLUTION
 
     # TWO commits, not one (M29, story-016). The ally pass commits first; the held enemy actions
@@ -214,6 +223,7 @@ async def _resolve_phase_locked(
             # a prevalidation refusal so recovery reopens the declaration beat.
             try:
                 state, adv = combat_phase.advance_combat_phase(cs)
+                combat_spatial_declarations.preflight(state, [(p.actor_id, p.declaration) for p in adv.packets])
             except ValueError as e:
                 raise PrevalidationRefusal(ToolError(str(e))) from e
 
@@ -408,6 +418,7 @@ async def _resolve_phase_locked(
         return handoff
 
     response = {
+        "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,
         "packets": packet_summaries,

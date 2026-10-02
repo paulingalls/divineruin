@@ -16,6 +16,7 @@ import asyncpg
 # script runs from scripts/ with only apps/agent as its uv project, not on sys.path.
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "agent"))
 
+from combat_spatial import validate_scene
 from creature_schema import validate_creature_stat_block
 from dice import roll
 from encounter_references import validate_encounter_references
@@ -193,6 +194,7 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
             try:
                 for entity in entities:
                     validate_encounter_references(entity, catalog)
+                    validate_scene(entity)
             except ValueError as error:
                 raise InvalidContent(str(error)) from error
         for entity in entities:
@@ -312,6 +314,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         data = json.loads(row["data"])
         try:
             validate_encounter_references(data, catalog)
+            validate_scene(data)
         except ValueError as error:
             errors.append(str(error))
             continue

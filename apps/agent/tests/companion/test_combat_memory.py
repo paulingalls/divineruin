@@ -16,6 +16,7 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 
 
 SAMPLE_PLAYER = {
+    "speed": 30,
     "player_id": "player_1",
     "name": "Hero",
     "class": "warrior",
@@ -33,6 +34,13 @@ SAMPLE_PLAYER = {
 }
 
 SAMPLE_ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"goblin_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",

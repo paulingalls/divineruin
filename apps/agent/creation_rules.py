@@ -306,6 +306,7 @@ def build_character_data(
         "class": class_id,
         "level": 1,
         "xp": 0,
+        "speed": 30,
         "location_id": location_id,
         "attributes": attributes,
         "hp": hp,

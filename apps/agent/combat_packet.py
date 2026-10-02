@@ -20,6 +20,7 @@ import combat_maneuver
 import combat_marks
 import combat_recharge
 import combat_resolution
+import combat_spatial_declarations
 import conditions
 import spell_casting
 import spell_knowledge
@@ -222,6 +223,9 @@ async def _resolve_one_packet(
     # it to the cast/deduct so a non-primary caster's Focus/Resonance land on ITS pool. None for a
     # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.
     player = players_by_id.get(packet.actor_id) if players_by_id else None
+
+    if combat_spatial_declarations.is_move(decl):
+        return combat_spatial_declarations.apply_move(state, attacker, decl)
 
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}

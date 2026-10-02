@@ -46,6 +46,7 @@
     },
     "inventory": [],
     "gold": 15,
-    "backstory": "A wandering sellsword drawn to the guild by rumors of work and coin."
+    "backstory": "A wandering sellsword drawn to the guild by rumors of work and coin.",
+    "speed": 30
   }
 ]

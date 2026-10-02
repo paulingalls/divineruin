@@ -29,8 +29,10 @@ from declaration_payloads import (
     AbilityDecl,
     AttackDecl,
     DefendDecl,
+    Destination,
     InteractDecl,
     ManeuverDecl,
+    MoveDecl,
     RetreatDecl,
     to_engine_declarations,
 )
@@ -294,9 +296,10 @@ def test_a_repeated_actor_fails_loud():
 
 def test_variant_kinds_match_the_engine_declaration_types():
     """The schema and the engine share one vocabulary — a dropped or renamed variant reds
-    here rather than becoming an 'unknown declaration type' the DM meets mid-fight."""
+    here rather than becoming an 'unknown declaration type' the DM meets mid-fight. `move` is the
+    one wire-only kind: it lowers to a maneuver carrying action "move"."""
     kinds = {typing.get_args(v.model_fields["kind"].annotation)[0] for v in DECL_VARIANTS}
-    assert kinds == {t.value for t in DeclarationType}
+    assert kinds == {t.value for t in DeclarationType} | {"move"}
 
 
 _ENGINE_CASES = [
@@ -304,6 +307,7 @@ _ENGINE_CASES = [
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
     InteractDecl(kind="interact", actor_id="a", action="lever"),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
+    MoveDecl(kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
     DefendDecl(kind="defend", actor_id="a"),
     RetreatDecl(kind="retreat", actor_id="a"),
 ]
@@ -316,7 +320,7 @@ def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
 
 
 def test_every_variant_has_an_engine_case():
-    """All six, with no exception carved out. REACTION was the seventh and was excluded here
+    """Every variant, with no exception carved out. REACTION was the seventh and was excluded here
     because its classifier reads the ability catalog; story-017 deleted it, so a variant that
     slips past the engine classifier can no longer hide behind that carve-out."""
     assert len(_ENGINE_CASES) == len(DECL_VARIANTS)
@@ -331,7 +335,7 @@ def test_declare_phase_offers_no_reaction_kind():
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
     kinds = _kind_consts(schema)
-    assert kinds == {t.value for t in DeclarationType}
+    assert kinds == {t.value for t in DeclarationType} | {"move"}
     assert "reaction" not in kinds
     assert "trigger" not in json.dumps(schema)
 

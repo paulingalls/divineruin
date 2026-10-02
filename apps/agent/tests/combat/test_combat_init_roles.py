@@ -17,6 +17,13 @@ from creature_combat import translate_creature
 from tests.combat.test_start_combat import SAMPLE_PLAYER, _make_start_combat_mocks
 
 ROLE_ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"shadeling_1": {"x": 20, "y": 0, "z": 0}, "warden_1": {"x": 20, "y": 5, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "id": "role_mix",
     "name": "Role Mix",
     "difficulty": "hard",
