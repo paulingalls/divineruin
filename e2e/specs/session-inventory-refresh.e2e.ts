@@ -165,6 +165,7 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
     await converged(a1.page, before);
     await converged(a2.page, before);
     await converged(b.page, otherBefore);
+    const otherStore = await store(b.page);
     if (process.env.INVENTORY_SUPPRESS_DELIVERY === "1")
       await a2.page.route("**/api/inventory", (route) => route.abort());
     const craftResponse = a1.page.waitForResponse(
@@ -181,6 +182,8 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
     await converged(a1.page, crafted);
     await converged(a2.page, crafted);
     await converged(b.page, otherBefore);
+    expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
+    expect(await store(b.page)).toEqual(otherStore);
     await expect(a2.page.getByText("Crystal Flask", { exact: true })).toBeVisible();
     await queryDb("UPDATE async_activities SET data = data || $1::jsonb WHERE id=$2", [
       JSON.stringify({
@@ -197,6 +200,8 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
     await converged(a1.page, kept);
     await converged(a2.page, kept);
     await converged(b.page, otherBefore);
+    expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
+    expect(await store(b.page)).toEqual(otherStore);
     expect(sorted(kept.inventory)).toEqual(sorted(pythonInventory(testUser.playerId)));
     await expect(a2.page.getByText("Reinforced Shield", { exact: true })).toBeVisible();
     const duplicate = await fetch(`${API_ORIGIN}/api/activities/${crafted.activity_id}/decide`, {
