@@ -322,17 +322,6 @@ work_ref() {
   esac
 }
 
-work_path() {
-  case "$1" in
-    *.md|docs/*|.claude/*|memory/*) return 0 ;;
-    # Story Verify runs focused acceptance; the sprint full tier runs the whole lane.
-    # A work-branch push should not repeat that lane for a test or recorded fixture edit.
-    apps/agent/tests/acceptance/*|apps/agent/tests/*.json|packages/shared/fixtures/*.json|apps/mobile/src/__tests__/fixtures/*.json) return 0 ;;
-    apps/agent/*.py|apps/agent/tests/*.py|apps/server/src/*.ts|apps/server/src/*.tsx|apps/mobile/src/*.ts|apps/mobile/src/*.tsx|apps/web/src/*.ts|apps/web/src/*.tsx|packages/shared/src/*.ts|packages/design-tokens/src/*.ts|content/*.json) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # --- Pushed-ref routing ---
 # Read pushed-ref list from stdin (pre-push hook protocol: one line per ref
 # as `local_ref local_sha remote_ref remote_sha`) and skip the test suite
@@ -456,13 +445,7 @@ if [ "$DOCS_ONLY" = true ]; then
 fi
 
 if [ "$WORK_ONLY" = true ]; then
-  while IFS= read -r path; do
-    if ! work_path "$path"; then WORK_ONLY=false; break; fi
-  done <<< "$CHANGED"
-fi
-
-if [ "$WORK_ONLY" = true ]; then
-  echo "XP work-branch source push — running lint/typecheck only."
+  echo "XP work-branch push — running lint/typecheck only."
   _run_lint_only
   exit 0
 fi
