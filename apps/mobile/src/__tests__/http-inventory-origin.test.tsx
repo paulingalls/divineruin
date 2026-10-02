@@ -56,6 +56,11 @@ if (process.env[CONTRACT_CHILD] === "1") {
       });
     }
     expect(outbound).not.toHaveBeenCalled();
+    expect(panelStore.getState()).toMatchObject({
+      inventoryOwner: "prior",
+      inventoryRevision: "1",
+      inventory: [{ id: "oak_wood", quantity: 37 }],
+    });
   });
 } else {
   test("all mounted invalid-origin guards pass in an isolated module process", async () => {
