@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import (
     SAMPLE_ITEM,
@@ -145,6 +146,7 @@ class TestTransactGain:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         ctx = _make_context()
         result = json.loads(
             await _transact_impl(
@@ -201,6 +203,7 @@ class TestTransactGain:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         room = _make_mock_room()
         ctx = _make_context(room=room)
         await _transact_impl(
@@ -236,6 +239,7 @@ class TestTransactLose:
         mock_queries = MagicMock()
         mock_queries.get_inventory_item = AsyncMock(return_value=slot)
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_queries.get_inventory_snapshot = snapshot_query([SAMPLE_ITEM])
         mock_inventory_mutations = MagicMock()
         mock_inventory_mutations.transact_inventory = AsyncMock(return_value=remaining)
         return mock_conn, mock_db, mock_content, mock_queries, mock_inventory_mutations

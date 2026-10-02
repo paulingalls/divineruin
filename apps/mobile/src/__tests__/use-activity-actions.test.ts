@@ -24,7 +24,11 @@ function Harness() {
   return null;
 }
 const response = (id = "committed") =>
-  Response.json({ player_id: "A", inventory: [{ id, name: id, slot_info: { quantity: 2 } }] });
+  Response.json({
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id, name: id, slot_info: { quantity: 2 } }],
+  });
 beforeEach(async () => {
   (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   authStore.setState({ phase: "authenticated", playerId: "A", token: "A" });
@@ -70,7 +74,9 @@ for (const kind of ["create", "keep"] as const) {
     await act(() => {
       pending = invoke();
     });
-    panelStore.getState().setInventory([{ id: "agent" } as never]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "8", [{ id: "agent" } as never]);
     const refresh = panelStore.getState().inventoryRefreshRequest;
     await act(async () => {
       resolve(response("old"));
@@ -97,7 +103,9 @@ for (const kind of ["create", "keep"] as const) {
     expect(actions.decisionLoading).toBe(false);
   });
   test(`${kind} refused response preserves inventory and reports no success`, async () => {
-    panelStore.getState().setInventory([{ id: "cached" } as never]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "1", [{ id: "cached" } as never]);
     let pending!: Promise<unknown>;
     await act(() => {
       pending = invoke();
@@ -149,7 +157,9 @@ test.each([{ playerId: "B" }, { token: "rotated" }, { phase: "unauthenticated" a
 test.each(["create", "keep"])(
   "%s refuses an HTTP failure even with a valid inventory body",
   async (kind) => {
-    panelStore.getState().setInventory([{ id: "cached" } as never]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "1", [{ id: "cached" } as never]);
     let pending!: Promise<unknown>;
     await act(() => {
       pending =

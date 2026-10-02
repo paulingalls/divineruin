@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, load_test_creature, make_db_mod, mock_txn
 
 from exploration_agent import ExplorationAgent
@@ -219,6 +220,7 @@ class TestCombatRoundTrip:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
         mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)

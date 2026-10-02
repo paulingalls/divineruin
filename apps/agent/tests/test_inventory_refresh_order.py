@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
 from tools.test_gathering_tools import _NODE, _gather_mocks, _run
@@ -20,6 +21,7 @@ async def test_gather_result_snapshot_sound_order(guest, node):
     inventory = [{"id": "oak_wood", "name": "Oak Wood", "type": "material", "slot_info": {"quantity": 2}}]
     mocks = _gather_mocks(nodes=[_NODE] if node else [])
     mocks[0].get_player_inventory = AsyncMock(return_value=inventory)
+    mocks[0].get_inventory_snapshot = snapshot_query(inventory)
     with actor:
         await _run(context, mocks, rng_val=20 if node else 11)
     payloads = published_payloads(context.userdata.room)
@@ -29,12 +31,17 @@ async def test_gather_result_snapshot_sound_order(guest, node):
         "inventory_updated",
         "play_sound",
     ]
-    assert payloads[-2] == {"type": "inventory_updated", "player_id": owner, "inventory": inventory}
+    assert payloads[-2] == {
+        "type": "inventory_updated",
+        "inventory_revision": "1",
+        "player_id": owner,
+        "inventory": inventory,
+    }
     assert [
         {"type": call.args[0].event_type, **call.args[0].payload}
         for call in context.userdata.event_bus.publish.call_args_list
     ] == payloads
-    mocks[0].get_player_inventory.assert_awaited_once_with(owner)
+    mocks[0].get_inventory_snapshot.assert_awaited_once_with(owner)
     actor.__exit__(None, None, None)
 
 
@@ -47,12 +54,13 @@ async def test_experiment_consumption_publishes_full_snapshot(roll, output):
 
     kwargs, _, mods = _seams(recipes_list=[IRON_SWORD], known_ids=[], available={"iron_ingot": 2, "leather_strip": 1})
     mods["queries"].get_player_inventory = AsyncMock(return_value=[])
+    mods["queries"].get_inventory_snapshot = snapshot_query([])
     context = make_context(room=make_mock_room())
     await _experiment_with_materials_impl(
         context, {"iron_ingot": 2, "leather_strip": 1}, output, rng=FixedRng(roll), **kwargs
     )
     assert published_payloads(context.userdata.room) == [
-        {"type": "inventory_updated", "player_id": "player_1", "inventory": []}
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": "player_1", "inventory": []}
     ]
 
 
@@ -66,6 +74,7 @@ async def test_crafting_consumption_publishes_snapshot():
 
     queries = _craft_queries()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     context = make_context(room=make_mock_room())
     await _start_crafting_project_impl(
         context,
@@ -80,7 +89,7 @@ async def test_crafting_consumption_publishes_snapshot():
         materials_mod=_materials_mod(),
     )
     assert published_payloads(context.userdata.room) == [
-        {"type": "inventory_updated", "player_id": "player_1", "inventory": []}
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": "player_1", "inventory": []}
     ]
 
 
@@ -92,7 +101,7 @@ async def test_inventory_gain_result_before_snapshot():
     from inventory_tools import _transact_impl
 
     context = make_context(room=make_mock_room())
-    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))
+    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([]))
     await _transact_impl(
         context,
         "crystal_flask",
@@ -105,7 +114,12 @@ async def test_inventory_gain_result_before_snapshot():
     )
     events = published_payloads(context.userdata.room)
     assert [e["type"] for e in events] == ["item_acquired", "inventory_updated"]
-    assert events[-1] == {"type": "inventory_updated", "player_id": "player_1", "inventory": []}
+    assert events[-1] == {
+        "type": "inventory_updated",
+        "inventory_revision": "1",
+        "player_id": "player_1",
+        "inventory": [],
+    }
 
 
 async def test_quest_results_before_owner_snapshots():
@@ -116,11 +130,13 @@ async def test_quest_results_before_owner_snapshots():
     )
     case[4].get_item.return_value = {"name": "Relic"}
     case[5].get_player_inventory = AsyncMock(side_effect=lambda pid: [{"id": pid}])
+    case[5].get_inventory_snapshot = snapshot_query(lambda pid: [{"id": pid}])
     await advance(case, 1)
     events = published_payloads(case[0].userdata.room)
     assert [e["type"] for e in events] == ["quest_updated", "inventory_updated", "inventory_updated"]
     assert events[1:] == [
-        {"type": "inventory_updated", "player_id": pid, "inventory": [{"id": pid}]} for pid in ["player_1", "player_2"]
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": pid, "inventory": [{"id": pid}]}
+        for pid in ["player_1", "player_2"]
     ]
 
 
@@ -134,6 +150,7 @@ async def test_gather_refusal_no_gain_and_rollback_emit_no_snapshot(guest, failu
     context.userdata.event_bus = MagicMock()
     mocks = _gather_mocks()
     mocks[0].get_player_inventory = AsyncMock(return_value=[])
+    mocks[0].get_inventory_snapshot = snapshot_query([])
     if failure == "rollback":
 
         @asynccontextmanager
@@ -153,7 +170,7 @@ async def test_gather_refusal_no_gain_and_rollback_emit_no_snapshot(guest, failu
     assert [call.args[0].event_type for call in context.userdata.event_bus.publish.call_args_list] == [
         e["type"] for e in events
     ]
-    mocks[0].get_player_inventory.assert_not_awaited()
+    mocks[0].get_inventory_snapshot.assert_not_awaited()
 
 
 @pytest.mark.parametrize("guest", [False, True])
@@ -169,6 +186,7 @@ async def test_experiment_duplicate_refusal_and_rollback_emit_no_snapshot(failur
 
     kwargs, _, mods = _seams(recipes_list=[], known_ids=[], available={"oak_wood": 1})
     mods["queries"].get_player_inventory = AsyncMock(return_value=[])
+    mods["queries"].get_inventory_snapshot = snapshot_query([])
     mods["exp_db"].has_failed_experiment.return_value = failure == "duplicate"
     if failure == "refusal":
         mods["queries"].get_player_materials.return_value = {}
@@ -190,7 +208,7 @@ async def test_experiment_duplicate_refusal_and_rollback_emit_no_snapshot(failur
                 await _experiment_with_materials_impl(context, {"oak_wood": 1}, "unknown_output", **kwargs)
         assert published_payloads(context.userdata.room) == []
         context.userdata.event_bus.publish.assert_not_called()
-        mods["queries"].get_player_inventory.assert_not_awaited()
+        mods["queries"].get_inventory_snapshot.assert_not_awaited()
 
 
 @pytest.mark.parametrize("guest", [False, True])
@@ -207,6 +225,7 @@ async def test_craft_refusal_and_rollback_emit_no_snapshot(failure, guest):
 
     queries = _craft_queries(recipe_known=failure != "refusal")
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     db_mod = make_db_mod()[0]
     if failure == "rollback":
 
@@ -234,4 +253,4 @@ async def test_craft_refusal_and_rollback_emit_no_snapshot(failure, guest):
             )
         assert published_payloads(context.userdata.room) == []
         context.userdata.event_bus.publish.assert_not_called()
-        queries.get_player_inventory.assert_not_awaited()
+        queries.get_inventory_snapshot.assert_not_awaited()

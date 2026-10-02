@@ -22,6 +22,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from _combat_end_fixtures import combat_end_queries
 from combat._helpers import _damage_resolver, _resolve_round
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 
 import combat_end
@@ -72,7 +73,9 @@ def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> Comba
 
 def _no_durability_queries() -> MagicMock:
     # no equipped items -> no durability events
-    return combat_end_queries(get_player_inventory=AsyncMock(return_value=[]))
+    return combat_end_queries(
+        get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([])
+    )
 
 
 def _no_concentration_break() -> MagicMock:

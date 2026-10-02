@@ -1,9 +1,10 @@
+import { applyInventorySnapshot } from "@/audio/inventory-refresh";
 import { Participant, ParticipantKind } from "livekit-client";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { handleGameEventMessage } from "@/audio/game-event-handler";
-import { parseInventoryItems, type DataChannelEvent } from "@/audio/game-event-parsing";
+import { type DataChannelEvent } from "@/audio/game-event-parsing";
 import { InventoryPanel } from "@/components/hud/panels/inventory-panel";
 import { ThemedText } from "@/components/themed-text";
 import { authStore } from "@/stores/auth-store";
@@ -12,6 +13,7 @@ import { panelStore } from "@/stores/panel-store";
 type Fixture = {
   runId: string;
   owners: string[];
+  initial_revisions: Record<string, string>;
   initial: Record<string, Record<string, unknown>[]>;
   sender: { identity: string; isAgent: boolean };
   steps: { received: DataChannelEvent[]; received_bytes: number[][] }[];
@@ -45,7 +47,12 @@ function ReplayInventory() {
       }
       const owner = loaded.owners[1];
       authStore.setState({ playerId: owner });
-      panelStore.getState().setInventory(parseInventoryItems(loaded.initial[owner]));
+      applyInventorySnapshot({
+        type: "inventory_updated",
+        player_id: owner,
+        inventory_revision: loaded.initial_revisions[owner],
+        inventory: loaded.initial[owner],
+      });
       setFixture(loaded);
     })().catch((cause: unknown) => {
       if (!abort.signal.aborted) setError(String(cause));

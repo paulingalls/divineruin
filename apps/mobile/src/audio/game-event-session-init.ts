@@ -1,3 +1,4 @@
+import { applyInventorySnapshot } from "./inventory-refresh";
 import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
@@ -5,7 +6,7 @@ import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
 import type { NpcPortrait } from "@/stores/portrait-store";
 import type { QuestView, QuestStage, CharacterDetail } from "@/stores/panel-store";
-import { parseInventoryItems, extractExitConnections } from "./game-event-parsing";
+import { extractExitConnections } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
 
 export function handleSessionInit(event: DataChannelEvent): void {
@@ -96,11 +97,7 @@ export function handleSessionInit(event: DataChannelEvent): void {
     panelStore.getState().setCharacterDetail(detail);
   }
 
-  if (Array.isArray(event.inventory)) {
-    panelStore
-      .getState()
-      .setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
-  }
+  if (Array.isArray(event.inventory)) applyInventorySnapshot(event);
 
   if (Array.isArray(event.quests)) {
     const quests: QuestView[] = (event.quests as Record<string, unknown>[]).map((raw) => {

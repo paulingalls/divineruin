@@ -31,8 +31,8 @@ let requests: {
 }[];
 let tree: ReactTestRenderer | undefined;
 const item = (id: string) => ({ id, name: id, slot_info: { quantity: 1 } });
-const snapshot = (id: string, owner = "A") =>
-  Response.json({ player_id: owner, inventory: [item(id)] });
+const snapshot = (id: string, owner = "A", revision = "7") =>
+  Response.json({ player_id: owner, inventory_revision: revision, inventory: [item(id)] });
 function Harness() {
   useInventoryRefresh();
   return null;
@@ -148,11 +148,15 @@ test.each(["agent", "mutation"])(
   async () => {
     panelStore.getState().openPanel();
     await mount();
-    await flush(() => panelStore.getState().setInventory([{ id: "newer" } as never]));
+    await flush(() =>
+      panelStore
+        .getState()
+        .acceptInventory(authStore.getState().playerId!, "8", [{ id: "newer" } as never]),
+    );
     await flush(() => requests[0].resolve(snapshot("old")));
     expect(panelStore.getState().inventory[0]?.id).toBe("newer");
     expect(requests).toHaveLength(2);
-    await flush(() => requests[1].resolve(snapshot("fresh")));
+    await flush(() => requests[1].resolve(snapshot("fresh", "A", "9")));
     expect(panelStore.getState().inventory[0]?.id).toBe("fresh");
     expect(requests).toHaveLength(2);
   },
@@ -175,7 +179,9 @@ test("logout and player ABA invalidate pending identity even when credentials re
 test.each(["http", "network", "malformed"])(
   "%s failure preserves data, reports error and retries on scheduled poll",
   async (kind) => {
-    panelStore.getState().setInventory([{ id: "cached" } as never]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "1", [{ id: "cached" } as never]);
     panelStore.getState().openPanel();
     await mount();
     await flush(() => {
@@ -207,24 +213,51 @@ test("background and unauthenticated mount do not fetch", async () => {
 });
 
 test.each([
-  { player_id: "B", inventory: [] },
-  { player_id: "A", inventory: null },
-  { player_id: "A", inventory: "" },
-  { player_id: "A", inventory: [null] },
-  { player_id: "A", inventory: [{ name: "missing-id", slot_info: {} }] },
-  { player_id: "A", inventory: [{ id: "missing-name", slot_info: {} }] },
-  { player_id: "A", inventory: [{ id: "missing-slot", name: "missing-slot" }] },
-  { player_id: "A", inventory: [{ id: "null-slot", name: "null-slot", slot_info: null }] },
-  { player_id: "A", inventory: [{ id: "invalid-slot", name: "invalid-slot", slot_info: true }] },
-  { player_id: "A", inventory: [{ id: "array-slot", name: "array-slot", slot_info: [] }] },
-  { player_id: "A", inventory: [{ id: "bad-quantity", name: "bad", slot_info: { quantity: -1 } }] },
-  { player_id: "A", inventory: [{ id: "zero-quantity", name: "bad", slot_info: { quantity: 0 } }] },
+  { player_id: "B", inventory_revision: "7", inventory: [] },
+  { player_id: "A", inventory_revision: "7", inventory: null },
+  { player_id: "A", inventory_revision: "7", inventory: "" },
+  { player_id: "A", inventory_revision: "7", inventory: [null] },
+  { player_id: "A", inventory_revision: "7", inventory: [{ name: "missing-id", slot_info: {} }] },
+  { player_id: "A", inventory_revision: "7", inventory: [{ id: "missing-name", slot_info: {} }] },
   {
     player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "missing-slot", name: "missing-slot" }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "null-slot", name: "null-slot", slot_info: null }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "invalid-slot", name: "invalid-slot", slot_info: true }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "array-slot", name: "array-slot", slot_info: [] }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "bad-quantity", name: "bad", slot_info: { quantity: -1 } }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
+    inventory: [{ id: "zero-quantity", name: "bad", slot_info: { quantity: 0 } }],
+  },
+  {
+    player_id: "A",
+    inventory_revision: "7",
     inventory: [{ id: "string-quantity", name: "bad", slot_info: { quantity: "2" } }],
   },
 ])("invalid HTTP snapshot preserves data and surfaces failure: %j", async (data) => {
-  panelStore.getState().setInventory([{ id: "cached" } as never]);
+  panelStore
+    .getState()
+    .acceptInventory(authStore.getState().playerId!, "1", [{ id: "cached" } as never]);
   panelStore.getState().openPanel();
   await mount();
   await flush(() => requests[0].resolve(Response.json(data)));
@@ -268,7 +301,11 @@ test.each([{ playerId: "B" }, { token: "rotated" }, { phase: "loading" as const 
 test("failure of a superseded GET fetches fresh without reporting a stale error", async () => {
   panelStore.getState().openPanel();
   await mount();
-  await flush(() => panelStore.getState().setInventory([{ id: "newer" } as never]));
+  await flush(() =>
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "8", [{ id: "newer" } as never]),
+  );
   await flush(() => requests[0].reject(new Error("old request failed")));
   expect(panelStore.getState().inventory[0]?.id).toBe("newer");
   expect(panelStore.getState().inventoryRefreshError).toBeNull();
@@ -276,12 +313,17 @@ test("failure of a superseded GET fetches fresh without reporting a stale error"
 });
 
 test("HTTP failure with a well-formed snapshot still preserves inventory and reports error", async () => {
-  panelStore.getState().setInventory([{ id: "cached" } as never]);
+  panelStore
+    .getState()
+    .acceptInventory(authStore.getState().playerId!, "1", [{ id: "cached" } as never]);
   panelStore.getState().openPanel();
   await mount();
   await flush(() =>
     requests[0].resolve(
-      Response.json({ player_id: "A", inventory: [item("refused")] }, { status: 500 }),
+      Response.json(
+        { player_id: "A", inventory_revision: "7", inventory: [item("refused")] },
+        { status: 500 },
+      ),
     ),
   );
   expect(panelStore.getState().inventory[0]?.id).toBe("cached");
@@ -301,7 +343,9 @@ test("a phase-only auth ABA rejects the pending GET", async () => {
 });
 
 test("accepted prior-owner inventory and error are cleared across real logout and failed new-owner refresh", async () => {
-  panelStore.getState().setInventory([{ id: "private_A" } as never]);
+  panelStore
+    .getState()
+    .acceptInventory(authStore.getState().playerId!, "1", [{ id: "private_A" } as never]);
   panelStore.getState().setInventoryRefreshError("A error");
   await authStore.getState().logout();
   expect(panelStore.getState().inventory).toEqual([]);
@@ -342,7 +386,9 @@ test.each(["fetch", "body"])(
 );
 
 test("direct player transition clears accepted prior-owner contents and error", async () => {
-  panelStore.getState().setInventory([{ id: "private_A" } as never]);
+  panelStore
+    .getState()
+    .acceptInventory(authStore.getState().playerId!, "1", [{ id: "private_A" } as never]);
   panelStore.getState().setInventoryRefreshError("A error");
   await authStore.getState().setAuthenticated("token-B", "account-B", "B");
   expect(panelStore.getState().inventory).toEqual([]);
@@ -352,10 +398,22 @@ test("direct player transition clears accepted prior-owner contents and error", 
 test.each(["loading", "unauthenticated"] as const)(
   "leaving authentication for %s clears accepted data without a player-id change",
   (phase) => {
-    panelStore.getState().setInventory([{ id: "private_A" } as never]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "1", [{ id: "private_A" } as never]);
     panelStore.getState().setInventoryRefreshError("A error");
     authStore.setState({ phase });
     expect(panelStore.getState().inventory).toEqual([]);
     expect(panelStore.getState().inventoryRefreshError).toBeNull();
   },
 );
+
+test("newer GET advances after an intervening agent update", async () => {
+  panelStore.getState().openPanel();
+  await mount();
+  await flush(() => panelStore.getState().acceptInventory("A", "1", [{ id: "agent" } as never]));
+  await flush(() => requests[0].resolve(snapshot("newer-http", "A", "2")));
+  expect(panelStore.getState().inventory[0]?.id).toBe("newer-http");
+  expect(panelStore.getState().inventoryRevision).toBe("2");
+  expect(requests).toHaveLength(1);
+});

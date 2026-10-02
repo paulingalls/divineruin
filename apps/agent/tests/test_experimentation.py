@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from dice_seeds import seed_for_d20 as _seed_for_d20
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_db_mod
 
 import experimentation
@@ -148,6 +149,7 @@ def _seams(*, recipes_list, known_ids, available, alloc_satisfied=True):
     db_mod, conn = make_db_mod()
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", **SAMPLE_PLAYER})
     queries.get_player_materials = AsyncMock(return_value=available)
     queries.get_player_known_recipe_ids = AsyncMock(return_value=list(known_ids))

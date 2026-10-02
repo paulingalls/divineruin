@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, make_context, published_events
 
@@ -359,7 +360,9 @@ async def test_gather_cue_follows_grant_commit_and_absence_branches():
     async def invoke(ctx, log, *, roll, available=True):
         db, _conn = db_with_commit(log)
         queries = MagicMock(
-            get_player_inventory=AsyncMock(return_value=[]), get_player=AsyncMock(return_value=SAMPLE_PLAYER)
+            get_player_inventory=AsyncMock(return_value=[]),
+            get_inventory_snapshot=snapshot_query([]),
+            get_player=AsyncMock(return_value=SAMPLE_PLAYER),
         )
         mutations = MagicMock(add_inventory_item=AsyncMock(side_effect=lambda *a, **k: log.append(("grant", a[1]))))
         content = MagicMock(

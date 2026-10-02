@@ -60,11 +60,10 @@ function startRefresh() {
         }),
       ]);
       if (!current()) return;
-      if (panelStore.getState().inventoryGeneration !== context.generation) {
-        fresh = true;
-        return;
-      }
+      const before = panelStore.getState().inventoryGeneration;
       applyInventorySnapshot(snapshot, context.playerId!);
+      if (before !== context.generation && panelStore.getState().inventoryGeneration === before)
+        fresh = true;
       panelStore.getState().setInventoryRefreshError(null);
     } catch {
       if (current()) {

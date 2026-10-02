@@ -84,6 +84,9 @@ async def live_capture(reset_db_pool, material_rooms, tmp_path):
     context.userdata.event_bus = MagicMock()
     steps = []
     initial = {pid: await db_queries.get_player_inventory(pid) for pid in [owner, guest]}
+    initial_revisions = {
+        pid: (await db_queries.get_inventory_snapshot(pid))["inventory_revision"] for pid in [owner, guest]
+    }
     quantities = {owner: {"oak_wood": 2, "crystal_flask": 1}, guest: {"oak_wood": 2}}
     assert {
         pid: {row["id"]: row["slot_info"]["quantity"] for row in initial[pid]} for pid in [owner, guest]
@@ -110,7 +113,7 @@ async def live_capture(reset_db_pool, material_rooms, tmp_path):
                 quantities[pid]["crystal_flask"] = quantities[pid].get("crystal_flask", 0) + 1
         for pid in [owner, guest]:
             assert {row["id"]: row["slot_info"]["quantity"] for row in expected[pid]} == quantities[pid]
-        assert snapshots == [{"player_id": pid, "inventory": expected[pid]} for pid in sorted(recipients)]
+        assert snapshots == [await db_queries.get_inventory_snapshot(pid) for pid in sorted(recipients)]
         assert sent
         received = []
         received_bytes = []
@@ -224,6 +227,7 @@ async def live_capture(reset_db_pool, material_rooms, tmp_path):
         "runId": os.environ.get("LIVE_MATERIAL_INVENTORY_RUN_ID"),
         "owners": [owner, guest],
         "initial": initial,
+        "initial_revisions": initial_revisions,
         "steps": steps,
         "sender": {
             "identity": "material-agent",
@@ -280,6 +284,7 @@ def test_bridge_rejects_empty_delivery_and_wrong_inventory(fault, tmp_path):
     fixture = {
         "owners": ["one", "two"],
         "initial": {"one": [], "two": []},
+        "initial_revisions": {"one": "0", "two": "0"},
         "sender": {
             "isAgent": True,
             "identity": "agent",
@@ -290,7 +295,7 @@ def test_bridge_rejects_empty_delivery_and_wrong_inventory(fault, tmp_path):
             {
                 "received": []
                 if fault == "empty"
-                else [{"type": E.INVENTORY_UPDATED, "player_id": "one", "inventory": [row]}],
+                else [{"type": E.INVENTORY_UPDATED, "player_id": "one", "inventory_revision": "1", "inventory": [row]}],
                 "expected": {"one": [] if fault == "empty" else [expected], "two": []},
             }
         ],

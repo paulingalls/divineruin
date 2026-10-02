@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import (
     GUILD_PLAYER as SAMPLE_PLAYER,
@@ -196,6 +197,7 @@ class TestUpdateQuest:
         mock_content.get_item = AsyncMock(return_value=None)
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
+        mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_queries.get_player_quest = AsyncMock(return_value=player_quest)
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_mutations = MagicMock()

@@ -9,6 +9,7 @@ from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import _ctx_at_resolution, _fake_db_mod, _make_combat_state, _resolution_state, _resolve_deps
 from combat.test_combat_init_multiplayer import _add_second_member, _second_member_row
 from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
 
@@ -21,7 +22,10 @@ from session_summary import generate_session_summary
 
 
 def snapshot_queries():
-    return combat_end_queries(get_player_inventory=AsyncMock(side_effect=lambda pid, **kw: [{"id": pid}]))
+    return combat_end_queries(
+        get_player_inventory=AsyncMock(side_effect=lambda pid, **kw: [{"id": pid}]),
+        get_inventory_snapshot=snapshot_query(lambda pid, **kw: [{"id": pid}]),
+    )
 
 
 def checked_commit_db(db_mod, room):
@@ -41,7 +45,8 @@ def assert_owner_snapshots_after_combat(room):
     events = published_payloads(room)
     snapshots = [event for event in events if event["type"] == "inventory_updated"]
     assert snapshots == [
-        {"type": "inventory_updated", "player_id": pid, "inventory": [{"id": pid}]} for pid in ["player_1", "player_2"]
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": pid, "inventory": [{"id": pid}]}
+        for pid in ["player_1", "player_2"]
     ]
     assert [event["type"] for event in events][-4:] == [
         "combat_ended",
@@ -288,6 +293,7 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
     _add_second_member(ctx)
     deps = _resolve_deps(damage=10)
     deps["queries"].get_player_inventory = snapshot_queries().get_player_inventory
+    deps["queries"].get_inventory_snapshot = snapshot_queries().get_inventory_snapshot
     deps["db_mod"] = checked_commit_db(deps["db_mod"], ctx.userdata.room)
     spoils = EncounterSpoils(
         xp_total=50, loot_pool=[{"item_id": "relic", "quantity": 1}, {"item_id": "gem", "quantity": 1}]
@@ -339,7 +345,7 @@ async def test_identical_combat_drops_count_one_display_name():
     ):
         await _end_combat_impl(ctx, "victory", mutations=mutations, queries=combat_end_queries(), db_mod=_fake_db_mod())
     assert [e for e in published_payloads(ctx.userdata.room) if e["type"] == "inventory_updated"] == [
-        {"type": "inventory_updated", "player_id": "player_1", "inventory": []}
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": "player_1", "inventory": []}
     ]
     assert mutations.add_inventory_item.await_count == 2
     assert ctx.userdata.player_summary_metrics["player_1"]["items_found"] == ["Sun Relic"]
@@ -433,5 +439,10 @@ async def test_combat_snapshot_excludes_currency_only_seats():
     events = published_payloads(ctx.userdata.room)
     assert {e["player_id"] for e in events if e["type"] == "currency_gained"} == {"player_1", "player_2"}
     assert [e for e in events if e["type"] == "inventory_updated"] == [
-        {"type": "inventory_updated", "player_id": "player_1", "inventory": [{"id": "player_1"}]}
+        {
+            "type": "inventory_updated",
+            "inventory_revision": "1",
+            "player_id": "player_1",
+            "inventory": [{"id": "player_1"}],
+        }
     ]

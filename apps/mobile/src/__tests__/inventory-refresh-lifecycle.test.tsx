@@ -198,7 +198,7 @@ test("selected inventory details follow replacement/removal and still show refre
     value_base: 1,
     equipped: false,
   } satisfies InventoryItem;
-  panelStore.getState().setInventory([item]);
+  panelStore.getState().acceptInventory(authStore.getState().playerId!, "1", [item]);
   await act(() => {
     tree = create(<InventoryPanel />);
   });
@@ -210,14 +210,18 @@ test("selected inventory details follow replacement/removal and still show refre
     tile.props.onPress();
   });
   await act(() => {
-    panelStore.getState().setInventory([{ ...item, name: "Fresh sword", weight: 3 }]);
+    panelStore
+      .getState()
+      .acceptInventory(authStore.getState().playerId!, "2", [
+        { ...item, name: "Fresh sword", weight: 3 },
+      ]);
     panelStore.getState().setInventoryRefreshError("Refresh unavailable");
   });
   expect(JSON.stringify(tree.toJSON())).toContain("Fresh sword");
   expect(JSON.stringify(tree.toJSON())).toContain("Refresh unavailable");
   expect(JSON.stringify(tree.toJSON())).not.toContain("Old sword");
   await act(() => {
-    panelStore.getState().setInventory([]);
+    panelStore.getState().acceptInventory(authStore.getState().playerId!, "3", []);
   });
   expect(tree.root.findByType(FlatList).props.data).toEqual([]);
 });

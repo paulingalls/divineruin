@@ -5,6 +5,7 @@ import dataclasses
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_db_mod
 
 import abilities
@@ -102,6 +103,7 @@ async def test_bound_guest_consumes_the_guests_inventory() -> None:
     queries = MagicMock(
         get_inventory_item=AsyncMock(return_value={"quantity": 1, "equipped": False}),
         get_player_inventory=AsyncMock(return_value=[]),
+        get_inventory_snapshot=snapshot_query([]),
     )
     inventory_mutations = MagicMock(transact_inventory=AsyncMock(return_value=0))
     content = MagicMock(get_item=AsyncMock(return_value={"name": "Potion"}))

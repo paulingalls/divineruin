@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context
 
 from combat_events import EventSink
@@ -25,6 +26,7 @@ from session_data import CombatParticipant
 def _queries():
     q = MagicMock()
     q.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability write
+    q.get_inventory_snapshot = snapshot_query([])
     return q
 
 

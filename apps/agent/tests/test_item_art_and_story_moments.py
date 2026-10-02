@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import mock_txn
 
@@ -255,6 +256,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
 
@@ -293,6 +295,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_WITH_ART)
 
@@ -324,6 +327,7 @@ class TestTransactGainSendsFullInventory:
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_queries.get_inventory_snapshot = snapshot_query(SAMPLE_INVENTORY)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
 

@@ -27,7 +27,11 @@ def _expected_npc_portraits() -> dict[str, dict[str, str]]:
 async def _session_init(player: dict) -> dict:
     mock_pool = AsyncMock()
     mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(player)})
-    mock_pool.fetch = AsyncMock(return_value=[])
+    mock_pool.fetch = AsyncMock(
+        side_effect=lambda query, *args: (
+            [{"inventory_revision": "0", "item_id": None}] if "inventory_revision" in query else []
+        )
+    )
     with patch("db.get_pool", return_value=mock_pool):
         with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
             return await db_session_queries.get_session_init_payload("p1")

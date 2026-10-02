@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _make_combat_state
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context
 
 import combat_phase
@@ -43,6 +44,7 @@ def _mocks():
     mutations.update_player_hp = AsyncMock()
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     return mutations, queries
 
 

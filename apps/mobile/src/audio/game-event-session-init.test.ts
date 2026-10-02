@@ -15,6 +15,8 @@ beforeEach(() => {
 test("handleSessionInit seeds character, location, inventory, and quests", () => {
   handleSessionInit({
     type: "session_init",
+    player_id: "player-1",
+    inventory_revision: "1",
     character: {
       player_id: "player-1",
       name: "Kael",
@@ -82,6 +84,8 @@ test("handleSessionInit seeds character, location, inventory, and quests", () =>
 test("handleSessionInit seeds portrait store from portraits payload", () => {
   handleSessionInit({
     type: "session_init",
+    player_id: "player-1",
+    inventory_revision: "1",
     character: { player_id: "p1", name: "Test", portrait_url: "/api/assets/player.png" },
     location: null,
     quests: [],
@@ -109,6 +113,8 @@ test("handleSessionInit seeds portrait store from portraits payload", () => {
 test("session_init records the companion identity", () => {
   handleSessionInit({
     type: "session_init",
+    player_id: "player-1",
+    inventory_revision: "1",
     character: { player_id: "p1", name: "Test" },
     location: null,
     quests: [],
@@ -130,6 +136,8 @@ test("a null companion portrait clears the store rather than leaving the previou
 
   handleSessionInit({
     type: "session_init",
+    player_id: "player-1",
+    inventory_revision: "1",
     character: { player_id: "p1", name: "Test" },
     location: null,
     quests: [],
@@ -147,6 +155,8 @@ test("a session_init with no companion clears a previously named one", () => {
 
   handleSessionInit({
     type: "session_init",
+    player_id: "player-1",
+    inventory_revision: "1",
     character: { player_id: "p1", name: "Test" },
     location: null,
     quests: [],
@@ -163,6 +173,8 @@ test("handleSessionInit with null character does not crash and leaves character 
   expect(() =>
     handleSessionInit({
       type: "session_init",
+      player_id: "player-1",
+      inventory_revision: "1",
       character: null,
       location: null,
       quests: [],

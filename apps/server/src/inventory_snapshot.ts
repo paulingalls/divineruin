@@ -23,26 +23,31 @@ function itemImage(item: Record<string, unknown>): string | undefined {
 
 export async function inventorySnapshot(playerId: string, tx = sql) {
   const rows: {
-    item_id: string;
+    inventory_revision: string;
+    item_id: string | null;
     item_data: unknown;
     material_data: unknown;
     slot_data: unknown;
   }[] = await tx`
-    SELECT pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
-    FROM player_inventory pi
+    SELECT p.inventory_revision::text, pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
+    FROM players p
+    LEFT JOIN player_inventory pi ON pi.player_id = p.player_id
     LEFT JOIN items i ON i.id = pi.item_id
     LEFT JOIN materials_catalog m ON m.id = pi.item_id
-    WHERE pi.player_id = ${playerId}
+    WHERE p.player_id = ${playerId}
   `;
-  const inventory = rows.map((row) => {
-    if (row.item_data == null && row.material_data == null)
-      throw new Error(`Inventory id ${row.item_id} has no catalog entry`);
-    const item = { ...parseJsonb(row.item_data ?? row.material_data) };
-    if (row.item_data == null) item.type = "material";
-    item.slot_info = parseJsonb(row.slot_data);
-    const image = itemImage(item);
-    if (image) item.image_url = image;
-    return item;
-  });
-  return { player_id: playerId, inventory };
+  if (!rows.length) throw new Error(`Unknown inventory owner ${playerId}`);
+  const inventory = rows
+    .filter((row) => row.item_id !== null)
+    .map((row) => {
+      if (row.item_data == null && row.material_data == null)
+        throw new Error(`Inventory id ${row.item_id} has no catalog entry`);
+      const item = { ...parseJsonb(row.item_data ?? row.material_data) };
+      if (row.item_data == null) item.type = "material";
+      item.slot_info = parseJsonb(row.slot_data);
+      const image = itemImage(item);
+      if (image) item.image_url = image;
+      return item;
+    });
+  return { player_id: playerId, inventory_revision: rows[0]!.inventory_revision, inventory };
 }

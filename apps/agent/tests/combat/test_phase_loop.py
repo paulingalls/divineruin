@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from _combat_end_fixtures import combat_end_mutations
 from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _resolution_state, _resolve_round
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -33,6 +34,7 @@ def _resolve_deps(damage=3):
     so the per-phase transaction wrapper runs without a real connection."""
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
+    queries.get_inventory_snapshot = snapshot_query([])
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})

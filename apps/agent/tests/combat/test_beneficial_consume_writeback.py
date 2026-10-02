@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import FixedRng
 
 import combat_packet
@@ -273,6 +274,7 @@ async def test_gather_tool_consumes_and_persists_atomically():
     player = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")}
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player = AsyncMock(return_value=player)
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()
@@ -313,6 +315,7 @@ async def test_gather_tool_no_condition_does_not_persist():
 
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
     mutations = MagicMock()
     mutations.add_inventory_item = AsyncMock()

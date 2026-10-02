@@ -1,18 +1,28 @@
 import { authStore } from "@/stores/auth-store";
 import { characterStore } from "@/stores/character-store";
-import { panelStore, type InventoryItem } from "@/stores/panel-store";
+import { panelStore } from "@/stores/panel-store";
 import { parseInventoryItems, type DataChannelEvent } from "./game-event-parsing";
 
 export function applyInventorySnapshot(
   event: DataChannelEvent,
   localPlayerId = authStore.getState().playerId ?? characterStore.getState().character?.playerId,
-  setInventory: (items: InventoryItem[]) => void = panelStore.getState().setInventory,
+  store: typeof panelStore = panelStore,
 ): void {
-  // Unscoped events are the legacy single-player contract.
-  if (event.player_id !== undefined && event.player_id !== localPlayerId) return;
-  if (Array.isArray(event.inventory)) {
-    setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
+  if (!Array.isArray(event.inventory) && event.type !== "inventory_updated") return;
+  const state = store.getState();
+  if (event.player_id === undefined) {
+    if (authStore.getState().phase === "authenticated" || state.inventoryRevision !== null) return;
+    if (Array.isArray(event.inventory))
+      state.setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
+    return;
   }
+  if (event.player_id !== localPlayerId) return;
+  const snapshot = parseHttpInventory(event, localPlayerId);
+  state.acceptInventory(
+    localPlayerId,
+    snapshot.inventory_revision as string,
+    parseInventoryItems(snapshot.inventory as Record<string, unknown>[]),
+  );
 }
 
 let authGeneration = 0;
@@ -38,7 +48,12 @@ export function isInventoryRequestCurrent(
 
 export function parseHttpInventory(value: unknown, playerId: string): DataChannelEvent {
   const data = value as DataChannelEvent | null;
-  if (data?.player_id !== playerId || !Array.isArray(data.inventory))
+  if (
+    data?.player_id !== playerId ||
+    !Array.isArray(data.inventory) ||
+    typeof data.inventory_revision !== "string" ||
+    !/^(0|[1-9][0-9]*)$/.test(data.inventory_revision)
+  )
     throw new Error("Invalid inventory snapshot");
   for (const entry of data.inventory) {
     const item = entry as Record<string, unknown> | null;
@@ -69,10 +84,9 @@ export function applyMutationInventory(
     return;
   }
   const snapshot = parseHttpInventory(data, context.playerId!);
-  if (panelStore.getState().inventoryGeneration !== context.generation) {
-    panelStore.getState().requestInventoryRefresh();
-    return;
-  }
+  const before = panelStore.getState().inventoryGeneration;
   applyInventorySnapshot(snapshot, context.playerId!);
+  if (before !== context.generation && panelStore.getState().inventoryGeneration === before)
+    panelStore.getState().requestInventoryRefresh();
   panelStore.getState().setInventoryRefreshError(null);
 }

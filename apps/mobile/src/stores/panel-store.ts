@@ -75,6 +75,10 @@ interface PanelState {
   characterDetail: CharacterDetail | null;
   inventory: InventoryItem[];
   inventoryGeneration: number;
+  inventoryOwner: string | null;
+  inventoryRevision: string | null;
+  resetInventory: (owner: string | null) => void;
+  acceptInventory: (owner: string, revision: string, items: InventoryItem[]) => void;
   inventoryRefreshError: string | null;
   inventoryRefreshRequest: number;
   setInventoryRefreshError: (error: string | null) => void;
@@ -102,87 +106,117 @@ const INITIAL_STATE = {
   activeTab: "character" as PanelTab,
   characterDetail: null,
   inventory: [],
+  inventoryOwner: null,
+  inventoryRevision: null,
   inventoryRefreshError: null,
   quests: [],
   mapProgress: [],
 };
 
-export const panelStore = createStore<PanelState>((set) => ({
-  ...INITIAL_STATE,
-  inventoryGeneration: 0,
-  inventoryRefreshRequest: 0,
+export function createPanelStore() {
+  return createStore<PanelState>((set) => ({
+    ...INITIAL_STATE,
+    inventoryGeneration: 0,
+    inventoryRefreshRequest: 0,
 
-  openPanel: (tab) => set((s) => ({ isOpen: true, activeTab: tab ?? s.activeTab })),
+    openPanel: (tab) => set((s) => ({ isOpen: true, activeTab: tab ?? s.activeTab })),
 
-  closePanel: () => set({ isOpen: false }),
+    closePanel: () => set({ isOpen: false }),
 
-  setActiveTab: (tab) => set({ activeTab: tab }),
+    setActiveTab: (tab) => set({ activeTab: tab }),
 
-  setCharacterDetail: (detail) => set({ characterDetail: detail }),
+    setCharacterDetail: (detail) => set({ characterDetail: detail }),
 
-  setInventory: (items) =>
-    set((s) => ({ inventory: items, inventoryGeneration: s.inventoryGeneration + 1 })),
-  setInventoryRefreshError: (error) => set({ inventoryRefreshError: error }),
-  requestInventoryRefresh: () =>
-    set((s) => ({ inventoryRefreshRequest: s.inventoryRefreshRequest + 1 })),
-
-  setQuests: (quests) => set({ quests }),
-
-  advanceQuest: (questId, newStage) =>
-    set((s) => ({
-      quests: s.quests.map((q) =>
-        q.questId === questId
-          ? {
-              ...q,
-              currentStage: newStage,
-              stages: q.stages.map((st, i) => (i < newStage ? { ...st, completed: true } : st)),
-            }
-          : q,
+    setInventory: (items) =>
+      set((s) =>
+        s.inventoryOwner !== null || s.inventoryRevision !== null
+          ? s
+          : { inventory: items, inventoryGeneration: s.inventoryGeneration + 1 },
       ),
-    })),
+    resetInventory: (owner) =>
+      set((s) => ({
+        inventory: [],
+        inventoryOwner: owner,
+        inventoryRevision: null,
+        inventoryRefreshError: null,
+        inventoryGeneration: s.inventoryGeneration + 1,
+      })),
+    acceptInventory: (owner, revision, items) =>
+      set((s) => {
+        if (s.inventoryOwner !== null && s.inventoryOwner !== owner) return s;
+        if (s.inventoryRevision !== null && BigInt(revision) <= BigInt(s.inventoryRevision))
+          return s;
+        return {
+          inventory: items,
+          inventoryOwner: owner,
+          inventoryRevision: revision,
+          inventoryGeneration: s.inventoryGeneration + 1,
+        };
+      }),
+    setInventoryRefreshError: (error) => set({ inventoryRefreshError: error }),
+    requestInventoryRefresh: () =>
+      set((s) => ({ inventoryRefreshRequest: s.inventoryRefreshRequest + 1 })),
 
-  completeQuest: (questId) =>
-    set((s) => ({
-      // A finished quest: status "completed" moves it to the panel's COMPLETED section and
-      // all stages read done. Matches the reload path (session_init only loads active quests,
-      // so a completed quest naturally leaves the log on the next reload).
-      quests: s.quests.map((q) =>
-        q.questId === questId
-          ? {
-              ...q,
-              status: "completed" as const,
-              currentStage: q.stages.length,
-              stages: q.stages.map((st) => ({ ...st, completed: true })),
-            }
-          : q,
-      ),
-    })),
+    setQuests: (quests) => set({ quests }),
 
-  setMapProgress: (nodes) => set({ mapProgress: nodes }),
+    advanceQuest: (questId, newStage) =>
+      set((s) => ({
+        quests: s.quests.map((q) =>
+          q.questId === questId
+            ? {
+                ...q,
+                currentStage: newStage,
+                stages: q.stages.map((st, i) => (i < newStage ? { ...st, completed: true } : st)),
+              }
+            : q,
+        ),
+      })),
 
-  addVisitedLocation: (locationId, connections) =>
-    set((s) => {
-      const existing = s.mapProgress.find((n) => n.locationId === locationId);
-      if (existing && existing.visited) return s;
+    completeQuest: (questId) =>
+      set((s) => ({
+        // A finished quest: status "completed" moves it to the panel's COMPLETED section and
+        // all stages read done. Matches the reload path (session_init only loads active quests,
+        // so a completed quest naturally leaves the log on the next reload).
+        quests: s.quests.map((q) =>
+          q.questId === questId
+            ? {
+                ...q,
+                status: "completed" as const,
+                currentStage: q.stages.length,
+                stages: q.stages.map((st) => ({ ...st, completed: true })),
+              }
+            : q,
+        ),
+      })),
 
-      let newNodes: MapNode[];
-      if (existing) {
-        // Promote stub to visited
-        newNodes = s.mapProgress.map((n) =>
-          n.locationId === locationId ? { ...n, visited: true, connections } : n,
-        );
-      } else {
-        // Add new visited node
-        newNodes = [...s.mapProgress, { locationId, visited: true, connections }];
-      }
-      // Add unvisited stubs for connections that don't exist yet
-      for (const connId of connections) {
-        if (!newNodes.find((n) => n.locationId === connId)) {
-          newNodes.push({ locationId: connId, visited: false, connections: [] });
+    setMapProgress: (nodes) => set({ mapProgress: nodes }),
+
+    addVisitedLocation: (locationId, connections) =>
+      set((s) => {
+        const existing = s.mapProgress.find((n) => n.locationId === locationId);
+        if (existing && existing.visited) return s;
+
+        let newNodes: MapNode[];
+        if (existing) {
+          // Promote stub to visited
+          newNodes = s.mapProgress.map((n) =>
+            n.locationId === locationId ? { ...n, visited: true, connections } : n,
+          );
+        } else {
+          // Add new visited node
+          newNodes = [...s.mapProgress, { locationId, visited: true, connections }];
         }
-      }
-      return { mapProgress: newNodes };
-    }),
+        // Add unvisited stubs for connections that don't exist yet
+        for (const connId of connections) {
+          if (!newNodes.find((n) => n.locationId === connId)) {
+            newNodes.push({ locationId: connId, visited: false, connections: [] });
+          }
+        }
+        return { mapProgress: newNodes };
+      }),
 
-  reset: () => set((s) => ({ ...INITIAL_STATE, inventoryGeneration: s.inventoryGeneration + 1 })),
-}));
+    reset: () => set((s) => ({ ...INITIAL_STATE, inventoryGeneration: s.inventoryGeneration + 1 })),
+  }));
+}
+
+export const panelStore = createPanelStore();

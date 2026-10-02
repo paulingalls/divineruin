@@ -169,7 +169,7 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
             )
 
         snapshots = [e.payload for e in sink.captured if e.event_type == E.INVENTORY_UPDATED]
-        assert snapshots == [{"player_id": _PLAYER_ID, "inventory": await db_queries.get_player_inventory(_PLAYER_ID)}]
+        assert snapshots == [await db_queries.get_inventory_snapshot(_PLAYER_ID)]
         assert [e.event_type for e in sink.captured][-3:] == [E.COMBAT_ENDED, E.INVENTORY_UPDATED, E.PLAY_SOUND]
 
         # Currency converted sp -> gp and added to players.data.gold (5 + 0.4 = 5.4).

@@ -11,6 +11,8 @@ flat damage normalization, source walks that abstained, stale inventory response
 missing home-screen polling and copied selected-item details. Real database,
 browser and native checks exposed contracts mocked checks could not certify.
 
+The close review also reproduced an older buffered agent snapshot overwriting a newer HTTP result. The repair gives each owner a transactional database revision and captures it with inventory in one statement; both transports use the same revision guard. Arrival order and local request generations cannot establish committed inventory order.
+
 The lead missed completed background jobs by ending its turn. Interrupted pytest
 also leaked containers because normal fixture cleanup could not run. Active
 terminal polling now keeps handoffs visible; owned PID/UUID naming and the strict

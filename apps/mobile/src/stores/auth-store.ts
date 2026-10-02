@@ -82,9 +82,9 @@ export const authStore = createStore<AuthState>((set) => ({
 authStore.subscribe((state, previous) => {
   if (
     state.playerId !== previous.playerId ||
-    (previous.phase === "authenticated" && state.phase !== "authenticated")
+    state.phase !== previous.phase ||
+    state.token !== previous.token
   ) {
-    panelStore.getState().setInventory([]);
-    panelStore.getState().setInventoryRefreshError(null);
+    panelStore.getState().resetInventory(state.playerId);
   }
 });

@@ -7,7 +7,7 @@ import {
   parseCombatant,
   MAX_EVENT_PAYLOAD_BYTES,
 } from "@/audio/game-event-parsing";
-import { panelStore } from "@/stores/panel-store";
+import { panelStore, createPanelStore } from "@/stores/panel-store";
 import { encode, resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
@@ -135,6 +135,7 @@ test("session_init preserves a material inventory row", () => {
 test("inventory_updated preserves a material inventory row", () => {
   handleGameEvent({
     type: "inventory_updated",
+    inventory_revision: "1",
     inventory: [
       { id: "wolf_pelt", name: "Wolf Pelt", type: "material", slot_info: { quantity: 2 } },
     ],
@@ -148,6 +149,7 @@ test("inventory_updated preserves a material inventory row", () => {
 test("parseInventoryItems extracts image_url to imageUrl", () => {
   handleGameEvent({
     type: "inventory_updated",
+    inventory_revision: "1",
     inventory: [
       {
         id: "sword_1",
@@ -172,6 +174,7 @@ test("parseInventoryItems extracts image_url to imageUrl", () => {
 test("parseInventoryItems omits imageUrl when no image_url", () => {
   handleGameEvent({
     type: "inventory_updated",
+    inventory_revision: "1",
     inventory: [
       {
         id: "rations",
@@ -201,6 +204,7 @@ type InventoryRow = Record<string, unknown> & {
 
 type InventoryFixture = {
   owners: string[];
+  initial_revisions: Record<string, string>;
   initial?: Record<string, InventoryRow[]>;
   sender?: { sid: string; identity: string; isAgent: boolean; kind: ParticipantKind };
   steps: {
@@ -215,17 +219,18 @@ test("committed inventory payloads reach independent consumers", async () => {
   const { parseInventoryItems } = await import("@/audio/game-event-parsing");
   const { handleGameEventMessage } = await import("@/audio/game-event-handler");
   const { authStore } = await import("@/stores/auth-store");
-  const { createStore } = await import("zustand/vanilla");
   const path = process.env.LIVE_MATERIAL_INVENTORY_FIXTURE;
   const fixture: InventoryFixture = path
     ? ((await Bun.file(path).json()) as InventoryFixture)
     : {
         owners: ["one", "two"],
+        initial_revisions: { one: "0", two: "0" },
         steps: [
           {
             received: [
               {
                 type: "inventory_updated",
+                inventory_revision: "1",
                 player_id: "one",
                 inventory: [
                   {
@@ -259,10 +264,18 @@ test("committed inventory payloads reach independent consumers", async () => {
   }
   const consumers = [fixture.owners[0], fixture.owners[0], fixture.owners[1]].map((owner) => ({
     owner,
-    store: createStore<{ inventory: ReturnType<typeof parseInventoryItems> }>(() => ({
-      inventory: parseInventoryItems(fixture.initial?.[owner] ?? []),
-    })),
+    store: createPanelStore(),
   }));
+  for (const consumer of consumers) {
+    consumer.store.getState().resetInventory(consumer.owner);
+    consumer.store
+      .getState()
+      .acceptInventory(
+        consumer.owner,
+        fixture.initial_revisions[consumer.owner],
+        parseInventoryItems(fixture.initial?.[consumer.owner] ?? []),
+      );
+  }
   let snapshots = 0;
   const previous: Record<string, Record<string, unknown>[]> = Object.fromEntries(
     fixture.owners.map((owner: string) => [owner, fixture.initial?.[owner] ?? []]),
@@ -295,9 +308,7 @@ test("committed inventory payloads reach independent consumers", async () => {
       for (const consumer of consumers) {
         const before = consumer.store.getState().inventory;
         if (consumer.owner !== process.env.LIVE_MATERIAL_INVENTORY_IGNORE_CONSUMER) {
-          applyInventorySnapshot(event, consumer.owner, (inventory) =>
-            consumer.store.setState({ inventory }),
-          );
+          applyInventorySnapshot(event, consumer.owner, consumer.store);
         }
         if (event.type === "inventory_updated" && event.player_id !== consumer.owner) {
           expect(consumer.store.getState().inventory).toEqual(before);
@@ -323,7 +334,7 @@ test("committed inventory payloads reach independent consumers", async () => {
     }
     for (const owner of fixture.owners) {
       authStore.setState({ playerId: owner });
-      panelStore.getState().setInventory(parseInventoryItems(previous[owner]));
+      panelStore.getState().acceptInventory(owner, "0", parseInventoryItems(previous[owner]));
       for (const [index, event] of step.received.entries()) {
         const bytes = step.received_bytes?.[index];
         if (path && !bytes) throw new Error("Fixture omitted received game_events bytes");

@@ -7,12 +7,9 @@ from session_data import SessionData
 
 
 async def inventory_payload(player_id: str, *, queries=db_queries, conn=None) -> dict:
-    inventory = (
-        await queries.get_player_inventory(player_id)
-        if conn is None
-        else await queries.get_player_inventory(player_id, conn=conn)
-    )
-    return {"player_id": player_id, "inventory": inventory}
+    if conn is None:
+        return await queries.get_inventory_snapshot(player_id)
+    return await queries.get_inventory_snapshot(player_id, conn=conn)
 
 
 async def publish_inventory(session: SessionData, player_id: str, *, queries=db_queries) -> None:

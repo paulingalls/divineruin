@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import _call, _ctx_at_resolution, _fake_db_mod, _resolve_deps
+from inventory_snapshot_fixture import snapshot_query
 
 import db_mutations_conditions
 from combat_end import _end_combat_db, _end_combat_impl
@@ -38,6 +39,7 @@ async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=No
     queries = AsyncMock()
     queries.get_player = AsyncMock(return_value={"player_id": session.player_id, "gold": 0})
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     end_data = await _end_combat_db(
         session,
         cs,

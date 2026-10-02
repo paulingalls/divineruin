@@ -28,7 +28,11 @@ test.each([
   (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   authStore.setState({ phase: "authenticated", playerId: "prior", token: "token" });
   panelStore.getState().openPanel();
-  panelStore.getState().setInventory([{ id: "oak_wood", quantity: 37 } as never]);
+  panelStore
+    .getState()
+    .acceptInventory(authStore.getState().playerId!, "1", [
+      { id: "oak_wood", quantity: 37 } as never,
+    ]);
   const outbound = mock(() => Promise.resolve(Response.json({})));
   globalThis.fetch = outbound as unknown as typeof fetch;
   await act(async () => {

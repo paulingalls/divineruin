@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room, published_events
 
@@ -29,6 +30,9 @@ def quest_case(stages, progress=None):
     queries = MagicMock(
         get_player_inventory=AsyncMock(
             side_effect=lambda pid: [{"id": "relic", "name": "Sun Relic", "slot_info": {"quantity": 3}}]
+        ),
+        get_inventory_snapshot=snapshot_query(
+            lambda pid: [{"id": "relic", "name": "Sun Relic", "slot_info": {"quantity": 3}}]
         ),
         get_player_quest=AsyncMock(side_effect=lambda pid, *_args, **_kw: rows.get(pid)),
         get_player=AsyncMock(side_effect=lambda pid, **_kw: {**GUILD_PLAYER, "player_id": pid}),

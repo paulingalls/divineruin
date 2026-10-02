@@ -12,6 +12,7 @@ import random
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
@@ -50,6 +51,7 @@ def _craft_queries(
     if player_class is not None:
         player["class"] = player_class
     mod.get_player_inventory = AsyncMock(return_value=[])
+    mod.get_inventory_snapshot = snapshot_query([])
     mod.get_player = AsyncMock(return_value=player)
     mod.get_player_known_recipe_ids = AsyncMock(return_value={"iron_sword"} if recipe_known else set())
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field", "forge"})

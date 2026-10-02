@@ -13,12 +13,14 @@ const { handleActivityDecision } = await import("./activities.ts");
 const { setupRecipesFixture } = await import("./test-fixtures/recipes.ts");
 const snapshotRows = [
   {
+    inventory_revision: "7",
     item_id: "iron_ingot",
     item_data: null,
     material_data: { id: "iron_ingot", name: "Iron Ingot" },
     slot_data: { quantity: 2 },
   },
   {
+    inventory_revision: "7",
     item_id: "sword",
     item_data: { id: "sword", name: "Sword", type: "weapon" },
     material_data: null,
@@ -34,8 +36,8 @@ function craftStubs() {
     {
       match: "item_id IN",
       result: [
-        { item_id: "iron_ingot", quantity: 3 },
-        { item_id: "leather_strip", quantity: 1 },
+        { inventory_revision: "7", item_id: "iron_ingot", quantity: 3 },
+        { inventory_revision: "7", item_id: "leather_strip", quantity: 1 },
       ],
     },
     { match: "LEFT JOIN items", result: snapshotRows },
@@ -88,6 +90,7 @@ describe("committed crafting inventory", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
       player_id: "owner",
+      inventory_revision: "7",
       inventory: [
         { id: "iron_ingot", slot_info: { quantity: 2 } },
         { id: "sword", slot_info: { equipped: true } },
@@ -125,6 +128,7 @@ describe("committed crafting inventory", () => {
     release();
     expect(await (await response).json()).toMatchObject({
       player_id: "owner",
+      inventory_revision: "7",
       inventory: expect.any(Array) as unknown,
     });
   });
@@ -142,6 +146,7 @@ describe("handleActivityDecision inventory", () => {
     decisionStubs();
     expect(await (await decide()).json()).toMatchObject({
       player_id: "owner",
+      inventory_revision: "7",
       inventory: expect.any(Array) as unknown,
       status: "collected",
     });

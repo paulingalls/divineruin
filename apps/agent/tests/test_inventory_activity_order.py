@@ -5,6 +5,7 @@ from functools import partial
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, published_payloads
 from test_action_sound_cues_dispatch import NEW_IDS, assert_cue, cues, db_with_commit, recorded_context
 
@@ -42,6 +43,7 @@ async def test_activity_snapshot_before_dispatch_sound(outcome, guest):
         return []
 
     mods["queries"].get_player_inventory = AsyncMock(side_effect=inventory)
+    mods["queries"].get_inventory_snapshot = snapshot_query(inventory)
     if outcome == "already_tried":
         mods["exp_db"].has_failed_experiment.return_value = True
 
@@ -85,7 +87,7 @@ async def test_activity_snapshot_before_dispatch_sound(outcome, guest):
         assert_cue(ctx, log, NEW_IDS["experiment"])
         assert log.index("commit") < log.index("snapshot_read") < log.index("cue")
         assert published_payloads(ctx.userdata.room) == [
-            {"type": "inventory_updated", "player_id": owner, "inventory": []},
+            {"type": "inventory_updated", "inventory_revision": "1", "player_id": owner, "inventory": []},
             {"type": "play_sound", "sound_name": NEW_IDS["experiment"]},
         ]
 
@@ -111,6 +113,7 @@ async def test_craft_snapshot_before_dispatch_sound(guest):
         return []
 
     queries.get_player_inventory = AsyncMock(side_effect=inventory)
+    queries.get_inventory_snapshot = snapshot_query(inventory)
     mutations = MagicMock(
         consume_player_materials=AsyncMock(side_effect=lambda *a, **k: log.append("write")),
         create_async_activity=AsyncMock(return_value="craft1"),
@@ -133,6 +136,6 @@ async def test_craft_snapshot_before_dispatch_sound(guest):
     assert_cue(ctx, log, NEW_IDS["crafting"])
     assert log.index("commit") < log.index("snapshot_read") < log.index("cue")
     assert published_payloads(ctx.userdata.room) == [
-        {"type": "inventory_updated", "player_id": owner, "inventory": []},
+        {"type": "inventory_updated", "inventory_revision": "1", "player_id": owner, "inventory": []},
         {"type": "play_sound", "sound_name": NEW_IDS["crafting"]},
     ]

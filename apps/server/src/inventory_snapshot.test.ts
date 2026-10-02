@@ -25,15 +25,17 @@ test("full snapshot preserves item-first flask, catalog names, slots and Python 
   if (!item || !material) throw new Error("Missing item/material flask overlap");
   setQueryStubs([
     {
-      match: "FROM player_inventory",
+      match: "LEFT JOIN items",
       result: [
         {
+          inventory_revision: "7",
           item_id: item.id,
           item_data: item,
           material_data: material,
           slot_data: { quantity: 3, equipped: true },
         },
         {
+          inventory_revision: "7",
           item_id: "iron_ingot",
           item_data: null,
           material_data: {
@@ -67,13 +69,28 @@ test("full snapshot preserves item-first flask, catalog names, slots and Python 
   expect(getCapturedQueries()[0]!.values).toEqual(["owner"]);
 });
 test("empty owned inventory is valid", async () => {
-  expect(await inventorySnapshot("empty")).toEqual({ player_id: "empty", inventory: [] });
+  setQueryStubs([
+    { match: "LEFT JOIN items", result: [{ inventory_revision: "7", item_id: null }] },
+  ]);
+  expect(await inventorySnapshot("empty")).toEqual({
+    player_id: "empty",
+    inventory_revision: "7",
+    inventory: [],
+  });
 });
 test("unknown catalog entry fails loud", () => {
   setQueryStubs([
     {
-      match: "FROM player_inventory",
-      result: [{ item_id: "unknown", item_data: null, material_data: null, slot_data: {} }],
+      match: "LEFT JOIN items",
+      result: [
+        {
+          inventory_revision: "7",
+          item_id: "unknown",
+          item_data: null,
+          material_data: null,
+          slot_data: {},
+        },
+      ],
     },
   ]);
   expect(inventorySnapshot("owner")).rejects.toThrow("unknown");

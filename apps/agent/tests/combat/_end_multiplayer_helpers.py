@@ -9,6 +9,7 @@ import random
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from inventory_snapshot_fixture import snapshot_query
 
 import db_mutations_conditions
 from caster_state import ConcentrationState, ResonanceTrack
@@ -103,6 +104,7 @@ async def _run_victory(session, cs, *, rng, drops, gold_by_id=None):
         side_effect=lambda pid, conn=None, for_update=False: {"gold": gold_by_id.get(pid, 0)}
     )
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_inventory_snapshot = snapshot_query([])
     sink = EventSink()
     end_data = await _end_combat_db(
         session,
