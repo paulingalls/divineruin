@@ -27,6 +27,9 @@ class CombatParticipant:
     last_action_execution: dict | None = None
     pending_preparation: dict | None = None
     creature_id: str | None = None
+    catalog_narration: dict = field(default_factory=dict)
+    catalog_audio: dict = field(default_factory=dict)
+    deferred_effects: list[dict] = field(default_factory=list)
     xp_value: int = 0
     # Declaration enhancers this participant has been granted (M4.2, story-004). Keys:
     # extra_attack, shield_bash, cunning_action, hit_and_run, command_lesser, quick_change.

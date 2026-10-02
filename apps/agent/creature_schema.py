@@ -1,8 +1,10 @@
 """Validation for the bestiary's universal creature stat block."""
 
 import json
+import re
 from pathlib import Path
 
+from action_contracts import validate_recharge
 from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from encounter_actions import validate_encounter_actions
 from world_regions import REGION_IDS
@@ -48,6 +50,14 @@ def validate_creature_stat_block(creature: object) -> list[str]:
     def combat_entry(action: dict, path: str) -> None:
         enemies = [{"id": path, "action_pool": [action]}]
         try:
+            if (
+                isinstance(action.get("damage"), str)
+                and action["damage"] != "0"
+                and not re.fullmatch(r"(?:[0-9]+|[1-9][0-9]*d[1-9][0-9]*(?:[+-][0-9]+)?)", str(action["damage"]))
+            ):
+                raise ValueError(f"{path}.damage: invalid")
+            if isinstance(action.get("recharge"), dict):
+                validate_recharge(action["recharge"], f"{path}.recharge")
             validate_enemy_action_shapes(enemies)
             validate_encounter_actions(enemies)
         except ValueError as exc:
@@ -127,7 +137,12 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 for key in ("name", "description", "narration_cue"):
                     field(ability, key, path, "string")
                 field(ability, "audio", path, "string", True)
-                if group != "actives" or ability.get("kind") not in ("attack", "healing", "prepare_attack"):
+                if group != "actives" or (
+                    ability.get("kind") not in ("attack", "healing", "prepare_attack")
+                    and not (
+                        ability.get("kind") in ("command", "accusation") and isinstance(ability.get("recharge"), dict)
+                    )
+                ):
                     field(ability, "recharge", path, "string", True)
                 if group == "actives":
                     kind = field(ability, "kind", path, "string", required=False)

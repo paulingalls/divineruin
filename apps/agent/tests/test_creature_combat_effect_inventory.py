@@ -125,7 +125,7 @@ def assert_effect_inventory(rows, entries):
                 ("hollow_mawling", "Dissolution Maw"): "mixed",
                 ("hollow_mawling", "Lunge"): "mixed",
                 ("hollow_knight", "Corrupted Blade"): "mixed",
-                ("hollow_warden", "Absorb"): "scheduled",
+                ("hollow_warden", "Absorb"): "executable",
             }.get((key[0], key[2]), "executable")
             assert entry["status"] == expected, key
         elif key[1] in {"passives", "multiattack", "signature_ability"}:
@@ -138,6 +138,7 @@ def assert_effect_inventory(rows, entries):
                     "combat_enemy_action._resolve_enemy_condition_packet",
                     "combat_enemy_action.resolve_combined_attack_action",
                     "combat_marks.resolve_mark_action",
+                    "combat_enemy_active.resolve_active",
                 )
             ), key
         for effect in REQUIRED_EFFECTS.get((key[0], key[2]), ()):
@@ -158,8 +159,10 @@ def assert_effect_inventory(rows, entries):
     assert lunge["status"] == "duplicate" and lunge["duplicate"] == "attacks/Lunge"
     for name, kind in (("Rally", "healing"), ("Dirty Fighting", "prepare_attack")):
         entry = declared[("bandit_captain", "actives", name)]
-        assert entry["status"] == "scheduled" and f"kind {kind};" in entry["effects"]
-        assert "136" in entry["resolver"] and "137" in entry["resolver"]
+        assert (
+            entry["status"] == ("mixed" if kind == "healing" else "executable") and f"kind {kind};" in entry["effects"]
+        )
+        assert "combat_enemy_active.resolve_active" in entry["resolver"]
     assert not any(key[1] == "reactions" for key in sources)
 
 

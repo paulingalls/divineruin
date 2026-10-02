@@ -241,7 +241,7 @@ ABILITIES = {
         (
             (
                 "1/encounter: throw dirt or sand. Target is Blinded for 1 round unless it passes a DEX save DC 12.",
-                "1/encounter",
+                {"kind": "encounter", "uses": 1},
             ),
         ),
     ),

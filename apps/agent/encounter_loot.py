@@ -29,7 +29,7 @@ from encounter_roles import EncounterRole
 
 # Enemy creature categories (content/encounter_templates.json `category`). The currency-bearing
 # ones roll coin per the Currency Drop Rules; the rest carry none ("animals don't carry coin").
-_CURRENCY_CATEGORIES = frozenset({"humanoid", "hollow_rend", "undead"})
+_CURRENCY_CATEGORIES = frozenset({"humanoid", "hollow_rend", "hollow_wrack", "undead"})
 _NO_CURRENCY_CATEGORIES = frozenset({"beast", "hollow_drift", "construct", "named"})
 _VALID_CATEGORIES = _CURRENCY_CATEGORIES | _NO_CURRENCY_CATEGORIES
 
@@ -77,7 +77,7 @@ def _base_currency(category: str, tier: int, rng: random.Random) -> int:
     the RNG consumption is deterministic for a given seed."""
     if category == "humanoid":
         return tier * roll("1d6", rng=rng).total
-    if category == "hollow_rend":
+    if category in ("hollow_rend", "hollow_wrack"):
         if rng.random() < 0.15:
             return tier * roll("2d6", rng=rng).total
         return 0

@@ -74,7 +74,7 @@ function checkCorpus(valid: Case[], invalid: Case[]): void {
   const derived = valid.filter((row) => row.spec_derived);
   expect(derived.length).toBeGreaterThan(0);
   const sourceNames = new Set(derived.map((row) => row.name));
-  for (const name of ["spec_shadeling", "spec_hollowmoth", "spec_bandit"])
+  for (const name of ["spec_shadeling", "spec_hollowmoth"])
     expect(sourceNames.has(name)).toBe(true);
   expect(new Set(valid.map((row) => row.block.category))).toEqual(
     new Set(["hollow", "beast", "humanoid", "construct", "undead", "elemental"]),
@@ -115,6 +115,44 @@ test("real_catalog_and_injected_invalid_entry", async () => {
   const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
   const entries = JSON.parse(raw) as Record<string, unknown>[];
   assertCatalogEntries(entries);
+  expect(() => assertCatalogEntries([])).toThrow();
+  expect(() => assertCatalogEntries([...entries, entries[0]!])).toThrow();
+  for (const id of ["hollow_shadeling", "hollow_hollowmoth"])
+    expect(() => assertCatalogEntries(entries.filter((row) => row.id !== id))).toThrow();
+  for (const name of ["spec_shadeling", "spec_hollowmoth"]) {
+    const fixture = corpus.valid.find((row) => row.name === name)!;
+    expect(fixture.block).toEqual(entries.find((row) => row.id === fixture.block.id)!);
+  }
+  for (const mutation of [
+    { properties: ["grapple"] },
+    { applies_condition: "unknown", save: "DEX", dc: 12 },
+    { damage: "oops" },
+  ]) {
+    const injected = structuredClone(entries.find((row) => row.id === "bandit")!);
+    (injected.attacks as Record<string, unknown>[])[0] = {
+      ...(injected.attacks as Record<string, unknown>[])[0],
+      ...mutation,
+    };
+    expect(validateCreatureStatBlock(injected).length).toBeGreaterThan(0);
+    expect(validateCreatureJson(JSON.stringify([injected])).length).toBeGreaterThan(0);
+  }
+  const typedCommand = {
+    name: "Rally",
+    kind: "command",
+    description: "Focus",
+    narration_cue: "A whistle.",
+    audio: null,
+    recharge: { kind: "round", uses: 1 },
+  } satisfies ActiveAbility;
+  const command = structuredClone(entries.find((row) => row.id === "ashmark_sergeant")!);
+  expect(validateCreatureStatBlock({ ...command, actives: [typedCommand] })).toEqual([]);
+  (command.actives as Record<string, unknown>[])[0]!.recharge = { kind: "round", uses: 1 };
+  expect(validateCreatureStatBlock(command)).toEqual([]);
+  const narrative = structuredClone(command);
+  delete (narrative.actives as Record<string, unknown>[])[0]!.kind;
+  expect(validateCreatureStatBlock(narrative).length).toBeGreaterThan(0);
+  (command.actives as Record<string, unknown>[])[0]!.recharge = { kind: "round", uses: 0 };
+  expect(validateCreatureStatBlock(command).length).toBeGreaterThan(0);
   const ids = entries.map((row) => row.id);
   for (const id of [
     "grey_wolf",

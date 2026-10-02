@@ -213,7 +213,7 @@ def test_spec_mechanics():
     for key, recharges in {
         "hollow_mawling": ("5-6", "1/encounter"),
         "hollow_weaver": ("1/round", "5-6"),
-        "hollow_knight": ("1/round", "5-6", "passive trigger"),
+        "hollow_knight": ({"kind": "round", "uses": 1}, "5-6", "passive trigger"),
         "hollow_veilrender": ("5-6", "1/encounter"),
     }.items():
         assert tuple(a["recharge"] for a in creatures[key]["actives"]) == recharges

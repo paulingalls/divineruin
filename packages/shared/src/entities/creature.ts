@@ -1,4 +1,4 @@
-import type { Recharge } from "./action_contracts";
+import { validateRecharge, type Recharge } from "./action_contracts";
 import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
 import {
@@ -88,6 +88,7 @@ export interface Ability {
 
 export type ActiveAbility =
   | Ability
+  | (Omit<Ability, "recharge" | "kind"> & { kind: "command" | "accusation"; recharge: Recharge })
   | (Omit<Ability, "kind" | "recharge"> &
       (
         | (Omit<EncounterAttackAction, "properties" | "kind"> & { kind: "attack" })
@@ -159,6 +160,14 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   }
   function combatEntry(action: Shape, path: string): void {
     try {
+      if (
+        typeof action.damage === "string" &&
+        action.damage !== "0" &&
+        !/^(?:[0-9]+|[1-9][0-9]*d[1-9][0-9]*(?:[+-][0-9]+)?)$/.test(String(action.damage))
+      )
+        throw new Error(`${path}.damage: invalid`);
+      if (typeof action.recharge === "object" && action.recharge !== null)
+        validateRecharge(action.recharge, `${path}.recharge`);
       validateEncounterActionShape(action, `enemy '${path}'`);
       validateEncounterActionKind(action, `enemy '${path}'`);
     } catch (error) {
@@ -242,7 +251,12 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         field(ability, "audio", path, "string", true);
         if (
           group !== "actives" ||
-          !["attack", "healing", "prepare_attack"].includes(ability.kind as string)
+          (!["attack", "healing", "prepare_attack"].includes(ability.kind as string) &&
+            !(
+              ["command", "accusation"].includes(ability.kind as string) &&
+              typeof ability.recharge === "object" &&
+              ability.recharge !== null
+            ))
         )
           field(ability, "recharge", path, "string", true);
         if (group === "actives") {
