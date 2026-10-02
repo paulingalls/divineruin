@@ -119,7 +119,8 @@ API cost) and runs only at the comprehensive push or sprint-close boundary.
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   runs lint/typechecks for XP work-branch source pushes, and the complete
   Docker/browser/acceptance gate for main, unverified tags, unknown refs, or
-  changes outside the source allowlist. A push of ONE new version tag ALONE
+  invalid work refs. Valid XP work refs use static checks for every changed path.
+  A push of ONE new version tag ALONE
   skips suites when that tag's commit is already merged into `origin/main` and
   the manifest there declares that version. Sprint close invokes the complete
   gate on the merged release tree. Do not repeat an identical broad suite on an
@@ -199,12 +200,16 @@ lost review rounds to both halves of this, five times.
 - RUN EVERY FOCUSED VERIFY THE CARD NAMES. Acceptance-related cards name a
   relevant acceptance test in Verify. Whole real-LLM acceptance runs at the
   comprehensive release gate.
-- A STORY THAT TOUCHES `apps/agent` RUNS `bun run test:python` (about 60 s)
-  BEFORE HANDBACK. A focused Verify cannot see a test outside the card that mocks
-  the changed shape, a field it now reads, or the order of its outputs. Each one
-  cost a lead fix and a confirming review round at the land tier: 224 (sprint
-  105), and 225 (bus-before-client order) and 228 (a hand-built god catalog
-  missing `layer_1_gift`) in sprint 106.
+- VERIFY THE AFFECTED CONSUMERS, NOT THE WHOLE REGRESSION SUITE. When a shape,
+  field or event order changes, inventory its consumers and name focused checks
+  in the card. Story tier is static; broad regression runs only in the full tier
+  once at sprint close (human 2026-10-01). After a repair rerun affected checks;
+  repeat mutations only when their guard or proof changed.
+- Native XP CLI jobs do not wake the lead on completion. Keep the active turn,
+  save each terminal session and log path, and poll handoff state, log age and
+  child liveness about every 45 seconds. Inspect a stopped job's actual cause
+  before choosing amend, direct review or resume; a stale marker alone is not
+  evidence that the current job stopped.
 - IF A COMMAND WILL NOT RUN, SAY WHICH AND WHY in the handback. A phantom red
   from the wrong command is worse than a missing run: story-087's handback
   claimed "infrastructure contamination" from 3 failures that `bun run

@@ -24,6 +24,7 @@ LANES = {
     ("scripts", "ts", False),
     ("scripts", "ts", True),
     ("e2e", "ts", True),
+    ("e2e", "py", True),
 }
 
 

@@ -148,6 +148,8 @@ def test_harnesses_do_not_claim_to_mirror_seed_default():
 
 @pytest.mark.asyncio
 async def test_row_without_primary_key_is_refused_by_name(monkeypatch, tmp_path):
+    for name in ("encounter_templates.json", "creatures.json"):
+        (tmp_path / name).write_text((_REPO_ROOT / "content" / name).read_text())
     (tmp_path / "items.json").write_text('[{"id": "rope"}, {"name": "Nameless"}]')
     monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
     monkeypatch.setattr(seed_content, "TABLE_MAP", {"items.json": "items"})
