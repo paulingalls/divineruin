@@ -291,6 +291,7 @@ async def _start_combat_locked(
                 attributes=derived.get("attributes", {}),
                 level=derived.get("level", 1),
                 action_pool=derived.get("action_pool", []),
+                creature_id=derived.get("creature_id"),
                 xp_value=derived.get("xp_value", 0),
                 role=derived["role"],
                 attack_mod=derived["attack_mod"],
@@ -343,6 +344,11 @@ async def _start_combat_locked(
     combat_faction_id = encounter.get("faction")
     if combat_faction_id is None and stance_gate is not None:
         combat_faction_id = stance_gate.get("faction")
+
+    from combat_recharge import initialize
+
+    for participant in participants:
+        initialize(participant)
 
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(

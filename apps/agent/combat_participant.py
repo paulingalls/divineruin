@@ -23,6 +23,10 @@ class CombatParticipant:
     death_save_successes: int = 0
     death_save_failures: int = 0
     action_pool: list[dict] = field(default_factory=list)
+    action_ledger: dict[str, dict] = field(default_factory=dict)
+    last_action_execution: dict | None = None
+    pending_preparation: dict | None = None
+    creature_id: str | None = None
     xp_value: int = 0
     # Declaration enhancers this participant has been granted (M4.2, story-004). Keys:
     # extra_attack, shield_bash, cunning_action, hit_and_run, command_lesser, quick_change.

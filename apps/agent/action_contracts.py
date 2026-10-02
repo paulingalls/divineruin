@@ -39,6 +39,16 @@ def validate_recharge(value: object, path: str) -> None:
 
 def validate_action_extensions(action: dict, path: str) -> None:
     kind = action.get("kind", "attack")
+    if "attack_source" in action:
+        if kind != "attack" or action["attack_source"] != "catalog":
+            invalid(f"{path}.attack_source")
+        save_only = action.get("half_on_success") is True or action.get("damage") in ("0", 0)
+        if not save_only and type(action.get("to_hit")) is not int:
+            invalid(f"{path}.to_hit")
+    if "self_heal" in action and (
+        kind != "attack" or action["self_heal"] != "damage_dealt" or action.get("damage") in (None, "", "0", 0)
+    ):
+        invalid(f"{path}.self_heal")
     if kind in EXECUTABLE_KINDS and "recharge" in action:
         validate_recharge(action["recharge"], f"{path}.recharge")
     if "advantage" in action and type(action["advantage"]) is not bool:

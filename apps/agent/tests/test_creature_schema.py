@@ -134,3 +134,13 @@ def test_isolated_contract_guard(case):
 CASE_IDS = json.loads((CORPUS.parent / "creature_contract_case_ids.json").read_text())
 REQUIRED_VALID = set(CASE_IDS["valid"])
 REQUIRED_INVALID = set(CASE_IDS["invalid"])
+
+
+@pytest.mark.parametrize("field,value", [("attack_source", "bad"), ("self_heal", "raw_damage")])
+def test_catalog_runtime_extensions_use_creature_public_boundary(field, value):
+    block = copy.deepcopy(json.loads(CORPUS.read_text())["valid"][0]["block"])
+    attack = block["attacks"][0]
+    attack.update(attack_source="catalog", self_heal="damage_dealt")
+    assert validate_creature_stat_block(block) == []
+    attack[field] = value
+    assert any(field in problem for problem in validate_creature_stat_block(block))

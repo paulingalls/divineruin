@@ -236,3 +236,50 @@ for (const row of contractCorpus.invalid.filter(
       }
     }).toThrow(row.field);
   });
+
+const catalogAction = {
+  name: "Bite",
+  attack_source: "catalog",
+  to_hit: 9,
+  damage: "1d8+2",
+  damage_type: "piercing",
+  properties: [],
+};
+test("catalog runtime extensions pass the public encounter boundary", () => {
+  expect(() => validateEncounterActionShape(catalogAction, "catalog")).not.toThrow();
+  for (const [field, value] of [
+    ["attack_source", "unknown"],
+    ["to_hit", true],
+    ["to_hit", undefined],
+    ["self_heal", "raw_damage"],
+  ]) {
+    expect(() =>
+      validateEncounterActionShape({ ...catalogAction, [field as string]: value }, "catalog"),
+    ).toThrow(field);
+  }
+});
+
+test("catalog runtime extensions reject contradictory action shapes", () => {
+  const rally = { name: "Rally", kind: "healing", target_group: "allied_bandits", healing: "1d8" };
+  expect(() =>
+    validateEncounterActionShape({ ...rally, attack_source: "catalog" }, "catalog"),
+  ).toThrow("attack_source");
+  expect(() =>
+    validateEncounterActionShape({ ...rally, self_heal: "damage_dealt" }, "catalog"),
+  ).toThrow("self_heal");
+  expect(() =>
+    validateEncounterActionShape(
+      {
+        name: "Blind",
+        kind: "attack",
+        damage: "0",
+        damage_type: "none",
+        applies_condition: "blinded",
+        save: "constitution",
+        dc: 12,
+        self_heal: "damage_dealt",
+      },
+      "catalog",
+    ),
+  ).toThrow("self_heal");
+});

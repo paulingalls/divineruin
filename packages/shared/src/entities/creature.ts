@@ -69,6 +69,8 @@ export interface Attack {
   dc?: number;
   half_on_success?: boolean;
   escape_dc?: number;
+  attack_source?: "catalog";
+  self_heal?: "damage_dealt";
   advantage?: boolean;
   duration?: number;
   recharge?: Recharge;

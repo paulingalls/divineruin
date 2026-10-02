@@ -11,6 +11,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _combat_end_fixtures import default_condition_persistence, default_player_row  # noqa: F401
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
 

@@ -34,7 +34,7 @@ from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
 from combat_phase_recovery import PrevalidationRefusal, phase_transaction_with_recovery
-from combat_support import _require_combat
+from combat_support import _participant_roster, _require_combat
 from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
 from declaration_payloads import DeclPayload
@@ -102,6 +102,7 @@ async def _declare_phase_locked(
     response = {
         "beat": next_state.beat,
         "round": next_state.round_number,
+        "participants": _participant_roster(next_state.participants),
         "accepted_actors": list(next_state.pending_declarations.keys()),
     }
     logger.info("declare_phase result: beat=%s, actors=%s", next_state.beat, response["accepted_actors"])
@@ -410,6 +411,7 @@ async def _resolve_phase_locked(
         "beat": state.beat,
         "round": state.round_number,
         "packets": packet_summaries,
+        "participants": _participant_roster(state.participants),
         # ADR 0008 decision 4: name the phase, the verbs legal in it, and what the machine is
         # waiting on. THIS is the window producer constraint 6 demands — a window id the DM has to
         # guess among nine is not shipped (M29, story-016).
