@@ -1,4 +1,3 @@
-import { authStore } from "@/stores/auth-store";
 import { Participant, ParticipantKind } from "livekit-client";
 import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
@@ -11,10 +10,7 @@ import {
 import { panelStore, createPanelStore } from "@/stores/panel-store";
 import { encode, resetStores } from "./use-game-events.helpers";
 
-beforeEach(() => {
-  authStore.setState({ phase: "unauthenticated", playerId: null, token: null, accountId: null });
-  resetStores();
-});
+beforeEach(resetStores);
 
 // --- parseGameEvent ---
 
