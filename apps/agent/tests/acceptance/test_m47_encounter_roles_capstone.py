@@ -30,6 +30,7 @@ import random
 from unittest.mock import patch
 
 from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -42,9 +43,7 @@ import encounter_budget
 import encounter_loot
 from encounter_roles import _is_active_ability
 
-# Oversized weapon: min damage 60 (60d6) exceeds the boss's derived 56 HP, so every declared attack
-# is a guaranteed one-shot regardless of the real damage roll — a deterministic, bounded loop.
-_BIG_WEAPON = {"name": "Capstone Greatblade", "damage": "60d6", "damage_type": "slashing", "properties": []}
+_BIG_WEAPON = {"name": "Capstone Greatblade", "damage": "100d6", "damage_type": "slashing", "properties": []}
 
 _ENCOUNTER = "cult_cell"
 _BOSS_ID = "cult_leader"
@@ -52,7 +51,7 @@ _BOSS_ID = "cult_leader"
 
 async def _seed_capstone_player(pool, player_id: str) -> None:
     """Seed a player with the one-shot weapon (combat_init builds the action_pool from equipment
-    entries carrying `damage`) and a huge HP pool so it survives the 7-enemy crossfire to victory."""
+    entries carrying `damage`) and a huge HP pool so it survives the enemy crossfire to victory."""
     await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
     await pool.execute(
         "UPDATE players SET data = jsonb_set(jsonb_set(data, '{equipment}', $2::jsonb), '{hp}', $3::jsonb) "
@@ -85,11 +84,9 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
     assert cs is not None and cs.beat == "declaration"
     assert await pool.fetchrow("SELECT 1 FROM combat_instances WHERE combat_id = $1", cs.combat_id) is not None
 
-    # Minion (cultist): half HP (floor 9*0.5=4), softened modifiers, NO active abilities (the basic
-    # attack is kept so it can still act, but actives are stripped — AC2).
     minion = _by_id(cs, "cultist_1")
     assert minion.role == "minion"
-    assert minion.hp_current == 4 and minion.hp_max == 4
+    assert minion.hp_current == 5 and minion.hp_max == 5
     assert minion.attack_mod == 0 and minion.damage_mult == 0.75 and minion.dc_mod == -1
     assert minion.action_pool, "minion keeps its basic attack"
     assert all(not _is_active_ability(a) for a in minion.action_pool), "minion has no active abilities"
@@ -97,13 +94,12 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
     # Standard (cult_fanatic): identity overlay.
     standard = _by_id(cs, "cult_fanatic_1")
     assert standard.role == "standard"
-    assert standard.hp_current == 22
+    assert standard.hp_current == 19
     assert standard.attack_mod == 0 and standard.damage_mult == 1.0 and standard.dc_mod == 0
 
-    # Boss (cult_leader): doubled HP (28*2=56), boosted modifiers, one legendary action + signature.
     boss = _by_id(cs, _BOSS_ID)
     assert boss.role == "boss"
-    assert boss.hp_current == 56 and boss.hp_max == 56
+    assert boss.hp_current == 96 and boss.hp_max == 96
     assert boss.attack_mod == 2 and boss.damage_mult == 1.5 and boss.dc_mod == 2
     assert boss.legendary_actions == 1
     assert boss.signature_ability is not None
@@ -143,7 +139,7 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
     boss_legendary_through_rounds = False
     result: str | tuple = ""
     with patch("check_resolution.dice_roll", return_value=_d20(20)):  # every attack hits; damage is real
-        for _ in range(20):  # safety bound; 7 enemies one-shot one-per-round -> ~7 rounds
+        for _ in range(20):
             cs = ctx.userdata.combat_state
             living = [p for p in cs.participants if p.type == "enemy" and not p.is_fallen]
             target = next(t for t in target_order if any(p.id == t and not p.is_fallen for p in cs.participants))
@@ -163,8 +159,7 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
     _agent, json_str = result
     payload = json.loads(json_str)
     assert payload["outcome"] == "victory"
-    # Role XP multiplier applied ONCE across all roles: 2*150 + 4*int(40*0.5) + int(300*2.0) = 980.
-    assert payload["xp_total"] == 980
+    assert payload["xp_total"] == 425
     # humanoid standards + boss carry coin (minions add 0), so the pooled drop is positive (gold,
     # converted from the silver drop at the grant boundary — story-008).
     assert payload["currency_gold"] > 0

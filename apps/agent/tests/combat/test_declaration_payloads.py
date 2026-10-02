@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 from livekit.agents.llm import ToolContext
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import combat_turn
 from combat_packet import _resolve_one_packet
@@ -73,8 +73,7 @@ def test_production_and_m29_use_the_shared_action_roster():
 
 @pytest.mark.asyncio
 async def test_catalog_condition_action_is_invocable_from_the_produced_name():
-    catalog_path = Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json"
-    catalog = json.loads(catalog_path.read_text())
+    catalog = catalog_encounters()
     inventory = [
         (encounter["id"], enemy["id"], action["name"], action["applies_condition"])
         for encounter in catalog
@@ -83,41 +82,43 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         if action.get("applies_condition")
     ]
     assert inventory == [
-        ("hollow_patrol_greyvale", "hollow_rend_1", "Hollow Shriek", "frightened"),
         ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone"),
         ("ashmark_patrol", "ashmark_soldier_2", "Shield Bash", "prone"),
-        ("ashmark_patrol", "ashmark_soldier_3", "Shield Bash", "prone"),
-        ("ashmark_patrol", "ashmark_soldier_4", "Shield Bash", "prone"),
         ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
+        ("hollow_corrupted_settlement", "hollowed_knight", "Shield Slam", "prone"),
     ]
-
-    encounter = next(item for item in catalog if item["id"] == inventory[0][0])
-    action = next(item for item in encounter["enemies"][0]["action_pool"] if item.get("applies_condition"))
-    state = _make_combat_state()
-    enemy = state.get_participant("goblin_scout_1")
-    assert enemy is not None
-    enemy.action_pool = [action]
-    produced_name = _participant_roster(state.participants)[1]["actions"][0]
-    mapped = to_engine_declarations(
-        [AttackDecl(kind="attack", actor_id=enemy.id, action=produced_name, target_id="player_1", rider="")]
-    )
-    packet = ResolutionPacket(enemy.id, resolve_declaration(mapped[enemy.id]), enemy.initiative)
-
-    with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):
-        summary = await _resolve_one_packet(
-            make_context().userdata,
-            state,
-            packet,
-            mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
-            resolver=_damage_resolver(0),
-            concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
+    for encounter_id, enemy_id, name, condition in inventory:
+        encounter = next(item for item in catalog if item["id"] == encounter_id)
+        source = next(item for item in encounter["enemies"] if item["id"] == enemy_id)
+        action = next(item for item in source["action_pool"] if item["name"] == name)
+        state = _make_combat_state()
+        enemy = state.get_participant("goblin_scout_1")
+        assert enemy is not None
+        enemy.action_pool = [action]
+        produced_name = _participant_roster(state.participants)[1]["actions"][0]
+        mapped = to_engine_declarations(
+            [AttackDecl(kind="attack", actor_id=enemy.id, action=produced_name, target_id="player_1", rider="")]
         )
+        packet = ResolutionPacket(enemy.id, resolve_declaration(mapped[enemy.id]), enemy.initiative)
 
-    assert summary["condition_inflicted"] == "frightened"
-    player = state.get_participant("player_1")
-    assert player is not None
-    assert any(condition["type"] == "frightened" for condition in player.conditions)
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):
+            summary = await _resolve_one_packet(
+                make_context().userdata,
+                state,
+                packet,
+                mutations=MagicMock(update_player_hp=AsyncMock()),
+                queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+                resolver=_damage_resolver(0),
+                concentration_break_mod=MagicMock(
+                    break_concentration_on_damage=AsyncMock(return_value=None),
+                    break_concentration_on_incapacitation=AsyncMock(return_value=None),
+                ),
+            )
+
+        assert summary["condition_inflicted"] == condition
+        player = state.get_participant("player_1")
+        assert player is not None
+        assert any(active["type"] == condition for active in player.conditions)
 
 
 def test_attack_maps_to_the_engine_attack_shape():

@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import load_test_creature
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -24,22 +25,13 @@ class TestStartCombatDifficulty:
     @patch("combat_init._publish_sounds", new_callable=AsyncMock)
     async def test_combat_started_includes_difficulty(self, mock_sounds, mock_event):
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(
             return_value={
+                "recommended_party_level": 1,
                 "name": "Goblin Ambush",
                 "difficulty": "hard",
-                "enemies": [
-                    {
-                        "id": "goblin_1",
-                        "name": "Goblin Scout",
-                        "hp": 7,
-                        "ac": 12,
-                        "attributes": {"dexterity": 14},
-                        "level": 1,
-                        "tier": 1,
-                        "xp_value": 25,
-                    }
-                ],
+                "enemies": [{"id": "goblin_1", "creature_id": "fixture_goblin", "role": "standard"}],
             }
         )
         mock_content.get_npc = AsyncMock(return_value=None)
@@ -85,21 +77,12 @@ class TestStartCombatDifficulty:
     @patch("combat_init._publish_sounds", new_callable=AsyncMock)
     async def test_combat_started_defaults_to_moderate(self, mock_sounds, mock_event):
         mock_content = MagicMock()
+        mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(
             return_value={
+                "recommended_party_level": 1,
                 "name": "Bar Fight",
-                "enemies": [
-                    {
-                        "id": "thug_1",
-                        "name": "Thug",
-                        "hp": 10,
-                        "ac": 11,
-                        "attributes": {"strength": 14},
-                        "level": 1,
-                        "tier": 1,
-                        "xp_value": 25,
-                    }
-                ],
+                "enemies": [{"id": "thug_1", "creature_id": "fixture_goblin", "role": "standard"}],
             }
         )
         mock_content.get_npc = AsyncMock(return_value=None)

@@ -100,11 +100,20 @@ async def test_combat_init_reads_and_keeps_each_party_members_own_inventory():
 
 
 @pytest.mark.asyncio
-async def test_real_hollow_shriek_cannot_frighten_choirs_silence_bearer():
+async def test_authored_hollow_shriek_cannot_frighten_choirs_silence_bearer():
     ctx, state = await _started_with("choirs_silence", "hollow_patrol_greyvale")
-    attacker = _participant(state, "hollow_rend_1")
+    attacker = _participant(state, "mawling_1")
     target = _participant(state, "player_1")
-    action = next(action for action in attacker.action_pool if action["name"] == "Hollow Shriek")
+    action = {
+        "name": "Test Shriek",
+        "damage": "0",
+        "damage_type": "none",
+        "properties": [],
+        "applies_condition": "frightened",
+        "save": "wisdom",
+        "dc": 13,
+    }
+    attacker.action_pool.append(action)
     decl = Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id=target.id)
 
     with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=2)):
@@ -123,11 +132,20 @@ async def test_real_hollow_shriek_cannot_frighten_choirs_silence_bearer():
 
 
 @pytest.mark.asyncio
-async def test_real_hollow_shriek_uses_stillheart_wisdom_advantage_and_names_source():
+async def test_authored_hollow_shriek_uses_stillheart_wisdom_advantage_and_names_source():
     ctx, state = await _started_with("stillheart", "hollow_patrol_greyvale")
-    attacker = _participant(state, "hollow_rend_1")
+    attacker = _participant(state, "mawling_1")
     target = _participant(state, "player_1")
-    action = next(action for action in attacker.action_pool if action["name"] == "Hollow Shriek")
+    action = {
+        "name": "Test Shriek",
+        "damage": "0",
+        "damage_type": "none",
+        "properties": [],
+        "applies_condition": "frightened",
+        "save": "wisdom",
+        "dc": 13,
+    }
+    attacker.action_pool.append(action)
     decl = Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id=target.id)
 
     with patch(

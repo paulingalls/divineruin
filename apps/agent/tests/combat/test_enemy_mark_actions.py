@@ -1,17 +1,17 @@
 """Enemy commands mark a focus target for the commander's band."""
 
-import json
 from pathlib import Path
 from typing import cast
 
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _resolve_deps, _resolve_round
+from sample_fixtures import catalog_encounters
 
 from combat_marks import attack_bonus, resolve_mark_action
 from session_data import CombatParticipant, CombatState
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
-_ENCOUNTERS = json.loads((_CONTENT / "encounter_templates.json").read_text())
+_ENCOUNTERS = catalog_encounters()
 _STRIKE = {"name": "Mace", "damage": "1", "damage_type": "bludgeoning", "properties": []}
 
 
@@ -97,7 +97,7 @@ async def test_a_command_makes_a_later_bandmate_hit_the_marked_target(enemy_id, 
 async def test_two_bless_commands_on_one_target_still_add_only_two():
     commands = [
         ("fanatic_1", _action("cult_fanatic_1", "Bless")),
-        ("fanatic_2", _action("cult_fanatic_2", "Bless")),
+        ("fanatic_2", _action("cult_fanatic_1", "Bless")),
     ]
     _, _, strike = await _run(_mark_state(commands))
     assert (strike["hit"], strike["attack_total"]) == (True, 15)

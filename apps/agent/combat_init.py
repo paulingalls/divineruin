@@ -31,7 +31,7 @@ from companion_scaling import (
 )
 from db_errors import validated_player_conditions
 from encounter_actions import validate_encounter_actions
-from encounter_roles import derive_role_stats
+from encounter_references import validate_encounter_references
 from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -149,11 +149,18 @@ async def _start_combat_locked(
         for mid, row in member_players
     ]
 
-    enemies = encounter.get("enemies", [])
-    # Surface malformed enemy content (condition actions, action kinds, resistance tags) as a DM-narratable
-    # ToolError (the _start_combat_impl content-error convention, matching the stance-gate above),
-    # not a raw ValueError at the tool boundary. The inner {e} names the specific defect.
+    enemies = []
     try:
+        validate_encounter_references(encounter)
+        for reference in encounter["enemies"]:
+            enemies.append(
+                await content.load_creature_enemy(
+                    reference["creature_id"],
+                    encounter_id=encounter_id,
+                    enemy_id=reference["id"],
+                    role=reference["role"],
+                )
+            )
         validate_enemy_action_shapes(enemies)
         validate_encounter_actions(enemies)
         validate_enemy_resistance_tags(enemies)
@@ -274,11 +281,7 @@ async def _start_combat_locked(
             )
         )
     for enemy in enemies:
-        # Apply the encounter-role overlay (M4.7, story-001): the same base stat block becomes a
-        # Minion (halved, actives stripped) or a Boss (doubled, signature + legendary) per its
-        # ``role`` tag. derive_role_stats is pure and returns a NEW dict; an untagged enemy defaults
-        # to "standard" (identity), so pre-M4.7 templates build exactly as before.
-        derived = derive_role_stats(enemy, enemy.get("role", "standard"))
+        derived = enemy
         participants.append(
             CombatParticipant(
                 id=derived["id"],
@@ -291,7 +294,11 @@ async def _start_combat_locked(
                 attributes=derived.get("attributes", {}),
                 level=derived.get("level", 1),
                 action_pool=derived.get("action_pool", []),
-                creature_id=derived.get("creature_id"),
+                creature_id=derived["creature_id"],
+                catalog_narration=derived["catalog_narration"],
+                catalog_audio=derived["catalog_audio"],
+                deferred_effects=derived["deferred_effects"],
+                saving_throw_proficiencies=derived["saving_throw_proficiencies"],
                 xp_value=derived.get("xp_value", 0),
                 role=derived["role"],
                 attack_mod=derived["attack_mod"],
@@ -299,18 +306,9 @@ async def _start_combat_locked(
                 dc_mod=derived["dc_mod"],
                 legendary_actions=derived["legendary_actions"],
                 signature_ability=derived["signature_ability"],
-                # Loot/currency overlay (M4.7, story-002): carry the template enemy's category +
-                # loot_table_id onto the participant so _end_combat_db can roll role-scaled loot
-                # and currency on victory. derive_role_stats copies the source enemy, so these ride
-                # through; empty-string defaults keep untagged/pre-M4.7 enemies inert (no drops).
                 category=derived.get("category", ""),
                 tier=derived["tier"],
                 loot_table_id=derived.get("loot_table_id", ""),
-                # Tier-3 de-escalation resistance profile (M15 story-002): carry the template
-                # enemy's resistance_tags onto the participant so the orchestrator shifts each
-                # enemy's disposition by its OWN profile. Validated at the load boundary above;
-                # derive_role_stats copies the source enemy, so the tags ride through. Empty
-                # default keeps untagged/pre-M15 enemies un-de-escalatable (no argument DC swing).
                 resistance_tags=derived.get("resistance_tags", []),
             )
         )

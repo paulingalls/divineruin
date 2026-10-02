@@ -1,31 +1,14 @@
-"""Capstone: M13 Enemy Condition Infliction end-to-end against a real Postgres testcontainer.
-
-story-001 (content + fail-loud validation) and story-002 (resolve path, homes debt
-f9a5d1e88432) shipped the M13 chain in slices with unit / mock-conn coverage. This capstone
-proves they COMPOSE against ONE seeded testcontainer (auto-marked `acceptance`), driving the
-REAL pipeline: content-driven `combat_init._start_combat_impl` builds participants from the
-seeded `hollow_patrol_greyvale` encounter (running `validate_enemy_action_shapes`), the
-declare/resolve loop dispatches the enemy `hollow_rend_1`'s "Hollow Shriek" through
-`combat_packet._resolve_one_packet` to `combat_enemy_action._resolve_enemy_condition_packet`, which
-rolls the target's save and lands the condition via the immunity-gated `apply_condition` SSOT.
-
-The enemy action is declared as an **ATTACK** — the way the DM actually declares an enemy pool
-action (system_prompts.py:235; "Ability" is a spell/ability id the caster knows, which pool
-actions are not). The routing keys on the action's `applies_condition` field, not the declaration
-type, so this is the real live path. (A prior version declared it as ABILITY and was false-green:
-the feature was a no-op under real DM behavior — the close-fix that made routing type-agnostic.)
-
-Determinism: the only seam patched is the d20 (check_resolution.dice_roll -> face 1, so every
-save FAILS, including the Beat-4 tick-clear save — the landed condition survives the phase).
-The two `hollow_drift` minions are omitted from declarations so they take no action and the
-player takes no damage, keeping combat open (a JSON string result, not the end_combat tuple).
-"""
+"""Condition resolution on Postgres with a test-authored catalog action."""
 
 from __future__ import annotations
 
+import json
+from copy import deepcopy
 from unittest.mock import patch
 
+import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -36,8 +19,33 @@ import db
 import db_mutations
 
 _ENCOUNTER = "hollow_patrol_greyvale"
-_ENEMY_ID = "hollow_rend_1"
-_ACTION = "Hollow Shriek"
+_ENEMY_ID = "mawling_1"
+_ACTION = "Test Shriek"
+
+
+@pytest.fixture(autouse=True)
+async def test_authored_condition_catalog(reset_db_pool):
+    from creature_catalog import query_creature_by_id
+
+    pool = await db.get_pool()
+    original = await query_creature_by_id("hollow_mawling")
+    row = deepcopy(original)
+    row["attacks"].append(
+        {
+            **row["attacks"][0],
+            "name": _ACTION,
+            "damage": "0",
+            "damage_type": "none",
+            "applies_condition": "frightened",
+            "save": "wisdom",
+            "dc": 13,
+        }
+    )
+    await pool.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", row["id"], json.dumps(row))
+    try:
+        yield
+    finally:
+        await pool.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", original["id"], json.dumps(original))
 
 
 async def _start_and_declare(ctx, player_id: str) -> None:

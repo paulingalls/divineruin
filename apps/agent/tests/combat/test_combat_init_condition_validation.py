@@ -176,7 +176,11 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
     monkeypatch.setattr(combat_init, "validate_enemy_resistance_tags", resistance)
     mutations, queries, content = _make_start_combat_mocks()
     encounter = copy.deepcopy(SAMPLE_ENCOUNTER)
-    enemy = encounter["enemies"][0]
+    from sample_fixtures import load_test_creature
+
+    enemy = await load_test_creature(
+        "fixture_goblin", encounter_id="fixture", enemy_id=encounter["enemies"][0]["id"], role="standard"
+    )
     enemy["action_pool"][0].update(applies_condition="blinded", save="dexterity", dc=12)
     enemy["resistance_tags"] = ["pragmatic"]
     if defect == "dc":
@@ -184,6 +188,11 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
     elif defect == "resistance_tags":
         enemy["resistance_tags"] = ["unknown"]
     content.get_encounter_template.return_value = encounter
+
+    async def load(creature_id, **kwargs):
+        return enemy
+
+    content.load_creature_enemy = load
     if defect:
         with pytest.raises(ToolError, match=defect):
             await combat_init._start_combat_impl(
@@ -194,9 +203,9 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
         await combat_init._start_combat_impl(
             make_context(), "fixture", "Fixture", mutations=mutations, queries=queries, content=content
         )
-        resistance.assert_called_once_with(encounter["enemies"])
+        resistance.assert_called_once_with([enemy])
         mutations.save_combat_state.assert_called_once()
-    shapes.assert_called_once_with(encounter["enemies"])
+    shapes.assert_called_once_with([enemy])
 
 
 CONTRACT_CORPUS = json.loads((FIXTURE_PATH.parent / "creature_blocks.json").read_text())

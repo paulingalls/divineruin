@@ -8,6 +8,7 @@ import json
 import logging
 
 import db
+from creature_combat_loader import load_creature_enemy as load_creature_enemy
 
 logger = logging.getLogger("divineruin.db")
 

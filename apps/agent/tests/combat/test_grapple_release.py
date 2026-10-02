@@ -1,13 +1,11 @@
 import copy
-import json
 from dataclasses import replace
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state, _resolve_deps
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import abilities
 import combat_ability_save
@@ -19,7 +17,7 @@ from combat_support import _handle_hp_zero
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant
 
-_CATALOG = json.loads((Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json").read_text())
+_CATALOG = catalog_encounters()
 
 
 def _hold_person() -> dict:

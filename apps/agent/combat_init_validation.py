@@ -35,7 +35,7 @@ def validate_enemy_action_shapes(enemies: list[dict]) -> None:
 def validate_enemy_resistance_tags(enemies: list[dict]) -> None:
     """Fail loud if any enemy's Tier-3 ``resistance_tags`` are malformed — the load-boundary guard.
 
-    Encounter templates have no strict loader, so this closes the gap for the M15 de-escalation
+    Expanded catalog enemies are checked at combat entry for the M15 de-escalation
     resistance profile the same way ``validate_enemy_action_shapes`` does for condition actions
     (and mirroring npcs.py's default_disposition/resistance_tags guard). ``resistance_tags`` is
     optional (an enemy without it simply can't be de-escalated); when present it must be a list of

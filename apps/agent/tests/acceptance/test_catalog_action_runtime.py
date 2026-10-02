@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
 from acceptance.seeds import seed_player
 from combat._catalog_actions import BITE, DIRTY, RALLY
 from combat._catalog_fixtures import LUNGE
@@ -18,7 +19,6 @@ import db
 import db_mutations
 import db_queries
 import event_types as E
-from combat_init_validation import validate_enemy_action_shapes
 from combat_ui_update import build_combat_ui_update
 from creature_catalog import query_creature_by_id
 
@@ -27,42 +27,58 @@ from creature_catalog import query_creature_by_id
 async def runtime(reset_db_pool):
     pool = await db.get_pool()
     created = []
+    originals = {}
 
     async def start(species, actions, role="standard"):
         row = await query_creature_by_id(species)
         uid = uuid4().hex
         player_id, encounter_id, enemy_id = f"p136_{uid}", f"e136_{uid}", f"foe_{uid}"
         await seed_player(pool, player_id=player_id, class_="warrior")
-        enemy = {
-            "id": enemy_id,
-            "name": row["name"],
-            "creature_id": row["id"],
-            "hp": row["hp"],
-            "ac": row["ac"],
-            "tier": row["tier"],
-            "level": row["level"],
-            "attributes": {"strength": 20},
-            "action_pool": actions,
-            "role": role,
-        }
-        validate_enemy_action_shapes([enemy])
+        from copy import deepcopy
+
+        from creature_schema import validate_creature_stat_block
+
+        catalog_row = deepcopy(row)
+        originals.setdefault(species, deepcopy(row))
+        attacks, actives = [], []
+        for action in actions:
+            if action.get("kind", "attack") == "attack":
+                attacks.append({**row["attacks"][0], **action})
+            else:
+                actives.append(
+                    {
+                        "description": "Test-authored active.",
+                        "narration_cue": "A sharp crack rings out.",
+                        "audio": "test-active",
+                        **action,
+                    }
+                )
+        catalog_row["attacks"] = attacks or [row["attacks"][0]]
+        catalog_row["actives"] = actives
+        assert not validate_creature_stat_block(catalog_row)
+        await pool.execute(
+            "UPDATE creatures SET data = $2::jsonb WHERE id = $1", catalog_row["id"], json.dumps(catalog_row)
+        )
+        enemy = {"id": enemy_id, "creature_id": catalog_row["id"], "role": role}
         await pool.execute(
             "INSERT INTO encounter_templates (id, data) VALUES ($1, $2::jsonb)",
             encounter_id,
-            json.dumps({"id": encounter_id, "enemies": [enemy]}),
+            json.dumps({"id": encounter_id, "recommended_party_level": 2, "enemies": [enemy]}),
         )
         ctx = make_context(player_id, room=make_mock_room())
-        created.append((ctx, player_id, encounter_id))
+        created.append((ctx, player_id, encounter_id, catalog_row["id"]))
         await combat_init._start_combat_impl(ctx, encounter_id, "A catalog combat input.")
         ctx.userdata.combat_state.get_participant(player_id).has_reaction_ability = False
         return ctx, player_id, enemy_id
 
     yield start
-    for ctx, player_id, encounter_id in created:
+    for ctx, player_id, encounter_id, _species_id in created:
         if ctx.userdata.combat_state is not None:
             await db_mutations.delete_combat_state(ctx.userdata.combat_state.combat_id, conn=pool)
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
         await pool.execute("DELETE FROM encounter_templates WHERE id = $1", encounter_id)
+    for species_id, original in originals.items():
+        await pool.execute("UPDATE creatures SET data = $2::jsonb WHERE id = $1", species_id, json.dumps(original))
 
 
 async def declare(ctx, pid, eid, name, kind="attack"):

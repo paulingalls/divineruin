@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _damage_resolver, _resolve_deps
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 
 import combat_hold
 import combat_reaction_effect
@@ -16,7 +16,7 @@ from encounter_actions import validate_encounter_actions
 from session_data import CombatParticipant, CombatState
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content" / "encounter_templates.json"
-_ENCOUNTERS = json.loads(_CONTENT.read_text())
+_ENCOUNTERS = catalog_encounters()
 
 
 def _ashmark_patrol():
@@ -31,18 +31,13 @@ def test_the_sergeant_is_the_single_valid_accusation_producer():
         for action in enemy["action_pool"]
         if action.get("kind") == "accusation"
     ]
-    assert carriers == [
-        (
-            "ashmark_patrol",
-            "ashmark_sergeant",
-            {
-                "name": "Accusation",
-                "kind": "accusation",
-                "properties": [],
-                "description": "Names the accused and directs the patrol's focus fire",
-            },
-        )
+    assert [(enc, enemy, action["name"]) for enc, enemy, action in carriers] == [
+        ("ashmark_patrol", "ashmark_sergeant", "Accusation")
     ]
+    action = carriers[0][2]
+    assert action["kind"] == "accusation" and action["properties"] == []
+    assert action["description"] == "Accusation to allies: Names the accused and directs the patrol's focus fire."
+    assert action["recharge"] == {"kind": "round", "uses": 2}
     validate_encounter_actions(_ashmark_patrol()["enemies"])
 
 
