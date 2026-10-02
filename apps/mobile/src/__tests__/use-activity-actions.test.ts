@@ -6,7 +6,6 @@ import { panelStore } from "../stores/panel-store";
 import { catchupStore } from "../stores/catchup-store";
 const sound = mock(() => {});
 void mock.module("@/audio/sfx-player", () => ({ playSfx: sound, releaseAllPlayers: () => {} }));
-void mock.module("@/audio/haptics", () => ({ hapticSuccess: () => {} }));
 void mock.module("@/hooks/use-catchup", () => ({
   fetchCards: () => Promise.resolve(),
   useCatchUp: () => {},

@@ -10,6 +10,8 @@ Review and fault injections caught replayed enemy actives, invalid action shapes
 flat damage normalization, source walks that abstained, stale inventory responses,
 missing home-screen polling and copied selected-item details. Real database,
 browser and native checks exposed contracts mocked checks could not certify.
+Mounted mobile harnesses isolate persistent module mocks in child processes;
+case-count floors prevent skipped child checks from certifying the parent.
 
 The close review also reproduced an older buffered agent snapshot overwriting a newer HTTP result. The repair gives each owner a transactional database revision and captures it with inventory in one statement; both transports use the same revision guard. Arrival order and local request generations cannot establish committed inventory order.
 

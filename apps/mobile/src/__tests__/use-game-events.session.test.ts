@@ -6,7 +6,10 @@ import { authStore } from "@/stores/auth-store";
 import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
-beforeEach(resetStores);
+beforeEach(() => {
+  authStore.setState({ phase: "unauthenticated", playerId: null, token: null, accountId: null });
+  resetStores();
+});
 
 // --- handleGameEvent: session_init ---
 
