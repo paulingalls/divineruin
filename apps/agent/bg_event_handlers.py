@@ -248,7 +248,7 @@ def handle_events(
             if (
                 requested_amount < 0
                 and ev.payload.get("reason") != "neglect"
-                and not sd.displeasure_whisper_queued
+                and sd.primary_player_id not in sd.displeasure_heard_by
                 and not any(speech.is_displeasure for speech in speech_queue)
             ):
                 queue_god_whisper(ev.payload, sd, speech_queue, displeasure=True)
