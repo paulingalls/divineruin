@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import started as started
 from acceptance.test_catalog_action_runtime import runtime as runtime
 
 import combat_turn
@@ -190,3 +191,42 @@ async def test_choir_public_actions_hold_reload(runtime):
     assert target is not None
     charm = next(c for c in target.conditions if c["type"] == "charmed")
     assert charm["source"] == eid and charm["choir_melody"] is True
+
+
+async def test_choir_concurrent_searches_preserve_first_discovery(started):
+    from uuid import uuid4
+
+    from acceptance.seeds import seed_player_with_pools
+
+    import combat_end
+    import db
+    import mode_tools
+    from party_state import PartyState
+
+    ctx, _ = await started("hollow_choir", player_class="mage")
+    await combat_end._end_combat_impl(ctx, "fled")
+    other = "choir_search_" + uuid4().hex
+    pool = await db.get_pool()
+    await seed_player_with_pools(pool, player_id=other, class_="mage")
+    ctx.userdata.party.members.extend(PartyState.solo(other).members)
+    try:
+        await mode_tools._enter_mode_impl(ctx, "combat", "hollow_choir", "voices")
+        action = {"type": "interact", "action": "choir_search_arcana", "target_id": "choir_sound"}
+        await combat_turn._declare_phase_impl(
+            ctx,
+            {
+                ctx.userdata.player_id: action,
+                other: action,
+                "choir_zone": {"type": "defend"},
+            },
+        )
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            result = await _resolve_round(ctx)
+        searches = [packet for packet in result["packets"] if packet["actor_id"] != "choir_zone"]
+        assert [packet["resolved"] for packet in searches] == [True, False]
+        assert ctx.userdata.combat_state.choir_encounter["phase"] == "exposed"
+        saved = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
+        assert saved is not None and saved.choir_encounter is not None
+        assert saved.choir_encounter["phase"] == "exposed"
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", other)

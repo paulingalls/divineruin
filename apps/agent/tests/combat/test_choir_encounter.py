@@ -108,6 +108,17 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
     assert packet["auto_fail"] is False
     assert state.choir_encounter["phase"] == ("exposed" if success else "search")
     assert ("core_id" in packet["choir"]) is success
+    if success:
+        stale = await combat_packet._resolve_one_packet(
+            ctx.userdata,
+            state,
+            ResolutionPacket(actor.id, decl, actor.initiative),
+            mutations=mutations,
+            queries=queries,
+            resolver=None,
+            concentration_break_mod=None,
+        )
+        assert stale["resolved"] is False and state.choir_encounter["phase"] == "exposed"
 
 
 @pytest.mark.asyncio

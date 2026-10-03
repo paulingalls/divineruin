@@ -121,7 +121,9 @@ async def _resolve_one_packet(
 
     import choir_encounter
 
-    choir_encounter.guard_declaration(state, packet.actor_id, decl)
+    stale = choir_encounter.stale_reason(state, packet.actor_id, decl)
+    if stale is None:
+        choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
     aura = await choir_encounter.turn_start(
         session, state, attacker, conn=conn, concentration_break_mod=concentration_break_mod
@@ -147,6 +149,9 @@ async def _resolve_one_packet(
     if blocked := cannot_act(attacker.conditions):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    if stale is not None:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}
 
     try:
         combat_voice_rules.guard_declaration(state, attacker, decl)

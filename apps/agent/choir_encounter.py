@@ -116,6 +116,23 @@ def guard_declaration(state, actor_id, declaration):
             raise ValueError("The Choir cannot be targeted by touch spells")
 
 
+def stale_reason(state, actor_id, declaration):
+    source = owner(state)
+    if source is None or state.choir_encounter is None or actor_id == source.id:
+        return None
+    if (
+        declaration.type is DeclarationType.INTERACT
+        and declaration.action in SEARCH_ACTIONS
+        and declaration.target_id == SEARCH_TARGET
+        and state.choir_encounter["phase"] != "search"
+    ):
+        return "The Choir search was already completed"
+    targets = declaration.target_ids or [declaration.target_id]
+    if state.choir_encounter["phase"] == "destroyed" and source.id in targets:
+        return "The Choir core was already destroyed"
+    return None
+
+
 async def search(session, state, actor, declaration, *, queries, conn):
     guard_declaration(state, actor.id, declaration)
     skill = SEARCH_ACTIONS[declaration.action]

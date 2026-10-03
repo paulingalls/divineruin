@@ -474,3 +474,26 @@ async def test_choir_audio_entry_and_reload_queries(started):
             assert facts["core_id"] == "choir_zone"
             assert "30 feet east" in facts["cue"]
             assert facts["engine_damage_spell_ids"] == ["arcane_bolt"]
+
+
+async def test_choir_lethal_spell_preserves_later_companion_action(started):
+    ctx, _ = await started("hollow_choir", player_class="mage", companion=COMPANIONS[0]["id"])
+    await search(ctx)
+    state = ctx.userdata.combat_state
+    pid = ctx.userdata.player_id
+    ally = state.get_participant(COMPANIONS[0]["id"])
+    state.get_participant(pid).initiative = ally.initiative + 1
+    state.get_participant("choir_zone").hp_current = 1
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    await combat_turn._declare_phase_impl(
+        ctx,
+        {
+            pid: {"type": "ability", "action": "arcane_bolt", "target_id": "choir_zone"},
+            ally.id: {"type": "attack", "action": ally.action_pool[0]["name"], "target_id": "choir_zone"},
+            "choir_zone": {"type": "defend"},
+        },
+    )
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        result = await _resolve_round(ctx)
+    assert json.loads(result[1])["outcome"] == "victory"
+    assert ctx.userdata.combat_state is None
