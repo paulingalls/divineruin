@@ -26,6 +26,7 @@ from unittest.mock import patch
 from acceptance._capstone_helpers import _d20, _dice_events, _enemy, _player, _resolve_round
 from acceptance.seeds import seed_player, seed_player_with_pools
 from sample_fixtures import make_context, make_mock_room
+from voice_condition_fixtures import place_actors
 
 import combat_turn
 import db
@@ -96,14 +97,16 @@ async def test_m15_group_deescalation_stabilizes_fallen_ally(reset_db_pool: str)
 
     primary_part = _player(_PRIMARY)
     ally_part = _fallen_ally_participant(_ALLY)
-    state = CombatState(
-        combat_id="combat_cap_m15",
-        participants=[primary_part, ally_part, enemy_a, enemy_b],
-        initiative_order=[_PRIMARY, _ALLY, "cultist_a", "cultist_b"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="declaration",
+    state = place_actors(
+        CombatState(
+            combat_id="combat_cap_m15",
+            participants=[primary_part, ally_part, enemy_a, enemy_b],
+            initiative_order=[_PRIMARY, _ALLY, "cultist_a", "cultist_b"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="declaration",
+        )
     )
 
     ctx = make_context(_PRIMARY, room=make_mock_room())
