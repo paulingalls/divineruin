@@ -35,6 +35,7 @@ export async function inventorySnapshot(playerId: string, tx = sql) {
     LEFT JOIN items i ON i.id = pi.item_id
     LEFT JOIN materials_catalog m ON m.id = pi.item_id
     WHERE p.player_id = ${playerId}
+    ORDER BY pi.item_id
   `;
   if (!rows.length) throw new Error(`Unknown inventory owner ${playerId}`);
   const inventory = rows

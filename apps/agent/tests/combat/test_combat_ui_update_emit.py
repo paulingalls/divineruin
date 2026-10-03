@@ -17,6 +17,7 @@ from combat._reaction_helpers import _guarded_ally_state, _pause_at
 import db_mutations
 import event_types as E
 import reaction_windows
+from party_state import PartyState
 from session_data import SessionData
 
 
@@ -148,6 +149,7 @@ async def test_pre_roll_pause_emits_ui_update_with_the_ally_bands_damage():
 async def test_pause_ui_update_reads_damage_applied_in_the_pausing_call():
     state = _guarded_ally_state(enemy_ids=("goblin_scout_1", "goblin_scout_2"))
     ctx = _ctx_at_resolution(state=state, reaction_ids=("cleric_shield_of_faith", "guardian_intercept"))
+    ctx.userdata.party.members.append(PartyState.solo("player_2").primary)
     deps = _resolve_deps(damage=3)
     packets: list[dict] = []
     await _pause_at(
@@ -167,3 +169,15 @@ async def test_pause_ui_update_reads_damage_applied_in_the_pausing_call():
     assert len(updates) == 1
     combatants = {combatant["id"]: combatant for combatant in updates[0].payload["combatants"]}
     assert combatants["player_2"]["hpCurrent"] == 17
+
+
+async def test_wrap_ui_removes_expired_iron_resolve():
+    ctx = _ctx_at_resolution(enemy_hp=100)
+    pc = ctx.userdata.combat_state.get_participant("player_1")
+    pc.conditions = [{"type": "iron_resolve", "duration": 1, "source": "kaelen_iron_resolve", "stacks": 1}]
+    await _resolve_round(ctx, **_resolve_deps(damage=1))
+    updates = [e for e in ctx.userdata.event_bus.drain() if e.event_type == E.COMBAT_UI_UPDATE]
+    assert updates
+    assert updates[-1].payload["combatants"]
+    rendered = next(c for c in updates[-1].payload["combatants"] if c["id"] == pc.id)
+    assert rendered["conditions"] == []

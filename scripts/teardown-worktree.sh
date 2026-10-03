@@ -6,12 +6,12 @@ cd "$REPO_ROOT"
 source "$REPO_ROOT/scripts/worktree-common.sh"
 
 sweep() {
-  local candidates project checkout count=0
+  local candidates kind resource checkout overlap count=0
   candidates="$(wt_sweep_candidates)" || return 1
-  while IFS=$'\t' read -r project checkout; do
-    [ -n "$project" ] || continue
-    echo "==> removing owned stale project $project"
-    wt_destroy_candidate "$project" "$checkout"
+  while IFS=$'\t' read -r kind resource checkout overlap; do
+    [ -n "$kind" ] || continue
+    echo "==> removing owned stale $kind $resource"
+    wt_destroy_candidate "$kind" "$resource" "$checkout" "$overlap" || return 1
     count=$((count + 1))
   done <<< "$candidates"
   [ "$count" -gt 0 ] || echo "sweep: no owned stale worktree stacks."

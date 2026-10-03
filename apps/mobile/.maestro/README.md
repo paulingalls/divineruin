@@ -20,8 +20,10 @@ REQUIRE_BACKEND=1 bun run test:e2e:mobile    # additionally run flows that need 
    create the owned simulator; the native build runner boots it before acceptance.
 2. An explicit `IOS_SIMULATOR_UDID` must identify that owned simulator,
    even without the strict flag; a foreign requested device fails. With
-   neither a requested UDID nor the strict flag, checks broadly for a booted iOS
-   simulator or an attached Android device and skips cleanly when neither exists.
+   neither a requested UDID nor the strict flag, selects only this clone's
+   already-booted owned iOS simulator and the first attached Android device
+   reported ready by adb. Each target receives an explicit `--device`; when both
+   exist, both run. With neither target, the lane skips cleanly.
 3. Runs offline-safe flows by default and adds backend-required flows when
    `REQUIRE_BACKEND=1` is set.
 

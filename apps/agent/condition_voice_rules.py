@@ -40,7 +40,9 @@ def roll_data(player: dict, state: CombatState | None, actor_id: str):
     return {
         **player,
         "conditions": active,
-        "spoken_buffs_eligible": not no_spoken_buffs(active, state=state, actor_id=actor_id),
+        "spoken_buffs_eligible": not no_spoken_buffs(
+            active, state=state if participant is not None else None, actor_id=actor_id
+        ),
     }
 
 

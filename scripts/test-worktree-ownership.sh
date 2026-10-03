@@ -319,29 +319,23 @@ sweep_fixture="$TMP/sweep-docker"; mkdir -p "$sweep_fixture/resources"
 live_id="$(cd "$linked" && source scripts/worktree-common.sh && wt_identity && printf '%s' "$WT_CHECKOUT_ID")"
 foreign_clone=ffffffffffff
 cat > "$sweep_fixture/projects.json" <<JSON
-[{"Name":"owned-live"},{"Name":"owned-stale"},{"Name":"foreign-live"},{"Name":"foreign-stale"},{"Name":"legacy"},{"Name":"owned-mixed"}]
+[{"Name":"owned-live"},{"Name":"owned-stale"},{"Name":"foreign-live"},{"Name":"foreign-stale"}]
 JSON
-for project in owned-live owned-stale foreign-live foreign-stale legacy; do
+for project in owned-live owned-stale foreign-live foreign-stale; do
   printf '%s-id\n' "$project" > "$sweep_fixture/resources/$project.ps"
 done
 make_labels "$sweep_fixture" owned-live-id "$clone_id" "$live_id"
 make_labels "$sweep_fixture" owned-stale-id "$clone_id" stale-checkout
 make_labels "$sweep_fixture" foreign-live-id "$foreign_clone" foreign-live-checkout
 make_labels "$sweep_fixture" foreign-stale-id "$foreign_clone" foreign-stale-checkout
-mkdir -p "$sweep_fixture/labels"; printf '{}\n' > "$sweep_fixture/labels/legacy-id"
-# Two resources of this clone disagreeing about which checkout owns them: the
-# project has no single owner to prove dead, so it is not a candidate.
-printf 'owned-mixed-a\nowned-mixed-b\n' > "$sweep_fixture/resources/owned-mixed.ps"
-make_labels "$sweep_fixture" owned-mixed-a "$clone_id" stale-checkout
-make_labels "$sweep_fixture" owned-mixed-b "$clone_id" other-stale-checkout
 record="$TMP/sweep.calls"; : > "$record"
 (cd "$primary" && DOCKER_RECORD="$record" DOCKER_FIXTURE_DIR="$sweep_fixture" PATH="$primary/bin:$PATH" \
   bash scripts/teardown-worktree.sh --sweep >/dev/null) \
-  || fail "sweep refused a fixture it must skip instead of skipping it"
+  || fail "sweep refused a valid owned/foreign fixture"
 downs="$(grep 'down -v' "$record" || true)"
 printf '%s\n' "$downs" | grep -Fq -- '-p owned-stale down -v' \
   || fail "sweep did not remove the owned stale project: $downs"
-for kept in owned-live foreign-live foreign-stale legacy owned-mixed; do
+for kept in owned-live foreign-live foreign-stale; do
   printf '%s\n' "$downs" | grep -Fq -- "-p $kept down -v" && fail "sweep removed protected project $kept"
 done
 ok "sweep removes only labeled stale checkouts from this clone"

@@ -202,3 +202,71 @@ async def test_owner_first_and_inventory_first_lock_order_aborts_loudly(owners):
             await tx1.rollback()
         other_failure = await asyncio.wait_for(pending, 5)
         assert isinstance(failure or other_failure, asyncpg.DeadlockDetectedError)
+
+
+@pytest.mark.parametrize("scan", ["sequential", "index"])
+@pytest.mark.parametrize("producer", ["python", "bun"])
+async def test_snapshot_order_is_stable_across_query_plans(owners, scan, producer):
+    pool, (owner, _) = owners
+    item_ids = ["oak_wood", "crystal_flask", "medicinal_herb"]
+    for item_id in item_ids:
+        await pool.execute(
+            "INSERT INTO player_inventory(player_id,item_id,data) VALUES($1,$2,'{\"quantity\":1}')",
+            owner,
+            item_id,
+        )
+    settings = (
+        "SET LOCAL enable_seqscan=on; SET LOCAL enable_indexscan=off; "
+        "SET LOCAL enable_indexonlyscan=off; SET LOCAL enable_bitmapscan=off"
+        if scan == "sequential"
+        else "SET LOCAL enable_seqscan=off; SET LOCAL enable_indexscan=on; "
+        "SET LOCAL enable_indexonlyscan=on; SET LOCAL enable_bitmapscan=off"
+    )
+    settings += "; SET LOCAL enable_hashjoin=off; SET LOCAL enable_mergejoin=off; SET LOCAL join_collapse_limit=1"
+    if producer == "python":
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(settings)
+
+            class ObservedConnection:
+                async def fetch(self, query, *args):
+                    plan = json.loads(await conn.fetchval("EXPLAIN (FORMAT JSON) " + query, *args))[0]["Plan"]
+                    nodes = [plan]
+                    scans = []
+                    while nodes:
+                        node = nodes.pop()
+                        if node.get("Relation Name") == "player_inventory":
+                            scans.append(node["Node Type"])
+                        nodes.extend(node.get("Plans", []))
+                    assert scans == (["Seq Scan"] if scan == "sequential" else ["Index Scan"])
+                    return await conn.fetch(query, *args)
+
+            snapshot = await db_queries.get_inventory_snapshot(owner, conn=ObservedConnection())
+            inventory = await db_queries.get_player_inventory(owner, conn=conn)
+        assert inventory == snapshot["inventory"]
+    else:
+        code = """
+import { SQL } from 'bun';
+import { inventorySnapshot } from './apps/server/src/inventory_snapshot.ts';
+const sql = new SQL(process.env.DATABASE_URL);
+try {
+  const result = await sql.begin(async tx => {
+    await tx.unsafe(process.env.INVENTORY_SCAN_SETTINGS);
+    return inventorySnapshot(process.env.INVENTORY_SCAN_OWNER, tx);
+  });
+  console.log(JSON.stringify(result));
+} finally { await sql.close(); }
+"""
+        process = await asyncio.to_thread(
+            subprocess.run,
+            ["bun", "-e", code],
+            cwd=Path(__file__).resolve().parents[3],
+            env={**os.environ, "INVENTORY_SCAN_SETTINGS": settings, "INVENTORY_SCAN_OWNER": owner},
+            capture_output=True,
+            text=True,
+        )
+        assert process.returncode == 0, process.stdout + process.stderr
+        snapshot = json.loads(process.stdout)
+    assert snapshot["player_id"] == owner
+    assert snapshot["inventory_revision"] == "3"
+    assert [row["id"] for row in snapshot["inventory"]] == sorted(item_ids)
+    assert all(row["slot_info"]["quantity"] == 1 for row in snapshot["inventory"])

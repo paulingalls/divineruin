@@ -289,39 +289,90 @@ wt_live_checkout_ids() {
   [ "$count" -gt 0 ] || { wt_die "Git worktree enumeration produced no reachable checkout identities."; return 1; }
 }
 
+wt_sweep_owner() {
+  local labels
+  labels="$(wt_read_labels "$1")" || { wt_die "ownership labels for $1 are unreadable."; return 1; }
+  printf '%s' "$labels" | python3 -c '
+import json,sys
+try:
+    labels=json.load(sys.stdin)
+    pair=[labels[k] for k in ("com.divineruin.clone", "com.divineruin.checkout")]
+    if any(not isinstance(v,str) or not v or any(c.isspace() for c in v) for v in pair):
+        raise ValueError("missing or invalid ownership")
+    print("\t".join(pair))
+except (ValueError,TypeError,KeyError) as error:
+    print("ownership labels are invalid: " + str(error), file=sys.stderr)
+    sys.exit(1)
+'
+}
+
 wt_sweep_candidates() {
   wt_identity || { wt_die "cannot identify this Git clone."; return 1; }
-  local listing projects live project ids id labels clone id_checkout checkout candidate
+  local listing projects containers live project ids id owner first clone checkout
+  local candidates="" project_containers="" owned=0 overlap
   listing="$(docker compose ls --all --format json)" || { wt_die "Docker Compose project enumeration failed."; return 1; }
-  projects="$(printf '%s' "$listing" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(x["Name"] for x in d if x.get("Name")))')" \
-    || { wt_die "Docker Compose project enumeration was invalid."; return 1; }
-  [ -n "$projects" ] || { wt_die "Docker Compose project enumeration produced nothing usable; refusing sweep."; return 1; }
+  projects="$(printf '%s' "$listing" | python3 -c '
+import json,sys
+rows=json.load(sys.stdin)
+if not isinstance(rows,list) or any(not isinstance(x,dict) or not isinstance(x.get("Name"),str) or not x["Name"] or any(c.isspace() for c in x["Name"]) for x in rows):
+    sys.exit(1)
+print("\n".join(x["Name"] for x in rows))
+')" || { wt_die "Docker Compose project enumeration was invalid."; return 1; }
+  containers="$(docker ps -aq --filter 'label=divineruin.acceptance=1')" || { wt_die "acceptance container enumeration failed."; return 1; }
   live="$(wt_live_checkout_ids)" || return 1
   while IFS= read -r project; do
-    ids="$(wt_resource_ids "$project")" || return 1
-    [ -n "$ids" ] || continue
-    candidate=1; checkout=""
+    [ -n "$project" ] || continue
+    ids="$(wt_resource_ids "$project")" || { wt_die "project resource enumeration failed."; return 1; }
+    [ -n "$ids" ] || { wt_die "project $project has no ownership resources."; return 1; }
+    first=""
     while IFS= read -r id; do
       [ -n "$id" ] || continue
-      labels="$(wt_read_labels "$id")" || { candidate=0; break; }
-      clone="$(printf '%s' "$labels" | wt_label com.divineruin.clone)" || { candidate=0; break; }
-      id_checkout="$(printf '%s' "$labels" | wt_label com.divineruin.checkout)" || { candidate=0; break; }
-      [ "$clone" = "$WT_CLONE_ID" ] && [ -n "$id_checkout" ] || { candidate=0; break; }
-      if [ -n "$checkout" ] && [ "$checkout" != "$id_checkout" ]; then candidate=0; break; fi
-      checkout="$id_checkout"
+      owner="$(wt_sweep_owner "$id")" || return 1
+      if [ -n "$first" ] && [ "$first" != "$owner" ]; then wt_die "project $project has mixed ownership."; return 1; fi
+      first="$owner"
     done <<< "$ids"
-    [ "$candidate" -eq 1 ] && [ -n "$checkout" ] || continue
+    IFS=$'\t' read -r clone checkout <<< "$first"
+    [ "$clone" = "$WT_CLONE_ID" ] || continue
+    owned=$((owned + 1))
     printf '%s\n' "$live" | grep -qxF "$checkout" && continue
-    printf '%s\t%s\n' "$project" "$checkout"
+    candidates+="compose"$'\t'"$project"$'\t'"$checkout"$'\t0\n'
+    project_containers+="$ids"$'\n'
   done <<< "$projects"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    owner="$(wt_sweep_owner "$id")" || return 1
+    IFS=$'\t' read -r clone checkout <<< "$owner"
+    [ "$clone" = "$WT_CLONE_ID" ] || continue
+    owned=$((owned + 1))
+    printf '%s\n' "$live" | grep -qxF "$checkout" && continue
+    overlap=0
+    if printf '%s' "$project_containers" | grep -qxF "$id"; then overlap=1; fi
+    candidates+="livekit"$'\t'"$id"$'\t'"$checkout"$'\t'"$overlap"$'\n'
+  done <<< "$containers"
+  [ "$owned" -gt 0 ] || { wt_die "combined owned inventory produced nothing usable; refusing sweep."; return 1; }
+  printf '%s' "$candidates"
 }
 
 wt_destroy_candidate() {
-  local project="$1" checkout="$2"
+  local kind="$1" resource="$2" checkout="$3" overlap="${4:-0}" owner present
   wt_identity || { wt_die "cannot identify this Git clone."; return 1; }
-  wt_validate_resources "$project" "$WT_CLONE_ID" "$checkout" "" || return 1
-  DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$checkout" \
-    COMPOSE_PROJECT_NAME="$project" docker compose -f "$WT_ROOT/docker-compose.yml" -p "$project" down -v
+  case "$kind" in
+    compose)
+      wt_validate_resources "$resource" "$WT_CLONE_ID" "$checkout" "" || return 1
+      DR_CLONE_ID="$WT_CLONE_ID" DR_CHECKOUT_ID="$checkout" \
+        COMPOSE_PROJECT_NAME="$resource" docker compose -f "$WT_ROOT/docker-compose.yml" -p "$resource" down -v || return 1
+      ;;
+    livekit)
+      if [ "$overlap" = 1 ]; then
+        present="$(docker ps -aq --filter "id=$resource")" || { wt_die "overlap container existence enumeration failed."; return 1; }
+        [ -n "$present" ] || return 0
+      fi
+      owner="$(wt_sweep_owner "$resource")" || return 1
+      [ "$owner" = "$WT_CLONE_ID"$'\t'"$checkout" ] || { wt_die "container $resource ownership changed; refusing removal."; return 1; }
+      docker rm -f "$resource" || return 1
+      ;;
+    *) wt_die "unknown sweep candidate kind: $kind"; return 1 ;;
+  esac
 }
 
 wt_cli() {
@@ -336,7 +387,7 @@ wt_cli() {
     expected-env) wt_export_env; printf '%s\n' "WT_PORT_OFFSET=$WT_OFFSET" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "POSTGRES_HOST_PORT=$POSTGRES_HOST_PORT" "VALKEY_HOST_PORT=$VALKEY_HOST_PORT" "DATABASE_URL=$DATABASE_URL" "REDIS_URL=$REDIS_URL" "E2E_API_PORT=$E2E_API_PORT" "E2E_APP_PORT=$E2E_APP_PORT" "E2E_WEB_PORT=$E2E_WEB_PORT" "E2E_LH_DEBUG_PORT=$E2E_LH_DEBUG_PORT" "LIVEKIT_ACCEPTANCE_UDP_PORT=$LIVEKIT_ACCEPTANCE_UDP_PORT" "LIVEKIT_ACCEPTANCE_CONTAINER=$LIVEKIT_ACCEPTANCE_CONTAINER" "TYPEGEN_PORT_MIN=$TYPEGEN_PORT_MIN" "TYPEGEN_PORT_MAX=$TYPEGEN_PORT_MAX" ;;
     livekit-env) wt_expected_env; printf '%s\n' "LIVEKIT_ACCEPTANCE_CONTAINER=$LIVEKIT_ACCEPTANCE_CONTAINER" "LIVEKIT_ACCEPTANCE_UDP_PORT=$LIVEKIT_ACCEPTANCE_UDP_PORT" "WT_CLONE_ID=$WT_CLONE_ID" "WT_CHECKOUT_ID=$WT_CHECKOUT_ID" ;;
     sweep-candidates) wt_sweep_candidates ;;
-    destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" ;;
+    destroy-candidate) wt_destroy_candidate "${1:-}" "${2:-}" "${3:-}" "${4:-0}" ;;
     *) wt_die "usage: worktree-common.sh {authorize INTENT|authorize-runtime DATABASE_URL [REDIS_URL]|lifecycle-identity|compose INTENT ARGS...|expected-env|livekit-env|sweep-candidates}" ;;
   esac
 }

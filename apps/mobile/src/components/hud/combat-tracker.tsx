@@ -67,6 +67,8 @@ function CombatantRow({ combatant, compact = false }: { combatant: Combatant; co
                 <MaterialCommunityIcons
                   key={`${condition.type}-${condition.source}`}
                   name={display.icon as ComponentProps<typeof MaterialCommunityIcons>["name"]}
+                  accessible
+                  accessibilityLabel={display.label}
                   size={12}
                   color={display.color}
                 />

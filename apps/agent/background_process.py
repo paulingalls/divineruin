@@ -315,7 +315,8 @@ class BackgroundProcess:
 
         logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
         if top.is_displeasure:
-            self._sd.displeasure_whisper_queued = True
+            assert top.recipient_id is not None
+            self._sd.displeasure_heard_by.add(top.recipient_id)
 
         # Mark last_whisper_level after delivering (deferred from critical path)
         if top.stinger_sound is not None and not top.is_displeasure:

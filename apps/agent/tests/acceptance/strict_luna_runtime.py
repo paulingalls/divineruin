@@ -6,8 +6,10 @@ import json
 import re
 from contextlib import nullcontext
 from pathlib import Path
+from tempfile import gettempdir
 from typing import Any
 from unittest.mock import patch
+from uuid import uuid4
 
 from acceptance.strict_luna_assertions import assert_case
 from acceptance.strict_luna_scenarios import prepare_case
@@ -29,7 +31,7 @@ from onboarding_prompt import build_onboarding_instructions
 from system_prompts import COMBAT_SYSTEM_PROMPT, build_system_prompt
 from voices import EMOTION_RATES, VOICE_ENV_VARS
 
-REPORT_PATH = Path("/tmp/divineruin_strict_luna_gameplay.jsonl")
+REPORT_PATH = Path(gettempdir()) / f"divineruin_strict_luna_gameplay-{uuid4().hex}.jsonl"
 PRICE_SOURCE = "https://developers.openai.com/api/docs/models/gpt-6-luna"
 PRICE_RETRIEVED = "2026-09-22"
 INPUT_PER_MILLION = 0.10

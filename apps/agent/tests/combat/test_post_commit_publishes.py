@@ -1,25 +1,32 @@
 """Post-commit isolation, ordering, and one-shot publication for the phase loop."""
 
-from unittest.mock import AsyncMock, MagicMock
+import json
+import logging
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
+from _combat_end_fixtures import combat_end_mutations, combat_end_queries
 from combat._helpers import (
     _activate,
     _call,
     _ctx_at_resolution,
     _damage_resolver,
     _fake_db_mod,
+    _make_combat_state,
     _resolve_deps,
     _resolve_round,
 )
+from livekit import rtc
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
+import combat_end
 import combat_events
 import combat_hold
 import combat_support
 import event_types as E
 import reaction_windows
+from event_bus import EventBus
 from session_data import CombatParticipant, CombatState
 
 
@@ -177,3 +184,35 @@ async def test_rolled_back_post_roll_pause_publishes_neither_event():
     head = ctx.userdata.combat_state.held_actions[0]
     assert head["roll"] is None
     assert ctx.userdata.combat_state.open_window["stage"] == reaction_windows.PRE_ROLL
+
+
+async def test_end_combat_returns_handoff_and_logs_failed_client_send(monkeypatch, caplog):
+    ctx = make_context()
+    ctx.userdata.combat_state = _make_combat_state()
+    ctx.userdata.event_bus = EventBus()
+    ctx.userdata.room = rtc.Room()
+    participant = create_autospec(rtc.LocalParticipant, instance=True)
+    error = RuntimeError("client send failed")
+    participant.publish_data.side_effect = error
+    monkeypatch.setattr(rtc.Room, "isconnected", lambda self: True)
+    monkeypatch.setattr(rtc.Room, "local_participant", property(lambda self: participant))
+    agent = object()
+    monkeypatch.setattr(combat_end, "_build_handoff_agent", lambda *args: agent)
+
+    with caplog.at_level(logging.ERROR, logger="divineruin.combat_events"):
+        result = await combat_end._end_combat_impl(
+            ctx, "victory", mutations=combat_end_mutations(), queries=combat_end_queries(), db_mod=_fake_db_mod()
+        )
+
+    assert isinstance(result, tuple)
+    assert result[0] is agent
+    assert json.loads(result[1])["outcome"] == "victory"
+    assert ctx.userdata.combat_state is None
+    records = [record for record in caplog.records if record.name == "divineruin.combat_events"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.ERROR
+    assert records[0].msg == combat_events.POST_COMMIT_PUBLISH_FAILED
+    assert records[0].args == ("end_combat",)
+    assert records[0].exc_info[1] is error
+    assert participant.publish_data.await_count > 1
+    assert ctx.userdata.event_bus.qsize == participant.publish_data.await_count

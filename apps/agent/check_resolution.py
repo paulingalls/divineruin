@@ -322,7 +322,9 @@ def _resolve_skill_check_impl(
     # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
-    effects = get_condition_effects(player_data.get("conditions") or [])
+    effects = get_condition_effects(
+        [condition for condition in player_data.get("conditions") or [] if condition["type"] != "iron_resolve"]
+    )
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
     disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
     # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
