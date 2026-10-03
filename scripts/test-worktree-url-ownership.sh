@@ -25,7 +25,32 @@ DATABASE_URL="postgresql://u:p@127.0.0.1:$port/divineruin" REDIS_URL="redis://12
 check_runtime "postgresql://u:p@127.0.0.1:$port/divineruin" "redis://127.0.0.1:$valkey" >/dev/null || fail 'owned runtime URLs were refused'
 for key in DATABASE_URL REDIS_URL; do
   if [ "$key" = DATABASE_URL ]; then
-    good="postgresql://u:p@127.0.0.1:$port/divineruin"
+    secret_url="postgresql://private-user:private-password@localhost:$port/private-db?token=private-query"
+    args=("$secret_url" '')
+  else
+    secret_url="redis://private-user:private-password@localhost:$valkey/private-db?token=private-query"
+    args=('' "$secret_url")
+  fi
+  for source in runtime ambient file; do
+    case "$source" in
+      runtime) if output="$(check_runtime "${args[@]}" 2>&1)"; then fail "$key runtime mismatch accepted"; fi ;;
+      ambient) if output="$(export "$key=$secret_url"; check_settings 2>&1)"; then fail "$key ambient mismatch accepted"; fi ;;
+      file)
+        sed "s#^$key=.*#$key=$secret_url#" "$TMP/repo/.env" > "$TMP/repo/.env.new"
+        mv "$TMP/repo/.env.new" "$TMP/repo/.env"
+        if output="$(check_settings 2>&1)"; then fail "$key file mismatch accepted"; fi
+        printf '%s\n' "$expected" > "$TMP/repo/.env"
+        ;;
+    esac
+    for secret in private-user private-password private-db private-query; do
+      [[ "$output" != *"$secret"* ]] || fail "$key $source diagnostic exposes connection data"
+    done
+    [[ "$output" == *"$key"* && "$output" == *"127.0.0.1:"* ]] || fail "$key $source diagnostic lacks safe endpoint guidance"
+  done
+done
+for key in DATABASE_URL REDIS_URL; do
+  if [ "$key" = DATABASE_URL ]; then
+    good="postgresql://127.0.0.1:$port"
     old="postgresql://u:p@localhost:$port/divineruin"
     alias="postgres://u:p@localhost:$port/divineruin"
     foreign="postgresql://u:p@127.0.0.1:$((port + 1))/divineruin"
@@ -38,15 +63,15 @@ for key in DATABASE_URL REDIS_URL; do
   for value in "$old" "$alias" "$foreign"; do
     if [ "$key" = DATABASE_URL ]; then args=("$value" ''); else args=('' "$value"); fi
     if output="$(check_runtime "${args[@]}" 2>&1)"; then fail "runtime $key=$value was accepted"; fi
-    [[ "$output" == *"$key=$good"* ]] || fail "runtime $key replacement absent: $output"
+    [[ "$output" == *"expected endpoint $good"* ]] || fail "runtime $key replacement absent: $output"
     if output="$(export "$key=$value"; check_settings 2>&1)"; then
       fail "ambient $key=$value was accepted"
     fi
-    [[ "$output" == *"$key=$good"* ]] || fail "ambient $key replacement absent: $output"
+    [[ "$output" == *"expected endpoint $good"* ]] || fail "ambient $key replacement absent: $output"
     sed "s#^$key=.*#$key=$value#" "$TMP/repo/.env" > "$TMP/repo/.env.new"
     mv "$TMP/repo/.env.new" "$TMP/repo/.env"
     if output="$(check_settings 2>&1)"; then fail ".env $key=$value was accepted"; fi
-    [[ "$output" == *"$key=$good"* ]] || fail ".env $key replacement absent: $output"
+    [[ "$output" == *"expected endpoint $good"* ]] || fail ".env $key replacement absent: $output"
     printf '%s\n' "$expected" > "$TMP/repo/.env"
   done
 done

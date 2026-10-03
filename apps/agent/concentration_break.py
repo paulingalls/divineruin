@@ -43,8 +43,8 @@ async def break_concentration_on_damage(
 
     ``conn`` joins the break to a caller's transaction: in combat the phase loop passes its phase
     conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
-    conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
-    runs the write on its own connection, post-commit, as before.
+    conn so the save sees the in-tx state. Without a caller transaction, the default ``None``
+    runs the write on its own connection.
 
     ``combat_state`` is the WORKING combat state to read/mutate. The phase loop resolves against a
     deep-copied working state and only adopts it as session.combat_state AFTER the tx commits
