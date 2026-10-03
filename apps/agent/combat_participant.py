@@ -100,6 +100,9 @@ class CombatParticipant:
     save_advantages: dict[str, str] = field(default_factory=dict)
     advantage_vs: dict[str, str] = field(default_factory=dict)
 
+    hollow: dict | None = None
+    hollow_death_resolved: bool = False
+
     @property
     def is_ally(self) -> bool:
         """True when this participant sits on the player's side (player or companion).

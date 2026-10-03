@@ -19,7 +19,10 @@ def deferred_effects(row):
                 }
             )
     for group in ("multiattack", "signature_ability", "hollow"):
-        source = row.get(group)
+        source = deepcopy(row.get(group))
+        if group == "hollow" and row["category"] == "hollow" and row["hollow"]["class"] != "named":
+            source.pop("corruption_aura")
+            source.pop("resonance_on_death")
         if source:
             name = source.get("name", group) if isinstance(source, dict) else source
             effects.append(

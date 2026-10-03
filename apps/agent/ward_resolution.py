@@ -48,6 +48,7 @@ async def resolve_scope_ward_with_scope(
     conn: asyncpg.Connection | asyncpg.Pool,
     location_id: str | None = None,
     ward_mutations_mod=db_mutations_veil_ward,
+    combat_state=None,
 ) -> tuple[dict | None, WardScope | None]:
     """Return ``(ward, scope)`` for the ward covering ``session``, or ``(None, None)``.
 
@@ -58,7 +59,7 @@ async def resolve_scope_ward_with_scope(
 
     See ``resolve_scope_ward`` for the ``location_id`` override and the transaction contract.
     """
-    combat = session.combat_state
+    combat = combat_state if combat_state is not None else session.combat_state
     if combat is not None and combat.veil_ward is not None:
         return combat.veil_ward, WardScope.encounter(combat.combat_id)
     scope = WardScope.location(location_id or session.location_id)
@@ -72,6 +73,7 @@ async def resolve_scope_ward(
     conn: asyncpg.Connection | asyncpg.Pool,
     location_id: str | None = None,
     ward_mutations_mod=db_mutations_veil_ward,
+    combat_state=None,
 ) -> dict | None:
     """Return the ward covering ``session``, or None when no scope wards it.
 
@@ -89,6 +91,6 @@ async def resolve_scope_ward(
     exists in exactly one place.
     """
     ward, _scope = await resolve_scope_ward_with_scope(
-        session, conn=conn, location_id=location_id, ward_mutations_mod=ward_mutations_mod
+        session, conn=conn, location_id=location_id, ward_mutations_mod=ward_mutations_mod, combat_state=combat_state
     )
     return ward

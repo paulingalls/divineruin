@@ -322,3 +322,41 @@ def test_public_validator_walk_excludes_detected_virtualenvs(tmp_path):
     assert source_files(tmp_path) == [source]
     (vendor / "pyvenv.cfg").unlink()
     assert set(source_files(tmp_path)) == {source, installed}
+
+
+def test_hollow_metadata_retains_only_unimplemented_claims():
+    from creature_combat import translate_creature
+    from creature_combat_effects import deferred_effects
+
+    rows = catalog()
+    hollows = [row for row in rows if row["hollow"] and row["hollow"]["class"] != "named"]
+    assert hollows
+    for row in hollows:
+        translated = translate_creature(row, encounter_id="metadata", enemy_id=row["id"], role="standard")
+        assert translated["hollow"] == {k: row["hollow"][k] for k in ("corruption_aura", "resonance_on_death")}
+        source = next(e["source"] for e in translated["deferred_effects"] if e["group"] == "hollow")
+        assert source == {k: v for k, v in row["hollow"].items() if k not in translated["hollow"]}
+    named = [row for row in rows if row["hollow"] and row["hollow"]["class"] == "named"]
+    assert named
+    for row in named:
+        assert next(e["source"] for e in deferred_effects(row) if e["group"] == "hollow") == row["hollow"]
+
+
+@pytest.mark.parametrize("field", ["corruption_aura", "resonance_on_death"])
+def test_negative_hollow_snapshot_is_refused(field):
+    from creature_combat import translate_creature
+
+    row = next(r for r in catalog() if r["id"] == "hollow_mawling")
+    row["hollow"][field] = -1
+    with pytest.raises(ValueError, match=field):
+        translate_creature(row, encounter_id="snapshot", enemy_id="victim", role="standard")
+
+
+def test_hollow_snapshot_is_independent_of_catalog_mutation():
+    from creature_combat import translate_creature
+
+    row = next(r for r in catalog() if r["id"] == "hollow_mawling")
+    translated = translate_creature(row, encounter_id="snapshot", enemy_id="victim", role="standard")
+    row["hollow"]["resonance_on_death"] = 9
+    row["hollow"]["corruption_aura"] = 90
+    assert translated["hollow"] == {"corruption_aura": 5, "resonance_on_death": 1}
