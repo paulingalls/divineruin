@@ -18,6 +18,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import choir_scene
 import condition_voice_rules
 import db
 import db_content_queries
@@ -108,6 +109,13 @@ async def _check_discover_impl(
     _cap_str(target, 128, "target")
     session: SessionData = context.userdata
     skill_lower = skill.lower()
+    if session.combat_state is not None and session.combat_state.choir_encounter is not None:
+        import choir_encounter
+
+        source = choir_encounter.owner(session.combat_state)
+        assert source is not None
+        if target in {choir_encounter.SEARCH_TARGET, source.id, f"{source.id}_core"}:
+            raise ToolError("Choir discovery requires a declared Interact search action.")
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
@@ -122,6 +130,7 @@ async def _check_discover_impl(
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
+    player = await choir_scene.check_data(session, player, queries=queries)
 
     # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
     # is keyed on the player and ELEMENT, not the free-text target, so re-searching the same secret

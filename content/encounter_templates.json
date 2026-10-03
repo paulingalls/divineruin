@@ -568,5 +568,45 @@
         }
       }
     }
+  },
+  {
+    "id": "hollow_choir",
+    "name": "The Choir",
+    "description": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+    "difficulty": "hard",
+    "recommended_party_level": 16,
+    "enemies": [
+      {
+        "id": "choir_zone",
+        "creature_id": "hollow_choir",
+        "role": "named"
+      }
+    ],
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "choir_zone": {
+          "x": 30,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "choir_zone_corruption_aura": {
+          "center_id": "choir_zone",
+          "radius_ft": 600
+        }
+      }
+    }
   }
 ]

@@ -29,11 +29,11 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
-test("all ten templates", async () => {
+test("all eleven templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as unknown[];
-  expect(rows).toHaveLength(10);
+  expect(rows).toHaveLength(11);
   expect(ids.size).toBeGreaterThan(0);
   for (const row of rows) validateEncounterReferences(row, ids);
 });

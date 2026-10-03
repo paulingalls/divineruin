@@ -31,6 +31,19 @@ def guard_spell(
         require_speech(state, actor_id)
     if state is None:
         return
+    import choir_encounter
+    from declarations import Declaration
+
+    choir_encounter.guard_declaration(
+        state,
+        actor_id,
+        Declaration(
+            type=DeclarationType.ABILITY,
+            action=spell.id,
+            target_id=target_id,
+            target_ids=target_ids,
+        ),
+    )
     actor = state.get_participant(actor_id)
     if actor is None:
         raise ValueError(f"Unknown spell caster {actor_id!r}")

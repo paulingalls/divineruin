@@ -234,7 +234,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(26);
+    expect(rows).toHaveLength(27);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -344,7 +344,7 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
 
 describe("spatial scene placement", () => {
   test("spatial real template corpus is reachable and nonempty", () => {
-    expect(references.length).toBe(10);
+    expect(references.length).toBe(11);
     expect(references.some((row) => Object.keys(row.scene_placement.zones).length > 0)).toBe(true);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });

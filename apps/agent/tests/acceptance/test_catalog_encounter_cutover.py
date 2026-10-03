@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 10
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 11
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
@@ -168,10 +168,12 @@ def assert_strength(template, catalog):
 
 def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
-    assert {row["id"] for row in TEMPLATES} == set(TARGETS)
-    assert sum(len(row["enemies"]) for row in TEMPLATES) == 26
-    assert len({ref["creature_id"] for row in TEMPLATES for ref in row["enemies"]}) == 13
-    for row in TEMPLATES:
+    assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir"}
+    ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
+    assert len(ordinary) == 10
+    assert sum(len(row["enemies"]) for row in ordinary) == 26
+    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 13
+    for row in ordinary:
         level, difficulty, groups = TARGETS[row["id"]]
         assert (row["recommended_party_level"], row["difficulty"]) == (level, difficulty)
         assert Counter((r["creature_id"], r["role"]) for r in row["enemies"]) == Counter(
@@ -213,7 +215,7 @@ async def test_fresh_seed_uses_the_runtime_database(fresh_migrated_db, monkeypat
     try:
         assert await conn.fetchval("SELECT count(*) FROM creatures") == 0
         counts = await seed_content.seed(conn)
-        assert counts["encounter_templates"] == 10
+        assert counts["encounter_templates"] == 11
         assert await seed_content.validate(conn) == []
         await seed_player(conn, player_id="fresh_catalog")
         pool = await db.get_pool()

@@ -3,7 +3,7 @@ import json
 from unittest.mock import patch
 
 import pytest
-from acceptance._capstone_helpers import _resolve_round
+from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance.test_catalog_action_runtime import runtime as runtime
 
 import combat_turn
@@ -97,6 +97,14 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     ctx, pid, eid = await choir(runtime)
     pool = await db.get_pool()
     await seed_player_with_pools(pool, player_id=pid, class_="cleric", known_spells=("divine_bless",))
+    import choir_encounter
+
+    facts = choir_encounter.facts(ctx.userdata.combat_state)
+    assert facts is not None
+    action = facts["search_actions"][1]
+    await combat_turn._declare_phase_impl(ctx, {pid: action, eid: {"type": "defend"}})
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        await _resolve_round(ctx)
     await combat_turn.declare_phase(
         ctx, [AbilityDecl(kind="ability", actor_id=pid, action="divine_bless", targets=[eid], argument_type="")]
     )
@@ -121,7 +129,9 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
         patch("spell_casting._resolve_cast", wraps=spell_casting._resolve_cast) as casts,
     ):
         result = await _resolve_round(ctx)
-    assert casts.call_count == 1 and saves.call_count == 1
+    assert casts.call_count == 1
+    assert sum(call.args[2] == 16 for call in saves.call_args_list) == 1
+    assert sum(call.args[2] == 15 for call in saves.call_args_list) == 1
     state = await reload(ctx)
     target_id = eid if success else pid
     assert result["packets"][0]["cast"]["target_id"] == target_id
@@ -165,12 +175,14 @@ async def test_choir_public_actions_hold_reload(runtime):
             raw = await combat_turn._resolve_phase_impl(ctx)
             assert isinstance(raw, str)
             response = json.loads(raw)
-        assert response["next"]["waiting_on"] is not None and not saves.called
+        assert response["next"]["waiting_on"] is not None
+        assert all(call.args[2] == 15 for call in saves.call_args_list)
         state = await reload(ctx)
         held_actor = state.get_participant(eid)
         assert held_actor is not None and held_actor.action_ledger["stolen melody"]["remaining"] == 1
         await _resolve_round(ctx)
-        assert saves.call_count == 1
+        assert sum(call.args[2] == 20 for call in saves.call_args_list) == 1
+        assert sum(call.args[2] == 15 for call in saves.call_args_list) == 1
     state = await reload(ctx)
     actor = state.get_participant(eid)
     assert actor is not None and actor.action_ledger["stolen melody"]["remaining"] == 0
