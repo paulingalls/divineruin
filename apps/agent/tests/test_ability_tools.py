@@ -18,6 +18,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import abilities
 import reaction_spend
@@ -92,7 +93,7 @@ def _reaction_context(*, hit=True, window_open=True, target_id="player_1"):
     empty and the open window built by the real producer is what the gate reads.
     """
     ctx = make_context()
-    state = _make_combat_state()
+    state = place_actors(_make_combat_state(), target_id)
     state.beat = PhaseBeat.NARRATION
     if window_open:
         # A real pause always has the held action the window belongs to at the head of the queue
