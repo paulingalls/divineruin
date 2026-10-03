@@ -16,7 +16,8 @@ REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
-Story tier: `bun run test:all`; Python lane: `bun run test:python`
+Story tier: `bun run lint`; focused behavioral checks run in card Verify.
+Broad regression runs at sprint close. Python lane: `bun run test:python`
 (parallel `-n 8`) — never a bare serial `uv run pytest`.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
@@ -232,11 +233,14 @@ ownership permits metadata inspection and intentional teardown; connection
 authority separately requires exactly one running checkout-owned service to
 publish the selected loopback endpoint. A stopped owned volume is not proof of
 the process listening on its former port. Missing, mixed, foreign, unreadable,
-or legacy labels fail closed without adoption or deletion.
+or legacy labels fail closed without adoption or deletion during checkout teardown.
 Back up and migrate or remove legacy data manually. CI service Postgres requires
-the explicit GitHub Actions marker and cannot run Compose. Sweep deletes only
-consistently labeled stale checkouts from the current clone and rejects empty or
-unreadable enumeration. An unavailable registered worktree blocks sweep, including
+the explicit GitHub Actions marker and cannot run Compose. Sweep inventories
+Compose resources and acceptance-labeled containers, skips clearly foreign
+owners, and deletes only consistently labeled stale checkouts from this clone.
+Missing, mixed or unreadable ownership anywhere aborts before deletion; an empty
+combined owned inventory or failed enumeration also refuses.
+An unavailable registered worktree blocks sweep, including
 locked worktrees on unmounted volumes. Remove or prune only registrations known
 to be abandoned before sweeping their resources.
 The pre-push per-run Postgres and Valkey belong to the server and E2E lanes.
