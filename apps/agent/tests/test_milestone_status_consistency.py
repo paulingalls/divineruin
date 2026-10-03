@@ -95,7 +95,7 @@ def test_phase7_capstone_names_cutover_refresh_and_deferred_mechanics():
         "deferred",
     ):
         assert phrase in text, f"Missing capstone contract: {phrase}"
-    assert "Named creatures have catalog data; their custom runtime encounters remain deferred." in text
+    assert "The Still and Architect remain deferred Named encounters" in text
     assert (
         "Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice."
         in text

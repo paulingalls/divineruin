@@ -359,3 +359,16 @@ def test_no_variant_field_is_optional(variant):
     """ADR 0008 rule 2: an optional inside a variant is one union slot back, and the
     walker in test_strict_tool_budget cannot see WHY the number moved."""
     assert all(f.is_required() for f in variant.model_fields.values()), variant.__name__
+
+
+@pytest.mark.parametrize("action", ["choir_search_perception", "choir_search_arcana"])
+def test_public_choir_search_preserves_the_owned_sound_target(action):
+    import choir_encounter
+
+    mapped = to_engine_declarations([InteractDecl(kind="interact", actor_id="player", action=action)])
+    declaration = resolve_declaration(mapped["player"])
+    assert declaration.target_id == choir_encounter.SEARCH_TARGET
+    assert declaration.action in choir_encounter.SEARCH_ACTIONS
+    assert to_engine_declarations([InteractDecl(kind="interact", actor_id="player", action="open_door")]) == {
+        "player": {"type": "interact", "action": "open_door"}
+    }

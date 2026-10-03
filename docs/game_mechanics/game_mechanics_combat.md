@@ -1058,3 +1058,12 @@ Some locations in the world data have fixed gathering nodes — specific places 
 
 **Node depletion:** Fixed nodes deplete when gathered and respawn on the world simulation tick. A player who finds a rich herb garden can return periodically, but not strip it bare in one visit. Other players in multiplayer (Phase 2) can also deplete nodes — creating competition for prime gathering spots.
 
+
+
+### Delivered Choir encounter
+
+The committed `hollow_choir` encounter starts in Search. Public combat queries surface the sound target and DC 18 Perception/Arcana search declarations. A successful search exposes the core; legal damage destroys it. Search phase, core HP, source owner, and location persist through reload. Destroyed scene receipts refuse replay without another reward.
+
+Aura of Lost Voices checks WIS DC 15 at turn start within 600 feet and can break concentration on failure. Harmonic Shield checks a verbal caster's WIS DC 16 and can redirect that cast to the caster. Silence Void lasts three rounds and refuses verbal spell declarations; it can also silence its own source. Dissonant Chord applies Deafened after a failed CON save. Silence and Deafened preserve player microphone command transport: a separate legal spoken command remains usable. They do not disable the microphone.
+
+`apps/agent/tests/acceptance/test_choir_capstone.py` drives public entry, declarations, casts, searches, phases, refusal/legal commands, destruction and replay over real PostgreSQL and LiveKit. It checks gameplay delivery and rollback/retry after Search, redirect and lethal writes. Native certification remains pending. The Combat Effect Inventory in the bestiary lists executable, prose-only and rejected effects; Still, Architect, and remaining troop/Tier 3 mechanics are deferred.

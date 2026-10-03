@@ -132,7 +132,12 @@ def _raw(decl: DeclVariant) -> dict:
             raw["argument_type"] = decl.argument_type
         return raw
     if isinstance(decl, InteractDecl):
-        return {"type": "interact", "action": decl.action}
+        import choir_encounter
+
+        raw = {"type": "interact", "action": decl.action}
+        if decl.action in choir_encounter.SEARCH_ACTIONS:
+            raw["target_id"] = choir_encounter.SEARCH_TARGET
+        return raw
     if isinstance(decl, MoveDecl):
         return {
             "type": "maneuver",

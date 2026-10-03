@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useStore } from "zustand";
 import { ConnectionState } from "livekit-client";
@@ -15,9 +15,10 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import { TopBar } from "@/components/hud/top-bar";
 import { PersistentBar } from "@/components/hud/persistent-bar";
-import { useGameEvents } from "@/hooks/use-game-events";
+import { handleGameEventMessage } from "@/audio/game-event-handler";
 import {
   LiveKitRoom,
+  useDataChannel,
   useConnectionState,
   useLocalParticipant,
   useRemoteParticipants,
@@ -25,6 +26,12 @@ import {
 } from "@/livekit";
 import { characterStore } from "@/stores/character-store";
 import { sessionStore } from "@/stores/session-store";
+
+import { ChoirObservation } from "@/audio/choir-capstone-observation";
+import { CombatTracker } from "@/components/hud/combat-tracker";
+import { ResonanceTracker } from "@/components/hud/resonance-tracker";
+import { hudStore } from "@/stores/hud-store";
+import { authStore } from "@/stores/auth-store";
 
 const OBSERVATION_TIMEOUT_MS = 20_000;
 
@@ -62,7 +69,25 @@ export function loadTransportRouteFixture(
   return fetchTransportFixture(endpoint, runId, __DEV__, request);
 }
 
-function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpoint: string }) {
+function TransportRoom({
+  fixture,
+  endpoint,
+  choir,
+  choirFault,
+}: {
+  fixture: TransportFixture;
+  endpoint: string;
+  choir: boolean;
+  choirFault: string;
+}) {
+  const observation = useRef(
+    new ChoirObservation(fixture.publisherIdentity, fixture.mobileIdentity),
+  );
+  const [checkpoint, setCheckpoint] = useState("");
+  const [guard, setGuard] = useState("");
+  const [complete, setComplete] = useState(false);
+  const combat = useStore(hudStore, (state) => state.combatState);
+  const resonance = useStore(hudStore, (state) => state.resonanceState);
   const connectionState = useConnectionState();
   const { localParticipant } = useLocalParticipant();
   const participants = useRemoteParticipants();
@@ -73,19 +98,31 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
   const [eventSender, setEventSender] = useState("");
   const [status, setStatus] = useState("Connecting native transport");
   const submitted = useRef(false);
+  const acknowledged = useRef("");
   // Once per mount: the result effect re-runs on every microphone-frame update (every 250 ms),
   // so a start time taken inside it never ages and the observation timeout could never fire.
   const started = useRef<number | null>(null);
 
-  const onGameEvent = useCallback((message: ReceivedDataMessage) => {
-    try {
-      const event = JSON.parse(new TextDecoder().decode(message.payload)) as { type?: string };
-      if (event.type === "session_init") setEventSender(message.from?.identity ?? "");
-    } catch {
-      return;
-    }
-  }, []);
-  useGameEvents(onGameEvent);
+  const onGameEvent = useCallback(
+    (message: ReceivedDataMessage) => {
+      try {
+        const event = JSON.parse(new TextDecoder().decode(message.payload)) as { type?: string };
+        if (choirFault !== "bypass-receiver" || event.type === "session_init")
+          handleGameEventMessage(message);
+        if (event.type === "session_init") setEventSender(message.from?.identity ?? "");
+        if (choir) {
+          observation.current.receive(message);
+          void postResult(endpoint, fixture.runId, {
+            native_observation: observation.current.snapshot(""),
+          }).catch((error) => setStatus(`Observation failed: ${String(error)}`));
+        }
+      } catch {
+        return;
+      }
+    },
+    [choir, choirFault, endpoint, fixture.runId],
+  );
+  useDataChannel("game_events", onGameEvent);
 
   const subscriptions = useMemo<AudioSubscription[]>(
     () =>
@@ -133,6 +170,35 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
   }, [endpoint, fixture.runId]);
 
   useEffect(() => {
+    if (!choir) return;
+    const timer = setInterval(() => {
+      void fetch(`${new URL("/status", endpoint)}?run_id=${encodeURIComponent(fixture.runId)}`)
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`Choir status HTTP ${response.status}`);
+          const state = (await response.json()) as {
+            run_id: string;
+            choir_checkpoint?: string;
+            choir_complete?: boolean;
+            choir_guard?: string;
+          };
+          if (state.run_id !== fixture.runId) throw new Error("stale Choir status");
+          const pending = state.choir_checkpoint ?? "";
+          setCheckpoint(pending);
+          if (choirFault !== "none" && pending && acknowledged.current !== pending) {
+            acknowledged.current = pending;
+            await postResult(endpoint, fixture.runId, {
+              native_checkpoint: observation.current.snapshot(pending),
+            });
+          }
+          setGuard(state.choir_guard ?? "");
+          setComplete(state.choir_complete === true);
+        })
+        .catch((error) => setStatus(`Choir status failed: ${String(error)}`));
+    }, 100);
+    return () => clearInterval(timer);
+  }, [choir, choirFault, endpoint, fixture.runId]);
+
+  useEffect(() => {
     const startedAt = (started.current ??= Date.now());
     const timer = setInterval(() => {
       if (submitted.current) return;
@@ -177,7 +243,26 @@ function TransportRoom({ fixture, endpoint }: { fixture: TransportFixture; endpo
     <View style={styles.content}>
       <TopBar mode="session" connectionState={connectionState} />
       <PersistentBar connectionState={connectionState} agentState="listening" />
-      <ThemedText testID="native-transport-status">{status}</ThemedText>
+      <ThemedText testID="native-transport-status">
+        {guard ? `Choir guard failed: ${guard}` : complete ? "Choir complete" : status}
+      </ThemedText>
+      {choir && checkpoint ? (
+        <>
+          <ThemedText>{`Checkpoint: ${checkpoint}`}</ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              void postResult(endpoint, fixture.runId, {
+                native_checkpoint: observation.current.snapshot(checkpoint),
+              }).catch((error) => setStatus(`Checkpoint failed: ${String(error)}`));
+            }}
+          >
+            <ThemedText>Confirm checkpoint</ThemedText>
+          </Pressable>
+        </>
+      ) : null}
+      {choir && combat ? <CombatTracker state={combat} /> : null}
+      {choir && resonance ? <ResonanceTracker state={resonance} isCombatActive={!!combat} /> : null}
       <ThemedText>{`Run: ${fixture.runId}`}</ThemedText>
       <ThemedText>{`Mobile: ${fixture.mobileIdentity}`}</ThemedText>
       <ThemedText>{`Publisher: ${fixture.publisherIdentity}`}</ThemedText>
@@ -195,6 +280,8 @@ function DevelopmentTransportScreen() {
   const params = useLocalSearchParams<{
     fixture?: string | string[];
     run_id?: string | string[];
+    choir?: string | string[];
+    choir_fault?: string | string[];
   }>();
   const [fixture, setFixture] = useState<TransportFixture | null>(null);
   const [endpoint, setEndpoint] = useState("");
@@ -205,6 +292,8 @@ function DevelopmentTransportScreen() {
     const rawEndpoint = textParam(params.fixture);
     characterStore.getState().clear();
     sessionStore.getState().reset();
+    hudStore.getState().reset();
+    if (textParam(params.choir) === "1") authStore.setState({ playerId: null });
     void (async () => {
       await configureAudioSession();
       const loaded = await loadTransportRouteFixture(rawEndpoint, runId);
@@ -215,13 +304,18 @@ function DevelopmentTransportScreen() {
       characterStore.getState().clear();
       sessionStore.getState().reset();
     };
-  }, [params.fixture, params.run_id]);
+  }, [params.fixture, params.run_id, params.choir]);
 
   if (error) return <ThemedText>{`Native transport error: ${error}`}</ThemedText>;
   if (!fixture) return <ThemedText>Loading native transport fixture</ThemedText>;
   return (
     <LiveKitRoom serverUrl={fixture.wsUrl} token={fixture.token} connect audio video={false}>
-      <TransportRoom fixture={fixture} endpoint={endpoint} />
+      <TransportRoom
+        fixture={fixture}
+        endpoint={endpoint}
+        choir={textParam(params.choir) === "1"}
+        choirFault={textParam(params.choir_fault) || "none"}
+      />
     </LiveKitRoom>
   );
 }
