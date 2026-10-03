@@ -63,7 +63,20 @@ async def runtime(reset_db_pool):
         await pool.execute(
             "INSERT INTO encounter_templates (id, data) VALUES ($1, $2::jsonb)",
             encounter_id,
-            json.dumps({"id": encounter_id, "recommended_party_level": 2, "enemies": [enemy]}),
+            json.dumps(
+                {
+                    "id": encounter_id,
+                    "recommended_party_level": 2,
+                    "enemies": [enemy],
+                    "scene_placement": {
+                        "party_start": {"x": 0, "y": 0, "z": 0},
+                        "companion_start": {"x": 0, "y": 0, "z": 0},
+                        "actors": {enemy_id: {"x": 5, "y": 0, "z": 0}},
+                        "locations": {},
+                        "zones": {},
+                    },
+                }
+            ),
         )
         ctx = make_context(player_id, room=make_mock_room())
         created.append((ctx, player_id, encounter_id, catalog_row["id"]))
