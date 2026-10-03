@@ -12,10 +12,14 @@ if (process.env[CONTRACT_CHILD] === "1") {
   await mock.module("@/hooks/use-game-events", () => ({ useGameEvents: () => {} }));
   await mock.module("@/livekit", () => ({
     LiveKitRoom: () => null,
+    useDataChannel: () => {},
     useConnectionState: () => "disconnected",
     useLocalParticipant: () => ({ localParticipant: {} }),
     useRemoteParticipants: () => [],
   }));
+
+  await mock.module("@/components/hud/combat-tracker", () => ({ CombatTracker: () => null }));
+  await mock.module("@/components/hud/resonance-tracker", () => ({ ResonanceTracker: () => null }));
 
   const route = await import("@/app/native-transport-test");
 

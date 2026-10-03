@@ -542,7 +542,7 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (2085 lines)
+## game_mechanics/game_mechanics_bestiary.md (2084 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
@@ -554,12 +554,12 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 | Material Catalog Summary | 1147-1193 | Material values and crafting uses for all creature drops |
 | Encounter Building Guidelines | 1194-1224 | Tier-based scaling, solo player math, companion effectiveness |
 | Design Decisions Log (Bestiary) | 1225-1228 | Bestiary decisions (24-29) |
-| Combat Effect Inventory | 1229-1303 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
-| Encounter Creature Stat Blocks | 1304-2085 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
+| Combat Effect Inventory | 1229-1302 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
+| Encounter Creature Stat Blocks | 1303-2084 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 
-## game_mechanics/game_mechanics_combat.md (1060 lines)
+## game_mechanics/game_mechanics_combat.md (1069 lines)
 
 Combat resolution, status effects, death, social encounters, travel, gathering.
 
@@ -573,7 +573,7 @@ Combat resolution, status effects, death, social encounters, travel, gathering.
 | Death and Dying | 340-614 | Death saves, Mortaen's domain, escalating costs, Hollowed Death, party wipe |
 | Social Encounter Resolution | 615-847 | 3-tier system, disposition-as-DC, Diplomat de-escalation |
 | Travel and Exploration | 848-972 | 3 travel modes, navigation checks, exhaustion, camping |
-| Gathering and Resource Discovery | 973-1060 | Skill-gated harvesting, regional resource tables, discovery moments |
+| Gathering and Resource Discovery | 973-1069 | Skill-gated harvesting, regional resource tables, discovery moments |
 
 ---
 
@@ -688,7 +688,7 @@ Encounter role system: creature stat/loot/XP modifiers, encounter budget math, n
 
 ---
 
-## game_mechanics/game_mechanics_magic.md (542 lines)
+## game_mechanics/game_mechanics_magic.md (549 lines)
 
 Three magic sources, Resonance system, 87 spells.
 
@@ -698,7 +698,7 @@ Three magic sources, Resonance system, 87 spells.
 | Arcane Spell Catalog | 297-377 | 30 arcane spells with Focus costs and Resonance generation |
 | Divine Spell Catalog | 378-451 | 28 divine spells: healing, protection, anti-Hollow |
 | Primal Spell Catalog | 452-528 | 29 primal spells: terrain manipulation, area denial |
-| Three-Source Catalog Comparison | 529-542 | Side-by-side comparison of spell pools and Resonance profiles |
+| Three-Source Catalog Comparison | 529-549 | Side-by-side comparison of spell pools and Resonance profiles |
 
 ---
 
@@ -936,7 +936,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (203 lines)
+## milestones/REMAINING.md (218 lines)
 
 ---
 

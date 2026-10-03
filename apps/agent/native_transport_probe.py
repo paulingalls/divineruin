@@ -105,6 +105,7 @@ class ProbeState:
         self.fixture = fixture
         self.microphone_frames = 0
         self.mobile_result: dict[str, Any] | None = None
+        self.extra_status: dict[str, Any] = {}
         self.condition = threading.Condition()
 
     def set_microphone_frames(self, count: int) -> None:
@@ -114,7 +115,7 @@ class ProbeState:
 
     def set_mobile_result(self, result: dict[str, Any]) -> None:
         with self.condition:
-            self.mobile_result = result
+            self.mobile_result = {**(self.mobile_result or {}), **result}
             self.condition.notify_all()
 
 
@@ -139,7 +140,7 @@ def make_handler(state: ProbeState, run_id: str) -> type[BaseHTTPRequestHandler]
             elif path == "/fixture":
                 self._write(200, state.fixture)
             elif path == "/status":
-                self._write(200, {"run_id": run_id, "microphone_frames": state.microphone_frames})
+                self._write(200, {"run_id": run_id, "microphone_frames": state.microphone_frames, **state.extra_status})
             else:
                 self._write(404, {"error": "not found"})
 

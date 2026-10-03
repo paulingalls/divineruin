@@ -33,7 +33,10 @@ its boundary.
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
-API cost) and runs only at the comprehensive push or sprint-close boundary.
+API cost). Paid `real_llm`, `openai_real_llm` and `live_voice` lanes require
+separate concrete per-run human approval; push or sprint-close is not approval.
+Owned deterministic LLM/STT/TTS seams may prove command transport and mechanics
+without certifying paid speech-recognition accuracy.
 
 **Layout**:
 - `apps/agent` — Python DM agent: LiveKit voice agents, OpenAI strict tool calls,

@@ -22,6 +22,15 @@ export type PrepareNativeApp = (
 ) => Promise<void>;
 export interface NativeTransportDeps {
   probePath?: string;
+  choir?: boolean;
+  choirFault?: string;
+  choirFaults?: string[];
+  prepareScenario?: (repoRoot: string, fault: string) => Promise<() => Promise<void>>;
+  stimulateMicrophone?: (
+    scope: OwnedProcesses,
+    repoRoot: string,
+    run: { controlPath: string; runId: string; artifactDir: string },
+  ) => Promise<void>;
   validateResult?: (raw: unknown, runId: string, fault: Fault) => TransportResult;
   resolveOwned: (requestedUdid?: string) => Promise<string>;
   prepareNativeApp: PrepareNativeApp;
@@ -219,7 +228,9 @@ async function runScenario(
   let probe: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let maestro: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let failure: Error | undefined;
+  let restoreSource: (() => Promise<void>) | undefined;
   try {
+    restoreSource = await deps.prepareScenario?.(repoRoot, deps.choirFault ?? "none");
     const metroChild = scope.spawn(
       ["bun", "expo", "start", "--dev-client", "--port", String(port)],
       {
@@ -238,6 +249,7 @@ async function runScenario(
         join(repoRoot, "apps/agent"),
         "python",
         join(repoRoot, deps.probePath ?? "apps/agent/native_transport_probe.py"),
+        ...(deps.choir ? ["--choir-fault", deps.choirFault ?? "none"] : []),
         "--run-id",
         runId,
         "--fault",
@@ -268,9 +280,11 @@ async function runScenario(
         "-e",
         `APP_LAUNCH_URL=${appLaunchUrl}`,
         "-e",
-        `ROUTE_URL=${transportRouteUrl(fixtureUrl, runId)}`,
+        `ROUTE_URL=${transportRouteUrl(fixtureUrl, runId)}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
         "-e",
-        `EXPECTED_STATUS=${expectedStatus}`,
+        `EXPECTED_STATUS=${deps.choir ? (deps.choirFault && deps.choirFault !== "none" ? `Choir guard failed: ${deps.choirFault}` : "Choir complete") : expectedStatus}`,
+        "-e",
+        `CHOIR_HEALTHY=${!deps.choirFault || deps.choirFault === "none" ? "1" : "0"}`,
         "-e",
         `RUN_ID_TEXT=Run: ${runId}`,
         "-e",
@@ -279,10 +293,14 @@ async function runScenario(
         `PUBLISHER_IDENTITY_TEXT=Publisher: python-${runId}`,
         "-e",
         "SCREENSHOT_PATH=simulator",
-        join(mobileRoot, ".maestro/native-transport.yaml"),
+        join(
+          mobileRoot,
+          deps.choir ? ".maestro/choir-encounter.yaml" : ".maestro/native-transport.yaml",
+        ),
       ],
       { cwd: mobileRoot, env: definedEnv(env) },
     );
+    await deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir });
     const maestroExit = await scope.wait(maestro.exited);
     if (maestroExit !== 0)
       throw new Error(`Maestro native transport failed with status ${maestroExit}`);
@@ -318,6 +336,7 @@ async function runScenario(
     scope.stop(metro),
     scope.stop(maestro),
   ]);
+  await restoreSource?.();
   if (failure) throw failure;
   const rejected = cleanup.filter((entry) => entry.status === "rejected");
   if (rejected.length) throw new AggregateError(rejected, "native transport cleanup failed");
@@ -338,7 +357,9 @@ export async function runNativeTransport(
     if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");
     for (const fault of selectedFault ? [selectedFault] : SCENARIOS) {
       scope.signal.throwIfAborted();
-      await runScenario(scope, repoRoot, env, udid, fault, deps);
+      for (const choirFault of deps.choirFaults ?? ["none"]) {
+        await runScenario(scope, repoRoot, env, udid, fault, { ...deps, choirFault });
+      }
     }
   });
 }

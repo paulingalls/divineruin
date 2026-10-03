@@ -22,7 +22,7 @@ export function playSfx(soundName: string): void {
     return;
   }
 
-  const player = createAudioPlayer(source);
+  const player = createAudioPlayer(source, { keepAudioSessionActive: true });
   player.volume = getEffectiveVolume("effects");
   activePlayers.add(player);
 

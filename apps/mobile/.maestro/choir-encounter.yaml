@@ -1,0 +1,95 @@
+appId: com.divineruin.app
+---
+- openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Continue"
+    optional: true
+- swipe:
+    start: 50%,20%
+    end: 50%,90%
+    duration: 400
+- openLink: ${ROUTE_URL}
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      true: ${CHOIR_HEALTHY == "1"}
+    commands:
+    - extendedWaitUntil:
+        visible: "Checkpoint: entry"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: cast-aura"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: aura-break"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: search"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: redirect"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: silence"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: refusal"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: silenced-command"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: deafened"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: deafened-command"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: expiry"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: destruction"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+    - extendedWaitUntil:
+        visible: "Checkpoint: replay"
+        timeout: 240000
+    - assertVisible: ${RUN_ID_TEXT}
+    - tapOn: "Confirm checkpoint"
+- extendedWaitUntil:
+    visible: ${EXPECTED_STATUS}
+    timeout: 50000
+- assertVisible: ${MOBILE_IDENTITY_TEXT}
+- assertVisible: ${PUBLISHER_IDENTITY_TEXT}
+- takeScreenshot: ${SCREENSHOT_PATH}

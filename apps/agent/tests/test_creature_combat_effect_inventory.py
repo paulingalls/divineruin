@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
-from choir_effect_inventory_helpers import CHOIR, assert_choir_disposition
+from choir_effect_inventory_helpers import CHOIR, assert_choir_disposition, assert_choir_table
 
 ROOT = Path(__file__).resolve().parents[3]
 IDS = set(
@@ -65,6 +65,7 @@ REQUIRED_EFFECTS = {
 
 def inventory():
     text = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
+    assert_choir_table(text)
     assert text.count(MARKER) == 1
     section = text.split(MARKER)[1].split("\n## ")[0]
     entries = []
@@ -435,3 +436,12 @@ def test_choir_inventory_rejects_noncallable_resolver(binding, monkeypatch):
     monkeypatch.setattr(importlib.import_module(module), name, None)
     with pytest.raises(AssertionError, match=binding):
         assert_effect_inventory(catalog(), inventory())
+
+
+def test_choir_inventory_rejects_a_blank_line_table_break():
+    text = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
+    broken = text.replace(
+        "\n| hollow_choir | attacks | Memory Scream", "\n\n| hollow_choir | attacks | Memory Scream", 1
+    )
+    with pytest.raises(AssertionError, match="continue the Markdown table"):
+        assert_choir_table(broken)

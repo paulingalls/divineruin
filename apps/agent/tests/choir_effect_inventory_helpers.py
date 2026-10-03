@@ -101,3 +101,18 @@ def assert_choir_disposition(key, entry):
     for binding in bindings:
         module, name = binding.rsplit(".", 1)
         assert callable(getattr(importlib.import_module(module), name)), binding
+
+
+def assert_choir_table(text):
+    header = "| Species | Group | Name | Audited source | Status | Effects / representation | Resolver / scheduled story | Deferred reason | Duplicate of |"
+    assert text.count(header) == 1, "missing inventory table header"
+    lines = text.split(header)[1].splitlines()[1:]
+    table = []
+    for line in lines:
+        if not line.startswith("|"):
+            break
+        table.append(line)
+    keys = {
+        tuple(field.strip() for field in line.split("|")[2:4]) for line in table if line.startswith("| hollow_choir |")
+    }
+    assert keys == set(CHOIR), "Choir inventory rows must continue the Markdown table"

@@ -19,7 +19,6 @@ from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 import db
 import db_mutations
 import db_queries
-import spells
 from combat_agent import CombatAgent
 from multiplayer_input import MultiplayerInput
 from participant_lifecycle import _setup_party_join
@@ -82,12 +81,14 @@ class TurnStream(llm.LLMStream):
             if isinstance(item, llm.FunctionCallOutput) and item.call_id in model.calls:
                 model.receipts[item.call_id] = item
         texts = [
-            item.text_content
+            item.text_content or ""
             for item in self._chat_ctx.items
             if isinstance(item, llm.ChatMessage) and item.role == "user"
         ]
-        available = sum(f"capstone turn {n}" in texts for n in (1, 2))
-        if len(model.calls) < available:
+        available = max(
+            (int(text.split("capstone turn ")[-1].split()[0]) for text in texts if "capstone turn " in text), default=0
+        )
+        if len(model.calls) < min(available, len(model.commands)):
             name, arguments = model.commands[len(model.calls)]
             call_id = uuid.uuid4().hex
             model.calls[call_id] = name
@@ -115,8 +116,10 @@ class ChoirVoiceDiagnostic:
         self.tts_patch = patch("base_agent._make_tts", return_value=ToneTTS())
 
     async def start(self, room):
-        await spells.load_spells()
+        from acceptance.choir_capstone_harness import reseed_choir_content
+
         pool = await db.get_pool()
+        await reseed_choir_content(pool)
         await seed_player_with_pools(pool, player_id=self.player_id, class_="mage", focus_current=10)
         sd = SessionData(player_id=self.player_id, location_id="accord_guild_hall")
         sd.combat_state = scene(self.player_id, "outside-observer", "silenced_cast")
@@ -181,3 +184,44 @@ class ChoirVoiceDiagnostic:
                 self.tts_patch.stop()
                 if self.lifecycle is not None:
                     await self.lifecycle.aclose()
+
+
+class OwnedStimulusStream(stt.RecognizeStream):
+    def __init__(self, *, stt, conn_options):
+        from acceptance.choir_acoustic_source import AcousticSource
+
+        super().__init__(stt=stt, conn_options=conn_options)
+        self.source = AcousticSource(stt.run_id)
+        stt.sources.append(self.source)
+
+    async def _run(self):
+        source = self.source
+        async for frame in self._input_ch:
+            if not isinstance(frame, rtc.AudioFrame):
+                continue
+            receipt = source.observe(frame.data, frame.sample_rate)
+            if receipt is None:
+                continue
+            self._event_ch.send_nowait(stt.SpeechEvent(type=stt.SpeechEventType.START_OF_SPEECH))
+            self._event_ch.send_nowait(
+                stt.SpeechEvent(
+                    type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                    request_id=uuid.uuid4().hex,
+                    alternatives=[stt.SpeechData(language=cast(Any, "en"), text=f"capstone turn {receipt['turn']}")],
+                )
+            )
+            self._event_ch.send_nowait(stt.SpeechEvent(type=stt.SpeechEventType.END_OF_SPEECH))
+
+
+class OwnedStimulusSTT(BurstSTT):
+    def __init__(self, run_id):
+        super().__init__()
+        self.run_id = run_id
+        self.sources = []
+
+    @property
+    def source_receipts(self):
+        return [receipt for source in self.sources for receipt in source.receipts]
+
+    def stream(self, *, language="en", conn_options=DEFAULT_API_CONNECT_OPTIONS):
+        return OwnedStimulusStream(stt=self, conn_options=conn_options)

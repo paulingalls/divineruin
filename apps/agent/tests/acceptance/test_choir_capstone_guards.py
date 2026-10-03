@@ -207,3 +207,199 @@ async def test_native_command_probe_interrupt_closes_room_and_control(tmp_path, 
         await aclose_audio(source)
         if receiver is not None:
             await aclose_room(receiver)
+
+
+def stimulus_module():
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[4] / "scripts/native-microphone-stimulus.py"
+    spec = importlib.util.spec_from_file_location("native_microphone_stimulus", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize(
+    "listing",
+    [
+        "",
+        "[0] Other Speakers, OtherDevice",
+        "[0] MacBook Pro Speakers, BuiltInSpeakerDevice\n[1] MacBook Pro Speakers, BuiltInSpeakerDevice",
+    ],
+)
+def test_stimulus_requires_one_exact_builtin_speaker(listing):
+    stimulus = stimulus_module()
+    assert stimulus.speaker_index("[7] MacBook Pro Speakers, BuiltInSpeakerDevice\n") == "7"
+    with pytest.raises(RuntimeError, match="exactly one"):
+        stimulus.speaker_index(listing)
+
+
+@pytest.mark.parametrize(
+    "url,run",
+    [
+        ("http://127.0.0.1:1234/fixture", "stale"),
+        ("https://127.0.0.1:1234/fixture", "current"),
+        ("http://example.com:1234/fixture", "current"),
+        ("http://127.0.0.1/fixture", "current"),
+        ("http://user:password@127.0.0.1:1234/fixture", "current"),
+    ],
+)
+def test_stimulus_binds_status_to_owned_current_run(url, run):
+    stimulus = stimulus_module()
+    assert (
+        stimulus.status_endpoint({"fixture_url": "http://127.0.0.1:1234/fixture", "run_id": "current"}, "current")
+        == "http://127.0.0.1:1234/status?run_id=current"
+    )
+    with pytest.raises(RuntimeError, match="owned loopback"):
+        stimulus.status_endpoint({"fixture_url": url, "run_id": run}, "current")
+
+
+@pytest.mark.parametrize(
+    "rate,width,channels,amplitude", [(24000, 2, 1, 12000), (48000, 1, 1, 100), (48000, 2, 2, 12000), (48000, 2, 1, 0)]
+)
+def test_stimulus_rejects_invalid_or_unvoiced_pcm(tmp_path, rate, width, channels, amplitude):
+    import struct
+    import wave
+
+    path = tmp_path / "speech.wav"
+    with wave.open(str(path), "wb") as output:
+        output.setparams((channels, width, rate, 0, "NONE", "not compressed"))
+        output.writeframes((struct.pack("<h", amplitude) if width == 2 else b"\0") * rate * channels)
+    with pytest.raises(RuntimeError, match="waveform"):
+        stimulus_module().inspect_waveform(path)
+
+
+def test_owned_acoustic_source_rejects_dm_tones_unrelated_bursts_and_wrong_run():
+    import array
+    import math
+
+    from acceptance.choir_acoustic_source import AcousticSource, marker_pcm
+
+    source = AcousticSource("current")
+
+    def hear(pcm):
+        samples = array.array("h", pcm)
+        for start in range(0, len(samples), 480):
+            source.observe(samples[start : start + 480], 48000)
+
+    for frequency in (440, 1000):
+        samples = array.array("h", (round(12000 * math.sin(2 * math.pi * frequency * n / 48000)) for n in range(48000)))
+        hear(samples.tobytes())
+        assert not source.receipts, "missing owned acoustic source guard"
+    hear(marker_pcm("stale", 1))
+    assert not source.receipts, "missing owned acoustic source guard"
+    hear(marker_pcm("current", 1))
+    assert source.receipts == [{"run_id": "current", "turn": 1, "source": "owned-acoustic-marker"}]
+    hear(marker_pcm("current", 1))
+    assert len(source.receipts) == 1, "replayed acoustic source advanced commands"
+    hear(marker_pcm("current", 2))
+    assert len(source.receipts) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["owned", "dm-tone", "unrelated-burst"])
+async def test_acoustic_source_guard_on_real_authenticated_livekit(kind, livekit_server, reset_db_pool):
+    import array
+
+    from acceptance._livekit_client import play_audio_frames
+    from acceptance.choir_acoustic_source import marker_pcm
+    from acceptance.choir_capstone_voice import OwnedStimulusSTT
+    from livekit import rtc
+
+    from native_transport_probe import build_tone_frames
+
+    harness = MultiplayerVoiceHarness(livekit_server)
+    diagnostic = ChoirVoiceDiagnostic(harness.player_one_identity)
+    speech = OwnedStimulusSTT("source-guard")
+
+    async def prepare(room):
+        await seed_player_with_pools(await db.get_pool(), player_id=harness.player_two_identity)
+        await diagnostic.start(room)
+        assert diagnostic.lifecycle is not None
+        return diagnostic.lifecycle.authorize
+
+    try:
+        await harness.start(prepare, stt=speech)
+        diagnostic.attach(harness.manager)
+        audio = harness.audio[harness.player_one_identity][0]
+        if kind == "owned":
+            samples = array.array("h", marker_pcm("source-guard", 1, 16000))
+            frames = [
+                rtc.AudioFrame(samples[start : start + 160].tobytes(), 16000, 1, min(160, len(samples) - start))
+                for start in range(0, len(samples), 160)
+            ]
+        elif kind == "dm-tone":
+            frames = build_tone_frames()
+        else:
+            frames = PLAYER_TWO_SPEECH.frames()
+        # The microphone source was created at 16kHz by the existing owned harness.
+        if kind == "dm-tone":
+            resampler = rtc.AudioResampler(48000, 16000)
+            frames = [converted for frame in frames for converted in resampler.push(frame)] + resampler.flush()
+        await play_audio_frames(audio, frames)
+        if kind == "owned":
+            try:
+                await diagnostic.wait_for_receipts(1)
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"missing owned acoustic source/command: {[(source.observed_symbols, source.max_purity) for source in speech.sources]}"
+                ) from exc
+            await diagnostic.assert_refusal_unchanged()
+            assert len(diagnostic.transcripts) == len(speech.source_receipts) == 1
+        else:
+            with pytest.raises(AssertionError, match="missing separate authenticated turn"):
+                await diagnostic.wait_for_receipts(1, timeout=2)
+            assert not speech.source_receipts and not diagnostic.transcripts and not diagnostic.model.calls
+    finally:
+        await diagnostic.aclose()
+        await harness.aclose()
+
+
+def test_stimulus_waits_for_five_current_microphone_frames_and_rejects_stale_status():
+    stimulus = stimulus_module()
+    healthy = iter([{"run_id": "current", "microphone_frames": 4}, {"run_id": "current", "microphone_frames": 5}])
+    stimulus.wait_for_microphone("http://127.0.0.1:1234/status?run_id=current", "current", fetch=lambda: next(healthy))
+    with pytest.raises(RuntimeError, match="another run"):
+        stimulus.wait_for_microphone(
+            "http://127.0.0.1:1234/status?run_id=current",
+            "current",
+            fetch=lambda: {"run_id": "stale", "microphone_frames": 5},
+        )
+    for frames in (0, 4, True):
+        with pytest.raises(TimeoutError, match="microphone frames"):
+            stimulus.wait_for_microphone(
+                "http://127.0.0.1:1234/status?run_id=current",
+                "current",
+                fetch=lambda frames=frames: {"run_id": "current", "microphone_frames": frames},
+                timeout=0.01,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("signal_name", ["SIGINT", "SIGTERM"])
+async def test_interrupt_owned_silent_probe_removes_children_endpoint_and_fixture(signal_name, reset_db_pool, tmp_path):
+    from acceptance.choir_capstone_cleanup import interrupt_probe
+
+    await interrupt_probe(signal_name, tmp_path)
+
+
+def test_cleanup_fixture_rejects_audible_launch_before_execution(tmp_path):
+    from acceptance.choir_capstone_cleanup import stimulus_command
+
+    command = stimulus_command(tmp_path)
+    assert command, "empty cleanup fixture command"
+    forbidden = ("native-microphone-stimulus", "say", "audiotoolbox", "maestro", "simctl", "verify-native-build")
+    assert not any(word in " ".join(command).lower() for word in forbidden), "audible cleanup fixture launch rejected"
+
+
+@pytest.mark.parametrize("missing", ["probe", "stimulus", "descendant", "all"])
+def test_cleanup_requires_the_complete_active_owned_family(missing, monkeypatch):
+    from acceptance import choir_capstone_cleanup as cleanup
+
+    monkeypatch.setattr(cleanup, "alive", lambda pid: True)
+    owned = {"probe": 1, "stimulus": 2, "descendant": 3}
+    cleanup.assert_active_family(owned)
+    faulty = {} if missing == "all" else {key: pid for key, pid in owned.items() if key != missing}
+    with pytest.raises(AssertionError, match="owned process family"):
+        cleanup.assert_active_family(faulty)
