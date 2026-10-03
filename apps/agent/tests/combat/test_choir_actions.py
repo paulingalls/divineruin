@@ -49,6 +49,7 @@ async def test_memory_scream_save_negates(success):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"]
     assert saved.call_count == 2
+    assert all(not t["half_on_success"] and not t["damage_halved"] for t in result["targets"])
     assert all(call.args[1:3] == ("WIS", 18) for call in saved.call_args_list)
     assert all(call.args == ("3d8",) for call in damage_rolls.call_args_list)
     assert not d["resolver"].resolve_attack.called
@@ -256,6 +257,7 @@ async def test_suppression_before_roll_spend():
         assert actor.choir_suppression is not None
         assert actor.choir_suppression["expires_round"] == 3
     d = deps()
+    d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"] is False and not d["resolver"].resolve_attack.called
     zone = spatial_record(state)["zones"].pop("test")

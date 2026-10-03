@@ -343,3 +343,60 @@ async def test_captain_actives_offer_only_catch_all_before_execution(action, obj
     assert not state.held_actions
     assert state.open_window is None
     d["resolver"].resolve_attack.assert_not_called()
+
+
+async def test_choir_area_spends_when_declared_target_falls():
+    from creature_combat_helpers import catalog
+
+    from combat_state import CombatState
+
+    action = next(r for r in catalog() if r["id"] == "hollow_choir")["actives"][1]
+    state, actor, packet = setup(action)
+    actor.creature_id = "hollow_choir"
+    state.participants[0].is_fallen = True
+    actor.hp_current = 100
+    save = SimpleNamespace(
+        success=True,
+        save_type="constitution",
+        roll=20,
+        total=20,
+        dc=18,
+        narrative_hint="",
+        dramatic=False,
+        context="",
+        advantage_applied=False,
+    )
+    with (
+        patch("check_resolution_save.roll_participant_save", return_value=save) as saves,
+        patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)),
+    ):
+        result = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
+        assert result["resolved"] and actor.hp_current == 94
+        assert actor.action_ledger["cacophony"]["remaining"] == 0
+        state = CombatState.from_dict(state.to_dict())
+        assert not (await _resolve_one_packet(make_context().userdata, state, packet, **deps()))["resolved"]
+        assert saves.call_count == 1
+
+
+@pytest.mark.parametrize("condition,fallen", [("deafened", False), (None, True)])
+@pytest.mark.parametrize("held", [False, True])
+async def test_melody_unavailable_recipient_wastes_without_save_or_spend(condition, fallen, held):
+    from creature_combat_helpers import catalog
+
+    action = next(r for r in catalog() if r["id"] == "hollow_choir")["actives"][0]
+    state, actor, packet = setup(action)
+    actor.creature_id = "hollow_choir"
+    target = state.participants[0]
+    target.is_fallen = fallen
+    target.conditions = [{"type": condition}] if condition else []
+    with patch("check_resolution_save.roll_participant_save") as saves:
+        if held:
+            hold(state, actor)
+            summaries = await combat_hold.pump(make_context().userdata, state, packet_deps=deps())
+            assert state.open_window is None and len(summaries) == 1
+            result = summaries[0]
+        else:
+            result = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
+    assert not result["resolved"] and not saves.called
+    assert actor.action_ledger.get("stolen melody", {"remaining": 1})["remaining"] == 1
+    assert actor.last_action_execution is None

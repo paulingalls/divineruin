@@ -291,6 +291,7 @@ async def _resolve_one_packet(
         elif (
             target is not None
             and not target.is_fallen
+            and not (action.get("resolution") == "save" and action.get("type") == "area")
             and (
                 decl.type is DeclarationType.ATTACK
                 or action.get("applies_condition")

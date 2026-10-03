@@ -141,3 +141,24 @@ async def test_held_melody_preserves_countercharm_subject_and_save():
     assert subject.call_args.args[2] == "charmed"
     assert saves.call_args.kwargs["advantage"] is True
     assert result["save_advantage"] is True
+
+
+@pytest.mark.parametrize("condition", ["stunned", "paralyzed", "petrified", "fallen", "dead"])
+def test_shield_unavailable_choir_cannot_redirect(condition):
+    from combat._catalog_fixtures import setup
+
+    from choir_reaction import effective_declaration
+    from combat_action_availability import action_summary
+
+    state, choir, _ = setup()
+    choir.creature_id = "hollow_choir"
+    choir.choir_reaction = next(r for r in catalog() if r["id"] == "hollow_choir")["reactions"][0]
+    choir.conditions = [{"type": condition}] if condition not in ("fallen", "dead") else []
+    choir.is_fallen = condition == "fallen"
+    choir.is_dead = condition == "dead"
+    caster = state.participants[0]
+    declaration = Declaration(type=DeclarationType.ABILITY, action="divine_bless", target_id=choir.id)
+    with patch("check_resolution_save.roll_participant_save") as saves:
+        assert effective_declaration(state, caster, declaration) == declaration
+        assert not saves.called
+    assert action_summary(choir)["automatic_reactions"][0]["available"] is False

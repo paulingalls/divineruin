@@ -5,6 +5,7 @@ from dataclasses import replace
 import check_resolution_save
 import spells
 from choir_effects import suppressed
+from condition_restrictions import cannot_act
 from spell_voice_rules import is_silenced
 
 
@@ -25,6 +26,7 @@ def effective_declaration(state, caster, declaration):
             and target.choir_reaction is not None
             and not target.is_fallen
             and not target.is_dead
+            and not cannot_act(target.conditions)
             and not suppressed(target)
             and not is_silenced(state, target.id)
         ):

@@ -26,8 +26,12 @@ def require_targets(state, actor, action, declaration):
 
 
 async def resolve_area(session, state, actor, action, declaration, **deps):
+    from combat_action_availability import begin_execution
+
+    targets = require_targets(state, actor, action, declaration)
+    begin_execution(state, actor, action, declaration)
     results = []
-    for target in require_targets(state, actor, action, declaration):
+    for target in targets:
         result = await resolve_save_damage_action(
             session, actor, replace(declaration, target_id=target.id), action, state=state, **deps
         )
@@ -40,8 +44,6 @@ async def resolve_effect(session, state, actor, action, declaration, *, reaction
     from choir_effects import inflict_silence
     from combat_action_availability import begin_execution
     from combat_condition_landing import _land_condition_on_one
-    from condition_sources import DeliveryRefused
-    from condition_voice_rules import no_spoken_buffs
     from dice import roll
     from spell_voice_rules import require_speech
 
@@ -52,8 +54,8 @@ async def resolve_effect(session, state, actor, action, declaration, *, reaction
     if action["kind"] == "silence":
         begin_execution(state, actor, action, declaration)
         return inflict_silence(state, actor, action, declaration)
-    if no_spoken_buffs(target.conditions, state=state, actor_id=target.id):
-        raise DeliveryRefused("Melody target cannot hear the voice")
+    if target.is_fallen or target.is_dead:
+        return {"actor_id": actor.id, "resolved": False, "reason": "Melody target unavailable"}
     begin_execution(state, actor, action, declaration)
     save = check_resolution_save.roll_participant_save(
         target, action["save"], action["dc"], "charmed", bonus_dice_eligible=False, advantage=reaction_save_advantage

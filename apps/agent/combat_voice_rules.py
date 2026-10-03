@@ -51,6 +51,12 @@ def guard_declaration(state: CombatState, actor: CombatParticipant, decl: Declar
         from choir_actions import require_targets
 
         action = next((a for a in actor.action_pool if a["name"].lower() == (decl.action or "").lower()), None)
+        if action is not None and action_kind(action) == "charm":
+            target = state.get_participant(decl.target_id or actor.id)
+            if target is not None and condition_voice_rules.no_spoken_buffs(
+                target.conditions, state=state, actor_id=target.id
+            ):
+                raise DeliveryRefused("Melody target cannot hear the voice")
         if action is not None and "resolution" in action:
             require_targets(state, actor, action, decl)
             if action.get("type") == "area":

@@ -276,8 +276,8 @@ async def resolve_save_damage_action(
         publish_roll=False,
     )
     summary.update(_save_fields(result))
-    summary["half_on_success"] = True
-    summary["damage_halved"] = result.success
+    summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
+    summary["damage_halved"] = result.success and summary["half_on_success"]
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
