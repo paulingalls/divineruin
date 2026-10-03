@@ -8,6 +8,12 @@ def deferred_effects(row):
     for group in ("attacks", "actives", "passives", "reactions"):
         for source in row[group]:
             text = source.get("special") if group == "attacks" else source.get("description")
+            if row["id"] == "hollow_choir" and (
+                "resolution" in source or source.get("kind") in ("silence", "spell_redirect")
+            ):
+                continue
+            if row["id"] == "hollow_choir" and source.get("kind") == "charm":
+                source = {"name": source["name"], "description": "The DM speaks in the stolen voice."}
             if not text:
                 continue
             effects.append(
@@ -20,7 +26,11 @@ def deferred_effects(row):
             )
     for group in ("multiattack", "signature_ability", "hollow"):
         source = deepcopy(row.get(group))
-        if group == "hollow" and row["category"] == "hollow" and row["hollow"]["class"] != "named":
+        if (
+            group == "hollow"
+            and row["category"] == "hollow"
+            and (row["hollow"]["class"] != "named" or row["id"] == "hollow_choir")
+        ):
             source.pop("corruption_aura")
             source.pop("resonance_on_death")
         if source:

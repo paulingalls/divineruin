@@ -48,7 +48,10 @@ def _translate(row, encounter_id, enemy_id, role):
     for key, value in (("creature_id", row.get("id")), ("encounter_id", encounter_id), ("enemy_id", enemy_id)):
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key}: expected nonempty identity")
-    if role not in ("minion", "standard", "elite", "boss"):
+    choir = row.get("id") == "hollow_choir" and row.get("hollow", {}).get("class") == "named"
+    if choir and role in ("minion", "standard", "elite", "boss", "named"):
+        role = "named"
+    if role not in ("minion", "standard", "elite", "boss") and not choir:
         raise ValueError(f"unsupported role {role!r}; Named/custom mechanics require authored integration")
     problems = validate_creature_stat_block(row)
     if problems:
@@ -63,9 +66,9 @@ def _translate(row, encounter_id, enemy_id, role):
     category = row["category"]
     if category == "hollow":
         cls = row["hollow"]["class"]
-        if cls == "named":
+        if cls == "named" and not choir:
             raise ValueError("unsupported Named/custom hollow mechanics")
-        category = f"hollow_{cls}"
+        category = "named" if choir else f"hollow_{cls}"
     elif category not in _CATEGORIES:
         raise ValueError(f"unsupported category {category!r}")
     unknown_attributes = set(row["attributes"]) - _ATTRIBUTES.keys()
@@ -100,6 +103,7 @@ def _translate(row, encounter_id, enemy_id, role):
         catalog_narration=deepcopy(row["narration"]),
         catalog_audio=deepcopy(row["audio"]),
         deferred_effects=deferred_effects(row),
+        choir_reaction=deepcopy(row["reactions"][0]) if choir else None,
         hollow=(
             {key: amount(row["hollow"][key], key) for key in ("corruption_aura", "resonance_on_death")}
             if row["hollow"] is not None

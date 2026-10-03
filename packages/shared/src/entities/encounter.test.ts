@@ -270,7 +270,7 @@ const contractCorpus = (await Bun.file(
   }[];
 };
 for (const row of contractCorpus.valid.filter((r) =>
-  /^(recharge_|advantage_|active_)/.test(r.name),
+  /^(recharge_|advantage_|active_|structured_save_)/.test(r.name),
 ))
   test(`structured_recharge action_advantage active_contract ${row.name}`, () => {
     for (const action of row.block.actives.length ? row.block.actives : row.block.attacks) {
@@ -280,7 +280,9 @@ for (const row of contractCorpus.valid.filter((r) =>
   });
 for (const row of contractCorpus.invalid.filter(
   (r) =>
-    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name) ||
+    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_|structured_save_)/.test(
+      r.name,
+    ) ||
     (r.name.startsWith("active_attack_") && r.name.includes("_type_")),
 ))
   test(`structured_recharge action_advantage active_contract rejection ${row.name}`, () => {
@@ -436,3 +438,23 @@ test("typed silence zones pass the real scene boundary", () => {
     expect(() => validateScenePlacement(invalid)).toThrow(/zone/);
   }
 });
+
+const choirCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
+  row.name.startsWith("choir_"),
+);
+test("Choir public contract corpus is reachable", () => {
+  expect(choirCorpus.length).toBeGreaterThan(1);
+  expect(choirCorpus.some((row) => row.name === "choir_catalog")).toBe(true);
+});
+for (const row of choirCorpus)
+  test(`Choir public contract ${row.name}`, () => {
+    const block = row.block as typeof row.block & { reactions: Record<string, unknown>[] };
+    const validate = () => {
+      for (const action of [...block.attacks, ...block.actives, ...block.reactions]) {
+        validateEncounterActionShape(action);
+        validateEncounterActionKind(action, "enemy 'choir'");
+      }
+    };
+    if (row.name === "choir_catalog") expect(validate).not.toThrow();
+    else expect(validate).toThrow();
+  });

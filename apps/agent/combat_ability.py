@@ -285,6 +285,9 @@ async def _resolve_ability_packet(
 
     caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)
+    from choir_reaction import effective_declaration
+
+    decl = effective_declaration(state, attacker, decl)
     result = await cast_resolver._resolve_cast(
         session,
         decl.action,
@@ -293,6 +296,7 @@ async def _resolve_ability_packet(
         player=player,
         combat_state=state,
         target_id=decl.target_id,
+        target_ids=decl.target_ids,
         suppress_resonance_changed=True,
     )
     cast_outcome.results[attacker.id] = result

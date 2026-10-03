@@ -34,7 +34,7 @@ SPEC = {
 }
 ATTACKS = {
     "hollow_choir": (
-        ("Memory Scream", "area", 60, 0, "3d8", "psychic", "WIS save DC 18", "WIS", 18, "stunned"),
+        ("Memory Scream", "area", 60, 0, "3d8", "psychic", "WIS save DC 18", "WIS", 18, None),
         ("Dissonant Chord", "ranged", 120, 10, "2d10+6", "psychic", "CON save DC 18", "CON", 18, None),
     ),
     "hollow_still": (
@@ -97,7 +97,11 @@ RULES = {
     ),
 }
 RECHARGES = {
-    "hollow_choir": ("5-6", "1/encounter", "1/encounter"),
+    "hollow_choir": (
+        {"kind": "roll", "die": 6, "threshold": 5},
+        {"kind": "encounter", "uses": 1},
+        {"kind": "encounter", "uses": 1},
+    ),
     "hollow_still": ("1/round", "5-6", "1/encounter"),
     "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None, None),
 }
@@ -163,6 +167,43 @@ def assert_pin(row, key):
         assert "half_on_success" not in attack
     if key == "hollow_choir":
         assert "Deafened 1 minute" in actual[1]["special"]
+        assert actual[0]["resolution"] == "save"
+        assert actual[0]["save_success_damage"] == "none"
+        assert actual[0]["conditions_on_failure"] == [{"applies_condition": "stunned", "duration": 1}]
+        assert actual[0]["conditions_on_success"] == []
+        assert actual[1]["resolution"] == "hit_then_save"
+        assert actual[1]["conditions_on_failure"] == [{"applies_condition": "deafened", "duration": 10}]
+        assert actual[1]["conditions_on_success"] == []
+        melody, cacophony, silence = row["actives"]
+        assert (melody["kind"], melody["save"], melody["dc"], melody["duration_dice"], melody["movement"]) == (
+            "charm",
+            "WIS",
+            20,
+            "1d4",
+            "approach_source",
+        )
+        assert (
+            cacophony["resolution"],
+            cacophony["save"],
+            cacophony["dc"],
+            cacophony["reach"],
+            cacophony["damage"],
+            cacophony["save_success_damage"],
+        ) == ("save", "CON", 18, 60, "4d8", "half")
+        assert cacophony["conditions_on_success"] == [{"applies_condition": "deafened", "duration": 10}]
+        assert cacophony["conditions_on_failure"] == [
+            {"applies_condition": "deafened", "duration": 10},
+            {"applies_condition": "stunned", "duration": 1},
+        ]
+        assert (silence["kind"], silence["radius_ft"], silence["rounds"]) == ("silence", 30, 3)
+        shield = row["reactions"][0]
+        assert (shield["kind"], shield["trigger"], shield["save"], shield["dc"], shield["redirect"]) == (
+            "spell_redirect",
+            "verbal_spell",
+            "WIS",
+            16,
+            "caster",
+        )
     if key == "hollow_still":
         assert "Charmed for 1 hour" in actual[0]["special"]
 
@@ -204,7 +245,7 @@ def test_named_pins_reject_changed_stat_attack_and_loot():
         lambda x: x.__setitem__("hp", 201),
         lambda x: x["attacks"][0].__setitem__("reach", 61),
         lambda x: x["attacks"][0].__setitem__("dc", 17),
-        lambda x: x["attacks"][0].pop("applies_condition"),
+        lambda x: x["attacks"][0].pop("conditions_on_failure"),
         lambda x: x["attacks"][1].__setitem__("applies_condition", "deafened"),
     ):
         changed = copy.deepcopy(row)

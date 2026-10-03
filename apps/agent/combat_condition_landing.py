@@ -35,12 +35,7 @@ def _land_condition_on_one(
     cond_target.conditions = conditions.apply_condition(
         cond_target.conditions, cond_type, source=attacker.id if cond_type == "charmed" else source, duration=duration
     )
-    if (
-        duration is not None
-        and not attacker.is_ally
-        and attacker.type == "enemy"
-        and (cond_target.type != "enemy" or cond_target.is_ally)
-    ):
+    if duration is not None and not attacker.is_ally and attacker.type == "enemy":
         for condition in cond_target.conditions:
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number

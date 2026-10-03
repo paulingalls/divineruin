@@ -17,6 +17,7 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import choir_effects
 import combat_grapple
 import combat_spatial_declarations
 import combat_voice_rules
@@ -203,7 +204,7 @@ def advance_combat_phase(
                     or pool_action is None
                     or (
                         not pool_action.get("applies_condition")
-                        and action_kind(pool_action) not in ("healing", "prepare_attack")
+                        and action_kind(pool_action) not in ("healing", "prepare_attack", "charm", "silence")
                     )
                 ):
                     available = [action["name"] for action in actor.action_pool]
@@ -235,6 +236,7 @@ def advance_combat_phase(
         legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
+            choir_effects.advance_round(next_state)
             next_state.current_turn_index = 0
             next_state.pending_declarations = {}
             next_state.reactions_available = {}

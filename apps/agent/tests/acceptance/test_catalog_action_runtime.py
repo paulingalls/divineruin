@@ -41,7 +41,7 @@ async def runtime(reset_db_pool):
         catalog_row = deepcopy(row)
         originals.setdefault(species, deepcopy(row))
         attacks, actives = [], []
-        for action in actions:
+        for action in actions or []:
             if action.get("kind", "attack") == "attack":
                 attacks.append({**row["attacks"][0], **action})
             else:
@@ -53,6 +53,8 @@ async def runtime(reset_db_pool):
                         **action,
                     }
                 )
+        if actions is None:
+            attacks, actives = deepcopy(row["attacks"]), deepcopy(row["actives"])
         catalog_row["attacks"] = attacks or [row["attacks"][0]]
         catalog_row["actives"] = actives
         assert not validate_creature_stat_block(catalog_row)

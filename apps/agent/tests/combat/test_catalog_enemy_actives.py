@@ -59,8 +59,22 @@ def test_captain_actives_are_produced_and_declarable():
     roster = _participant_summary(actor)
     assert roster["mark_actions"] == []
     assert roster["executable_actions"] == [
-        {"name": "Rally", "kind": "healing", "declaration_type": "ability"},
-        {"name": "Dirty Fighting", "kind": "prepare_attack", "declaration_type": "ability"},
+        {
+            "name": "Rally",
+            "kind": "healing",
+            "declaration_type": "ability",
+            "id": "Rally",
+            "available": True,
+            "reason": None,
+        },
+        {
+            "name": "Dirty Fighting",
+            "kind": "prepare_attack",
+            "declaration_type": "ability",
+            "id": "Dirty Fighting",
+            "available": True,
+            "reason": None,
+        },
     ]
     advance_combat_phase(state, declarations={actor.id: {"type": "ability", "action": "Rally"}})
 

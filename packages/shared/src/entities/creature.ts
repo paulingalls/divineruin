@@ -1,4 +1,9 @@
-import { validateRecharge, type Recharge } from "./action_contracts";
+import {
+  validateActionExtensions,
+  validateRecharge,
+  type Recharge,
+  type ChoirEffect,
+} from "./action_contracts";
 import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
 import {
@@ -33,7 +38,7 @@ export interface CreatureStatBlock {
   actives: ActiveAbility[];
   signature_ability?: CatalogSignatureAbility;
   resistance_tags?: (typeof RESISTANCE_TAG_VALUES)[number][];
-  reactions: Ability[];
+  reactions: (Ability | (Omit<Ability, "kind"> & ChoirEffect))[];
   hollow: Hollow | null;
   behavior: { tactics: string; morale: string; group_size: string; environment: string[] };
   narration: {
@@ -55,6 +60,10 @@ export interface CreatureStatBlock {
 }
 
 export interface Attack {
+  resolution?: "save" | "hit_then_save";
+  save_success_damage?: "none" | "half";
+  conditions_on_failure?: { applies_condition: string; duration: number }[];
+  conditions_on_success?: { applies_condition: string; duration: number }[];
   name: string;
   type: "melee" | "ranged" | "area";
   reach: number;
@@ -94,6 +103,7 @@ export type ActiveAbility =
         | (Omit<EncounterAttackAction, "properties" | "kind"> & { kind: "attack" })
         | Omit<EncounterHealingAction, "properties">
         | Omit<EncounterPrepareAttackAction, "properties">
+        | ChoirEffect
       ));
 
 export interface CatalogSignatureAbility extends SignatureAbility {
@@ -250,8 +260,10 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
           field(ability, key, path, "string");
         field(ability, "audio", path, "string", true);
         if (
-          group !== "actives" ||
-          (!["attack", "healing", "prepare_attack"].includes(ability.kind as string) &&
+          (group !== "actives" && ability.kind !== "spell_redirect") ||
+          (!["attack", "healing", "prepare_attack", "charm", "silence"].includes(
+            ability.kind as string,
+          ) &&
             !(
               ["command", "accusation"].includes(ability.kind as string) &&
               typeof ability.recharge === "object" &&
@@ -259,6 +271,30 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
             ))
         )
           field(ability, "recharge", path, "string", true);
+        if (
+          !("kind" in ability) &&
+          [
+            "resolution",
+            "save_success_damage",
+            "conditions_on_failure",
+            "conditions_on_success",
+            "duration_dice",
+            "movement",
+            "radius_ft",
+            "rounds",
+            "trigger",
+            "redirect",
+          ].some((key) => key in ability)
+        )
+          problems.push(`${path}.kind: required`);
+        if (group === "reactions" && "kind" in ability) {
+          try {
+            if (ability.kind !== "spell_redirect") throw new Error(`${path}.kind: invalid`);
+            validateActionExtensions(ability, path);
+          } catch (error) {
+            problems.push((error as Error).message);
+          }
+        }
         if (group === "actives") {
           const kind = field(ability, "kind", path, "string", false, false);
           const properties = field(ability, "properties", path, "array", false, false);

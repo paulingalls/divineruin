@@ -230,6 +230,11 @@ async def _resolve_one_packet(
     # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.
     player = players_by_id.get(packet.actor_id) if players_by_id else None
 
+    from choir_effects import approach
+
+    forced_move = approach(state, attacker)
+    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+        return forced_move
     if combat_spatial_declarations.is_move(decl):
         return combat_spatial_declarations.apply_move(state, attacker, decl)
 
@@ -252,10 +257,6 @@ async def _resolve_one_packet(
             "ac_bonus": decl.ac_bonus,
         }
 
-    # Resolve the actor's pool action ONCE — reused by the enemy-condition branch and the ATTACK
-    # path below so an ordinary enemy attack isn't scanned twice. Only ATTACK (any actor) and a
-    # hostile-actor ABILITY (the enemy-condition case) need the pool lookup; a player/ally ABILITY is
-    # a spell/ability id, not a pool action, so it stays None.
     action = (
         _find_action(attacker, decl.action)
         if decl.type is DeclarationType.ATTACK or (not attacker.is_ally and decl.type is DeclarationType.ABILITY)
@@ -277,6 +278,12 @@ async def _resolve_one_packet(
         if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
             action = begin_execution(state, attacker, action, decl)
             return resolve_active(state, attacker, action, decl)
+        if action_kind(action) in ("charm", "silence"):
+            from choir_actions import resolve_effect
+
+            return await resolve_effect(
+                session, state, attacker, action, decl, reaction_save_advantage=reaction_save_advantage
+            )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if replay:
             assert _held_head is not None
@@ -292,6 +299,27 @@ async def _resolve_one_packet(
         ):
             action = begin_execution(state, attacker, action, decl)
 
+    if (
+        not attacker.is_ally
+        and action is not None
+        and action.get("resolution") == "save"
+        and action.get("type") == "area"
+    ):
+        from choir_actions import resolve_area
+
+        return await resolve_area(
+            session,
+            state,
+            attacker,
+            action,
+            decl,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
     if not attacker.is_ally and action is not None:
         enemy_summary = await resolve_enemy_strike(
             session,

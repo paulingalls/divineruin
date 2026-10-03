@@ -120,3 +120,86 @@ def test_zero_flat_damage_cannot_pass_usable_attack_floor():
     source["actives"] = []
     with pytest.raises(ValueError, match=r"bandit.*enc137.*enemy137.*no usable damaging attack"):
         translate(source)
+
+
+def test_structured_save_action_contract():
+    from action_contracts import validate_action_extensions
+
+    action = {
+        "name": "Memory Scream",
+        "kind": "attack",
+        "resolution": "save",
+        "damage": "3d8",
+        "damage_type": "psychic",
+        "save": "WIS",
+        "dc": 18,
+        "reach": 60,
+        "type": "area",
+        "save_success_damage": "none",
+        "conditions_on_failure": [{"applies_condition": "stunned", "duration": 1}],
+        "conditions_on_success": [],
+    }
+    validate_action_extensions(action, "scream")
+    for mutation in (
+        {"resolution": "bogus"},
+        {"save": "BAD"},
+        {"dc": True},
+        {"save_success_damage": "full"},
+        {"conditions_on_success": [{"applies_condition": "unknown", "duration": 1}]},
+        {"conditions_on_failure": [{"applies_condition": "stunned", "duration": 0}]},
+        {"conditions_on_failure": [{"applies_condition": "stunned", "duration": 1, "unknown": True}]},
+    ):
+        with pytest.raises(ValueError):
+            validate_action_extensions({**action, **mutation}, "scream")
+
+
+def test_structured_shared_public_contract_corpus():
+    import json
+    from pathlib import Path
+
+    from combat_init_validation import validate_enemy_action_shapes
+    from encounter_actions import validate_encounter_actions
+
+    root = Path(__file__).resolve().parents[3] / "packages/shared/fixtures"
+    corpus = json.loads((root / "creature_blocks.json").read_text())
+    ids = json.loads((root / "creature_contract_case_ids.json").read_text())
+    for polarity in ("valid", "invalid"):
+        cases = [c for c in corpus[polarity] if c["name"].startswith(("structured_save_", "choir_"))]
+        assert cases and {c["name"] for c in cases} == {
+            n for n in ids[polarity] if n.startswith(("structured_save_", "choir_"))
+        }
+        assert len(cases) == len({c["name"] for c in cases})
+        for case in cases:
+            enemy = {
+                "id": "fixture",
+                "action_pool": [*case["block"]["attacks"], *case["block"]["actives"], *case["block"]["reactions"]],
+            }
+            if polarity == "valid":
+                assert validate_creature_stat_block(case["block"]) == []
+                validate_enemy_action_shapes([enemy])
+                validate_encounter_actions([enemy])
+            else:
+                assert validate_creature_stat_block(case["block"]) == case["expected"]
+                for validate in (validate_enemy_action_shapes, validate_encounter_actions):
+                    with pytest.raises(ValueError):
+                        validate([enemy])
+
+
+@pytest.mark.parametrize("role", ["standard", "minion", "elite", "boss", "named"])
+def test_choir_named_translation_preserves_authored_stats(role):
+    enemy = translate(next(r for r in catalog() if r["id"] == "hollow_choir"), role=role)
+    assert (enemy["hp"], enemy["ac"], enemy["damage_mult"], enemy["dc_mod"], enemy["attack_mod"]) == (200, 18, 1, 0, 0)
+    actions = {a["name"]: a for a in enemy["action_pool"]}
+    assert set(actions) == {"Memory Scream", "Dissonant Chord", "Cacophony", "Stolen Melody", "Silence Void"}
+    assert actions["Memory Scream"]["resolution"] == "save"
+    assert enemy["choir_reaction"]["kind"] == "spell_redirect"
+
+
+@pytest.mark.parametrize("species", ["hollow_still", "hollow_architect", "hollow_unknown"])
+def test_still_architect_unknown_named_refused(species):
+    source = copy.deepcopy(
+        next(r for r in catalog() if r["id"] == ("hollow_choir" if species == "hollow_unknown" else species))
+    )
+    source["id"] = species
+    with pytest.raises(ValueError, match="Named/custom"):
+        translate(source)

@@ -29,7 +29,9 @@
     "active_prepare_attack",
     "legacy_command",
     "legacy_accusation",
-    "narrative_attack_text"
+    "narrative_attack_text",
+    "structured_save_action",
+    "choir_catalog"
   ],
   "invalid": [
     "missing_reactions",
@@ -238,6 +240,27 @@
     "active_attack_escape_dc_type_0",
     "active_attack_escape_dc_type_1",
     "active_attack_escape_dc_type_2",
-    "active_attack_applies_condition_type_0"
+    "active_attack_applies_condition_type_0",
+    "structured_save_bad_resolution",
+    "structured_save_bad_save",
+    "structured_save_bad_dc",
+    "structured_save_bad_save_success_damage",
+    "structured_save_bad_conditions_on_failure",
+    "structured_save_bad_conditions_on_success",
+    "choir_bad_0_resolution",
+    "choir_bad_1_save_success_damage",
+    "choir_bad_2_conditions_on_failure",
+    "choir_bad_3_conditions_on_success",
+    "choir_bad_4_to_hit",
+    "choir_bad_5_duration_dice",
+    "choir_bad_6_movement",
+    "choir_bad_7_dc",
+    "choir_bad_8_recharge",
+    "choir_bad_9_damage",
+    "choir_bad_10_rounds",
+    "choir_bad_11_radius_ft",
+    "choir_bad_12_trigger",
+    "choir_bad_13_redirect",
+    "choir_bad_14_dc"
   ]
 }

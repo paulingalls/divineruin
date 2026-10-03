@@ -29,7 +29,9 @@ class ReactionUnavailable(ValueError):
 
 
 def is_hollow(actor) -> bool:
-    return actor.category in HOLLOW_CATEGORIES or actor.type == "temporary_hollowed"
+    return (
+        actor.creature_id == "hollow_choir" or actor.category in HOLLOW_CATEGORIES or actor.type == "temporary_hollowed"
+    )
 
 
 def _validate_social_subject(state: CombatState, actor_id: str, ability_id: str, window: dict) -> None:
