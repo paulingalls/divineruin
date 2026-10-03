@@ -18,6 +18,7 @@ from sample_fixtures import make_context
 import abilities
 import combat_turn
 import reaction_spend
+from party_state import PartyState
 from session_data import CombatParticipant
 
 
@@ -288,6 +289,7 @@ class TestTheReactionBudgetGate:
             )
         )
         cs.initiative_order.append("player_2")
+        ctx.userdata.party.members.extend(PartyState.solo("player_2", patron_id="none").members)
         cs.get_participant("player_1").reaction_ids = ["cleric_shield_of_faith"]
         cs.get_participant("player_1").is_fallen = True
         # player_1 is down carrying a stale unspent record; player_2 stands but has already spent.
