@@ -91,12 +91,9 @@ class ChoirEncounterDiagnostic(ChoirVoiceDiagnostic):
 
 
 async def reseed_choir_content(pool):
-    import sys
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[4]
-    sys.path.insert(0, str(root / "scripts"))
-    import seed_content  # type: ignore[import-not-found]
 
     sources = {}
     for filename, table in (
@@ -109,7 +106,13 @@ async def reseed_choir_content(pool):
         sources[table] = {row["id"]: row for row in rows}
         assert len(sources[table]) == len(rows), f"duplicate committed {filename} ids"
     async with pool.acquire() as conn:
-        await seed_content.seed(conn)
+        async with conn.transaction():
+            for table, rows in sources.items():
+                await conn.executemany(
+                    f"INSERT INTO {table} (id, data) VALUES ($1, $2::jsonb) "
+                    "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data",
+                    [(key, json.dumps(row)) for key, row in rows.items()],
+                )
         for table, rows in sources.items():
             saved = {row["id"]: json.loads(row["data"]) for row in await conn.fetch(f"SELECT id, data FROM {table}")}
             assert saved and all(saved.get(key) == row for key, row in rows.items()), f"stale committed {table} content"

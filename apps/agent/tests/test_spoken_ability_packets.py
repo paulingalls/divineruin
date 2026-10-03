@@ -18,8 +18,9 @@ import reaction_windows
 from conditions import apply_condition
 
 ROWS = json.loads((Path(__file__).resolve().parents[3] / "content/archetype_abilities.json").read_text())
-SPEAKERS = sorted(voice.BOTH | voice.SOURCE | voice.PREPARATION | set(voice.SPELLS))
-LISTENERS = sorted(voice.BOTH | voice.HEARING)
+APPROVED = json.loads((Path(__file__).parent / "fixtures/approved_ability_delivery.json").read_text())
+SPEAKERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "source", "preparation", "spell"})
+LISTENERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "hearing"})
 
 
 async def activate(

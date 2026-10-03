@@ -1,3 +1,4 @@
+import { withChoirServices } from "./choir-owned-services";
 import { prepareChoirFault } from "./choir-native-faults";
 import { stimulateMicrophone } from "./native-microphone-stimulus";
 import { resolve } from "node:path";
@@ -247,63 +248,75 @@ export function assertChoirFault(
     throw new Error("native fault did not reach actual public encounter entry");
 }
 
-export async function verifyChoirMicrophone(repoRoot: string): Promise<void> {
-  await withOwnedProcesses(async (scope) => {
-    const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
-    const port = reservation.port!;
-    await reservation.stop(true);
-    const origin = `http://127.0.0.1:${port}`;
-    const env = Object.fromEntries(
-      Object.entries({
-        ...process.env,
-        PORT: String(port),
-        EXPO_PUBLIC_API_URL: origin,
-        JWT_SECRET: "ab".repeat(32),
-        NODE_ENV: "development",
-        EMAIL_TRANSPORT: "mock",
-        RATE_LIMIT_BYPASS: "1",
-        CI: "1",
-      }),
-    );
-    const backend = scope.spawn(["bun", "apps/server/src/index.ts"], { cwd: repoRoot, env });
-    let backendExit: number | undefined;
-    void backend.exited.then((code) => {
-      backendExit = code;
-    });
-    const deadline = Date.now() + 90000;
-    let ready = false;
-    while (!ready && Date.now() < deadline) {
-      scope.signal.throwIfAborted();
-      if (backendExit !== undefined)
-        throw new Error(`owned backend exited with status ${backendExit}`);
-      try {
-        ready =
-          (await fetch(`${origin}/api/inventory`, { signal: AbortSignal.timeout(1000) })).status ===
-          401;
-      } catch {
+export async function verifyChoirMicrophone(
+  repoRoot: string,
+  scenario = runNativeTransport,
+): Promise<void> {
+  await withChoirServices(repoRoot, async (serviceEnv) => {
+    await withOwnedProcesses(async (scope) => {
+      const reservation = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        fetch: () => new Response(),
+      });
+      const port = reservation.port!;
+      await reservation.stop(true);
+      const origin = `http://127.0.0.1:${port}`;
+      const env = Object.fromEntries(
+        Object.entries({
+          ...serviceEnv,
+          PORT: String(port),
+          EXPO_PUBLIC_API_URL: origin,
+          SERVER_HOST: "127.0.0.1",
+          NODE_ENV: "development",
+          EMAIL_TRANSPORT: "mock",
+          RATE_LIMIT_BYPASS: "1",
+          CI: "1",
+        }),
+      );
+      const backend = scope.spawn(["bun", "--no-env-file", "apps/server/src/index.ts"], {
+        cwd: repoRoot,
+        env,
+      });
+      let backendExit: number | undefined;
+      void backend.exited.then((code) => {
+        backendExit = code;
+      });
+      const deadline = Date.now() + 90000;
+      let ready = false;
+      while (!ready && Date.now() < deadline) {
         scope.signal.throwIfAborted();
+        if (backendExit !== undefined)
+          throw new Error(`owned backend exited with status ${backendExit}`);
+        try {
+          ready =
+            (await fetch(`${origin}/api/inventory`, { signal: AbortSignal.timeout(1000) }))
+              .status === 401;
+        } catch {
+          scope.signal.throwIfAborted();
+        }
+        if (!ready) await scope.wait(Bun.sleep(200));
       }
-      if (!ready) await scope.wait(Bun.sleep(200));
-    }
-    if (!ready) throw new Error("owned native backend did not become ready");
-    const owned = createRealOwnedSimulatorDeps(repoRoot);
-    await runNativeTransport(repoRoot, env, "none", {
-      resolveOwned: (requested) => resolveOwnedSimulator(owned, requested),
-      prepareNativeApp: buildCurrentNativeApp,
-      requireTarget: requireTargetSimulator,
-      choir: true,
-      prepareScenario: prepareChoirFault,
-      choirFaults: ["none", ...CHOIR_FAULTS],
-      stimulateMicrophone: (scope, root, run) =>
-        stimulateMicrophone(scope, root, { ...run, sequence: true }),
-      probePath: "apps/agent/choir_capstone_probe.py",
-      validateResult: (raw, runId, fault) => {
-        const result = validateScenarioResult(raw, runId, fault);
-        const turns = (raw as { microphone_turns?: { fault?: string } }).microphone_turns;
-        if (turns?.fault === "none") assertChoirEncounter(turns, result.mobile_identity, runId);
-        else assertChoirFault(turns, result.mobile_identity, runId, turns?.fault ?? "");
-        return result;
-      },
+      if (!ready) throw new Error("owned native backend did not become ready");
+      const owned = createRealOwnedSimulatorDeps(repoRoot);
+      await scenario(repoRoot, env, "none", {
+        resolveOwned: (requested) => resolveOwnedSimulator(owned, requested),
+        prepareNativeApp: buildCurrentNativeApp,
+        requireTarget: requireTargetSimulator,
+        choir: true,
+        prepareScenario: prepareChoirFault,
+        choirFaults: ["none", ...CHOIR_FAULTS],
+        stimulateMicrophone: (scope, root, run) =>
+          stimulateMicrophone(scope, root, { ...run, sequence: true }),
+        probePath: "apps/agent/choir_capstone_probe.py",
+        validateResult: (raw, runId, fault) => {
+          const result = validateScenarioResult(raw, runId, fault);
+          const turns = (raw as { microphone_turns?: { fault?: string } }).microphone_turns;
+          if (turns?.fault === "none") assertChoirEncounter(turns, result.mobile_identity, runId);
+          else assertChoirFault(turns, result.mobile_identity, runId, turns?.fault ?? "");
+          return result;
+        },
+      });
     });
   });
 }

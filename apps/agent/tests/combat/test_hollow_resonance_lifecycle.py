@@ -125,6 +125,12 @@ async def test_excluded_and_zero_deaths(monkeypatch, kind):
     monkeypatch.setattr(db_mutations_resonance, "update_player_resonance", writer)
     if kind in ("player", "companion", "temporary_hollowed"):
         enemy.type = kind
+        if kind == "player":
+            from copy import deepcopy
+
+            member = deepcopy(ctx.userdata.party.primary)
+            member.player_id = enemy.id
+            ctx.userdata.party.members.append(member)
     elif kind == "nonhollow":
         enemy.hollow = None
     elif kind == "zero":

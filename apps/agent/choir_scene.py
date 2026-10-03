@@ -6,6 +6,7 @@ from hashlib import sha256
 
 from livekit.agents.llm import ToolError
 
+import choir_effects
 import choir_encounter
 import db
 import db_mutations
@@ -85,6 +86,7 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
             state.participants[state.participants.index(source)] = restored
             state.choir_encounter["phase"] = retained["phase"]
             state.round_number = retained["round"]
+            choir_effects.exposure(state)
         record = {
             "source_id": key(state.location_id),
             "location_id": state.location_id,

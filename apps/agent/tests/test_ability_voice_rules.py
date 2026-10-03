@@ -17,6 +17,9 @@ def assert_catalog(rows, policies):
     assert len(rows) == 145
     ids = {abilities.parse_ability_row(row["id"], row).id for row in rows}
     assert len(ids) == len(rows)
+    approved = json.loads((Path(__file__).parent / "fixtures/approved_ability_delivery.json").read_text())
+    assert set(approved) == ids
+    assert dict(policies) == approved
     assert set(policies) == ids
     classes = [voice.BOTH, voice.NEITHER, voice.SOURCE, voice.PREPARATION, voice.HEARING, set(voice.SPELLS)]
     assert sum(map(len, classes)) == len(ids)
@@ -42,7 +45,7 @@ def test_complete_catalog_and_variant_floor_uses_actual_loaders():
     assert len(bases) == 44
 
 
-@pytest.mark.parametrize("fault", ["empty", "omitted", "unknown"])
+@pytest.mark.parametrize("fault", ["empty", "omitted", "unknown", "treaty"])
 def test_catalog_guard_rejects_an_incomplete_answer(fault):
     rows = json.loads((CONTENT / "archetype_abilities.json").read_text())
     policies = dict(voice.POLICIES)
@@ -50,6 +53,8 @@ def test_catalog_guard_rejects_an_incomplete_answer(fault):
         rows = []
     elif fault == "omitted":
         policies.pop("guardian_fortify")
+    elif fault == "treaty":
+        policies["diplomat_treaty"] = voice.DeliveryPolicy.NEITHER
     else:
         policies["invented"] = voice.DeliveryPolicy.NEITHER
     with pytest.raises(AssertionError):

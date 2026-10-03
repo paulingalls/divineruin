@@ -119,6 +119,11 @@ def facts(state, origin_id):
     distances = {
         key: distance(origin, position(spatial, key)) for key in sorted([*spatial["positions"], *spatial["locations"]])
     }
+    inactive_auras = {
+        f"{actor.id}_corruption_aura"
+        for actor in state.participants
+        if actor.hollow is not None and (actor.is_dead or actor.is_fallen or actor.hp_current <= 0)
+    }
     zones = {
         key: {
             **zone,
@@ -130,6 +135,7 @@ def facts(state, origin_id):
             ],
         }
         for key, zone in spatial["zones"].items()
+        if key not in inactive_auras
     }
     return {
         "origin_id": origin_id,
