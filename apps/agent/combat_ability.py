@@ -259,6 +259,7 @@ async def _resolve_ability_packet(
     conn,
     player: dict | None,
     cast_outcome: AbilityCastOutcome,
+    damage_deps=None,
 ) -> dict:
     """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
 
@@ -283,6 +284,9 @@ async def _resolve_ability_packet(
             "reason": "ability declaration missing an action",
         }
 
+    import choir_encounter
+
+    choir_encounter.guard_declaration(state, attacker.id, decl)
     caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)
     from choir_reaction import effective_declaration
@@ -299,6 +303,9 @@ async def _resolve_ability_packet(
         target_ids=decl.target_ids,
         suppress_resonance_changed=True,
     )
+    import choir_spell_damage
+
+    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
     cast_outcome.results[attacker.id] = result
     if result.new_resonance is not None:
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)

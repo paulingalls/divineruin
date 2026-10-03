@@ -24,16 +24,16 @@ async def test_seed_shared_reference_cases(case, tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_seed_all_ten_templates():
+async def test_seed_all_eleven_templates():
     conn = AsyncMock()
     counts = await seed_content.seed(conn)
-    assert counts["encounter_templates"] == 10
+    assert counts["encounter_templates"] == 11
     writes = [
         json.loads(call.args[2])
         for call in conn.execute.call_args_list
         if "INSERT INTO encounter_templates" in call.args[0]
     ]
-    assert len(writes) == 10
+    assert len(writes) == 11
     assert all(set(enemy) == {"id", "creature_id", "role"} for row in writes for enemy in row["enemies"])
 
 

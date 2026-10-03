@@ -21,6 +21,7 @@ from livekit.agents.voice import RunContext
 import check_payloads
 import check_resolution
 import check_resolution_save
+import choir_scene
 import condition_voice_rules
 import db
 import db_content_queries
@@ -149,6 +150,7 @@ async def _check_skill_impl(
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
+    player = await choir_scene.check_data(session, player, queries=queries)
 
     result = check_resolution.resolve_skill_check(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),

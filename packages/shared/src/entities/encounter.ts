@@ -243,7 +243,7 @@ export interface StanceGate {
 export interface EncounterEnemy {
   id: string;
   creature_id: string;
-  role: "minion" | "standard" | "elite" | "boss";
+  role: EncounterRole;
 }
 
 export interface Encounter {
@@ -300,11 +300,21 @@ export function validateEncounterReferences(
     const id = enemy.id as string;
     if (seen.has(id)) throw new Error(`${context}: duplicate id`);
     seen.add(id);
-    if (!["minion", "standard", "elite", "boss"].includes(enemy.role as string))
+    if (
+      !["minion", "standard", "elite", "boss"].includes(enemy.role as string) &&
+      !(enemy.role === "named" && enemy.creature_id === "hollow_choir")
+    )
       throw new Error(`${context}: unsupported role '${String(enemy.role)}'`);
     if (creatureIds && !creatureIds.has(enemy.creature_id as string))
       throw new Error(`${context}: unknown creature_id '${String(enemy.creature_id)}'`);
   }
+  if (
+    row.enemies.some(
+      (enemy: unknown) => (enemy as Record<string, unknown>).creature_id === "hollow_choir",
+    ) &&
+    row.enemies.length !== 1
+  )
+    throw new Error(`${label}: the Choir is solitary and must have one damage/reward owner`);
 }
 
 export interface SpatialPoint {

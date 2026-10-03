@@ -324,6 +324,7 @@ def _resolve_skill_check_impl(
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
     effects = get_condition_effects(player_data.get("conditions") or [])
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
+    disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
     # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
     # any roll) applies but Blessed (attack+save only) does not. Skip it on a beyond-tier task that
     # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail

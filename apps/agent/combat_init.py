@@ -12,10 +12,12 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import abilities
+import choir_scene
 import combat_enhancers
 import combat_resolution
 import combat_spatial
 import conditions
+import db
 import db_content_queries
 import db_mutations
 import db_queries
@@ -62,6 +64,7 @@ async def _start_combat_impl(
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
+    db_mod=db,
 ) -> str | tuple:
     session: SessionData = context.userdata
     async with session.combat_state_lock:
@@ -72,6 +75,7 @@ async def _start_combat_impl(
             mutations=mutations,
             queries=queries,
             content=content,
+            db_mod=db_mod,
         )
 
 
@@ -83,6 +87,7 @@ async def _start_combat_locked(
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
+    db_mod=db,
 ) -> str | tuple:
     logger.info("start_combat called: encounter_id=%s", encounter_id)
     session: SessionData = context.userdata
@@ -229,6 +234,8 @@ async def _start_combat_locked(
     except ValueError as error:
         raise ToolError(str(error)) from error
 
+    retained_choir = await choir_scene.preflight(session, encounter, queries=queries)
+
     # Roll initiative and build lookup
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
     initiative_order = [e.participant_id for e in initiative_entries]
@@ -318,6 +325,7 @@ async def _start_combat_locked(
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],
+                condition_immunities=derived["condition_immunities"],
                 choir_reaction=derived.get("choir_reaction"),
                 hollow=derived["hollow"],
                 saving_throw_proficiencies=derived["saving_throw_proficiencies"],
@@ -372,6 +380,7 @@ async def _start_combat_locked(
 
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(
+        encounter_id=encounter_id,
         combat_id=combat_id,
         participants=participants,
         initiative_order=initiative_order,
@@ -387,7 +396,10 @@ async def _start_combat_locked(
     from choir_effects import exposure
 
     exposure(combat_state)
-    await mutations.save_combat_state(combat_id, combat_state.to_dict())
+    import choir_encounter
+
+    choir_encounter.initialize(combat_state)
+    await choir_scene.start(session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod)
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
@@ -431,6 +443,7 @@ async def _start_combat_locked(
     session.record_event(f"Combat started: {encounter.get('name', encounter_id)}")
 
     response = {
+        "choir": choir_encounter.facts(combat_state),
         "spatial": combat_spatial.facts(combat_state, actor_id),
         "combat_id": combat_id,
         "encounter_name": encounter.get("name", encounter_id),
@@ -460,6 +473,7 @@ async def _start_combat_locked(
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
+    parts.append(f"Choir encounter: {json.dumps(response['choir'])}")
     parts.append(f"Spatial facts: {json.dumps(response['spatial'])}")
 
     combat_ctx = ChatContext()

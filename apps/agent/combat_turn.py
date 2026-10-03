@@ -15,6 +15,7 @@ from livekit.agents.voice import RunContext
 import character_spells
 import check_resolution_attack
 import check_resolution_save
+import choir_encounter
 import combat_hold
 import combat_hollow_resonance
 import combat_phase
@@ -108,6 +109,7 @@ async def _declare_phase_locked(
         "spatial": combat_spatial.response_facts(next_state, session.acting_player_id, session.primary_player_id),
         "beat": next_state.beat,
         "round": next_state.round_number,
+        "choir": choir_encounter.facts(next_state),
         "participants": _participant_roster(next_state.participants),
         "accepted_actors": list(next_state.pending_declarations.keys()),
     }
@@ -412,6 +414,7 @@ async def _resolve_phase_locked(
         return handoff
 
     response = {
+        "choir": choir_encounter.facts(state),
         "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,

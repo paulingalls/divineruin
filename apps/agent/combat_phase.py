@@ -147,6 +147,9 @@ def advance_combat_phase(
             if actor is None:
                 participant_ids = [participant.id for participant in next_state.participants]
                 raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+            import choir_encounter
+
+            choir_encounter.guard_declaration(next_state, actor_id, declaration)
             combat_voice_rules.guard_declaration(next_state, actor, declaration)
             if combat_spatial_declarations.is_move(declaration):
                 combat_spatial_declarations.validate_move(next_state, actor_id, declaration)

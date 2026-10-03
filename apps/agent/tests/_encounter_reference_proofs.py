@@ -241,7 +241,7 @@ def assert_reference_corpus_inventory(root):
 
     for path in (root / "content").rglob("*.json"):
         walk(json.loads(path.read_text()))
-    assert len(templates) == 10, "missing authored encounter corpus"
+    assert len(templates) == 11, "missing authored encounter corpus"
     needles = (
         "encounter_templates",
         "_start_combat_impl",

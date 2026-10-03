@@ -11,6 +11,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import character_spells
+import choir_encounter
 import combat_ability
 import combat_spatial
 import crafting_tools
@@ -99,7 +100,17 @@ async def _query_info_impl(
     if kind == "combat":
         try:
             return json.dumps(
-                combat_spatial.facts(context.userdata.combat_state, target_id or context.userdata.acting_player_id)
+                {
+                    **combat_spatial.facts(
+                        context.userdata.combat_state, target_id or context.userdata.acting_player_id
+                    ),
+                    **(
+                        {"choir": choir_encounter.facts(context.userdata.combat_state)}
+                        if context.userdata.combat_state is not None
+                        and context.userdata.combat_state.choir_encounter is not None
+                        else {}
+                    ),
+                }
             )
         except ValueError as error:
             raise ToolError(str(error)) from error

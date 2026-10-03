@@ -244,8 +244,16 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
 
     while state.held_actions:
         head = state.held_actions[0]
+        import choir_encounter
         from choir_effects import approach
 
+        await choir_encounter.turn_start(
+            session,
+            state,
+            state.get_participant(head["actor_id"]),
+            conn=packet_deps.get("conn"),
+            concentration_break_mod=packet_deps["concentration_break_mod"],
+        )
         approach(state, state.get_participant(head["actor_id"]))
         summary_start = len(summaries)
         opens = _opens_windows(state, head)

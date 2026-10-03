@@ -8,6 +8,12 @@ def deferred_effects(row):
     for group in ("attacks", "actives", "passives", "reactions"):
         for source in row[group]:
             text = source.get("special") if group == "attacks" else source.get("description")
+            if row["id"] == "hollow_choir" and source["name"] in {
+                "No Physical Form",
+                "Aura of Lost Voices",
+                "Resonance Core",
+            }:
+                continue
             if row["id"] == "hollow_choir" and (
                 "resolution" in source or source.get("kind") in ("silence", "spell_redirect")
             ):
@@ -33,6 +39,8 @@ def deferred_effects(row):
         ):
             source.pop("corruption_aura")
             source.pop("resonance_on_death")
+            if row["id"] == "hollow_choir":
+                source.pop("vulnerable_to")
         if source:
             name = source.get("name", group) if isinstance(source, dict) else source
             effects.append(

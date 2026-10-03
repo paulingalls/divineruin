@@ -182,3 +182,48 @@ class TestCheckDispatch:
         )
         assert result["skill"] == "athletics"
         assert result["dc"] == 12
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "skill,disadvantage",
+    [("perception", True), ("insight", True), ("investigation", True), ("arcana", False), ("athletics", False)],
+)
+@pytest.mark.parametrize("scene", ["active", "elsewhere", "destroyed"])
+async def test_choir_scene_real_checks_use_disadvantage(skill, disadvantage, scene):
+    from unittest.mock import patch
+
+    from acceptance._capstone_helpers import _d20
+
+    import choir_scene
+
+    ctx = _make_context()
+    queries, mutations = _skill_mocks()
+    source = {
+        "source_id": choir_scene.key(ctx.userdata.location_id),
+        "location_id": ctx.userdata.location_id,
+        "status": "dormant",
+        "phase": "search",
+        "round": 1,
+        "owner": {
+            "id": "choir_zone",
+            "name": "The Choir",
+            "creature_id": "hollow_choir",
+            "type": "enemy",
+            "initiative": 0,
+            "hp_current": 200,
+            "hp_max": 200,
+            "ac": 18,
+        },
+    }
+    if scene == "elsewhere":
+        ctx.userdata.location_id = "other_scene"
+    elif scene == "destroyed":
+        source = {key: value for key, value in source.items() if key in {"source_id", "location_id", "status"}}
+        source["status"] = "destroyed"
+    disadvantage = disadvantage and scene == "active"
+    queries.get_player.return_value = {**SAMPLE_PLAYER, "flags": {source["source_id"]: json.dumps(source)}}
+    with patch("check_resolution.dice_roll", side_effect=[_d20(17), _d20(3)]) as rolls:
+        raw = await _check_skill_impl(ctx, skill, "moderate", "wrong voices", queries=queries, mutations=mutations)
+    assert json.loads(raw)["roll"] == (3 if disadvantage else 17)
+    assert rolls.call_count == (2 if disadvantage else 1)

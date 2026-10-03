@@ -90,6 +90,8 @@ class CombatState:
     # See reaction_windows.open_window_for for the shape.
     open_window: dict | None = None
 
+    encounter_id: str = ""
+    choir_encounter: dict | None = None
     choir_silences: dict = field(default_factory=dict)
     spatial: dict | None = None
 
@@ -119,7 +121,9 @@ class CombatState:
         for participant in data["participants"]:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
-        return cls(
+        state = cls(
+            encounter_id=data.get("encounter_id", ""),
+            choir_encounter=data.get("choir_encounter"),
             choir_silences=choir_effects.validate_data(data),
             spatial=(
                 combat_spatial.validate_spatial(data["spatial"], [p["id"] for p in data["participants"]])
@@ -154,3 +158,8 @@ class CombatState:
                 data.get("open_window"), data.get("held_actions", []), data["participants"]
             ),
         )
+
+        import choir_encounter
+
+        choir_encounter.validate(state)
+        return state

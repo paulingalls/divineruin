@@ -343,6 +343,7 @@ def test_hollow_metadata_retains_only_unimplemented_claims():
         if row["id"] == "hollow_choir":
             for field in ("corruption_aura", "resonance_on_death"):
                 expected.pop(field)
+            expected.pop("vulnerable_to")
         assert next(e["source"] for e in deferred_effects(row) if e["group"] == "hollow") == expected
 
 
@@ -374,21 +375,20 @@ def test_choir_metadata_retains_only_unimplemented_guidance():
     effects = deferred_effects(choir)
     names = {effect["name"] for effect in effects}
     assert names == {
-        "No Physical Form",
-        "Aura of Lost Voices",
         "Memory Predator",
-        "Resonance Core",
         "Stolen Melody",
         "hollow",
     }
     melody = next(effect for effect in effects if effect["name"] == "Stolen Melody")
     assert melody["source"] == {"name": "Stolen Melody", "description": "The DM speaks in the stolen voice."}
-    for name in {"No Physical Form", "Aura of Lost Voices", "Memory Predator", "Resonance Core"}:
+    for name in {"Memory Predator"}:
         assert next(effect for effect in effects if effect["name"] == name)["source"] == next(
             source for source in choir["passives"] if source["name"] == name
         )
 
     hollow = next(effect for effect in effects if effect["name"] == "hollow")
     assert hollow["source"] == {
-        key: value for key, value in choir["hollow"].items() if key not in {"corruption_aura", "resonance_on_death"}
+        key: value
+        for key, value in choir["hollow"].items()
+        if key not in {"corruption_aura", "resonance_on_death", "vulnerable_to"}
     }

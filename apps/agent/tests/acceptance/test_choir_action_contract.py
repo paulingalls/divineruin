@@ -3,7 +3,8 @@ import json
 from unittest.mock import patch
 
 import pytest
-from acceptance._capstone_helpers import _resolve_round
+from acceptance._capstone_helpers import _d20, _resolve_round
+from acceptance._catalog_cutover_helpers import started as started
 from acceptance.test_catalog_action_runtime import runtime as runtime
 
 import combat_turn
@@ -97,6 +98,14 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     ctx, pid, eid = await choir(runtime)
     pool = await db.get_pool()
     await seed_player_with_pools(pool, player_id=pid, class_="cleric", known_spells=("divine_bless",))
+    import choir_encounter
+
+    facts = choir_encounter.facts(ctx.userdata.combat_state)
+    assert facts is not None
+    action = facts["search_actions"][1]
+    await combat_turn._declare_phase_impl(ctx, {pid: action, eid: {"type": "defend"}})
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        await _resolve_round(ctx)
     await combat_turn.declare_phase(
         ctx, [AbilityDecl(kind="ability", actor_id=pid, action="divine_bless", targets=[eid], argument_type="")]
     )
@@ -121,7 +130,9 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
         patch("spell_casting._resolve_cast", wraps=spell_casting._resolve_cast) as casts,
     ):
         result = await _resolve_round(ctx)
-    assert casts.call_count == 1 and saves.call_count == 1
+    assert casts.call_count == 1
+    assert sum(call.args[2] == 16 for call in saves.call_args_list) == 1
+    assert sum(call.args[2] == 15 for call in saves.call_args_list) == 1
     state = await reload(ctx)
     target_id = eid if success else pid
     assert result["packets"][0]["cast"]["target_id"] == target_id
@@ -165,12 +176,14 @@ async def test_choir_public_actions_hold_reload(runtime):
             raw = await combat_turn._resolve_phase_impl(ctx)
             assert isinstance(raw, str)
             response = json.loads(raw)
-        assert response["next"]["waiting_on"] is not None and not saves.called
+        assert response["next"]["waiting_on"] is not None
+        assert all(call.args[2] == 15 for call in saves.call_args_list)
         state = await reload(ctx)
         held_actor = state.get_participant(eid)
         assert held_actor is not None and held_actor.action_ledger["stolen melody"]["remaining"] == 1
         await _resolve_round(ctx)
-        assert saves.call_count == 1
+        assert sum(call.args[2] == 20 for call in saves.call_args_list) == 1
+        assert sum(call.args[2] == 15 for call in saves.call_args_list) == 1
     state = await reload(ctx)
     actor = state.get_participant(eid)
     assert actor is not None and actor.action_ledger["stolen melody"]["remaining"] == 0
@@ -178,3 +191,42 @@ async def test_choir_public_actions_hold_reload(runtime):
     assert target is not None
     charm = next(c for c in target.conditions if c["type"] == "charmed")
     assert charm["source"] == eid and charm["choir_melody"] is True
+
+
+async def test_choir_concurrent_searches_preserve_first_discovery(started):
+    from uuid import uuid4
+
+    from acceptance.seeds import seed_player_with_pools
+
+    import combat_end
+    import db
+    import mode_tools
+    from party_state import PartyState
+
+    ctx, _ = await started("hollow_choir", player_class="mage")
+    await combat_end._end_combat_impl(ctx, "fled")
+    other = "choir_search_" + uuid4().hex
+    pool = await db.get_pool()
+    await seed_player_with_pools(pool, player_id=other, class_="mage")
+    ctx.userdata.party.members.extend(PartyState.solo(other).members)
+    try:
+        await mode_tools._enter_mode_impl(ctx, "combat", "hollow_choir", "voices")
+        action = {"type": "interact", "action": "choir_search_arcana", "target_id": "choir_sound"}
+        await combat_turn._declare_phase_impl(
+            ctx,
+            {
+                ctx.userdata.player_id: action,
+                other: action,
+                "choir_zone": {"type": "defend"},
+            },
+        )
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            result = await _resolve_round(ctx)
+        searches = [packet for packet in result["packets"] if packet["actor_id"] != "choir_zone"]
+        assert [packet["resolved"] for packet in searches] == [True, False]
+        assert ctx.userdata.combat_state.choir_encounter["phase"] == "exposed"
+        saved = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
+        assert saved is not None and saved.choir_encounter is not None
+        assert saved.choir_encounter["phase"] == "exposed"
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", other)

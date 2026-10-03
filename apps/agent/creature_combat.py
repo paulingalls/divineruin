@@ -103,6 +103,7 @@ def _translate(row, encounter_id, enemy_id, role):
         catalog_narration=deepcopy(row["narration"]),
         catalog_audio=deepcopy(row["audio"]),
         deferred_effects=deferred_effects(row),
+        condition_immunities={"grappled": "No Physical Form", "restrained": "No Physical Form"} if choir else {},
         choir_reaction=deepcopy(row["reactions"][0]) if choir else None,
         hollow=(
             {key: amount(row["hollow"][key], key) for key in ("corruption_aura", "resonance_on_death")}

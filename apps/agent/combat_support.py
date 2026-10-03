@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from livekit.agents.llm import ToolError
 
@@ -241,6 +241,17 @@ async def apply_attack_result(
     Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
     story-016), so the engine can pause on a post-roll, pre-damage reaction window.
     """
+    import choir_encounter
+
+    if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
+        if combat_state.choir_encounter["phase"] != "exposed":
+            if attacker.id != target.id:
+                raise ValueError("Choir core must be exposed before damage")
+            attack_result = replace(attack_result, damage=0)
+        bonus = getattr(attack_result, "bonus_damage", 0)
+        allowed = choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
+        allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
+        attack_result = replace(attack_result, damage=allowed)
     save_damage = isinstance(attack_result, SaveDamageResult)
     if save_damage and publish_roll:
         raise ValueError("save damage cannot publish an attack roll")
@@ -300,6 +311,8 @@ async def apply_attack_result(
 
     if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
+        if combat_state is not None and combat_state.choir_encounter is not None:
+            choir_encounter.destroyed(combat_state)
 
     # Update DB if target is a player
     if target.type == "player":
