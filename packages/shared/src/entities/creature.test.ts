@@ -45,6 +45,15 @@ const caseIds = (await Bun.file(
 const requiredValid = caseIds.valid;
 const requiredInvalid = caseIds.invalid;
 function checkCorpus(valid: Case[], invalid: Case[]): void {
+  for (const [cases, required] of [
+    [valid, requiredValid],
+    [invalid, requiredInvalid],
+  ] as const) {
+    const names = cases.map((row) => row.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect(new Set(required).size).toBe(required.length);
+    expect([...names].sort()).toEqual([...required].sort());
+  }
   for (const name of requiredValid) expect(valid.some((row) => row.name === name)).toBe(true);
   for (const name of requiredInvalid) expect(invalid.some((row) => row.name === name)).toBe(true);
   for (const name of [
@@ -176,6 +185,10 @@ test("real_catalog_and_injected_invalid_entry", async () => {
   );
 });
 test("corpus floors", () => {
+  expect(() => checkCorpus([...corpus.valid, corpus.valid[0]!], corpus.invalid)).toThrow();
+  expect(() =>
+    checkCorpus([...corpus.valid, { ...corpus.valid[0]!, name: "unknown_case" }], corpus.invalid),
+  ).toThrow();
   expect(() => checkCorpus([], corpus.invalid)).toThrow();
   expect(() => checkCorpus(corpus.valid, [])).toThrow();
   expect(() =>

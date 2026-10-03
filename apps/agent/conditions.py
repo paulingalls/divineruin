@@ -352,6 +352,8 @@ def apply_condition(
         return result
 
     if existing is not None:  # non-stackable re-apply refreshes
+        if condition_type == "charmed":
+            existing.pop("choir_melody", None)
         existing["duration"] = duration
         existing["source"] = source
         return result

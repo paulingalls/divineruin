@@ -244,6 +244,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
 
     while state.held_actions:
         head = state.held_actions[0]
+        from choir_effects import approach
+
+        approach(state, state.get_participant(head["actor_id"]))
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
@@ -384,7 +387,11 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         packet,
         reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
         reaction_save_advantage=combat_reaction_effect.save_advantage(
-            state, head, action.get("applies_condition") if action is not None else None
+            state,
+            head,
+            ("charmed" if action_kind(action) == "charm" else action.get("applies_condition"))
+            if action is not None
+            else None,
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),

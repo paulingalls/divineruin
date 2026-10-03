@@ -15,7 +15,11 @@ def movement_geometry(state, actor_id, declaration):
         raise ValueError("move must target its own known actor")
     destination = point(declaration.destination)
     travelled = distance(position(spatial, actor_id), destination)
-    if travelled > spatial["speeds"][actor_id]:
+    actor = state.get_participant(actor_id)
+    melody = actor.choir_movement_round == state.round_number or any(
+        c["type"] == "charmed" and c.get("choir_melody") is True for c in actor.conditions
+    )
+    if travelled > spatial["speeds"][actor_id] and not melody:
         raise ValueError(f"{actor_id} move exceeds speed {spatial['speeds'][actor_id]:g} feet")
     return destination, travelled
 
@@ -47,6 +51,9 @@ def apply_move(state, actor, declaration):
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
     state.spatial["positions"][actor.id] = destination
+    from choir_effects import exposure
+
+    exposure(state)
     return {
         "actor_id": actor.id,
         "resolved": True,

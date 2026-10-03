@@ -22,11 +22,15 @@ def has_damage(action: dict) -> bool:
 
 
 def is_save_damage_action(action: dict) -> bool:
-    return action.get("half_on_success") is True
+    return action.get("resolution") == "save" or action.get("half_on_success") is True
 
 
 def is_combined_attack_action(action: dict) -> bool:
-    return bool(action.get("applies_condition")) and has_damage(action) and not is_save_damage_action(action)
+    return (
+        (action.get("resolution") == "hit_then_save" or bool(action.get("applies_condition")))
+        and has_damage(action)
+        and not is_save_damage_action(action)
+    )
 
 
 def _save_fields(result) -> dict:
@@ -94,8 +98,8 @@ async def _resolve_enemy_condition_packet(
     concentration_break_mod=concentration_break,
     reaction_save_advantage: bool = False,
 ) -> dict:
-    cond_type = action["applies_condition"]
-    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
+    cond_type = action.get("applies_condition", action["name"])
+    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=action.get("resolution") == "save")
     if waste is not None:
         return waste
     assert target is not None
@@ -120,12 +124,12 @@ async def _resolve_enemy_condition_packet(
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
         summary["save_advantage_source"] = item_save_source
-    await _apply_condition_result(
+    await land_outcome(
         session,
         attacker,
         target,
         decl,
-        cond_type,
+        action,
         result,
         summary,
         state=state,
@@ -209,7 +213,7 @@ async def resolve_save_damage_action(
     sink,
     reaction_save_advantage: bool,
 ) -> dict:
-    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
+    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=action.get("resolution") == "save")
     if waste is not None:
         return waste
     assert target is not None
@@ -227,7 +231,9 @@ async def resolve_save_damage_action(
     # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
     # rides the save above, so dropping the multiplier here would role-scale half the action.
     rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
-    damage = rolled_damage // 2 if result.success else rolled_damage
+    damage = (
+        (0 if action.get("save_success_damage") == "none" else rolled_damage // 2) if result.success else rolled_damage
+    )
     damage_result = SaveDamageResult(
         save_type=result.save_type,
         save_success=result.success,
@@ -270,19 +276,19 @@ async def resolve_save_damage_action(
         publish_roll=False,
     )
     summary.update(_save_fields(result))
-    summary["half_on_success"] = True
-    summary["damage_halved"] = result.success
+    summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
+    summary["damage_halved"] = result.success and summary["half_on_success"]
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
         summary["save_advantage_source"] = item_save_source
-    if cond_type is not None and not target.is_fallen:
-        await _apply_condition_result(
+    if (cond_type is not None or "resolution" in action) and not target.is_fallen:
+        await land_outcome(
             session,
             attacker,
             target,
             decl,
-            cond_type,
+            action,
             result,
             summary,
             state=state,
@@ -376,3 +382,27 @@ async def resolve_enemy_strike(
         )
 
     return None
+
+
+async def land_outcome(session, attacker, target, decl, action, result, summary, **kwargs):
+    if "resolution" not in action:
+        return await _apply_condition_result(
+            session, attacker, target, decl, action["applies_condition"], result, summary, **kwargs
+        )
+    from types import SimpleNamespace
+
+    branch = "conditions_on_success" if result.success else "conditions_on_failure"
+    summary["conditions_inflicted"] = []
+    for rider in action[branch]:
+        await _apply_condition_result(
+            session,
+            attacker,
+            target,
+            decl,
+            rider["applies_condition"],
+            SimpleNamespace(success=False),
+            summary,
+            **{**kwargs, "duration": rider["duration"]},
+        )
+        if summary.get("condition_inflicted") == rider["applies_condition"]:
+            summary["conditions_inflicted"].append(rider["applies_condition"])

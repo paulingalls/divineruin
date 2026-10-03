@@ -172,3 +172,10 @@ def test_healing_preparation_never_produce_attack_or_social_subjects(kind):
     assert state.open_window is not None
     state.open_window["triggers"] = list(reaction_windows.pre_roll_triggers(action))
     assert _ids(state) == {"diplomat_objection"}
+
+
+def test_named_choir_remains_a_hollow_reaction_subject():
+    enemy = _participant("choir", kind="enemy", category="named")
+    enemy.creature_id = "hollow_choir"
+    assert is_hollow(enemy)
+    assert "diplomat_objection" not in _ids(_paused(enemy=enemy))

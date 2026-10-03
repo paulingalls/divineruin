@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from action_contracts import validate_recharge
+from action_contracts import CHOIR_EFFECT_FIELDS, STRUCTURED_FIELDS, validate_action_extensions, validate_recharge
 from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from encounter_actions import validate_encounter_actions
 from world_regions import REGION_IDS
@@ -137,18 +137,33 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 for key in ("name", "description", "narration_cue"):
                     field(ability, key, path, "string")
                 field(ability, "audio", path, "string", True)
-                if group != "actives" or (
-                    ability.get("kind") not in ("attack", "healing", "prepare_attack")
+                if (group != "actives" and ability.get("kind") != "spell_redirect") or (
+                    ability.get("kind") not in ("attack", "healing", "prepare_attack", "charm", "silence")
                     and not (
                         ability.get("kind") in ("command", "accusation") and isinstance(ability.get("recharge"), dict)
                     )
                 ):
                     field(ability, "recharge", path, "string", True)
+                if (
+                    group != "actives"
+                    and "kind" not in ability
+                    and any(k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS))
+                ):
+                    problems.append(f"{path}.kind: required")
+                if group == "reactions" and "kind" in ability:
+                    try:
+                        if ability["kind"] != "spell_redirect":
+                            raise ValueError(f"{path}.kind: invalid")
+                        validate_action_extensions(ability, path)
+                    except ValueError as exc:
+                        problems.append(str(exc))
                 if group == "actives":
                     kind = field(ability, "kind", path, "string", required=False)
                     properties = field(ability, "properties", path, "array", required=False)
                     if isinstance(properties, list):
                         strings(properties, f"{path}.properties")
+                    if kind is None and any(k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS)):
+                        problems.append(f"{path}.kind: required")
                     if kind is not None and len(problems) == before:
                         if (
                             kind == "attack"

@@ -1,4 +1,9 @@
-import { validateActionExtensions, type ActionExtensions, type Recharge } from "./action_contracts";
+import {
+  validateActionExtensions,
+  type ActionExtensions,
+  type Recharge,
+  type ChoirEffect,
+} from "./action_contracts";
 
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
 // so adding a role here updates both the type and the conformance test (which imports the array).
@@ -13,6 +18,9 @@ export const ENCOUNTER_ACTION_KIND_VALUES = [
   "accusation",
   "healing",
   "prepare_attack",
+  "charm",
+  "silence",
+  "spell_redirect",
 ] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 const pythonRepr = (value: unknown): string => {
@@ -64,6 +72,12 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  resolution?: "save" | "hit_then_save";
+  save_success_damage?: "none" | "half";
+  conditions_on_failure?: { applies_condition: string; duration: number }[];
+  conditions_on_success?: { applies_condition: string; duration: number }[];
+  reach?: number;
+  type?: "melee" | "ranged" | "area";
   kind?: "attack";
   damage: string; // dice expression, e.g. "1d8", or "0" for a save-gated condition row
   damage_type: string; // "slashing" | "piercing" | ... | "none"
@@ -108,7 +122,8 @@ export type EncounterAction =
   | EncounterCommandAction
   | EncounterAccusationAction
   | EncounterHealingAction
-  | EncounterPrepareAttackAction;
+  | EncounterPrepareAttackAction
+  | (EncounterActionBase & ChoirEffect);
 
 export function encounterActionKind(action: {
   name?: unknown;

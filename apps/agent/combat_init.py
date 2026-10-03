@@ -318,6 +318,7 @@ async def _start_combat_locked(
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],
+                choir_reaction=derived.get("choir_reaction"),
                 hollow=derived["hollow"],
                 saving_throw_proficiencies=derived["saving_throw_proficiencies"],
                 xp_value=derived.get("xp_value", 0),
@@ -383,6 +384,9 @@ async def _start_combat_locked(
 
     # Persist and update session
     session.validate_acting_player(actor_id)
+    from choir_effects import exposure
+
+    exposure(combat_state)
     await mutations.save_combat_state(combat_id, combat_state.to_dict())
     session.combat_state = combat_state
 

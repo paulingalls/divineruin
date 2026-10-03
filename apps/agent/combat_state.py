@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
+import choir_effects
 import combat_reaction_contest
 import combat_spatial
 import condition_sources
@@ -89,6 +90,7 @@ class CombatState:
     # See reaction_windows.open_window_for for the shape.
     open_window: dict | None = None
 
+    choir_silences: dict = field(default_factory=dict)
     spatial: dict | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
@@ -118,6 +120,7 @@ class CombatState:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
         return cls(
+            choir_silences=choir_effects.validate_data(data),
             spatial=(
                 combat_spatial.validate_spatial(data["spatial"], [p["id"] for p in data["participants"]])
                 if data.get("spatial") is not None

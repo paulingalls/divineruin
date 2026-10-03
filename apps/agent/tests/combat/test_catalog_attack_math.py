@@ -94,6 +94,9 @@ async def test_catalog_math_and_mark_modifier_survive_held_replay(held):
     source = copy.deepcopy(actor)
     source.id = "commander"
     state.participants.append(source)
+    assert state.spatial is not None
+    state.spatial["positions"][source.id] = dict(state.spatial["positions"][actor.id])
+    state.spatial["speeds"][source.id] = state.spatial["speeds"][actor.id]
     state.focus_marks = {"player_1": {"source_id": source.id, "kind": "command"}}
     d = deps()
     if held:

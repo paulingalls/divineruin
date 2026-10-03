@@ -41,6 +41,26 @@ def guard_spell(
 
 
 def guard_declaration(state: CombatState, actor: CombatParticipant, decl: Declaration):
+    if actor.creature_id == "hollow_choir" and decl.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
+        from choir_effects import suppressed
+        from condition_sources import DeliveryRefused
+
+        if suppressed(actor):
+            raise DeliveryRefused("Choir abilities are suppressed")
+        require_speech(state, actor.id)
+        from choir_actions import require_targets
+
+        action = next((a for a in actor.action_pool if a["name"].lower() == (decl.action or "").lower()), None)
+        if action is not None and action_kind(action) == "charm":
+            target = state.get_participant(decl.target_id or actor.id)
+            if target is not None and condition_voice_rules.no_spoken_buffs(
+                target.conditions, state=state, actor_id=target.id
+            ):
+                raise DeliveryRefused("Melody target cannot hear the voice")
+        if action is not None and "resolution" in action:
+            require_targets(state, actor, action, decl)
+            if action.get("type") == "area":
+                require_hostile_targets(state, actor, decl.target_ids or [decl.target_id or actor.id], area=True)
     charm_sources(actor.conditions, {p.id for p in state.participants})
     targets = decl.target_ids or [decl.target_id or actor.id]
     if decl.type is DeclarationType.ATTACK:

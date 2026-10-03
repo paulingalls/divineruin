@@ -7,7 +7,7 @@ packages/shared/src/entities/encounter.ts (constraint 7).
 
 from action_contracts import validate_action_extensions
 
-ACTION_KINDS = ("attack", "command", "accusation", "healing", "prepare_attack")
+ACTION_KINDS = ("attack", "command", "accusation", "healing", "prepare_attack", "charm", "silence", "spell_redirect")
 _MARK_FORBIDDEN_FIELDS = ("damage", "damage_type", "applies_condition")
 
 

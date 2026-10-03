@@ -41,7 +41,7 @@ async def runtime(reset_db_pool):
         catalog_row = deepcopy(row)
         originals.setdefault(species, deepcopy(row))
         attacks, actives = [], []
-        for action in actions:
+        for action in actions or []:
             if action.get("kind", "attack") == "attack":
                 attacks.append({**row["attacks"][0], **action})
             else:
@@ -53,6 +53,8 @@ async def runtime(reset_db_pool):
                         **action,
                     }
                 )
+        if actions is None:
+            attacks, actives = deepcopy(row["attacks"]), deepcopy(row["actives"])
         catalog_row["attacks"] = attacks or [row["attacks"][0]]
         catalog_row["actives"] = actives
         assert not validate_creature_stat_block(catalog_row)
@@ -63,7 +65,20 @@ async def runtime(reset_db_pool):
         await pool.execute(
             "INSERT INTO encounter_templates (id, data) VALUES ($1, $2::jsonb)",
             encounter_id,
-            json.dumps({"id": encounter_id, "recommended_party_level": 2, "enemies": [enemy]}),
+            json.dumps(
+                {
+                    "id": encounter_id,
+                    "recommended_party_level": 2,
+                    "enemies": [enemy],
+                    "scene_placement": {
+                        "party_start": {"x": 0, "y": 0, "z": 0},
+                        "companion_start": {"x": 0, "y": 0, "z": 0},
+                        "actors": {enemy_id: {"x": 5, "y": 0, "z": 0}},
+                        "locations": {},
+                        "zones": {},
+                    },
+                }
+            ),
         )
         ctx = make_context(player_id, room=make_mock_room())
         created.append((ctx, player_id, encounter_id, catalog_row["id"]))
