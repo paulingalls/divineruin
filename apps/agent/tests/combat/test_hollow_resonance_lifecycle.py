@@ -73,7 +73,7 @@ async def damage(ctx, state, target, *, queries=None):
         state.participants[0],
         {},
         target,
-        SaveDamageResult("wisdom", False, 200, "force", "impact", False, "test"),
+        SaveDamageResult("wisdom", False, target.hp_max, "force", "impact", False, "test"),
         target.ac,
         combat_state=state,
         conn=object(),
@@ -158,6 +158,20 @@ async def test_guard_death_once(monkeypatch):
     import combat_hollow_death
 
     monkeypatch.setattr(combat_hollow_death, "new_destruction", lambda target, *args: target.hollow is not None)
+    with pytest.raises(AssertionError):
+        await death_twice(monkeypatch)
+
+
+async def test_guard_immediate_hollow_destruction(monkeypatch):
+    import combat_hollow_death
+
+    original = combat_hollow_death.mark_destroyed
+
+    def leave_alive(target):
+        original(target)
+        target.is_dead = False
+
+    monkeypatch.setattr(combat_hollow_death, "mark_destroyed", leave_alive)
     with pytest.raises(AssertionError):
         await death_twice(monkeypatch)
 

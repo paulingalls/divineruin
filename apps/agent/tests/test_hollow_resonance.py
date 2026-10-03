@@ -29,6 +29,15 @@ def test_unsupported_location_rejected(value):
         location_bonus(value)
 
 
+@pytest.mark.parametrize("field,label", [(0, "generation"), (1, "Focus cost"), (2, "corruption aura")])
+@pytest.mark.parametrize("value", [-1, True, 1.5, None])
+def test_invalid_aura_inputs_are_refused(field, label, value):
+    inputs = [2, 2, 5]
+    inputs[field] = value
+    with pytest.raises(ValueError, match=label):
+        apply_corruption_aura(inputs[0], inputs[1], 0, ORIGIN, [(ORIGIN, inputs[2])])
+
+
 def test_death_halves_each_delta_before_addition():
     assert resolve_resonance_on_death(3, True) + resolve_resonance_on_death(3, True) == 2
     assert resolve_resonance_on_death(0, False) == 0
