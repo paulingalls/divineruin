@@ -1,4 +1,5 @@
 import json
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from types import SimpleNamespace
 from typing import Any
@@ -45,6 +46,7 @@ async def test_hp_lowering_writers_trigger_gift(writer):
             concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
             combat_state=ctx.userdata.combat_state,
         )
+    target = ctx.userdata.combat_state.get_participant("player_1")
     assert target.hp_current == 4
     assert target.iron_resolve_spent
     assert target.conditions[0]["type"] == "iron_resolve"
@@ -136,3 +138,45 @@ async def test_inner_fire_surges_reach_hud_before_next_phase(damage):
     rendered = next(p for p in updates[-1]["combatants"] if p["id"] == "player_1")
     assert rendered["hpCurrent"] == 4
     assert rendered["conditions"] == [{"type": "iron_resolve", "source": "kaelen_iron_resolve", "stacks": 1}]
+
+
+@pytest.mark.parametrize("failure", ["write", "commit"])
+async def test_inner_fire_failure_preserves_combat_and_subsequent_save(failure):
+    ctx = _combat_ctx(hp_current=6)
+    session = ctx.userdata
+    session.party.primary.patron_id = "kaelen"
+    original = session.combat_state
+    before = deepcopy(original.to_dict())
+    deps = _mocks(_player(hp_current=6), roll_total=2)
+    db_mod, _, hp_mut, *_ = deps
+    if failure == "write":
+        hp_mut.update_player_hp.side_effect = RuntimeError("HP write failed")
+    else:
+        transaction = db_mod.transaction
+
+        @asynccontextmanager
+        async def failed_commit():
+            async with transaction() as conn:
+                yield conn
+                raise RuntimeError("commit failed")
+
+        db_mod.transaction = failed_commit
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=deepcopy(SAMPLE_PLAYER)),
+        get_player_inventory=AsyncMock(return_value=[]),
+    )
+    with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=10)):
+        clean = json.loads(await _check_impl(ctx, "save", save_type="wisdom", dc=12, queries=queries))
+        with pytest.raises(RuntimeError, match="failed"):
+            await _invoke(ctx, *deps)
+        after = json.loads(await _check_impl(ctx, "save", save_type="wisdom", dc=12, queries=queries))
+    assert session.combat_state is original
+    assert original.to_dict() == before
+    participant = original.get_participant("player_1")
+    assert participant.hp_current == 6
+    assert participant.conditions == []
+    assert not participant.iron_resolve_spent
+    assert not session.party.primary.draethar_inner_fire_used
+    assert session.resonance.current == 9
+    hp_mut.save_combat_state.assert_not_awaited()
+    assert after["total"] == clean["total"]

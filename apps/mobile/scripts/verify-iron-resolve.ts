@@ -1,3 +1,4 @@
+import { authorizeIronResolveBackend } from "./iron-resolve-backend-ownership";
 import { createRealOwnedSimulatorDeps, resolveOwnedSimulator } from "./owned-simulator";
 import { withOwnedProcesses } from "./native-transport-processes";
 
@@ -10,6 +11,8 @@ async function reservePort(): Promise<number> {
   if (!port) throw new Error("No port available");
   return port;
 }
+
+await authorizeIronResolveBackend(root);
 
 await withOwnedProcesses(async (scope) => {
   const udid = await resolveOwnedSimulator(

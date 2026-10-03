@@ -1,4 +1,5 @@
 from collections import Counter
+from copy import deepcopy
 
 import pytest
 
@@ -85,7 +86,8 @@ def test_every_patron_has_authored_layer_1_gift():
     ],
 )
 def test_gift_validator_rejects_defects(defect):
-    rows = [{**row, "layer_1_gift": dict(row["layer_1_gift"])} for row in load_gods()]
+    rows = deepcopy(load_gods())
+    validate_gifts(rows)
     if defect == "empty":
         rows = []
     elif defect == "missing":
@@ -132,9 +134,8 @@ def test_gift_validator_rejects_defects(defect):
     ],
 )
 def test_kaelen_validator_rejects_defects(field, value):
-    from copy import deepcopy
-
     rows = deepcopy(load_gods())
+    validate_gifts(rows)
     gift = next(row for row in rows if row["god_id"] == "kaelen")["layer_1_gift"]
     if field == "mechanics":
         gift.pop(field, None)
