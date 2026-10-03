@@ -25,6 +25,8 @@ def _revival_spell(spell_id: str = "divine_revivify") -> Spell:
     """A free (focus 0) spell carrying the given id, so the cast resolves past the focus gate
     without catalog coupling — only the Revivify gate's spell_id branch matters here."""
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name="Revivify",
         source="divine",

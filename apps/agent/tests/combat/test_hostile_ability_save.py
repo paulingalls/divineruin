@@ -198,15 +198,25 @@ def test_hostile_no_save_ability_still_refuses_an_ally_target():
 
 
 @pytest.mark.asyncio
-async def test_hostile_condition_spell_refuses_an_ally_before_resolution():
+async def test_hostile_condition_spell_refuses_an_ally_before_resolution(monkeypatch):
     ally = _participant("ally", "Scout", "companion", 20)
     state = _state("ally", extra=[ally])
     decl = Declaration(type=DeclarationType.ABILITY, action="scratch_spell", target_id="ally")
     adv = SimpleNamespace(packets=[SimpleNamespace(declaration=decl, actor_id="player_1")])
     queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "player_1", "class": "warrior", "level": 8}))
-    cast_resolver = MagicMock(
-        _gate_spell=MagicMock(return_value=SimpleNamespace(name="Beguiling Call", applies_condition="charmed"))
+    from dataclasses import replace
+
+    import spells
+
+    fixture_spell = replace(
+        spells.get_spell("arcane_bolt"),
+        id="scratch_spell",
+        name="Beguiling Call",
+        applies_condition="charmed",
+        verbal=False,
     )
+    monkeypatch.setitem(spells._spells, "scratch_spell", fixture_spell)
+    cast_resolver = MagicMock(_gate_spell=MagicMock(return_value=fixture_spell))
     library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "scratch_spell"}]))
 
     with pytest.raises(ToolError, match="standing foe"):

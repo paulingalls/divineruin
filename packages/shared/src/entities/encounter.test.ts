@@ -423,3 +423,16 @@ describe("spatial scene placement", () => {
     expect(() => validateScenePlacement(row)).not.toThrow();
   });
 });
+
+test("typed silence zones pass the real scene boundary", () => {
+  const row = structuredClone(references[0]!);
+  row.scene_placement.zones = {
+    quiet: { kind: "silence", center_id: row.enemies[0]!.id, radius_ft: 10 },
+  };
+  expect(() => validateScenePlacement(row)).not.toThrow();
+  for (const kind of [undefined, null, true, 1, "generic", "Silence", "fire"]) {
+    const invalid = structuredClone(row);
+    Object.assign(invalid.scene_placement.zones.quiet!, { kind });
+    expect(() => validateScenePlacement(invalid)).toThrow(/zone/);
+  }
+});

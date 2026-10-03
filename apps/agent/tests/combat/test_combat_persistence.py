@@ -20,6 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
+from voice_condition_fixtures import place_actors
 
 import combat_phase
 import combat_turn
@@ -297,6 +298,7 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
             "initiative": enemy.initiative,
             "declaration": {"type": "attack", "action": "Scimitar", "target_id": player.id},
             "roll": serialize_roll(attack_result, effective_ac),
+            "reaction_ac_bonus": 0,
             "opened": [reaction_windows.PRE_ROLL, reaction_windows.POST_ROLL],
         }
     ]
@@ -399,7 +401,7 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
     """A RESOLUTION-beat state with unique participant ids (dev DB is shared across the -n8
     fast lane, so player_id must not collide). Enemy declares an attack on the player so
     resolve_phase writes update_player_hp(player_id) inside the phase transaction."""
-    return CombatState(
+    state = CombatState(
         combat_id=combat_id,
         participants=[
             CombatParticipant(
@@ -431,6 +433,7 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
             enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
         },
     )
+    return place_actors(state)
 
 
 async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(dev_db_pool, monkeypatch) -> None:

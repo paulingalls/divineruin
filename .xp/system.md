@@ -16,8 +16,9 @@ REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
-Story tier: `bun run test:all`; Python lane: `bun run test:python`
-(parallel `-n 8`) — never a bare serial `uv run pytest`.
+Story Verify runs the card’s focused behavioral checks.
+Story tier: `bun run lint` (static checks). Broad regression runs only in the
+full tier once at sprint close.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
 its boundary.

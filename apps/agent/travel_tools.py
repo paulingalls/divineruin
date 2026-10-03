@@ -21,6 +21,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import condition_voice_rules
 import conditions
 import db
 import db_content_queries
@@ -32,6 +33,7 @@ import event_types as E
 import rules_engine
 import travel as travel_engine
 from action_sound_content import publish_action_sound
+from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from movement_tools import apply_arrival
@@ -66,6 +68,7 @@ async def travel(
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
 
 
+@serialize_combat_check
 async def _travel_impl(
     context: RunContext[SessionData],
     destination_id: str,
@@ -118,7 +121,12 @@ async def _travel_impl(
     roll = None
     if dc is not None:
         roll = check_resolution.resolve_skill_check_dc(
-            player, _NAV_SKILL, dc, rng, ally_present=session.ally_present_for(speaker_id)
+            condition_voice_rules.roll_data(player, session.combat_state, speaker_id),
+            _NAV_SKILL,
+            dc,
+            rng,
+            ally_present=session.ally_present_for(speaker_id),
+            hearing_only=False,
         )
 
     result = travel_engine.resolve_travel_segment(
@@ -139,6 +147,7 @@ async def _travel_impl(
     # delta via the SSOT capped by the character's stack cap (Iron-Constitution hook); the nav roll
     # spends Inspired's +1d4, so remove the signalled conditions on the same rebuilt list.
     consumed = roll.consumed_conditions if roll else ()
+    consumed_state = None
     if result.exhaustion_delta > 0 or consumed:
         session.validate_acting_player(speaker_id)
         async with db_mod.transaction() as conn:
@@ -156,6 +165,10 @@ async def _travel_impl(
                 if consumed and member_id == speaker_id:
                     new_conditions = conditions.remove_conditions(new_conditions, consumed)
                 await conditions_mutations.save_player_conditions(member_id, new_conditions, conn=conn)
+
+            consumed_state = await persist_combat_consumption(session.combat_state, speaker_id, consumed, conn=conn)
+    if consumed_state is not None:
+        session.combat_state = consumed_state
 
     arrived = result.success and not result.wrong_area
     if arrived:

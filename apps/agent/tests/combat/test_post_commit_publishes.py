@@ -13,6 +13,7 @@ from combat._helpers import (
     _resolve_round,
 )
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import combat_events
 import combat_hold
@@ -26,7 +27,7 @@ def _two_pc_resolution_state() -> CombatState:
     """Two PCs and one high-HP enemy at the RESOLUTION beat. Nothing dies this phase, so the WRAP
     runs its Resonance decay and the loop stays in combat."""
     weapon = [{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}]
-    return CombatState(
+    state = CombatState(
         combat_id="combat_publish_isolation",
         participants=[
             CombatParticipant(
@@ -72,6 +73,7 @@ def _two_pc_resolution_state() -> CombatState:
             "goblin_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         },
     )
+    return place_actors(state)
 
 
 @pytest.mark.asyncio

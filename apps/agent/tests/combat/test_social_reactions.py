@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _damage_resolver, _resolve_deps
 from sample_fixtures import catalog_encounters, make_context
+from voice_condition_fixtures import place_actors
 
 import combat_hold
 import combat_reaction_effect
@@ -124,7 +125,7 @@ def _social_state(ability_id, action, *, target_id="player_1", with_striker=Fals
         triggers=reaction_windows.pre_roll_triggers(action),
     )
     state.reactions_available = {player.id: reaction_spend.spend(ability_id, state.open_window, held_seq=0)}
-    return state
+    return place_actors(state)
 
 
 def _close(state, rng):

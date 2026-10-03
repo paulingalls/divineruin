@@ -73,7 +73,11 @@ def test_every_enforced_restriction_has_a_production_reader():
             {"type": name} for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions
         ]
         assert carriers
-        assert all(reader([carrier]) for carrier in carriers)
+        contexts = {
+            "no_hostile_source": {"target_ids": ["source"], "participant_ids": {"source"}},
+            "auto_fail_hearing_perception": {"skill": "perception", "hearing_only": True},
+        }
+        assert all(reader([{**carrier, "source": "source"}], **contexts.get(restriction, {})) for carrier in carriers)
 
 
 def test_dropping_a_deferred_restriction_without_a_reader_fails_the_floor(monkeypatch):
@@ -99,3 +103,46 @@ def test_grapple_and_speed_restriction_carriers_are_exactly_enforced():
         carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
         assert restriction in ENFORCED
         assert carriers == expected_carriers
+
+
+def test_exact_restriction_partition_and_complete_spoken_corpus():
+    import json
+    from pathlib import Path
+
+    assert (
+        frozenset(
+            {
+                "skip_phase",
+                "incoming_advantage",
+                "incoming_melee_advantage",
+                "incoming_melee_autocrit",
+                "incoming_ranged_disadvantage",
+                "costs_declaration",
+                "speed_0",
+                "consumed_on_use",
+                "one_time",
+                "no_hostile_source",
+                "auto_fail_hearing_perception",
+                "no_spoken_buffs",
+            }
+        )
+        == ENFORCED
+    )
+    assert set(NOT_ENFORCED) == {
+        "removed_from_combat",
+        "damage_resistance_all",
+        "immune_poison_disease",
+        "damage_reduction",
+        "no_approach_source",
+        "reduced_max_hp",
+        "source_specific_penalty",
+        "hallucinations",
+        "stat_drain",
+    }
+    rows = json.loads((Path(__file__).resolve().parents[4] / "content/archetype_abilities.json").read_text())
+    assert len(rows) == 145
+    assert {row["id"] for row in rows if row.get("applies_condition") == "inspired"} == {
+        "bard_inspire",
+        "bard_mass_inspire",
+        "diplomat_inspire",
+    }

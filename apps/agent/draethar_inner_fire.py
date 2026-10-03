@@ -30,6 +30,7 @@ from livekit.agents.voice import RunContext
 
 import combat_resolution
 import concentration_break
+import condition_sources
 import db
 import db_mutations
 import db_mutations_resonance
@@ -137,6 +138,7 @@ async def _inner_fire_locked(
             await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
 
     # Transaction committed — sync the in-memory SSOTs and push the HUD state.
+    participant.conditions = condition_sources.clear_charm_from_damage(participant.conditions, player_id, fire_damage)
     resonance_reduced = member.resonance.current - new_resonance
     member.resonance.current = new_resonance
     member.draethar_inner_fire_used = True

@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver, _resolve_round
+from voice_condition_fixtures import place_actors
 
 import activate_tools
 import db_mutations
@@ -48,28 +49,32 @@ def _ability_vs_attack_state(combat_id: str, player_id: str, enemy_id: str, spel
     """A RESOLUTION-beat phase mixing a player ABILITY (initiative 15) and an enemy attack (12). The
     enemy (hp 20) survives the phase — the player's ability deals no HP — so combat continues and the
     WRAP decay fires (the terminal wrap that ends combat skips decay)."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(id=player_id, name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=20,
-                hp_max=20,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "ability", "action": spell_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id, name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[player_id, enemy_id],
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "ability", "action": spell_id},
+                enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+            },
+        )
     )
 
 

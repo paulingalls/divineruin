@@ -98,8 +98,8 @@ async def test_guest_verbs_reach_persisted_party_rows(
     monkeypatch.setattr(
         check_resolution,
         "resolve_skill_check_dc",
-        lambda player, skill, dc, rng=None, *, ally_present: resolve(
-            player, skill, dc, FixedRng(20), ally_present=ally_present
+        lambda player, skill, dc, rng=None, *, ally_present, hearing_only: resolve(
+            player, skill, dc, FixedRng(20), ally_present=ally_present, hearing_only=hearing_only
         ),
     )
     pool = await db.get_pool()

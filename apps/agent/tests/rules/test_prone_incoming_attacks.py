@@ -1,5 +1,7 @@
 from typing import Any, cast
 
+from voice_condition_fixtures import place_actors
+
 import check_resolution_attack
 from combat_hold import _roll as roll_held_attack
 from combat_marks import FOCUS_ATTACK_BONUS
@@ -102,7 +104,8 @@ def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
     }
     rng = ScriptedRng([4, 15, 3])
 
-    result, _ = roll_held_attack(state, head, action, cast(Any, RealResolver(rng)))
+    place_actors(state)
+    result, _ = roll_held_attack(state, head, action, cast(Any, RealResolver(rng)), 0)
 
     assert result.roll == 15
     assert result.attack_modifier == 1 + FOCUS_ATTACK_BONUS

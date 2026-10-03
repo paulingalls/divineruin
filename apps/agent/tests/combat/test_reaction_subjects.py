@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from sample_fixtures import catalog_encounters
+from voice_condition_fixtures import place_actors
 
 import combat_hold
 import reaction_spend
@@ -58,7 +59,7 @@ def _paused(*, action_kind="attack", stage=reaction_windows.PRE_ROLL, target_id:
         action_kind=action_kind,
         triggers=triggers,
     )
-    return state
+    return place_actors(state)
 
 
 def _ids(state):
@@ -98,7 +99,8 @@ def test_the_held_action_producer_puts_the_real_kind_on_the_window():
 
 
 def test_plausible_deniability_is_bound_to_the_accused():
-    assert "spy_plausible_deniability" not in _ids(_paused(action_kind="accusation", target_id="bystander"))
+    state = place_actors(_paused(action_kind="accusation", target_id="bystander"), "bystander")
+    assert "spy_plausible_deniability" not in _ids(state)
 
 
 @pytest.mark.parametrize(

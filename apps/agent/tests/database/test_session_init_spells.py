@@ -19,6 +19,8 @@ from spells import Spell, SpellTier
 
 def _spell(spell_id: str, name: str, tier: SpellTier, focus: int) -> Spell:
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name=name,
         source="arcane",

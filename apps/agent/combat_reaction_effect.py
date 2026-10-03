@@ -13,11 +13,13 @@ from dataclasses import replace
 from typing import cast
 
 import abilities
+import ability_voice_rules
 import combat_grapple
 import combat_reaction_contest
 import conditions
 import reaction_spend
 import reaction_windows
+from combat_attack_roll import held_reaction_ac
 from combat_support import deserialize_roll, serialize_roll
 from declarations import resolve_declaration
 from session_data import CombatParticipant
@@ -62,19 +64,16 @@ def bound_spends(state, head: dict, stage: str) -> list[dict]:
 
 
 def ac_bonus(state, head: dict) -> int:
-    """The AC the pre-roll spend adds to whoever this held blow is aimed at.
+    """Use live recipient eligibility until the roll freezes its contribution."""
+    if head.get("roll") is not None:
+        return held_reaction_ac(head)
 
-    Derived from the one spend record on every call rather than cached onto the held entry — this
-    story adds no state of its own. It is asked TWICE per held attack, once by the roll and once by
-    the apply half, because ``_replay_resolver`` raises unless both halves compute the same
-    effective AC: a bonus in the roll alone would report a target_ac the roll was never made
-    against, and the DM would narrate a lie.
-
-    Applied to the blow's TARGET, whoever reacted. That is the person the open window named, and
-    the +2 is a property of the attack being answered, not of the reactor.
-    """
     return max(
-        (AC_BONUS.get(spend["ability_id"], 0) for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)),
+        (
+            AC_BONUS.get(spend["ability_id"], 0)
+            for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)
+            if ability_voice_rules.reaction_effect_eligible(state, head, spend)
+        ),
         default=0,
     )
 
@@ -82,6 +81,7 @@ def ac_bonus(state, head: dict) -> int:
 def save_advantage(state, head: dict, condition: str | None) -> bool:
     return any(
         condition in SAVE_ADVANTAGE.get(spend["ability_id"], ())
+        and ability_voice_rules.reaction_effect_eligible(state, head, spend)
         for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)
     )
 
@@ -266,7 +266,8 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     spends = bound_spends(state, head, window["stage"])
     contests = [combat_reaction_contest.resolve_or_reuse(state, head, spend, rng=contest_rng) for spend in spends]
     hesitated = combat_reaction_contest.hesitated(head)
-    ac_spend = max(spends, key=lambda spend: AC_BONUS.get(spend["ability_id"], 0), default=None)
+    ac_candidates = [spend for spend in spends if ability_voice_rules.reaction_effect_eligible(state, head, spend)]
+    ac_spend = max(ac_candidates, key=lambda spend: AC_BONUS.get(spend["ability_id"], 0), default=None)
     if ac_spend is not None and ac_spend["ability_id"] not in AC_BONUS:
         ac_spend = None
     packets = []

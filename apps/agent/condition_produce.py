@@ -23,6 +23,7 @@ injectable so the producer tests can drive the helper with mocked persistence.
 
 from livekit.agents.llm import ToolError
 
+import condition_voice_rules
 import conditions
 import db_mutations_conditions
 import db_queries
@@ -122,6 +123,8 @@ async def produce_ooc_condition(
             voiced.append(tid)  # narrate-only ally: no players.data row, no write
             continue
         row = rows_by_id[tid]
+        if condition == "inspired" and condition_voice_rules.no_spoken_buffs(row.get("conditions") or []):
+            continue
         new_conditions = conditions_mod.apply_condition(row.get("conditions", []), condition, source=source)
         if not conditions_mod.has_condition(new_conditions, condition):
             continue  # immunity / no-op apply — nothing to persist or voice

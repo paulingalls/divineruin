@@ -119,7 +119,11 @@ def resolve_saving_throw(
     # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
     # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
     # story-003 to remove.
-    bonus, consumed = roll_bonus_dice(effects, "save", rng=rng) if bonus_dice_eligible else (0, ())
+    bonus, consumed = (
+        roll_bonus_dice(effects, "save", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True))
+        if bonus_dice_eligible
+        else (0, ())
+    )
     save_modifier = mod + flat_mod + bonus
     core = _roll_d20_check(
         save_modifier,

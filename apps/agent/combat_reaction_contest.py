@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import random
 
+import ability_voice_rules
 import reaction_spend
 import rules_engine
+from communication_voice_rules import DeliveryRefused
 
 EFFECTS = {
     "marshal_countermand": "command_countered",
@@ -57,6 +59,10 @@ def resolve_or_reuse(state, head: dict, spend: dict, *, rng=None) -> dict | None
     if spend["actor_id"] in contests:
         return _validate_stored(contests[spend["actor_id"]], ability_id)
 
+    try:
+        ability_voice_rules.require_ability_delivery(ability_id, state, spend["actor_id"], [head["actor_id"]])
+    except DeliveryRefused:
+        return None
     reactor = state.get_participant(spend["actor_id"])
     opposer = state.get_participant(head["actor_id"])
     if reactor is None or opposer is None:

@@ -24,8 +24,10 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import ability_voice_rules
 import combat_hold
 import condition_produce
+import condition_voice_rules
 import conditions
 import db
 import db_mutations_conditions
@@ -177,7 +179,11 @@ async def _request_ability_activation_unlocked(
     # deadlock-safe helper (story-005): pre-lock the caster + any OOC condition-producing targets in
     # ONE ascending-player_id batch — an in-combat call, or a self / companion / no-target activation,
     # locks just the caster.
-    produces_ooc = ability.applies_condition is not None and not session.in_combat
+    delivery_policy = ability_voice_rules.policy(ability_id)
+    produces_ooc = not session.in_combat and (
+        ability.applies_condition is not None
+        or delivery_policy in (ability_voice_rules.DeliveryPolicy.BOTH, ability_voice_rules.DeliveryPolicy.HEARING)
+    )
     async with db_mod.transaction() as conn:
         locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
             produces_ooc=produces_ooc,
@@ -209,6 +215,36 @@ async def _request_ability_activation_unlocked(
                 variant = variants_mod.get_variant(ability_id, variant_id)
             except ValueError as e:
                 raise ToolError(str(e)) from e
+        if ability.applies_condition == "inspired":
+            try:
+                eligible = condition_voice_rules.spoken_buff_targets(
+                    "inspired",
+                    session.combat_state,
+                    player_id,
+                    target_ids or [target_id or player_id],
+                    rows=locked_rows,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
+            if target_ids is not None:
+                target_ids = eligible
+            else:
+                target_id = eligible[0]
+        recipients = target_ids or [target_id or player_id]
+        if produces_ooc:
+            missing = [tid for tid in recipients if tid in session.party.member_ids and tid not in locked_rows]
+            if missing:
+                raise ToolError(f"Communication party recipients not found: {missing}")
+        if session.combat_state is not None and ability.ability_type == "reaction":
+            recipients = []
+            if delivery_policy in (ability_voice_rules.DeliveryPolicy.BOTH, ability_voice_rules.DeliveryPolicy.HEARING):
+                recipients = [ability_voice_rules.reaction_recipient(ability_id, session.combat_state.open_window)]
+        try:
+            ability_voice_rules.require_ability_delivery(
+                ability_id, session.combat_state, player_id, recipients, rows=locked_rows
+            )
+        except ValueError as e:
+            raise ToolError(str(e)) from e
         cost = variant.cost if variant is not None else ability.cost
 
         # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct

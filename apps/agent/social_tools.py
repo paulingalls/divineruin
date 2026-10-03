@@ -16,6 +16,8 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import communication_voice_rules
+import condition_voice_rules
 import db
 import db_content_queries
 import db_mutations
@@ -24,7 +26,7 @@ import db_queries
 import event_types as E
 import rules_engine
 import social_resolution
-from condition_consume import consume_beneficial_conditions
+from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
@@ -39,6 +41,7 @@ SOCIAL_SKILLS = ("persuasion", "deception", "intimidation")
 VALID_DIFFICULTIES = set(rules_engine.DC_TIERS.keys())
 
 
+@serialize_combat_check
 async def _check_social_impl(
     context: RunContext[SessionData],
     npc_id: str,
@@ -64,6 +67,13 @@ async def _check_social_impl(
 
     session: SessionData = context.userdata
     player_id = session.acting_player_id
+    if session.combat_state is not None:
+        try:
+            communication_voice_rules.require_delivery(
+                communication_voice_rules.CommunicationKind.SPOKEN, session.combat_state, player_id, [npc_id]
+            )
+        except ValueError as e:
+            raise ToolError(str(e)) from e
     player = await queries.get_player(player_id)
     if player is None:
         raise ToolError(f"Player '{player_id}' not found.")
@@ -71,9 +81,25 @@ async def _check_social_impl(
     # row otherwise reaches get_condition_effects as a raw KeyError, not a DM-narratable error.
     validated_player_conditions(player, player_id)
 
+    try:
+        communication_voice_rules.require_delivery(
+            communication_voice_rules.CommunicationKind.SPOKEN,
+            session.combat_state,
+            player_id,
+            [npc_id],
+            rows={player_id: player},
+        )
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
     roll = check_resolution.resolve_skill_check_dc(
-        player, skill_lower, base_dc, rng, ally_present=session.ally_present_for(player_id)
+        condition_voice_rules.roll_data(player, session.combat_state, player_id),
+        skill_lower,
+        base_dc,
+        rng,
+        ally_present=session.ally_present_for(player_id),
+        hearing_only=False,
     )
     current = await resolve_disposition(npc_id, player_id, queries_mod=queries, content_mod=content)
     # The pure resolver fail-louds with ValueError on an off-ladder disposition (a corrupt
@@ -108,13 +134,21 @@ async def _check_social_impl(
     # writes fire — the disposition shift AND the die-consume — so they commit atomically; a lone
     # write (shift-only, or consume-only on a no-shift outcome) takes the plain autocommit path,
     # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
+    consumed_state = None
     if shift and roll.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)
             await mutations.set_npc_disposition(
                 npc_id, player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
             )
-            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations, conn=conn)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                roll.consumed_conditions,
+                conditions_mutations,
+                conn=conn,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
     else:
         if shift:
             session.validate_acting_player(player_id)
@@ -123,8 +157,16 @@ async def _check_social_impl(
             )
         if roll.consumed_conditions:
             session.validate_acting_player(player_id)
-            await consume_beneficial_conditions(player_id, roll.consumed_conditions, conditions_mutations)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                roll.consumed_conditions,
+                conditions_mutations,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
 
+    if consumed_state is not None:
+        session.combat_state = consumed_state
     if shift:
         await publish_game_event(
             session.room,

@@ -17,24 +17,7 @@ import event_types as E
 from check_tools import VALID_CHECK_MODES, _check_impl
 from role_archetypes import shift_disposition
 from social_tools import _check_social_impl
-from tools._helpers import SAMPLE_PLAYER, _make_context
-
-
-def _social_mocks(recorded: str | None = "neutral"):
-    queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-    queries.get_npc_disposition = AsyncMock(return_value=recorded)
-    mutations = MagicMock()
-    mutations.set_npc_disposition = AsyncMock()
-    content = MagicMock()
-    content.get_npc = AsyncMock(return_value={"id": "merchant_1", "default_disposition": "neutral"})
-    return queries, mutations, content
-
-
-def _ctx_with_bus():
-    ctx = _make_context()
-    ctx.userdata.event_bus = MagicMock()
-    return ctx
+from tools._helpers import _ctx_with_bus, _social_mocks
 
 
 class TestCheckSocialHappyPath:

@@ -20,6 +20,7 @@ import pytest
 from combat._helpers import _damage_resolver
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import character_spells
 import combat_turn
@@ -37,6 +38,8 @@ _BLESS_ROW = {
     "name": "Bless",
     "source": "divine",
     "spell_tier": "minor",
+    "verbal": True,
+    "hostile": False,
     "focus_cost": 2,
     "mechanics": "An ally gains +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their name and your patron hears — warmth settling into bones.",
@@ -78,6 +81,8 @@ def _bless_spell(applies_condition: str | None = "blessed", *, focus_cost: int =
     with no side-effects but the producer hook — only applies_condition matters here. Bump
     focus_cost to exercise the affordability gate (Spell is frozen, so set it at construction)."""
     return Spell(
+        verbal=True,
+        hostile=False,
         id="divine_bless",
         name="Bless",
         source="divine",
@@ -257,30 +262,32 @@ def _bless_combat_state(combat_id, caster_id, ally_id, enemy_id, *, target_id) -
     }
     if target_id == caster_id:
         decls.pop(ally_id)  # self-cast: no separate ally needed
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=caster_id, name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
-            ),
-            CombatParticipant(
-                id=ally_id, name="Ally", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=20,
-                hp_max=20,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[caster_id, enemy_id, ally_id],
-        beat="resolution",
-        pending_declarations=decls,
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=caster_id, name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+                ),
+                CombatParticipant(
+                    id=ally_id, name="Ally", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[caster_id, enemy_id, ally_id],
+            beat="resolution",
+            pending_declarations=decls,
+        )
     )
 
 

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import abilities
+import ability_voice_rules
 import reaction_spend
 import reaction_windows
+from communication_voice_rules import DeliveryRefused
 from condition_restrictions import cannot_act
+from encounter_actions import ACTION_KINDS
 from session_data import CombatState
 
 # Ally windows name somebody other than the reactor by definition; enemy event windows describe
@@ -21,6 +24,10 @@ _SOCIAL_SUBJECTS = {
 }
 
 
+class ReactionUnavailable(ValueError):
+    """A known reaction is unavailable in valid combat state."""
+
+
 def is_hollow(actor) -> bool:
     return actor.category in HOLLOW_CATEGORIES or actor.type == "temporary_hollowed"
 
@@ -29,15 +36,17 @@ def _validate_social_subject(state: CombatState, actor_id: str, ability_id: str,
     actual = window["action_kind"]
     required = _SOCIAL_SUBJECTS.get(ability_id)
     if required is not None and actual != required:
-        raise ValueError(f"reaction {ability_id!r} requires subject {required!r}, but held subject is {actual!r}")
+        raise ReactionUnavailable(
+            f"reaction {ability_id!r} requires subject {required!r}, but held subject is {actual!r}"
+        )
     if ability_id == "spy_plausible_deniability" and window["target_id"] != actor_id:
-        raise ValueError(
+        raise ReactionUnavailable(
             f"reaction {ability_id!r} belongs to accused reactor {actor_id!r}, "
             f"but the accusation targets {window['target_id']!r}"
         )
     if ability_id == "diplomat_objection":
         if window["stage"] != reaction_windows.PRE_ROLL:
-            raise ValueError(
+            raise ReactionUnavailable(
                 f"reaction {ability_id!r} requires stage {reaction_windows.PRE_ROLL!r}, "
                 f"but the open stage is {window['stage']!r}"
             )
@@ -45,7 +54,7 @@ def _validate_social_subject(state: CombatState, actor_id: str, ability_id: str,
         if acting_enemy is None:
             raise ValueError(f"reaction window names missing actor {window['actor_id']!r}")
         if is_hollow(acting_enemy):
-            raise ValueError(f"reaction {ability_id!r} has no effect on Hollow actor {acting_enemy.id!r}")
+            raise ReactionUnavailable(f"reaction {ability_id!r} has no effect on Hollow actor {acting_enemy.id!r}")
 
 
 def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: str) -> None:
@@ -70,29 +79,50 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
 
 
 def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, window: dict | None) -> None:
+    delivery_policy = ability_voice_rules.policy(ability_id)
+    if window is not None:
+        if not isinstance(window, dict) or window.get("stage") not in ("pre_roll", "post_roll"):
+            raise ValueError("Malformed reaction window")
+        for key in ("id", "actor_id", "action_kind"):
+            if not isinstance(window[key], str) or not window[key]:
+                raise ValueError(f"Malformed reaction window {key}")
+        if not isinstance(window.get("triggers"), list) or not window["triggers"]:
+            raise ValueError("Malformed reaction window triggers")
+        if any(trigger not in abilities.REACTION_WINDOWS for trigger in window["triggers"]):
+            raise ValueError("Malformed reaction window trigger")
+        if window["action_kind"] not in ACTION_KINDS:
+            raise ValueError("Malformed reaction window action_kind")
+        if state.get_participant(window["actor_id"]) is None:
+            raise ValueError("Reaction window actor is not a participant")
+        target_id = window["target_id"]
+        targeted = set(window["triggers"]) & (SELF_TARGETED_REACTION_WINDOWS | {"on_ally_hit", "on_ally_targeted"})
+        if (targeted or target_id is not None) and (
+            not isinstance(target_id, str) or not target_id or state.get_participant(target_id) is None
+        ):
+            raise ValueError("Reaction window target is not a participant")
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
-        raise ValueError("only players can activate reactions")
+        raise ReactionUnavailable("only players can activate reactions")
     if actor.is_fallen:
-        raise ValueError(f"player {actor_id!r} is down and cannot react")
+        raise ReactionUnavailable(f"player {actor_id!r} is down and cannot react")
     if blocked := cannot_act(actor.conditions):
-        raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
+        raise ReactionUnavailable(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
 
     # Before the window check: combat_hold never opens a window a non-owner can answer, so "no
     # window is open" would send the DM waiting for one that cannot come.
     if actor.has_reaction_ability is not True:
-        raise ValueError(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
+        raise ReactionUnavailable(f"player {actor_id!r} owns no reaction ability, so {ability_id!r} cannot be spent")
     # Narrower than has_reaction_ability on purpose: reaction_ids is what offered_reactions
     # surfaces, so the gate refuses exactly the ids the DM was never handed.
     if ability_id not in actor.reaction_ids:
-        raise ValueError(f"player {actor_id!r} does not own reaction {ability_id!r}")
+        raise ReactionUnavailable(f"player {actor_id!r} does not own reaction {ability_id!r}")
 
     if window is None:
-        raise ValueError("no reaction window is open; a reaction interrupts a held enemy action")
+        raise ReactionUnavailable("no reaction window is open; a reaction interrupts a held enemy action")
 
     catalog_window = abilities.get_ability(ability_id).window
     if catalog_window not in window["triggers"]:
-        raise ValueError(
+        raise ReactionUnavailable(
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
@@ -101,15 +131,23 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
 
     if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
         if window["target_id"] != actor_id:
-            raise ValueError(
+            raise ReactionUnavailable(
                 f"reaction {ability_id!r} requires a window targeting reactor {actor_id!r}, "
                 f"but the open window targets {window['target_id']!r}"
             )
     elif catalog_window not in UNBOUND_REACTION_WINDOWS:
         raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
 
+    recipient_ids = []
+    if delivery_policy in (
+        ability_voice_rules.DeliveryPolicy.BOTH,
+        ability_voice_rules.DeliveryPolicy.HEARING,
+    ):
+        recipient_ids = [ability_voice_rules.reaction_recipient(ability_id, window)]
+    ability_voice_rules.require_ability_delivery(ability_id, state, actor_id, recipient_ids)
+
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
-        raise ValueError(f"player {actor_id!r} already spent their reaction this round")
+        raise ReactionUnavailable(f"player {actor_id!r} already spent their reaction this round")
 
 
 def offered_reactions(state: CombatState) -> list[dict]:
@@ -129,7 +167,7 @@ def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
             ability = abilities.get_ability(ability_id)
             try:
                 _validate_for_window(state, participant.id, ability_id, window)
-            except ValueError:
+            except (ReactionUnavailable, DeliveryRefused):
                 continue
             offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})
     return offered

@@ -215,7 +215,8 @@ with the full arrival scene.
 
 When the player investigates, searches, or examines something at a location, \
 call check with kind="discover", the skill they're using (the approach, e.g. \
-perception) and target set to the visible thing they're examining. What is \
+perception), required hearing_only (true only for hearing-only Perception; false \
+for sight, mixed senses or other skills), and target set to the visible thing. What is \
 hidden — if anything — is revealed by the roll; never name a secret yourself. \
 On success, reveal the find naturally. On failure, describe a fruitless search \
 without revealing what was missed.

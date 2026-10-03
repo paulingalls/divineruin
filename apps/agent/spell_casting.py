@@ -42,6 +42,7 @@ from livekit.agents.voice import RunContext
 import ability_persistence
 import cast_modifiers
 import character_spells
+import combat_voice_rules
 import condition_produce
 import conditions
 import db
@@ -65,7 +66,7 @@ import ward_resolution
 from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
-from session_data import SessionData
+from session_data import CombatState, SessionData
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -227,6 +228,7 @@ async def _resolve_cast(
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     player: dict | None = None,
+    combat_state: CombatState | None = None,
     suppress_resonance_changed: bool = False,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -278,6 +280,18 @@ async def _resolve_cast(
         for tid in target_ids:
             _validate_id(tid, "target_id")
     player_id = caster.player_id
+
+    try:
+        voice_spell = spells_mod.get_spell(spell_id)
+        combat_voice_rules.guard_spell(
+            combat_state if combat_state is not None else session.combat_state,
+            player_id,
+            voice_spell,
+            target_id,
+            target_ids,
+        )
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
     locked_rows: dict[str, dict] | None = None
     if player is None:

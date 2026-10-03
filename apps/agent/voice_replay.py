@@ -308,8 +308,8 @@ async def _run_row(
         closers.append(lambda: cancel_task(capture_task))
         original_resolve = check_resolution.resolve_skill_check_dc
 
-        def resolver(player, skill, dc, rng=None, *, ally_present):
-            return original_resolve(player, skill, dc, FixedRng(), ally_present=ally_present)
+        def resolver(player, skill, dc, rng=None, *, ally_present, hearing_only):
+            return original_resolve(player, skill, dc, FixedRng(), ally_present=ally_present, hearing_only=hearing_only)
 
         with patch("check_resolution.resolve_skill_check_dc", side_effect=resolver):
             published = await publish_checked_audio(

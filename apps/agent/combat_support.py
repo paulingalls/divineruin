@@ -10,6 +10,7 @@ import combat_ability
 import combat_grapple
 import combat_resolution
 import concentration_break
+import condition_sources
 import conditions
 import db_mutations
 import db_queries
@@ -260,6 +261,8 @@ async def apply_attack_result(
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
+
+    target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
