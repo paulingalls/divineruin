@@ -25,7 +25,12 @@ function parseRuntimes(raw: string): Runtime[] {
 
 function parseDevices(raw: string): Device[] {
   const payload = JSON.parse(raw) as { devices?: Record<string, Device[]> };
-  if (!payload.devices || typeof payload.devices !== "object")
+  if (
+    !payload.devices ||
+    typeof payload.devices !== "object" ||
+    Array.isArray(payload.devices) ||
+    Object.values(payload.devices).some((bucket) => !Array.isArray(bucket))
+  )
     throw new Error("simctl returned no devices");
   return Object.values(payload.devices).flat();
 }
@@ -62,13 +67,42 @@ function ownedDevice(devices: Device[], name: string): Device | undefined {
   return device;
 }
 
+async function ownedName(deps: OwnedSimulatorDeps): Promise<string> {
+  const cloneId = (await deps.cloneId()).trim();
+  if (!cloneId) throw new Error("clone ID is empty");
+  return `divineruin-native-${cloneId}`;
+}
+
+export class OwnedSimulatorProbeError extends Error {
+  constructor(
+    readonly simulatorName: string,
+    cause: unknown,
+  ) {
+    super(`xcrun simctl probe failed: ${cause instanceof Error ? cause.message : String(cause)}`, {
+      cause,
+    });
+  }
+}
+
+export async function lookupOwnedSimulator(
+  deps: OwnedSimulatorDeps,
+): Promise<{ name: string; device?: Device }> {
+  const name = await ownedName(deps);
+  let raw: string;
+  try {
+    raw = await deps.run(["xcrun", "simctl", "list", "devices", "--json"]);
+  } catch (error) {
+    throw new OwnedSimulatorProbeError(name, error);
+  }
+  const devices = parseDevices(raw);
+  return { name, device: ownedDevice(devices, name) };
+}
+
 export async function resolveOwnedSimulator(
   deps: OwnedSimulatorDeps,
   requestedUdid?: string,
 ): Promise<string> {
-  const cloneId = (await deps.cloneId()).trim();
-  if (!cloneId) throw new Error("clone ID is empty");
-  const name = `divineruin-native-${cloneId}`;
+  const name = await ownedName(deps);
   const runtimes = parseRuntimes(await deps.run(["xcrun", "simctl", "list", "runtimes", "--json"]));
   const ios = runtimes.filter(
     (runtime) =>

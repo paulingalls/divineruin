@@ -15,8 +15,6 @@ import {
 // load (mirrors RESONANCE_DISPLAY / spell-display). The HUD renders glanceable icons from
 // this map; the closed vocab mirrors the agent's CONDITION_CATALOG keys (conditions.py).
 
-// The 21 catalog keys (conditions.py CONDITION_CATALOG). The test owns this list independently
-// so a drift between catalog and display map fails here rather than silently mis-rendering.
 const CATALOG_KEYS = [
   "wounded",
   "stunned",
@@ -39,10 +37,11 @@ const CATALOG_KEYS = [
   "cursed",
   "inspired",
   "hollowed",
+  "iron_resolve",
 ];
 
 describe("CONDITION_DISPLAY completeness", () => {
-  test("covers exactly the 21 catalog condition types", () => {
+  test("covers exactly the runtime catalog condition types", () => {
     expect(([...CONDITION_TYPES] as string[]).sort()).toEqual([...CATALOG_KEYS].sort());
   });
 
@@ -96,3 +95,11 @@ describe("formatConditionLabel", () => {
 // Type-level guard: ConditionType is the union the map is keyed on.
 const _typeGuard: ConditionType = "exhausted";
 void _typeGuard;
+
+test("Iron Resolve has its own beneficial display", () => {
+  expect(getConditionDisplay("iron_resolve")).toEqual({
+    label: "Iron Resolve",
+    icon: "shield-plus",
+    color: BrandColors.hollow,
+  });
+});

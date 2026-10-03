@@ -354,5 +354,43 @@ else
 fi
 
 echo ""
+if python3 - "$HOOK" <<'PYHOOK'
+import os,pathlib,shutil,subprocess,sys,tempfile
+with tempfile.TemporaryDirectory(prefix='dr-hook-sweep-') as tmp:
+    repo=pathlib.Path(tmp); (repo/'bin').mkdir(); hook=repo/'pre-push'; shutil.copy(sys.argv[1],hook)
+    subprocess.run(['git','init','-q',str(repo)],check=True)
+    bash=shutil.which('bash')
+    (repo/'bin/bash').write_text(r"""#!/usr/bin/env python3
+import os,sys
+from pathlib import Path
+name=Path(sys.argv[1]).name
+with open(os.environ['CALLS'],'a') as f: f.write(name+'\n')
+case=os.environ['CASE']
+if name=='test-worktree-sweep-livekit.sh' and case=='stub-registration': sys.exit(73)
+if name=='test-worktree-sweep-livekit-docker.sh': sys.exit(74)
+if name=='test-worktree-listener-ownership.sh': sys.exit(75)
+sys.exit(0)
+""")
+    (repo/'bin/docker').write_text(r"""#!/usr/bin/env python3
+import os,sys
+with open(os.environ['CALLS'],'a') as f: f.write('docker-info\n')
+sys.exit(1 if os.environ['CASE']=='docker-prerequisite' else 0)
+""")
+    (repo/'bin/bun').write_text('#!/bin/sh\nexit 0\n')
+    for p in (repo/'bin').iterdir(): p.chmod(0o755)
+    for case in ('stub-registration','docker-registration','docker-prerequisite'):
+        calls=repo/'calls'; calls.write_text('')
+        env={k:v for k,v in os.environ.items() if not k.startswith(('BASH_TEST','PREPUSH_','GIT_'))}
+        env.update(PATH=str(repo/'bin')+':'+os.environ['PATH'],CASE=case,CALLS=str(calls))
+        r=subprocess.run([bash,str(hook)],cwd=repo,env=env,input='',text=True,capture_output=True)
+        rows=calls.read_text().splitlines(); stub='test-worktree-sweep-livekit.sh'; real='test-worktree-sweep-livekit-docker.sh'
+        assert stub in rows, case+': stub harness not invoked'
+        if case=='stub-registration': assert r.returncode==73 and 'docker-info' not in rows, str((case,r.returncode,rows))
+        elif case=='docker-registration': assert r.returncode==74 and 'docker-info' in rows and real in rows and rows.index(stub)<rows.index('docker-info')<rows.index(real), str((case,r.returncode,rows))
+        else: assert r.returncode!=0 and real not in rows and 'Docker must be running' in r.stderr, str((case,r.returncode,rows,r.stderr))
+        print('PASS: '+case)
+PYHOOK
+then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); fi
+
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

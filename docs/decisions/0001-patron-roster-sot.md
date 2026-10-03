@@ -105,12 +105,11 @@ not mechanics authoring.
 
 | Field | Phase 8 milestone reference | This story sets |
 | --- | --- | --- |
-| `layer_1_gift` | M8.1 — Layer 1 passive gift (e.g. Lorekeeper's Insight) | `null` |
 | `layer_2_resonance` | M8.1 — Layer 2 Resonance modifier (blocked on Phase 3) | `null` |
 | `layer_3_tier_abilities` | M8.2 — Acknowledged/Devoted/Exalted ability triplet | `null` |
 | `layer_4_synergy_matrix` | M8.3 — per-archetype synergy entries | `null` |
 
-When a future sprint populates these, the shape will be designed *then* against
+When a future sprint populates Layers 2-4, the shape will be designed *then* against
 the implementation. This ADR explicitly does not pre-specify their internal shape
 beyond "non-null when authored." That is the scope discipline the plan reviewer
 flagged: defining empty shapes risks ad-hoc decisions that the implementing sprint
@@ -171,3 +170,40 @@ must immediately rework.
 
 All of the above are future Phase 8 work and will be authored against the slots
 this ADR establishes.
+
+## Amendment — Layer 1 gift shape (2026-10-02)
+
+This amendment supersedes the original Layer 1 placeholder and future-authoring
+statements above. Layers 2-4 remain future work. The original migration and
+out-of-scope sections record the scope of sprint-003 story-006.
+
+Authored gifts now live in `content/gods.json`. Each `layer_1_gift` has six required,
+nonempty string fields and an optional `mechanics` block. The executable authority
+for the shape, enums, and exact mechanics is
+`apps/agent/tests/test_patron_gift_content.py`; the amendment's parity guard is
+`apps/agent/tests/docs/test_adr_0001_gift_shape.py`.
+
+```text layer_1_gift
+fields: id, name, effect, trigger, recharge, status
+optional_fields: mechanics
+recharge: always, per_encounter, short_rest, long_rest, on_event
+status: active, awaits_binding, awaits_rest, awaits_terrain, awaits_healing, narrated
+mechanics_kinds: skill_check_bonus, low_hp_surge
+grant: Only an active or narrated gift is granted; an awaits_* gift is the god's promise, not yet a power.
+```
+
+Aelora's `skill_check_bonus` mechanics has `amount: 1` and
+`requires: "ally_present"`. Kaelen's `low_hp_surge` has `threshold: 0.25`,
+`amount: 2`, and `duration_phases: 2`.
+
+For a bound player, `query_info(kind="patron")` returns the authored gift for every
+status. The tool description directs the DM to treat only an `active` or `narrated`
+gift as a power the player has; pending gifts remain promises. Only an `active`
+gift with a `mechanics` block changes a roll, under its existing prerequisites:
+Aelora requires an ally present, and Kaelen's surge requires crossing the low-HP
+threshold and applies during its condition's duration.
+
+Two content gaps remain open: Nythera's Survival-advantage clause in unknown
+territory has no home in the current schema, and gifts are live only for bound
+players. This amendment records those gaps without defining new mechanics or
+extending gifts to unbound players.

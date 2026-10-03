@@ -36,7 +36,7 @@ EXPO_ENV_TYPES="$REPO_ROOT/apps/mobile/expo-env.d.ts"
 # and generated, so a bare worktree lacks them. Without router.d.ts a BOGUS route
 # compiles clean (Href falls back to permissive `string`) — a false green that is
 # TS2322 in the primary. expo-router writes both files at dev-server STARTUP
-# (no bundling; ~seconds); there is no standalone typegen command in SDK 55.
+# without bundling.
 
 # Release a reservation only when this bootstrap still owns it.
 # Args: <port>

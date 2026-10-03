@@ -52,6 +52,7 @@ export const CONDITION_NAMES = [
   "inspired",
   "hollowed",
   "temporary_hollowed",
+  "iron_resolve",
 ] as const;
 export const RESISTANCE_TAG_VALUES = [
   "pragmatic",

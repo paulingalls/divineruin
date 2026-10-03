@@ -846,7 +846,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 # Decisions
 
-## decisions/0001-patron-roster-sot.md (173 lines)
+## decisions/0001-patron-roster-sot.md (209 lines)
 
 ---
 

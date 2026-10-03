@@ -132,7 +132,7 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
 # --- 2. The tool-ceiling win holds ------------------------------------------------------
 
 
-def test_exploration_holds_the_two_freed_slots() -> None:
+def test_exploration_keeps_five_free_slots() -> None:
     """M28's stated payoff is verb budget: dropping both award verbs took exploration 16 -> 14,
     widening the headroom under the strict-tool ceiling from 4 slots to 6. The patron action
     verb now spends one freed slot, leaving 5. Re-adding either retired award verb reds here."""

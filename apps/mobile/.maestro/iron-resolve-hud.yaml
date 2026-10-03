@@ -1,0 +1,21 @@
+appId: com.divineruin.app
+---
+- openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Continue"
+    optional: true
+- openLink: divineruin://iron-resolve-test
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Combat update 0"
+    timeout: 50000
+- tapOn: "Next combat update"
+- assertVisible: "Combat update 1"
+- assertVisible: "Kaelen Faithful"
+- assertVisible: "Iron Resolve"
+- tapOn: "Next combat update"
+- assertVisible: "Combat update 2"
+- assertVisible: "Kaelen Faithful"
+- assertNotVisible: "Iron Resolve"

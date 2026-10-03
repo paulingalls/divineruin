@@ -104,6 +104,7 @@ export default function RootLayout() {
             {__DEV__ && <Stack.Screen name="native-transport-test" />}
             {__DEV__ && <Stack.Screen name="live-material-inventory-test" />}
             {__DEV__ && <Stack.Screen name="http-inventory-test" />}
+            {__DEV__ && <Stack.Screen name="iron-resolve-test" />}
           </Stack>
           <GrainOverlay />
         </GestureHandlerRootView>
@@ -124,6 +125,7 @@ export default function RootLayout() {
           {__DEV__ && <Stack.Screen name="native-transport-test" />}
           {__DEV__ && <Stack.Screen name="live-material-inventory-test" />}
           {__DEV__ && <Stack.Screen name="http-inventory-test" />}
+          {__DEV__ && <Stack.Screen name="iron-resolve-test" />}
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />
         </Stack>

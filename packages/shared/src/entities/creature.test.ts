@@ -31,7 +31,7 @@ test("canonical region ids match the shared corpus", () => {
 });
 test("combat vocabularies match the Python corpus", () => {
   expect(corpus.action_kinds).toEqual([...ENCOUNTER_ACTION_KIND_VALUES]);
-  expect(corpus.condition_names.length).toBe(22);
+  expect(corpus.condition_names.length).toBe(23);
   expect(corpus.resistance_tags.length).toBe(7);
   expect(([...CONDITION_NAMES] as string[]).sort()).toEqual([...corpus.condition_names].sort());
   expect(([...RESISTANCE_TAG_VALUES] as string[]).sort()).toEqual(

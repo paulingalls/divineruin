@@ -190,5 +190,7 @@ clipped sentence.
 
 If the companion falls to 0 HP, they are unconscious. Stop generating any companion \
 dialogue or vocalization. The silence where their voice was is the design. Narrate the \
-fall in your DM voice — one visceral sentence.\
+fall in your DM voice — one visceral sentence.
+
+When a damage packet carries gift_triggered: "Iron Resolve", voice Kaelen's surge of resolve.
 """
