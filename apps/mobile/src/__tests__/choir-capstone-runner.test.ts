@@ -41,11 +41,19 @@ describe("Choir native microphone prerequisite", () => {
       faulty.receipts[0].output = output;
       expect(() => assertMicrophoneTurns(faulty, "mobile-current")).toThrow("silenced");
     }
-    for (const defect of ["generation", "commands", "refusal-name", "legal-name", "legal-output"]) {
+    for (const defect of [
+      "generation",
+      "commands",
+      "refusal-name",
+      "refusal-error",
+      "legal-name",
+      "legal-output",
+    ]) {
       const faulty = evidence();
       if (defect === "generation") faulty.authenticated_turns[1].generation = 0;
       if (defect === "commands") faulty.commands.reverse();
       if (defect === "refusal-name") faulty.receipts[0].name = "check";
+      if (defect === "refusal-error") faulty.receipts[0].is_error = false;
       if (defect === "legal-name") faulty.receipts[1].name = "declare_phase";
       if (defect === "legal-output") faulty.receipts[1].output = " ";
       expect(() => assertMicrophoneTurns(faulty, "mobile-current")).toThrow();

@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from acceptance._livekit import ensure_livekit_server
@@ -17,6 +18,24 @@ from acceptance.seeds import seed_player_with_pools
 from acceptance.voice_condition_harness import ScenarioModel
 
 import db
+
+
+async def assert_legal_delivery(events, sender_identity, receipt, timeout=5):
+    result = json.loads(receipt.output)
+    try:
+        async with asyncio.timeout(timeout):
+            while True:
+                payload, sender = await events.get()
+                assert sender == sender_identity
+                event = json.loads(payload)
+                if event["type"] == "transcript_entry":
+                    continue
+                assert event["type"] == "dice_roll" and event["roll_type"] == "saving_throw"
+                assert all(event[field] == result[field] for field in ("save_type", "roll", "total"))
+                assert event["success"] == (result["outcome"] == "success")
+                return
+    except TimeoutError as exc:
+        raise AssertionError("missing legal command gameplay event") from exc
 
 
 @pytest.fixture(scope="session")
@@ -37,9 +56,12 @@ def mandatory_services(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("later_input,eager_model", [(False, False), (True, False), (False, True)])
+@pytest.mark.parametrize(
+    "later_input,eager_model,drop_delivery",
+    [(False, False, False), (True, False, False), (False, True, False), (True, False, True)],
+)
 async def test_later_command_requires_separate_authenticated_microphone_turn(
-    later_input, eager_model, livekit_server, reset_db_pool
+    later_input, eager_model, drop_delivery, livekit_server, reset_db_pool, monkeypatch
 ):
     harness = MultiplayerVoiceHarness(livekit_server)
     diagnostic = ChoirVoiceDiagnostic(harness.player_one_identity)
@@ -75,12 +97,17 @@ async def test_later_command_requires_separate_authenticated_microphone_turn(
         assert len(diagnostic.transcripts) == 1
         assert len(diagnostic.model.calls) == 1
         if later_input:
+            if drop_delivery:
+                monkeypatch.setattr("check_tools.publish_game_event", AsyncMock())
             await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
             await diagnostic.wait_for_receipts(2)
             diagnostic.assert_complete()
-            async with asyncio.timeout(5):
-                payload, sender = await events.get()
-            assert payload and sender == harness.listener.local_participant.identity
+            receipt = list(diagnostic.model.receipts.values())[1]
+            if drop_delivery:
+                with pytest.raises(AssertionError, match="missing legal command gameplay event"):
+                    await assert_legal_delivery(events, harness.listener.local_participant.identity, receipt, timeout=1)
+            else:
+                await assert_legal_delivery(events, harness.listener.local_participant.identity, receipt)
         else:
             await asyncio.sleep(2)
             assert len(diagnostic.model.calls) == 1

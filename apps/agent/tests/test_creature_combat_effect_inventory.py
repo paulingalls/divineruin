@@ -425,3 +425,13 @@ def test_choir_dispositions_reject_fabricated_execution_and_changed_bindings():
                 continue
             with pytest.raises(AssertionError):
                 assert_effect_inventory(catalog(), changed)
+
+
+@pytest.mark.parametrize("binding", sorted({binding for _, _, bindings, _ in CHOIR.values() for binding in bindings}))
+def test_choir_inventory_rejects_noncallable_resolver(binding, monkeypatch):
+    import importlib
+
+    module, name = binding.rsplit(".", 1)
+    monkeypatch.setattr(importlib.import_module(module), name, None)
+    with pytest.raises(AssertionError, match=binding):
+        assert_effect_inventory(catalog(), inventory())
