@@ -10,6 +10,7 @@ import struct
 import sys
 import threading
 import time
+from collections.abc import Awaitable, Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -181,7 +182,13 @@ def expected_guard(fault: str) -> str | None:
     }[fault]
 
 
-async def run_probe(run_id: str, fault: str, control_path: Path, result_path: Path) -> None:
+async def run_probe(
+    run_id: str,
+    fault: str,
+    control_path: Path,
+    result_path: Path,
+    microphone_receiver: Callable[[rtc.Room, str, ProbeState], Awaitable[int]] | None = None,
+) -> None:
     server = ensure_livekit_server(require_docker=True)
     room_name = f"native-{run_id}"
     publisher_identity = f"python-{run_id}"
@@ -232,6 +239,8 @@ async def run_probe(run_id: str, fault: str, control_path: Path, result_path: Pa
         await wait_for_peer(room, identity=mobile_identity, timeout=30)
 
         async def receive_microphone() -> int:
+            if microphone_receiver is not None:
+                return await microphone_receiver(room, mobile_identity, state)
             track = await wait_for_audio_track(room, identity=mobile_identity, timeout=20)
             count = await count_audio_frames(track, timeout=15)
             state.set_microphone_frames(count)

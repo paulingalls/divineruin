@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
+from choir_effect_inventory_helpers import CHOIR, assert_choir_disposition
 
 ROOT = Path(__file__).resolve().parents[3]
 IDS = set(
@@ -23,10 +24,11 @@ IDS = set(
         "cult_fanatic",
         "cult_leader",
         "hollow_knight",
+        "hollow_choir",
     ]
 )
 MARKER = "## Combat Effect Inventory"
-GROUPS = ("attacks", "actives", "passives", "reactions", "multiattack", "signature_ability")
+GROUPS = ("attacks", "actives", "passives", "reactions", "multiattack", "signature_ability", "hollow")
 
 REQUIRED_EFFECTS = {
     ("hollow_shadeling", "Corrosive Touch"): ("organic material", "double damage"),
@@ -97,12 +99,14 @@ def source_entries(rows):
             continue
         assert "action_pool" not in row
         for group in GROUPS:
-            if group in ("multiattack", "signature_ability"):
+            if group == "hollow" and row["id"] != "hollow_choir":
+                continue
+            if group in ("multiattack", "signature_ability", "hollow"):
                 entries = [row[group]] if row.get(group) else []
             else:
                 entries = row[group]
             for entry in entries:
-                name = entry if isinstance(entry, str) else entry["name"]
+                name = group if group == "hollow" else entry if isinstance(entry, str) else entry["name"]
                 key = (row["id"], group, name)
                 assert key not in sources
                 sources[key] = entry
@@ -119,6 +123,9 @@ def assert_effect_inventory(rows, entries):
     for key, source in sources.items():
         entry = declared[key]
         assert entry["source"] == source, key
+        if key[0] == "hollow_choir":
+            assert_choir_disposition(key, entry)
+            continue
         if key[1] == "attacks":
             expected = {
                 ("hollow_shadeling", "Corrosive Touch"): "mixed",
@@ -163,7 +170,7 @@ def assert_effect_inventory(rows, entries):
             entry["status"] == ("mixed" if kind == "healing" else "executable") and f"kind {kind};" in entry["effects"]
         )
         assert "combat_enemy_active.resolve_active" in entry["resolver"]
-    assert not any(key[1] == "reactions" for key in sources)
+    assert {(key[0], key[2]) for key in sources if key[1] == "reactions"} == {("hollow_choir", "Harmonic Shield")}
 
 
 def catalog():
@@ -295,7 +302,12 @@ def test_effect_inventory_subeffects_and_real_resolvers():
         module, name = binding.split(".")
         assert callable(getattr(importlib.import_module(module), name))
     for entry in inventory():
-        for effect in REQUIRED_EFFECTS.get((entry["species"], entry["name"]), ()):
+        effects = (
+            CHOIR[(entry["group"], entry["name"])][1]
+            if entry["species"] == "hollow_choir"
+            else REQUIRED_EFFECTS.get((entry["species"], entry["name"]), ())
+        )
+        for effect in effects:
             entries = inventory()
             changed = next(
                 e
@@ -392,3 +404,24 @@ def test_choir_metadata_retains_only_unimplemented_guidance():
         for key, value in choir["hollow"].items()
         if key not in {"corruption_aura", "resonance_on_death", "vulnerable_to"}
     }
+
+
+def test_choir_dispositions_reject_fabricated_execution_and_changed_bindings():
+    for entry in inventory():
+        if entry["species"] != "hollow_choir":
+            continue
+        for field, value in (
+            ("status", "deferred" if entry["status"] == "executable" else "executable"),
+            ("deferred", "fabricated"),
+            ("resolver", "fabricated"),
+        ):
+            changed = copy.deepcopy(inventory())
+            next(
+                e
+                for e in changed
+                if e["species"] == entry["species"] and e["group"] == entry["group"] and e["name"] == entry["name"]
+            )[field] = value
+            if field == "resolver" and entry["status"] == "narrative":
+                continue
+            with pytest.raises(AssertionError):
+                assert_effect_inventory(catalog(), changed)

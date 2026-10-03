@@ -21,6 +21,8 @@ export type PrepareNativeApp = (
   env: Record<string, string | undefined>,
 ) => Promise<void>;
 export interface NativeTransportDeps {
+  probePath?: string;
+  validateResult?: (raw: unknown, runId: string, fault: Fault) => TransportResult;
   resolveOwned: (requestedUdid?: string) => Promise<string>;
   prepareNativeApp: PrepareNativeApp;
   requireTarget: (scope: OwnedProcesses, repoRoot: string, udid: string) => Promise<void>;
@@ -104,7 +106,7 @@ async function capture(scope: OwnedProcesses, command: string[], cwd: string): P
   return stdout;
 }
 
-async function requireTargetSimulator(
+export async function requireTargetSimulator(
   scope: OwnedProcesses,
   repoRoot: string,
   udid: string,
@@ -123,7 +125,7 @@ async function requireTargetSimulator(
   await capture(scope, ["xcrun", "simctl", "get_app_container", udid, BUNDLE_ID, "app"], repoRoot);
 }
 
-async function buildCurrentNativeApp(
+export async function buildCurrentNativeApp(
   scope: OwnedProcesses,
   repoRoot: string,
   env: Record<string, string | undefined>,
@@ -203,6 +205,7 @@ async function runScenario(
   env: Record<string, string | undefined>,
   udid: string,
   fault: Fault,
+  deps: NativeTransportDeps,
 ): Promise<void> {
   const runId = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
   const artifactDir = join(repoRoot, "test-results/native-transport", runId);
@@ -234,7 +237,7 @@ async function runScenario(
         "--project",
         join(repoRoot, "apps/agent"),
         "python",
-        join(repoRoot, "apps/agent/native_transport_probe.py"),
+        join(repoRoot, deps.probePath ?? "apps/agent/native_transport_probe.py"),
         "--run-id",
         runId,
         "--fault",
@@ -283,8 +286,10 @@ async function runScenario(
     const maestroExit = await scope.wait(maestro.exited);
     if (maestroExit !== 0)
       throw new Error(`Maestro native transport failed with status ${maestroExit}`);
+    const probeExit = await scope.wait(probe.exited);
+    if (probeExit !== 0) throw new Error(`native transport probe failed with status ${probeExit}`);
     const rawResult = await waitForJson(scope, resultPath, 10_000);
-    const result = validateScenarioResult(rawResult, runId, fault);
+    const result = (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
     const screenshotMatches = await Array.fromAsync(
       new Bun.Glob("**/takeScreenshot/simulator.png").scan({ cwd: maestroOutput }),
     );
@@ -305,8 +310,6 @@ async function runScenario(
     const serialized = JSON.stringify(durable, null, 2) + "\n";
     assertNoCredentials(durable);
     await writeFile(resultPath, serialized);
-    const probeExit = await scope.wait(probe.exited);
-    if (probeExit !== 0) throw new Error(`native transport probe failed with status ${probeExit}`);
   } catch (error) {
     failure = error instanceof Error ? error : new Error(String(error));
   }
@@ -335,7 +338,7 @@ export async function runNativeTransport(
     if ((await stat(flow)).size === 0) throw new Error("native transport Maestro flow is empty");
     for (const fault of selectedFault ? [selectedFault] : SCENARIOS) {
       scope.signal.throwIfAborted();
-      await runScenario(scope, repoRoot, env, udid, fault);
+      await runScenario(scope, repoRoot, env, udid, fault, deps);
     }
   });
 }
