@@ -4,8 +4,8 @@ import json
 
 import pytest
 from acceptance.choir_capstone_harness import ChoirEncounterDiagnostic
-from acceptance.choir_capstone_voice import BurstSTT
-from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, MultiplayerVoiceHarness
+from acceptance.choir_capstone_voice import CHOIR_COMMAND_SPEECH, BurstSTT
+from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
 from acceptance.test_choir_capstone_guards import livekit_server as livekit_server
 from acceptance.test_choir_capstone_guards import mandatory_services as mandatory_services
@@ -30,7 +30,7 @@ async def test_committed_choir_entry_and_public_search(livekit_server, reset_db_
         return encounter.lifecycle.authorize
 
     async def speak():
-        await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
+        await harness.play(harness.player_one_identity, CHOIR_COMMAND_SPEECH)
 
     try:
         await harness.start(prepare, stt=BurstSTT())
@@ -76,9 +76,7 @@ async def test_committed_choir_entry_and_public_search(livekit_server, reset_db_
 async def test_reseed_committed_content_repairs_stale_rows_and_rejects_omitted_seed(
     table, key, reset_db_pool, monkeypatch
 ):
-    from unittest.mock import AsyncMock
-
-    import seed_content  # type: ignore[import-not-found]
+    import asyncpg
     from acceptance.choir_capstone_harness import reseed_choir_content
 
     pool = await db.get_pool()
@@ -89,8 +87,15 @@ async def test_reseed_committed_content_repairs_stale_rows_and_rejects_omitted_s
         await reseed_choir_content(pool)
         assert json.loads(await pool.fetchval(f"SELECT data FROM {table} WHERE id=$1", key)) == original
         await pool.execute(f"UPDATE {table} SET data=$2::jsonb WHERE id=$1", key, json.dumps(stale))
+        execute = asyncpg.Connection.executemany
+
+        async def omit_table(conn, query, args, **kwargs):
+            if query.startswith(f"INSERT INTO {table} "):
+                return None
+            return await execute(conn, query, args, **kwargs)
+
         with monkeypatch.context() as fault:
-            fault.setattr(seed_content, "seed", AsyncMock())
+            fault.setattr(asyncpg.Connection, "executemany", omit_table)
             with pytest.raises(AssertionError, match=f"stale committed {table}"):
                 await reseed_choir_content(pool)
     finally:
@@ -118,7 +123,7 @@ async def test_public_choir_encounter_requires_actual_gameplay_delivery(
         return encounter.lifecycle.authorize
 
     async def speak():
-        await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
+        await harness.play(harness.player_one_identity, CHOIR_COMMAND_SPEECH)
 
     publish = combat_init.publish_game_event
 
@@ -216,7 +221,7 @@ async def test_committed_choir_aura_preserves_concentration_outside_radius(livek
         return encounter.lifecycle.authorize
 
     async def speak():
-        await harness.play(harness.player_one_identity, PLAYER_TWO_SPEECH)
+        await harness.play(harness.player_one_identity, CHOIR_COMMAND_SPEECH)
 
     try:
         await harness.start(prepare, stt=BurstSTT())

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import patch
 
+from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, SpeechFixture
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
 from acceptance.seeds import seed_player_with_pools
 from acceptance.test_voice_condition_commands import commands, scene
@@ -24,6 +25,34 @@ from multiplayer_input import MultiplayerInput
 from participant_lifecycle import _setup_party_join
 from session_data import SessionData
 from session_startup import GameplayInputOwner, gameplay_room_options
+
+
+class RecordedCommandBurst(SpeechFixture):
+    def frames(self):
+        recording = super().frames()
+        start = next((i for i, frame in enumerate(recording) if max(map(abs, frame.data)) >= 500), None)
+        if start is None:
+            raise ValueError("command recording has no voiced audio")
+        voiced = recording[start : start + 18]
+        if len(voiced) != 18 or any(max(map(abs, frame.data)) < 500 for frame in voiced):
+            raise ValueError("command recording lacks a sustained speech burst")
+        frame = voiced[0]
+        silence = [
+            rtc.AudioFrame(
+                bytes(frame.samples_per_channel * 2), frame.sample_rate, frame.num_channels, frame.samples_per_channel
+            )
+            for _ in range(30)
+        ]
+        return [*voiced, *silence]
+
+
+# BurstSTT classifies amplitude and turn boundaries; this transport test needs no full sentence.
+CHOIR_COMMAND_SPEECH = RecordedCommandBurst(
+    filename=PLAYER_TWO_SPEECH.filename,
+    utterance_id=PLAYER_TWO_SPEECH.utterance_id,
+    transcript=PLAYER_TWO_SPEECH.transcript,
+    sha256=PLAYER_TWO_SPEECH.sha256,
+)
 
 
 class BurstStream(stt.RecognizeStream):
