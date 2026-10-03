@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 import check_resolution_attack
 import combat_ability
 import combat_grapple
+import combat_hollow_death
 import combat_resolution
 import concentration_break
 import condition_sources
@@ -109,6 +110,7 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
+    combat_hollow_death.mark_destroyed(target)
     target.is_fallen = True
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
@@ -258,6 +260,7 @@ async def apply_attack_result(
     # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
     # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
     # hides the fall it caused, so every verdict below reads hp_before instead.
+    death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
@@ -294,6 +297,9 @@ async def apply_attack_result(
         )
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
+
+    if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
+        await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
 
     # Update DB if target is a player
     if target.type == "player":

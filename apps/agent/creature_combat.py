@@ -8,6 +8,7 @@ from creature_combat_effects import deferred_effects
 from creature_schema import validate_creature_stat_block
 from encounter_actions import action_kind, validate_encounter_actions
 from encounter_roles import derive_role_stats
+from hollow_resonance import amount
 
 _ATTRIBUTES = dict(
     zip(
@@ -99,6 +100,11 @@ def _translate(row, encounter_id, enemy_id, role):
         catalog_narration=deepcopy(row["narration"]),
         catalog_audio=deepcopy(row["audio"]),
         deferred_effects=deferred_effects(row),
+        hollow=(
+            {key: amount(row["hollow"][key], key) for key in ("corruption_aura", "resonance_on_death")}
+            if row["hollow"] is not None
+            else None
+        ),
     )
     validate_enemy_action_shapes([enemy])
     validate_encounter_actions([enemy])

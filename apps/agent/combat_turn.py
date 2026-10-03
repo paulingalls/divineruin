@@ -16,6 +16,7 @@ import character_spells
 import check_resolution_attack
 import check_resolution_save
 import combat_hold
+import combat_hollow_resonance
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
@@ -292,14 +293,7 @@ async def _resolve_phase_locked(
             wrap = None
             wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
             ended_outcome = None
-            # An ability GENERATES Resonance during the ally pass and writes it inside THIS commit,
-            # but the WRAP that decays it now rides a later commit. Seed the post-commit sync here
-            # so the caster's in-memory total is the post-generation value; the wrap then decays
-            # from that (net = standing + generated - decay) rather than from the stale standing
-            # value it would otherwise still be holding a commit later.
-            pending_by_member = {
-                mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
-            }
+            pending_by_member = combat_hollow_resonance.take_totals(state)
             await emit_or_publish(
                 sink,
                 session.room,

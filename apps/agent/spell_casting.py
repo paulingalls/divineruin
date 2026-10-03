@@ -1,34 +1,4 @@
-"""Spell casting tools for the DM agent (M3.3 story-004).
-
-_cast_spell_impl is the real cast path: it validates a named spell, gates the caster's
-Focus and deducts it, reads the Resonance the cast generates from the catalog's
-designed per-spell resonance_by_source[source] (the SSOT, decision
-resonance-by-source-ssot), accrues that onto the session's ResonanceTrack and
-persists it, then returns an effect + narration_cue + audio_cue packet for the DM
-to voice. The M3.1 rules engine (resonance.calculate_resonance_generated) is the
-fallback only when a spell carries no entry for its source. Cantrips (focus_cost 0)
-cost no Focus, generate 0 Resonance, and scale their damage via
-leveling.cantrip_damage_dice(level). The read-only get_spell_info lookup lives in
-spell_info_tools (it spends nothing and opens no transaction).
-
-Resonance stays hidden from the player (CLAUDE.md golden rule #3, spec magic.md:98):
-the packet carries the qualitative `state` (stable/flickering/overreach) and the
-free combat modifiers, never asks the LLM to compute them. The deterministic numbers
-come from the rules engine; the LLM only decides when to cast and how to narrate.
-
-Mirrors the ability_tools seam exactly: module-injection keyword args (db_mod/queries_mod/
-persistence_mod/resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod,
-the M3.2 echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod, plus the M3.4 racial_mod/
-concentration_mutations_mod) for test mocking, a single db.transaction() block, and ToolError for
-every user-facing failure. The OOC cast path enters via activate_tools.activate (M25 Phase-5
-story-002 folded the standalone cast_spell @function_tool wrapper into it); _cast_spell_impl
-remains the shared core, also called directly by the in-combat ABILITY packet (story-007).
-
-The pure per-cast math — generation, the Korath/Human/Vaelti racial composition, ward
-effects, and the Overreach Hollow Echo — lives in cast_modifiers; see its module docstring.
-This module owns the I/O: the Focus gate, the ward READ, persistence, and the deferred
-client events. A concentration cast sets/ends the single-active slot (db_mutations_concentration).
-"""
+"""Spell casting persistence and deferred client events."""
 
 import inspect
 import json
@@ -42,6 +12,7 @@ from livekit.agents.voice import RunContext
 import ability_persistence
 import cast_modifiers
 import character_spells
+import combat_hollow_resonance
 import combat_voice_rules
 import condition_produce
 import conditions
@@ -355,10 +326,14 @@ async def _resolve_cast(
     except ValueError as e:
         raise ToolError(f"Cannot cast {spell.name}: {e}") from e
 
+    generated = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, generated)
+
     # An active Veil Ward halves generated Resonance. Resolved from the DB, never the in-memory
     # mirror — expiry is lazy, so a lapsed or walked-away-from ward would otherwise halve casts
     # forever. The read stays here (it needs session/conn); the halving is pure.
-    ward_active = await ward_resolution_mod.resolve_scope_ward(session, conn=conn) is not None
+    ward_active = (
+        await ward_resolution_mod.resolve_scope_ward(session, conn=conn, combat_state=combat_state) is not None
+    )
     generated = cast_modifiers.apply_ward_halving(generated, ward_active, veil_ward=veil_ward)
 
     if spell.focus_cost > 0:
@@ -373,7 +348,7 @@ async def _resolve_cast(
     # caller leaves the standing value alone.
     effective_resonance = cast_modifiers.compute_effective_resonance(
         generated,
-        caster.resonance.current,
+        combat_hollow_resonance.current_total(combat_state, caster),
         race,
         session.in_combat,
         resonance=resonance,
@@ -384,6 +359,7 @@ async def _resolve_cast(
         if revalidate_actor:
             session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
+        combat_hollow_resonance.stage_total(combat_state, player_id, effective_resonance)
 
     # Casting a concentration spell starts concentration on it and ends any prior one (the single
     # players.data{concentration,spell_id} slot makes this one write the "prior ends"). Persisted via

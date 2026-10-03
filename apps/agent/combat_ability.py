@@ -12,6 +12,7 @@ import abilities
 import ability_persistence
 import combat_ability_save
 import combat_enhancers
+import combat_hollow_resonance
 import combat_voice_rules
 import condition_voice_rules
 import spell_casting
@@ -282,11 +283,7 @@ async def _resolve_ability_packet(
             "reason": "ability declaration missing an action",
         }
 
-    # Resolve the declaring member (M14 story-004): the cast reads + writes THAT member's own pool
-    # (resonance/veil_ward/concentration/player_id), never the primary's. attacker.id == the member's
-    # player_id (combat_init builds player participants with id=mid). A missing member falls back to
-    # the primary — the same fallback _resolve_cast applies to caster=None — so solo stays identical.
-    caster = session.party.member(attacker.id) or session.party.primary
+    caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)
     result = await cast_resolver._resolve_cast(
         session,
@@ -299,6 +296,8 @@ async def _resolve_ability_packet(
         suppress_resonance_changed=True,
     )
     cast_outcome.results[attacker.id] = result
+    if result.new_resonance is not None:
+        combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
     # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
     # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
     # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync

@@ -318,6 +318,7 @@ async def _start_combat_locked(
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],
+                hollow=derived["hollow"],
                 saving_throw_proficiencies=derived["saving_throw_proficiencies"],
                 xp_value=derived.get("xp_value", 0),
                 role=derived["role"],
