@@ -242,6 +242,7 @@ class ChoirCapstoneFlow:
             lambda event: (
                 event.get("roll_type") == "saving_throw"
                 and all(event.get(key) == receipt[key] for key in ("save_type", "roll", "total"))
+                and event.get("success") is (receipt["outcome"] == "success")
             ),
         )
         await self.remember(step)

@@ -403,3 +403,13 @@ def test_cleanup_requires_the_complete_active_owned_family(missing, monkeypatch)
     faulty = {} if missing == "all" else {key: pid for key, pid in owned.items() if key != missing}
     with pytest.raises(AssertionError, match="owned process family"):
         cleanup.assert_active_family(faulty)
+
+
+@pytest.mark.parametrize("stopped", ["probe", "stimulus", "descendant"])
+def test_cleanup_rejects_each_exited_owned_process(stopped, monkeypatch):
+    from acceptance import choir_capstone_cleanup as cleanup
+
+    owned = {"probe": 1, "stimulus": 2, "descendant": 3}
+    monkeypatch.setattr(cleanup, "alive", lambda pid: pid != owned[stopped])
+    with pytest.raises(AssertionError, match="cleanup fixture was not active"):
+        cleanup.assert_active_family(owned)
