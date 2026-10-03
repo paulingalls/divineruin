@@ -46,6 +46,7 @@ from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
+from condition_sources import DeliveryRefused
 from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import SessionData
@@ -240,7 +241,7 @@ async def _resolve_one_packet(
 
     try:
         combat_voice_rules.guard_declaration(state, attacker, decl)
-    except ValueError as e:
+    except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
     if decl.type is DeclarationType.DEFEND:

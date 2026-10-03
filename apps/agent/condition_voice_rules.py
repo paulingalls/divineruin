@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from session_data import CombatState
 
+from condition_sources import DeliveryRefused
 from conditions import get_condition_effects
 from spell_voice_rules import is_silenced
 
@@ -64,5 +65,5 @@ def spoken_buff_targets(
         if not no_spoken_buffs(active, state=state, actor_id=target_id):
             eligible.append(target_id)
     if not eligible:
-        raise ValueError("Inspired has no eligible recipients who can hear the spoken buff")
+        raise DeliveryRefused("Inspired has no eligible recipients who can hear the spoken buff")
     return eligible

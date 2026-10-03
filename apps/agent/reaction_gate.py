@@ -94,6 +94,12 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             raise ValueError("Malformed reaction window action_kind")
         if state.get_participant(window["actor_id"]) is None:
             raise ValueError("Reaction window actor is not a participant")
+        target_id = window["target_id"]
+        targeted = set(window["triggers"]) & (SELF_TARGETED_REACTION_WINDOWS | {"on_ally_hit", "on_ally_targeted"})
+        if (targeted or target_id is not None) and (
+            not isinstance(target_id, str) or not target_id or state.get_participant(target_id) is None
+        ):
+            raise ValueError("Reaction window target is not a participant")
     actor = state.get_participant(actor_id)
     if actor is None or actor.type != "player":
         raise ReactionUnavailable("only players can activate reactions")

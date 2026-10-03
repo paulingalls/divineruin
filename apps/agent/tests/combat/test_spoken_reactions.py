@@ -264,3 +264,17 @@ async def test_delivery_is_rechecked_after_awaited_player_lock(restriction):
             )
     persistence.update_player_resources.assert_not_awaited()
     assert not reaction_spend.is_spent(state.reactions_available["player_1"])
+
+
+@pytest.mark.parametrize("ability_id", ["cleric_shield_of_faith", "paladin_shield_of_faith", "oracle_shield_of_faith"])
+@pytest.mark.parametrize("target_id", [None, "absent", "", 1, True, [], {}])
+def test_targeted_window_integrity_does_not_depend_on_spoken_policy(ability_id, target_id):
+    state = reaction_state(ability_id)
+    assert state.open_window is not None
+    state.open_window["target_id"] = target_id
+    before = dict(state.reactions_available)
+    with pytest.raises(ValueError, match="target"):
+        reaction_gate.offered_reactions(state)
+    with pytest.raises(ValueError, match="target"):
+        reaction_gate.validate_reaction_activation(state, "player_1", ability_id)
+    assert state.reactions_available == before

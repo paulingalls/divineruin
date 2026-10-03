@@ -300,3 +300,103 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
         else:
             await travel_tools._travel_impl(ctx, "dest", "scenic", queries=queries, content=content)
     assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entry", ["held", "packet"])
+@pytest.mark.parametrize("corruption", ["policy", "spatial", "source"])
+async def test_resolution_preserves_loud_guard_integrity_errors(entry, corruption, monkeypatch):
+    from combat._helpers import _resolve_deps
+
+    import ability_voice_rules
+    import combat_packet
+    from combat_phase import ResolutionPacket
+
+    state = charm_state()
+    actor = state.participants[0]
+    actor.conditions = []
+    raw = {"type": "ability", "action": "warrior_taunt", "target_id": "other"}
+    if corruption == "policy":
+        monkeypatch.delitem(ability_voice_rules.POLICIES, "warrior_taunt")
+        message = "Unclassified"
+    elif corruption == "spatial":
+        state.spatial = None
+        message = "placement"
+    else:
+        actor.conditions = [{"type": "charmed", "source": "missing"}]
+        message = "not a combat participant"
+    deps = _resolve_deps()
+    ctx = make_context()
+    ctx.userdata.combat_state = state
+    with pytest.raises(ValueError, match=message):
+        if entry == "held":
+            combat_hold._is_wasted(state, {"actor_id": actor.id, "declaration": raw})
+        else:
+            await combat_packet._resolve_one_packet(
+                ctx.userdata,
+                state,
+                ResolutionPacket(actor.id, resolve_declaration(raw), 15),
+                mutations=deps["mutations"],
+                queries=deps["queries"],
+                resolver=deps["resolver"],
+                concentration_break_mod=deps["concentration_break_mod"],
+            )
+    deps["resolver"].resolve_attack.assert_not_called()
+    deps["mutations"].update_player_hp.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("restriction", ["silence", "charm"])
+async def test_combat_cast_uses_working_state_after_earlier_packet_changes(restriction):
+    from copy import deepcopy
+    from functools import partial
+    from types import SimpleNamespace
+
+    from _spell_casting_helpers import _known, _player
+
+    import spell_casting
+    import spells
+
+    pristine = charm_state()
+    actor = pristine.participants[0]
+    actor.conditions = []
+    if restriction == "silence":
+        assert pristine.spatial is not None
+        pristine.spatial["zones"] = {"quiet": {"kind": "silence", "center_id": "other", "radius_ft": 0}}
+    else:
+        actor.conditions = [{"type": "charmed", "source": "goblin_scout_1"}]
+    working = deepcopy(pristine)
+    if restriction == "silence":
+        assert working.spatial is not None
+        working.spatial["positions"]["other"]["x"] = 40
+    else:
+        working.participants[0].conditions = []
+    ctx = make_context()
+    ctx.userdata.combat_state = pristine
+    persistence = MagicMock(update_player_resources=AsyncMock())
+    mutations = MagicMock(update_player_resonance=AsyncMock())
+    caster = SimpleNamespace(
+        _resolve_cast=partial(
+            spell_casting._resolve_cast,
+            persistence_mod=persistence,
+            resonance_mutations_mod=mutations,
+            character_spells_mod=_known("arcane_bolt"),
+            ward_resolution_mod=MagicMock(resolve_scope_ward=AsyncMock(return_value=None)),
+        )
+    )
+    outcome = combat_ability.AbilityCastOutcome()
+    result = await combat_ability._resolve_ability_packet(
+        ctx.userdata,
+        working.participants[0],
+        resolve_declaration({"type": "ability", "action": "arcane_bolt", "target_id": "goblin_scout_1"}),
+        state=working,
+        cast_resolver=caster,
+        conn=object(),
+        player=_player(),
+        cast_outcome=outcome,
+    )
+    assert result["resolved"] is True
+    assert result["cast"]["effect"] == spells.get_spell("arcane_bolt").mechanics
+    assert set(outcome.results) == {"player_1"}
+    assert ctx.userdata.combat_state is pristine
+    assert pristine.to_dict() != working.to_dict()

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from session_data import CombatState
 
 import combat_spatial
+from condition_sources import DeliveryRefused
 
 AREA_SPELLS = frozenset(
     {
@@ -129,4 +130,4 @@ def is_silenced(state: CombatState | None, actor_id: str) -> bool:
 
 def require_speech(state: CombatState | None, actor_id: str) -> None:
     if is_silenced(state, actor_id):
-        raise ValueError(f"{actor_id} is silenced and cannot speak")
+        raise DeliveryRefused(f"{actor_id} is silenced and cannot speak")

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 import combat_spatial
 import conditions
+from condition_sources import DeliveryRefused as DeliveryRefused
 from condition_voice_rules import no_spoken_buffs
 from spell_voice_rules import is_silenced
 
@@ -18,10 +19,6 @@ class CommunicationKind(StrEnum):
     SPOKEN = "spoken"
     VISUAL = "visual"
     OTHER = "other"
-
-
-class DeliveryRefused(ValueError):
-    """Valid modeled state prevents an otherwise valid fictional delivery."""
 
 
 def actor_conditions(state: CombatState | None, actor_id: str, *, rows: dict | None = None) -> list[dict]:

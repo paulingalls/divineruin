@@ -294,6 +294,7 @@ async def _resolve_ability_packet(
         conn=conn,
         caster=caster,
         player=player,
+        combat_state=state,
         target_id=decl.target_id,
         suppress_resonance_changed=True,
     )

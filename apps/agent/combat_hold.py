@@ -34,6 +34,7 @@ from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from condition_restrictions import cannot_act
+from condition_sources import DeliveryRefused
 from declarations import DeclarationType, resolve_declaration
 from encounter_actions import action_kind
 from reaction_windows import POST_ROLL, PRE_ROLL
@@ -117,7 +118,7 @@ def _is_wasted(state, head: dict) -> bool:
     declaration = _held_declaration(head)
     try:
         combat_voice_rules.guard_declaration(state, actor, declaration)
-    except ValueError:
+    except DeliveryRefused:
         return True
     action = _find_action(actor, declaration.action)
     if (

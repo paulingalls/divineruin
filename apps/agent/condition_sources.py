@@ -1,6 +1,10 @@
 """Actor identity for source-bound conditions."""
 
 
+class DeliveryRefused(ValueError):
+    """Valid modeled conditions prevent an otherwise valid fictional action."""
+
+
 def charm_sources(active_conditions, participant_ids=None) -> tuple[str, ...]:
     sources = []
     for condition in active_conditions:
@@ -30,7 +34,7 @@ def require_hostile_targets(state, actor, target_ids, *, area=False) -> None:
     if no_hostile_source(
         actor.conditions, target_ids=target_ids, participant_ids={p.id for p in state.participants}, area=area
     ):
-        raise ValueError(f"{actor.name} is Charmed and cannot act hostilely against its source")
+        raise DeliveryRefused(f"{actor.name} is Charmed and cannot act hostilely against its source")
 
 
 def clear_charm_from_damage(active_conditions, source_id, damage):
