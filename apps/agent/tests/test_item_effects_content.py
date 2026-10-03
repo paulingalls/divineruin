@@ -153,6 +153,7 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "enraged",
         "inspired",
         "temporary_hollowed",
+        "iron_resolve",
     }
 
 
@@ -210,3 +211,8 @@ def test_structured_effect_token_sets_match_across_languages():
     assert ts["SAVE_NAMES"] == frozenset(VALID_SAVE_NAMES)
     assert ts["ADVANTAGE_VS"] == frozenset(_ADVANTAGE_VS)
     assert ts["EFFECT_KEYS"] == item_effects.EFFECT_KEYS
+
+
+def test_iron_resolve_cannot_be_blocked():
+    with pytest.raises(ValueError, match="iron_resolve"):
+        combat_traits([{"name": "Ward", "effects": [{"condition_immunities": ["iron_resolve"]}]}])

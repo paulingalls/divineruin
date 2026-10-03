@@ -234,7 +234,13 @@
       "effect": "Gain +2 to attack rolls and saving throws until the end of your next turn.",
       "trigger": "The first time you fall below 25% HP in an encounter.",
       "recharge": "per_encounter",
-      "status": "awaits_binding"
+      "status": "active",
+      "mechanics": {
+        "kind": "low_hp_surge",
+        "threshold": 0.25,
+        "amount": 2,
+        "duration_phases": 2
+      }
     },
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,

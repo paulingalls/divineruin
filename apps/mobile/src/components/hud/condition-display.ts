@@ -7,11 +7,11 @@ import { BrandColors } from "@/constants/theme";
 //
 // The closed vocab mirrors the agent's CONDITION_CATALOG keys (apps/agent/conditions.py). A
 // drift between the catalog and this map is caught by condition-display.test.ts, which owns
-// the 21 keys independently. `icon` is a plain string (a MaterialCommunityIcons glyph name),
+// the display keys independently. `icon` is a plain string (a MaterialCommunityIcons glyph name),
 // NOT the vector-icons name type — typing it here would pull @expo/vector-icons into this
 // module and break the bun import. The .tsx consumers cast it to the icon-name prop type.
 
-// The 21 status-condition types (conditions.py CONDITION_CATALOG keys), as a const tuple so
+// The displayed status-condition types (conditions.py CONDITION_CATALOG keys), as a const tuple so
 // the union below derives from it and the test can iterate the full set.
 export const CONDITION_TYPES = [
   "wounded",
@@ -35,6 +35,7 @@ export const CONDITION_TYPES = [
   "cursed",
   "inspired",
   "hollowed",
+  "iron_resolve",
 ] as const;
 
 export type ConditionType = (typeof CONDITION_TYPES)[number];
@@ -48,6 +49,7 @@ export interface ConditionDisplay {
 // Beneficial conditions take the Veil-teal hollow accent; harmful ones the danger ember;
 // neutral/structural ones the muted ash. Labels are short for a smartwatch-level HUD.
 export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
+  iron_resolve: { label: "Iron Resolve", icon: "shield-plus", color: BrandColors.hollow },
   wounded: { label: "Wounded", icon: "heart-broken", color: BrandColors.ember },
   stunned: { label: "Stunned", icon: "star-circle", color: BrandColors.ember },
   prone: { label: "Prone", icon: "arrow-down-bold-circle", color: BrandColors.ash },

@@ -1,6 +1,8 @@
 import {
   createRealOwnedSimulatorDeps,
   resolveOwnedSimulator,
+  lookupOwnedSimulator,
+  OwnedSimulatorProbeError,
 } from "../apps/mobile/scripts/owned-simulator";
 
 export interface SimulatorDevice {
@@ -13,10 +15,10 @@ export interface SimulatorDevice {
 export interface GateDeps {
   env: Record<string, string | undefined>;
   resolveOwnedSimulator: (requestedUdid?: string) => Promise<string>;
-  runSimctl: () => Promise<string>;
+  lookupOwnedSimulator: () => ReturnType<typeof lookupOwnedSimulator>;
   runAdb: () => Promise<string>;
   probeRequestedIos: (udid: string) => Promise<boolean>;
-  runMaestro: (udid: string | undefined, flows: string[]) => Promise<number>;
+  runMaestro: (device: string, flows: string[]) => Promise<number>;
 }
 
 export interface GateResult {
@@ -28,31 +30,9 @@ export interface GateResult {
 
 const OFFLINE_SAFE_FLOWS = ["launch.yaml"];
 const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml"];
-const SIMCTL_BOOTED_PATTERN = /\(Booted\)/;
-const ADB_DEVICE_LINE = /^\S+\s+device\b/m;
-
-interface DetectionResult {
-  present: boolean;
-  diagnostic?: string;
-}
-
 function isToolMissing(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /ENOENT|not found|No such file/i.test(message);
-}
-
-async function detect(
-  label: string,
-  probe: () => Promise<string>,
-  pattern: RegExp,
-): Promise<DetectionResult> {
-  try {
-    return { present: pattern.test(await probe()) };
-  } catch (error) {
-    if (isToolMissing(error)) return { present: false };
-    const message = error instanceof Error ? error.message : String(error);
-    return { present: false, diagnostic: `${label} probe failed: ${message}` };
-  }
 }
 
 function failure(stderr: string): GateResult {
@@ -86,6 +66,8 @@ export async function runGate(deps: GateDeps): Promise<GateResult> {
     }
   }
 
+  const targets: string[] = [];
+  let stdout = "";
   if (requestedUdid) {
     try {
       if (!(await deps.probeRequestedIos(requestedUdid))) {
@@ -95,34 +77,40 @@ export async function runGate(deps: GateDeps): Promise<GateResult> {
       const message = error instanceof Error ? error.message : String(error);
       return failure(`Requested iOS simulator probe failed for ${requestedUdid}: ${message}`);
     }
+    targets.push(requestedUdid);
   } else {
-    const [ios, android] = await Promise.all([
-      detect("xcrun simctl", deps.runSimctl, SIMCTL_BOOTED_PATTERN),
-      detect("adb devices", deps.runAdb, ADB_DEVICE_LINE),
-    ]);
-    if (!ios.present && !android.present) {
-      const diagnostics = [ios.diagnostic, android.diagnostic].filter((value): value is string =>
-        Boolean(value),
-      );
-      return {
-        exitCode: 0,
-        stdout:
-          "Maestro acceptance: skipped (no booted iOS simulator or attached Android device). " +
-          "Set REQUIRE_EMULATOR=1 to use the owned iOS simulator." +
-          diagnostics.map((diagnostic) => `\n  - ${diagnostic}`).join(""),
-        stderr: "",
-        maestroInvoked: false,
-      };
+    try {
+      const { name, device } = await deps.lookupOwnedSimulator();
+      if (device?.state === "Booted") targets.push(device.udid!);
+      else
+        stdout =
+          `Maestro acceptance: skipped owned iOS simulator ${name}. ` +
+          (device
+            ? `Boot it with xcrun simctl boot ${device.udid} && xcrun simctl bootstatus ${device.udid} -b.`
+            : "Provision it with bun run --cwd apps/mobile verify:native-build, then boot the owned simulator.");
+    } catch (error) {
+      if (!(error instanceof OwnedSimulatorProbeError))
+        return failure(`Owned iOS simulator lookup failed: ${String(error)}`);
+      stdout =
+        `Maestro acceptance: skipped owned iOS simulator ${error.simulatorName}. ` +
+        "Use bun run --cwd apps/mobile verify:native-build to provision and boot it.";
+      if (!isToolMissing(error.cause)) stdout += `\n  - ${error.message}`;
+    }
+    try {
+      const serial = (await deps.runAdb()).match(/^(\S+)\s+device\s*$/m)?.[1];
+      if (serial) targets.push(serial);
+    } catch (error) {
+      if (!isToolMissing(error))
+        stdout += `\n  - adb devices probe failed: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 
-  const exit = await deps.runMaestro(requestedUdid, flows);
-  return {
-    exitCode: typeof exit === "number" ? exit : 130,
-    stdout: "",
-    stderr: "",
-    maestroInvoked: true,
-  };
+  let exitCode = 0;
+  for (const device of targets) {
+    const exit = await deps.runMaestro(device, flows);
+    if (exitCode === 0) exitCode = typeof exit === "number" ? exit : 130;
+  }
+  return { exitCode, stdout, stderr: "", maestroInvoked: targets.length > 0 };
 }
 
 async function spawnText(command: string[]): Promise<string> {
@@ -147,14 +135,14 @@ async function spawnInherit(command: string[], cwd: string): Promise<number> {
 }
 
 export function maestroCommand(
-  udid: string | undefined,
+  device: string,
   flows: string[],
   maestroDir: string,
   appLaunchUrl = "divineruin://",
 ): string[] {
   return [
     "maestro",
-    ...(udid ? [`--device=${udid}`] : []),
+    `--device=${device}`,
     "test",
     "-e",
     `APP_LAUNCH_URL=${appLaunchUrl}`,
@@ -172,7 +160,7 @@ export function createRealGateDeps(
   return {
     env,
     resolveOwnedSimulator: (requested) => resolveOwnedSimulator(ownedDeps, requested),
-    runSimctl: () => spawnText(["xcrun", "simctl", "list", "devices"]),
+    lookupOwnedSimulator: () => lookupOwnedSimulator(ownedDeps),
     runAdb: () => spawnText(["adb", "devices"]),
     probeRequestedIos: async (udid) => requestedDeviceIsBooted(await listSimulatorDevices(), udid),
     runMaestro: (udid, flows) =>

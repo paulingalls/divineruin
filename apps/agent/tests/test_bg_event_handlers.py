@@ -165,6 +165,7 @@ def test_contrary_loss_queues_displeasure_once_on_same_session():
     assert queued.is_displeasure
     handle_events([event], sd, speech, False, {}, [])
     assert len(speech) == 1
+    assert sd.displeasure_heard_by == set()
 
 
 def test_neglect_and_teammate_loss_leave_displeasure_available():
@@ -173,6 +174,7 @@ def test_neglect_and_teammate_loss_leave_displeasure_available():
     handle_events([_favor_event(-5, "neglect")], sd, speech, False, {}, [])
     handle_events([_favor_event(-5, "Patron action 'fled_battle'", "player_2")], sd, speech, False, {}, [])
     assert speech == []
+    assert sd.displeasure_heard_by == set()
     handle_events([_favor_event(-5, "Patron action 'fled_battle'")], sd, speech, False, {}, [])
     assert len(speech) == 1
 

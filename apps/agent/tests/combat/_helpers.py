@@ -12,6 +12,7 @@ import combat_turn
 import reaction_spend
 from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
+from party_state import PartyState
 from session_data import CombatParticipant, CombatState
 
 # High enough to pass the class-level gate for every reaction the interrupt tests activate.
@@ -277,6 +278,9 @@ def _ctx_at_resolution(*, player_hp=25, enemy_hp=7, state=None, room=None, react
         if p.type == "player" and p.has_reaction_ability is True
     }
     ctx.userdata.combat_state = state
+    for participant in state.participants:
+        if participant.type == "player" and not ctx.userdata.party.contains(participant.id):
+            ctx.userdata.party.members.extend(PartyState.solo(participant.id, patron_id="none").members)
     return ctx
 
 

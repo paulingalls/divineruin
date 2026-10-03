@@ -38,6 +38,7 @@ async def get_inventory_snapshot(player_id: str, *, conn=None) -> dict:
         LEFT JOIN items i ON i.id = pi.item_id
         LEFT JOIN materials_catalog m ON m.id = pi.item_id
         WHERE p.player_id = $1
+        ORDER BY pi.item_id
         """,
         player_id,
     )

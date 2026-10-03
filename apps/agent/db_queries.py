@@ -223,6 +223,7 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
         LEFT JOIN items i ON i.id = pi.item_id
         LEFT JOIN materials_catalog m ON m.id = pi.item_id
         WHERE pi.player_id = $1
+        ORDER BY pi.item_id
         """,
         player_id,
     )

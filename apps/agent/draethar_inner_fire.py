@@ -18,12 +18,13 @@ Mirrors the veil_ward_tools seam: module-injection keyword args (db_mod/queries_
 hp_mutations_mod/resonance_mutations_mod/resonance_events_mod/racial_mod/dice_mod) for test
 mocking, a single db.transaction() block (the participant's HP and its zero-HP transition are
 written inside it), and a post-commit in-memory sync + RESONANCE_CHANGED push (mirroring the
-spell cast path). The whole call runs under session.combat_state_lock: it mutates the live
-CombatState, and the paths that adopt a copy of it would otherwise erase the burn.
+spell cast path). The whole call runs under session.combat_state_lock and adopts its working CombatState
+only after commit, so other paths cannot erase the burn and failed writes cannot leak it.
 """
 
 import json
 import logging
+from copy import deepcopy
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -35,9 +36,13 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import dice
+import event_types as E
 import racial_resonance
 import resonance_events
 from combat_support import _handle_hp_zero, _publish_sounds
+from combat_ui_update import build_combat_ui_update
+from game_events import publish_game_event
+from kaelen_gift import trigger_iron_resolve
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -46,20 +51,7 @@ _DRAETHAR = "draethar"
 
 
 async def _inner_fire_impl(context: RunContext[SessionData], **di) -> str:
-    """Serialise the burn against the paths that ADOPT a copy of the combat state.
-
-    resolve_phase and request_death_save both snapshot ``combat_state``, await a transaction, then
-    rebind the session to the snapshot. This tool writes the LIVE participant in place, so an
-    unlocked burn landing in that gap is erased wholesale on adoption — and since story-026 routed
-    it through ``_handle_hp_zero`` that is no longer one HP field but the fall itself
-    (``is_fallen``/``is_dead``/``type``/``conditions``), while the once-per-encounter spend stays
-    gone. Holding the lock for the WHOLE call also means the gates below re-read a combat_state a
-    concurrent end_combat has already cleared, and refuse honestly rather than burning a fight
-    that is over.
-
-    Not reentrant, and safe: ``activate`` dispatches here directly (activate_tools), so no lock
-    holder reaches this tool.
-    """
+    """Hold the lock through commit and adoption so another state copy cannot erase the burn."""
     context.disallow_interruptions()
     session: SessionData = context.userdata
     async with session.combat_state_lock:
@@ -90,13 +82,14 @@ async def _inner_fire_locked(
     if member.draethar_inner_fire_used:
         raise ToolError("Inner Fire is already spent this encounter.")
 
+    working = deepcopy(session.combat_state)
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
         if player.get("race") != _DRAETHAR:
             raise ToolError("Only a Draethar can use Inner Fire.")
-        participant = session.combat_state.get_participant(player_id)
+        participant = working.get_participant(player_id)
         if participant is None:
             raise ToolError("Inner Fire requires the caster to be in the encounter.")
 
@@ -107,22 +100,22 @@ async def _inner_fire_locked(
         new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
         overkill = max(0, fire_damage - participant.hp_current)
-        new_hp = max(0, participant.hp_current - fire_damage)
+        hp_before = participant.hp_current
+        new_hp = max(0, hp_before - fire_damage)
         session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
+        gift_triggered = trigger_iron_resolve(session, participant, hp_before)
 
         # The zero-HP transition has ONE owner. Self-damage knocks on the same door as a blow;
-        # bypassing it is what left a burned-out Draethar at 0 HP with is_fallen False, invisible
-        # to death_saves_due and to request_death_save (bug 16c5f8a0). In-tx, on the live
-        # participant, with the rollback window that opens: note c4607772.
+        # bypassing it leaves a burned-out Draethar invisible to death-save consumers.
         sounds: list[str] = []
         rose_hollowed = False
         if new_hp <= 0:
             _, rose_hollowed, _ = _handle_hp_zero(
                 session,
-                session.combat_state,
+                working,
                 participant,
                 overkill=overkill,
                 was_fallen=was_fallen,
@@ -136,6 +129,7 @@ async def _inner_fire_locked(
         if participant.type == "player":
             await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
 
+    session.combat_state = working
     # Transaction committed — sync the in-memory SSOTs and push the HUD state.
     resonance_reduced = member.resonance.current - new_resonance
     member.resonance.current = new_resonance
@@ -161,8 +155,17 @@ async def _inner_fire_locked(
         # this an idempotent re-write of the already-saved state.
         await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
 
+    if gift_triggered:
+        await publish_game_event(
+            session.room,
+            E.COMBAT_UI_UPDATE,
+            build_combat_ui_update(session.combat_state),
+            event_bus=session.event_bus,
+        )
+
     return json.dumps(
         {
+            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
             # The participant's HP, not the burn's arithmetic: a Hollowed rise restores the echo

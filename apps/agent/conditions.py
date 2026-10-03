@@ -4,8 +4,7 @@ Conditions are the combat state layer that automatically factors into rolls:
 a Poisoned fighter swings at disadvantage, an Exhausted one eats a flat penalty
 per stack, a Stunned one loses the phase entirely. This module is the single
 deterministic source for *what each condition means* (``CONDITION_CATALOG``) and
-the pure functions that apply, remove, tick, and aggregate them. It is pure: it
-reads only its explicit arguments and never touches IO, RNG, DB, or combat state.
+the functions that apply, remove, tick, and aggregate them.
 
 An *active* condition is a plain ``dict`` of JSON-native values — ``{"type",
 "duration", "source", "stacks", "stage"?}`` — so it round-trips through the
@@ -19,6 +18,8 @@ Catalog and ordering mirror docs/game_mechanics/game_mechanics_combat.md
 """
 
 from dataclasses import dataclass, field
+
+from _gods_content import load_gods
 
 
 @dataclass(frozen=True)
@@ -99,9 +100,13 @@ class ConditionEffects:
     bonus_dice: tuple[BonusDie, ...] = ()
 
 
-# The 21-condition catalog. Keys are frozen snake_case labels (same naming
-# discipline as the dramatic-dice catalog); emitters and resolvers key off them.
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
+    "iron_resolve": ConditionSpec(
+        clearance="end_of_next_turn",
+        check_modifier=next(row for row in load_gods() if row["god_id"] == "kaelen")["layer_1_gift"]["mechanics"][
+            "amount"
+        ],
+    ),
     # --- Combat conditions ---
     "wounded": ConditionSpec(
         clearance="long_rest",

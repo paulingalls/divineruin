@@ -1,8 +1,6 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
-#                    # LIVE since sprint-049 open: executor, planner, slate-reviewer and fixer
-#                    # are codex/*, so this posture now governs four roles.
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
@@ -29,22 +27,20 @@ profile_target: 806  # token budget the shipped role profiles are written agains
 
 roles:               # harness/model[/effort]; the lead overrides per story in plan.md
                      # effort: low | medium | high | xhigh | max
-                     # SPRINT-049 OPEN: the write-and-fix roles moved to codex; the
-                     # judgment roles stayed claude. The split is the experiment.
-  lead: claude/claude-opus-5-5/medium
+  lead: codex/gpt-6-astra/medium
   executor: codex/gpt-6.1-sol/medium
-  reviewer: claude/claude-opus-5-5/medium       # the wall. sprint-047 open: the shipped slate-reviewer
+  reviewer: codex/gpt-6-astra/medium       # the wall. sprint-047 open: the shipped slate-reviewer
                                    # charter found a false construction premise, a vacuous
                                    # AC and an unusable grep gate that the lead's own pass
                                    # missed.
-  plan-reviewer: claude/claude-opus-5-5/medium  # scripts/plan_review.py; a teammate runs it itself
+  plan-reviewer: codex/gpt-6-astra/medium  # scripts/plan_review.py; a teammate runs it itself
   planner: codex/gpt-6.1-sol/medium  # read-only implementation plan for a multi-file story
   slate-reviewer: codex/gpt-6.1-sol/medium  # the fresh reader over the sprint slate
-  card-refresher: claude/claude-opus-5-5/low      # rewrites a card's stale HEAD claims before it is minted
-  finder: claude/claude-opus-5-5/medium     # the four round-1 stages of `close.py sprint <id> review`;
-  verifier: claude/claude-opus-5-5/medium   # each falls back to `reviewer` when its key is absent, so
+  card-refresher: codex/gpt-6.1-sol/low      # rewrites a card's stale HEAD claims before it is minted
+  finder: codex/gpt-6-astra/medium     # the four round-1 stages of `close.py sprint <id> review`;
+  verifier: codex/gpt-6-astra/medium   # each falls back to `reviewer` when its key is absent, so
   fixer: codex/gpt-6.1-sol/medium  # an older config keeps working untouched.
-  closer: claude/claude-opus-5-5/medium   # verifier is adversarial (kills false positives); closer
+  closer: codex/gpt-6-astra/medium   # verifier is adversarial (kills false positives); closer
                                # is judgment over an already-verified set.
 
 tests:

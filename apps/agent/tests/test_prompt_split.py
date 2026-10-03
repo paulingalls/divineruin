@@ -106,7 +106,7 @@ def render_prompts():
     return result
 
 
-def test_prompts_match_pre_split_baseline():
+def test_prompts_match_reviewed_baseline():
     expected = json.loads(BASELINE.read_text())
     actual = render_prompts()
     assert len(expected) == 49
@@ -153,3 +153,8 @@ def test_moved_names_have_one_home_and_importers_are_current():
 def test_prompt_modules_leave_room_under_cap():
     for name in ("system_prompts", "companion_prompts", "mode_prompts"):
         assert len((AGENT_DIR / f"{name}.py").read_text().splitlines()) <= 400, name
+
+
+if __name__ == "__main__":
+    # Run with PYTHONPATH=apps/agent from the repo root; review the resulting diff.
+    BASELINE.write_text(json.dumps(render_prompts(), indent=2, ensure_ascii=False, sort_keys=True) + "\n")
