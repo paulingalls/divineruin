@@ -8,6 +8,7 @@ the DM does after whichever commit just landed.
 from dataclasses import replace
 
 import combat_grapple
+import combat_hollow_resonance
 import combat_phase
 import combat_recharge
 import conditions
@@ -144,14 +145,7 @@ async def wrap_phase(
             combat_phase._reset_legendary_actions(state)
             wrap_adv = replace(wrap_adv, legendary_available=combat_phase._boss_legendaries(state))
 
-    # Each in-combat ability GENERATES Resonance during resolution (beat 2); seed each caster's
-    # pending value with the cast's post-generation total so the WRAP decay below sheds from it
-    # (net = standing + generated - decay), not the stale standing value. new_resonance is None
-    # for a cantrip/floored cast (no write) — that member is omitted, leaving its standing value
-    # as the decay base.
-    pending_by_member = {
-        mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
-    }
+    pending_by_member = combat_hollow_resonance.take_totals(state)
 
     ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
     if ended_outcome is None:

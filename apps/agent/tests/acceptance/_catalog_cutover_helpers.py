@@ -13,10 +13,10 @@ import pytest
 from acceptance.seeds import seed_player
 from sample_fixtures import CONTENT_ROOT, make_context, make_mock_room
 
-import combat_init
 import combat_resolution
 import db
 import db_mutations
+import mode_tools
 from companion_profiles import get_companion_profile
 from creation_rules import build_character_data
 from hp_scaling import calculate_max_hp
@@ -46,6 +46,7 @@ ROLE_PINS = {
     "standard": (1, 0, 0, 1, 0),
     "elite": (1.5, 1, 1, 1.25, 1),
     "boss": (2, 2, 2, 1.5, 2),
+    "named": (1, 0, 0, 1, 0),
 }
 
 
@@ -70,11 +71,23 @@ async def started(reset_db_pool, monkeypatch):
     async def start(encounter_id, level=None, companion=None, player_class="warrior"):
         pid = f"cutover_{uuid4().hex}"
         await seed_player(pool, player_id=pid, class_="warrior")
-        level = level or TARGETS[encounter_id][0]
+        if encounter_id in TARGETS:
+            recommended = TARGETS[encounter_id][0]
+        elif encounter_id == "hollow_choir":
+            recommended = 16
+        else:
+            raise ValueError(f"unknown diagnostic encounter {encounter_id!r}")
+        level = level or recommended
         created = build_character_data(
             "Strength reference", "draethar", player_class, None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
         )
         created["player_id"] = pid
+        import character_spells
+        from archetypes import get_archetype_chassis
+        from creation_rules import select_starting_spells
+
+        for spell_id in select_starting_spells(player_class, get_archetype_chassis(player_class).magic_source):
+            await character_spells.record_learned(pid, spell_id, "training", is_prepared=True)
         await pool.execute("UPDATE players SET data = $2::jsonb WHERE player_id = $1", pid, json.dumps(created))
         pending_events = []
         async with pool.acquire() as conn, conn.transaction():
@@ -92,6 +105,20 @@ async def started(reset_db_pool, monkeypatch):
             pid,
             json.dumps({"current": hp, "max": hp}),
         )
+        from rules_engine import calculate_max_pools
+
+        pools = calculate_max_pools(
+            player_class, level, {k: attribute_modifier(v) for k, v in created["attributes"].items()}
+        )
+        for pool_name in ("stamina", "focus"):
+            maximum = getattr(pools, pool_name)
+            if maximum is not None:
+                await pool.execute(
+                    "UPDATE players SET data = jsonb_set(data, ARRAY[$2], $3::jsonb) WHERE player_id = $1",
+                    pid,
+                    pool_name,
+                    json.dumps({"current": maximum, "max": maximum}),
+                )
         ctx = make_context(pid, room=make_mock_room())
         if companion:
             profile = get_companion_profile(companion)
@@ -103,7 +130,7 @@ async def started(reset_db_pool, monkeypatch):
             "combat_resolution.roll_initiative",
             side_effect=lambda entries: roll_initiative(entries, rng=random.Random(138)),
         ):
-            raw = await combat_init._start_combat_impl(ctx, encounter_id, "Catalog entry.")
+            raw = await mode_tools._enter_mode_impl(ctx, "combat", encounter_id, "Catalog entry.")
         return ctx, json.loads(raw[1])
 
     yield start

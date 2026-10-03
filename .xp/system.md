@@ -16,9 +16,9 @@ REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
-Story tier: `bun run lint`; focused behavioral checks run in card Verify.
-Broad regression runs at sprint close. Python lane: `bun run test:python`
-(parallel `-n 8`) — never a bare serial `uv run pytest`.
+Story Verify runs the card’s focused behavioral checks.
+Story tier: `bun run lint` (static checks). Broad regression runs only in the
+full tier once at sprint close.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
 its boundary.
@@ -33,7 +33,10 @@ its boundary.
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
-API cost) and runs only at the comprehensive push or sprint-close boundary.
+API cost). Paid `real_llm`, `openai_real_llm` and `live_voice` lanes require
+separate concrete per-run human approval; push or sprint-close is not approval.
+Owned deterministic LLM/STT/TTS seams may prove command transport and mechanics
+without certifying paid speech-recognition accuracy.
 
 **Layout**:
 - `apps/agent` — Python DM agent: LiveKit voice agents, OpenAI strict tool calls,

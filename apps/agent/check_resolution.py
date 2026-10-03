@@ -7,6 +7,8 @@ import random
 from dataclasses import dataclass
 
 from _gods_content import load_gods
+from condition_bonus import roll_bonus_dice as roll_bonus_dice
+from condition_voice_rules import auto_fail_hearing_perception
 from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -68,6 +70,7 @@ class SkillCheckResult:
     # condition. Empty when the roller had no applicable beneficial condition.
     consumed_conditions: tuple[str, ...] = ()
     gift_name: str | None = None
+    auto_fail: bool = False
 
 
 @dataclass(frozen=True)
@@ -165,33 +168,6 @@ def _apply_condition_modifiers(effects: ConditionEffects, scopes: set[str]) -> t
     disadvantage = bool(scopes & effects.disadvantage_scopes)
     auto_fail = bool(scopes & effects.auto_fail_saves)
     return effects.check_modifier, advantage, disadvantage, auto_fail
-
-
-def roll_bonus_dice(
-    effects: ConditionEffects,
-    roll_kind: str,
-    rng: random.Random | None = None,
-) -> tuple[int, tuple[str, ...]]:
-    """Roll every active beneficial bonus die whose scopes cover this roll KIND (M4.8 story-002).
-
-    Returns ``(summed_bonus, consumed_condition_types)``. ``roll_kind`` is the roll's kind token —
-    ``"attack"`` / ``"save"`` / ``"check"`` — matched against each ``BonusDie.scopes`` (Blessed =
-    attack+save, Inspired = any). A sibling to ``_apply_condition_modifiers``: that classifies
-    scopes (no rng), this rolls the dice. Shared by all three resolvers (skill/attack/save) so the
-    +1d4 fold is identical. Takes a pre-aggregated ConditionEffects so each resolver computes
-    get_condition_effects exactly once and shares it with the scope classifier.
-
-    Consumes rng ONLY when a die matches — a roller with no beneficial condition rolls nothing, so
-    existing seeded-rng resolver tests are unshifted. Pure: it SIGNALS which conditions were
-    consumed (the caller's result packet carries the signal); the removal/persist is story-003.
-    """
-    total = 0
-    consumed: list[str] = []
-    for bonus in effects.bonus_dice:
-        if roll_kind in bonus.scopes:
-            total += dice_roll(bonus.dice, rng=rng).total
-            consumed.append(bonus.source)
-    return total, tuple(consumed)
 
 
 # --- Check resolution ---
@@ -316,8 +292,21 @@ def _resolve_skill_check_impl(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    hearing_only: bool,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
+    if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
+        return SkillCheckResult(
+            skill=skill_lower,
+            roll=0,
+            modifier=0,
+            total=0,
+            dc=dc,
+            success=False,
+            margin=-dc,
+            narrative_hint="You cannot hear; this hearing-only Perception check automatically fails",
+            auto_fail=True,
+        )
     attr = SKILLS.get(skill_lower)
     if attr is None:
         raise ValueError(f"Unknown skill: '{skill}'")
@@ -333,8 +322,11 @@ def _resolve_skill_check_impl(
     # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
-    effects = get_condition_effects(player_data.get("conditions") or [])
+    effects = get_condition_effects(
+        [condition for condition in player_data.get("conditions") or [] if condition["type"] != "iron_resolve"]
+    )
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
+    disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
     # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
     # any roll) applies but Blessed (attack+save only) does not. Skip it on a beyond-tier task that
     # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail
@@ -343,7 +335,9 @@ def _resolve_skill_check_impl(
     if _check_auto_fail(dc, tier):
         bonus, consumed = 0, ()
     else:
-        bonus, consumed = roll_bonus_dice(effects, "check", rng=rng)
+        bonus, consumed = roll_bonus_dice(
+            effects, "check", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True)
+        )
 
     gift_name = None
     if (
@@ -392,8 +386,11 @@ def resolve_skill_check(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    hearing_only: bool,
 ) -> SkillCheckResult:
-    return _resolve_skill_check_impl(player_data, skill, dc_for_tier(difficulty), rng, ally_present=ally_present)
+    return _resolve_skill_check_impl(
+        player_data, skill, dc_for_tier(difficulty), rng, ally_present=ally_present, hearing_only=hearing_only
+    )
 
 
 def resolve_skill_check_dc(
@@ -403,13 +400,14 @@ def resolve_skill_check_dc(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    hearing_only: bool,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
     Use when the DC is stored as a number (e.g. hidden element DCs)
     rather than a difficulty tier string.
     """
-    return _resolve_skill_check_impl(player_data, skill, dc, rng, ally_present=ally_present)
+    return _resolve_skill_check_impl(player_data, skill, dc, rng, ally_present=ally_present, hearing_only=hearing_only)
 
 
 # --- Skill advancement ---

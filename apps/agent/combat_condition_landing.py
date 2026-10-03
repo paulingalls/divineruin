@@ -1,4 +1,5 @@
 import combat_grapple
+import condition_voice_rules
 import conditions
 from combat_participant import CombatParticipant
 from condition_restrictions import cannot_act
@@ -27,15 +28,14 @@ def _land_condition_on_one(
         or (cond_type == "prone" and cond_target.prone_immunity)
     ):
         return False
-    cond_target.conditions = conditions.apply_condition(
-        cond_target.conditions, cond_type, source=source, duration=duration
-    )
-    if (
-        duration is not None
-        and not attacker.is_ally
-        and attacker.type == "enemy"
-        and (cond_target.type != "enemy" or cond_target.is_ally)
+    if cond_type == "inspired" and condition_voice_rules.no_spoken_buffs(
+        cond_target.conditions, state=state, actor_id=cond_target.id
     ):
+        return False
+    cond_target.conditions = conditions.apply_condition(
+        cond_target.conditions, cond_type, source=attacker.id if cond_type == "charmed" else source, duration=duration
+    )
+    if duration is not None and not attacker.is_ally and attacker.type == "enemy":
         for condition in cond_target.conditions:
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number

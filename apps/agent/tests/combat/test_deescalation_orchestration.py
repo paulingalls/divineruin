@@ -17,64 +17,17 @@ import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod
 from combat._helpers import _resolve_round as _resolve_combat_round
 from sample_fixtures import FixedRng, make_context
+from voice_condition_fixtures import _DIPLOMAT, _decl, _make_group_state, place_actors
 
 import combat_resolution
 import combat_turn
 from combat_deescalation import MAX_DEESCALATION_ROUNDS, _gate_deescalation, _resolve_deescalation_packet
-from declarations import DeclarationType
 from session_data import CombatParticipant, CombatState
-from tools._helpers import SAMPLE_PLAYER
 
 
 def _d20(face: int):
     """A check_resolution.dice_roll stand-in forcing the persuasion d20 to `face` (reads .total)."""
     return SimpleNamespace(total=face)
-
-
-# charisma 16 -> +3; persuasion untrained -> the round's argument_total is FixedRng(d20) + 3.
-_DIPLOMAT = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16}, "focus": {"current": 20}}
-
-
-def _make_group_state(*, tags_a=("pragmatic",), tags_b=("suspicious",), enemy_a_fallen=False):
-    """A CombatState with ONE Diplomat and TWO living enemies carrying (by default) DIFFERENT
-    resistance profiles, so a single argument round shifts each enemy's disposition independently."""
-    return CombatState(
-        combat_id="combat_group_test",
-        participants=[
-            CombatParticipant(
-                id="player_1", name="Kael", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
-            ),
-            CombatParticipant(
-                id="enemy_a",
-                name="Mawling A",
-                type="enemy",
-                initiative=12,
-                hp_current=18,
-                hp_max=18,
-                ac=13,
-                attributes={"wisdom": 10},
-                resistance_tags=list(tags_a),
-                is_fallen=enemy_a_fallen,
-            ),
-            CombatParticipant(
-                id="enemy_b",
-                name="Mawling B",
-                type="enemy",
-                initiative=10,
-                hp_current=18,
-                hp_max=18,
-                ac=13,
-                attributes={"wisdom": 10},
-                resistance_tags=list(tags_b),
-            ),
-        ],
-        initiative_order=["player_1", "enemy_a", "enemy_b"],
-        location_id="ruins",
-    )
-
-
-def _decl(argument_type="reason"):
-    return SimpleNamespace(type=DeclarationType.ABILITY, action="de_escalate", argument_type=argument_type)
 
 
 async def _resolve_round(state, player, rng, *, argument_type="reason"):
@@ -304,11 +257,13 @@ def _e2e_group_state(combat_id, player_id, enemy_ids_tags):
             )
         )
         init -= 1
-    return CombatState(
-        combat_id=combat_id,
-        participants=parts,
-        initiative_order=[player_id] + [eid for eid, _ in enemy_ids_tags],
-        location_id="ruins",
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=parts,
+            initiative_order=[player_id] + [eid for eid, _ in enemy_ids_tags],
+            location_id="ruins",
+        )
     )
 
 
@@ -362,6 +317,7 @@ class TestDeescalationE2EPhaseLoop:
         with (
             patch("check_resolution.dice_roll", return_value=_d20(20)),
             patch("ability_persistence.update_player_resources", AsyncMock()),
+            patch("db_mutations_conditions.read_player_conditions", AsyncMock(return_value=[])),
         ):
             # Round 1: both enemies only reach +1 -> combat continues (a JSON response, not a handoff).
             await combat_turn._declare_phase_impl(ctx, decls, mutations=deps["mutations"])

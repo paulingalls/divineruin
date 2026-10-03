@@ -9,6 +9,7 @@ from combat.test_deescalation_orchestration import _decl, _make_group_state
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import FixedRng as ToolRng
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import check_resolution
 from _gods_content import load_gods
@@ -40,17 +41,17 @@ def _live_party(session, *identities):
 
 def test_bond_uses_content_amount_only_with_an_ally(monkeypatch):
     solo = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False, hearing_only=False
     )
     together = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
     )
     assert together.total - solo.total == 1
     assert together.gift_name == "Hearthkeeper's Bond"
     assert solo.gift_name is None
     for patron in ("veythar", None):
         other = check_resolution._resolve_skill_check_impl(
-            player(patron), "athletics", 13, ToolRng(10), ally_present=True
+            player(patron), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
         )
         assert other.total == solo.total
         assert other.gift_name is None
@@ -59,7 +60,7 @@ def test_bond_uses_content_amount_only_with_an_ally(monkeypatch):
     next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]["amount"] = 2
     monkeypatch.setattr(check_resolution, "load_gods", lambda: rows)
     stronger = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
     )
     assert stronger.total - solo.total == 2
 
@@ -73,11 +74,11 @@ def _with_aelora_gift(monkeypatch, field, value):
 
 def test_inactive_bond_grants_nothing(monkeypatch):
     solo = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False, hearing_only=False
     )
     _with_aelora_gift(monkeypatch, "status", "awaits_binding")
     dormant = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True
+        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
     )
     assert dormant.total == solo.total
     assert dormant.gift_name is None
@@ -86,12 +87,14 @@ def test_inactive_bond_grants_nothing(monkeypatch):
 def test_unknown_bond_requirement_fails_loud(monkeypatch):
     _with_aelora_gift(monkeypatch, "requires", "ally_in_combat")
     with pytest.raises(ValueError, match="ally_in_combat"):
-        check_resolution._resolve_skill_check_impl(player("aelora"), "athletics", 13, ToolRng(10), ally_present=True)
+        check_resolution._resolve_skill_check_impl(
+            player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+        )
 
 
 def test_beyond_tier_check_does_not_name_unapplied_bond():
     result = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 28, ToolRng(10), ally_present=True
+        player("aelora"), "athletics", 28, ToolRng(10), ally_present=True, hearing_only=False
     )
     assert result.gift_name is None
 
@@ -272,6 +275,7 @@ async def test_guest_deescalation_uses_guest_presence_when_host_drops():
     async def invoke():
         state = _make_group_state()
         state.participants[0].id = "guest"
+        place_actors(state)
         return await _resolve_deescalation_packet(
             session,
             state.participants[0],

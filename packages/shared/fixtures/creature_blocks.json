@@ -3289,6 +3289,345 @@
           "greyvale"
         ]
       }
+    },
+    {
+      "name": "structured_save_action",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "WIS",
+            "dc": 18,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      }
+    },
+    {
+      "name": "choir_catalog",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      }
     }
   ],
   "invalid": [
@@ -5854,7 +6193,7 @@
         ]
       },
       "expected": [
-        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack')"
+        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'charm', 'silence', 'spell_redirect')"
       ]
     },
     {
@@ -27452,6 +27791,4119 @@
       "expected": [
         "actives[0].applies_condition: invalid"
       ]
+    },
+    {
+      "name": "structured_save_bad_resolution",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "bogus",
+            "save": "WIS",
+            "dc": 18,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].resolution: invalid"
+      ],
+      "field": "resolution"
+    },
+    {
+      "name": "structured_save_bad_save",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "BAD",
+            "dc": 18,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].save: invalid"
+      ],
+      "field": "save"
+    },
+    {
+      "name": "structured_save_bad_dc",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "WIS",
+            "dc": true,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].dc: expected integer"
+      ],
+      "field": "dc"
+    },
+    {
+      "name": "structured_save_bad_save_success_damage",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "WIS",
+            "dc": 18,
+            "save_success_damage": "full",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].save_success_damage: invalid"
+      ],
+      "field": "save_success_damage"
+    },
+    {
+      "name": "structured_save_bad_conditions_on_failure",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "WIS",
+            "dc": 18,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 0
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].conditions_on_failure.duration: invalid"
+      ],
+      "field": "conditions_on_failure"
+    },
+    {
+      "name": "structured_save_bad_conditions_on_success",
+      "block": {
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch",
+            "kind": "attack",
+            "resolution": "save",
+            "save": "WIS",
+            "dc": 18,
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "unknown",
+                "duration": 1
+              }
+            ]
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "expected": [
+        "attacks[0].conditions_on_success.applies_condition: invalid"
+      ],
+      "field": "conditions_on_success"
+    },
+    {
+      "name": "choir_bad_0_resolution",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "roll",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "attacks[0].resolution: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_1_save_success_damage",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "full",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "attacks[0].save_success_damage: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_2_conditions_on_failure",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": true
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "attacks[0].conditions_on_failure.duration: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_3_conditions_on_success",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10,
+                "extra": 1
+              }
+            ]
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "attacks[0].conditions_on_success: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_4_to_hit",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": true,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "attacks[0].to_hit: expected integer"
+      ]
+    },
+    {
+      "name": "choir_bad_5_duration_dice",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d6",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[0].duration_dice: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_6_movement",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "none"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[0].duration_dice: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_7_dc",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": true,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[0].dc: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_8_recharge",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": true
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[0].recharge.threshold: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_9_damage",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source",
+            "damage": "3d8"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[0].damage: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_10_rounds",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": true
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[2].radius_ft: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_11_radius_ft",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": "30",
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "actives[2].radius_ft: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_12_trigger",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "any_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "reactions[0].trigger: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_13_redirect",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": 16,
+            "trigger": "verbal_spell",
+            "redirect": "enemy"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "reactions[0].trigger: invalid"
+      ]
+    },
+    {
+      "name": "choir_bad_14_dc",
+      "block": {
+        "id": "hollow_choir",
+        "name": "The Choir",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A moving zone of auditory hallucination with no visible form.",
+        "level": 16,
+        "hp": 200,
+        "ac": 18,
+        "speed": 30,
+        "attributes": {
+          "STR": 1,
+          "DEX": 18,
+          "CON": 18,
+          "INT": 14,
+          "WIS": 20,
+          "CHA": 22
+        },
+        "save_proficiencies": [
+          "WIS",
+          "CHA",
+          "CON"
+        ],
+        "attacks": [
+          {
+            "name": "Memory Scream",
+            "type": "area",
+            "reach": 60,
+            "to_hit": 0,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 18; failed save also Stunned 1 round. The Choir rips out and distorts a memory.",
+            "audio": "hlw_memory_scream",
+            "save": "WIS",
+            "dc": 18,
+            "resolution": "save",
+            "save_success_damage": "none",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": []
+          },
+          {
+            "name": "Dissonant Chord",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d10+6",
+            "damage_type": "psychic",
+            "special": "CON save DC 18 or Deafened 1 minute.",
+            "audio": "hlw_dissonant_chord",
+            "save": "CON",
+            "dc": 18,
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ],
+            "conditions_on_success": []
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "No Physical Form",
+            "description": "Immune to slashing, piercing, and bludgeoning; only psychic, radiant, thunder, or force harms it. Cannot be grappled, restrained, or targeted by touch spells.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Aura of Lost Voices",
+            "description": "Within 200 yards, WIS save DC 15 at each turn start or lose concentration. Insight, Perception, and Investigation have disadvantage outside combat.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Memory Predator",
+            "description": "Gravitates toward strong fear, grief, love, or rage; emotionally engaged creatures become priority targets.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Resonance Core",
+            "description": "Find the hidden core with DC 18 Perception or Arcana. Destroying the core destroys the Choir.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Stolen Melody",
+            "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null,
+            "kind": "charm",
+            "save": "WIS",
+            "dc": 20,
+            "duration_dice": "1d4",
+            "movement": "approach_source"
+          },
+          {
+            "name": "Cacophony",
+            "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "attack",
+            "type": "area",
+            "reach": 60,
+            "damage": "4d8",
+            "damage_type": "thunder",
+            "resolution": "save",
+            "save": "CON",
+            "dc": 18,
+            "save_success_damage": "half",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              },
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [
+              {
+                "applies_condition": "deafened",
+                "duration": 10
+              }
+            ]
+          },
+          {
+            "name": "Silence Void",
+            "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "silence",
+            "radius_ft": 30,
+            "rounds": 3
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Harmonic Shield",
+            "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null,
+            "kind": "spell_redirect",
+            "save": "WIS",
+            "dc": true,
+            "trigger": "verbal_spell",
+            "redirect": "caster"
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 600,
+          "resonance_on_death": 5,
+          "veil_effect": "Sound is weaponized; every voice in the zone, including companions, may be false.",
+          "vulnerable_to": [
+            "radiant",
+            "psychic",
+            "silence_effects"
+          ]
+        },
+        "behavior": {
+          "tactics": "Drifts toward settlements and strong emotion; find its core while surviving the 200-yard aura.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edges",
+            "corrupted emotional sites"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A hum carries a familiar voice, then others, each a little wrong and louder.",
+          "attack_cue": "A screech carries a torn memory back through static.",
+          "wounded_cue": "A hum stutters into silence, then returns angrier.",
+          "death_cue": "A hum becomes one pure note; every stolen voice speaks its last word, then silence.",
+          "ambient_cue": "A hum of almost remembered music calls your name."
+        },
+        "audio": {
+          "ambient": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "attack": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "hit": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "death": "Layered whispers, distorted familiar music, HLW-005 false source whispers",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_choir",
+        "xp_reward": 3000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ]
+      },
+      "expected": [
+        "reactions[0].dc: invalid"
+      ]
     }
   ],
   "region_ids": [
@@ -27502,7 +31954,10 @@
     "command",
     "accusation",
     "healing",
-    "prepare_attack"
+    "prepare_attack",
+    "charm",
+    "silence",
+    "spell_redirect"
   ],
   "contract_cases": [
     "recharge_roll_kind_0",

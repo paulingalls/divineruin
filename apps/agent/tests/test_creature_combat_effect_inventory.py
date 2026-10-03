@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
+from choir_effect_inventory_helpers import CHOIR, assert_choir_disposition, assert_choir_table
 
 ROOT = Path(__file__).resolve().parents[3]
 IDS = set(
@@ -23,10 +24,11 @@ IDS = set(
         "cult_fanatic",
         "cult_leader",
         "hollow_knight",
+        "hollow_choir",
     ]
 )
 MARKER = "## Combat Effect Inventory"
-GROUPS = ("attacks", "actives", "passives", "reactions", "multiattack", "signature_ability")
+GROUPS = ("attacks", "actives", "passives", "reactions", "multiattack", "signature_ability", "hollow")
 
 REQUIRED_EFFECTS = {
     ("hollow_shadeling", "Corrosive Touch"): ("organic material", "double damage"),
@@ -63,6 +65,7 @@ REQUIRED_EFFECTS = {
 
 def inventory():
     text = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
+    assert_choir_table(text)
     assert text.count(MARKER) == 1
     section = text.split(MARKER)[1].split("\n## ")[0]
     entries = []
@@ -97,12 +100,14 @@ def source_entries(rows):
             continue
         assert "action_pool" not in row
         for group in GROUPS:
-            if group in ("multiattack", "signature_ability"):
+            if group == "hollow" and row["id"] != "hollow_choir":
+                continue
+            if group in ("multiattack", "signature_ability", "hollow"):
                 entries = [row[group]] if row.get(group) else []
             else:
                 entries = row[group]
             for entry in entries:
-                name = entry if isinstance(entry, str) else entry["name"]
+                name = group if group == "hollow" else entry if isinstance(entry, str) else entry["name"]
                 key = (row["id"], group, name)
                 assert key not in sources
                 sources[key] = entry
@@ -119,6 +124,9 @@ def assert_effect_inventory(rows, entries):
     for key, source in sources.items():
         entry = declared[key]
         assert entry["source"] == source, key
+        if key[0] == "hollow_choir":
+            assert_choir_disposition(key, entry)
+            continue
         if key[1] == "attacks":
             expected = {
                 ("hollow_shadeling", "Corrosive Touch"): "mixed",
@@ -163,7 +171,7 @@ def assert_effect_inventory(rows, entries):
             entry["status"] == ("mixed" if kind == "healing" else "executable") and f"kind {kind};" in entry["effects"]
         )
         assert "combat_enemy_active.resolve_active" in entry["resolver"]
-    assert not any(key[1] == "reactions" for key in sources)
+    assert {(key[0], key[2]) for key in sources if key[1] == "reactions"} == {("hollow_choir", "Harmonic Shield")}
 
 
 def catalog():
@@ -295,7 +303,12 @@ def test_effect_inventory_subeffects_and_real_resolvers():
         module, name = binding.split(".")
         assert callable(getattr(importlib.import_module(module), name))
     for entry in inventory():
-        for effect in REQUIRED_EFFECTS.get((entry["species"], entry["name"]), ()):
+        effects = (
+            CHOIR[(entry["group"], entry["name"])][1]
+            if entry["species"] == "hollow_choir"
+            else REQUIRED_EFFECTS.get((entry["species"], entry["name"]), ())
+        )
+        for effect in effects:
             entries = inventory()
             changed = next(
                 e
@@ -322,3 +335,113 @@ def test_public_validator_walk_excludes_detected_virtualenvs(tmp_path):
     assert source_files(tmp_path) == [source]
     (vendor / "pyvenv.cfg").unlink()
     assert set(source_files(tmp_path)) == {source, installed}
+
+
+def test_hollow_metadata_retains_only_unimplemented_claims():
+    from creature_combat import translate_creature
+    from creature_combat_effects import deferred_effects
+
+    rows = catalog()
+    hollows = [row for row in rows if row["hollow"] and row["hollow"]["class"] != "named"]
+    assert hollows
+    for row in hollows:
+        translated = translate_creature(row, encounter_id="metadata", enemy_id=row["id"], role="standard")
+        assert translated["hollow"] == {k: row["hollow"][k] for k in ("corruption_aura", "resonance_on_death")}
+        source = next(e["source"] for e in translated["deferred_effects"] if e["group"] == "hollow")
+        assert source == {k: v for k, v in row["hollow"].items() if k not in translated["hollow"]}
+    named = [row for row in rows if row["hollow"] and row["hollow"]["class"] == "named"]
+    assert named
+    for row in named:
+        expected = dict(row["hollow"])
+        if row["id"] == "hollow_choir":
+            for field in ("corruption_aura", "resonance_on_death"):
+                expected.pop(field)
+            expected.pop("vulnerable_to")
+        assert next(e["source"] for e in deferred_effects(row) if e["group"] == "hollow") == expected
+
+
+@pytest.mark.parametrize("field", ["corruption_aura", "resonance_on_death"])
+def test_negative_hollow_snapshot_is_refused(field):
+    from creature_combat import translate_creature
+
+    row = next(r for r in catalog() if r["id"] == "hollow_mawling")
+    row["hollow"][field] = -1
+    with pytest.raises(ValueError, match=field):
+        translate_creature(row, encounter_id="snapshot", enemy_id="victim", role="standard")
+
+
+def test_hollow_snapshot_is_independent_of_catalog_mutation():
+    from creature_combat import translate_creature
+
+    row = next(r for r in catalog() if r["id"] == "hollow_mawling")
+    translated = translate_creature(row, encounter_id="snapshot", enemy_id="victim", role="standard")
+    row["hollow"]["resonance_on_death"] = 9
+    row["hollow"]["corruption_aura"] = 90
+    assert translated["hollow"] == {"corruption_aura": 5, "resonance_on_death": 1}
+
+
+def test_choir_metadata_retains_only_unimplemented_guidance():
+    from creature_combat_effects import deferred_effects
+
+    rows = json.loads((ROOT / "content/creatures.json").read_text())
+    choir = next(row for row in rows if row["id"] == "hollow_choir")
+    effects = deferred_effects(choir)
+    names = {effect["name"] for effect in effects}
+    assert names == {
+        "Memory Predator",
+        "Stolen Melody",
+        "hollow",
+    }
+    melody = next(effect for effect in effects if effect["name"] == "Stolen Melody")
+    assert melody["source"] == {"name": "Stolen Melody", "description": "The DM speaks in the stolen voice."}
+    for name in {"Memory Predator"}:
+        assert next(effect for effect in effects if effect["name"] == name)["source"] == next(
+            source for source in choir["passives"] if source["name"] == name
+        )
+
+    hollow = next(effect for effect in effects if effect["name"] == "hollow")
+    assert hollow["source"] == {
+        key: value
+        for key, value in choir["hollow"].items()
+        if key not in {"corruption_aura", "resonance_on_death", "vulnerable_to"}
+    }
+
+
+def test_choir_dispositions_reject_fabricated_execution_and_changed_bindings():
+    for entry in inventory():
+        if entry["species"] != "hollow_choir":
+            continue
+        for field, value in (
+            ("status", "deferred" if entry["status"] == "executable" else "executable"),
+            ("deferred", "fabricated"),
+            ("resolver", "fabricated"),
+        ):
+            changed = copy.deepcopy(inventory())
+            next(
+                e
+                for e in changed
+                if e["species"] == entry["species"] and e["group"] == entry["group"] and e["name"] == entry["name"]
+            )[field] = value
+            if field == "resolver" and entry["status"] == "narrative":
+                continue
+            with pytest.raises(AssertionError):
+                assert_effect_inventory(catalog(), changed)
+
+
+@pytest.mark.parametrize("binding", sorted({binding for _, _, bindings, _ in CHOIR.values() for binding in bindings}))
+def test_choir_inventory_rejects_noncallable_resolver(binding, monkeypatch):
+    import importlib
+
+    module, name = binding.rsplit(".", 1)
+    monkeypatch.setattr(importlib.import_module(module), name, None)
+    with pytest.raises(AssertionError, match=binding):
+        assert_effect_inventory(catalog(), inventory())
+
+
+def test_choir_inventory_rejects_a_blank_line_table_break():
+    text = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
+    broken = text.replace(
+        "\n| hollow_choir | attacks | Memory Scream", "\n\n| hollow_choir | attacks | Memory Scream", 1
+    )
+    with pytest.raises(AssertionError, match="continue the Markdown table"):
+        assert_choir_table(broken)

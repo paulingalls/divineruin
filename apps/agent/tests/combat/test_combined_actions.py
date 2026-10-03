@@ -181,7 +181,7 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
     )
     with (
         patch("combat_hold.combat_marks.attack_bonus", return_value=2),
-        patch("combat_hold.combat_reaction_effect.ac_bonus", return_value=3),
+        patch("combat_hold.combat_reaction_effect.ac_bonus", return_value=2),
         patch("check_resolution_save.roll_participant_save", held_save),
     ):
         await combat_hold.pump(make_context().userdata, state, packet_deps=deps)
@@ -189,7 +189,7 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
         assert post_roll_window is not None
         assert post_roll_window["stage"] == "post_roll"
         call = resolver.resolve_attack.call_args
-        assert call.args[2] == player.ac + 2 + 3
+        assert call.args[2] == player.ac + 2 + 2
         assert call.kwargs["attack_mod"] == enemy.attack_mod + 2
         summaries = await combat_hold.pump(make_context().userdata, state, packet_deps=deps)
 

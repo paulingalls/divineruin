@@ -24,6 +24,7 @@ from _combat_end_fixtures import combat_end_queries
 from combat._helpers import _damage_resolver, _resolve_round
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
+from voice_condition_fixtures import place_actors
 
 import combat_end
 import combat_turn
@@ -37,37 +38,39 @@ def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> Comba
     fast lane, so player_id must not collide). Player swings at the enemy and the enemy swings at
     the player, so the phase publishes player+enemy DICE_ROLL + attack sounds and writes
     update_player_hp(player_id) inside the tx — the events the seam must buffer."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=7,
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=7,
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[player_id, enemy_id],
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+                enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+            },
+        )
     )
 
 
@@ -160,37 +163,39 @@ def _tx_victory_state(combat_id: str, player_id: str, enemy_id: str) -> CombatSt
     story-016) that no longer lets its hit land first: the whole ally band resolves before any
     enemy acts, so the goblin falls in the ally commit and its own turn pops as wasted. The tests
     that need the enemy's blow to LAND raise its HP so it survives the ally band."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=12,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=15,
-                hp_current=7,
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[enemy_id, player_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=12,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=15,
+                    hp_current=7,
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[enemy_id, player_id],
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+                enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+            },
+        )
     )
 
 
@@ -362,46 +367,48 @@ def _tx_companion_ko_state(combat_id: str, player_id: str, enemy_id: str, compan
     """The player swings at a tanky enemy (sets weapon_used, no kill -> combat continues) while the
     enemy strikes the companion down (an in-loop companion KO). Combat does not end, so the phase
     reaches save_combat_state — the forced-failure point that exercises the scratch rollback."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Ogre",
-                type="enemy",
-                initiative=12,
-                hp_current=30,
-                hp_max=30,
-                ac=13,
-                action_pool=[{"name": "Club", "damage": "1d10", "damage_type": "bludgeoning"}],
-                xp_value=50,
-            ),
-            CombatParticipant(
-                id=companion_id,
-                name="Brae",
-                type="companion",
-                initiative=10,
-                hp_current=5,
-                hp_max=20,
-                ac=12,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id, companion_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Club", "target_id": companion_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Ogre",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=30,
+                    hp_max=30,
+                    ac=13,
+                    action_pool=[{"name": "Club", "damage": "1d10", "damage_type": "bludgeoning"}],
+                    xp_value=50,
+                ),
+                CombatParticipant(
+                    id=companion_id,
+                    name="Brae",
+                    type="companion",
+                    initiative=10,
+                    hp_current=5,
+                    hp_max=20,
+                    ac=12,
+                ),
+            ],
+            initiative_order=[player_id, enemy_id, companion_id],
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+                enemy_id: {"type": "attack", "action": "Club", "target_id": companion_id},
+            },
+        )
     )
 
 

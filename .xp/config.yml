@@ -1,6 +1,7 @@
 # xp project config — EDIT the tiers for your stack, then re-run your first commit
 release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
+#                    # This posture governs all Codex roles.
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
@@ -25,23 +26,18 @@ version_files: package.json  # comma-separated JSON manifests
 
 profile_target: 806  # token budget the shipped role profiles are written against
 
-roles:               # harness/model[/effort]; the lead overrides per story in plan.md
-                     # effort: low | medium | high | xhigh | max
-  lead: codex/gpt-6-astra/medium
+roles:  # All Codex / GPT-6.1 Sol until the human changes this; preserve effort
+  lead: codex/gpt-6.1-sol/medium
   executor: codex/gpt-6.1-sol/medium
-  reviewer: codex/gpt-6-astra/medium       # the wall. sprint-047 open: the shipped slate-reviewer
-                                   # charter found a false construction premise, a vacuous
-                                   # AC and an unusable grep gate that the lead's own pass
-                                   # missed.
-  plan-reviewer: codex/gpt-6-astra/medium  # scripts/plan_review.py; a teammate runs it itself
-  planner: codex/gpt-6.1-sol/medium  # read-only implementation plan for a multi-file story
-  slate-reviewer: codex/gpt-6.1-sol/medium  # the fresh reader over the sprint slate
-  card-refresher: codex/gpt-6.1-sol/low      # rewrites a card's stale HEAD claims before it is minted
-  finder: codex/gpt-6-astra/medium     # the four round-1 stages of `close.py sprint <id> review`;
-  verifier: codex/gpt-6-astra/medium   # each falls back to `reviewer` when its key is absent, so
-  fixer: codex/gpt-6.1-sol/medium  # an older config keeps working untouched.
-  closer: codex/gpt-6-astra/medium   # verifier is adversarial (kills false positives); closer
-                               # is judgment over an already-verified set.
+  reviewer: codex/gpt-6.1-sol/medium
+  plan-reviewer: codex/gpt-6.1-sol/medium
+  planner: codex/gpt-6.1-sol/medium
+  slate-reviewer: codex/gpt-6.1-sol/medium
+  card-refresher: codex/gpt-6.1-sol/low
+  finder: codex/gpt-6.1-sol/medium
+  verifier: codex/gpt-6.1-sol/medium
+  fixer: codex/gpt-6.1-sol/medium
+  closer: codex/gpt-6.1-sol/medium
 
 tests:
   # The installed pre-commit hook calls this same command for staged paths.

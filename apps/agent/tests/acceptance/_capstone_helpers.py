@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 from acceptance.seeds import seed_player, seed_player_with_pools
 from combat import _helpers as _combat_helpers
+from voice_condition_fixtures import place_actors
 
 import db_mutations
 import db_queries
@@ -77,15 +78,17 @@ def _build_state(
 ) -> CombatState:
     """A declaration-beat CombatState with a player + N enemies, ready for declare/resolve."""
     participants = [_player(player_id), *enemies]
-    return CombatState(
-        combat_id=combat_id,
-        participants=participants,
-        initiative_order=[player_id, *[e.id for e in enemies]],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="declaration",
-        first_attack_resolved=first_attack_resolved,
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=participants,
+            initiative_order=[player_id, *[e.id for e in enemies]],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="declaration",
+            first_attack_resolved=first_attack_resolved,
+        )
     )
 
 

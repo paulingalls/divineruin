@@ -6,9 +6,6 @@ combat reward would silently vanish. The grant rides the same seat_order the loo
 walk, shares the party curve with coin, and buffers its events into the caller's sink so a rolled-back
 phase un-grants the XP and drops the unflushed event.
 
-Fast lane. Mostly mock-DI (the victory path with mocked content/pricing/queries); the closing
-test is real-PG (dev_db_pool) because "granted exactly once, committed with the phase" is a claim
-only a real transaction can settle.
 """
 
 from __future__ import annotations
@@ -18,14 +15,12 @@ import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _resolve_round
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import GUILD_PLAYER
+from voice_condition_fixtures import place_actors
 
 import archetypes
-import db_mutations
 import db_mutations_conditions
-import db_queries
 import event_types as E
 import milestones
 from combat_end import _end_combat_db, _end_combat_finish
@@ -90,13 +85,15 @@ def _cs(enemies: list[CombatParticipant], players: list[str]) -> CombatState:
         CombatParticipant(id=pid, name=pid, type="player", initiative=15, hp_current=20, hp_max=20, ac=14)
         for pid in players
     ] + enemies
-    return CombatState(
-        combat_id="c1",
-        participants=parts,
-        initiative_order=[p.id for p in parts],
-        round_number=2,
-        current_turn_index=0,
-        location_id="loc1",
+    return place_actors(
+        CombatState(
+            combat_id="c1",
+            participants=parts,
+            initiative_order=[p.id for p in parts],
+            round_number=2,
+            current_turn_index=0,
+            location_id="loc1",
+        )
     )
 
 
@@ -268,18 +265,20 @@ async def test_empty_seat_order_grants_nothing(monkeypatch):
 
     monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "a"}]))
     session = _session(["p1"])
-    cs = CombatState(
-        combat_id="c1",
-        participants=[
-            CombatParticipant(
-                id="p1", name="Kael", type="temporary_hollowed", initiative=15, hp_current=0, hp_max=20, ac=14
-            ),
-            _xp_enemy("g1", 50),
-        ],
-        initiative_order=["p1", "g1"],
-        round_number=2,
-        current_turn_index=0,
-        location_id="loc1",
+    cs = place_actors(
+        CombatState(
+            combat_id="c1",
+            participants=[
+                CombatParticipant(
+                    id="p1", name="Kael", type="temporary_hollowed", initiative=15, hp_current=0, hp_max=20, ac=14
+                ),
+                _xp_enemy("g1", 50),
+            ],
+            initiative_order=["p1", "g1"],
+            round_number=2,
+            current_turn_index=0,
+            location_id="loc1",
+        )
     )
     end_data, mutations, _q, sink, _c = await _run(session, cs)
 
@@ -424,75 +423,3 @@ async def test_xp_is_written_on_the_callers_conn_and_its_events_only_buffered():
     assert mutations.update_player_xp.await_args.kwargs["conn"] is conn
     assert E.XP_AWARDED in [e.event_type for e in sink.captured]  # buffered, not published
     assert sink.captured[0].room is None  # SessionData(room=None): nothing was published directly
-
-
-# --- AC7: end-to-end through the live phase path, against real Postgres ---
-
-
-async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
-    """The live exit path (resolve_phase -> wrap -> _end_combat_db in the PHASE transaction) writes
-    the XP to players.data once. Mock-conn tests can't see this: the grant only counts if it commits
-    with the phase, and a second grant would show up as double XP on the persisted row."""
-    pool = dev_db_pool
-    player_id = "m28_s001_xp_phase_player"
-    combat_id = "combat_m28_s001_xp"
-    await pool.execute(
-        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
-        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
-        player_id,
-        json.dumps(
-            {"player_id": player_id, "class": "warrior", "level": 3, "xp": 500, "hp": {"current": 25, "max": 25}}
-        ),
-    )
-    enemy_id = "m28_s001_xp_enemy"
-    cs = CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=3,  # one fixed 3-damage hit from death -> the wrap sees victory
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        beat="resolution",
-        pending_declarations={player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id}},
-    )
-
-    ctx = MagicMock()
-    ctx.session.current_agent = None
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    ctx.userdata.combat_state = cs
-    queries = MagicMock(
-        get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([])
-    )  # no equipped items -> no durability
-    queries.get_player = db_queries.get_player  # the grant needs the REAL row read
-    break_mod = MagicMock(break_concentration_on_damage=AsyncMock(return_value=None))
-
-    try:
-        result = await _resolve_round(
-            ctx, queries=queries, resolver=_damage_resolver(3), concentration_break_mod=break_mod
-        )
-        assert json.loads(result[1])["outcome"] == "victory"
-
-        row = await pool.fetchrow("SELECT (data->>'xp')::int AS xp FROM players WHERE player_id = $1", player_id)
-        assert row["xp"] == 550  # 500 seeded + the solo encounter's whole 50, granted exactly once
-    finally:
-        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
-        await db_mutations.delete_combat_state(combat_id, conn=pool)

@@ -61,6 +61,7 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
     data = {
         "player_id": player_id,
         "class": "warrior",
+        "speed": 30,
         "level": 5,
         "attributes": dict(_ATTRS),
         "hp": {"current": 0, "max": 40},

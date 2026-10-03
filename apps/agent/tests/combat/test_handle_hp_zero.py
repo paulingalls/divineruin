@@ -10,11 +10,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import conditions
 from combat_enemy_active import heal
 from combat_support import _handle_hp_zero
-from session_data import CombatParticipant, CompanionState
+from session_data import CombatParticipant, CombatState, CompanionState
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
 _AGENT_ROOT = Path(__file__).resolve().parents[2]
@@ -96,7 +97,7 @@ class TestResolveAbilityPacket:
             session,
             attacker,
             decl,
-            state=None,
+            state=place_actors(CombatState("ability", [attacker], [attacker.id])),
             cast_resolver=cast_resolver,
             conn=object(),
             player=None,

@@ -209,6 +209,8 @@ def test_spell_row_builder_matches_fixture() -> None:
     # blank-tier bug (82fc): the TS parser coerces a missing spell_tier to "". Pin its keys.
     expected = FIXTURE["spell_row"]
     spell = Spell(
+        verbal=True,
+        hostile=True,
         id=expected["spell_id"],
         name=expected["name"],
         source="arcane",

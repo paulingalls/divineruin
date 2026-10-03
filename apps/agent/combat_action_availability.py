@@ -1,12 +1,20 @@
 """The executable action surface shared by declaration validation and the roster."""
 
+from choir_effects import suppressed
 from combat_recharge import available, initialize
+from condition_restrictions import cannot_act
 from encounter_actions import action_kind
 
 
 def available_actions(actor):
     initialize(actor)
-    return [action for action in actor.action_pool if available(actor, action)]
+    return [
+        action
+        for action in actor.action_pool
+        if available(actor, action)
+        and not suppressed(actor)
+        and not (actor.creature_id == "hollow_choir" and actor.choir_silence_exposed)
+    ]
 
 
 def action_summary(actor):
@@ -20,15 +28,45 @@ def action_summary(actor):
             {
                 "name": a["name"],
                 "kind": action_kind(a),
-                "declaration_type": "ability" if action_kind(a) in ("healing", "prepare_attack") else "attack",
+                "declaration_type": "ability"
+                if action_kind(a) in ("healing", "prepare_attack", "charm", "silence")
+                else "attack",
             }
-            for a in actions
+            | {
+                "available": a in actions,
+                "id": a["name"],
+                "reason": "suppressed"
+                if suppressed(actor)
+                else "silenced"
+                if actor.creature_id == "hollow_choir" and actor.choir_silence_exposed
+                else "spent"
+                if a not in actions
+                else None,
+            }
+            for a in actor.action_pool
+        ],
+        "automatic_reactions": []
+        if actor.choir_reaction is None
+        else [
+            {
+                "id": actor.choir_reaction["name"],
+                "kind": "spell_redirect",
+                "available": not actor.is_fallen
+                and not actor.is_dead
+                and not cannot_act(actor.conditions)
+                and not suppressed(actor)
+                and not actor.choir_silence_exposed,
+            }
         ],
     }
 
 
 def require_available(actor, action):
-    if not available(actor, action):
+    if (
+        suppressed(actor)
+        or (actor.creature_id == "hollow_choir" and actor.choir_silence_exposed)
+        or not available(actor, action)
+    ):
         raise ValueError(
             f"{actor.id}: action {action['name']!r} unavailable; available actions: {action_summary(actor)['actions']}"
         )
@@ -60,6 +98,7 @@ def begin_execution(state, actor, action, declaration, head=None):
     executed = dict(action)
     attack_roll = (
         action_kind(action) == "attack"
+        and action.get("resolution") != "save"
         and not action.get("half_on_success")
         and (not action.get("applies_condition") or action.get("damage") not in (None, "", "0", 0))
     )

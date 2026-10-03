@@ -12,6 +12,7 @@ from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
+from voice_condition_fixtures import place_actors
 
 from combat_end import _end_combat_db, _end_combat_impl
 from combat_events import EventSink
@@ -157,6 +158,7 @@ async def test_guest_end_combat_commits_and_cannot_pay_twice():
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
@@ -184,6 +186,7 @@ async def test_guest_combat_xp_does_not_enter_host_summary_when_host_receives_no
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     queries = combat_end_queries(
         get_player=AsyncMock(side_effect=lambda pid, **_kw: None if pid == "player_1" else _second_member_row())
@@ -206,6 +209,7 @@ async def test_combat_faction_outcome_reaches_each_member(speaker, outcome, enem
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     cs.faction_id = "thornwatch"
     ctx.userdata.combat_state = cs
     reputation = AsyncMock()
@@ -235,6 +239,7 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
@@ -287,6 +292,7 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
     host = copy.deepcopy(state.participants[0])
     host.id = "player_1"
     state.participants.insert(0, host)
+    place_actors(state)
     state.initiative_order.insert(0, "player_1")
     state.pending_declarations["player_1"] = {"type": "defend"}
     ctx = _ctx_at_resolution(state=state, room=make_mock_room())
@@ -361,6 +367,7 @@ async def test_combat_commit_failure_records_no_items():
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
@@ -396,6 +403,7 @@ async def test_guest_declared_defeat_uses_primary_anchor():
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     queries = combat_end_queries()
     with patch(
@@ -417,6 +425,7 @@ async def test_combat_snapshot_excludes_currency_only_seats():
     guest = copy.deepcopy(cs.participants[0])
     guest.id = "player_2"
     cs.participants.insert(1, guest)
+    place_actors(cs)
     ctx.userdata.combat_state = cs
     spoils = EncounterSpoils(currency_silver=200, loot_pool=[{"item_id": "relic", "quantity": 1}])
     queries = snapshot_queries()

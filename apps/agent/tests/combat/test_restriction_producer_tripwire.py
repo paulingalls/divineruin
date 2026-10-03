@@ -109,30 +109,30 @@ def test_no_producer_waiting_condition_is_produced():
     _assert_no_deferred_carrier_is_produced(_produced_conditions(CONTENT_PATHS, SOURCE_PATHS))
 
 
-def test_content_charmed_producer_trips_no_hostile_source(tmp_path):
-    scratch = tmp_path / "charmed.json"
-    scratch.write_text(json.dumps({"actions": [{"applies_condition": "charmed"}]}))
+def test_content_cursed_producer_trips_source_specific_penalty(tmp_path):
+    scratch = tmp_path / "cursed.json"
+    scratch.write_text(json.dumps({"actions": [{"applies_condition": "cursed"}]}))
 
-    with pytest.raises(AssertionError, match="no_hostile_source"):
+    with pytest.raises(AssertionError, match="source_specific_penalty"):
         _assert_no_deferred_carrier_is_produced(_produced_conditions((*CONTENT_PATHS, scratch), SOURCE_PATHS))
 
 
-def test_python_charmed_producers_trip_no_hostile_source(tmp_path):
-    scratch = tmp_path / "charmed.py"
+def test_python_cursed_producers_trip_source_specific_penalty(tmp_path):
+    scratch = tmp_path / "cursed.py"
     scratch.write_text(
         """
 conditions.apply_condition(
     current,
-    "charmed",
+    "cursed",
 )
-_land_condition_on_one(state, target, attacker, "charmed", source)
-conditions.apply_condition(current, condition_type="charmed")
-_land_condition_on_one(state, target, attacker, cond_type="charmed", source=source)
+_land_condition_on_one(state, target, attacker, "cursed", source)
+conditions.apply_condition(current, condition_type="cursed")
+_land_condition_on_one(state, target, attacker, cond_type="cursed", source=source)
 """
     )
 
-    assert _python_producers((scratch,)) == ["charmed"] * 4
-    with pytest.raises(AssertionError, match="no_hostile_source"):
+    assert _python_producers((scratch,)) == ["cursed"] * 4
+    with pytest.raises(AssertionError, match="source_specific_penalty"):
         _assert_no_deferred_carrier_is_produced(_produced_conditions(CONTENT_PATHS, (*SOURCE_PATHS, scratch)))
 
 

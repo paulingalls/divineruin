@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _enemy_blow, _guarded_ally_state, _pause_at
+from voice_condition_fixtures import place_actors
 
 import combat_hold
 import combat_reaction_contest
@@ -33,7 +34,7 @@ def _with_third_player(*, target_id="player_3"):
         ),
     )
     state.initiative_order.insert(2, "player_3")
-    return state
+    return place_actors(state)
 
 
 def _own(state, spends):

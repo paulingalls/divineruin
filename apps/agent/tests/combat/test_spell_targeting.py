@@ -26,6 +26,8 @@ def _spell(spell_id: str, *, source: SpellSource = "arcane") -> Spell:
     generated resonance 0 (resonance_by_source[source]=0) — only the target_id plumbing + the
     Revivify gate's spell_id branch matter here."""
     return Spell(
+        verbal=True,
+        hostile=True,
         id=spell_id,
         name=spell_id.replace("_", " ").title(),
         source=source,

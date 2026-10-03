@@ -9,26 +9,19 @@ de-escalate / defend), and _resolve_tick_saves resolves the Beat-4 save-to-clear
 conditions the wrap surfaces. All are pure-ish helpers — they mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
-from livekit.agents.llm import ToolError
-
-import abilities
-import ability_persistence
-import character_spells
-import combat_ability_save
 import combat_enhancers
 import combat_maneuver
 import combat_marks
 import combat_recharge
 import combat_resolution
+import combat_spatial_declarations
+import combat_voice_rules
 import conditions
 import spell_casting
-import spell_knowledge
-import spells
 from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
-    _gate_ability_condition,
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
     condition_ability,
@@ -36,14 +29,14 @@ from combat_ability import (
 from combat_ability_gate import declared_ability
 from combat_action_availability import begin_execution, replay_valid
 from combat_deescalation import (
-    _gate_deescalation,
     _resolve_deescalation_packet,
-    _validate_argument_type,
 )
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
+from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
+from condition_sources import DeliveryRefused
 from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import SessionData
@@ -82,102 +75,6 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
 
-async def _prevalidate_ability_focus(
-    session, state, adv, *, conn, queries, cast_resolver, character_spells_mod=character_spells
-) -> dict[str, dict]:
-    """Pre-validate EVERY player ABILITY declaration's ownership, active variant and cost BEFORE the
-    resolution loop (AC2), one per declaring member (M14 story-004).
-
-    An unowned or unaffordable in-combat ability must fail loud (ToolError) with NO state writes — and crucially
-    before any OTHER actor's HP/durability write, so a bad ability never rolls back a phase that has
-    already resolved attacks. For each player-ability packet, fetch THAT actor's OWN for_update row
-    (pid == packet.actor_id == player_id, since combat_init builds player participants with id=mid),
-    locking each player once (deduped across a member's declarations), gate that declaration against
-    its own row, and return {pid: row} for the loop to thread to each cast. Returns ``{}`` when no
-    player ability was declared (the common all-attacks phase locks nothing). Non-player abilities are
-    wasted downstream, so they are not gated here.
-
-    The per-player locks are taken in initiative order within the phase tx (adv.packets is ordered),
-    once per player — the deterministic ordering story-008's caster-vs-target locking builds on."""
-    player_ability_packets = [
-        (p.actor_id, p.declaration, actor)
-        for p in adv.packets
-        if p.declaration.type is DeclarationType.ABILITY
-        and p.declaration.action
-        and (actor := state.get_participant(p.actor_id)) is not None
-        and actor.type == "player"
-    ]
-    if not player_ability_packets:
-        return {}
-    players_by_id: dict[str, dict] = {}
-    known_spell_ids_by_player: dict[str, frozenset[str]] = {}
-    for actor_id, decl, actor in player_ability_packets:
-        player = players_by_id.get(actor_id)
-        if player is None:
-            # Lock this member's row once (a member with two ability declarations reuses the lock).
-            player = await queries.get_player(actor_id, conn=conn, for_update=True)
-            if player is None:
-                raise ToolError(f"Unknown player: {actor_id}")
-            players_by_id[actor_id] = player
-        action = decl.action
-        resolved_ability = declared_ability(action)
-        if resolved_ability is not None:
-            ability, variant = resolved_ability
-            owned_elective = (
-                await ability_persistence.owns_elective(actor_id, ability.id, conn=conn)
-                if ability.ability_type == "elective"
-                else False
-            )
-            if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
-                raise ToolError(f"{actor.name} hasn't learned {ability.name}.")
-            if variant is not None:
-                active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
-                if active_variant_id != variant.id:
-                    raise ToolError(f"{actor.name} does not have {variant.id} active for {ability.name}.")
-        # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
-        # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
-        # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
-        # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
-        if action.lower() == "de_escalate":
-            _gate_deescalation(player, state)
-            # Validate the Tier-3 argument category HERE (declare-time, no writes) so a bad category
-            # fails loud before ANY packet resolves — never rolling back a phase that already wrote
-            # other actors' HP/Focus (the packet re-checks defensively for direct callers).
-            _validate_argument_type(decl)
-        elif (cond_ability := condition_ability(resolved_ability)) is not None:
-            ability, variant = cond_ability
-            combat_ability_save.gate_hostile_target(state, decl, ability)
-            _gate_ability_condition(player, ability, variant)
-            # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
-            # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting
-            # SSOT the spell branch uses (normalize_target_list accepts Spell | Ability).
-            if decl.target_ids:
-                try:
-                    spells.normalize_target_list(ability, decl.target_id, decl.target_ids)
-                except ValueError as e:
-                    raise ToolError(str(e)) from e
-        else:
-            known_spell_ids = known_spell_ids_by_player.get(actor_id)
-            if known_spell_ids is None:
-                known_rows = await character_spells_mod.get_known(actor_id, conn=conn)
-                known_spell_ids = spell_knowledge.castable_spell_ids(
-                    player.get("class"), (row["spell_id"] for row in known_rows)
-                )
-                known_spell_ids_by_player[actor_id] = known_spell_ids
-            spell = cast_resolver._gate_spell(player, action, known_spell_ids)
-            if spell.applies_condition is not None:
-                combat_ability_save.gate_hostile_condition_targets(state, decl, spell.applies_condition, spell.name)
-            # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell
-            # declaration HERE, before the resolution loop writes anything — reusing the targeting
-            # SSOT. Spell-aware, so it belongs with the Focus gate, not in pure resolve_declaration.
-            if decl.target_ids:
-                try:
-                    spells.normalize_target_list(spell, decl.target_id, decl.target_ids)
-                except ValueError as e:
-                    raise ToolError(str(e)) from e
-    return players_by_id
-
-
 async def _resolve_one_packet(
     session: SessionData,
     state,
@@ -210,7 +107,6 @@ async def _resolve_one_packet(
     via _resolve_ability_packet), its CastResult stashed on ``cast_outcome`` for the
     phase loop to commit. Defend resolves as a no-op (its +2 AC was applied to
     state.ac_modifiers in the resolve_phase pre-pass). Maneuver resolves as stand or shove;
-    Interact and Retreat remain initiative-ordered but unresolved.
 
     ``reaction_ac_bonus`` is the Beat-3 hold's channel for a pre-roll reaction's +2 AC against the
     ONE held blow it was spent against (story-018), and ``shield_reaction`` the same channel for a
@@ -223,11 +119,47 @@ async def _resolve_one_packet(
     # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.
     player = players_by_id.get(packet.actor_id) if players_by_id else None
 
+    import choir_encounter
+
+    stale = choir_encounter.stale_reason(state, packet.actor_id, decl)
+    if stale is None:
+        choir_encounter.guard_declaration(state, packet.actor_id, decl)
+
+    aura = await choir_encounter.turn_start(
+        session, state, attacker, conn=conn, concentration_break_mod=concentration_break_mod
+    )
+    if aura is not None and sink is not None:
+        import event_types as E
+        from combat_events import emit_or_publish
+
+        await emit_or_publish(
+            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **aura}, event_bus=session.event_bus
+        )
+
+    from choir_effects import approach
+
+    forced_move = approach(state, attacker)
+    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+        return forced_move
+    if combat_spatial_declarations.is_move(decl):
+        return combat_spatial_declarations.apply_move(state, attacker, decl)
+
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if blocked := cannot_act(attacker.conditions):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    if stale is not None:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}
+
+    try:
+        combat_voice_rules.guard_declaration(state, attacker, decl)
+    except DeliveryRefused as e:
+        return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
+
+    if decl.type is DeclarationType.INTERACT and decl.action in choir_encounter.SEARCH_ACTIONS:
+        return await choir_encounter.search(session, state, attacker, decl, queries=queries, conn=conn)
 
     if decl.type is DeclarationType.DEFEND:
         return {
@@ -237,10 +169,6 @@ async def _resolve_one_packet(
             "ac_bonus": decl.ac_bonus,
         }
 
-    # Resolve the actor's pool action ONCE — reused by the enemy-condition branch and the ATTACK
-    # path below so an ordinary enemy attack isn't scanned twice. Only ATTACK (any actor) and a
-    # hostile-actor ABILITY (the enemy-condition case) need the pool lookup; a player/ally ABILITY is
-    # a spell/ability id, not a pool action, so it stays None.
     action = (
         _find_action(attacker, decl.action)
         if decl.type is DeclarationType.ATTACK or (not attacker.is_ally and decl.type is DeclarationType.ABILITY)
@@ -262,6 +190,12 @@ async def _resolve_one_packet(
         if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
             action = begin_execution(state, attacker, action, decl)
             return resolve_active(state, attacker, action, decl)
+        if action_kind(action) in ("charm", "silence"):
+            from choir_actions import resolve_effect
+
+            return await resolve_effect(
+                session, state, attacker, action, decl, reaction_save_advantage=reaction_save_advantage
+            )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if replay:
             assert _held_head is not None
@@ -269,6 +203,7 @@ async def _resolve_one_packet(
         elif (
             target is not None
             and not target.is_fallen
+            and not (action.get("resolution") == "save" and action.get("type") == "area")
             and (
                 decl.type is DeclarationType.ATTACK
                 or action.get("applies_condition")
@@ -277,6 +212,27 @@ async def _resolve_one_packet(
         ):
             action = begin_execution(state, attacker, action, decl)
 
+    if (
+        not attacker.is_ally
+        and action is not None
+        and action.get("resolution") == "save"
+        and action.get("type") == "area"
+    ):
+        from choir_actions import resolve_area
+
+        return await resolve_area(
+            session,
+            state,
+            attacker,
+            action,
+            decl,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
     if not attacker.is_ally and action is not None:
         enemy_summary = await resolve_enemy_strike(
             session,
@@ -327,6 +283,13 @@ async def _resolve_one_packet(
             conn=conn,
             player=player,
             cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            damage_deps={
+                "mutations": mutations,
+                "queries": queries,
+                "resolver": resolver,
+                "concentration_break_mod": concentration_break_mod,
+                "sink": sink,
+            },
         )
 
     if decl.type is DeclarationType.MANEUVER:

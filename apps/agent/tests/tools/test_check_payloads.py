@@ -27,10 +27,21 @@ from social_tools import SOCIAL_SKILLS
 
 def test_skill_variant_maps_to_the_skill_impl_args():
     mode, kwargs = to_impl_args(
-        SkillCheck(kind="skill", skill="athletics", difficulty="hard", context_description="scaling the wall")
+        SkillCheck(
+            hearing_only=False,
+            kind="skill",
+            skill="athletics",
+            difficulty="hard",
+            context_description="scaling the wall",
+        )
     )
     assert mode == "skill"
-    assert kwargs == {"skill": "athletics", "difficulty": "hard", "context_description": "scaling the wall"}
+    assert kwargs == {
+        "skill": "athletics",
+        "difficulty": "hard",
+        "context_description": "scaling the wall",
+        "hearing_only": False,
+    }
 
 
 def test_social_variant_maps_to_the_social_impl_args():
@@ -42,9 +53,11 @@ def test_social_variant_maps_to_the_social_impl_args():
 
 
 def test_discover_variant_maps_to_the_discover_impl_args():
-    mode, kwargs = to_impl_args(DiscoverCheck(kind="discover", skill="perception", target="notice_board"))
+    mode, kwargs = to_impl_args(
+        DiscoverCheck(kind="discover", skill="perception", target="notice_board", hearing_only=False)
+    )
     assert mode == "discover"
-    assert kwargs == {"skill": "perception", "target": "notice_board"}
+    assert kwargs == {"skill": "perception", "target": "notice_board", "hearing_only": False}
 
 
 def test_save_variant_maps_to_the_save_impl_args():
@@ -101,3 +114,34 @@ def test_no_variant_field_is_optional(variant):
     """ADR 0008 rule 2: an optional inside a variant is one union slot back, and the
     walker in test_strict_tool_budget cannot see WHY the number moved."""
     assert all(f.is_required() for f in variant.model_fields.values()), variant.__name__
+
+
+@pytest.mark.parametrize(
+    "variant,fields",
+    [
+        (SkillCheck, {"kind": "skill", "skill": "perception", "difficulty": "easy", "context_description": "listen"}),
+        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
+    ],
+)
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "false", [], {}])
+def test_hearing_payload_rejects_nonboolean(variant, fields, value):
+    with pytest.raises(ValueError, match="hearing_only"):
+        variant(**fields, hearing_only=value)
+
+
+@pytest.mark.parametrize(
+    "variant,fields",
+    [
+        (SkillCheck, {"kind": "skill", "skill": "perception", "difficulty": "easy", "context_description": "listen"}),
+        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
+    ],
+)
+def test_hearing_payload_is_required_and_preserved(variant, fields):
+    with pytest.raises(ValueError, match="hearing_only"):
+        variant(**fields)
+    for value in (True, False):
+        payload = variant(**fields, hearing_only=value)
+        assert to_impl_args(payload)[1]["hearing_only"] is value
+        assert type(payload).model_fields["hearing_only"].is_required()
+    with pytest.raises(ValueError, match="Perception"):
+        variant(**(fields | {"skill": "athletics"}), hearing_only=True)

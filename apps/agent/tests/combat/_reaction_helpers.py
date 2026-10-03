@@ -8,9 +8,12 @@ makes the importer's collection depend on the importee's.
 
 from unittest.mock import AsyncMock, patch
 
-from combat._helpers import _call, _resolve_deps, _resolve_round
+from combat._helpers import _call, _own_reaction, _resolve_deps, _resolve_round
+from voice_condition_fixtures import place_actors, spatial_record
 
 import combat_support
+import reaction_spend
+import reaction_windows
 from session_data import CombatParticipant, CombatState
 
 SHIELD_ITEM = {"id": "shield_iron", "type": "shield", "durability_tier": "standard", "slot_info": {"equipped": True}}
@@ -55,7 +58,7 @@ def _guarded_ally_state(*, enemy_ids=("goblin_scout_1",), target_id="player_2"):
     player declares: the ally band has nothing to resolve, so the enemies survive to swing and the
     round is exactly the held blows under test.
     """
-    return CombatState(
+    state = CombatState(
         combat_id="combat_guard",
         participants=[
             CombatParticipant(
@@ -103,6 +106,8 @@ def _guarded_ally_state(*, enemy_ids=("goblin_scout_1",), target_id="player_2"):
         },
     )
 
+    return place_actors(state)
+
 
 async def _pause_at(ctx, deps, *, actor_id, stage, packets):
     """resolve_phase until the machine pauses on ``actor_id``'s blow at ``stage``.
@@ -142,3 +147,38 @@ def _patched_accrual():
         "_accrue_durability",
         AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
     )
+
+
+def reaction_state(ability_id):
+    state = _guarded_ally_state()
+    _own_reaction(state, ability_id)
+    state.open_window = reaction_windows.open_window_for(
+        round_number=1,
+        seq=0,
+        stage="pre_roll",
+        actor_id="goblin_scout_1",
+        target_id="player_2",
+        action_kind="attack",
+        triggers=("on_ally_targeted",),
+    )
+    state.held_actions = [
+        {
+            "seq": 0,
+            "actor_id": "goblin_scout_1",
+            "initiative": 12,
+            "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_2"},
+            "roll": None,
+            "opened": ["pre_roll"],
+        }
+    ]
+    state.reactions_available = {"player_1": reaction_spend.unspent()}
+    return state
+
+
+def silence(state, actor_id):
+    spatial_record(state)["positions"][actor_id]["x"] = 100
+    spatial_record(state)["zones"]["quiet"] = {
+        "kind": "silence",
+        "center_id": actor_id,
+        "radius_ft": 5,
+    }

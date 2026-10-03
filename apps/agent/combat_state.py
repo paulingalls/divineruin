@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
+import choir_effects
 import combat_reaction_contest
+import combat_spatial
+import condition_sources
 import reaction_spend
 import reaction_windows
+from combat_attack_roll import held_reaction_ac
 from combat_participant import CombatParticipant
 
 
@@ -86,6 +90,11 @@ class CombatState:
     # See reaction_windows.open_window_for for the shape.
     open_window: dict | None = None
 
+    encounter_id: str = ""
+    choir_encounter: dict | None = None
+    choir_silences: dict = field(default_factory=dict)
+    spatial: dict | None = None
+
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
             if p.id == participant_id:
@@ -103,12 +112,24 @@ class CombatState:
         rows written before they existed fall back to the dataclass defaults via data.get(...).
         ``beat`` stays a plain str — combat_phase is NOT imported here, to avoid the
         session_data <-> combat_phase cycle the class docstring notes."""
+        condition_sources.validate_combat_sources(data["participants"])
         reactions_available = reaction_spend.normalize(data.get("reactions_available", {}))
         held_actions = combat_reaction_contest.normalize_held_actions(data.get("held_actions", []), reactions_available)
+        for head in held_actions:
+            if head.get("roll") is not None:
+                held_reaction_ac(head)
         for participant in data["participants"]:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
-        return cls(
+        state = cls(
+            encounter_id=data.get("encounter_id", ""),
+            choir_encounter=data.get("choir_encounter"),
+            choir_silences=choir_effects.validate_data(data),
+            spatial=(
+                combat_spatial.validate_spatial(data["spatial"], [p["id"] for p in data["participants"]])
+                if data.get("spatial") is not None
+                else None
+            ),
             combat_id=data["combat_id"],
             participants=[CombatParticipant(**p) for p in data["participants"]],
             initiative_order=data["initiative_order"],
@@ -137,3 +158,8 @@ class CombatState:
                 data.get("open_window"), data.get("held_actions", []), data["participants"]
             ),
         )
+
+        import choir_encounter
+
+        choir_encounter.validate(state)
+        return state

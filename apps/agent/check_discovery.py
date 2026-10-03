@@ -18,6 +18,8 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import choir_scene
+import condition_voice_rules
 import db
 import db_content_queries
 import db_mutations
@@ -26,7 +28,8 @@ import db_queries
 import event_types as E
 import rules_engine
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
-from condition_consume import consume_beneficial_conditions
+from condition_consume import consume_beneficial_conditions, serialize_combat_check
+from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from session_data import SessionData
@@ -86,20 +89,33 @@ def _target_matches(target_norm: str, attaches_norm: str) -> bool:
     return re.search(rf"\b{re.escape(attaches_norm)}\b", target_norm) is not None
 
 
+@serialize_combat_check
 async def _check_discover_impl(
     context: RunContext[SessionData],
     skill: str,
     target: str,
     *,
+    hearing_only: bool = False,
     content=db_content_queries,
     queries=db_queries,
     mutations=db_mutations,
     conditions_mutations=db_mutations_conditions,
     db_mod=db,
 ) -> str:
+    try:
+        validate_hearing_check(skill, hearing_only)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
     _cap_str(target, 128, "target")
     session: SessionData = context.userdata
     skill_lower = skill.lower()
+    if session.combat_state is not None and session.combat_state.choir_encounter is not None:
+        import choir_encounter
+
+        source = choir_encounter.owner(session.combat_state)
+        assert source is not None
+        if target in {choir_encounter.SEARCH_TARGET, source.id, f"{source.id}_core"}:
+            raise ToolError("Choir discovery requires a declared Interact search action.")
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
@@ -114,6 +130,7 @@ async def _check_discover_impl(
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
+    player = await choir_scene.check_data(session, player, queries=queries)
 
     # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
     # is keyed on the player and ELEMENT, not the free-text target, so re-searching the same secret
@@ -145,12 +162,27 @@ async def _check_discover_impl(
         # Silence, a sting, an unspent Inspired or a thinner DM response would each tell the
         # player whether anything is hidden, so an empty search rolls and spends like a failed one.
         result = check_resolution.resolve_skill_check_dc(
-            player, skill_lower, DEFAULT_DISCOVER_DC, ally_present=session.ally_present_for(player_id)
+            condition_voice_rules.roll_data(player, session.combat_state, player_id),
+            skill_lower,
+            DEFAULT_DISCOVER_DC,
+            ally_present=session.ally_present_for(player_id),
+            hearing_only=hearing_only,
         )
+        if result.auto_fail:
+            return json.dumps(_roll_response(result, target, "automatic_failure"))
         await _publish_roll(session, result)
+        consumed_state = None
         if result.consumed_conditions:
             session.validate_acting_player(player_id)
-            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                result.consumed_conditions,
+                conditions_mutations,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
+        if consumed_state is not None:
+            session.combat_state = consumed_state
         session.record_event(f"Searched {target} ({skill_lower}): not_found")
         logger.info("check discover: target=%s skill=%s -> no candidate", target, skill_lower)
         return json.dumps(_roll_response(result, target, "not_found"))
@@ -161,8 +193,14 @@ async def _check_discover_impl(
     dc = element.get("dc", DEFAULT_DISCOVER_DC)
 
     result = check_resolution.resolve_skill_check_dc(
-        player, skill_lower, dc, ally_present=session.ally_present_for(player_id)
+        condition_voice_rules.roll_data(player, session.combat_state, player_id),
+        skill_lower,
+        dc,
+        ally_present=session.ally_present_for(player_id),
+        hearing_only=hearing_only,
     )
+    if result.auto_fail:
+        return json.dumps(_roll_response(result, target, "automatic_failure"))
     await _publish_roll(session, result)
 
     outcome = "discovered" if result.success else "not_found"
@@ -174,18 +212,32 @@ async def _check_discover_impl(
     # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a
     # lone write (success-only, or consume-only on a failed roll) takes the plain autocommit path,
     # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
+    consumed_state = None
     if result.success and result.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)
             await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)
-            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations, conn=conn)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                result.consumed_conditions,
+                conditions_mutations,
+                conn=conn,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
     else:
         if result.success:
             session.validate_acting_player(player_id)
             await mutations.set_player_flag(player_id, f"{element_id}.discovered", True)
         if result.consumed_conditions:
             session.validate_acting_player(player_id)
-            await consume_beneficial_conditions(player_id, result.consumed_conditions, conditions_mutations)
+            consumed_state = await consume_beneficial_conditions(
+                player_id,
+                result.consumed_conditions,
+                conditions_mutations,
+                combat_state=session.combat_state,
+                db_mod=db_mod,
+            )
 
     # Block re-rolling THIS element this session for this player (not keyed on the target) — added only
     # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
@@ -193,6 +245,8 @@ async def _check_discover_impl(
     # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus
     # die was spent on the d20) still reaches here when its writes succeed, so a miss still spends
     # the session attempt.
+    if consumed_state is not None:
+        session.combat_state = consumed_state
     session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
 
     if result.success:

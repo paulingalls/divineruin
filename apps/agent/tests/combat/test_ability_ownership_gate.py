@@ -5,6 +5,7 @@ from combat.test_hostile_ability_save import _deps, _save, _state
 from combat.test_reaction_ownership_gate import _start_mocks
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import combat_turn
 import conditions
@@ -61,14 +62,16 @@ def _bard_phase(level):
     bard = CombatParticipant("player_1", "Lyra", "player", 15, 20, 20, 13, level=level)
     ally = CombatParticipant("ally", "Brann", "companion", 12, 20, 20, 13)
     foe = CombatParticipant("foe", "Ogre", "enemy", 10, 20, 20, 13)
-    state = CombatState(
-        combat_id="mass_inspire_level",
-        participants=[bard, ally, foe],
-        initiative_order=["player_1", "ally", "foe"],
-        beat="resolution",
-        pending_declarations={
-            "player_1": {"type": "ability", "action": "bard_mass_inspire", "target_ids": ["player_1", "ally"]},
-        },
+    state = place_actors(
+        CombatState(
+            combat_id="mass_inspire_level",
+            participants=[bard, ally, foe],
+            initiative_order=["player_1", "ally", "foe"],
+            beat="resolution",
+            pending_declarations={
+                "player_1": {"type": "ability", "action": "bard_mass_inspire", "target_ids": ["player_1", "ally"]},
+            },
+        )
     )
     context, deps = _deps(state)
     deps["queries"].get_player.return_value = {

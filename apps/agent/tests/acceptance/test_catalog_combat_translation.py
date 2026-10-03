@@ -27,6 +27,12 @@ async def runtime(reset_db_pool):
         enemy = await load_creature_enemy(species, encounter_id="enc137", enemy_id=eid, role=role)
         state = _build_state(cid, pid, [participant(enemy)])
         state.participants[0].has_reaction_ability = False
+        state.spatial = {
+            "positions": {p.id: {"x": 0, "y": 0, "z": 0} for p in state.participants},
+            "speeds": {p.id: 30 for p in state.participants},
+            "locations": {},
+            "zones": {},
+        }
         ctx = make_context(pid, room=make_mock_room())
         await _start_combat(pool, pid, state, ctx)
         created.append((cid, pid))
@@ -125,6 +131,8 @@ async def test_captain_healing_and_prepared_hit(runtime):
         p.hp_current = 1
         p.is_fallen, p.is_dead = fallen, dead
         state.participants.append(p)
+        state.spatial["positions"][p.id] = {"x": 0, "y": 0, "z": 0}
+        state.spatial["speeds"][p.id] = 30
         state.initiative_order.append(p.id)
     await declare(ctx, pid, eid, "Rally")
     result = await resolve(ctx)
@@ -174,6 +182,8 @@ async def test_absorb_heals_actual_damage(runtime):
     other_ctx, other_pid, _, _ = await runtime("bandit")
     state = ctx.userdata.combat_state
     state.participants.append(get_participant(other_ctx.userdata.combat_state, other_pid))
+    state.spatial["positions"][other_pid] = {"x": 0, "y": 0, "z": 0}
+    state.spatial["speeds"][other_pid] = 30
     state.initiative_order.append(other_pid)
     get_participant(state, pid).hp_current = 2
     await declare(ctx, pid, eid, "Absorb")
@@ -274,6 +284,8 @@ async def test_command_focus_bonus_reaches_attack(runtime):
     state = ctx.userdata.combat_state
     ally = await load_creature_enemy("ashmark_soldier", encounter_id="enc137", enemy_id="soldier137", role="standard")
     state.participants.append(participant(ally))
+    state.spatial["positions"]["soldier137"] = {"x": 0, "y": 0, "z": 0}
+    state.spatial["speeds"]["soldier137"] = 30
     state.initiative_order.append("soldier137")
     await combat_turn.declare_phase(
         ctx,

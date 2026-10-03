@@ -5,13 +5,16 @@ in-combat ABILITY declaration through the shared cast logic, the side-channel th
 carries the cast result back to the phase loop, action lookup, and enhancer-rider
 attachment. Consumed by the phase loop (combat_turn)."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, cast
 
 import abilities
 import ability_persistence
 import combat_ability_save
 import combat_enhancers
+import combat_hollow_resonance
+import combat_voice_rules
+import condition_voice_rules
 import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
@@ -126,11 +129,19 @@ async def _resolve_ability_condition_packet(
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
+    combat_voice_rules.guard_declaration(state, attacker, decl)
     ability, variant = resolved
 
     # applies_condition is non-None on this path (condition_ability selected it). The source is the
     # base ability id, which differs from decl.action when a mentor variant was declared.
     cond_type = ability.applies_condition
+    if cond_type == "inspired":
+        eligible = condition_voice_rules.spoken_buff_targets(
+            cond_type, state, attacker.id, decl.target_ids or [decl.target_id or attacker.id]
+        )
+        decl = replace(
+            decl, target_ids=eligible if decl.target_ids else [], target_id=None if decl.target_ids else eligible[0]
+        )
 
     # Multi-target (M4.8 story-016, e.g. bard_mass_inspire): the cap was validated at the
     # declare-gate (spells.normalize_target_list). Deduct once, land on EACH live ally, and voice
@@ -248,6 +259,7 @@ async def _resolve_ability_packet(
     conn,
     player: dict | None,
     cast_outcome: AbilityCastOutcome,
+    damage_deps=None,
 ) -> dict:
     """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
 
@@ -272,21 +284,31 @@ async def _resolve_ability_packet(
             "reason": "ability declaration missing an action",
         }
 
-    # Resolve the declaring member (M14 story-004): the cast reads + writes THAT member's own pool
-    # (resonance/veil_ward/concentration/player_id), never the primary's. attacker.id == the member's
-    # player_id (combat_init builds player participants with id=mid). A missing member falls back to
-    # the primary — the same fallback _resolve_cast applies to caster=None — so solo stays identical.
-    caster = session.party.member(attacker.id) or session.party.primary
+    import choir_encounter
+
+    choir_encounter.guard_declaration(state, attacker.id, decl)
+    caster = session.member_state(attacker.id)
+    combat_voice_rules.guard_declaration(state, attacker, decl)
+    from choir_reaction import effective_declaration
+
+    decl = effective_declaration(state, attacker, decl)
     result = await cast_resolver._resolve_cast(
         session,
         decl.action,
         conn=conn,
         caster=caster,
         player=player,
+        combat_state=state,
         target_id=decl.target_id,
+        target_ids=decl.target_ids,
         suppress_resonance_changed=True,
     )
+    import choir_spell_damage
+
+    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
     cast_outcome.results[attacker.id] = result
+    if result.new_resonance is not None:
+        combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
     # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
     # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
     # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync

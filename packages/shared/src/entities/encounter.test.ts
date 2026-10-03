@@ -7,6 +7,7 @@ import {
   validateEncounterActionShape,
   validateEncounterActionKind,
   validateEncounterEnemyTier,
+  validateScenePlacement,
   type Encounter,
   type EncounterAction,
 } from "./encounter";
@@ -28,6 +29,7 @@ const catalog = (await Bun.file(
   ac: number;
   hp: number;
   xp_reward: number;
+  hollow: { corruption_aura: number } | null;
   attributes: Record<string, number>;
   signature_ability?: { name: string; description: string };
   attacks: (Omit<EncounterAction, "properties"> & { type: string; properties?: string[] })[];
@@ -232,7 +234,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(26);
+    expect(rows).toHaveLength(27);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -268,7 +270,7 @@ const contractCorpus = (await Bun.file(
   }[];
 };
 for (const row of contractCorpus.valid.filter((r) =>
-  /^(recharge_|advantage_|active_)/.test(r.name),
+  /^(recharge_|advantage_|active_|structured_save_)/.test(r.name),
 ))
   test(`structured_recharge action_advantage active_contract ${row.name}`, () => {
     for (const action of row.block.actives.length ? row.block.actives : row.block.attacks) {
@@ -278,7 +280,9 @@ for (const row of contractCorpus.valid.filter((r) =>
   });
 for (const row of contractCorpus.invalid.filter(
   (r) =>
-    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_)/.test(r.name) ||
+    /^(recharge_|advantage_|active_healing_|active_prepare_attack_|mark_|structured_save_)/.test(
+      r.name,
+    ) ||
     (r.name.startsWith("active_attack_") && r.name.includes("_type_")),
 ))
   test(`structured_recharge action_advantage active_contract rejection ${row.name}`, () => {
@@ -337,3 +341,120 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
     ),
   ).toThrow("self_heal");
 });
+
+describe("spatial scene placement", () => {
+  test("spatial real template corpus is reachable and nonempty", () => {
+    expect(references.length).toBe(11);
+    expect(references.some((row) => Object.keys(row.scene_placement.zones).length > 0)).toBe(true);
+    for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
+  });
+  test("spatial zone radii follow the creature catalog owner", () => {
+    let count = 0;
+    for (const row of references) {
+      const expected: Record<string, { center_id: string; radius_ft: number }> = {};
+      for (const ref of row.enemies) {
+        const creature = catalog.find((c) => c.id === ref.creature_id);
+        expect(creature).toBeDefined();
+        if (creature!.hollow !== null && creature!.hollow.corruption_aura > 0) {
+          expected[ref.id + "_corruption_aura"] = {
+            center_id: ref.id,
+            radius_ft: creature!.hollow.corruption_aura,
+          };
+        }
+      }
+      expect(row.scene_placement.zones).toEqual(expected);
+      count += Object.keys(expected).length;
+    }
+    expect(count).toBeGreaterThan(0);
+  });
+  test("spatial rejects malformed authored placement", () => {
+    for (const row of references) {
+      const mutations = [
+        (r: Encounter) => (r.scene_placement.actors.extra = { x: 0, y: 0, z: 0 }),
+        (r: Encounter) => {
+          if (r.enemies.length > 1) r.enemies[1] = { ...r.enemies[0]! };
+          else r.enemies.push({ ...r.enemies[0]! });
+        },
+        (r: Encounter) => Object.assign(r.scene_placement, { extra: 1 }),
+        (r: Encounter) => Object.assign(r.scene_placement.party_start, { extra: 1 }),
+        (r: Encounter) => Reflect.deleteProperty(r.scene_placement.party_start, "z"),
+        (r: Encounter) => Object.assign(r.scene_placement, { locations: [] }),
+        (r: Encounter) => r.enemies.push({ ...r.enemies[0]! }),
+        (r: Encounter) =>
+          Object.assign(r.scene_placement.zones, {
+            z: { center_id: r.enemies[0]!.id, radius_ft: 0, effect: "silence" },
+          }),
+        (r: Encounter) => Reflect.deleteProperty(r, "scene_placement"),
+        (r: Encounter) => Reflect.deleteProperty(r.scene_placement, "party_start"),
+        (r: Encounter) => (r.scene_placement.actors = {}),
+        (r: Encounter) => Object.assign(r.scene_placement.party_start, { x: true }),
+        (r: Encounter) => Object.assign(r.scene_placement.party_start, { x: "1" }),
+        (r: Encounter) => Object.assign(r.scene_placement.party_start, { x: NaN }),
+        (r: Encounter) => Object.assign(r.scene_placement.party_start, { x: Infinity }),
+        (r: Encounter) => (r.scene_placement.zones.z = { center_id: "missing", radius_ft: 1 }),
+        (r: Encounter) =>
+          (r.scene_placement.zones.z = { center_id: r.enemies[0]!.id, radius_ft: -1 }),
+        (r: Encounter) =>
+          Object.assign(r.scene_placement.zones, {
+            z: { center_id: r.enemies[0]!.id, radius_ft: true },
+          }),
+        (r: Encounter) =>
+          (r.scene_placement.zones.z = { center_id: r.enemies[0]!.id, radius_ft: Infinity }),
+        (r: Encounter) => (r.scene_placement.locations[r.enemies[0]!.id] = { x: 0, y: 0, z: 0 }),
+        (r: Encounter) => (r.scene_placement.locations[" "] = { x: 0, y: 0, z: 0 }),
+        (r: Encounter) =>
+          (r.scene_placement.locations = {
+            a: { x: 1e308, y: 0, z: 0 },
+            b: { x: -1e308, y: 0, z: 0 },
+          }),
+      ];
+      for (const mutate of mutations) {
+        const bad = structuredClone(row);
+        mutate(bad);
+        expect(() => validateScenePlacement(bad)).toThrow();
+      }
+    }
+  });
+  test("spatial accepts finite zero-radius actor and landmark zones", () => {
+    const row = structuredClone(references[0]!);
+    row.scene_placement.locations.core = { x: 30, y: 0, z: 0 };
+    row.scene_placement.zones = {
+      silence: { center_id: "core", radius_ft: 0 },
+      aura: { center_id: row.enemies[0]!.id, radius_ft: 30 },
+    };
+    expect(() => validateScenePlacement(row)).not.toThrow();
+  });
+});
+
+test("typed silence zones pass the real scene boundary", () => {
+  const row = structuredClone(references[0]!);
+  row.scene_placement.zones = {
+    quiet: { kind: "silence", center_id: row.enemies[0]!.id, radius_ft: 10 },
+  };
+  expect(() => validateScenePlacement(row)).not.toThrow();
+  for (const kind of [undefined, null, true, 1, "generic", "Silence", "fire"]) {
+    const invalid = structuredClone(row);
+    Object.assign(invalid.scene_placement.zones.quiet!, { kind });
+    expect(() => validateScenePlacement(invalid)).toThrow(/zone/);
+  }
+});
+
+const choirCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
+  row.name.startsWith("choir_"),
+);
+test("Choir public contract corpus is reachable", () => {
+  expect(choirCorpus.length).toBeGreaterThan(1);
+  expect(choirCorpus.some((row) => row.name === "choir_catalog")).toBe(true);
+});
+for (const row of choirCorpus)
+  test(`Choir public contract ${row.name}`, () => {
+    const block = row.block as typeof row.block & { reactions: Record<string, unknown>[] };
+    const validate = () => {
+      for (const action of [...block.attacks, ...block.actives, ...block.reactions]) {
+        validateEncounterActionShape(action);
+        validateEncounterActionKind(action, "enemy 'choir'");
+      }
+    };
+    if (row.name === "choir_catalog") expect(validate).not.toThrow();
+    else expect(validate).toThrow();
+  });

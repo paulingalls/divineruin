@@ -27,7 +27,12 @@ def validate_encounter_references(encounter: dict, creature_ids=None) -> None:
         if enemy["id"] in seen:
             raise ValueError(f"{context}: duplicate id")
         seen.add(enemy["id"])
-        if enemy["role"] not in REFERENCE_ROLES:
+        if enemy["role"] not in REFERENCE_ROLES and not (
+            enemy["role"] == "named" and enemy["creature_id"] == "hollow_choir"
+        ):
             raise ValueError(f"{context}: unsupported role {enemy['role']!r}")
         if creature_ids is not None and enemy["creature_id"] not in creature_ids:
             raise ValueError(f"{context}: unknown creature_id {enemy['creature_id']!r}")
+
+    if any(enemy["creature_id"] == "hollow_choir" for enemy in enemies) and len(enemies) != 1:
+        raise ValueError(f"{label}: the Choir is solitary and must have one damage/reward owner")

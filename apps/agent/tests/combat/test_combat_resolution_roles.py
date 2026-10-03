@@ -20,6 +20,7 @@ from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import conditions
 from combat_phase import (
@@ -36,48 +37,50 @@ from session_data import CombatParticipant, CombatState
 def _boss_combat_state(*, boss_legendary=1, boss_fallen=False, enemy_fallen=False):
     """A CombatState parked at WRAP with a living player, a Boss enemy, and a Standard enemy.
     The Boss carries the role-overlay fields derive_role_stats sets at init."""
-    return CombatState(
-        combat_id="combat_boss123",
-        participants=[
-            CombatParticipant(
-                id="player_1",
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-            ),
-            CombatParticipant(
-                id="warlord_1",
-                name="Hollow Warlord",
-                type="enemy",
-                initiative=12,
-                hp_current=40,
-                hp_max=40,
-                ac=15,
-                xp_value=200,  # already x2 from a base of 100 at init
-                role=EncounterRole.BOSS,
-                legendary_actions=boss_legendary,
-                signature_ability={"name": "Sundering Roar", "damage": "3d6"},
-                is_fallen=boss_fallen,
-            ),
-            CombatParticipant(
-                id="grunt_1",
-                name="Hollow Grunt",
-                type="enemy",
-                initiative=8,
-                hp_current=7,
-                hp_max=7,
-                ac=12,
-                xp_value=50,
-                role=EncounterRole.STANDARD,
-                is_fallen=enemy_fallen,
-            ),
-        ],
-        initiative_order=["player_1", "warlord_1", "grunt_1"],
-        round_number=1,
-        beat=PhaseBeat.WRAP,
+    return place_actors(
+        CombatState(
+            combat_id="combat_boss123",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                ),
+                CombatParticipant(
+                    id="warlord_1",
+                    name="Hollow Warlord",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=40,
+                    hp_max=40,
+                    ac=15,
+                    xp_value=200,  # already x2 from a base of 100 at init
+                    role=EncounterRole.BOSS,
+                    legendary_actions=boss_legendary,
+                    signature_ability={"name": "Sundering Roar", "damage": "3d6"},
+                    is_fallen=boss_fallen,
+                ),
+                CombatParticipant(
+                    id="grunt_1",
+                    name="Hollow Grunt",
+                    type="enemy",
+                    initiative=8,
+                    hp_current=7,
+                    hp_max=7,
+                    ac=12,
+                    xp_value=50,
+                    role=EncounterRole.STANDARD,
+                    is_fallen=enemy_fallen,
+                ),
+            ],
+            initiative_order=["player_1", "warlord_1", "grunt_1"],
+            round_number=1,
+            beat=PhaseBeat.WRAP,
+        )
     )
 
 
@@ -208,43 +211,45 @@ class TestConsumeLegendaryAction:
 def _boss_resolution_state(*, boss_hp=40):
     """A RESOLUTION-beat state (player + living Boss, declarations pending) so driving
     _resolve_phase_impl loops back to the next round and surfaces the Boss's refreshed legendary."""
-    return CombatState(
-        combat_id="combat_boss_live",
-        participants=[
-            CombatParticipant(
-                id="player_1",
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id="warlord_1",
-                name="Hollow Warlord",
-                type="enemy",
-                initiative=12,
-                hp_current=boss_hp,
-                hp_max=boss_hp,
-                ac=15,
-                xp_value=200,
-                role=EncounterRole.BOSS,
-                legendary_actions=1,
-                signature_ability={"name": "Sundering Roar", "damage": "3d6"},
-                action_pool=[{"name": "Cleaver", "damage": "1d10", "damage_type": "slashing", "properties": []}],
-            ),
-        ],
-        initiative_order=["player_1", "warlord_1"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="resolution",
-        pending_declarations={
-            "player_1": {"type": "attack", "action": "Longsword", "target_id": "warlord_1"},
-            "warlord_1": {"type": "attack", "action": "Cleaver", "target_id": "player_1"},
-        },
+    return place_actors(
+        CombatState(
+            combat_id="combat_boss_live",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id="warlord_1",
+                    name="Hollow Warlord",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=boss_hp,
+                    hp_max=boss_hp,
+                    ac=15,
+                    xp_value=200,
+                    role=EncounterRole.BOSS,
+                    legendary_actions=1,
+                    signature_ability={"name": "Sundering Roar", "damage": "3d6"},
+                    action_pool=[{"name": "Cleaver", "damage": "1d10", "damage_type": "slashing", "properties": []}],
+                ),
+            ],
+            initiative_order=["player_1", "warlord_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations={
+                "player_1": {"type": "attack", "action": "Longsword", "target_id": "warlord_1"},
+                "warlord_1": {"type": "attack", "action": "Cleaver", "target_id": "player_1"},
+            },
+        )
     )
 
 

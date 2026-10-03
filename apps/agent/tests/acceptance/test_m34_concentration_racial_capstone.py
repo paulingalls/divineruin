@@ -26,6 +26,7 @@ import json
 
 from acceptance.seeds import _set_race, seed_player_with_pools
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import db
 import db_mutations_concentration
@@ -125,13 +126,19 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
     # per-round shed is SUPPRESSED (story-007, decision resonance-decay-phase-canonical: the
     # combat phase owns decay, not the cast path), so +2 lands exactly at 9 (Overreach) with no shed.
     ctx.userdata.resonance.current = 7
-    ctx.userdata.combat_state = CombatState(
-        combat_id="cap_m34_combat",
-        participants=[
-            CombatParticipant(id=player_id, name="Pyre", type="player", initiative=14, hp_current=28, hp_max=28, ac=14),
-            CombatParticipant(id="hollow_1", name="Hollow", type="enemy", initiative=8, hp_current=9, hp_max=9, ac=12),
-        ],
-        initiative_order=[player_id, "hollow_1"],
+    ctx.userdata.combat_state = place_actors(
+        CombatState(
+            combat_id="cap_m34_combat",
+            participants=[
+                CombatParticipant(
+                    id=player_id, name="Pyre", type="player", initiative=14, hp_current=28, hp_max=28, ac=14
+                ),
+                CombatParticipant(
+                    id="hollow_1", name="Hollow", type="enemy", initiative=8, hp_current=9, hp_max=9, ac=12
+                ),
+            ],
+            initiative_order=[player_id, "hollow_1"],
+        )
     )
 
     # Cast arcane_invisibility (concentration, +2): 7 + 2 = 9 = Overreach (no in-combat shed; echo auto-rolls).

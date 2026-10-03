@@ -9,6 +9,15 @@ from encounter_references import validate_encounter_references
 ROOT = Path(__file__).resolve().parents[3]
 CASES = json.loads((ROOT / "packages/shared/fixtures/encounter_references.json").read_text())
 CATALOG = {row["id"] for row in json.loads((ROOT / "content/creatures.json").read_text())}
+ORIGIN = {"x": 0, "y": 0, "z": 0}
+
+
+def _placed(encounter):
+    """Attach the scene placement combat entry requires, so the reference defect is what refuses."""
+    enemies = encounter.get("enemies") if isinstance(encounter.get("enemies"), list) else []
+    actors = {e["id"]: {**ORIGIN, "x": 20} for e in enemies if isinstance(e, dict) and isinstance(e.get("id"), str)}
+    scene = {"party_start": ORIGIN, "companion_start": ORIGIN, "actors": actors, "locations": {}, "zones": {}}
+    return {**encounter, "scene_placement": scene}
 
 
 @pytest.mark.parametrize("case", CASES["invalid"], ids=lambda case: case["name"])
@@ -22,9 +31,9 @@ def test_recommended_party_level_cases(encounter):
     validate_encounter_references(encounter, CATALOG)
 
 
-def test_all_ten_reference_templates():
+def test_all_eleven_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 10 and CATALOG
+    assert len(templates) == 11 and CATALOG
     for template in templates:
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)
@@ -42,7 +51,7 @@ async def test_start_reference_failures_have_no_side_effects(case, monkeypatch, 
     from tests.combat.test_start_combat import _make_start_combat_mocks
 
     mutations, queries, content = _make_start_combat_mocks()
-    content.get_encounter_template = AsyncMock(return_value=case["encounter"])
+    content.get_encounter_template = AsyncMock(return_value=_placed(case["encounter"]))
     from sample_fixtures import load_test_creature
 
     content.load_creature_enemy = load_test_creature
@@ -78,11 +87,13 @@ async def test_roles_are_applied_once(role, hp_factor):
     from tests.combat.test_start_combat import _make_start_combat_mocks
 
     row = next(row for row in json.loads((ROOT / "content/creatures.json").read_text()) if row["id"] == "bandit")
-    template = {
-        "id": "fixture",
-        "recommended_party_level": 20,
-        "enemies": [{"id": "one", "creature_id": "bandit", "role": role}],
-    }
+    template = _placed(
+        {
+            "id": "fixture",
+            "recommended_party_level": 20,
+            "enemies": [{"id": "one", "creature_id": "bandit", "role": role}],
+        }
+    )
     mutations, queries, content = _make_start_combat_mocks()
     content.get_encounter_template = AsyncMock(return_value=template)
 

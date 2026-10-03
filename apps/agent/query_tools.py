@@ -11,7 +11,9 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import character_spells
+import choir_encounter
 import combat_ability
+import combat_spatial
 import crafting_tools
 import db_activity_queries
 import db_content_queries
@@ -48,6 +50,7 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 async def query_info(
     context: RunContext[SessionData],
     kind: Literal[
+        "combat",
         "location",
         "npc",
         "lore",
@@ -62,6 +65,7 @@ async def query_info(
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
+    - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
@@ -93,6 +97,23 @@ async def _query_info_impl(
     training_mod=training_tools,
     crafting_mod=crafting_tools,
 ) -> str:
+    if kind == "combat":
+        try:
+            return json.dumps(
+                {
+                    **combat_spatial.facts(
+                        context.userdata.combat_state, target_id or context.userdata.acting_player_id
+                    ),
+                    **(
+                        {"choir": choir_encounter.facts(context.userdata.combat_state)}
+                        if context.userdata.combat_state is not None
+                        and context.userdata.combat_state.choir_encounter is not None
+                        else {}
+                    ),
+                }
+            )
+        except ValueError as error:
+            raise ToolError(str(error)) from error
     if kind == "inventory":
         return await _query_inventory_impl(context)
     if kind == "training_programs":

@@ -16,12 +16,14 @@ These tests spy get_players_for_update and assert:
 """
 
 import json
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _make_combat_state, _own_reaction
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import participant, place_actors
 
 import condition_produce
 import reaction_spend
@@ -117,6 +119,8 @@ class TestAbilityLockOrder:
     async def test_reaction_spend_preflight_refuses_before_player_lock_or_resource_write(self):
         ctx = make_context()
         state = _make_combat_state()
+        state.participants.append(replace(participant(state, "goblin_scout_1"), id="goblin_scout_2"))
+        place_actors(state)
         state.beat = PhaseBeat.NARRATION
         state.held_actions = [
             {
@@ -172,6 +176,8 @@ def _bless_spell() -> Spell:
     and the union pre-lock covers {caster + targets}. Source/tier kept arcane-simple; the condition
     value is irrelevant here (the real producer is mocked out)."""
     return Spell(
+        verbal=True,
+        hostile=True,
         id="test_bless",
         name="Test Bless",
         source="arcane",

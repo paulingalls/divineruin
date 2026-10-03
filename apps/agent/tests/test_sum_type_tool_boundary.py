@@ -114,3 +114,27 @@ def test_an_unknown_kind_or_a_missing_required_field_is_a_self_correctable_tool_
     ToolError it can retry from — not as a raw ValidationError out of the tool call."""
     with pytest.raises(ToolError):
         _bind(tool, arguments)
+
+
+@pytest.mark.parametrize("kind", ["skill", "discover"])
+@pytest.mark.parametrize("hearing", [True, False])
+def test_vendor_boundary_preserves_required_hearing_boolean(kind, hearing):
+    raw = {"kind": kind, "skill": "perception", "hearing_only": hearing}
+    raw.update({"difficulty": "easy", "context_description": "inspect"} if kind == "skill" else {"target": "wall"})
+    bound = _bind(check, {"roll": raw})
+    mode, arguments = check_payloads.to_impl_args(bound["roll"])
+    assert mode == kind
+    assert arguments["hearing_only"] is hearing
+
+
+@pytest.mark.parametrize("kind", ["skill", "discover"])
+@pytest.mark.parametrize("defect", ["missing", None, 1, "false", "wrong_skill"])
+def test_vendor_boundary_refuses_malformed_hearing_metadata(kind, defect):
+    raw = {"kind": kind, "skill": "perception", "hearing_only": defect}
+    raw.update({"difficulty": "easy", "context_description": "inspect"} if kind == "skill" else {"target": "wall"})
+    if defect == "missing":
+        raw.pop("hearing_only")
+    if defect == "wrong_skill":
+        raw.update(skill="athletics", hearing_only=True)
+    with pytest.raises(ToolError):
+        _bind(check, {"roll": raw})

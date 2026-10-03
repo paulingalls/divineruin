@@ -1,4 +1,9 @@
-import { validateActionExtensions, type ActionExtensions, type Recharge } from "./action_contracts";
+import {
+  validateActionExtensions,
+  type ActionExtensions,
+  type Recharge,
+  type ChoirEffect,
+} from "./action_contracts";
 
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
 // so adding a role here updates both the type and the conformance test (which imports the array).
@@ -13,6 +18,9 @@ export const ENCOUNTER_ACTION_KIND_VALUES = [
   "accusation",
   "healing",
   "prepare_attack",
+  "charm",
+  "silence",
+  "spell_redirect",
 ] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 const pythonRepr = (value: unknown): string => {
@@ -65,6 +73,12 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  resolution?: "save" | "hit_then_save";
+  save_success_damage?: "none" | "half";
+  conditions_on_failure?: { applies_condition: string; duration: number }[];
+  conditions_on_success?: { applies_condition: string; duration: number }[];
+  reach?: number;
+  type?: "melee" | "ranged" | "area";
   kind?: "attack";
   damage: string; // dice expression, e.g. "1d8", or "0" for a save-gated condition row
   damage_type: string; // "slashing" | "piercing" | ... | "none"
@@ -109,7 +123,8 @@ export type EncounterAction =
   | EncounterCommandAction
   | EncounterAccusationAction
   | EncounterHealingAction
-  | EncounterPrepareAttackAction;
+  | EncounterPrepareAttackAction
+  | (EncounterActionBase & ChoirEffect);
 
 export function encounterActionKind(action: {
   name?: unknown;
@@ -229,7 +244,7 @@ export interface StanceGate {
 export interface EncounterEnemy {
   id: string;
   creature_id: string;
-  role: "minion" | "standard" | "elite" | "boss";
+  role: EncounterRole;
 }
 
 export interface Encounter {
@@ -240,6 +255,7 @@ export interface Encounter {
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
+  scene_placement: ScenePlacement;
 }
 
 export function validateEncounterEnemyTier(
@@ -285,9 +301,102 @@ export function validateEncounterReferences(
     const id = enemy.id as string;
     if (seen.has(id)) throw new Error(`${context}: duplicate id`);
     seen.add(id);
-    if (!["minion", "standard", "elite", "boss"].includes(enemy.role as string))
+    if (
+      !["minion", "standard", "elite", "boss"].includes(enemy.role as string) &&
+      !(enemy.role === "named" && enemy.creature_id === "hollow_choir")
+    )
       throw new Error(`${context}: unsupported role '${String(enemy.role)}'`);
     if (creatureIds && !creatureIds.has(enemy.creature_id as string))
       throw new Error(`${context}: unknown creature_id '${String(enemy.creature_id)}'`);
+  }
+  if (
+    row.enemies.some(
+      (enemy: unknown) => (enemy as Record<string, unknown>).creature_id === "hollow_choir",
+    ) &&
+    row.enemies.length !== 1
+  )
+    throw new Error(`${label}: the Choir is solitary and must have one damage/reward owner`);
+}
+
+export interface SpatialPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+export type SpatialZone =
+  | { center_id: string; radius_ft: number }
+  | { kind: "silence"; center_id: string; radius_ft: number };
+
+export interface ScenePlacement {
+  party_start: SpatialPoint;
+  companion_start: SpatialPoint;
+  actors: Record<string, SpatialPoint>;
+  locations: Record<string, SpatialPoint>;
+  zones: Record<string, SpatialZone>;
+}
+
+function spatialMap(value: unknown): Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some((key) => !key.trim())
+  )
+    throw new Error("spatial map requires nonempty IDs");
+  return value as Record<string, unknown>;
+}
+function spatialPoint(value: unknown): void {
+  const row = spatialMap(value);
+  if (
+    Object.keys(row).sort().join(",") !== "x,y,z" ||
+    Object.values(row).some((v) => typeof v !== "number" || !Number.isFinite(v))
+  )
+    throw new Error("point requires finite x, y, z");
+}
+export function validateScenePlacement(encounter: unknown): void {
+  const row = spatialMap(encounter);
+  const scene = spatialMap(row.scene_placement);
+  if (Object.keys(scene).sort().join(",") !== "actors,companion_start,locations,party_start,zones")
+    throw new Error("scene_placement requires explicit starts, actors, locations and zones");
+  spatialPoint(scene.party_start);
+  spatialPoint(scene.companion_start);
+  const actors = spatialMap(scene.actors),
+    locations = spatialMap(scene.locations),
+    zones = spatialMap(scene.zones);
+  if (!Array.isArray(row.enemies)) throw new Error("missing enemies");
+  const enemyIds = row.enemies.map((e) => spatialMap(e).id);
+  if (
+    new Set(enemyIds).size !== enemyIds.length ||
+    Object.keys(actors).length !== enemyIds.length ||
+    enemyIds.some((id) => typeof id !== "string" || !Object.hasOwn(actors, id))
+  )
+    throw new Error("scene must cover every enemy exactly");
+  for (const value of [...Object.values(actors), ...Object.values(locations)]) spatialPoint(value);
+  const points = [
+    scene.party_start,
+    scene.companion_start,
+    ...Object.values(actors),
+    ...Object.values(locations),
+  ] as SpatialPoint[];
+  for (const a of points)
+    for (const b of points)
+      if (!Number.isFinite(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)))
+        throw new Error("nonfinite distance");
+  const ids = [...Object.keys(actors), ...Object.keys(locations), ...Object.keys(zones)];
+  if (new Set(ids).size !== ids.length) throw new Error("spatial IDs must be unique");
+  for (const value of Object.values(zones)) {
+    const zone = spatialMap(value);
+    if (
+      !["center_id,radius_ft", "center_id,kind,radius_ft"].includes(
+        Object.keys(zone).sort().join(","),
+      ) ||
+      (Object.hasOwn(zone, "kind") && zone.kind !== "silence") ||
+      typeof zone.center_id !== "string" ||
+      !(Object.hasOwn(actors, zone.center_id) || Object.hasOwn(locations, zone.center_id)) ||
+      typeof zone.radius_ft !== "number" ||
+      !Number.isFinite(zone.radius_ft) ||
+      zone.radius_ft < 0
+    )
+      throw new Error("zone requires a known center and finite nonnegative radius");
   }
 }

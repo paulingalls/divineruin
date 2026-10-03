@@ -27,6 +27,10 @@ class CombatParticipant:
     action_ledger: dict[str, dict] = field(default_factory=dict)
     last_action_execution: dict | None = None
     pending_preparation: dict | None = None
+    choir_reaction: dict | None = None
+    choir_suppression: dict | None = None
+    choir_silence_exposed: bool = False
+    choir_movement_round: int | None = None
     creature_id: str | None = None
     catalog_narration: dict = field(default_factory=dict)
     catalog_audio: dict = field(default_factory=dict)
@@ -100,6 +104,9 @@ class CombatParticipant:
     condition_immunities: dict[str, str] = field(default_factory=dict)
     save_advantages: dict[str, str] = field(default_factory=dict)
     advantage_vs: dict[str, str] = field(default_factory=dict)
+
+    hollow: dict | None = None
+    hollow_death_resolved: bool = False
 
     @property
     def is_ally(self) -> bool:

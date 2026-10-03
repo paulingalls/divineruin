@@ -70,6 +70,8 @@ class TestSelectStartingSpells:
             set_spells(
                 {
                     "arcane_only_cantrip": Spell(
+                        verbal=True,
+                        hostile=True,
                         id="arcane_only_cantrip",
                         name="X",
                         source="arcane",

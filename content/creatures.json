@@ -1100,7 +1100,7 @@
         "audio": "cave_wyrm_acid_spit"
       }
     ],
-    "multiattack": "2 attacks — one Bite and one Tail",
+    "multiattack": "2 attacks \u2014 one Bite and one Tail",
     "passives": [
       {
         "name": "Tremorsense",
@@ -1128,7 +1128,7 @@
     "reactions": [],
     "hollow": null,
     "behavior": {
-      "tactics": "Ambush from tunnel walls or ceiling. Uses tremorsense to detect approaching prey. Fights aggressively — cave wyrms are always hungry.",
+      "tactics": "Ambush from tunnel walls or ceiling. Uses tremorsense to detect approaching prey. Fights aggressively \u2014 cave wyrms are always hungry.",
       "morale": "Fights to 25% HP, then attempts to burrow and escape.",
       "group_size": "Solitary or mated pair",
       "environment": [
@@ -1746,7 +1746,7 @@
         "audio": "dire_bear_maul"
       }
     ],
-    "multiattack": "2 attacks — one Claw and one Bite",
+    "multiattack": "2 attacks \u2014 one Claw and one Bite",
     "passives": [
       {
         "name": "Keen Smell",
@@ -1849,7 +1849,7 @@
         "audio": "troll_bite"
       }
     ],
-    "multiattack": "3 attacks — one Bite and two Claw",
+    "multiattack": "3 attacks \u2014 one Bite and two Claw",
     "passives": [
       {
         "name": "Regeneration",
@@ -2005,8 +2005,8 @@
     "reactions": [],
     "hollow": null,
     "behavior": {
-      "tactics": "Stays behind bodyguards. Uses crossbow at range, switches to sword when pressed. Commands bandits tactically — has them flank, focus fire, and retreat when losing.",
-      "morale": "Flees when last bodyguard falls. Surrenders if cornered and outmatched — will offer information or treasure for life.",
+      "tactics": "Stays behind bodyguards. Uses crossbow at range, switches to sword when pressed. Commands bandits tactically \u2014 has them flank, focus fire, and retreat when losing.",
+      "morale": "Flees when last bodyguard falls. Surrenders if cornered and outmatched \u2014 will offer information or treasure for life.",
       "group_size": "With 3-6 bandits",
       "environment": [
         "Roads",
@@ -2076,7 +2076,7 @@
         "to_hit": 7,
         "damage": "1d8+4",
         "damage_type": "slashing",
-        "special": "Target grappled (escape DC 15). Thunderbird can fly while grappling — carries target",
+        "special": "Target grappled (escape DC 15). Thunderbird can fly while grappling \u2014 carries target",
         "audio": "thunderbird_talons"
       },
       {
@@ -2090,7 +2090,7 @@
         "audio": "thunderbird_lightning_breath"
       }
     ],
-    "multiattack": "2 attacks — one Beak and one Talons",
+    "multiattack": "2 attacks \u2014 one Beak and one Talons",
     "passives": [
       {
         "name": "Flyby",
@@ -2213,7 +2213,7 @@
         }
       }
     ],
-    "multiattack": "2 attacks — one Claw and one Dissolution Maw",
+    "multiattack": "2 attacks \u2014 one Claw and one Dissolution Maw",
     "passives": [
       {
         "name": "Unsettling Silence",
@@ -2378,7 +2378,7 @@
       "class": "rend",
       "corruption_aura": 30,
       "resonance_on_death": 1,
-      "veil_effect": "Reverb characteristics change — small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
+      "veil_effect": "Reverb characteristics change \u2014 small rooms echo like cathedrals, large spaces go acoustically dead. The player's own footsteps sound wrong.",
       "vulnerable_to": [
         "physical_damage"
       ]
@@ -2520,7 +2520,7 @@
       "class": "wrack",
       "corruption_aura": 10,
       "resonance_on_death": 2,
-      "veil_effect": "30 ft radius — temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
+      "veil_effect": "30 ft radius \u2014 temperature drops, shadows fall wrong, sounds of the former person's life occasionally echo.",
       "vulnerable_to": [
         "radiant",
         "blessed_weapons",
@@ -2540,7 +2540,7 @@
     },
     "narration": {
       "first_sighting": "Armor creaks with an unnaturally regular gait. Ashmark issue plate closes in, its wearer moving with practiced precision and a head that turns too far.",
-      "attack_cue": "A blade whistles with a soldier’s practiced timing. Necrotic energy sizzles along its edge.",
+      "attack_cue": "A blade whistles with a soldier\u2019s practiced timing. Necrotic energy sizzles along its edge.",
       "wounded_cue": "A confused human breath catches beneath the helmet as the knight staggers. Then the bellows rhythm returns.",
       "death_cue": "Armor clatters to the ground. One nearly human breath follows, then silence.",
       "ambient_cue": "Armor creaks in measured steps. Beneath it, breathing rasps like bellows."
@@ -2635,7 +2635,7 @@
       },
       {
         "name": "Massive",
-        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft × 15 ft.",
+        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft \u00d7 15 ft.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -2660,7 +2660,7 @@
     "reactions": [
       {
         "name": "Absorb Magic",
-        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost × 3. Radiant spells bypass this.",
+        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost \u00d7 3. Radiant spells bypass this.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -2691,7 +2691,7 @@
       "attack_cue": "A vast thud presses down as the mass falls forward. The air muffles your scream.",
       "wounded_cue": "A crack snaps across its surface, followed by a low grinding sound as the gap seals again.",
       "death_cue": "A deep groan swallows the field. Silence hangs over the hollow it leaves in the earth.",
-      "ambient_cue": "A low hum presses beneath conversation. Your companion’s voice sounds distant at arm’s length."
+      "ambient_cue": "A low hum presses beneath conversation. Your companion\u2019s voice sounds distant at arm\u2019s length."
     },
     "audio": {
       "ambient": "HLW-002 heavy subsonic drone and acoustic distortion",
@@ -2742,7 +2742,15 @@
         "audio": "hlw_memory_scream",
         "save": "WIS",
         "dc": 18,
-        "applies_condition": "stunned"
+        "resolution": "save",
+        "save_success_damage": "none",
+        "conditions_on_failure": [
+          {
+            "applies_condition": "stunned",
+            "duration": 1
+          }
+        ],
+        "conditions_on_success": []
       },
       {
         "name": "Dissonant Chord",
@@ -2754,7 +2762,15 @@
         "special": "CON save DC 18 or Deafened 1 minute.",
         "audio": "hlw_dissonant_chord",
         "save": "CON",
-        "dc": 18
+        "dc": 18,
+        "resolution": "hit_then_save",
+        "conditions_on_failure": [
+          {
+            "applies_condition": "deafened",
+            "duration": 10
+          }
+        ],
+        "conditions_on_success": []
       }
     ],
     "multiattack": null,
@@ -2793,22 +2809,65 @@
         "name": "Stolen Melody",
         "description": "Recharge 5-6. Mimics a loved or lost voice. WIS save DC 20 or Charmed for 1d4 rounds, moving toward the voice. The DM speaks in that voice.",
         "narration_cue": "",
-        "recharge": "5-6",
-        "audio": null
+        "recharge": {
+          "kind": "roll",
+          "die": 6,
+          "threshold": 5
+        },
+        "audio": null,
+        "kind": "charm",
+        "save": "WIS",
+        "dc": 20,
+        "duration_dice": "1d4",
+        "movement": "approach_source"
       },
       {
         "name": "Cacophony",
         "description": "1/encounter. All within 60 ft make CON save DC 18: fail 4d8 thunder, Deafened, Stunned 1 round; success half damage and Deafened.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "attack",
+        "type": "area",
+        "reach": 60,
+        "damage": "4d8",
+        "damage_type": "thunder",
+        "resolution": "save",
+        "save": "CON",
+        "dc": 18,
+        "save_success_damage": "half",
+        "conditions_on_failure": [
+          {
+            "applies_condition": "deafened",
+            "duration": 10
+          },
+          {
+            "applies_condition": "stunned",
+            "duration": 1
+          }
+        ],
+        "conditions_on_success": [
+          {
+            "applies_condition": "deafened",
+            "duration": 10
+          }
+        ]
       },
       {
         "name": "Silence Void",
         "description": "1/encounter. 30 ft radius absolute silence for 3 rounds; no verbal spellcasting or communication.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "silence",
+        "radius_ft": 30,
+        "rounds": 3
       }
     ],
     "reactions": [
@@ -2817,7 +2876,12 @@
         "description": "When targeted by a spell with a verbal component, caster WIS save DC 16 or spell targets caster instead.",
         "narration_cue": "",
         "recharge": null,
-        "audio": null
+        "audio": null,
+        "kind": "spell_redirect",
+        "save": "WIS",
+        "dc": 16,
+        "trigger": "verbal_spell",
+        "redirect": "caster"
       }
     ],
     "hollow": {
@@ -3088,7 +3152,7 @@
     "actives": [
       {
         "name": "Reshape",
-        "description": "1/round free action: create, move or destroy a 20 ft × 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
+        "description": "1/round free action: create, move or destroy a 20 ft \u00d7 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
         "narration_cue": "",
         "recharge": "1/round",
         "audio": null
@@ -3533,7 +3597,7 @@
     "hollow": null,
     "behavior": {
       "tactics": "Keeps formation and bashes a foe prone for the next soldier.",
-      "morale": "Withdraws on the sergeant’s order or when outnumbered.",
+      "morale": "Withdraws on the sergeant\u2019s order or when outnumbered.",
       "group_size": "patrol_3_5",
       "environment": [
         "ashmark"
@@ -3542,7 +3606,7 @@
     "narration": {
       "first_sighting": "Shield rims clatter in step before the patrol rounds the corner.",
       "attack_cue": "Steel clatters against a guard as the soldier drives forward.",
-      "wounded_cue": "A labored breath slips through the soldier’s helm.",
+      "wounded_cue": "A labored breath slips through the soldier\u2019s helm.",
       "death_cue": "Armor rattles against the ground as the soldier falls.",
       "ambient_cue": "Boots scrape in a measured patrol rhythm beyond the door."
     },
@@ -3634,8 +3698,8 @@
       ]
     },
     "narration": {
-      "first_sighting": "A sharp whistle cuts across the patrol’s marching cadence.",
-      "attack_cue": "A sharp whistle rises over the greatsword’s swing.",
+      "first_sighting": "A sharp whistle cuts across the patrol\u2019s marching cadence.",
+      "attack_cue": "A sharp whistle rises over the greatsword\u2019s swing.",
       "wounded_cue": "A rough rasp interrupts the next command.",
       "death_cue": "A sword clatters down as the sergeant falls silent.",
       "ambient_cue": "Clipped commands rasp through the camp."
@@ -3900,7 +3964,7 @@
       ]
     },
     "narration": {
-      "first_sighting": "A measured hum silences the cell’s whispers.",
+      "first_sighting": "A measured hum silences the cell\u2019s whispers.",
       "attack_cue": "A hiss of cold air follows the shadow bolt.",
       "wounded_cue": "The incantation falters between painful breaths.",
       "death_cue": "A hollow crack sounds as the mantle gutters out.",

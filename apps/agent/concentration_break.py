@@ -43,8 +43,8 @@ async def break_concentration_on_damage(
 
     ``conn`` joins the break to a caller's transaction: in combat the phase loop passes its phase
     conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
-    conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
-    runs the write on its own connection, post-commit, as before.
+    conn so the save sees the in-tx state. Without a caller transaction, the default ``None``
+    runs the write on its own connection.
 
     ``combat_state`` is the WORKING combat state to read/mutate. The phase loop resolves against a
     deep-copied working state and only adopts it as session.combat_state AFTER the tx commits
@@ -84,7 +84,7 @@ async def break_concentration_on_damage(
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None
 
-    return await _end_concentration(
+    return await end_concentration(
         session,
         damaged_player_id,
         combat_state=combat_state,
@@ -103,7 +103,7 @@ async def break_concentration_on_incapacitation(
     concentration_mutations=db_mutations_concentration,
     spells_mod=spells,
 ) -> str | None:
-    return await _end_concentration(
+    return await end_concentration(
         session,
         player_id,
         combat_state=combat_state,
@@ -113,14 +113,14 @@ async def break_concentration_on_incapacitation(
     )
 
 
-async def _end_concentration(
+async def end_concentration(
     session: SessionData,
     player_id: str,
     *,
     combat_state,
     conn,
-    concentration_mutations,
-    spells_mod,
+    concentration_mutations=db_mutations_concentration,
+    spells_mod=spells,
 ) -> str | None:
     member = session.member_state(player_id)
     spell_id = member.concentration.spell_id

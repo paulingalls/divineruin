@@ -28,6 +28,8 @@ _REQUIRED_FIELDS = (
     "focus_cost",
     "mechanics",
     "narration_cue",
+    "verbal",
+    "hostile",
     "resonance_by_source",
     "terrain_effects",
     "audio_cue",

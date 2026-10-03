@@ -136,45 +136,103 @@ def _is_session_lock(node: ast.AST) -> bool:
     )
 
 
-def _name_references() -> dict[str, set[tuple[tuple[str, str], bool]]]:
-    """Map each loaded name to the production functions that load it, each flagged with whether the
-    load sits lexically inside an ``async with ....combat_state_lock`` body.
+def _name_references(trees=None):
+    trees = trees or {path.name: ast.parse(path.read_text()) for path in sorted(_AGENT_ROOT.glob("*.py"))}
+    refs = {}
+    for module_name, tree in trees.items():
+        modules = {
+            alias.asname or alias.name: alias.name + ".py"
+            for node in tree.body
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+        imports = {
+            alias.asname or alias.name: (node.module + ".py", alias.name)
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module
+            for alias in node.names
+        }
+        local = {node.name for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
 
-    Names match by bare identifier, so a collision only ADDS referrers: it can red spuriously, never
-    certify an unlocked route. A load, not just a call, counts, so a function handed off as a
-    callback still needs a locked referrer."""
-    refs: dict[str, set[tuple[tuple[str, str], bool]]] = {}
-
-    for path in sorted(_AGENT_ROOT.glob("*.py")):
-
-        def visit(node, owner, under_lock, *, module_name=path.name):
+        def visit(node, owner, under_lock, *, module_name=module_name, imports=imports, local=local, modules=modules):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                owner, under_lock = (module_name, node.name), False
+                owner = (module_name, node.name)
+                under_lock = any(
+                    isinstance(decorator, ast.Name)
+                    and imports.get(decorator.id) == ("condition_consume.py", "serialize_combat_check")
+                    for decorator in node.decorator_list
+                )
             under_lock = under_lock or _is_session_lock(node)
+            target = None
             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-                refs.setdefault(node.id, set()).add((owner, under_lock))
-            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
-                refs.setdefault(node.attr, set()).add((owner, under_lock))
+                target = imports.get(node.id) or ((module_name, node.id) if node.id in local else None)
+            elif (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.ctx, ast.Load)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in modules
+            ):
+                target = (modules[node.value.id], node.attr)
+            if target is not None:
+                refs.setdefault(target, set()).add((owner, under_lock))
             for child in ast.iter_child_nodes(node):
                 visit(child, owner, under_lock)
 
-        visit(ast.parse(path.read_text()), (path.name, "<module>"), False)
+        visit(tree, (module_name, "<module>"), False)
     return refs
 
 
-def _reached_only_under_lock(function: tuple[str, str], refs, seen: frozenset = frozenset()) -> bool:
+def _reached_only_under_lock(function, refs, seen=frozenset()):
     if function in seen:
         return True
-    referrers = refs.get(function[1])
+    referrers = refs.get(function)
     if not referrers:
         return False
     return all(locked or _reached_only_under_lock(referrer, refs, seen | {function}) for referrer, locked in referrers)
 
 
+@pytest.mark.parametrize("decorated", [False, True])
+def test_lock_graph_qualified_routes_red_when_the_lock_is_removed(decorated):
+    prefix = "from condition_consume import serialize_combat_check\n@serialize_combat_check\n" if decorated else ""
+    body = (
+        "    await choir_scene.start()\n"
+        if decorated
+        else "    async with session.combat_state_lock:\n        await choir_scene.start()\n"
+    )
+    source = "import choir_scene\n" + prefix + "async def entry(session):\n" + body
+    trees = {
+        "entry.py": ast.parse(source),
+        "choir_scene.py": ast.parse("async def start(): pass"),
+        "other.py": ast.parse("async def entry():\n    await unrelated.start()"),
+    }
+    target = ("choir_scene.py", "start")
+    assert _reached_only_under_lock(target, _name_references(trees))
+    unlocked = (
+        source.replace("@serialize_combat_check\n", "")
+        if decorated
+        else source.replace("    async with session.combat_state_lock:\n        ", "    ")
+    )
+    trees["entry.py"] = ast.parse(unlocked)
+    assert not _reached_only_under_lock(target, _name_references(trees))
+
+
+def test_combat_check_decorator_reaches_its_wrapped_function_under_lock():
+    tree = ast.parse((_AGENT_ROOT / "condition_consume.py").read_text())
+    serialized = next(
+        node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "serialized"
+    )
+    locked = next(node for node in ast.walk(serialized) if _is_session_lock(node))
+    assert any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "function"
+        for node in ast.walk(locked)
+    )
+
+
 def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
-            ("combat_init.py", "_start_combat_locked", "call"): 1,
+            ("choir_scene.py", "start", "call"): 2,
+            ("condition_consume.py", "persist_combat_consumption", "call"): 1,
             ("veil_ward_tools.py", "_activate_veil_ward_locked", "call"): 1,
             ("veil_ward_tools.py", "_dismiss_impl", "call"): 1,
             ("combat_turn.py", "_declare_phase_locked", "call"): 1,
@@ -183,7 +241,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("combat_turn.py", "_consume_legendary_action_locked", "call"): 1,
             ("combat_wrap.py", "wrap_phase", "call"): 1,
             ("combat_death_save.py", "_request_death_save_locked", "call"): 1,
-            ("draethar_inner_fire.py", "_inner_fire_locked", "call"): 2,
+            ("draethar_inner_fire.py", "_inner_fire_locked", "call"): 1,
         }
     )
     assert _save_references() == expected

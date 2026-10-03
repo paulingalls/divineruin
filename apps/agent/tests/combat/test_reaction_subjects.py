@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from sample_fixtures import catalog_encounters
+from voice_condition_fixtures import place_actors
 
 import combat_hold
 import reaction_spend
@@ -58,7 +59,7 @@ def _paused(*, action_kind="attack", stage=reaction_windows.PRE_ROLL, target_id:
         action_kind=action_kind,
         triggers=triggers,
     )
-    return state
+    return place_actors(state)
 
 
 def _ids(state):
@@ -98,7 +99,8 @@ def test_the_held_action_producer_puts_the_real_kind_on_the_window():
 
 
 def test_plausible_deniability_is_bound_to_the_accused():
-    assert "spy_plausible_deniability" not in _ids(_paused(action_kind="accusation", target_id="bystander"))
+    state = place_actors(_paused(action_kind="accusation", target_id="bystander"), "bystander")
+    assert "spy_plausible_deniability" not in _ids(state)
 
 
 @pytest.mark.parametrize(
@@ -170,3 +172,10 @@ def test_healing_preparation_never_produce_attack_or_social_subjects(kind):
     assert state.open_window is not None
     state.open_window["triggers"] = list(reaction_windows.pre_roll_triggers(action))
     assert _ids(state) == {"diplomat_objection"}
+
+
+def test_named_choir_remains_a_hollow_reaction_subject():
+    enemy = _participant("choir", kind="enemy", category="named")
+    enemy.creature_id = "hollow_choir"
+    assert is_hollow(enemy)
+    assert "diplomat_objection" not in _ids(_paused(enemy=enemy))

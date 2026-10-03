@@ -70,6 +70,8 @@ class Spell:
     focus_cost: int
     mechanics: str
     narration_cue: str
+    verbal: bool
+    hostile: bool
     # M3.3 cast-time fields. Defaults keep in-code Spell(...) builds (tests/fixtures)
     # working without supplying them; parse_spell_row REQUIRES them in raw rows (strict,
     # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
@@ -126,6 +128,9 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         spell_tier = data["spell_tier"]
         if spell_tier not in _SPELL_TIERS:
             raise ValueError(f"spell {spell_id!r} spell_tier {spell_tier!r} not in {sorted(_SPELL_TIERS)}")
+        for component in ("verbal", "hostile"):
+            if not isinstance(data[component], bool):
+                raise ValueError(f"spell {spell_id!r} {component} is not a bool")
         concentration = data["concentration"]
         if not isinstance(concentration, bool):
             raise ValueError(f"spell {spell_id!r} concentration is not a bool")
@@ -152,6 +157,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             focus_cost=parse_int(data["focus_cost"], f"spell {spell_id!r} focus_cost"),
             mechanics=data["mechanics"],
             narration_cue=data["narration_cue"],
+            verbal=data["verbal"],
+            hostile=data["hostile"],
             resonance_by_source=parse_int_dict(data["resonance_by_source"], f"spell {spell_id!r} resonance_by_source"),
             terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),

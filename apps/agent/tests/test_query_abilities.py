@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
+from combat._helpers import place_actors
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
@@ -15,23 +16,22 @@ from session_data import CombatParticipant, CombatState, SessionData
 
 
 def _solo_player_state() -> CombatState:
-    """A one-player combat at the declaration beat — enough for the declare gate, which validates an
-    ABILITY action without reading targets. advance_combat_phase is pure, so one state serves the
-    whole walk."""
-    return CombatState(
-        combat_id="query-declarability",
-        participants=[
-            CombatParticipant(
-                id="test_player",
-                name="Test Player",
-                type="player",
-                initiative=10,
-                hp_current=10,
-                hp_max=10,
-                ac=10,
-            )
-        ],
-        initiative_order=["test_player"],
+    return place_actors(
+        CombatState(
+            combat_id="query-declarability",
+            participants=[
+                CombatParticipant(
+                    id="test_player",
+                    name="Test Player",
+                    type="player",
+                    initiative=10,
+                    hp_current=10,
+                    hp_max=10,
+                    ac=10,
+                )
+            ],
+            initiative_order=["test_player"],
+        )
     )
 
 

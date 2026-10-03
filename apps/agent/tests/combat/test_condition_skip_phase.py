@@ -7,6 +7,7 @@ from combat._helpers import _activate, _call, _ctx_at_resolution, _make_combat_s
 from combat._reaction_helpers import _guarded_ally_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import check_resolution_attack
 import combat_phase
@@ -68,7 +69,7 @@ def _blocked_roster() -> CombatState:
             ),
         ]
     )
-    return state
+    return place_actors(state)
 
 
 @pytest.mark.parametrize(

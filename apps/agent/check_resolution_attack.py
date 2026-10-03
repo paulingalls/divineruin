@@ -129,8 +129,20 @@ def resolve_attack(
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
-    bonus, consumed = roll_bonus_dice(effects, "attack", rng=rng)
-    consumed = tuple(dict.fromkeys((*attack_consumed_conditions(attacker_data.get("conditions") or []), *consumed)))
+    bonus, consumed = roll_bonus_dice(
+        effects, "attack", rng=rng, spoken_buffs_eligible=attacker_data.get("spoken_buffs_eligible", True)
+    )
+    consumed = tuple(
+        dict.fromkeys(
+            (
+                *attack_consumed_conditions(
+                    attacker_data.get("conditions") or [],
+                    spoken_buffs_eligible=attacker_data.get("spoken_buffs_eligible", True),
+                ),
+                *consumed,
+            )
+        )
+    )
     atk_mod += bonus
     # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
     # always hits, nat-1 always misses, else total >= AC. Route through the shared

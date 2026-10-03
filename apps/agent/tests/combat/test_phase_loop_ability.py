@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from _combat_end_fixtures import default_condition_persistence, default_player_row  # noqa: F401
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from combat.test_phase_loop import _resonance_deps
 from livekit.agents.llm import ToolError

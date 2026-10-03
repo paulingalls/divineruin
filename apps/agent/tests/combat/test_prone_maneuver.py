@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from combat._helpers import _ctx_at_resolution, _make_combat_state, _resolve_deps, _resolve_round
 from livekit.agents.llm import ToolError
+from voice_condition_fixtures import place_actors
 
 import combat_prompts
 import combat_turn
@@ -140,6 +141,7 @@ async def test_shove_refuses_a_target_that_cannot_be_contested(target_state):
     target = _participant(state, "goblin_scout_1")
     if target_state == "missing":
         state.participants.remove(target)
+        place_actors(state)
     else:
         target.is_fallen = True
         other = copy.deepcopy(target)
@@ -147,6 +149,7 @@ async def test_shove_refuses_a_target_that_cannot_be_contested(target_state):
         other.name = "Other Goblin"
         other.is_fallen = False
         state.participants.append(other)
+        place_actors(state)
         state.initiative_order.append(other.id)
     ctx = _ctx_at_resolution(state=state)
 

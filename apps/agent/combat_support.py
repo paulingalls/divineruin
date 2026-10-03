@@ -1,15 +1,17 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
 import combat_ability
 import combat_grapple
+import combat_hollow_death
 import combat_resolution
 import concentration_break
+import condition_sources
 import conditions
 import db_mutations
 import db_queries
@@ -109,6 +111,7 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
+    combat_hollow_death.mark_destroyed(target)
     target.is_fallen = True
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
@@ -239,6 +242,17 @@ async def apply_attack_result(
     Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
     story-016), so the engine can pause on a post-roll, pre-damage reaction window.
     """
+    import choir_encounter
+
+    if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
+        if combat_state.choir_encounter["phase"] != "exposed":
+            if attacker.id != target.id:
+                raise ValueError("Choir core must be exposed before damage")
+            attack_result = replace(attack_result, damage=0)
+        bonus = getattr(attack_result, "bonus_damage", 0)
+        allowed = choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
+        allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
+        attack_result = replace(attack_result, damage=allowed)
     save_damage = isinstance(attack_result, SaveDamageResult)
     if save_damage and publish_roll:
         raise ValueError("save damage cannot publish an attack roll")
@@ -258,10 +272,13 @@ async def apply_attack_result(
     # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
     # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
     # hides the fall it caused, so every verdict below reads hp_before instead.
+    death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
     gift_triggered = trigger_iron_resolve(session, target, hp_before)
+
+    target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
@@ -293,6 +310,11 @@ async def apply_attack_result(
         )
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
+
+    if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
+        await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
+        if combat_state is not None and combat_state.choir_encounter is not None:
+            choir_encounter.destroyed(combat_state)
 
     # Update DB if target is a player
     if target.type == "player":

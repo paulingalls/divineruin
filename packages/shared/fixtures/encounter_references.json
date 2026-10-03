@@ -26,6 +26,17 @@
           "role": "standard"
         }
       ]
+    },
+    {
+      "id": "choir",
+      "recommended_party_level": 16,
+      "enemies": [
+        {
+          "id": "choir_zone",
+          "creature_id": "hollow_choir",
+          "role": "named"
+        }
+      ]
     }
   ],
   "invalid": [
@@ -761,6 +772,86 @@
           []
         ]
       }
+    },
+    {
+      "name": "named_hollow_still",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_still",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "named_hollow_architect",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "named_bandit",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "bandit",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "named_unknown_named",
+      "field": "role",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "unknown_named",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "choir_multiple_owners",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_choir",
+            "role": "named"
+          },
+          {
+            "id": "two",
+            "creature_id": "hollow_choir",
+            "role": "named"
+          }
+        ]
+      }
     }
   ],
   "fixture_catalog": [
@@ -922,66 +1013,73 @@
     }
   ],
   "consumer_inventory": [
-      "apps/agent/tests/_encounter_reference_proofs.py",
-      "apps/agent/tests/acceptance/_catalog_cutover_helpers.py",
-      "apps/agent/tests/acceptance/test_catalog_action_runtime.py",
-      "apps/agent/tests/acceptance/test_catalog_encounter_cutover.py",
-      "apps/agent/tests/acceptance/test_m13_enemy_condition_capstone.py",
-      "apps/agent/tests/acceptance/test_m14_multiplayer_combat_capstone.py",
-      "apps/agent/tests/acceptance/test_m18_multiplayer_completeness_capstone.py",
-      "apps/agent/tests/acceptance/test_m20_mp_combat_completeness_capstone.py",
-      "apps/agent/tests/acceptance/test_m24_veil_ward_scope_capstone.py",
-      "apps/agent/tests/acceptance/test_m41_phase_loop_capstone.py",
-      "apps/agent/tests/acceptance/test_m42_action_economy_capstone.py",
-      "apps/agent/tests/acceptance/test_m44_death_system_capstone.py",
-      "apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py",
-      "apps/agent/tests/acceptance/test_m6_4_companion_chain_capstone.py",
-      "apps/agent/tests/acceptance/test_material_inventory.py",
-      "apps/agent/tests/acceptance/test_reputation_writer_stance.py",
-      "apps/agent/tests/combat/test_ability_ownership_gate.py",
-      "apps/agent/tests/combat/test_combat_init_condition_validation.py",
-      "apps/agent/tests/combat/test_combat_init_multiplayer.py",
-      "apps/agent/tests/combat/test_combat_init_roles.py",
-      "apps/agent/tests/combat/test_combat_state_lock_inventory.py",
-      "apps/agent/tests/combat/test_condition_skip_phase.py",
-      "apps/agent/tests/combat/test_countercharm_save.py",
-      "apps/agent/tests/combat/test_declaration_payloads.py",
-      "apps/agent/tests/combat/test_enemy_action_kinds.py",
-      "apps/agent/tests/combat/test_enemy_mark_actions.py",
-      "apps/agent/tests/combat/test_enemy_mark_producer.py",
-      "apps/agent/tests/combat/test_grapple.py",
-      "apps/agent/tests/combat/test_grapple_release.py",
-      "apps/agent/tests/combat/test_guest_ends_combat.py",
-      "apps/agent/tests/combat/test_hold_person_paralysis.py",
-      "apps/agent/tests/combat/test_item_protection.py",
-      "apps/agent/tests/combat/test_multiplayer_party_trigger.py",
-      "apps/agent/tests/combat/test_reaction_ownership_gate.py",
-      "apps/agent/tests/combat/test_reaction_subjects.py",
-      "apps/agent/tests/combat/test_reaction_window_census.py",
-      "apps/agent/tests/combat/test_shield_bash_prone.py",
-      "apps/agent/tests/combat/test_slippery_escape.py",
-      "apps/agent/tests/combat/test_social_reactions.py",
-      "apps/agent/tests/combat/test_start_combat.py",
-      "apps/agent/tests/combat/test_weapon_damage.py",
-      "apps/agent/tests/companion/test_combat_memory.py",
-      "apps/agent/tests/docs/test_bestiary_authored_blocks.py",
-      "apps/agent/tests/handoff/test_combat_handoff.py",
-      "apps/agent/tests/handoff/test_roundtrip.py",
-      "apps/agent/tests/rules/test_incoming_attack_conditions.py",
-      "apps/agent/tests/sample_fixtures.py",
-      "apps/agent/tests/test_combat_start_conditions.py",
-      "apps/agent/tests/test_combat_ui_update.py",
-      "apps/agent/tests/test_companion_combat.py",
-      "apps/agent/tests/test_content_validation.py",
-      "apps/agent/tests/test_e2e_playtest.py",
-      "apps/agent/tests/test_encounter_references.py",
-      "apps/agent/tests/test_enter_mode.py",
-      "apps/agent/tests/test_guest_activation.py",
-      "apps/agent/tests/test_music_tool.py",
-      "apps/agent/tests/test_seed_content.py",
-      "apps/agent/tests/test_seed_creature_tiers.py",
-      "apps/agent/tests/test_seed_encounter_references.py",
-      "apps/agent/tests/test_seed_gathering_validation.py",
-      "apps/agent/tests/test_skill_tier_hydration.py"
+    "apps/agent/tests/_encounter_reference_proofs.py",
+    "apps/agent/tests/acceptance/_catalog_cutover_helpers.py",
+    "apps/agent/tests/acceptance/choir_capstone_harness.py",
+    "apps/agent/tests/acceptance/test_catalog_action_runtime.py",
+    "apps/agent/tests/acceptance/test_catalog_encounter_cutover.py",
+    "apps/agent/tests/acceptance/test_choir_capstone.py",
+    "apps/agent/tests/acceptance/test_combat_spatial_entry.py",
+    "apps/agent/tests/acceptance/test_m13_enemy_condition_capstone.py",
+    "apps/agent/tests/acceptance/test_m14_multiplayer_combat_capstone.py",
+    "apps/agent/tests/acceptance/test_m18_multiplayer_completeness_capstone.py",
+    "apps/agent/tests/acceptance/test_m20_mp_combat_completeness_capstone.py",
+    "apps/agent/tests/acceptance/test_m24_veil_ward_scope_capstone.py",
+    "apps/agent/tests/acceptance/test_m41_phase_loop_capstone.py",
+    "apps/agent/tests/acceptance/test_m42_action_economy_capstone.py",
+    "apps/agent/tests/acceptance/test_m44_death_system_capstone.py",
+    "apps/agent/tests/acceptance/test_m47_encounter_roles_capstone.py",
+    "apps/agent/tests/acceptance/test_m6_4_companion_chain_capstone.py",
+    "apps/agent/tests/acceptance/test_material_inventory.py",
+    "apps/agent/tests/acceptance/test_reputation_writer_stance.py",
+    "apps/agent/tests/combat/test_ability_ownership_gate.py",
+    "apps/agent/tests/combat/test_choir_encounter.py",
+    "apps/agent/tests/combat/test_combat_init_condition_validation.py",
+    "apps/agent/tests/combat/test_combat_init_multiplayer.py",
+    "apps/agent/tests/combat/test_combat_init_roles.py",
+    "apps/agent/tests/combat/test_combat_spatial.py",
+    "apps/agent/tests/combat/test_combat_spatial_validation.py",
+    "apps/agent/tests/combat/test_combat_state_lock_inventory.py",
+    "apps/agent/tests/combat/test_condition_skip_phase.py",
+    "apps/agent/tests/combat/test_countercharm_save.py",
+    "apps/agent/tests/combat/test_declaration_payloads.py",
+    "apps/agent/tests/combat/test_enemy_action_kinds.py",
+    "apps/agent/tests/combat/test_enemy_mark_actions.py",
+    "apps/agent/tests/combat/test_enemy_mark_producer.py",
+    "apps/agent/tests/combat/test_grapple.py",
+    "apps/agent/tests/combat/test_grapple_release.py",
+    "apps/agent/tests/combat/test_guest_ends_combat.py",
+    "apps/agent/tests/combat/test_hold_person_paralysis.py",
+    "apps/agent/tests/combat/test_item_protection.py",
+    "apps/agent/tests/combat/test_multiplayer_party_trigger.py",
+    "apps/agent/tests/combat/test_reaction_ownership_gate.py",
+    "apps/agent/tests/combat/test_reaction_subjects.py",
+    "apps/agent/tests/combat/test_reaction_window_census.py",
+    "apps/agent/tests/combat/test_shield_bash_prone.py",
+    "apps/agent/tests/combat/test_slippery_escape.py",
+    "apps/agent/tests/combat/test_social_reactions.py",
+    "apps/agent/tests/combat/test_sprint64_lifecycle_seams.py",
+    "apps/agent/tests/combat/test_start_combat.py",
+    "apps/agent/tests/combat/test_weapon_damage.py",
+    "apps/agent/tests/companion/test_combat_memory.py",
+    "apps/agent/tests/docs/test_bestiary_authored_blocks.py",
+    "apps/agent/tests/handoff/test_combat_handoff.py",
+    "apps/agent/tests/handoff/test_roundtrip.py",
+    "apps/agent/tests/rules/test_incoming_attack_conditions.py",
+    "apps/agent/tests/sample_fixtures.py",
+    "apps/agent/tests/test_combat_start_conditions.py",
+    "apps/agent/tests/test_combat_ui_update.py",
+    "apps/agent/tests/test_companion_combat.py",
+    "apps/agent/tests/test_content_validation.py",
+    "apps/agent/tests/test_e2e_playtest.py",
+    "apps/agent/tests/test_encounter_references.py",
+    "apps/agent/tests/test_enter_mode.py",
+    "apps/agent/tests/test_guest_activation.py",
+    "apps/agent/tests/test_music_tool.py",
+    "apps/agent/tests/test_seed_content.py",
+    "apps/agent/tests/test_seed_creature_tiers.py",
+    "apps/agent/tests/test_seed_encounter_references.py",
+    "apps/agent/tests/test_seed_gathering_validation.py",
+    "apps/agent/tests/test_skill_tier_hydration.py"
   ]
 }

@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from acceptance.seeds import seed_player
@@ -20,7 +21,7 @@ PRIOR = "2026-09-01T00:00:00+00:00"
 
 
 async def seed_favor(pool, level=10, patron="veythar"):
-    player_id = "patron_action_player"
+    player_id = f"patron_action_{uuid4().hex}"
     await seed_player(pool, player_id=player_id)
     await pool.execute(
         "UPDATE players SET data = jsonb_set(data, '{divine_favor}', $2::jsonb) WHERE player_id = $1",

@@ -7,6 +7,7 @@ import pytest
 from combat._helpers import _ctx_at_resolution, _make_combat_state, _resolve_deps, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import catalog_encounters, make_context
+from voice_condition_fixtures import place_actors
 
 import combat_conditions_persist
 import combat_prompts
@@ -83,6 +84,7 @@ def _grapple_round_state():
     enemy = state.get_participant("goblin_scout_1")
     assert enemy is not None
     enemy.id = "mawling_1"
+    place_actors(state)
     enemy.name = "Mawling"
     enemy.action_pool = [_grab()]
     state.initiative_order = ["player_1", enemy.id]
@@ -158,6 +160,7 @@ async def test_a_later_seizing_grab_keeps_the_prior_source_and_reports_grapple_h
     player = state.get_participant("player_1")
     assert enemy is not None and player is not None
     enemy.id = "mawling_2"
+    place_actors(state)
     state.initiative_order[-1] = enemy.id
     state.pending_declarations[enemy.id] = state.pending_declarations.pop("mawling_1")
     player.conditions = conditions.apply_condition([], "grappled", source="mawling_1")
@@ -315,6 +318,7 @@ async def test_grappled_actor_maneuvering_on_someone_else_still_shoves():
     other.id = "other_enemy"
     other.name = "Other Enemy"
     state.participants.append(other)
+    place_actors(state)
     ctx = _ctx_at_resolution(state=state)
 
     with patch("random.randint", side_effect=[20, 1]):

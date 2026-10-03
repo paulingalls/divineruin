@@ -6,9 +6,24 @@ per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
 **Position: 313 / 538 acceptance criteria — 58%** (the sum of the per-phase counts in
-`README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 3, 4, 5 and 6 are
-complete. Sprints 001–044 delivered 28 milestones across five execution plans;
+`README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 4, 5 and 6 have their recorded criteria delivered. M33 remains partial despite its checked catalog/infrastructure criteria: deferred spell effects remain. M7.3 remains partial: Still, Architect and remaining troop/Tier3 effects remain open; Choir native encounter certification remains pending. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
+
+
+**TODO: complete native Choir audio acceptance.** The manual harness remains
+experimental/incomplete. Saved partial run `mus2471i-cbb68570` used normal capture
+with the SFX session-preservation patch and completed entry, cast-aura, aura-break,
+search, redirect, silence, refusal and silenced-command. It was interrupted on
+human request at deafened; an interrupted run is not a full pass.
+
+With fresh human go-ahead, run a new complete current-source sequence from entry
+through deafened, deafened-command, expiry, destruction and replay. Also prove the
+matched SFX deactivation fault at the stinger/two-command boundary under identical settings
+and normal capture. The prepatch zero-frame observation and partial patched run do
+not establish that matched causal proof. Manual dropped-gameplay, bypassed-receiver,
+skipped-encounter, withheld-input, DM-tone and unrelated-burst native fault validation
+also remains pending. Preserve the partial artifacts; silent contract tests prove
+transport/mechanics, not complete native audio or paid recognition quality.
 
 ---
 

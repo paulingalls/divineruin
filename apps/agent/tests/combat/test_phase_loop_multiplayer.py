@@ -17,6 +17,7 @@ import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 from session_data import CombatParticipant, CombatState
 from spell_casting import _UNCHANGED, CastResult
@@ -62,15 +63,17 @@ def _mp_state(*, player_ids=("player_1", "player_2"), enemy_hp=20, attacks_only=
     else:
         pending = {pid: {"type": "ability", "action": "arcane_bolt"} for pid in player_ids}
     pending["goblin_1"] = {"type": "attack", "action": "Scimitar", "target_id": player_ids[0]}
-    return CombatState(
-        combat_id="combat_mp",
-        participants=participants,
-        initiative_order=[*player_ids, "goblin_1"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="resolution",
-        pending_declarations=pending,
+    return place_actors(
+        CombatState(
+            combat_id="combat_mp",
+            participants=participants,
+            initiative_order=[*player_ids, "goblin_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations=pending,
+        )
     )
 
 

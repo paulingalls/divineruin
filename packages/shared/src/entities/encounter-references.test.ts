@@ -29,11 +29,11 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
-test("all ten templates", async () => {
+test("all eleven templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as unknown[];
-  expect(rows).toHaveLength(10);
+  expect(rows).toHaveLength(11);
   expect(ids.size).toBeGreaterThan(0);
   for (const row of rows) validateEncounterReferences(row, ids);
 });
@@ -74,8 +74,10 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
         entries
           .map((entry, index) => `const entry${index}: EncounterEnemy = ${entry};`)
           .join("\n") +
-        '\nconst correct: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], recommended_party_level:1};' +
-        '\nconst missingLevel: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0]};',
+        "\nconst origin = {x:0, y:0, z:0};" +
+        "\nconst scene_placement = {party_start:origin, companion_start:origin, actors:{one:origin}, locations:{}, zones:{}};" +
+        '\nconst correct: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], recommended_party_level:1, scene_placement};' +
+        '\nconst missingLevel: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], scene_placement};',
     );
     const program = ts.createProgram([path], {
       noEmit: true,

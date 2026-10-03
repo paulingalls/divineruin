@@ -9,6 +9,7 @@ import pytest
 from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
 from test_draethar_inner_fire import _combat_ctx, _invoke, _mocks, _player
 from test_kaelen_gift import player
+from voice_condition_fixtures import place_actors
 
 import conditions
 import event_types as E
@@ -64,6 +65,7 @@ def check_context():
     ctx.userdata.combat_state = CombatState(
         combat_id="checks", participants=[player(), guest], initiative_order=["player_1", "player_2"]
     )
+    place_actors(ctx.userdata.combat_state)
     queries = MagicMock(
         get_player=AsyncMock(side_effect=lambda pid: rows[pid]), get_player_inventory=AsyncMock(return_value=[])
     )
@@ -114,7 +116,7 @@ async def test_save_without_matching_combat_gift(combat):
         elif combat == "missing_guest":
             ctx.userdata.combat_state.participants.pop()
         else:
-            ctx.userdata.combat_state.get_participant("player_2").conditions = []
+            ctx.userdata.combat_state.get_participant("player_2").conditions = deepcopy(_rows["player_2"]["conditions"])
         clean = json.loads(await _check_impl(ctx, "save", save_type="wisdom", dc=12, queries=queries))
     assert boosted["total"] - clean["total"] == 2
 
@@ -144,6 +146,7 @@ async def test_inner_fire_surges_reach_hud_before_next_phase(damage):
 async def test_inner_fire_failure_preserves_combat_and_subsequent_save(failure):
     ctx = _combat_ctx(hp_current=6)
     session = ctx.userdata
+    place_actors(session.combat_state)
     session.party.primary.patron_id = "kaelen"
     original = session.combat_state
     before = deepcopy(original.to_dict())
@@ -178,5 +181,5 @@ async def test_inner_fire_failure_preserves_combat_and_subsequent_save(failure):
     assert not participant.iron_resolve_spent
     assert not session.party.primary.draethar_inner_fire_used
     assert session.resonance.current == 9
-    hp_mut.save_combat_state.assert_not_awaited()
+    assert hp_mut.save_combat_state.await_count == (1 if failure == "commit" else 0)
     assert after["total"] == clean["total"]

@@ -540,3 +540,10 @@ Every spell entry includes:
 
 > **Total spell catalog: 87 spells** across all three sources. Each source has a distinct identity, Resonance profile, and tactical role. The Bard's cross-source access (electives from any catalog) makes them the most versatile caster at the cost of smaller pools.
 
+
+
+### Choir casting and spoken commands
+
+The committed Choir aura adds one cast Resonance in its radius; it does not generate raw corruption. A failed turn-start aura save can break concentration. Harmonic Shield can redirect a verbal spell after a failed WIS DC 16 save, spending the actual cast's costs and applying damage to the effective target. Choir destruction grants five death Resonance once.
+
+Silence refuses verbal spell declarations without spending Focus, HP or Resonance. Silence and Deafened preserve player microphone command transport; legal spoken commands still reach public dispatch. `apps/agent/tests/acceptance/test_choir_capstone.py` checks these mechanics over real PostgreSQL and LiveKit; `apps/agent/tests/acceptance/test_choir_capstone_guards.py` checks command and delivery failures. Native certification remains pending. M33 remains partial because the spell catalog still includes deferred spell effects; delivered Choir rules do not certify them.

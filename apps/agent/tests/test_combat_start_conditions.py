@@ -27,6 +27,13 @@ _ATTRS = {
 }
 
 _ENCOUNTER = {
+    "scene_placement": {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {"goblin_1": {"x": 20, "y": 0, "z": 0}},
+        "locations": {},
+        "zones": {},
+    },
     "recommended_party_level": 1,
     "id": "goblin_patrol",
     "name": "Goblin Patrol",
@@ -38,6 +45,7 @@ _ENCOUNTER = {
 def _player(*, stored_conditions=None, skill_tiers=None):
     """A players.data dict — conditions ride it (get_player returns the whole data dict)."""
     return {
+        "speed": 30,
         "player_id": "player_1",
         "name": "Kael",
         "class": "warrior",
@@ -137,13 +145,14 @@ class TestCombatStartE2E:
         # (combat_turn). Resolve a check both with and without the loaded conditions: the
         # Exhausted -1/stack penalty must land on the modifier.
         baseline = resolve_skill_check(
-            {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False
+            {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False, hearing_only=False
         )
         in_combat = resolve_skill_check(
             {"attributes": dict(_ATTRS), "level": 5, "conditions": player_part.conditions},
             "athletics",
             "moderate",
             ally_present=False,
+            hearing_only=False,
         )
         assert in_combat.modifier == baseline.modifier - 1
 

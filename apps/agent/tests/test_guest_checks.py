@@ -1,7 +1,8 @@
 import json
+from contextlib import contextmanager
 from copy import deepcopy
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from inventory_snapshot_fixture import snapshot_query
@@ -40,7 +41,7 @@ def setup(rows):
     ctx = make_context(party_member_ids=["player_2"])
     ctx.userdata.event_bus = MagicMock()
     queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([]))
-    queries.get_player = AsyncMock(side_effect=lambda pid: rows[pid])
+    queries.get_player = AsyncMock(side_effect=lambda pid, *, conn=None: rows[pid])
     return ctx, queries
 
 
@@ -58,8 +59,13 @@ NODE = {
 }
 
 
+@contextmanager
 def fixed_roll(n=15):
-    return patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=n))
+    with (
+        patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=n)),
+        patch("condition_bonus.dice_roll", return_value=SimpleNamespace(total=4)),
+    ):
+        yield
 
 
 @pytest.mark.asyncio
@@ -76,7 +82,7 @@ async def test_guest_skill_roll_and_advancement():
         )
     assert result["modifier"] > 5
     assert result["total"] == 15 + result["modifier"]
-    queries.get_player.assert_awaited_once_with("player_2")
+    assert queries.get_player.await_args_list == [call("player_2"), call("player_1", conn=None)]
     assert queries.get_single_skill_advancement.await_args.args[0] == "player_2"
     assert mutations.update_skill_advancement.await_args.args[0] == "player_2"
 

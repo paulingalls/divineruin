@@ -5,6 +5,7 @@ import pytest
 from combat._helpers import _activate, _resolution_state, _resolve_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import load_test_creature, make_context
+from voice_condition_fixtures import place_actors
 
 import combat_phase
 import combat_turn
@@ -87,6 +88,7 @@ async def test_mixed_party_skips_non_owner_budget_and_one_owner_opens_window():
         reaction_ids=["cleric_shield_of_faith"],
     )
     state.participants.append(owner)
+    place_actors(state)
     state.initiative_order.append(owner.id)
     non_owner.reaction_ids = ["skirmisher_sidestep"]
     # is_spent({}) raises KeyError, so a gate that consults the non-owner budget reds here.
@@ -107,7 +109,7 @@ async def test_known_owner_with_spent_reaction_opens_no_window():
     owner.has_reaction_ability = True
     state.reactions_available = {
         owner.id: reaction_spend.spend(
-            "warrior_parry",
+            "warrior_brace_for_impact",
             {"id": "r1-0-pre_roll", "stage": "pre_roll"},
             held_seq=0,
         )
@@ -135,6 +137,7 @@ def test_declaration_refresh_seeds_only_known_owners():
             CombatParticipant("player_3", "Cyra", "player", 7, 20, 20, 14),
         ]
     )
+    place_actors(state)
 
     refreshed, _ = combat_phase.advance_combat_phase(state, {known_owner.id: {"type": "defend"}})
 
@@ -146,6 +149,7 @@ def _start_mocks(player_class, player_level=6):
     queries = MagicMock(
         get_player=AsyncMock(
             return_value={
+                "speed": 30,
                 "player_id": "player_1",
                 "name": "Kael",
                 "class": player_class,
@@ -161,6 +165,13 @@ def _start_mocks(player_class, player_level=6):
         load_creature_enemy=load_test_creature,
         get_encounter_template=AsyncMock(
             return_value={
+                "scene_placement": {
+                    "party_start": {"x": 0, "y": 0, "z": 0},
+                    "companion_start": {"x": 0, "y": 5, "z": 0},
+                    "actors": {"foe": {"x": 20, "y": 0, "z": 0}},
+                    "locations": {},
+                    "zones": {},
+                },
                 "id": "empty_road",
                 "name": "Empty Road",
                 "recommended_party_level": 1,

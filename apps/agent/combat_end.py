@@ -146,6 +146,9 @@ async def _end_combat_db(
 
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
+    import choir_scene
+
+    await choir_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     rng = rng or random.Random()
     actor_id = session.acting_player_id
     primary_id = session.primary_player_id
@@ -288,7 +291,10 @@ async def _end_combat_db(
         )
     await _publish_sounds(session, [_STINGER_SOUND[outcome]], sink=sink)
 
+    import choir_encounter
+
     return {
+        "choir": choir_encounter.facts(cs),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
         "summary_xp_granted": rewards.xp.summary_xp_granted,
@@ -362,6 +368,7 @@ def _end_combat_finish(
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
+        "choir": end_data.get("choir"),
         "outcome": outcome,
         "xp_total": xp_total,
         # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue.
@@ -389,6 +396,8 @@ def _end_combat_finish(
     from livekit.agents.llm import ChatContext
 
     summary_parts = [f"Combat resolved: {outcome}."]
+    if end_data.get("choir"):
+        summary_parts.append(end_data["choir"]["cue"])
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating
     # the total would promise XP nobody received.
     if xp_granted > 0:

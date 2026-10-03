@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from _combat_end_fixtures import combat_end_mutations
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import combat_turn
 import reaction_spend
@@ -51,51 +52,53 @@ def _fake_db_mod():
 
 def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fallen=False):
     """Create a CombatState for testing."""
-    return CombatState(
-        combat_id="combat_test123",
-        participants=[
-            CombatParticipant(
-                id="player_1",
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=player_hp,
-                hp_max=25,
-                ac=14,
-                action_pool=[
-                    {
-                        "name": "Longsword",
-                        "damage": "1d8",
-                        "damage_type": "slashing",
-                        "properties": [],
-                    }
-                ],
-                is_fallen=player_fallen,
-            ),
-            CombatParticipant(
-                id="goblin_scout_1",
-                name="Goblin Scout",
-                type="enemy",
-                initiative=12,
-                hp_current=enemy_hp,
-                hp_max=7,
-                ac=13,
-                action_pool=[
-                    {
-                        "name": "Scimitar",
-                        "damage": "1d6",
-                        "damage_type": "slashing",
-                        "properties": ["light"],
-                    },
-                ],
-                xp_value=50,
-                is_fallen=enemy_fallen,
-            ),
-        ],
-        initiative_order=["player_1", "goblin_scout_1"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
+    return place_actors(
+        CombatState(
+            combat_id="combat_test123",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=player_hp,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[
+                        {
+                            "name": "Longsword",
+                            "damage": "1d8",
+                            "damage_type": "slashing",
+                            "properties": [],
+                        }
+                    ],
+                    is_fallen=player_fallen,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=enemy_hp,
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[
+                        {
+                            "name": "Scimitar",
+                            "damage": "1d6",
+                            "damage_type": "slashing",
+                            "properties": ["light"],
+                        },
+                    ],
+                    xp_value=50,
+                    is_fallen=enemy_fallen,
+                ),
+            ],
+            initiative_order=["player_1", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
     )
 
 
@@ -117,44 +120,48 @@ def _resolution_state(
     Keyword-only overrides let dev-DB tests pass unique ids (required for the
     shared :55432 fast lane under xdist) and pre-apply conditions / attributes
     without forking the fixture."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=player_hp,
-                hp_max=25,
-                ac=14,
-                attributes=player_attributes if player_attributes is not None else {},
-                level=player_level,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-                conditions=player_conditions or [],
-                has_reaction_ability=True,
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin Scout",
-                type="enemy",
-                initiative=12,
-                hp_current=enemy_hp,
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=player_hp,
+                    hp_max=25,
+                    ac=14,
+                    attributes=player_attributes if player_attributes is not None else {},
+                    level=player_level,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                    conditions=player_conditions or [],
+                    has_reaction_ability=True,
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=enemy_hp,
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[
+                        {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}
+                    ],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[player_id, enemy_id],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+                enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+            },
+        )
     )
 
 

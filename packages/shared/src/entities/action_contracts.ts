@@ -3,6 +3,18 @@ import { CONDITION_NAMES } from "./encounter";
 export type Recharge =
   { kind: "roll"; die: 6; threshold: number } | { kind: "encounter" | "round"; uses: number };
 export type ActionExtensions = {
+  duration_dice?: unknown;
+  movement?: unknown;
+  radius_ft?: unknown;
+  rounds?: unknown;
+  trigger?: unknown;
+  redirect?: unknown;
+  resolution?: unknown;
+  save_success_damage?: unknown;
+  conditions_on_failure?: unknown;
+  conditions_on_success?: unknown;
+  reach?: unknown;
+  type?: unknown;
   attack_source?: unknown;
   to_hit?: unknown;
   self_heal?: unknown;
@@ -43,10 +55,25 @@ export function validateRecharge(value: unknown, path: string): void {
 
 export function validateActionExtensions(action: ActionExtensions, path: string): void {
   const kind = action.kind === undefined ? "attack" : action.kind;
+  validateResolution(action, path);
+  if (
+    !["charm", "silence", "spell_redirect"].includes(kind as string) &&
+    ["duration_dice", "movement", "radius_ft", "rounds", "trigger", "redirect"].some(
+      (key) => key in action,
+    )
+  )
+    invalid(`${path}.kind`);
+  if (["charm", "silence", "spell_redirect"].includes(kind as string)) {
+    validateChoirEffect(action, path);
+    return;
+  }
   if ("attack_source" in action) {
     if (kind !== "attack" || action.attack_source !== "catalog") invalid(`${path}.attack_source`);
     const saveOnly =
-      action.half_on_success === true || action.damage === "0" || action.damage === 0;
+      action.resolution === "save" ||
+      action.half_on_success === true ||
+      action.damage === "0" ||
+      action.damage === 0;
     if (!saveOnly && !Number.isInteger(action.to_hit)) invalid(`${path}.to_hit`);
   }
   if (
@@ -124,4 +151,136 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
     }
   } else forbidden = ["target_group", "healing", "advantage", "on_hit"];
   for (const key of forbidden) if (key in action) invalid(`${path}.${key}`);
+}
+
+function validateResolution(action: ActionExtensions, path: string): void {
+  const structured = [
+    "resolution",
+    "save_success_damage",
+    "conditions_on_failure",
+    "conditions_on_success",
+  ];
+  if (!structured.some((key) => key in action)) return;
+  const mode = action.resolution;
+  if ((action.kind ?? "attack") !== "attack" || !["save", "hit_then_save"].includes(mode as string))
+    invalid(`${path}.resolution`);
+  if (
+    ["applies_condition", "duration", "half_on_success", "escape_dc"].some((key) => key in action)
+  )
+    invalid(`${path}.resolution`);
+  if (
+    typeof action.save !== "string" ||
+    ![
+      "str",
+      "dex",
+      "con",
+      "int",
+      "wis",
+      "cha",
+      "strength",
+      "dexterity",
+      "constitution",
+      "intelligence",
+      "wisdom",
+      "charisma",
+    ].includes(action.save.toLowerCase())
+  )
+    invalid(`${path}.save`);
+  if (!positive(action.dc)) invalid(`${path}.dc`);
+  if (
+    typeof action.damage !== "string" ||
+    !/^[1-9][0-9]*d[1-9][0-9]*(?:[+-][0-9]+)?$/.test(action.damage)
+  )
+    invalid(`${path}.damage`);
+  if (typeof action.damage_type !== "string" || !action.damage_type) invalid(`${path}.damage_type`);
+  if (!positive(action.reach) || !["area", "ranged", "melee"].includes(action.type as string))
+    invalid(`${path}.reach`);
+  if (mode === "save") {
+    if (!["none", "half"].includes(action.save_success_damage as string))
+      invalid(`${path}.save_success_damage`);
+    if ("to_hit" in action && action.to_hit !== 0) invalid(`${path}.to_hit`);
+  } else if ("save_success_damage" in action || !Number.isInteger(action.to_hit))
+    invalid(`${path}.to_hit`);
+  for (const key of ["conditions_on_failure", "conditions_on_success"] as const) {
+    const riders = action[key];
+    if (!Array.isArray(riders)) invalid(`${path}.${key}`);
+    const seen = new Set();
+    for (const rider of riders) {
+      if (!object(rider) || Object.keys(rider).sort().join(",") !== "applies_condition,duration")
+        invalid(`${path}.${key}`);
+      if (
+        !(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition) ||
+        seen.has(rider.applies_condition)
+      )
+        invalid(`${path}.${key}.applies_condition`);
+      seen.add(rider.applies_condition);
+      if (!positive(rider.duration)) invalid(`${path}.${key}.duration`);
+    }
+  }
+}
+
+export type ChoirEffect =
+  | {
+      kind: "charm";
+      save: string;
+      dc: number;
+      duration_dice: "1d4";
+      movement: "approach_source";
+      recharge?: Recharge;
+    }
+  | { kind: "silence"; radius_ft: number; rounds: number; recharge?: Recharge }
+  | {
+      kind: "spell_redirect";
+      save: string;
+      dc: number;
+      trigger: "verbal_spell";
+      redirect: "caster";
+    };
+
+function validateChoirEffect(action: ActionExtensions, path: string): void {
+  const kind = action.kind as "charm" | "silence" | "spell_redirect";
+  const allowed = kind === "silence" ? [] : ["save", "dc"];
+  for (const key of [
+    "damage",
+    "damage_type",
+    "applies_condition",
+    "save",
+    "dc",
+    "half_on_success",
+    "escape_dc",
+    "target_group",
+    "healing",
+    "advantage",
+    "on_hit",
+    "resolution",
+    "save_success_damage",
+    "conditions_on_failure",
+    "conditions_on_success",
+    "duration",
+    "to_hit",
+  ])
+    if (key in action && !allowed.includes(key)) invalid(`${path}.${key}`);
+  const fields = {
+    charm: ["duration_dice", "movement"],
+    silence: ["radius_ft", "rounds"],
+    spell_redirect: ["trigger", "redirect"],
+  }[kind];
+  for (const key of ["duration_dice", "movement", "radius_ft", "rounds", "trigger", "redirect"])
+    if (key in action && !fields.includes(key)) invalid(`${path}.${key}`);
+  if (kind !== "silence") {
+    if (typeof action.save !== "string" || !["wis", "wisdom"].includes(action.save.toLowerCase()))
+      invalid(`${path}.save`);
+    if (!positive(action.dc)) invalid(`${path}.dc`);
+  }
+  if (kind === "charm") {
+    if (action.duration_dice !== "1d4" || action.movement !== "approach_source")
+      invalid(`${path}.duration_dice`);
+  } else if (kind === "silence") {
+    if (!positive(action.radius_ft) || !positive(action.rounds)) invalid(`${path}.radius_ft`);
+  } else if (action.trigger !== "verbal_spell" || action.redirect !== "caster")
+    invalid(`${path}.trigger`);
+  if (kind === "spell_redirect" && "recharge" in action && action.recharge !== null)
+    invalid(`${path}.recharge`);
+  if ("recharge" in action && !(kind === "spell_redirect" && action.recharge === null))
+    validateRecharge(action.recharge, `${path}.recharge`);
 }

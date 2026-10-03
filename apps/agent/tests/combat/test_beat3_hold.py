@@ -14,6 +14,7 @@ import pytest
 from _combat_end_fixtures import default_condition_persistence, default_player_row  # noqa: F401
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import abilities
 import combat_turn
@@ -288,6 +289,7 @@ class TestTheReactionBudgetGate:
                 reaction_ids=["skirmisher_sidestep"],
             )
         )
+        place_actors(cs)
         cs.initiative_order.append("player_2")
         ctx.userdata.party.members.extend(PartyState.solo("player_2", patron_id="none").members)
         cs.get_participant("player_1").reaction_ids = ["cleric_shield_of_faith"]

@@ -273,6 +273,9 @@ def validate_condition_dict(c: object) -> dict:
             raise ValueError(f"condition {ctype!r} {int_field} must be an int, got {c[int_field]!r}")
     if "duration" in c and c["duration"] is not None and not isinstance(c["duration"], int):
         raise ValueError(f"condition {ctype!r} duration must be int or None, got {c['duration']!r}")
+    from condition_sources import charm_sources
+
+    charm_sources([c])
     return c
 
 
@@ -354,6 +357,8 @@ def apply_condition(
         return result
 
     if existing is not None:  # non-stackable re-apply refreshes
+        if condition_type == "charmed":
+            existing.pop("choir_melody", None)
         existing["duration"] = duration
         existing["source"] = source
         return result

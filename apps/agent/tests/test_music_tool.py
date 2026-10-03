@@ -28,6 +28,13 @@ class TestStartCombatDifficulty:
         mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(
             return_value={
+                "scene_placement": {
+                    "party_start": {"x": 0, "y": 0, "z": 0},
+                    "companion_start": {"x": 0, "y": 5, "z": 0},
+                    "actors": {"goblin_1": {"x": 20, "y": 0, "z": 0}},
+                    "locations": {},
+                    "zones": {},
+                },
                 "recommended_party_level": 1,
                 "name": "Goblin Ambush",
                 "difficulty": "hard",
@@ -38,6 +45,7 @@ class TestStartCombatDifficulty:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(
             return_value={
+                "speed": 30,
                 "name": "Kael",
                 "class": "warrior",
                 "hp": {"current": 25, "max": 30},
@@ -80,6 +88,13 @@ class TestStartCombatDifficulty:
         mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(
             return_value={
+                "scene_placement": {
+                    "party_start": {"x": 0, "y": 0, "z": 0},
+                    "companion_start": {"x": 0, "y": 5, "z": 0},
+                    "actors": {"thug_1": {"x": 20, "y": 0, "z": 0}},
+                    "locations": {},
+                    "zones": {},
+                },
                 "recommended_party_level": 1,
                 "name": "Bar Fight",
                 "enemies": [{"id": "thug_1", "creature_id": "fixture_goblin", "role": "standard"}],
@@ -89,6 +104,7 @@ class TestStartCombatDifficulty:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(
             return_value={
+                "speed": 30,
                 "name": "Kael",
                 "class": "warrior",
                 "hp": {"current": 25, "max": 30},

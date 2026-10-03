@@ -14,8 +14,7 @@ Walk it one phase at a time, one beat at a time.
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
 from its tactics and each conscious companion's action. The combat-entry Combatants roster gives \
 every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
-one declaration per acting combatant — each names its actor_id and its kind. Four \
-kinds resolve in combat today: \
+one declaration per acting combatant — each names its actor_id and its kind. Supported declarations: \
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. Send rider as an empty string unless the actor has Cunning Action, which \
@@ -37,6 +36,11 @@ consuming the whole phase; a maneuver on anyone else is a shove (contested Stren
 the target prone). \
 A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
 whole phase; they cannot retreat. \
+move — actor_id names the moving combatant; destination gives x, y, z coordinates in feet. \
+It consumes the whole phase action and cannot exceed spatial.speeds_ft[actor_id]. \
+Entry and phase results expose spatial.positions, locations, zones and distances_ft. \
+Call query_info(kind="combat") to refresh them; target_id selects an actor or landmark as origin. \
+Use the surfaced IDs and committed coordinates. Zones describe geometry; mechanical packets own effects. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") before declaring one: declare its spell id from the row's spell_id when present. \
 A combat: false row has no combat action at all — never declare it, and never activate it mid-fight. \
@@ -140,7 +144,7 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
-For a maneuver packet, stood_up and shove are authoritative outcomes; prone_immunity names the \
+For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.
 

@@ -16,6 +16,7 @@ import pytest
 from combat.test_bless_producer import _caster  # reuse the OOC caster-dict builder
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import combat_ability
 import conditions
@@ -32,6 +33,8 @@ def _bless3(applies_condition: str | None = "blessed") -> Spell:
     """A divine Bless (resonance 0, focus 0) capped at 3 targets — clears the gates with only the
     multi-target producer hook active."""
     return Spell(
+        verbal=True,
+        hostile=False,
         id="divine_bless",
         name="Bless",
         source="divine",
@@ -249,6 +252,8 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
     # A spell with no max_targets is single-target only: target_ids is refused (closes the revival
     # Hollow-gate bypass — revival spells have no max_targets, so multi-target on them is rejected).
     uncapped = Spell(
+        verbal=True,
+        hostile=False,
         id="divine_revivify",
         name="Revivify",
         source="divine",
@@ -271,17 +276,25 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
 
 
 def _combat_state_with_allies() -> CombatState:
-    return CombatState(
-        combat_id="c_mt",
-        participants=[
-            CombatParticipant(
-                id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
-            ),
-            CombatParticipant(id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13),
-            CombatParticipant(id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13),
-            CombatParticipant(id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13),
-        ],
-        initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+    return place_actors(
+        CombatState(
+            combat_id="c_mt",
+            participants=[
+                CombatParticipant(
+                    id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+                ),
+                CombatParticipant(
+                    id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
+                ),
+                CombatParticipant(
+                    id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13
+                ),
+                CombatParticipant(
+                    id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13
+                ),
+            ],
+            initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+        )
     )
 
 
