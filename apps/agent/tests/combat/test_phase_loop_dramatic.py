@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from combat._helpers import _resolution_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 from check_resolution_attack import AttackResult
 from session_data import CombatParticipant
@@ -75,6 +76,7 @@ class TestResolvePhaseDramatic:
                 xp_value=50,
             )
         )
+        place_actors(cs)
         cs.initiative_order = ["player_1", "goblin_scout_1", "goblin_scout_2"]
         player = cs.get_participant("player_1")
         assert player is not None

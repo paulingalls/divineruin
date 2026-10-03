@@ -109,7 +109,10 @@ async def test_empty_search_spends_inspired_and_answers_like_a_failed_roll():
         ctx = _make_context(location_id="test_location")
         ctx.userdata.event_bus = MagicMock()
         condition_writes = MagicMock(remove_player_conditions=AsyncMock())
-        with patch("check_resolution.dice_roll", side_effect=[_roll(1), _roll(3)]) as dice:
+        with (
+            patch("condition_bonus.dice_roll", return_value=_roll(1)) as bonus,
+            patch("check_resolution.dice_roll", return_value=_roll(3)) as dice,
+        ):
             responses.append(
                 json.loads(
                     await _check_discover_impl(
@@ -123,7 +126,8 @@ async def test_empty_search_spends_inspired_and_answers_like_a_failed_roll():
                     )
                 )
             )
-        assert dice.call_count == 2
+        bonus.assert_called_once()
+        dice.assert_called_once()
         assert condition_writes.remove_player_conditions.await_args.args[:2] == ("player_1", ("inspired",))
         mutations.set_player_flag.assert_not_awaited()
         packets.append(ctx.userdata.event_bus.publish.call_args_list[0].args[0].payload)
@@ -194,7 +198,8 @@ async def test_reveal_cue_waits_for_condition_transaction_commit(rollback):
     mutations.set_player_flag.side_effect = set_flag
     db_mod = MagicMock(transaction=transaction)
     with (
-        patch("check_resolution.dice_roll", side_effect=[_roll(1), _roll(15)]),
+        patch("condition_bonus.dice_roll", return_value=_roll(1)),
+        patch("check_resolution.dice_roll", return_value=_roll(15)),
         patch("check_discovery.publish_action_sound", new_callable=AsyncMock, side_effect=cue) as sound,
     ):
         if rollback:

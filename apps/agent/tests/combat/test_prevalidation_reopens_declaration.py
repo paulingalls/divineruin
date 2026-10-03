@@ -5,6 +5,7 @@ import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import character_spells
 import combat_phase
@@ -15,32 +16,34 @@ from session_data import CombatParticipant, CombatState
 
 
 def _state(combat_id: str, player_id: str, action: str) -> CombatState:
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Brann",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                level=8,
-            ),
-            CombatParticipant(
-                id="reset_foe",
-                name="Ogre",
-                type="enemy",
-                initiative=10,
-                hp_current=20,
-                hp_max=20,
-                ac=13,
-            ),
-        ],
-        initiative_order=[player_id, "reset_foe"],
-        beat="resolution",
-        pending_declarations={player_id: {"type": "ability", "action": action, "target_id": "reset_foe"}},
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Brann",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    level=8,
+                ),
+                CombatParticipant(
+                    id="reset_foe",
+                    name="Ogre",
+                    type="enemy",
+                    initiative=10,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=13,
+                ),
+            ],
+            initiative_order=[player_id, "reset_foe"],
+            beat="resolution",
+            pending_declarations={player_id: {"type": "ability", "action": action, "target_id": "reset_foe"}},
+        )
     )
 
 

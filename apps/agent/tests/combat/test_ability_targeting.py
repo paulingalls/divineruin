@@ -16,17 +16,24 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
+from voice_condition_fixtures import place_actors
 
 import character_spells
 import spell_casting
 from combat_ability import AbilityCastOutcome, _resolve_ability_packet
 from declarations import Declaration, DeclarationType
-from session_data import CombatParticipant
+from session_data import CombatParticipant, CombatState
 from spell_casting import _UNCHANGED, CastResult
 
 
 def _player_participant() -> CombatParticipant:
     return CombatParticipant(id="caster_1", name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14)
+
+
+def _cast_state(caster, *targets):
+    return place_actors(
+        CombatState(combat_id="targeting", participants=[caster], initiative_order=[caster.id]), *targets
+    )
 
 
 def _cast_resolver(packet: dict) -> MagicMock:
@@ -54,7 +61,7 @@ class TestAbilityForwardsTargetId:
             session,
             _player_participant(),
             decl,
-            state=None,
+            state=_cast_state(_player_participant(), "ally_3"),
             cast_resolver=cast_resolver,
             conn=object(),
             player=None,
@@ -66,7 +73,7 @@ class TestAbilityForwardsTargetId:
         assert kwargs["target_id"] == "ally_3"  # the declaration's target reached the cast core
 
     @pytest.mark.asyncio
-    async def test_forwards_none_for_self_cast_ability(self):
+    async def test_normalizes_missing_target_to_self(self):
         session = make_context(player_id="caster_1").userdata
         decl = Declaration(type=DeclarationType.ABILITY, action="arcane_bolt")  # no target_id
         cast_resolver = _cast_resolver({})
@@ -76,7 +83,7 @@ class TestAbilityForwardsTargetId:
             session,
             _player_participant(),
             decl,
-            state=None,
+            state=_cast_state(_player_participant()),
             cast_resolver=cast_resolver,
             conn=object(),
             player=None,
@@ -84,7 +91,7 @@ class TestAbilityForwardsTargetId:
         )
 
         _args, kwargs = cast_resolver._resolve_cast.call_args
-        assert kwargs["target_id"] is None  # self-cast ABILITY stays target-less
+        assert kwargs["target_id"] == "caster_1"
 
 
 class TestInCombatRevivalGateE2E:
@@ -119,7 +126,7 @@ class TestInCombatRevivalGateE2E:
                     session,
                     caster,
                     decl_h,
-                    state=None,
+                    state=_cast_state(caster, hollow_ally, living_ally),
                     cast_resolver=spell_casting,
                     conn=pool,
                     player=None,
@@ -132,7 +139,7 @@ class TestInCombatRevivalGateE2E:
                 session,
                 caster,
                 decl_l,
-                state=None,
+                state=_cast_state(caster, hollow_ally, living_ally),
                 cast_resolver=spell_casting,
                 conn=pool,
                 player=None,

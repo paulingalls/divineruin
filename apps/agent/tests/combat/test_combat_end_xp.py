@@ -21,6 +21,7 @@ import pytest
 from combat._helpers import _damage_resolver, _resolve_round
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import GUILD_PLAYER
+from voice_condition_fixtures import place_actors
 
 import archetypes
 import db_mutations
@@ -90,13 +91,15 @@ def _cs(enemies: list[CombatParticipant], players: list[str]) -> CombatState:
         CombatParticipant(id=pid, name=pid, type="player", initiative=15, hp_current=20, hp_max=20, ac=14)
         for pid in players
     ] + enemies
-    return CombatState(
-        combat_id="c1",
-        participants=parts,
-        initiative_order=[p.id for p in parts],
-        round_number=2,
-        current_turn_index=0,
-        location_id="loc1",
+    return place_actors(
+        CombatState(
+            combat_id="c1",
+            participants=parts,
+            initiative_order=[p.id for p in parts],
+            round_number=2,
+            current_turn_index=0,
+            location_id="loc1",
+        )
     )
 
 
@@ -268,18 +271,20 @@ async def test_empty_seat_order_grants_nothing(monkeypatch):
 
     monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "a"}]))
     session = _session(["p1"])
-    cs = CombatState(
-        combat_id="c1",
-        participants=[
-            CombatParticipant(
-                id="p1", name="Kael", type="temporary_hollowed", initiative=15, hp_current=0, hp_max=20, ac=14
-            ),
-            _xp_enemy("g1", 50),
-        ],
-        initiative_order=["p1", "g1"],
-        round_number=2,
-        current_turn_index=0,
-        location_id="loc1",
+    cs = place_actors(
+        CombatState(
+            combat_id="c1",
+            participants=[
+                CombatParticipant(
+                    id="p1", name="Kael", type="temporary_hollowed", initiative=15, hp_current=0, hp_max=20, ac=14
+                ),
+                _xp_enemy("g1", 50),
+            ],
+            initiative_order=["p1", "g1"],
+            round_number=2,
+            current_turn_index=0,
+            location_id="loc1",
+        )
     )
     end_data, mutations, _q, sink, _c = await _run(session, cs)
 
@@ -445,34 +450,36 @@ async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
         ),
     )
     enemy_id = "m28_s001_xp_enemy"
-    cs = CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=3,  # one fixed 3-damage hit from death -> the wrap sees victory
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        beat="resolution",
-        pending_declarations={player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id}},
+    cs = place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=3,  # one fixed 3-damage hit from death -> the wrap sees victory
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=[player_id, enemy_id],
+            beat="resolution",
+            pending_declarations={player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id}},
+        )
     )
 
     ctx = MagicMock()

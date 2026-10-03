@@ -6,6 +6,7 @@ from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _pause_at, _reaction_packet
 from sample_fixtures import catalog_encounters
+from voice_condition_fixtures import place_actors
 
 import combat_prompts
 import combat_reaction_effect
@@ -33,6 +34,7 @@ def _state(enemy_id: str = "mawling_1"):
     player = state.get_participant("player_1")
     assert enemy is not None and player is not None
     enemy.id = enemy_id
+    place_actors(state)
     enemy.name = "Mawling"
     enemy.action_pool = [_grab()]
     state.initiative_order = ["player_1", enemy.id]
@@ -103,6 +105,7 @@ async def test_slippery_reports_surviving_grappler_when_second_grab_is_blocked()
             id="mawling_1", name="Mawling One", type="enemy", initiative=8, hp_current=18, hp_max=18, ac=12
         )
     )
+    place_actors(state)
     player = state.get_participant("player_1")
     assert player is not None
     player.conditions = conditions.apply_condition([], "grappled", source="mawling_1")
@@ -173,6 +176,7 @@ def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():
     state.participants.append(
         CombatParticipant(id="player_2", name="Bram", type="player", initiative=10, hp_current=20, hp_max=20, ac=14)
     )
+    place_actors(state)
     head = {
         "seq": 4,
         "actor_id": "mawling_1",

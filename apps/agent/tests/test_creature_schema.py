@@ -85,7 +85,9 @@ def test_shared_creature_corpus():
 def test_hollow_exemplar_fixtures_match_catalog() -> None:
     exemplar_ids = {"hollow_shadeling", "hollow_hollowmoth"}
     corpus = json.loads(CORPUS.read_text())
-    exemplars = [case for case in corpus["valid"] if case["block"]["id"] in exemplar_ids]
+    exemplar_names = {"spec_shadeling", "spec_hollowmoth"}
+    exemplars = [case for case in corpus["valid"] if case["name"] in exemplar_names]
+    assert {case["name"] for case in exemplars} == exemplar_names
     assert len(exemplars) == 2
     assert {case["block"]["id"] for case in exemplars} == exemplar_ids
     catalog = {row["id"]: row for row in json.loads((ROOT / "content/creatures.json").read_text())}

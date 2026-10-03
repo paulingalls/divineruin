@@ -15,6 +15,7 @@ from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, 
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 from check_resolution_attack import AttackResult
 from combat_turn import _declare_phase_impl
@@ -244,6 +245,7 @@ class TestResolvePhaseNonEnding:
                 action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}],
             )
         )
+        place_actors(cs)
         cs.pending_declarations["goblin_scout_2"] = {
             "type": "attack",
             "action": "Scimitar",

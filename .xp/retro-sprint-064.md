@@ -56,3 +56,9 @@ services and fresh credentials. An independent ability-policy fixture now keeps
 wrong classifications from selecting away their own refusal tests. Release
 checks also reconcile the eleventh encounter and prove the credential test
 accepts a correctly signed token while rejecting the old fixed key.
+
+The first full gate exposed older fixtures missing explicit actor placement,
+current bonus-die seams and the new catalog consumer. Focused repairs preserve
+their behavioral assertions; patron tests now isolate database identities across
+workers. The lock inventory resolves qualified function names and checks the
+serialization decorator, with deletion faults proving missing locks still fail.

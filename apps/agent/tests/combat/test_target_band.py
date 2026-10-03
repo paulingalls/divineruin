@@ -1,5 +1,6 @@
 import pytest
 from combat._helpers import _make_combat_state
+from voice_condition_fixtures import place_actors
 
 import conditions
 from combat_phase import PhaseBeat, advance_combat_phase
@@ -32,6 +33,7 @@ def _target_band_state():
             ),
         ]
     )
+    place_actors(state)
     return state
 
 

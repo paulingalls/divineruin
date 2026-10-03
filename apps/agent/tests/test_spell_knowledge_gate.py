@@ -6,6 +6,7 @@ import pytest
 from combat._helpers import _resolve_deps, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import character_spells
 import spell_casting
@@ -145,33 +146,37 @@ async def test_library_spell_is_refused_when_absent():
 @pytest.mark.asyncio
 async def test_combat_unknown_spell_refuses_before_earlier_ally_hp_write():
     ctx = make_context(player_id="ally", party_member_ids=["caster"])
-    ctx.userdata.combat_state = CombatState(
-        combat_id="story_052_combat",
-        participants=[
-            CombatParticipant(
-                id="ally",
-                name="Ally",
-                type="player",
-                initiative=18,
-                hp_current=20,
-                hp_max=20,
-                ac=14,
-                action_pool=[{"name": "Sword", "damage": "1d6", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id="caster", name="Caster", type="player", initiative=10, hp_current=20, hp_max=20, ac=14
-            ),
-            CombatParticipant(id="enemy", name="Enemy", type="enemy", initiative=5, hp_current=12, hp_max=12, ac=12),
-        ],
-        initiative_order=["ally", "caster", "enemy"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="resolution",
-        pending_declarations={
-            "ally": {"type": "attack", "action": "Sword", "target_id": "enemy"},
-            "caster": {"type": "ability", "action": "arcane_fireball", "target_id": "enemy"},
-        },
+    ctx.userdata.combat_state = place_actors(
+        CombatState(
+            combat_id="story_052_combat",
+            participants=[
+                CombatParticipant(
+                    id="ally",
+                    name="Ally",
+                    type="player",
+                    initiative=18,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=14,
+                    action_pool=[{"name": "Sword", "damage": "1d6", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id="caster", name="Caster", type="player", initiative=10, hp_current=20, hp_max=20, ac=14
+                ),
+                CombatParticipant(
+                    id="enemy", name="Enemy", type="enemy", initiative=5, hp_current=12, hp_max=12, ac=12
+                ),
+            ],
+            initiative_order=["ally", "caster", "enemy"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations={
+                "ally": {"type": "attack", "action": "Sword", "target_id": "enemy"},
+                "caster": {"type": "ability", "action": "arcane_fireball", "target_id": "enemy"},
+            },
+        )
     )
     deps = _resolve_deps(damage=4)
     rows = {
@@ -204,12 +209,16 @@ async def test_combat_unknown_spell_refuses_before_earlier_ally_hp_write():
 @pytest.mark.asyncio
 async def test_combat_prevalidation_reads_a_players_library_once_for_two_spells():
     session = make_context(player_id="caster").userdata
-    state = CombatState(
-        combat_id="story_052_cache",
-        participants=[
-            CombatParticipant(id="caster", name="Caster", type="player", initiative=10, hp_current=20, hp_max=20, ac=14)
-        ],
-        initiative_order=["caster"],
+    state = place_actors(
+        CombatState(
+            combat_id="story_052_cache",
+            participants=[
+                CombatParticipant(
+                    id="caster", name="Caster", type="player", initiative=10, hp_current=20, hp_max=20, ac=14
+                )
+            ],
+            initiative_order=["caster"],
+        )
     )
     adv = SimpleNamespace(
         packets=[

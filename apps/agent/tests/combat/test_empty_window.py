@@ -2,6 +2,7 @@
 
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _call, _ctx_at_resolution, _resolution_state, _resolve_deps
+from voice_condition_fixtures import place_actors
 
 import event_types as E
 from session_data import CombatParticipant
@@ -43,6 +44,7 @@ async def test_self_reaction_follows_the_target():
     state.participants.append(
         CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
     )
+    place_actors(state)
     state.initiative_order.append("player_2")
     state.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
     ctx = _ctx_at_resolution(state=state, reaction_ids=("rogue_uncanny_dodge",))
@@ -67,6 +69,7 @@ async def test_self_reaction_follows_the_target():
             reaction_ids=["rogue_uncanny_dodge"],
         )
     )
+    place_actors(state)
     state.initiative_order.append("player_2")
     state.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
     ctx = _ctx_at_resolution(state=state)
@@ -123,6 +126,7 @@ async def test_social_identity_and_accused_subject(reaction, kind, target_other,
         state.participants.append(
             CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
         )
+        place_actors(state)
         state.initiative_order.append("player_2")
         state.pending_declarations[enemy.id]["target_id"] = "player_2"
     ctx = _ctx_at_resolution(state=state, reaction_ids=(reaction,))
@@ -140,6 +144,7 @@ async def test_ally_targeted_reaction_binds_to_another_player():
     state.participants.append(
         CombatParticipant(id="player_2", name="Bren", type="player", initiative=8, hp_current=20, hp_max=20, ac=14)
     )
+    place_actors(state)
     state.initiative_order.append("player_2")
     state.pending_declarations["goblin_scout_1"]["target_id"] = "player_2"
     ctx = _ctx_at_resolution(state=state, reaction_ids=("cleric_shield_of_faith",))

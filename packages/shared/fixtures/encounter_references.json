@@ -1015,8 +1015,10 @@
   "consumer_inventory": [
     "apps/agent/tests/_encounter_reference_proofs.py",
     "apps/agent/tests/acceptance/_catalog_cutover_helpers.py",
+    "apps/agent/tests/acceptance/choir_capstone_harness.py",
     "apps/agent/tests/acceptance/test_catalog_action_runtime.py",
     "apps/agent/tests/acceptance/test_catalog_encounter_cutover.py",
+    "apps/agent/tests/acceptance/test_choir_capstone.py",
     "apps/agent/tests/acceptance/test_combat_spatial_entry.py",
     "apps/agent/tests/acceptance/test_m13_enemy_condition_capstone.py",
     "apps/agent/tests/acceptance/test_m14_multiplayer_combat_capstone.py",
@@ -1056,6 +1058,7 @@
     "apps/agent/tests/combat/test_shield_bash_prone.py",
     "apps/agent/tests/combat/test_slippery_escape.py",
     "apps/agent/tests/combat/test_social_reactions.py",
+    "apps/agent/tests/combat/test_sprint64_lifecycle_seams.py",
     "apps/agent/tests/combat/test_start_combat.py",
     "apps/agent/tests/combat/test_weapon_damage.py",
     "apps/agent/tests/companion/test_combat_memory.py",

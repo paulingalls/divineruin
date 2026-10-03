@@ -18,6 +18,7 @@ from combat.test_combat_tx_integrity import (
 )
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
+from voice_condition_fixtures import place_actors
 
 import combat_end
 import combat_events
@@ -38,46 +39,48 @@ def _tx_e2e_state(combat_id: str, player_id: str, enemy_id: str, companion_id: s
     its blow, so a single round can no longer show both. The enemy carries 14 HP against the
     fixture's 7-damage resolver: it survives round 1 (and clubs the companion down), and falls to
     round 2's swing."""
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=12,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=15,
-                hp_current=14,  # survives round 1's swing, falls to round 2's
-                hp_max=14,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-            CombatParticipant(
-                id=companion_id,
-                name="Brae",
-                type="companion",
-                initiative=10,
-                hp_current=5,
-                hp_max=20,
-                ac=12,
-            ),
-        ],
-        initiative_order=[enemy_id, player_id, companion_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": companion_id},
-        },
+    return place_actors(
+        CombatState(
+            combat_id=combat_id,
+            participants=[
+                CombatParticipant(
+                    id=player_id,
+                    name="Kael",
+                    type="player",
+                    initiative=12,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id=enemy_id,
+                    name="Goblin",
+                    type="enemy",
+                    initiative=15,
+                    hp_current=14,  # survives round 1's swing, falls to round 2's
+                    hp_max=14,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+                CombatParticipant(
+                    id=companion_id,
+                    name="Brae",
+                    type="companion",
+                    initiative=10,
+                    hp_current=5,
+                    hp_max=20,
+                    ac=12,
+                ),
+            ],
+            initiative_order=[enemy_id, player_id, companion_id],
+            beat="resolution",
+            pending_declarations={
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+                enemy_id: {"type": "attack", "action": "Scimitar", "target_id": companion_id},
+            },
+        )
     )
 
 

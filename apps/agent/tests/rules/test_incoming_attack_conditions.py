@@ -140,7 +140,7 @@ def test_double_natural_one_still_misses_a_paralyzed_target():
 
 def test_held_replay_keeps_the_serialized_autocrit_when_paralysis_is_gone():
     result, effective_ac, _ = _roll([7, 12, 3, 4], target_condition="paralyzed")
-    head = {"actor_id": "attacker", "roll": serialize_roll(result, effective_ac)}
+    head = {"actor_id": "attacker", "roll": serialize_roll(result, effective_ac), "reaction_ac_bonus": 0}
 
     replayed = _replay_resolver(head).resolve_attack({}, {}, effective_ac, 40, target_conditions=[])
 

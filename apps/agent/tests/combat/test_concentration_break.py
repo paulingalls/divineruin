@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import concentration_break
 from session_data import CombatParticipant, CombatState
@@ -36,51 +37,55 @@ def _two_pc_incapacitating_state() -> CombatState:
     NON-primary player_2 (low HP) for a fixed 15 damage (>= the AC #4 threshold), dropping them to
     0 HP — incapacitated, so their concentration auto-breaks without needing a controlled dice roll.
     player_1 (primary) is never targeted this phase, so their own concentration must survive."""
-    return CombatState(
-        combat_id="combat_concentration_mp",
-        participants=[
-            CombatParticipant(
-                id="player_1",
-                name="player_1",
-                type="player",
-                initiative=20,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id="player_2",
-                name="player_2",
-                type="player",
-                initiative=15,
-                hp_current=12,
-                hp_max=25,
-                ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-            ),
-            CombatParticipant(
-                id="goblin_1",
-                name="Goblin",
-                type="enemy",
-                initiative=1,
-                hp_current=100,
-                hp_max=100,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=["player_1", "player_2", "goblin_1"],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="resolution",
-        pending_declarations={
-            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"},
-            "player_2": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"},
-            "goblin_1": {"type": "attack", "action": "Scimitar", "target_id": "player_2"},
-        },
+    return place_actors(
+        CombatState(
+            combat_id="combat_concentration_mp",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="player_1",
+                    type="player",
+                    initiative=20,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id="player_2",
+                    name="player_2",
+                    type="player",
+                    initiative=15,
+                    hp_current=12,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id="goblin_1",
+                    name="Goblin",
+                    type="enemy",
+                    initiative=1,
+                    hp_current=100,
+                    hp_max=100,
+                    ac=13,
+                    action_pool=[
+                        {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}
+                    ],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=["player_1", "player_2", "goblin_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations={
+                "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"},
+                "player_2": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"},
+                "goblin_1": {"type": "attack", "action": "Scimitar", "target_id": "player_2"},
+            },
+        )
     )
 
 

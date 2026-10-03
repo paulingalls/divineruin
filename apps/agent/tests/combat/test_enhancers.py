@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _fake_db_mod, _make_combat_state
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import combat_packet
 import combat_turn
@@ -208,12 +209,14 @@ def _capstone_state(enhancers: list[str], declaration: dict) -> CombatState:
         action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
         xp_value=50,
     )
-    return CombatState(
-        combat_id="combat_caps_s004",
-        participants=[player, goblin],
-        initiative_order=["player_1", "goblin_1"],
-        beat="resolution",
-        pending_declarations={"player_1": declaration},
+    return place_actors(
+        CombatState(
+            combat_id="combat_caps_s004",
+            participants=[player, goblin],
+            initiative_order=["player_1", "goblin_1"],
+            beat="resolution",
+            pending_declarations={"player_1": declaration},
+        )
     )
 
 

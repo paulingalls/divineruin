@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state, _resolve_deps
 from sample_fixtures import catalog_encounters, make_context
+from voice_condition_fixtures import place_actors
 
 import abilities
 import combat_ability_save
@@ -42,6 +43,7 @@ def _release_state():
     player = state.get_participant("player_1")
     assert grappler is not None and player is not None
     grappler.id = "mawling_1"
+    place_actors(state)
     grappler.name = "Mawling One"
     state.initiative_order = [player.id, grappler.id]
     player.conditions = conditions.apply_condition([], "grappled", source=grappler.id)
@@ -59,6 +61,7 @@ def _release_state():
     other_grappler.id = "mawling_2"
     other_grappler.name = "Mawling Two"
     state.participants.extend([other_target, other_grappler])
+    place_actors(state)
     return state
 
 
@@ -103,6 +106,7 @@ async def test_cannot_act_condition_releases_only_when_it_lands(save_success, re
         action_pool=[_hold_person()],
     )
     state.participants.append(caster)
+    place_actors(state)
     packet = ResolutionPacket(
         actor_id=caster.id,
         declaration=Declaration(type=DeclarationType.ATTACK, action="Hold Person", target_id="mawling_1"),

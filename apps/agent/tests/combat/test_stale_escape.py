@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from combat._helpers import _make_combat_state, _resolve_deps, _resolve_round
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import abilities
 import combat_turn
@@ -34,6 +35,7 @@ def _round_setup(*, grappled: bool):
         level=8,
     )
     state.participants.append(disabler)
+    place_actors(state)
     state.initiative_order = [disabler.id, escapee.id, grappler.id]
     state.beat = "declaration"
     if grappled:

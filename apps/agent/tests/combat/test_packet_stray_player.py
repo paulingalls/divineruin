@@ -15,6 +15,7 @@ import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 from combat_events import EventSink
 from combat_packet import _resolve_one_packet
@@ -55,6 +56,7 @@ async def test_a_swing_by_a_player_with_no_party_member_resolves_instead_of_rais
         action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
     )
     state.participants.append(stray)
+    place_actors(state)
     assert session.party.member("ghost_pc") is None  # the stray: no PartyMember behind it
 
     packet = ResolutionPacket(

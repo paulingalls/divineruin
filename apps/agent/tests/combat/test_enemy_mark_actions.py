@@ -6,6 +6,7 @@ from typing import cast
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _resolve_deps, _resolve_round
 from sample_fixtures import catalog_encounters
+from voice_condition_fixtures import place_actors
 
 from combat_marks import attack_bonus, resolve_mark_action
 from session_data import CombatParticipant, CombatState
@@ -56,12 +57,14 @@ def _mark_state(commands: list[tuple[str, dict]], *, attack_target="player_1") -
     }
     declarations[striker.id] = {"type": "attack", "action": "Mace", "target_id": attack_target}
     participants = [*players, *markers, striker]
-    return CombatState(
-        combat_id="combat_mark",
-        participants=participants,
-        initiative_order=[participant.id for participant in participants],
-        beat="resolution",
-        pending_declarations=declarations,
+    return place_actors(
+        CombatState(
+            combat_id="combat_mark",
+            participants=participants,
+            initiative_order=[participant.id for participant in participants],
+            beat="resolution",
+            pending_declarations=declarations,
+        )
     )
 
 
@@ -125,6 +128,7 @@ def test_a_cancelled_mark_reports_its_declared_kind_and_writes_no_row():
     state = _mark_state([])
     marker = _participant("marker")
     state.participants.append(marker)
+    place_actors(state)
     target = state.get_participant("player_1")
     assert target is not None
 
@@ -140,6 +144,7 @@ def test_the_first_same_band_marker_owns_the_target(second_kind):
     first = _participant("first_marker")
     second = _participant("second_marker")
     state.participants.extend([first, second])
+    place_actors(state)
     target = state.get_participant("player_1")
     assert target is not None
 
@@ -159,6 +164,7 @@ def test_an_opposing_band_cannot_replace_a_mark(first_type, second_type):
     first = _participant("first_marker", kind=first_type)
     second = _participant("second_marker", kind=second_type)
     state.participants.extend([first, second])
+    place_actors(state)
     target = state.get_participant("player_1")
     assert target is not None
     resolve_mark_action(state, first, target, "command")
@@ -176,6 +182,7 @@ def test_a_cancelled_mark_does_not_inspect_or_replace_the_owner():
     first = _participant("first_marker")
     second = _participant("second_marker", kind="companion")
     state.participants.extend([first, second])
+    place_actors(state)
     target = state.get_participant("player_1")
     assert target is not None
     resolve_mark_action(state, first, target, "command")
@@ -199,6 +206,7 @@ def test_a_mark_does_not_help_the_marker_or_the_opposite_band_or_a_fallen_attack
     state = _mark_state([])
     marker = _participant("marker", actions=[_STRIKE])
     state.participants.append(marker)
+    place_actors(state)
     target = state.get_participant("player_1")
     bandmate = state.get_participant("bandmate")
     opposite = state.get_participant("player_2")
@@ -219,6 +227,7 @@ def test_a_mark_does_not_help_when_its_source_is_out(source_flag):
     state = _mark_state([])
     marker = _participant("marker")
     state.participants.append(marker)
+    place_actors(state)
     target = state.get_participant("player_1")
     bandmate = state.get_participant("bandmate")
     assert target is not None and bandmate is not None
@@ -235,6 +244,7 @@ async def test_a_bandmate_attack_gets_no_mark_bonus_when_the_source_is_out(sourc
     marker = _participant("marker")
     setattr(marker, source_flag, True)
     state.participants.append(marker)
+    place_actors(state)
     state.focus_marks["player_1"] = {"source_id": marker.id, "kind": "command"}
 
     _, _, strike = await _run(state)
@@ -246,6 +256,7 @@ def test_corrupt_marks_and_non_mark_kinds_fail_loud():
     state = _mark_state([])
     marker = _participant("marker")
     state.participants.append(marker)
+    place_actors(state)
     target = state.get_participant("player_1")
     bandmate = state.get_participant("bandmate")
     assert target is not None and bandmate is not None

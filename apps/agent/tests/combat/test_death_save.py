@@ -9,6 +9,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod, make_mock_room, published_payloads
+from voice_condition_fixtures import place_actors
 
 import event_types as E
 import reaction_spend
@@ -27,6 +28,7 @@ def _fallen_ally(cs, player_id: str):
     """Add a SECOND fallen player participant — the multiplayer shape combat_init builds."""
     ally = replace(cs.participants[0], id=player_id, name="Ally", hp_current=0, is_fallen=True)
     cs.participants.append(ally)
+    place_actors(cs)
     return ally
 
 
