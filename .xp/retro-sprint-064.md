@@ -48,3 +48,11 @@ rollback. Focused integration checks caught the attack/save-only bonus leaking
 into skill checks through live conditions, and a nonparticipant save consulting
 unrelated combat placement. Those boundaries now have passing behavior checks;
 merged prompt fixtures preserve both hearing-only inputs and the new gift cue.
+
+Sprint review caught stale suppression after re-entry, dead-source aura facts,
+unrestricted diagnostic reseeding and a network-accessible test signing key.
+The fixes reconcile state with geometry and give the manual runner disposable
+services and fresh credentials. An independent ability-policy fixture now keeps
+wrong classifications from selecting away their own refusal tests. Release
+checks also reconcile the eleventh encounter and prove the credential test
+accepts a correctly signed token while rejecting the old fixed key.

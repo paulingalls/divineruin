@@ -23,18 +23,23 @@ test("exported runner isolates ambient resources and refuses non-loopback HTTP",
       expect(env.JWT_SECRET).not.toBe("ab".repeat(32));
       const url = new URL(env.EXPO_PUBLIC_API_URL!);
       expect((await fetch(`${url}/api/inventory`)).status).toBe(401);
-      const forged = await new SignJWT({ pid: "player_1" })
-        .setProtectedHeader({ alg: "HS256" })
-        .setSubject("attacker")
-        .setExpirationTime("1h")
-        .sign(new TextEncoder().encode("ab".repeat(32)));
-      expect(
-        (
-          await fetch(`${url}/api/inventory`, {
-            headers: { Authorization: `Bearer ${forged}` },
-          })
-        ).status,
-      ).toBe(401);
+      for (const [secret, status] of [
+        ["ab".repeat(32), 401],
+        [env.JWT_SECRET!, 200],
+      ] as const) {
+        const token = await new SignJWT({ pid: "player_1" })
+          .setProtectedHeader({ alg: "HS256" })
+          .setSubject("fixture-account")
+          .setExpirationTime("1h")
+          .sign(Buffer.from(secret, "hex"));
+        expect(
+          (
+            await fetch(`${url}/api/inventory`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          ).status,
+        ).toBe(status);
+      }
       const external = Object.values(networkInterfaces())
         .flat()
         .find((address) => address && address.family === "IPv4" && !address.internal);
