@@ -1,50 +1,19 @@
-# xp project config — EDIT the tiers for your stack, then re-run your first commit
-release: sprint      # sprint = stories integrate on a sprint branch, sprint close PRs trunk
+# xp project config (xp-plugin 1.0.0)
+versioning: on       # each release is tagged; the tag must match version_files
+version_files: package.json  # comma-separated JSON manifests
+debt_budget: 0.2     # max share of sprint stories that are scheduled debt
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
 #                    # This posture governs all Codex roles.
 #                    # teammates run uv/pytest/bun/git AND a per-worktree docker stack
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
-# trunk: develop       # UNCOMMENT where releases do NOT land on git's DEFAULT branch;
-#                      # they land and tag here, any develop -> main cut stays yours
-# lifecycle_command: ./scripts/xp-lifecycle "fixed value"  # argv prefix, no shell
-#                    # receives sprint-open/story-close/sprint-close and the id
-sprint_cap: 6        # max stories per sprint
-debt_budget: 0.2     # max share of sprint stories that are scheduled debt
-constraints_chars_cap: 4000  # hard character ceiling; retire or shorten a rule.
-#                    # 4000, not 4500: SessionStart renders the lead's regions into a
-#                    # 9500-byte budget and CLIPS constraints.md's tail. Measured
-#                    # 2026-09-18 against a worst-case banner + environment notice, the
-#                    # constraints budget is 4411 bytes — 4496 was already over, silently.
-#                    # Detail belongs in .xp/system.md (reviewers get it in full), not here.
-version_files: package.json  # comma-separated JSON manifests
-# teardown_timeout: 60  # seconds before close kills worktree teardown
-# review:
-#   verify_batches: 2   # sprint-close verifier AGENTS per round. Bounds the
-#                       # spend: candidates are batched across this many, never
-#                       # one agent per candidate.
-
-profile_target: 806  # token budget the shipped role profiles are written against
 
 roles:  # All Codex / GPT-6.1 Sol until the human changes this; preserve effort
   lead: codex/gpt-6.1-sol/medium
+  planner: codex/gpt-6.1-sol/medium
   executor: codex/gpt-6.1-sol/medium
   reviewer: codex/gpt-6.1-sol/medium
   plan-reviewer: codex/gpt-6.1-sol/medium
-  planner: codex/gpt-6.1-sol/medium
   slate-reviewer: codex/gpt-6.1-sol/medium
-  card-refresher: codex/gpt-6.1-sol/low
-  finder: codex/gpt-6.1-sol/medium
-  verifier: codex/gpt-6.1-sol/medium
+  angle-reviewer: codex/gpt-6.1-sol/medium
   fixer: codex/gpt-6.1-sol/medium
-  closer: codex/gpt-6.1-sol/medium
-
-tests:
-  # The installed pre-commit hook calls this same command for staged paths.
-  fast: bash scripts/test-fast.sh
-  # Stories verify focused AC behavior; broad regression runs once at sprint close.
-  story: bun run lint              # static checks; behavioral tests belong to Verify/full
-  full: bash .githooks/pre-push __xp_full_tier__
-
-tier_coverage:
-tier_coverage_pins:
