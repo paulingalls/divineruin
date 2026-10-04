@@ -24,6 +24,7 @@ echo "Setting up test repo at $TEMP_REPO..."
 # Copy the hook into the temp repo
 mkdir -p "$TEMP_REPO/.githooks"
 cp "$HOOK" "$TEMP_REPO/.githooks/pre-commit"
+cp "$(dirname "$HOOK")/hook-lib.sh" "$TEMP_REPO/.githooks/hook-lib.sh"
 chmod +x "$TEMP_REPO/.githooks/pre-commit"
 
 cd "$TEMP_REPO"

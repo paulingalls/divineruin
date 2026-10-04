@@ -26,6 +26,20 @@ if [ "$PREPUSH_TEST_MODE" = production ]; then
   done
 fi
 
+# Secret scan of the pushed range only, so history already on the remote is not
+# re-judged. It refuses when gitleaks is missing. The ref list is buffered so the
+# routing below still reads it from stdin. The harness modes feed fake shas and
+# the release suite has no refs, so only a real push is scanned.
+if [ "$PREPUSH_TEST_MODE" = production ] && [ "$RELEASE_SUITE" = false ]; then
+  # shellcheck source=.githooks/hook-lib.sh
+  . "$(dirname "$0")/hook-lib.sh"
+  push_refs=$(mktemp)
+  cat > "$push_refs"
+  if ! secrets_scan_push "${1:-}" < "$push_refs"; then rm -f "$push_refs"; exit 1; fi
+  exec < "$push_refs"
+  rm -f "$push_refs"
+fi
+
 # Env vars to strip from unit tests so missing mocks are caught locally.
 # CI's test-bun job has DATABASE_URL + REDIS_URL (real services) but NOT
 # these external API vars — so we match that here.

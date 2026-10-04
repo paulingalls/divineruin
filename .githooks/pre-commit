@@ -11,6 +11,11 @@ if [ -n "$staged_env" ]; then
   exit 1
 fi
 
+# Secret scan of the staged index. It sits above the node_modules skip so a fresh
+# worktree is scanned too, and it refuses when gitleaks is missing.
+. "$(dirname "$0")/hook-lib.sh"
+secrets_scan_index
+
 # The staged language checks below need installed deps.
 # A fresh worktree has no node_modules. The pre-push gate checks full lint and
 # typechecks before code reaches a shared branch.
