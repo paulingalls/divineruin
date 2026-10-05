@@ -1,13 +1,3 @@
-"""End-to-end integration tests for the async activity pipeline.
-
-Full pipeline with mocked LLM/TTS:
-1. Create player in DB
-2. Insert activity with past resolve_at
-3. Run resolve_due_activities()
-4. Verify: outcome computed, narration generated, audio file exists, DB updated
-5. Test soft timer variance
-"""
-
 import random
 import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -62,11 +52,8 @@ def _stub_crafting_skill_counter():
 
 
 class TestFullPipeline:
-    """End-to-end: create activity -> resolve -> narrate -> audio -> DB update."""
-
     @pytest.mark.asyncio
     async def test_crafting_e2e(self):
-        """Full crafting pipeline with mocked external services."""
         activity = {
             "id": "activity_e2e_craft",
             "player_id": "player_1",
@@ -163,7 +150,6 @@ class TestFullPipeline:
 
     @pytest.mark.asyncio
     async def test_companion_errand_e2e(self):
-        """Full companion errand pipeline."""
         activity = {
             "id": "activity_e2e_errand",
             "player_id": "player_1",
@@ -224,7 +210,6 @@ class TestFullPipeline:
 
     @pytest.mark.asyncio
     async def test_batch_resolution(self):
-        """Multiple due activities resolve in one cycle."""
         activities = [
             {
                 "id": f"activity_batch_{i}",
@@ -259,10 +244,7 @@ class TestFullPipeline:
 
 
 class TestSoftTimerVariance:
-    """Verify resolution outputs vary with RNG seed."""
-
     def test_crafting_outcomes_vary(self):
-        """Different RNG seeds produce different crafting outcomes."""
         params = {
             "recipe_id": "iron_sword",
             "result_item_id": "iron_sword",
@@ -288,11 +270,8 @@ class TestSoftTimerVariance:
 
 
 class TestCostVerification:
-    """Verify narration cost stays within budget."""
-
     @pytest.mark.asyncio
     async def test_narration_token_budget(self):
-        """Typical narration should use < 200 input tokens, < 200 output tokens."""
         # Mock Anthropic tool_use response with realistic token counts
         # Note: MagicMock(name=...) sets the mock's repr name, not an attribute,
         # so we use spec=[] and set attributes directly.

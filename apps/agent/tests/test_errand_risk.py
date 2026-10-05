@@ -111,7 +111,6 @@ class TestRollErrandRisk:
         assert roll("companion_kael", 5) == "emergency"  # emergency band unaffected
 
     def test_unknown_companion_id_fails_loud(self):
-        """An id the catalog does not know must raise, not roll unreduced (constraint 4)."""
         with pytest.raises(ValueError, match="companion_x"):
             roll_errand_risk("scout", "dangerous", "companion_x", FixedRng(30))
 

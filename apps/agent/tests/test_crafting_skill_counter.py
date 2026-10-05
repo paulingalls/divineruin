@@ -86,14 +86,12 @@ async def _run_resolution(activity: dict, outcome: dict):
 class TestFailureIncrementsCounter:
     @pytest.mark.asyncio
     async def test_failure_band_increments_once(self):
-        """AC#1: a crafting Failure outcome increments the player's counter by exactly 1."""
         mock_increment = await _run_resolution(_CRAFTING_ACTIVITY, _outcome("failure"))
         mock_increment.assert_awaited_once_with("player_1")
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("tier", ["exceptional", "success", "partial"])
     async def test_non_failure_bands_do_not_increment(self, tier):
-        """AC#2: exceptional/success/partial outcomes leave the counter unchanged."""
         mock_increment = await _run_resolution(_CRAFTING_ACTIVITY, _outcome(tier))
         mock_increment.assert_not_awaited()
 
@@ -102,7 +100,6 @@ class TestFailureIncrementsCounter:
     @pytest.mark.usefixtures("stub_companion_errand_affinity_io")
     @pytest.mark.asyncio
     async def test_non_crafting_activity_does_not_increment(self):
-        """AC#2: a non-crafting activity never touches the Crafting counter, even on failure."""
         errand = {**_CRAFTING_ACTIVITY, "activity_type": "companion_errand"}
         mock_increment = await _run_resolution(errand, _outcome("failure"))
         mock_increment.assert_not_awaited()
@@ -111,7 +108,6 @@ class TestFailureIncrementsCounter:
 class TestCounterSqlHelpers:
     @pytest.mark.asyncio
     async def test_increment_issues_atomic_upsert(self):
-        """increment_crafting_skill_counter runs a single atomic +1 UPSERT for the player."""
         conn = MagicMock()
         conn.execute = AsyncMock()
         await db_mutations.increment_crafting_skill_counter("player_1", conn=conn)

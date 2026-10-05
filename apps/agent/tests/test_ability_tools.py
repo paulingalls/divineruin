@@ -406,8 +406,6 @@ class TestRejection:
 
 
 class TestOwnershipGate:
-    """Own-the-base gate on activation (story-006)."""
-
     async def test_core_ability_rejected_when_class_mismatch(self):
         # A paladin cannot activate a warrior core ability they don't have.
         ctx = make_context()

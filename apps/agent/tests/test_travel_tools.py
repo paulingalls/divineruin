@@ -1,12 +1,3 @@
-"""Tests for the travel agent tool (M4.6b / story-003).
-
-`_travel_impl` reads the player + destination, rolls a Survival navigation check, drives the
-pure travel.resolve_travel_segment engine, applies exhaustion via the apply_condition SSOT
-(capped by exhaustion_stack_cap), persists travel_state, relocates on a successful journey,
-and emits a DICE_ROLL event. These tests drive the impl directly with mocked db seams + a
-fixed rng, mirroring tests/tools/test_social_tools.py.
-"""
-
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock

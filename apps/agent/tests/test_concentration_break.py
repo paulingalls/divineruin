@@ -1,13 +1,3 @@
-"""Tests for break_concentration_on_damage (concentration_break.py, story-008, M3.4).
-
-The single production consumer of the concentration engine (concentration.py): when a
-concentrating player takes damage it rolls a CON save (DC scales with damage) and ends
-concentration on a failed save or incapacitation. Drives the helper directly with mock
-queries / save-resolver / concentration-mutations mods, so the save roll and the persist are
-deterministic. The pure keep/break decision (concentration_holds) and the DC (check_concentration)
-run REAL — they are pure and already covered by test_concentration.py.
-"""
-
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 

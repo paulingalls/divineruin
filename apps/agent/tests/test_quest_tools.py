@@ -1,6 +1,3 @@
-"""Quest completion tests — archetype-aware LEVEL_UP hp_gains + milestone side-effects
-routed through the shared _award_xp_core Resolve (story-002)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

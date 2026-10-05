@@ -114,8 +114,6 @@ def test_disposition_remap_preserves_gated_knowledge():
 
 
 def test_filter_knowledge_monotonic_per_npc():
-    """The migration left every knowledge dict well-formed: higher disposition reveals
-    a superset, and free entries are always visible."""
     for npc_id, npc in _parsed().items():
         knowledge = npc["knowledge"]
         free = set(filter_knowledge(knowledge, "hostile"))
@@ -126,7 +124,6 @@ def test_filter_knowledge_monotonic_per_npc():
 
 
 def test_get_npc_sync_resolves_seeded_catalog():
-    """The seed_npcs autouse fixture populates the in-memory catalog used by narration."""
     for npc_id in _parsed():
         assert get_npc_sync(npc_id) is not None, f"{npc_id} not in the seeded NPC catalog"
     assert get_npc_sync("does_not_exist") is None

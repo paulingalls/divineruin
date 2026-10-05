@@ -1,6 +1,3 @@
-"""Tests for _award_xp_core, the single XP/milestone Resolve — LEVEL_UP payload,
-archetype-aware hp_gains, auto-grant side-effects and the L5 fork."""
-
 import dataclasses
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock

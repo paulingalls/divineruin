@@ -1,5 +1,3 @@
-"""Tests for narration generation module."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -152,7 +150,6 @@ class TestCraftingQualityNote:
         assert "Exceptional touch" not in prompt
 
     def test_recipe_cue_surfaced_when_present(self):
-        """decision crafting-narration-ssot: the per-recipe band cue threads into the prompt."""
         outcome = self._outcome("success")
         outcome["narrative_context"]["recipe_cue"] = "A blunt heft of oak, balanced for a swing."
         prompt, _ = build_narration_prompt("crafting", outcome)

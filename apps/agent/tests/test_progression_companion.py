@@ -1,5 +1,3 @@
-"""Companion progression reaches the DM prompt and L20 XP Resolve."""
-
 import dataclasses
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -114,7 +112,6 @@ async def test_levels_below_20_grant_no_legendary_companion():
 
 @pytest.mark.asyncio
 async def test_multi_level_jump_across_20_grants_the_legendary_exactly_once():
-    """A single award can cross many levels; the legendary must land once, not per level."""
     with patch("progression_tools.milestone_tools.apply_milestone_grant", new_callable=AsyncMock):
         jump = await _award_from_level(1, 0, 11250)  # 1 -> 20 in one award
 

@@ -310,7 +310,6 @@ def test_ward_scope_is_frozen():
 
 
 def test_ward_scope_equality_and_hash():
-    """Value semantics: two scopes naming the same place are the same scope."""
     a = WardScope.location("thornwatch_keep")
     b = WardScope.location("thornwatch_keep")
     assert a == b
@@ -319,7 +318,6 @@ def test_ward_scope_equality_and_hash():
 
 
 def test_ward_scope_kind_participates_in_identity():
-    """A location and an encounter that share an id are NOT the same scope."""
     assert WardScope.location("x") != WardScope.encounter("x")
 
 

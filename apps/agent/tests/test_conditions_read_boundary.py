@@ -1,10 +1,3 @@
-"""M4.4 story-005 — JSONB read-boundary validation for persistent conditions (AC2).
-
-A corrupt stored condition dict (unknown type / non-int stacks) must fail loud at the read
-boundary (read_player_conditions) rather than load green and crash a resolver later. The pure
-validators live in conditions.py; the DB-level fail-loud is exercised against the dev DB.
-"""
-
 import json
 from unittest.mock import AsyncMock
 

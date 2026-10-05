@@ -1,5 +1,3 @@
-"""Real PostgreSQL revision ordering, rollback, transfer and cross-language capture."""
-
 import asyncio
 import json
 import os

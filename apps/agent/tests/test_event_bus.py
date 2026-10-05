@@ -1,5 +1,3 @@
-"""Tests for the in-process event bus."""
-
 import event_types as E
 from event_bus import EventBus, GameEvent
 

@@ -77,8 +77,6 @@ def _completion_patches(activity, *, advance_return, player=SAMPLE_PLAYER):
 class TestSpellTrainingAccrual:
     @pytest.mark.asyncio
     async def test_completed_cycle_promotes_spell_to_known_library(self):
-        """When advance_learning_cycle reports completed, the spell is recorded learned
-        with track='training' and its in-flight progress row is cleared (promotion seam)."""
         patches, advance, record_learned, delete_progress = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={
@@ -114,8 +112,6 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_incomplete_cycle_does_not_promote(self):
-        """A cycle that does not complete the tier accrues but never promotes —
-        no record_learned, no progress deletion (guards the strand-a-spell risk)."""
         patches, advance, record_learned, delete_progress = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={"cycles_completed": 4, "cycles_required": 5, "completed": False},
@@ -199,8 +195,6 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_midpoint_decision_threaded_to_progress(self):
-        """The recorded midpoint decision (data['decision_id']) is passed through to
-        advance_learning_cycle so the learned spell's bonus variant derives from it."""
         patches, advance, _, _ = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={"cycles_completed": 1, "cycles_required": 5, "completed": False},
@@ -223,8 +217,6 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_missing_spell_id_fails_loud(self):
-        """A spell-training activity without spell_id in its data is a contract
-        violation — the cycle is not silently dropped or promoted."""
         activity = {
             **SAMPLE_SPELL_ACTIVITY,
             "data": {k: v for k, v in SAMPLE_SPELL_ACTIVITY["data"].items() if k != "spell_id"},

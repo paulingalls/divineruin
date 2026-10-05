@@ -1,12 +1,3 @@
-"""Tests for the shared companion-errand resolution helper.
-
-resolve_errand_outcome is the single resolution path for scheduled errand
-resolution — called by the async worker today, and by the forthcoming
-resolve_companion_errand agent tool (story-009). Keeping the outcome shape
-(tier, narrative_context incl. risk_outcome, decision options) identical across
-entry points.
-"""
-
 import random
 from unittest.mock import AsyncMock
 
@@ -30,7 +21,6 @@ def _content(location):
 
 @pytest.mark.asyncio
 async def test_resolve_errand_outcome_shape():
-    """Returns an outcome dict with tier, errand_type, and risk_outcome in context."""
     parameters = {"errand_type": "scout", "destination": "millhaven", "dc": 12}
     result = await errand_resolution.resolve_errand_outcome(
         COMPANION_KAEL, parameters, content=_content({"danger_level": 0}), rng=random.Random(1)
@@ -45,7 +35,6 @@ async def test_resolve_errand_outcome_shape():
 
 @pytest.mark.asyncio
 async def test_resolve_errand_outcome_rolls_risk_from_danger():
-    """Risk is rolled from the destination's danger level at resolution."""
     parameters = {"errand_type": "scout", "destination": "greyvale_ruins_entrance", "dc": 12}
     # Seed an rng that lands inside the dangerous|scout injury band (25%).
     result = await errand_resolution.resolve_errand_outcome(
@@ -56,7 +45,6 @@ async def test_resolve_errand_outcome_rolls_risk_from_danger():
 
 @pytest.mark.asyncio
 async def test_resolve_errand_outcome_missing_location_defaults_safe():
-    """An unresolvable destination defaults to safe danger (not a crash)."""
     parameters = {"errand_type": "scout", "destination": "nowhere", "dc": 12}
     result = await errand_resolution.resolve_errand_outcome(
         COMPANION_KAEL, parameters, content=_content(None), rng=random.Random(1)

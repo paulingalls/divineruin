@@ -91,8 +91,6 @@ def _first_lock_ids(queries: MagicMock) -> list[str]:
 class TestAbilityLockOrder:
     @pytest.mark.asyncio
     async def test_caster_and_target_locked_in_one_ascending_batch(self):
-        """AC1: request_ability_activation locks {caster, target} in ONE ascending-player_id batch;
-        the caster is not separately locked via get_player(for_update=True)."""
         _result, queries = await _activate(caster="alice", party=["bob"], ability_id="bard_inspire", target_id="bob")
         lock_ids = _first_lock_ids(queries)
         assert lock_ids == ["alice", "bob"]  # ascending player_id union
@@ -100,16 +98,12 @@ class TestAbilityLockOrder:
 
     @pytest.mark.asyncio
     async def test_role_swap_yields_identical_global_order(self):
-        """AC2: alice-on-bob and bob-on-alice compute the IDENTICAL lock order — so two concurrent
-        cross-player activations acquire rows in the same global order and cannot deadlock."""
         _r1, q1 = await _activate(caster="alice", party=["bob"], ability_id="bard_inspire", target_id="bob")
         _r2, q2 = await _activate(caster="bob", party=["alice"], ability_id="bard_inspire", target_id="alice")
         assert _first_lock_ids(q1) == _first_lock_ids(q2) == ["alice", "bob"]
 
     @pytest.mark.asyncio
     async def test_self_cast_locks_only_the_caster(self):
-        """AC3: a self-targeted ability (no target_id) locks the single caster row once — no ordering
-        regression for the solo path."""
         _result, queries = await _activate(caster="alice", party=[], ability_id="bard_inspire", target_id=None)
         assert _first_lock_ids(queries) == ["alice"]
         # Only the caster union lock — no non-caster target batch inside produce_ooc_condition.
@@ -236,16 +230,12 @@ async def _cast(*, caster: str, party: list[str], target_id: str | None):
 class TestSpellLockOrder:
     @pytest.mark.asyncio
     async def test_caster_and_target_locked_in_one_ascending_batch(self):
-        """AC1 (spell): the OOC cast locks {caster, target} in ONE ascending-player_id batch; the
-        caster is not separately locked via get_player(for_update=True)."""
         queries = await _cast(caster="alice", party=["bob"], target_id="bob")
         assert _first_lock_ids(queries) == ["alice", "bob"]
         queries.get_player.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_role_swap_and_cross_path_identical_order(self):
-        """AC2 (spell + ability-vs-spell): spell alice-on-bob, spell bob-on-alice, AND ability bob-on-alice
-        all compute the IDENTICAL global order — a mixed ability/spell pair can't deadlock either."""
         q_spell_ab = await _cast(caster="alice", party=["bob"], target_id="bob")
         q_spell_ba = await _cast(caster="bob", party=["alice"], target_id="alice")
         _r, q_ability_ba = await _activate(caster="bob", party=["alice"], ability_id="bard_inspire", target_id="alice")
@@ -258,6 +248,5 @@ class TestSpellLockOrder:
 
     @pytest.mark.asyncio
     async def test_self_cast_locks_only_the_caster(self):
-        """AC3 (spell): a self-cast (no target) locks only the caster row."""
         queries = await _cast(caster="alice", party=[], target_id=None)
         assert _first_lock_ids(queries) == ["alice"]

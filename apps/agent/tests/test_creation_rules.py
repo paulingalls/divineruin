@@ -1,5 +1,3 @@
-"""Tests for character creation rules — pure functions, deterministic."""
-
 import json
 from datetime import UTC, datetime
 
@@ -66,7 +64,6 @@ class TestRaceAttributes:
         assert attrs["wisdom"] == BASE_ATTRIBUTE + 1
 
     def test_thessyn_adaptive_bonus_strength(self):
-        """Thessyn gets +1 DEX, +1 CHA from race, +1 to class primary attr."""
         attrs = generate_attributes("thessyn", "warrior")
         assert attrs["dexterity"] == BASE_ATTRIBUTE + 1  # race
         assert attrs["charisma"] == BASE_ATTRIBUTE + 1  # race

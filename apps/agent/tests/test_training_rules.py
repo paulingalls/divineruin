@@ -1,9 +1,3 @@
-"""Tests for training cycle state machine — story-007.
-
-Covers: config validation, start_training_cycle, midpoint decisions,
-resolve_midpoint_decision, complete_training_cycle.
-"""
-
 import random
 from datetime import UTC, datetime
 
@@ -82,7 +76,6 @@ class TestStartTrainingCycle:
         assert abs(result.decision_at.timestamp() - expected_decision) < 1
 
     def test_first_half_within_range(self) -> None:
-        """Cantrip first half: 3-5 hours = 10800-18000 seconds."""
         for seed in range(50):
             result = start_training_cycle(
                 "spell_cantrip",
@@ -160,7 +153,6 @@ class TestResolveMidpointDecision:
         assert abs(result.completes_at.timestamp() - expected) < 1
 
     def test_second_half_within_range_cantrip(self) -> None:
-        """Cantrip second half: 2-4 hours = 7200-14400 seconds."""
         decision = get_midpoint_decision("spell_cantrip")
         choice_id = decision.options[0].id
         dt = datetime(2026, 1, 1, tzinfo=UTC)
@@ -244,8 +236,6 @@ class TestCompleteTrainingCycle:
 
 
 class TestDurationRanges:
-    """Verify total durations match documented ranges in game_mechanics_core.md."""
-
     # (type, min_total_seconds, max_total_seconds)
     EXPECTED_RANGES = [
         ("spell_cantrip", 5 * 3600, 9 * 3600),  # 5-9 hours

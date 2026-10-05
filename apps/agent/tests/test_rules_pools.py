@@ -81,8 +81,6 @@ class TestPoolMaximums:
 
 
 class TestArchetypeChassisResource:
-    """The 18 chassis carry the historically-correct resource pattern + formulas."""
-
     def test_all_18_present(self):
         assert len(EXPECTED_RESOURCE) == 18
 
@@ -242,8 +240,6 @@ class TestCalculateMaxPoolsEdgeCases:
 
 
 class TestCalculateMaxPoolsAllArchetypesL1L20:
-    """Parametrized sanity check: every archetype produces valid pools at L1 and L20."""
-
     @pytest.mark.parametrize("archetype", list(EXPECTED_RESOURCE.keys()))
     def test_level_1_pools_are_positive(self, archetype: str):
         result = calculate_max_pools(archetype, 1, POOL_TEST_MODS)
@@ -273,8 +269,6 @@ class TestCalculateMaxPoolsAllArchetypesL1L20:
 
 
 class TestCalculateMaxPoolsE2E:
-    """E2E acceptance criteria: Warrior vs Mage pools differ correctly."""
-
     def test_warrior_vs_mage_level_1(self):
         warrior = calculate_max_pools("warrior", 1, POOL_TEST_MODS)
         mage = calculate_max_pools("mage", 1, POOL_TEST_MODS)

@@ -1,5 +1,3 @@
-"""E2E integration tests for H.8 — verify the full handoff chain."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,8 +24,6 @@ COMPANION = CompanionState(id="companion_kael", name="Kael")
 
 
 class TestNewPlayerHandoffChain:
-    """Verify the full new-player handoff chain produces correct agent types."""
-
     @pytest.mark.asyncio
     async def test_city_to_wilderness_to_dungeon_to_city(self):
         """M7 story-003: city -> wilderness -> dungeon -> city keeps ONE warm
@@ -203,14 +199,11 @@ class TestNewPlayerHandoffChain:
 
 
 class TestCombatRoundTrip:
-    """Verify combat handoff and return to correct agent type."""
-
     @pytest.mark.asyncio
     async def test_wilderness_combat_returns_to_wilderness(
         self,
         mock_combat_agent_factory,
     ):
-        """start_combat from wilderness, end_combat returns WildernessAgent."""
         from combat_end import _end_combat_impl
         from combat_init import _start_combat_impl
 
@@ -276,8 +269,6 @@ class TestCombatRoundTrip:
 
 
 class TestReturningPlayerDispatch:
-    """Verify returning player dispatch based on region_type."""
-
     @pytest.mark.asyncio
     async def test_dispatch_city_region(self):
         from gameplay_agent import create_gameplay_agent
@@ -312,8 +303,6 @@ class TestReturningPlayerDispatch:
 
 
 class TestOnboardingToGameplay:
-    """Verify onboarding beat 5 hands off to CityAgent."""
-
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_beat5_returns_city_agent(self, mock_flag):
@@ -335,8 +324,6 @@ class TestOnboardingToGameplay:
 
 
 class TestReconnectionAllAgentTypes:
-    """Verify _setup_reconnection works for all agent types."""
-
     def test_registers_for_prologue(self):
         from participant_lifecycle import _setup_reconnection
 

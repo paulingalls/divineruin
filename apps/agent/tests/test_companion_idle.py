@@ -1,5 +1,3 @@
-"""Tests for companion idle audio generation module."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

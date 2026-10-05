@@ -35,7 +35,6 @@ def _ts_blocked_combos() -> frozenset[str]:
 
 
 def test_blocked_danger_combos_match_across_languages():
-    """The TS BLOCKED_DANGER_COMBOS must equal the Python frozenset."""
     assert _ts_blocked_combos() == BLOCKED_DANGER_COMBOS
 
 

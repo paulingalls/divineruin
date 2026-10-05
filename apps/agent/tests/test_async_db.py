@@ -1,5 +1,3 @@
-"""Tests for async activity database functions."""
-
 import json
 from unittest.mock import AsyncMock, patch
 

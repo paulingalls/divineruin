@@ -1,11 +1,3 @@
-"""Tests for the crafting_resolution orchestrator (story-003, M5.3).
-
-The orchestrator joins the pure async_rules.resolve_crafting to the DB-loaded
-quality_outcomes tables: it fetches the recipe's category, loads that category's
-bonus/flaw row, and threads it into the resolver. resolve_crafting itself is real
-(pure); only the two DB accessors are mocked.
-"""
-
 import random
 from unittest.mock import AsyncMock, patch
 

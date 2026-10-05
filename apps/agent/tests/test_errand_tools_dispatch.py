@@ -1,12 +1,3 @@
-"""Tests for dispatch_companion_errand on DispatchAgent (story-009).
-
-dispatch_companion_errand validates (template, destination, blocked companion,
-blocked danger combo, free slot) then creates an async_activities row. Failures
-raise LiveKit ToolError (ADR 0002). The _*_impl seam takes injected mods. Split
-from the resolve-path tests (test_errand_tools_resolve.py) to stay under the
-500-line cap; the DispatchAgent registration smoke test rides with dispatch.
-"""
-
 import json
 import random
 from datetime import datetime, timedelta

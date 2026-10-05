@@ -114,8 +114,6 @@ class TestVignetteFieldsExist:
 
 
 class TestVignettePronouns:
-    """AC4: every pronoun in the four vignettes agrees with the row's own `gender`."""
-
     def test_no_vignette_uses_another_buckets_gendered_pronoun(self):
         for row in _RAW:
             text = _vignette_text(row)
@@ -144,8 +142,6 @@ class TestVignettePronouns:
 
 
 class TestNonVerbalVignette:
-    """AC2/AC4: Sable's scene carries her without giving her a voice."""
-
     def _non_verbal_rows(self) -> list[dict]:
         rows = [r for r in _RAW if r.get("non_verbal")]
         assert rows, "no non-verbal companion in the catalog — this guard would certify nothing"

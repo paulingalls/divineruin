@@ -1,5 +1,3 @@
-"""Tests for skill advancement: thresholds, capabilities, record_skill_use."""
-
 import pytest
 
 from check_resolution import (

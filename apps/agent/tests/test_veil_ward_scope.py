@@ -1,5 +1,3 @@
-"""Scope targeting, duration, dismissal, and rollback tests for Veil Ward."""
-
 from unittest.mock import ANY, AsyncMock
 
 import pytest
@@ -57,7 +55,6 @@ async def test_rounds_source_out_of_combat_refused():
 
 
 async def test_cleric_out_of_combat_raises_a_location_ward():
-    """The same source targets a different scope depending on the fight (AC6)."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     combat_mod = _combat_mod()
     await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)

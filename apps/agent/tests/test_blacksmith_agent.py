@@ -9,8 +9,6 @@ from blacksmith_agent import BLACKSMITH_SYSTEM_PROMPT, BLACKSMITH_TOOLS, Blacksm
 
 
 class TestBlacksmithAgentConfig:
-    """Test BlacksmithAgent is correctly configured."""
-
     def test_is_subclass_of_base_game_agent(self):
         assert issubclass(BlacksmithAgent, BaseGameAgent)
 
@@ -44,8 +42,6 @@ class TestBlacksmithAgentConfig:
 
 
 class TestBlacksmithSystemPrompt:
-    """Test BLACKSMITH_SYSTEM_PROMPT content."""
-
     def test_contains_forge_or_repair_narration(self):
         low = BLACKSMITH_SYSTEM_PROMPT.lower()
         assert "forge" in low or "repair" in low

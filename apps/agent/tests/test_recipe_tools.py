@@ -1,11 +1,3 @@
-"""Tests for the recipe @function_tools (story-006, M5.1).
-
-_learn_recipe_impl (mutating: FOR-UPDATE player lock, slot gate, writes
-player_known_recipes, ToolError) and query_recipe_requirements (read). Mirror
-test_errand_tools.py: make_context + make_db_mod fixtures, injected *_mod seams,
-assert conn threading + ToolError shapes.
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -242,8 +234,6 @@ class TestLearnRecipe:
 
 
 class TestLearn:
-    """The generic learn(kind, id, source) verb — dispatches by kind."""
-
     @pytest.mark.asyncio
     async def test_recipe_kind_delegates_to_recipe_path(self):
         ctx = make_context()

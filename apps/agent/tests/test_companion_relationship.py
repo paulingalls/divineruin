@@ -1,10 +1,3 @@
-"""Tests for the pure companion relationship tier math + gate registry (M6.4 / story-003).
-
-The HYBRID model: session_count -> floor tier (spec bands), affinity nudges up one band, never
-below floor, capped at 5. These tests own the pure contract; DB persistence/query is tested in
-tests/companion/test_relationship_persistence.py.
-"""
-
 from unittest.mock import AsyncMock, patch
 
 import pytest

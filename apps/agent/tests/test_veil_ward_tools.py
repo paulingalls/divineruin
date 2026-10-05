@@ -236,7 +236,6 @@ async def test_insufficient_stamina_rejected():
 
 
 async def test_already_warded_scope_rejected_no_double_charge():
-    """The ward is scope-owned: a scope already carrying one cannot be warded again."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True)
     with pytest.raises(ToolError, match="already active"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -246,7 +245,6 @@ async def test_already_warded_scope_rejected_no_double_charge():
 
 
 async def test_second_member_cannot_re_raise_a_warded_scope():
-    """A ward raised by one member covers the whole scope; another member's raise is refused free."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(
         _player("druid", level=9, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
     )
@@ -260,7 +258,6 @@ async def test_second_member_cannot_re_raise_a_warded_scope():
 
 
 async def test_non_primary_member_raises_scope_ward_and_pays_alone():
-    """Cost is per-caster; the ward it buys is scope-owned."""
     player = _player("cleric", level=7, focus=10, player_id="player_2")
     ctx, mock_db, queries, persistence, ward_mut = _mocks(player, party_member_ids=["player_2"])
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="player_2")

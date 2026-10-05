@@ -1,6 +1,3 @@
-"""Tests for transaction atomicity — events not published on rollback,
-session state unchanged on DB failure, partial rewards not applied."""
-
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 

@@ -1,12 +1,3 @@
-"""Tests for the M4.4 death cost engine (death_cost, story-001).
-
-Pure tier mapping: a permanent 1-based death_count selects the cost tier
-(gentle/moderate/severe/devastating per docs/game_mechanics/game_mechanics_combat.md
-§The Cost Engine), with the death-7+ retroactive -1 maxHP per level on top of the
-devastating tier. No DB, no character coupling — attribute_target is a selector the
-resurrection apply-step (story-003) resolves against real attributes.
-"""
-
 from dataclasses import FrozenInstanceError
 
 import pytest

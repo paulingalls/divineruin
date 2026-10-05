@@ -1,11 +1,3 @@
-"""Tests for the crafting pre-flight pipeline (story-003, M5.2).
-
-Pure deterministic function — plain args, no DB. run_preflight runs the spec's
-five gates (Knowledge, Skill Tier, Workspace, Materials, Tainted-Expert) in order
-and reports the FIRST failure. Gate inputs are produced by story-004; here they
-are passed directly.
-"""
-
 import pytest
 
 import preflight_pipeline as pf

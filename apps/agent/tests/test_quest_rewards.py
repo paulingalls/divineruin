@@ -110,7 +110,6 @@ async def test_quest_xp_share_uses_the_same_party_curve_as_combat():
 
 @pytest.mark.asyncio
 async def test_solo_quest_xp_is_unchanged_by_the_party_split():
-    """N=1 -> multiplier exactly 1.0: a solo player still receives the whole declared reward."""
     mutations, _, _ = await _complete_stage_for_party(["player_1"], 200)
 
     assert mutations.update_player_xp.await_count == 1
@@ -270,7 +269,6 @@ async def test_a_member_who_joins_mid_call_is_not_paid_off_an_unlocked_row():
 
 @pytest.mark.asyncio
 async def test_a_completed_stage_marks_every_paid_member():
-    """AC-1. The farming hole itself: before story-009 only the primary's row was written."""
     mutations, _, _ = await _complete_stage_for_party(["player_1", "player_2"], 200)
 
     marked = {call.args[0]: call.args[2]["current_stage"] for call in mutations.set_player_quest.await_args_list}

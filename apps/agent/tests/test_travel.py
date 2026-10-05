@@ -1,10 +1,3 @@
-"""Tests for the pure travel resolver (M4.6b / story-001).
-
-Pure functions, no DB/RNG/fixtures — the caller supplies the navigation roll_total,
-mirroring test_social_resolution.py. Spec: docs/game_mechanics/game_mechanics_combat.md
-§Travel and Exploration (L852-969).
-"""
-
 import pytest
 
 import travel

@@ -1,5 +1,3 @@
-"""Pins for the eight encounter creatures' signed-off catalog blocks."""
-
 import asyncio
 import importlib
 import json

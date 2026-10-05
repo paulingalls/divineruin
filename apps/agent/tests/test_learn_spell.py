@@ -57,8 +57,6 @@ def _queries_mod(*, level=20, archetype="mage", player_exists=True):
 
 
 class TestLearnSpell:
-    """spell_tools._learn_spell_impl — the spell branch of learn(kind, id, source)."""
-
     @pytest.mark.asyncio
     async def test_discovery_records_track(self):
         # AC1: a scroll learned via source='discovery' lands with track='discovery'.
@@ -177,8 +175,6 @@ class TestLearnSpell:
 
 
 class TestLearnDispatch:
-    """The learn(kind, id, source) dispatcher gains a 'spell' branch (recipe unchanged)."""
-
     @pytest.mark.asyncio
     async def test_spell_kind_delegates_to_spell_impl(self):
         with patch("recipe_tools.spell_tools._learn_spell_impl", new_callable=AsyncMock) as mock_impl:

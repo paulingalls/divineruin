@@ -1,10 +1,3 @@
-"""Integration tests for training cycle advancement — story-007.
-
-Tests advance_training_cycles() with mocked DB, verifying state transitions
-through the 5-state machine: initiated → running_first_half → awaiting_decision
-→ running_second_half → complete.
-"""
-
 import random
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
@@ -20,8 +13,6 @@ from training_rules import (
 
 
 class TestFirstHalfToAwaitingDecision:
-    """running_first_half → awaiting_decision when decision_at has passed."""
-
     @pytest.mark.asyncio
     async def test_transitions_to_awaiting_decision(self) -> None:
         now = datetime(2026, 4, 5, 12, 0, 0, tzinfo=UTC)
@@ -67,11 +58,8 @@ class TestFirstHalfToAwaitingDecision:
 
 
 class TestAwaitingDecisionBlocks:
-    """awaiting_decision does NOT auto-advance — requires player choice."""
-
     @pytest.mark.asyncio
     async def test_awaiting_decision_not_in_due_transitions(self) -> None:
-        """Activities in awaiting_decision state should not appear in due transitions."""
         activity_row = {
             "id": "train_waiting",
             "player_id": "player_1",
@@ -92,8 +80,6 @@ class TestAwaitingDecisionBlocks:
 
 
 class TestSecondHalfToComplete:
-    """running_second_half → complete when completes_at has passed."""
-
     @pytest.mark.asyncio
     async def test_transitions_to_complete(self) -> None:
         decision = get_midpoint_decision("technique_base")
@@ -133,8 +119,6 @@ class TestSecondHalfToComplete:
 
 
 class TestSkillPracticeCompletion:
-    """skill_practice completion increments the skill use counter."""
-
     @pytest.mark.asyncio
     async def test_skill_practice_counter_increment(self) -> None:
         decision = get_midpoint_decision("skill_practice")
@@ -153,8 +137,6 @@ class TestSkillPracticeCompletion:
 
 
 class TestFullCycle:
-    """End-to-end: initiate → advance to midpoint → resolve → advance to complete."""
-
     @pytest.mark.asyncio
     async def test_full_spell_study_cycle(self) -> None:
         rng = random.Random(42)
@@ -206,8 +188,6 @@ class TestFullCycle:
 
 
 class TestCreateAndRetrieve:
-    """Test DB create/retrieve with mocked asyncpg."""
-
     @pytest.mark.asyncio
     async def test_create_returns_id(self) -> None:
         mock_pool = AsyncMock()

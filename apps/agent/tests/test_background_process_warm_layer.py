@@ -1,11 +1,3 @@
-"""Tests for background_process.py warm-layer rebuild + PendingSpeech ordering.
-
-_rebuild_warm_layer (build, skip-if-unchanged, fail-soft) and the PendingSpeech
-priority/timestamp dataclass. Split from the lifecycle/event/guidance/speech
-tests (test_background_process_coverage.py) to stay under the 500-line cap; the
-_mock_db_for_warm_layer helper rides here since only the rebuild tests use it.
-"""
-
 import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -39,8 +31,6 @@ def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None
 
 
 class TestWarmLayerRebuild:
-    """Test warm layer rebuilding logic."""
-
     @pytest.mark.asyncio
     async def test_handoff_rebuild_queries_new_primary_and_discards_old_cache(self):
         sd = SessionData(player_id="host", location_id="tavern")
@@ -86,7 +76,6 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_updates_agent_instructions(self):
-        """_rebuild_warm_layer should update agent instructions with new warm layer."""
         mock_agent = MagicMock()
         mock_agent.update_instructions = AsyncMock()
         mock_agent._agent_type = "city"
@@ -136,7 +125,6 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_skips_if_unchanged(self):
-        """_rebuild_warm_layer should skip update if warm layer unchanged."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.current_agent = mock_agent
@@ -247,10 +235,7 @@ class TestWarmLayerRebuild:
 
 
 class TestPendingSpeech:
-    """Test PendingSpeech dataclass ordering."""
-
     def test_pending_speech_orders_by_priority(self):
-        """PendingSpeech should order by priority (higher priority first)."""
         low = PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="low")
         mid = PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="mid")
         high = PendingSpeech(priority=SpeechPriority.CRITICAL, instructions="high")
@@ -260,7 +245,6 @@ class TestPendingSpeech:
         assert min(speeches) == low
 
     def test_pending_speech_includes_timestamp(self):
-        """PendingSpeech should include creation timestamp."""
         before = time.time()
         speech = PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="test")
         after = time.time()

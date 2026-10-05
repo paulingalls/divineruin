@@ -60,13 +60,11 @@ class TestHydrateSessionState:
         assert scope == WardScope.location("thornwatch_keep")
 
     async def test_unwarded_scope_hydrates_to_no_ward(self):
-        """AC: an unwarded scope hydrates to no ward — None, not a default-inactive placeholder."""
         session = SessionData(player_id="p1", location_id="loc")
         await _hydrate(session, {"race": "human"}, _mods(active=False))
         assert session.location_ward is None
 
     async def test_warded_scope_hydrates_the_location_mirror(self):
-        """AC: the in-memory ward matches the persisted scope ward."""
         session = SessionData(player_id="p1", location_id="loc")
         await _hydrate(session, {"race": "human"}, _mods(active=True, source="cleric"))
         assert session.location_ward is not None

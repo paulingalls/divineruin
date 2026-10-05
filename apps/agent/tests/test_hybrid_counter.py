@@ -1,12 +1,3 @@
-"""Hybrid counter integration test (M1.2).
-
-Pins the production contract: session-use (`check_tools._check_skill_impl`)
-and training-skill-practice (`async_worker_training.apply_skill_practice_advancement`) both
-read and write the SAME `skill_advancement` row keyed by `(player_id, skill_id)`.
-
-If a future refactor splits one path onto a different row, this test breaks.
-"""
-
 import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
@@ -105,11 +96,8 @@ def _shared_skill_advancement_store():
 
 
 class TestHybridCounterSharedRow:
-    """M1.2 acceptance: session-use and skill_practice training both increment one row."""
-
     @pytest.mark.asyncio
     async def test_session_use_and_training_share_skill_advancement_row(self) -> None:
-        """Running session-use then training on the same player+skill mutates the same row cumulatively."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
         skill = "athletics"
@@ -167,7 +155,6 @@ class TestHybridCounterSharedRow:
 
     @pytest.mark.asyncio
     async def test_training_then_session_use_crosses_tier_threshold(self) -> None:
-        """Training first, then session-use — combined increments trigger the trained-tier advancement at 8."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
         skill = "athletics"
@@ -258,7 +245,6 @@ class TestHybridCounterSharedRow:
 
     @pytest.mark.asyncio
     async def test_different_skills_use_different_rows(self) -> None:
-        """Sanity: different skills key to different rows; the hybrid claim is per-(player, skill)."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
 

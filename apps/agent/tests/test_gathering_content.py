@@ -1,12 +1,3 @@
-"""Content-conformance for M4.6c gathering data (story-002).
-
-Pure JSON-loading guards, no DB — mirrors test_travel_content.py. Validates two surfaces:
-the ambient per-location `resource_table` (consumed by gathering.resolve_gathering) and the
-fixed `gathering_nodes.json` seed (consumed by story-003's tool + M16's respawn tick).
-
-Spec: docs/game_mechanics/game_mechanics_combat.md §Gathering During Travel (L977-1060).
-"""
-
 import json
 from pathlib import Path
 

@@ -1,5 +1,3 @@
-"""Tests for CreationAgent — creation-only voice agent."""
-
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,8 +9,6 @@ from session_data import SessionData
 
 
 class TestCreationAgentInit:
-    """CreationAgent construction."""
-
     def test_extends_base_game_agent(self):
         from creation_agent import CreationAgent
 
@@ -75,8 +71,6 @@ class TestCreationAgentInit:
 
 
 class TestCreationAgentOnEnter:
-    """CreationAgent.on_enter pushes race cards and triggers initial reply."""
-
     @pytest.mark.asyncio
     async def test_on_enter_pushes_race_cards(self):
         from creation_agent import CreationAgent
@@ -167,8 +161,6 @@ class TestCreationAgentOnEnter:
 
 
 class TestCreationAgentReadinessGate:
-    """CreationAgent ignores stale STT turns until ready."""
-
     def test_not_ready_on_init(self):
         from creation_agent import CreationAgent
 
@@ -219,8 +211,6 @@ class TestCreationAgentReadinessGate:
 
 
 class TestCreationAgentOnExit:
-    """CreationAgent.on_exit stops CardTapHandler."""
-
     @pytest.mark.asyncio
     async def test_on_exit_stops_card_tap_handler(self):
         from creation_agent import CreationAgent
@@ -243,7 +233,6 @@ class TestCreationAgentOnExit:
 
     @pytest.mark.asyncio
     async def test_on_exit_handles_no_card_tap(self):
-        """on_exit should not error if CardTapHandler was never started."""
         from creation_agent import CreationAgent
 
         agent = CreationAgent()

@@ -40,7 +40,6 @@ def _npc_lookups():
 
 @pytest.mark.asyncio
 async def test_db_tool_connection_error_returns_tool_error():
-    """A dead connection surfaces as a user-friendly ToolError, not a ConnectionError."""
     context = _context()
     get_npc, present = _npc_lookups()
 
@@ -53,7 +52,6 @@ async def test_db_tool_connection_error_returns_tool_error():
 
 @pytest.mark.asyncio
 async def test_db_tool_timeout_returns_tool_error():
-    """A timeout gets its own phrasing, so the DM can say something truthful about the wait."""
     context = _context()
     get_npc, present = _npc_lookups()
 
@@ -66,8 +64,6 @@ async def test_db_tool_timeout_returns_tool_error():
 
 @pytest.mark.asyncio
 async def test_db_tool_rollback_prevents_partial_state():
-    """A write that fails mid-transaction records no session event — the tool's post-commit
-    bookkeeping is unreachable, so the session cannot remember something the DB rolled back."""
     context = _context()
     session = context.userdata
     initial_events = len(session.recent_events)
@@ -94,8 +90,6 @@ async def test_db_tool_rollback_prevents_partial_state():
 
 @pytest.mark.asyncio
 async def test_db_tool_succeeds_normally_after_an_error():
-    """The decorator leaves no sticky failure state: a later call on a healthy connection
-    returns its normal response."""
     context = _context()
     get_npc, present = _npc_lookups()
 

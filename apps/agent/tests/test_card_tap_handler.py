@@ -1,5 +1,3 @@
-"""Tests for the card tap hint handler."""
-
 import json
 import time
 from typing import Any, cast
@@ -47,7 +45,6 @@ class TestBuildHintInstruction:
         assert DEITIES[deity_id].name in result
 
     def test_instruction_uses_full_description(self):
-        """Should use the long ear-first description, not card_description."""
         result = build_hint_instruction("elari", "race")
         assert result is not None
         assert RACES["elari"].description in result
@@ -388,8 +385,6 @@ class TestSpecializationTapActor:
 
 
 class TestStartSpecializationTap:
-    """The shared factory both exploration and dispatch use to host the tap consumer."""
-
     def test_constructs_starts_and_returns_handler(self):
         room = MagicMock()
         session = MagicMock()

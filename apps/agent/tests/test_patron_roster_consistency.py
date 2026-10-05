@@ -67,7 +67,6 @@ def test_short_name_agrees_across_all_three_surfaces():
 
 
 def test_gods_json_name_matches_creation_deities_full_title():
-    """gods.json `name` field should be '<short_name>, <title>' from creation_deities."""
     for patron_id in EXPECTED_PATRON_IDS:
         expected = f"{DEITIES[patron_id].name}, {DEITIES[patron_id].title}"
         actual = GODS_BY_ID[patron_id]["name"]
@@ -100,7 +99,6 @@ def test_gods_json_does_not_contain_unbound_entry():
 
 
 def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
-    """If a future change adds god_id='none' to gods.json, _load_deities raises."""
     import _gods_content
     import creation_deities as cd
 

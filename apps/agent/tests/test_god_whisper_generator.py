@@ -1,5 +1,3 @@
-"""Tests for async god whisper generation (mocked LLM + TTS + DB)."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

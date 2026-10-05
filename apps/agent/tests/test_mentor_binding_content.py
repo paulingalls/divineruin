@@ -31,8 +31,6 @@ def _npcs_by_id() -> dict[str, dict]:
 
 
 def test_every_variant_mentor_has_a_mentor_binding():
-    """The referential gap story-001 closes: each of the 4 mentors that teach variants
-    must resolve to an NPC carrying a mentor{} training block for story-002 to read."""
     npcs = _npcs_by_id()
     for mentor_id in sorted(_mentor_ids_from_variants()):
         npc = npcs.get(mentor_id)
@@ -80,8 +78,6 @@ def test_mentor_blocks_conform_to_the_binding_shape():
 
 
 def test_only_mentor_npcs_carry_a_mentor_block():
-    """Guards a stray 'mentor' key typo'd onto a non-mentor NPC: every npc with a mentor
-    block must actually be referenced as a mentor by the variant catalog."""
     mentor_ids = _mentor_ids_from_variants()
     for npc in _load("npcs.json"):
         if "mentor" in npc:

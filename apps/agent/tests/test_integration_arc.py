@@ -1,5 +1,3 @@
-"""Integration test for the full Greyvale quest arc progression (WU4)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,11 +28,8 @@ def _load_greyvale_quest():
 
 
 class TestQuestArcProgression:
-    """Test the full 5-stage quest progression with world effects."""
-
     @pytest.mark.asyncio
     async def test_stage_1_effects(self):
-        """Stage 0→1: torin_disposition +1."""
         quest = _load_greyvale_quest()
         stage_0 = quest["stages"][0]
         effects = stage_0["on_complete"].get("world_effects", [])
@@ -66,7 +61,6 @@ class TestQuestArcProgression:
 
     @pytest.mark.asyncio
     async def test_stage_2_no_effects(self):
-        """Stage 1→2: no world effects."""
         quest = _load_greyvale_quest()
         stage_1 = quest["stages"][1]
         effects = stage_1["on_complete"].get("world_effects", [])
@@ -74,7 +68,6 @@ class TestQuestArcProgression:
 
     @pytest.mark.asyncio
     async def test_stage_3_effects(self):
-        """Stage 2→3: millhaven_morale +2, yanna_disposition +2."""
         quest = _load_greyvale_quest()
         stage_2 = quest["stages"][2]
         effects = stage_2["on_complete"].get("world_effects", [])
@@ -108,7 +101,6 @@ class TestQuestArcProgression:
 
     @pytest.mark.asyncio
     async def test_stage_4_effects(self):
-        """Stage 3→4: greyvale_corruption +1, event:ruins_discovery_ripple."""
         quest = _load_greyvale_quest()
         stage_3 = quest["stages"][3]
         effects = stage_3["on_complete"].get("world_effects", [])
@@ -129,8 +121,6 @@ class TestQuestArcProgression:
 
     @pytest.mark.asyncio
     async def test_stage_5_effects(self):
-        """Stage 5 completion: emris_disposition +4, faction_interest, god_whisper, and the
-        accord_guild reputation grant (story-002 inc 4b) — all now live via inc 4a."""
         quest = _load_greyvale_quest()
         stage_4 = quest["stages"][4]
         effects = stage_4["on_complete"].get("world_effects", [])
@@ -173,10 +163,7 @@ class TestQuestArcProgression:
 
 
 class TestNavigationPath:
-    """Verify the expected session 1-4 navigation path is valid."""
-
     def test_session_path_locations_exist(self):
-        """All locations in the play path should exist in content."""
         from pathlib import Path
 
         locations = json.loads((Path(__file__).parent.parent.parent.parent / "content" / "locations.json").read_text())
@@ -196,7 +183,6 @@ class TestNavigationPath:
             assert loc_id in location_ids, f"Path location '{loc_id}' not found in content"
 
     def test_corruption_levels_on_path(self):
-        """Verify corruption escalation along the play path."""
         assert LOCATION_CORRUPTION.get("accord_market_square", 0) == 0
         assert LOCATION_CORRUPTION.get("millhaven", 0) == 0
         assert LOCATION_CORRUPTION.get("greyvale_wilderness_north", 0) == 1

@@ -1,5 +1,3 @@
-"""Unit tests for mentor requirement gates against injectable DB seams."""
-
 import json
 import types
 from pathlib import Path

@@ -1,5 +1,3 @@
-"""Tests for how narration normalizes the model's `segments` tool output."""
-
 import json
 
 import pytest

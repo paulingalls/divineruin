@@ -1,9 +1,3 @@
-"""ExplorationAgent shared-lifecycle tests — SpecializationTapHandler wiring (story-008).
-
-The single region-agnostic ExplorationAgent (M7 collapse of city/dungeon/wilderness)
-hosts the L5 specialization-tap consumer so a tap resolves where leveling happens.
-"""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

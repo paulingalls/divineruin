@@ -1,13 +1,3 @@
-"""Tests for resolve_companion_errand on DispatchAgent (story-009).
-
-resolve_companion_errand wraps the shared errand_resolution helper: it locks the
-activity row FOR UPDATE, returns a worker-cached outcome without re-rolling, and
-polls a 'resolving' row without ever holding the lock across a sleep. Failures
-raise LiveKit ToolError (ADR 0002). The _*_impl seam takes injected mods. Split
-from the dispatch tests (test_errand_tools_dispatch.py) to stay under the
-500-line cap.
-"""
-
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime

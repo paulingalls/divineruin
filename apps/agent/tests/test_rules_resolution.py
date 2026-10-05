@@ -1,11 +1,3 @@
-"""Tests for the generic d20 check core: resolve_check + the _roll_d20_check primitive.
-
-Skill checks live in test_rules_skill_check.py, saving throws in
-test_rules_saving_throw.py, and attacks in test_rules_attack.py (file-size split,
-debt e69251d2f945). resolve_attack/resolve_saving_throw moved to
-check_resolution_attack / check_resolution_save; the d20 SSOT stays here.
-"""
-
 import random
 
 from check_resolution import (
@@ -168,10 +160,6 @@ class TestResolveCheck:
 
 
 class TestRollD20Check:
-    """The d20+mod-vs-DC primitive shared by resolve_check (skill) and
-    resolve_saving_throw. Both used to hand-roll identical logic — this
-    class pins the success rule + return shape so future drift is caught."""
-
     def test_returns_d20_check_core(self):
         rng = random.Random(42)
         result = _roll_d20_check(5, 12, rng=rng)

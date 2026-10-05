@@ -64,8 +64,6 @@ class TestGetRecipeSlots:
 
 
 class TestParseRecipeSlotRow:
-    """Fail loud on any missing/invalid field — no silent default."""
-
     def test_valid_row_round_trips(self):
         assert recipe_slots.parse_recipe_slot_row(
             "untrained", {"max_recipe_tier": "basic", "known_recipe_slots": 3}

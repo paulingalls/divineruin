@@ -84,8 +84,6 @@ async def _run_start(player):
 
 
 class TestCombatStartLoad:
-    """AC1: persisted conditions are loaded onto the player CombatParticipant at combat start."""
-
     @pytest.mark.asyncio
     async def test_persisted_exhausted_loads_onto_participant(self):
         stored = conditions.apply_condition([], "exhausted", source="forced_march")
@@ -134,8 +132,6 @@ class TestCombatStartLoad:
 
 
 class TestCombatStartE2E:
-    """AC4: stored Exhausted out of combat -> enter combat -> the first check carries the penalty."""
-
     @pytest.mark.asyncio
     async def test_loaded_exhausted_penalizes_an_in_combat_check(self):
         stored = conditions.apply_condition([], "exhausted", source="forced_march")  # 1 stack, -1
@@ -158,8 +154,6 @@ class TestCombatStartE2E:
 
 
 class TestCapExhaustion:
-    """cap_exhaustion clamps the exhausted entry's stacks to a supplied cap; pure, no-op otherwise."""
-
     def test_clamps_stacks_above_cap(self):
         conds = [{"type": "exhausted", "duration": None, "source": "march", "stacks": 5}]
         out = conditions.cap_exhaustion(conds, 3)
@@ -185,8 +179,6 @@ class TestCapExhaustion:
 
 
 class TestExhaustionStackCap:
-    """exhaustion_stack_cap gives has_iron_constitution a production caller (AC3)."""
-
     def test_iron_constitution_caps_at_three(self):
         assert rules_engine.exhaustion_stack_cap({"skill_tiers": {"endurance": "master"}}) == 3
 

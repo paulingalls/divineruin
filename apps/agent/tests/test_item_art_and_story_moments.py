@@ -1,5 +1,3 @@
-"""Tests for item art URLs and story moment tool (Milestone 10.4)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

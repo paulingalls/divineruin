@@ -1,5 +1,3 @@
-"""Tests for OnboardingAgent and onboarding-related SessionData fields."""
-
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -17,8 +15,6 @@ def _instructions_text(agent: Agent) -> str:
 
 
 class TestOnboardingBeatField:
-    """SessionData.onboarding_beat field and in_onboarding property."""
-
     def test_onboarding_beat_defaults_to_none(self):
         sd = SessionData(player_id="p1", location_id="accord_market_square")
         assert sd.onboarding_beat is None
@@ -36,7 +32,6 @@ class TestOnboardingBeatField:
         assert sd.in_onboarding is False
 
     def test_in_onboarding_false_does_not_conflict_with_in_creation(self):
-        """in_onboarding and in_creation are independent states."""
         from session_data import CreationState
 
         sd = SessionData(
@@ -48,7 +43,6 @@ class TestOnboardingBeatField:
         assert sd.in_onboarding is False
 
     def test_onboarding_beat_range(self):
-        """Beats 1-5 are valid onboarding states."""
         for beat in range(1, 6):
             sd = SessionData(player_id="p1", location_id="accord_market_square", onboarding_beat=beat)
             assert sd.in_onboarding is True
@@ -56,8 +50,6 @@ class TestOnboardingBeatField:
 
 
 class TestOnboardingAgentClass:
-    """OnboardingAgent class structure and tool isolation."""
-
     def test_extends_base_game_agent(self):
         from onboarding_agent import OnboardingAgent
 
@@ -83,7 +75,6 @@ class TestOnboardingAgentClass:
         assert advance_onboarding_beat in ONBOARDING_TOOLS
 
     def test_tool_isolation_no_combat_tools(self):
-        """OnboardingAgent should not have combat or session-ending tools."""
         from onboarding_agent import ONBOARDING_TOOLS
 
         tool_names = {t.__name__ for t in ONBOARDING_TOOLS}
@@ -94,7 +85,6 @@ class TestOnboardingAgentClass:
         assert "update_quest" not in tool_names
 
     def test_tool_list_has_city_query_tools(self):
-        """OnboardingAgent should have city query tools for exploration."""
         from onboarding_agent import ONBOARDING_TOOLS
 
         tool_names = {t.__name__ for t in ONBOARDING_TOOLS}
@@ -104,7 +94,6 @@ class TestOnboardingAgentClass:
 
     @pytest.mark.asyncio
     async def test_instructions_contain_beat_sequence(self):
-        """System prompt should reference all 5 beats."""
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=1)
@@ -219,8 +208,6 @@ class TestBeat34NamesTheAssignedCompanion:
 
 
 class TestOnboardingAgentIntegration:
-    """OnboardingAgent background process lifecycle and speech timing."""
-
     @pytest.mark.asyncio
     async def test_on_user_turn_completed_sets_speech_time(self):
         from onboarding_agent import OnboardingAgent

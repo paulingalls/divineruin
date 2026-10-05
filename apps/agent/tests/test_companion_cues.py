@@ -1,5 +1,3 @@
-"""Assigned-companion cues emitted by background and onboarding processes."""
-
 import json
 import re
 import time

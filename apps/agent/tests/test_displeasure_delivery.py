@@ -1,5 +1,3 @@
-"""Displeasure speech keeps its sound without changing favor whisper cadence."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

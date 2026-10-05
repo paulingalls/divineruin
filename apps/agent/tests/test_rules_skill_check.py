@@ -1,9 +1,3 @@
-"""Tests for skill-check resolution: resolve_skill_check (tier) + resolve_skill_check_dc (numeric).
-
-Extracted from test_rules_resolution.py (file-size split, debt e69251d2f945) to
-keep that file under the 500-line cap.
-"""
-
 import random
 
 from test_rules_core import SAMPLE_PLAYER

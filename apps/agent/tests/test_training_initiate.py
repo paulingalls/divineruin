@@ -1,5 +1,3 @@
-"""Tests for query_training_programs + initiate_training_cycle agent tools (M1.5)."""
-
 import json
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock

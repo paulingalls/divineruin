@@ -139,7 +139,6 @@ class TestPartyStatePrimary:
 
 class TestPartyStateIsolation:
     def test_per_member_isolation(self):
-        """Mutating member B's state does not affect member A."""
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=0),
@@ -248,7 +247,6 @@ class TestPartyStateSerialize:
         assert member_rest.patron_id == member_orig.patron_id
 
     def test_roundtrip_multiple_members_order(self):
-        """Roundtrip preserves member order."""
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=1),

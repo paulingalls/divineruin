@@ -40,9 +40,6 @@ EXPECTED_HP = {
 
 
 class TestSampleFixtureArchetypes:
-    """Shared player fixtures must carry a valid archetype, or any HP/leveling
-    test that reuses them raises ValueError in calculate_max_hp."""
-
     @pytest.mark.parametrize("player", [SAMPLE_PLAYER, GUILD_PLAYER], ids=["sample", "guild"])
     def test_class_is_a_known_archetype(self, player):
         # get_archetype_chassis raises ValueError if the class is unknown.
@@ -50,8 +47,6 @@ class TestSampleFixtureArchetypes:
 
 
 class TestArchetypeChassisHP:
-    """The 18 chassis carry the historically-correct HP base/growth/category."""
-
     def test_all_18_present_with_expected_hp(self):
         for aid, (base, growth, category) in EXPECTED_HP.items():
             c = get_archetype_chassis(aid)
@@ -76,8 +71,6 @@ class TestArchetypeChassisHP:
 
 
 class TestCalculateHP:
-    """Verify calculate_hp against the doc table (game_mechanics_core.md:528-541)."""
-
     # --- CON +1 (round-half-up: (1+1)//2 = 1 per level) ---
 
     def test_martial_l1_con1(self):
@@ -168,7 +161,6 @@ class TestCalculateMaxHP:
             calculate_max_hp("necromancer", level=1, con_mod=0)
 
     def test_warrior_level_progression_1_to_5(self):
-        """E2E: level a warrior from 1-5 with CON+1, verify each level's HP."""
         expected = {
             1: 13,  # 12 + 1
             2: 19,  # 12 + 1 + 1*(5 + 1) = 19

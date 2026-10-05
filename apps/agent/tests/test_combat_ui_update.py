@@ -71,22 +71,17 @@ def _state(
 
 
 def test_packet_top_level_keys():
-    """Top-level packet exposes exactly the two keys mobile reads."""
     packet = build_combat_ui_update(_state([_participant("p1")]))
     assert set(packet.keys()) == {"round", "combatants"}
 
 
 def test_combatant_shape_matches_mobile_parser():
-    """Each combatant entry has exactly the keys parseCombatant reads."""
     packet = build_combat_ui_update(_state([_participant("p1")]))
     expected = {"id", "name", "isAlly", "hpCurrent", "hpMax", "conditions", "isActive"}
     assert set(packet["combatants"][0].keys()) == expected
 
 
 def test_packet_round_reflects_post_advance_state():
-    """After advance_combat_phase WRAP -> next-round DECLARATION, the emit point
-    sees round_number incremented. The packet surfaces that value verbatim
-    (the round just entered, not the wrap that just completed)."""
     state = _state([_participant("p1")], round_number=3)
     packet = build_combat_ui_update(state)
     assert packet["round"] == 3
@@ -207,7 +202,6 @@ def test_isActive_skips_fallen_actor_at_initiative_head():
 
 
 def test_isActive_skips_dead_actor_at_initiative_head():
-    """is_dead (instant-death overkill) behaves like is_fallen for HUD purposes."""
     p1 = _participant("p1", p_type="player", initiative=10)
     e1 = _participant("e1", p_type="enemy", initiative=20)
     e1.is_dead = True
@@ -223,7 +217,6 @@ def test_isActive_skips_dead_actor_at_initiative_head():
 
 
 def test_isActive_all_false_when_every_actor_is_down():
-    """Degenerate edge case: every participant fallen — no one is active."""
     p1 = _participant("p1", p_type="player")
     p1.is_fallen = True
     e1 = _participant("e1", p_type="enemy")
@@ -238,9 +231,6 @@ def test_isActive_all_false_when_every_actor_is_down():
 
 
 def test_conditions_projected_to_type_stacks_source_only():
-    """Wire packet drops duration/stage; mobile parser reads only
-    {type, stacks, source}. Pinning the minimal contract prevents drift —
-    extras would weaken story-002's mobile mirror."""
     conditions = [
         {"type": "blessed", "duration": 3, "source": "divine_bless", "stacks": 1},
     ]
@@ -261,8 +251,6 @@ def test_conditions_default_stacks_when_missing():
 
 
 def test_conditions_default_source_when_missing():
-    """Defensive: a malformed condition missing 'source' emits source=''
-    (matches mobile parseCondition fail-soft); the entry still survives."""
     conditions = [{"type": "stunned"}]
     state = _state([_participant("p1", conditions=conditions)])
     packet = build_combat_ui_update(state)

@@ -1,5 +1,3 @@
-"""Region-specific warm prompt and static/warm composition tests."""
-
 from unittest.mock import AsyncMock, patch
 
 from prompt_fixtures import SAMPLE_LOCATION, SAMPLE_NPC_RAW, SAMPLE_QUEST, sample_combat_state
@@ -8,8 +6,6 @@ from warm_prompts import build_full_prompt, build_warm_layer, format_combat_hot_
 
 
 class TestRegionTypeWarmLayer:
-    """Warm layer adjusts sections by region_type."""
-
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={"guildmaster_torin": "friendly"})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
@@ -126,11 +122,6 @@ class TestBuildFullPrompt:
 
 
 class TestCombatHotLine:
-    """format_combat_hot_line is the per-turn combat line, rendered from combat_state alone.
-
-    One renderer for both agents' hot layer — the warm layer carries no combat block at all.
-    """
-
     def test_renders_round_and_each_participant_status(self):
         line = format_combat_hot_line(sample_combat_state(round_number=2, hp_current=8))
         assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"

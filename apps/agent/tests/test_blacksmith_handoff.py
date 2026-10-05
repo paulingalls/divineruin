@@ -1,12 +1,3 @@
-"""Intent handoff into/out of BlacksmithAgent (_enter_blacksmith_impl behind
-enter_mode(mode="blacksmith") / conclude_blacksmith).
-
-Mirrors the dispatch enter/conclude return-to-caller pattern (pre_blacksmith_agent_type
-on SessionData), so control returns to whichever region agent the player was in.
-The enter_mode verb lives on all three region agents (M5 fold), so blacksmith mode is
-reachable everywhere; the prompt steers it as a settlement activity.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch

@@ -1,12 +1,3 @@
-"""Tests for the crafting project tools (story-004/005, M5.2).
-
-_resolve_crafting_slot (pure mirror of slot_validation.ts) and
-start_crafting_project (pre-flight gates, material allocation, slot stamping,
-in_progress activity creation). Failures raise ToolError (ADR 0002). The _*_impl
-seams take injected mods. Split from the workspace rent/query tests
-(test_crafting_tools_workspaces.py) to stay under the 500-line cap.
-"""
-
 import json
 import random
 from unittest.mock import AsyncMock, MagicMock
@@ -81,8 +72,6 @@ def _materials_mod(catalog=None):
 
 
 class TestResolveCraftingSlot:
-    """Pure mirror of slot_validation.ts validateSlotAvailability crafting branch (ADR 0005)."""
-
     def test_open_crafting_slot_consumes_crafting(self):
         assert _resolve_crafting_slot({"crafting": 0, "training": 0}, None, False) == ("crafting", None)
 

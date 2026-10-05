@@ -1,5 +1,3 @@
-"""Tests for combat difficulty in start_combat."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,8 +16,6 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
 
 
 class TestStartCombatDifficulty:
-    """Verify start_combat event payload includes difficulty field."""
-
     @pytest.mark.asyncio
     @patch("combat_init.publish_game_event", new_callable=AsyncMock)
     @patch("combat_init._publish_sounds", new_callable=AsyncMock)

@@ -1,11 +1,3 @@
-"""Tests for the Vaelti Hyper-awareness 1-round advance warning (story-009).
-
-Two halves of the deferred-event hook: the emitter (publish_vaelti_echo_warning puts a
-bus-only VAELTI_ECHO_WARNING event) and the consumer (bg_event_handlers.handle_events
-routes that event to a CRITICAL DM-speech instruction). Together they surface the
-Vaelti's pre-sense to the DM narration path a beat before the Hollow Echo lands.
-"""
-
 from unittest.mock import MagicMock
 
 import event_types as E

@@ -1,5 +1,3 @@
-"""Tests for the shared TTS pause constants and text-chunking logic."""
-
 from tts_pauses import (
     PARAGRAPH_PAUSE,
     SENTENCE_END_PAUSE,
@@ -87,7 +85,6 @@ class TestChunkTextWithPauses:
         assert len(sentence_pauses) == 1
 
     def test_prologue_excerpt(self):
-        """Test with actual prologue-style text containing paragraphs and em dashes."""
         text = (
             "Before the breaking, Aethos was whole. "
             "A world shaped by gods.\n\n"

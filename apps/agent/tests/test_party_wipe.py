@@ -58,8 +58,6 @@ def _death_mutations(counts: dict[str, int]):
 
 
 class TestTriggerCharacterDeathParams:
-    """The two additive params resurrect_party_on_defeat depends on."""
-
     @pytest.mark.asyncio
     async def test_anchor_override_skips_resolution(self):
         death_mut = _death_mutations({"p1": 0})

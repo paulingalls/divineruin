@@ -1,12 +1,3 @@
-"""Story-002 (M7): region register sourced from the Stage.
-
-Two contracts:
-- build_system_prompt is REGION-AGNOSTIC — one stable verb-charter, byte-identical
-  across region_type (so the cached static layer survives region moves).
-- The wilderness/dungeon/city narration register rides the warm-layer Stage,
-  keyed off the location's region_type (the Stage dict), NOT a caller-passed param.
-"""
-
 import inspect
 from unittest.mock import AsyncMock, patch
 
@@ -75,8 +66,6 @@ class TestSystemPromptRegionAgnostic:
 
 @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
 class TestWarmLayerRegionRegister:
-    """AC2: the Stage REGISTER carries the region register keyed by region_type."""
-
     async def test_wilderness_location_yields_wilderness_register(self, _disp):
         result = await _warm(_location(REGION_WILDERNESS))
         assert "REGISTER — Region: Wilderness" in result
@@ -128,7 +117,6 @@ class TestWarmLayerRegionRegister:
         assert "address:" not in result
 
     async def test_city_stage_surfaces_address_gate(self, _disp):
-        """The mirror: on a city Stage, NPCs present DO surface as `address:`."""
         npc = {"id": "npc_1", "name": "Barkeep", "role": "barkeep", "default_disposition": "neutral"}
         result = await _warm(_location(REGION_CITY), npcs_raw=[npc])
         assert "REGISTER — Region: City" in result

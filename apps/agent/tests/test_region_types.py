@@ -1,5 +1,3 @@
-"""Tests for region type constants."""
-
 from typing import get_args
 
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS, RegionType

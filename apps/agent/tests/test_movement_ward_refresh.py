@@ -76,7 +76,6 @@ async def test_arriving_at_a_warded_location_refreshes_the_mirror_and_lights_the
 
 
 async def test_leaving_a_warded_location_clears_the_mirror_and_darkens_the_hud():
-    """The bug this step exists to prevent: walking out with the indicator still lit."""
     session = _session(location_ward=_WARD)
     pub, _resolver = await _arrive(session, resolved=None)
 
@@ -87,7 +86,6 @@ async def test_leaving_a_warded_location_clears_the_mirror_and_darkens_the_hud()
 
 
 async def test_unwarded_to_unwarded_publishes_no_ward_event():
-    """Compute, compare, append only on change — the corruption block's shape."""
     session = _session(location_ward=None)
     pub, _resolver = await _arrive(session, resolved=None)
 

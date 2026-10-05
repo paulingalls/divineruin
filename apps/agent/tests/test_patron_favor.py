@@ -1,5 +1,3 @@
-"""Tests for deriving patron tiers from divine favor."""
-
 import inspect
 
 import pytest

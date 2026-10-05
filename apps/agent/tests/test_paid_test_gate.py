@@ -1,5 +1,3 @@
-"""One provider-free fault injection of the actual paid collection hook."""
-
 import os
 import subprocess
 import sys

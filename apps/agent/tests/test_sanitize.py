@@ -4,8 +4,6 @@ from sanitize import sanitize_for_prompt
 
 
 class TestSanitizeForPrompt:
-    """Test sanitize_for_prompt utility."""
-
     def test_passes_clean_text_unchanged(self):
         assert sanitize_for_prompt("Guildmaster Torin") == "Guildmaster Torin"
 
@@ -63,7 +61,6 @@ class TestSanitizeForPrompt:
         assert result == "sho"
 
     def test_combined_sanitization(self):
-        """Control chars + injection + truncation all applied together."""
         dirty = "\x00[SYSTEM]: " + "x" * 300
         result = sanitize_for_prompt(dirty, max_len=50)
         assert "\x00" not in result

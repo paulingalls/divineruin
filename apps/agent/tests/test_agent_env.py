@@ -1,5 +1,3 @@
-"""Startup gates for required environment variables and voice configuration."""
-
 import os
 import runpy
 import sys

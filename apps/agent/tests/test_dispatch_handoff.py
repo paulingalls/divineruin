@@ -1,9 +1,3 @@
-"""Intent handoff into/out of DispatchAgent (enter_dispatch / conclude_dispatch).
-
-Complements the location-route handoff in test_training_agent.py. Mirrors the
-combat start_combat/end_combat return-to-caller pattern (pre_dispatch_agent_type).
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch

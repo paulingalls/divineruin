@@ -138,7 +138,6 @@ def test_location_ward_is_a_plain_mirror_not_a_resolver():
 
 
 def test_location_ward_is_not_shadowed_by_an_encounter_ward():
-    """Setting a combat ward does not touch the location mirror; they are distinct scopes."""
     session = SessionData(player_id="p1", location_id="loc")
     session.combat_state = _combat_state(veil_ward={"source": "paladin", "rounds_remaining": 3})
 
@@ -153,7 +152,6 @@ def _combat_state(**kwargs) -> CombatState:
 
 
 def test_combat_state_starts_unwarded():
-    """No ward until one is raised. None means absence, never a default-inactive placeholder."""
     assert _combat_state().veil_ward is None
 
 

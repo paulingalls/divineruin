@@ -1,5 +1,3 @@
-"""Tests for the resolve_training_midpoint agent tool (M1.5)."""
-
 import json
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock

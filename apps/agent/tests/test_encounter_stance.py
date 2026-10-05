@@ -1,11 +1,3 @@
-"""Tests for the encounter stance resolver (Phase 6 M6.2 / story-005).
-
-resolve_encounter_stance is a pure, deterministic mechanic (golden rule: rules engine =
-pure functions): given an encounter's stance_gate, the player's reputation value with the
-gated faction, and that faction's reputation_tiers, it returns "allied" or "hostile". The
-Ashmark Patrol encounter uses it — allied at >= Thornwatch friendly, hostile below.
-"""
-
 import pytest
 
 from encounter_stance import resolve_encounter_stance

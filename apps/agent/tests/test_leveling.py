@@ -1,5 +1,3 @@
-"""Tests for level progression table and level-up reward aggregation."""
-
 import pytest
 
 from dice import roll
@@ -206,8 +204,6 @@ class TestCantripDamageDice:
 
 
 class TestArchetypePayload:
-    """Archetype-aware level-up payload joins LEVEL_PROGRESSION with ARCHETYPE_HP_CONFIG."""
-
     def test_includes_base_payload_fields_unchanged(self) -> None:
         rewards = get_level_up_rewards(1, 5)
         base = build_level_up_payload(1, rewards)

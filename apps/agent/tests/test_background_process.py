@@ -1,5 +1,3 @@
-"""Tests for BackgroundProcess."""
-
 import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -333,7 +331,6 @@ class TestRebuildWarmLayer:
 
 class TestGodWhisperFlow:
     def test_divine_favor_triggers_whisper_queue(self):
-        """divine_favor_changed event above threshold queues a CRITICAL god whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -356,7 +353,6 @@ class TestGodWhisperFlow:
         assert "Kaelen" in speech.instructions
 
     def test_divine_favor_below_threshold_no_whisper(self):
-        """divine_favor_changed below threshold does not queue a whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -369,7 +365,6 @@ class TestGodWhisperFlow:
         assert len(bg._speech_queue) == 0
 
     def test_divine_favor_within_cooldown_no_whisper(self):
-        """divine_favor_changed within cooldown of last whisper does not queue."""
         sd = _make_session_data(patron_id="syrath")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -382,7 +377,6 @@ class TestGodWhisperFlow:
         assert len(bg._speech_queue) == 0
 
     def test_divine_favor_after_cooldown_triggers(self):
-        """divine_favor_changed after cooldown queues a whisper."""
         sd = _make_session_data(patron_id="veythar")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -396,7 +390,6 @@ class TestGodWhisperFlow:
         assert "Veythar" in bg._speech_queue[0].instructions
 
     def test_world_event_god_whisper_queues(self):
-        """A world_event with god_whisper prefix queues a CRITICAL whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -411,7 +404,6 @@ class TestGodWhisperFlow:
         assert bg._speech_queue[0].stinger_sound == "god_whisper_stinger"
 
     def test_god_whisper_uses_correct_deity_profile(self):
-        """Each deity gets their own personality in the whisper instructions."""
         for deity_id in ["kaelen", "syrath", "veythar"]:
             sd = _make_session_data(patron_id=deity_id)
             bg, _, _ = _make_bg(session_data=sd)

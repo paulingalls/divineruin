@@ -58,7 +58,6 @@ class TestWriteWard:
 
 class TestReadActiveWard:
     async def test_returns_none_when_no_live_ward(self):
-        """An unwarded scope returns no ward — not a default-inactive placeholder (AC1)."""
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         assert await db_mutations_veil_ward.read_active_ward(_LOCATION, conn=conn) is None
@@ -117,7 +116,6 @@ class TestDismissWard:
         assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 2
 
     async def test_returns_zero_when_nothing_dismissible_covers_the_scope(self):
-        """A scope held only by a permanent ward. The caller must be able to refuse, not no-op."""
         conn = AsyncMock()
         conn.fetch.return_value = []
         assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 0

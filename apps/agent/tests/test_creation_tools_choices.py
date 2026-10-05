@@ -1,10 +1,3 @@
-"""Tests for the creation choice-collection tools.
-
-push_creation_cards / set_creation_choice — the card-push, choice-confirmation and
-phase-advance behaviors. Split from test_creation_tools_flow.py (finalize + end-to-end)
-to stay under the 500-line cap.
-"""
-
 import json
 from typing import Any
 from unittest.mock import MagicMock
@@ -77,7 +70,6 @@ class TestPushCreationCards:
             assert len(option["description"]) > 10
 
     async def test_push_cards_does_not_advance_phase(self):
-        """Phase should only advance via set_creation_choice, not push_creation_cards."""
         ctx = _make_context(CreationState(phase="prologue"))
         await _push_cards(ctx, category="race")
         assert ctx.userdata.creation_state.phase == "prologue"

@@ -1,5 +1,3 @@
-"""Assigned-companion hydration at session start and onboarding first meeting."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -112,7 +110,6 @@ class TestReturningPlayerCompanion:
 
     @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
-        """AC5: zero/multi-match archetype aborts session start rather than falling back."""
         player = {
             "name": "Aric",
             "class": "necromancer",

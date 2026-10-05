@@ -1,5 +1,3 @@
-"""Tests for async activity rules engine — pure functions, deterministic with RNG."""
-
 import random
 
 import pytest
@@ -248,7 +246,6 @@ class TestResolveCompanionErrand:
         pytest.fail("Could not find seed for success")
 
     def test_relationship_tier_bonus(self):
-        """Higher relationship tier should produce generally better results."""
         low_rel = {**SAMPLE_COMPANION, "relationship_tier": 1}
         high_rel = {**SAMPLE_COMPANION, "relationship_tier": 4}
         low_totals = []

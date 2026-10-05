@@ -1,10 +1,3 @@
-"""Tests for the shared crafting gate predicates (crafting_gates.py).
-
-These two pure predicates are the single definition of the workspace-access and
-tainted-Expert checks, consumed by both the pre-flight pipeline (creation) and
-resolve_crafting (resolution). Exhaustive because they gate real crafting.
-"""
-
 import pytest
 
 from crafting_gates import tainted_blocks_crafter, workspace_accessible

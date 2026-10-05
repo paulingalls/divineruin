@@ -1,5 +1,3 @@
-"""The three Named stat blocks, bestiary lines 440-608."""
-
 import asyncio
 import importlib
 import json

@@ -1,20 +1,3 @@
-"""Tests for milestones.py — the DB-loaded archetype-milestone content config (M2.3).
-
-Mirrors the abilities.py loader contract: parse_milestone_row (fail-loud, shared
-by the DB loader and the JSON test fixture), set_milestones (test seam),
-get_milestone / get_archetype_milestones (accessors), is_loaded, and the
-build-then-swap load_milestones (a malformed row must not wipe an already-loaded
-map). The row shape is the self-contained milestone record (decision 4c0677dae1be,
-story-001): id, archetype_id, tier, level, kind, patron_deferred,
-specialization_options[], grant{name,effect,flag}|null, narration_cue.
-
-The conftest autouse seed_milestones fixture pre-populates the map from content
-before each test, but every test here seeds its own state up front
-(set_milestones / a JSON helper) and so is verifiable independent of that fixture:
-test_is_loaded_reflects_population deliberately clears the pre-seeded map with
-set_milestones({}) to assert the empty case.
-"""
-
 import json
 from pathlib import Path
 

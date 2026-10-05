@@ -1,9 +1,3 @@
-"""Tests for resolve_attack: attack roll, crit, damage, kill, HP floor, nat-1.
-
-Extracted from test_rules_resolution.py (file-size touch-split, concern
-d80d59f0e896) to bring that file back under the 500-line cap.
-"""
-
 import random
 
 import pytest

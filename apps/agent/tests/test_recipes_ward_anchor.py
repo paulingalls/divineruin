@@ -32,7 +32,6 @@ def _find_by_id(entities: list[dict], entity_id: str, source: str) -> dict:
 
 
 def test_veil_ward_anchor_small_recipe_outputs_self_and_is_tool():
-    """veil_ward_anchor_small recipe must output veil_ward_anchor_small item (tier-3 tool)."""
     anchor_recipe = _find_by_id(_load_content("recipes.json"), "veil_ward_anchor_small", "recipes.json")
     assert anchor_recipe["output_item"] == "veil_ward_anchor_small", (
         f"Recipe 'veil_ward_anchor_small' outputs '{anchor_recipe['output_item']}' instead of 'veil_ward_anchor_small'"
@@ -45,7 +44,6 @@ def test_veil_ward_anchor_small_recipe_outputs_self_and_is_tool():
 
 
 def test_veil_ward_anchor_large_recipe_outputs_self():
-    """veil_ward_anchor_large recipe must output veil_ward_anchor_large item (tier-4 tool)."""
     anchor_recipe = _find_by_id(_load_content("recipes.json"), "veil_ward_anchor_large", "recipes.json")
     assert anchor_recipe["output_item"] == "veil_ward_anchor_large", (
         f"Recipe 'veil_ward_anchor_large' outputs '{anchor_recipe['output_item']}' instead of 'veil_ward_anchor_large'"

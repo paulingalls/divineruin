@@ -1,10 +1,3 @@
-"""Tests for the crafting workspace substrate (story-001, M5.2).
-
-Pure deterministic functions — plain args, no DB. WorkspaceType ordering feeds
-the three-check pipeline's Check 3 (story-003); rental pricing + settlement
-availability mirror the spec (game_mechanics_crafting.md §Workspace Access).
-"""
-
 import re
 
 import pytest

@@ -1,5 +1,3 @@
-"""Tests for the bounded connect-retry hook used by db.get_pool()."""
-
 from unittest.mock import AsyncMock, call
 
 import asyncpg
@@ -19,7 +17,6 @@ import db
 )
 @pytest.mark.asyncio
 async def test_retries_transient_error_then_succeeds(monkeypatch, caplog, transient):
-    """Each transient connect-setup error on the first attempt is retried, then succeeds."""
     mock_conn = object()
     fake_connect = AsyncMock(side_effect=[transient, mock_conn])
     monkeypatch.setattr(asyncpg, "connect", fake_connect)
@@ -69,7 +66,6 @@ async def test_forwards_pool_connect_arguments_unchanged(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_raises_last_exception_after_exhausting_budget(monkeypatch):
-    """A persistent transient error propagates — the last failure — after all attempts."""
     failures = [ConnectionError(f"...rejected SSL upgrade #{i}") for i in range(3)]
     fake_connect = AsyncMock(side_effect=failures)
     monkeypatch.setattr(asyncpg, "connect", fake_connect)
@@ -84,7 +80,6 @@ async def test_raises_last_exception_after_exhausting_budget(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_non_transient_error_raises_immediately_without_retry(monkeypatch):
-    """A non-transient error (e.g. bad credentials) should raise on the first attempt, no sleep."""
     fake_connect = AsyncMock(side_effect=asyncpg.InvalidPasswordError("bad password"))
     monkeypatch.setattr(asyncpg, "connect", fake_connect)
     fake_sleep = AsyncMock()
@@ -99,7 +94,6 @@ async def test_non_transient_error_raises_immediately_without_retry(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_backoff_sequence_is_linear(monkeypatch):
-    """Backoff between retries should follow the linear sequence 0.25s, 0.5s."""
     original = ConnectionError("...rejected SSL upgrade")
     fake_connect = AsyncMock(side_effect=[original, original, original])
     monkeypatch.setattr(asyncpg, "connect", fake_connect)

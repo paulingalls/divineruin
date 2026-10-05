@@ -1,12 +1,3 @@
-"""The `enter_mode` verb dispatcher (M5, ADR 0007, Verbs & Stages §4/§10).
-
-`enter_mode(mode, ...)` folds start_combat / enter_dispatch / enter_blacksmith into
-one mode-discriminated handoff verb. These tests cover the NEW dispatcher primitive
-in isolation — the three underlying `_*_impl` handoffs keep their own suites
-(test_combat/*, test_dispatch_handoff, test_blacksmith_handoff) and are patched here
-so we assert delegation + fail-loud guards, not the handoff bodies.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch

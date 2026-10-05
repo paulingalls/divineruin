@@ -54,8 +54,6 @@ def _death_mutations(counts: dict[str, int]):
 class TestPerMemberAnchor:
     @pytest.mark.asyncio
     async def test_divergent_last_rested_anchors_resolve_per_member(self):
-        """AC1/AC4: members with divergent last-rested anchors revive at their OWN anchor,
-        not a shared party[0]-derived one."""
         death_mut = _death_mutations({"p_a": 0, "p_b": 0})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))

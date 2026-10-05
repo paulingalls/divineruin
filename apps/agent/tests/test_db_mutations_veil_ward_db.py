@@ -20,14 +20,12 @@ def _unique_location() -> WardScope:
 
 
 async def test_unwarded_scope_returns_no_ward():
-    """AC1: an unwarded scope returns no ward, not a default-inactive placeholder."""
     pool = await db.get_pool()
     scope = _unique_location()
     assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is None
 
 
 async def test_write_then_read_round_trips_the_ward():
-    """AC1: a scope with an active ward reads back with its source."""
     pool = await db.get_pool()
     scope = _unique_location()
     try:
@@ -92,7 +90,6 @@ async def test_a_short_ward_never_clobbers_a_permanent_one():
 
 
 async def test_dismiss_removes_dismissible_wards_and_spares_permanent_ones():
-    """§5: any in-scope member may dismiss a dismissible ward; a Sacred site is not theirs to dispel."""
     pool = await db.get_pool()
     scope = _unique_location()
     try:

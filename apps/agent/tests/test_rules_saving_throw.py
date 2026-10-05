@@ -1,9 +1,3 @@
-"""Tests for resolve_saving_throw: proficiency, effect-on-fail, crits, dramatic fields.
-
-Extracted from test_rules_resolution.py (file-size split, debt e69251d2f945) to
-keep that file under the 500-line cap.
-"""
-
 import random
 
 import pytest

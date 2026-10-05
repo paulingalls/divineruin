@@ -1,5 +1,3 @@
-"""Tests for database error handling utilities."""
-
 from __future__ import annotations
 
 import json

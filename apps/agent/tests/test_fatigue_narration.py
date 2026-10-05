@@ -1,5 +1,3 @@
-"""Tests for fatigue narration — narrative cues for resource pool states and exhaustion."""
-
 from fatigue_narration import (
     exhaustion_narrative_for_conditions,
     get_exhaustion_narrative,
@@ -9,8 +7,6 @@ from fatigue_narration import (
 
 
 class TestGetPoolState:
-    """Threshold boundary tests for get_pool_state."""
-
     def test_empty_when_zero(self) -> None:
         assert get_pool_state(0, 20) == "empty"
 
@@ -138,8 +134,6 @@ class TestExhaustionNarrativeForConditions:
 
 
 class TestEndToEnd:
-    """E2E: distinct narrative cues at different pool percentages."""
-
     def test_distinct_cues_at_varying_percentages(self) -> None:
         cues = [
             get_pool_narrative(75, 100, "stamina"),  # 75% → high → ""

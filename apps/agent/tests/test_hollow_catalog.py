@@ -1,5 +1,3 @@
-"""Catalog-wide Hollow claims from bestiary lines 132-608."""
-
 import json
 from pathlib import Path
 

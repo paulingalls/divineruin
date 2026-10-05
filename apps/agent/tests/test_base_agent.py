@@ -1,5 +1,3 @@
-"""Tests for BaseGameAgent — shared voice pipeline and lifecycle infrastructure."""
-
 import asyncio
 import importlib
 import inspect
@@ -76,37 +74,29 @@ async def test_every_concrete_agent_reports_its_entry_failure_once(agent_type, c
 
 
 class TestBaseGameAgentInit:
-    """Test BaseGameAgent initialization."""
-
     def test_init_sets_instructions_and_tools(self):
-        """__init__ should set instructions and tools on the Agent."""
         agent = BaseGameAgent(instructions="Test prompt", tools=[])
 
         assert agent.instructions == "Test prompt"
         assert agent.tools == []
 
     def test_init_creates_turn_timer(self):
-        """__init__ should create a TurnTimer instance."""
         agent = BaseGameAgent(instructions="prompt")
         assert agent._turn_timer is not None
 
     def test_init_creates_affect_analyzer(self):
-        """__init__ should create a PlayerAffectAnalyzer instance."""
         agent = BaseGameAgent(instructions="prompt")
         assert agent._affect_analyzer is not None
 
     def test_init_sets_transcript_to_none(self):
-        """__init__ should initialize transcript logger to None."""
         agent = BaseGameAgent(instructions="prompt")
         assert agent._transcript is None
 
     def test_init_sets_empty_bg_tasks(self):
-        """__init__ should initialize empty background task set."""
         agent = BaseGameAgent(instructions="prompt")
         assert agent._bg_tasks == set()
 
     def test_init_accepts_chat_ctx(self):
-        """__init__ should accept chat_ctx and pass it to Agent base class."""
         from livekit.agents.llm import ChatContext
 
         ctx = ChatContext()
@@ -117,11 +107,8 @@ class TestBaseGameAgentInit:
 
 
 class TestBaseGameAgentLifecycle:
-    """Test BaseGameAgent on_enter / on_exit lifecycle."""
-
     @pytest.mark.asyncio
     async def test_on_enter_starts_affect_analyzer(self):
-        """on_enter should start the affect analyzer."""
         agent = BaseGameAgent(instructions="prompt")
         mock_session = MagicMock()
         mock_sd = MagicMock()
@@ -138,7 +125,6 @@ class TestBaseGameAgentLifecycle:
 
     @pytest.mark.asyncio
     async def test_on_enter_creates_transcript_logger(self):
-        """on_enter should initialize the transcript logger."""
         agent = BaseGameAgent(instructions="prompt")
         room = MagicMock()
         sd = SessionData(player_id="p", location_id="", room=room)
@@ -183,7 +169,6 @@ class TestBaseGameAgentLifecycle:
 
     @pytest.mark.asyncio
     async def test_on_exit_cancels_bg_tasks(self):
-        """on_exit should cancel all in-flight background tasks."""
         agent = BaseGameAgent(instructions="prompt")
         mock_session = MagicMock()
         mock_session.userdata = MagicMock()
@@ -201,7 +186,6 @@ class TestBaseGameAgentLifecycle:
 
     @pytest.mark.asyncio
     async def test_on_exit_stops_affect_analyzer(self):
-        """on_exit should stop the affect analyzer."""
         agent = BaseGameAgent(instructions="prompt")
         mock_session = MagicMock()
         mock_session.userdata = MagicMock()
@@ -215,7 +199,6 @@ class TestBaseGameAgentLifecycle:
 
     @pytest.mark.asyncio
     async def test_on_exit_closes_transcript(self):
-        """on_exit should close the transcript logger if present."""
         agent = BaseGameAgent(instructions="prompt")
         mock_session = MagicMock()
         mock_session.userdata = MagicMock()
@@ -230,10 +213,7 @@ class TestBaseGameAgentLifecycle:
 
 
 class TestBaseGameAgentInfrastructure:
-    """Test shared infrastructure methods."""
-
     def test_fire_and_forget_creates_task(self):
-        """_fire_and_forget should create an asyncio task and track it."""
         agent = BaseGameAgent(instructions="prompt")
 
         with patch("asyncio.create_task") as mock_create:
@@ -251,10 +231,7 @@ class TestBaseGameAgentInfrastructure:
 
 
 class TestHelperFunctions:
-    """Test module-level helper functions."""
-
     def test_silence_returns_audio_frame(self):
-        """_silence should return an AudioFrame with correct duration."""
         frame = _silence(0.5)
 
         expected_samples = int(TTS_SAMPLE_RATE * 0.5)
@@ -264,10 +241,7 @@ class TestHelperFunctions:
 
 
 class TestAgentModuleImports:
-    """Test that the session factory still imports _make_tts for session creation."""
-
     def test_session_startup_imports_make_tts(self):
-        """session_startup should import _make_tts from base_agent (used in _make_agent_session)."""
         from base_agent import _make_tts as base_make_tts
         from session_startup import _make_tts as startup_make_tts
 

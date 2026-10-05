@@ -1,5 +1,3 @@
-"""Tests for onboarding tools — advance_onboarding_beat."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,8 +20,6 @@ def _make_context(onboarding_beat: int = 1, location_id: str = "accord_market_sq
 
 
 class TestAdvanceOnboardingBeat:
-    """advance_onboarding_beat tool tests."""
-
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_beat_1_to_2(self, mock_set_player_flag):
@@ -63,7 +59,6 @@ class TestAdvanceOnboardingBeat:
         return_value={"name": "Aric", "class": "warrior", "level": 1},
     )
     async def test_advance_beat_3_initializes_companion(self, mock_get_player, mock_set_player_flag):
-        """Advancing past beat 3 (companion meeting) initializes CompanionState."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=3)
@@ -104,7 +99,6 @@ class TestAdvanceOnboardingBeat:
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_beat_5_returns_city_agent_handoff(self, mock_set_player_flag):
-        """Advancing past beat 5 returns (CityAgent, json) tuple for tool-return handoff."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=5, location_id="accord_guild_hall")
@@ -141,7 +135,6 @@ class TestAdvanceOnboardingBeat:
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_preserves_location(self, mock_set_player_flag):
-        """Beat advancement doesn't change location."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=1, location_id="accord_market_square")

@@ -47,7 +47,6 @@ def _ward_mod(location_ward: dict | None) -> MagicMock:
 
 
 async def test_unwarded_session_resolves_to_none():
-    """No ward anywhere. None means absence, never a default-inactive placeholder."""
     mod = _ward_mod(None)
     assert await ward_resolution.resolve_scope_ward(_session(), conn=MagicMock(), ward_mutations_mod=mod) is None
 

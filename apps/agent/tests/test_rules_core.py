@@ -1,5 +1,3 @@
-"""Tests for core rules engine: attributes, skills, DC, proficiency."""
-
 import pytest
 
 from rules_engine import (

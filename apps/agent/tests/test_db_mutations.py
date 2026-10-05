@@ -71,9 +71,6 @@ class TestCreateAsyncActivityConnSeam:
 
 
 class TestQuantityDeltaExpr:
-    """The single source of the signed quantity-delta jsonb_set write (concern
-    cc7c949af1c9) — shared by add_inventory_item and transact_inventory."""
-
     def test_builds_signed_delta_jsonb_set_for_a_plain_column(self):
         expr = db_mutations.quantity_delta_expr("data", "$3")
         assert expr == "jsonb_set(data, '{quantity}', (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb)"

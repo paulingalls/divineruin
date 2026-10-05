@@ -149,8 +149,6 @@ class TestGetQualityOutcomes:
 
 
 class TestContentFile:
-    """E2E AC: every category in content/quality_outcomes.json parses and is selectable."""
-
     def _load(self) -> list[dict]:
         return json.loads(CONTENT_FILE.read_text())
 

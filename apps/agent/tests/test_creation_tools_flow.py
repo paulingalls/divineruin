@@ -1,11 +1,3 @@
-"""Tests for the character creation flow tools.
-
-finalize_character — stat generation, persistence and phase completion — plus the
-end-to-end flow through every creation tool. Split from the choice-collection tests
-(test_creation_tools_choices.py) and the asset-id / image-url tests
-(test_creation_tools_assets.py) to stay under the 500-line cap.
-"""
-
 import json
 from datetime import UTC, datetime
 from typing import Any

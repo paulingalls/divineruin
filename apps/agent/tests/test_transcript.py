@@ -1,5 +1,3 @@
-"""Tests for TranscriptLogger."""
-
 import os
 import re
 import tempfile
@@ -79,7 +77,6 @@ class TestTranscriptLogger:
             assert "TOOL(query_location):" in lines[3]
 
     async def test_no_room_does_not_crash(self):
-        """Publishing with room=None should not raise."""
         with tempfile.TemporaryDirectory() as tmp:
             logger, path = self._make_logger(tmp)
             await logger.log_player("test")

@@ -173,8 +173,6 @@ class TestUnrentableTokens:
 
 
 class TestQuoteMatchesCharge:
-    """The debt in one class: a price the DM can quote but no call can charge."""
-
     async def _quote(self, npc_id=None, *, tags=("forge", "laboratory"), **kwargs):
         return json.loads(
             await _query_available_workspaces_impl(

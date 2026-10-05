@@ -1,5 +1,3 @@
-"""Tests for content JSON validation — cross-references, schema integrity (WU4)."""
-
 import json
 import re
 from pathlib import Path

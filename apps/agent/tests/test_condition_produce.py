@@ -1,13 +1,3 @@
-"""Unit tests for condition_produce — the shared OOC beneficial-condition producer (M4.8 story-007).
-
-The per-target apply -> persist-on-land -> self-row-reuse -> companion-narrate-only logic lives in
-``produce_ooc_condition`` itself (the former per-target ``apply_beneficial_condition_to_player``
-helper was folded in when the party gate + batched write landed). These tests pin the helper's
-contract directly, independent of either caller (spell_casting / ability_tools). The party-gate
-refusal paths (non-party/non-companion target, missing party row, id-ordered batch fetch) live in
-``test_condition_produce_party_gate.py``.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

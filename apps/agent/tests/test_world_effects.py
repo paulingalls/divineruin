@@ -1,5 +1,3 @@
-"""Tests for world effects parser, exit requirements, session flow, and god whispers (WU3)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -123,7 +121,6 @@ class TestApplyWorldEffects:
 
     @pytest.mark.asyncio
     async def test_multiple_effects(self):
-        """Test all effects from quest stage 5 on_complete."""
         mock_queries = MagicMock()
         mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
         mock_mutations = MagicMock()
@@ -415,7 +412,6 @@ class TestGodWhisper:
 
 class TestRiderScene:
     def test_rider_triggers_at_market_without_companion_or_quest(self):
-        """Rider triggers at market when: no quest, no companion."""
         sd = _make_session(location_id="accord_market_square")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []
@@ -424,7 +420,6 @@ class TestRiderScene:
         assert bg._rider_triggered is True
 
     def test_rider_does_not_trigger_with_companion(self):
-        """Rider scene is suppressed when player already has a companion."""
         sd = _make_session(location_id="accord_market_square")
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
@@ -442,7 +437,6 @@ class TestRiderScene:
         assert bg._rider_triggered is False
 
     def test_rider_uses_scene_cache_when_available(self):
-        """Rider scene uses instructions from scene_cache if scene_rider_arrival is cached."""
         sd = _make_session(location_id="accord_market_square")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []

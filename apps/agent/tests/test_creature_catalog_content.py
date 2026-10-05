@@ -1,5 +1,3 @@
-"""Spec pins for natural bestiary entries."""
-
 import asyncio
 import importlib
 import json

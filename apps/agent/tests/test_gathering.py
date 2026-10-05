@@ -1,10 +1,3 @@
-"""Tests for the pure gathering resolver (M4.6c / story-001).
-
-Pure functions, no DB/RNG/fixtures — the caller supplies the gathering roll_total,
-mirroring test_travel.py / test_social_resolution.py. Spec:
-docs/game_mechanics/game_mechanics_combat.md §Gathering During Travel (L977-1060).
-"""
-
 import pytest
 
 import gathering

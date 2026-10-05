@@ -1,5 +1,3 @@
-"""Tests for agent.py - main DM agent and session management."""
-
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -19,11 +17,8 @@ class _TestAgent(BaseGameAgent):
 
 
 class TestTTSNode:
-    """Test TTS streaming and audio generation."""
-
     @pytest.mark.asyncio
     async def test_tts_node_marks_latency_milestones(self):
-        """tts_node should mark latency milestones."""
         agent = _TestAgent()
 
         async def mock_text_stream():
@@ -70,10 +65,7 @@ class TestTTSNode:
 
 
 class TestAudioHelpers:
-    """Test audio frame generation helpers."""
-
     def test_silence_generates_correct_frame_length(self):
-        """_silence should generate audio frame with correct sample count."""
         frame = _silence(1.0)  # 1 second
 
         expected_samples = TTS_SAMPLE_RATE * 1
@@ -82,7 +74,6 @@ class TestAudioHelpers:
         assert frame.samples_per_channel == expected_samples
 
     def test_silence_frame_contains_zeros(self):
-        """_silence should generate frame filled with zeros."""
         frame = _silence(0.5)
 
         # Frame data should be all zeros (silence)
@@ -90,8 +81,6 @@ class TestAudioHelpers:
 
 
 class TestSessionDataFields:
-    """Test SessionData field defaults and properties."""
-
     def test_pre_combat_agent_type_defaults_to_none(self):
         from session_data import SessionData
 
@@ -107,8 +96,6 @@ class TestSessionDataFields:
 
 
 class TestExtractPlayerId:
-    """Test _extract_player_id metadata parsing and env-based fallback."""
-
     def _make_ctx(self, metadata: str | None = None) -> MagicMock:
         ctx = MagicMock()
         if metadata is not None:
@@ -126,7 +113,6 @@ class TestExtractPlayerId:
         assert _extract_player_id(ctx) == "player_abc-123"
 
     def test_rejects_invalid_characters(self):
-        """player_id with invalid chars falls back (dev) or raises (prod)."""
         ctx = self._make_ctx('{"player_id": "player/../etc"}')
         with patch.dict(os.environ, {"AGENT_ENV": "development"}):
             result = _extract_player_id(ctx)
@@ -157,7 +143,6 @@ class TestExtractPlayerId:
             assert _extract_player_id(ctx) == "player_1"
 
     def test_dev_fallback_is_default(self):
-        """Without AGENT_ENV set, defaults to development (fallback allowed)."""
         ctx = self._make_ctx("{}")
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("AGENT_ENV", None)
@@ -165,8 +150,6 @@ class TestExtractPlayerId:
 
 
 class TestDMSession:
-    """Test dm_session handler."""
-
     @pytest.fixture(autouse=True)
     def _stub_session_hydration(self):
         """The gameplay path calls hydrate_session_state (story-004), which hits the DB. Stub it
@@ -176,7 +159,6 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
-        """dm_session should create SessionData — first session (existing player, no summary) starts at market square."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
@@ -228,8 +210,6 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_hydrates_session_state_once_for_returning_player(self, _stub_session_hydration):
-        """dm_session rehydrates persisted resonance/veil_ward/concentration + ticks the session
-        counter exactly once for an existing player (story-004, M3.5)."""
         mock_hydrate = _stub_session_hydration
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
@@ -281,7 +261,6 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_starts_agent_session_with_city_agent(self):
-        """dm_session should start AgentSession with CityAgent for existing players."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
@@ -339,7 +318,6 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_generates_initial_greeting(self):
-        """dm_session should generate initial greeting with enter_location call."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}

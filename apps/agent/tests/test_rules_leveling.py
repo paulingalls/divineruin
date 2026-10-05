@@ -1,5 +1,3 @@
-"""Tests for XP thresholds and level-up mechanics."""
-
 import pytest
 
 from rules_engine import (
@@ -53,7 +51,6 @@ class TestCheckLevelUp:
         assert XP_FOR_LEVEL[1] == 0
 
     def test_xp_table_matches_canonical(self):
-        """Verify XP table matches game_mechanics_core.md canonical values."""
         canonical = {
             1: 0,
             2: 200,
@@ -139,8 +136,6 @@ class TestCheckLevelUp:
 
 
 class TestLevelUpE2E:
-    """E2E acceptance criteria: XP awards produce correct level-up rewards."""
-
     def test_cross_l4_threshold(self):
         # Award XP to go from L1 to L4 (cumulative 750)
         result = check_level_up(current_xp=0, xp_gained=750, current_level=1)
@@ -168,8 +163,6 @@ class TestLevelUpE2E:
 
 
 class TestLevelForXp:
-    """Canonical XP -> level lookup. Reference impl: game_mechanics_core.md L678."""
-
     def test_zero_xp_returns_level_1(self):
         assert level_for_xp(0) == 1
 

@@ -14,8 +14,6 @@ from speaker_context import build_speaker_context
 
 
 class TestCombatAgentConfig:
-    """Test CombatAgent is correctly configured."""
-
     def test_is_subclass_of_base_game_agent(self):
         assert issubclass(CombatAgent, BaseGameAgent)
 
@@ -86,8 +84,6 @@ class TestCombatAgentConfig:
 
 
 class TestCombatSystemPrompt:
-    """Test COMBAT_SYSTEM_PROMPT content."""
-
     def test_contains_combat_narration_style(self):
         assert "staccato" in COMBAT_SYSTEM_PROMPT
 
@@ -108,10 +104,6 @@ class TestCombatSystemPrompt:
 
 
 class TestCombatBeatContract:
-    """story-004: COMBAT_SYSTEM_PROMPT encodes the 4-beat DM contract for the phase
-    engine — declaration (with hesitation->Defend), silent resolution, narration with
-    reaction windows + dramatic-dice pauses, and wrap. Prompt + contract only."""
-
     def test_names_four_beats_in_order(self):
         p = COMBAT_SYSTEM_PROMPT.lower()
         # Anchor on a unique body phrase from EACH beat (not the single overview line),

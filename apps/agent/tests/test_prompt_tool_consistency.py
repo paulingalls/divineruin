@@ -1,10 +1,3 @@
-"""Prompt-tool consistency: no gameplay surface may teach a tool or a call shape
-the agent does not actually hold.
-
-Split out of test_prompts.py (which keeps the warm-layer tests) when this class's
-surface list outgrew the 500-line cap — the two have nothing in common but a filename.
-"""
-
 from system_prompts import build_system_prompt
 
 
@@ -254,8 +247,6 @@ class TestPromptToolConsistency:
         )
 
     def test_combat_prompt_names_consume_legendary_action(self):
-        """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
-        the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""
         from combat_agent import COMBAT_AGENT_TOOLS
         from combat_turn import consume_legendary_action
         from system_prompts import COMBAT_SYSTEM_PROMPT

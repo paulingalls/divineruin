@@ -1,5 +1,3 @@
-"""Geometry, composition and catalog snapshot invariants."""
-
 import pytest
 from _hollow_resonance_fixtures import scenario
 from voice_condition_fixtures import participant

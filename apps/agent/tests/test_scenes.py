@@ -163,8 +163,6 @@ CONTENT_DIR = pathlib.Path(__file__).resolve().parents[3] / "content"
 
 
 class TestScenesJson:
-    """Validate the standalone scenes.json content file."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "scenes.json") as f:
@@ -214,8 +212,6 @@ class TestScenesJson:
 
 
 class TestLocationDefaultScenes:
-    """Validate locations reference valid default scenes."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "locations.json") as f:
@@ -237,8 +233,6 @@ class TestLocationDefaultScenes:
 
 
 class TestGreyvaleSceneGraph:
-    """Validate the Greyvale quest's scene_graph references."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "quests.json") as f:
@@ -296,7 +290,6 @@ class TestWarmLayerSceneInjection:
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_scene_from_scene_cache_via_graph(self, mock_loc, mock_npcs):
-        """When scene_cache is provided, resolves via scene_graph."""
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
         quest_with_graph = {
@@ -395,7 +388,6 @@ class TestUpdateQuestSceneRegionChange:
 
     @pytest.mark.asyncio
     async def test_no_scene_graph_returns_string(self):
-        """Quest without scene_graph returns plain json string."""
         quest = {
             "id": "plain",
             "name": "Plain",

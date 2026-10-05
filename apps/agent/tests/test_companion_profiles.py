@@ -305,7 +305,6 @@ class TestActionPool:
 
 class TestLoader:
     async def test_load_does_not_wipe_catalog_on_bad_row(self, monkeypatch):
-        """A malformed DB row fails loud WITHOUT wiping the already-loaded catalog (atomic swap)."""
         import db
 
         class _BadPool:
