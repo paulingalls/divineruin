@@ -396,7 +396,6 @@ WRITES = (
     "add_inventory_item",
 )
 STALE_CASES = [
-    # mode, d20, guest condition, call that revokes the guest, writes that must not land after it
     ("skill", 15, "inspired", "get_player", ["update_skill_advancement", "remove_player_conditions"]),
     ("skill", 15, None, "get_player", ["update_skill_advancement"]),
     ("save", 15, "blessed", "get_player", ["remove_player_conditions"]),

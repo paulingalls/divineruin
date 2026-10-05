@@ -25,7 +25,6 @@ def _mods(*, current=0, persisted_bonus=0, active=False, source=None, spell_id=N
     )
     res_mod.update_player_flickering_bonus = AsyncMock()
     ward_mod = MagicMock()
-    # Scope-keyed read (story-003): a live ward row, or None when the scope is unwarded.
     ward_mod.read_active_ward = AsyncMock(
         return_value={"source": source, "expires_at": None, "dismissible": True} if active else None
     )
@@ -51,7 +50,6 @@ async def _hydrate(session, player, mods):
 
 class TestHydrateSessionState:
     async def test_hydrates_the_ward_from_the_session_location_scope(self):
-        # story-003: the ward is read from the LOCATION scope, never from the player row.
         session = SessionData(player_id="p1", location_id="thornwatch_keep")
         mods = _mods(active=True, source="cleric")
         await _hydrate(session, {"race": "human"}, mods)
@@ -71,7 +69,6 @@ class TestHydrateSessionState:
         assert session.location_ward["source"] == "cleric"
 
     async def test_rehydrates_all_three_persisted_states_not_defaults(self):
-        # AC1: the SessionData reflects the persisted current/active/spell_id, not the defaults.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(current=7, active=True, source="druid", spell_id="frost", count=3)
         await _hydrate(session, {"race": "human"}, mods)
@@ -80,7 +77,6 @@ class TestHydrateSessionState:
         assert session.concentration.spell_id == "frost"
 
     async def test_thessyn_at_threshold_sets_and_persists_bonus_1(self):
-        # AC2: a Thessyn reaching session_count 10 gets flickering_bonus 1, set AND persisted.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(current=9, count=10)
         await _hydrate(session, {"race": "thessyn"}, mods)
@@ -88,9 +84,6 @@ class TestHydrateSessionState:
         mods[0].update_player_flickering_bonus.assert_awaited_once_with("p1", 1, conn=None)
 
     async def test_thessyn_below_threshold_bonus_0(self):
-        # AC3: a <10-session Thessyn gets flickering_bonus 0 (in-memory). The persisted value is
-        # already 0, so the redundant UPDATE is SKIPPED (write-on-change), still satisfying the
-        # single-derivation invariant — the read path and the session both derive band 0.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(count=9)
         await _hydrate(session, {"race": "thessyn"}, mods)
@@ -98,8 +91,6 @@ class TestHydrateSessionState:
         mods[0].update_player_flickering_bonus.assert_not_awaited()
 
     async def test_thessyn_steady_above_threshold_skips_redundant_write(self):
-        # A Thessyn already past the gate (persisted bonus 1, still computing 1) skips the write —
-        # write-on-change persists only the Deep-Adaptation crossing, not every steady session-init.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(persisted_bonus=1, count=20)
         await _hydrate(session, {"race": "thessyn"}, mods)
@@ -107,8 +98,6 @@ class TestHydrateSessionState:
         mods[0].update_player_flickering_bonus.assert_not_awaited()
 
     async def test_non_thessyn_never_gets_bonus(self):
-        # A non-Thessyn at any session_count gets 0 (the gate short-circuits before the lookup), and
-        # because the persisted bonus is already 0 the redundant UPDATE is SKIPPED — the common path.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(count=50)
         await _hydrate(session, {"race": "human"}, mods)
@@ -116,14 +105,12 @@ class TestHydrateSessionState:
         mods[0].update_player_flickering_bonus.assert_not_awaited()
 
     async def test_session_counter_ticks_exactly_once(self):
-        # The player session_count is incremented exactly once per fresh session.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(count=2)
         await _hydrate(session, {"race": "human"}, mods)
         mods[3].hydrate_player_session.assert_awaited_once_with("p1", conn=None)
 
     async def test_missing_race_is_treated_as_non_thessyn(self):
-        # A player with no race set takes no racial branch -> bonus 0, no crash.
         session = SessionData(player_id="p1", location_id="loc")
         mods = _mods(count=50)
         await _hydrate(session, {}, mods)

@@ -28,7 +28,6 @@ async def test_resolve_errand_outcome_shape():
 
     assert result["errand_type"] == "scout"
     assert result["tier"] in {"great_success", "success", "partial", "complication"}
-    # Safe destination -> no risk.
     assert result["narrative_context"]["risk_outcome"] == "none"
     assert "decision_options" in result
 
@@ -36,7 +35,6 @@ async def test_resolve_errand_outcome_shape():
 @pytest.mark.asyncio
 async def test_resolve_errand_outcome_rolls_risk_from_danger():
     parameters = {"errand_type": "scout", "destination": "greyvale_ruins_entrance", "dc": 12}
-    # Seed an rng that lands inside the dangerous|scout injury band (25%).
     result = await errand_resolution.resolve_errand_outcome(
         COMPANION_KAEL, parameters, content=_content({"danger_level": 2}), rng=random.Random(2)
     )

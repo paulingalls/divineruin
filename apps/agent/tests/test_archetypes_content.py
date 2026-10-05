@@ -80,7 +80,6 @@ def archetypes() -> dict[str, dict]:
 
 def test_all_18_archetypes_present(archetypes):
     assert set(archetypes) == EXPECTED_IDS
-    # JSON roster agrees with the CLASSES creation-flow roster (same 18 ids).
     assert set(archetypes) == set(CLASSES)
 
 

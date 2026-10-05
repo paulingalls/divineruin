@@ -67,9 +67,6 @@ def _state(
     )
 
 
-# --- shape / contract tests -------------------------------------------------
-
-
 def test_packet_top_level_keys():
     packet = build_combat_ui_update(_state([_participant("p1")]))
     assert set(packet.keys()) == {"round", "combatants"}
@@ -87,9 +84,6 @@ def test_packet_round_reflects_post_advance_state():
     assert packet["round"] == 3
 
 
-# --- is_ally: CombatParticipant property (canonical source) -----------------
-
-
 def test_is_ally_property_player_companion_true_enemy_hollowed_false():
     """CombatParticipant.is_ally is the canonical ally/enemy classifier — all
     consumers (HUD producer, future role logic) read this instead of re-encoding
@@ -98,9 +92,6 @@ def test_is_ally_property_player_companion_true_enemy_hollowed_false():
     assert _participant("c1", p_type="companion").is_ally is True
     assert _participant("e1", p_type="enemy").is_ally is False
     assert _participant("th1", p_type="temporary_hollowed").is_ally is False
-
-
-# --- isAlly mapping ---------------------------------------------------------
 
 
 def test_isAlly_true_for_player_and_companion():
@@ -127,9 +118,6 @@ def test_isAlly_false_for_enemy_and_temporary_hollowed():
     by_id = {c["id"]: c for c in packet["combatants"]}
     assert by_id["e1"]["isAlly"] is False
     assert by_id["th1"]["isAlly"] is False
-
-
-# --- isActive marks the next-up actor --------------------------------------
 
 
 def test_isActive_marks_initiative_head_only():
@@ -227,9 +215,6 @@ def test_isActive_all_false_when_every_actor_is_down():
         assert c["isActive"] is False
 
 
-# --- conditions projection --------------------------------------------------
-
-
 def test_conditions_projected_to_type_stacks_source_only():
     conditions = [
         {"type": "blessed", "duration": 3, "source": "divine_bless", "stacks": 1},
@@ -264,18 +249,12 @@ def test_empty_conditions_list_emits_empty_list():
     assert packet["combatants"][0]["conditions"] == []
 
 
-# --- hp + name passthrough --------------------------------------------------
-
-
 def test_hp_and_name_passthrough():
     state = _state([_participant("p1", name="Kael", hp_current=12, hp_max=25)])
     c = build_combat_ui_update(state)["combatants"][0]
     assert c["name"] == "Kael"
     assert c["hpCurrent"] == 12
     assert c["hpMax"] == 25
-
-
-# --- start_combat emit (M12 close-cycle fix: concern 4045481bfc3e) ---------
 
 
 def _start_combat_player(stored_conditions=None):
@@ -345,7 +324,6 @@ async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mo
     assert payload["round"] == 1
     by_id = {c["id"]: c for c in payload["combatants"]}
     assert "player_1" in by_id and "goblin_1" in by_id
-    # Initial state: empty conditions, exactly one active actor (initiative head).
     assert all(c["conditions"] == [] for c in payload["combatants"])
     assert sum(1 for c in payload["combatants"] if c["isActive"]) == 1
 

@@ -45,7 +45,6 @@ class TestReadDeathHistory:
 class TestRecordDeath:
     async def test_writes_via_jsonb_set_with_authoritative_count(self):
         conn = AsyncMock()
-        # Store already holds death 1 (gentle); recording death 2 (moderate) appends + advances count.
         gentle = asdict(determine_death_cost(1, level=5))
         conn.fetchrow.return_value = {"death_history": {"count": 1, "costs": [gentle]}}
 

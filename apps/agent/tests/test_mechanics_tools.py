@@ -53,9 +53,6 @@ def _make_mock_room():
     return room
 
 
-# --- mark_skill_breakthrough ---
-
-
 class TestMarkSkillBreakthrough:
     @pytest.mark.asyncio
     async def test_mark_skill_breakthrough_sets_flag(self):

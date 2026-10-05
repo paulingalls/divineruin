@@ -9,7 +9,6 @@ from voices import VoiceConfig
 
 MP3_STUB = b"\xff\xfb" * 50
 
-# Neutral voice config for tests — no emotion markup
 _TEST_VOICE = VoiceConfig(voice="v", speaking_rate=0.8)
 _TEST_VOICE_DEFAULT = VoiceConfig(voice="v", speaking_rate=1.0)
 

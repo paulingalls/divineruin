@@ -51,7 +51,6 @@ def _registered_tool_descriptions() -> dict[str, str]:
         "onboarding tools": ONBOARDING_TOOLS,
     }
     descriptions = {name: "\n".join(t.info.description or "" for t in tools) for name, tools in toolsets.items()}
-    # Fail loud rather than pass vacuously if a toolset stops exposing descriptions.
     for name, blob in descriptions.items():
         assert blob.strip(), f"{name} exposed no tool descriptions — the guard below would be vacuous"
     return descriptions
@@ -86,7 +85,6 @@ class TestPromptToolConsistency:
                 assert query_info in tools, f"{name} prompt names query_info but lacks the tool"
             for removed in ("query_location", "query_npc", "query_lore", "query_inventory"):
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
-            # enter_mode named iff held (region agents hold + name it; others neither).
             assert ("enter_mode" in prompt) == (enter_mode in tools), (
                 f"{name}: prompt names enter_mode but tool-holding differs"
             )

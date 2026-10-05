@@ -12,10 +12,6 @@ import pytest
 from archetypes import PoolFormula, ResourceConfig, get_archetype_chassis
 from rules_engine import PoolMaximums, calculate_max_pools
 
-# --- Resource Pools ---
-
-# Standard attribute modifiers for testing:
-# STR 14 → +2, DEX 12 → +1, CON 13 → +1, INT 16 → +3, WIS 14 → +2, CHA 16 → +3
 POOL_TEST_MODS = {
     "strength": 2,
     "dexterity": 1,
@@ -25,7 +21,6 @@ POOL_TEST_MODS = {
     "charisma": 3,
 }
 
-# id -> ResourceConfig, the legacy ARCHETYPE_RESOURCE_CONFIG values.
 _SF = lambda b, a, d: PoolFormula(base=b, attribute=a, level_divisor=d)  # noqa: E731
 EXPECTED_RESOURCE = {
     "warrior": ResourceConfig("stamina_only", _SF(8, "constitution", 1), None),
@@ -229,13 +224,11 @@ class TestCalculateMaxPoolsEdgeCases:
             "charisma": -2,
         }
         result = calculate_max_pools("warrior", 1, low_mods)
-        # 8 + CON(-3) + 1 = 6
         assert result.stamina == 6
 
     def test_missing_attribute_defaults_to_zero(self):
         sparse_mods: dict[str, int] = {}
         result = calculate_max_pools("warrior", 1, sparse_mods)
-        # 8 + 0 + 1 = 9
         assert result.stamina == 9
 
 
@@ -273,11 +266,9 @@ class TestCalculateMaxPoolsE2E:
         warrior = calculate_max_pools("warrior", 1, POOL_TEST_MODS)
         mage = calculate_max_pools("mage", 1, POOL_TEST_MODS)
 
-        # Warrior: stamina-only, Mage: focus-only
         assert warrior.stamina is not None and warrior.focus is None
         assert mage.stamina is None and mage.focus is not None
 
-        # Warrior stamina = 10, Mage focus = 12
         assert warrior.stamina == 10
         assert mage.focus == 12
 
@@ -285,10 +276,8 @@ class TestCalculateMaxPoolsE2E:
         warrior = calculate_max_pools("warrior", 10, POOL_TEST_MODS)
         mage = calculate_max_pools("mage", 10, POOL_TEST_MODS)
 
-        # Both scale linearly: warrior stamina = 19, mage focus = 21
         assert warrior.stamina == 19
         assert mage.focus == 21
 
-        # Pools still exclusive
         assert warrior.focus is None
         assert mage.stamina is None

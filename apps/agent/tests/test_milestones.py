@@ -85,9 +85,6 @@ def _seed_from_content() -> None:
     set_milestones({row["id"]: parse_milestone_row(row["id"], row) for row in raw})
 
 
-# --- parse_milestone_row -------------------------------------------------------
-
-
 def test_parse_milestone_row_fork_shape():
     m = parse_milestone_row(_FORK_ROW["id"], _FORK_ROW)
     assert isinstance(m, Milestone)
@@ -182,9 +179,6 @@ def test_parse_milestone_row_rejects_nonstring_grant_field():
         parse_milestone_row(_GRANT_ROW["id"], bad)
 
 
-# --- accessors -----------------------------------------------------------------
-
-
 def test_get_archetype_milestones_returns_four_tiers():
     _seed_from_content()
     warrior = get_archetype_milestones("warrior")
@@ -210,7 +204,6 @@ def test_l5_fork_and_deferred_invariants_via_content():
     assert warrior_l5.kind == "specialization_fork" and len(warrior_l5.specialization_options) == 2
     cleric_l5 = next(m for m in get_archetype_milestones("cleric") if m.level == 5)
     assert cleric_l5.patron_deferred is True and cleric_l5.specialization_options == ()
-    # Oracle is NOT patron-deferred (concrete fork per decision m23-l5-fork-spec-fidelity).
     oracle_l5 = next(m for m in get_archetype_milestones("oracle") if m.level == 5)
     assert oracle_l5.patron_deferred is False and len(oracle_l5.specialization_options) == 2
 
@@ -239,7 +232,6 @@ def test_is_selectable_fork_true_for_concrete_fork():
 
 
 def test_is_selectable_fork_false_for_patron_deferred():
-    # Patron-driven forks (Phase 8) are a fork by kind but not presentable yet.
     m = parse_milestone_row(_DEFERRED_ROW["id"], _DEFERRED_ROW)
     assert is_selectable_fork(m) is False
 
@@ -271,9 +263,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- build-then-swap load_milestones (DB path) ---------------------------------
-
-
 class _FakePool:
     def __init__(self, rows):
         self._rows = rows
@@ -300,11 +289,8 @@ async def test_load_milestones_malformed_row_does_not_wipe_loaded_map(monkeypatc
     with pytest.raises(ValueError):
         await load_milestones()
 
-    # Prior map survived the failed load.
     surviving = get_milestone("warrior_power").grant
     assert surviving is not None and surviving.name == "Extra Attack"
-    # Build-then-swap: the well-formed row preceding the malformed one must NOT have
-    # leaked into the live map (an inline-mutate load would have leaked it).
     with pytest.raises(ValueError, match="warrior_identity"):
         get_milestone("warrior_identity")
 

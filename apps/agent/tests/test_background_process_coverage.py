@@ -28,7 +28,6 @@ class TestBackgroundProcessLifecycle:
             assert bp._task is not None
             assert isinstance(bp._task, asyncio.Task)
 
-            # Clean up
             await bp.stop()
 
     @pytest.mark.asyncio
@@ -97,7 +96,6 @@ class TestBackgroundProcessLifecycle:
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
 
-        # Create a task that will be cancelled
         async def mock_run():
             await asyncio.sleep(10)
 
@@ -140,7 +138,6 @@ class TestBackgroundProcessLifecycle:
                 except asyncio.CancelledError:
                     pass
 
-                # Should be called at least once for initial build
                 assert mock_rebuild.call_count >= 1
 
 
@@ -173,7 +170,6 @@ class TestEventHandling:
                     except (asyncio.CancelledError, StopIteration):
                         pass
 
-                    # Should handle both events
                     if mock_handle.called:
                         handled_events = mock_handle.call_args[0][0]
                         assert event1 in handled_events
@@ -188,14 +184,12 @@ class TestEventHandling:
         mock_sd.last_player_speech_time = 0
         mock_sd.event_bus = MagicMock()
 
-        # Return None on first call (timeout), then let it exit
         call_count = [0]
 
         async def mock_get(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return None  # Timeout
-            # Second call, stop the loop
             raise asyncio.CancelledError
 
         mock_sd.event_bus.get = mock_get
@@ -212,7 +206,6 @@ class TestEventHandling:
                         except asyncio.CancelledError:
                             pass
 
-                        # Should rebuild twice: initial + after timeout
                         assert mock_rebuild.call_count == 2
 
 
@@ -351,9 +344,6 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
@@ -368,9 +358,6 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
         mock_sd.companion = None
 
@@ -391,9 +378,6 @@ class TestSpeechQueue:
         mock_session = MagicMock()
         mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
         mock_sd.companion = None
 

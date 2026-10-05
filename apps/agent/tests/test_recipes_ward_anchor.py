@@ -73,8 +73,6 @@ def test_artificer_ward_source_duration_matches_anchor_small():
         f"artificer WardSource duration is {artificer_source.duration.seconds}s instead of 3600s (1 hour)"
     )
 
-    # The expected string is DERIVED from the constant, not hardcoded, so an edit to the item's
-    # effect text alone turns this red. (A drifted constant is caught by the pin above, first.)
     anchor_item = _find_by_id(_load_content("items.json"), "veil_ward_anchor_small", "items.json")
     effect_text = " ".join(effect.get("description", "") for effect in anchor_item.get("effects", []))
     hours = artificer_source.duration.seconds // 3600
@@ -83,7 +81,6 @@ def test_artificer_ward_source_duration_matches_anchor_small():
         f"{hours}h duration the artificer WardSource constant ({artificer_source.duration.seconds}s) encodes"
     )
 
-    # An anchor is placed, never willed into being — story-005's gate depends on this being False.
     assert artificer_source.tool_raisable is False, (
         f"artificer WardSource tool_raisable is {artificer_source.tool_raisable} instead of False"
     )
@@ -117,7 +114,6 @@ def test_veil_anchors_table_matches_the_item_prose():
     )
     assert "permanent" in large_text.lower()
     assert large.consumed is False and "not consumed" in large_text.lower()
-    # dismiss_ward's DELETE carries `AND dismissible`; False is what makes the row unremovable.
     assert large.dismissible is False
 
 

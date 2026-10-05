@@ -14,8 +14,6 @@ from rules_engine import (
     skill_modifier,
 )
 
-# --- attribute_modifier ---
-
 
 class TestAttributeModifier:
     def test_standard_table(self):
@@ -35,8 +33,6 @@ class TestAttributeModifier:
         assert attribute_modifier(15) == 2
 
 
-# --- skill_modifier ---
-
 SAMPLE_PLAYER = {
     "level": 1,
     "attributes": {
@@ -55,22 +51,18 @@ SAMPLE_PLAYER = {
 class TestSkillModifier:
     def test_proficient_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "athletics")
-        # STR 14 → +2, trained: prof +1 + tier +2 = +5
         assert mod == 5
 
     def test_unproficient_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "persuasion")
-        # CHA 8 → -1, untrained: no prof, no tier = -1
         assert mod == -1
 
     def test_proficient_dex_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "stealth")
-        # DEX 12 → +1, trained: prof +1 + tier +2 = +4
         assert mod == 4
 
     def test_wisdom_perception(self):
         mod = skill_modifier(SAMPLE_PLAYER, "perception")
-        # WIS 11 → +0, trained: prof +1 + tier +2 = +3
         assert mod == 3
 
     def test_unknown_skill_raises(self):
@@ -84,39 +76,28 @@ class TestSkillModifier:
 
     def test_case_insensitive(self):
         mod = skill_modifier(SAMPLE_PLAYER, "Athletics")
-        # STR 14 → +2, trained: prof +1 + tier +2 = +5
         assert mod == 5
 
     def test_higher_level_proficiency(self):
         player = {**SAMPLE_PLAYER, "level": 7}
         mod = skill_modifier(player, "athletics")
-        # STR +2, trained: prof +2 at L7 + tier +2 = +6
         assert mod == 6
 
     def test_crafting_uses_max_attribute(self):
-        # INT 10 → +0, WIS 11 → +0. max(+0, +0) = 0. Untrained = 0
         mod = skill_modifier(SAMPLE_PLAYER, "crafting")
         assert mod == 0
-        # Player with higher WIS
         player = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "wisdom": 16}}
         mod = skill_modifier(player, "crafting")
-        # max(INT +0, WIS +3) = +3. Untrained = +3 (no prof, no tier)
         assert mod == 3
 
     def test_skill_tier_from_player_data(self):
-        # Player with explicit skill_tiers
         player = {**SAMPLE_PLAYER, "skill_tiers": {"athletics": "expert"}}
         mod = skill_modifier(player, "athletics")
-        # STR +2, expert: prof +1 + tier +4 = +7
         assert mod == 7
 
     def test_untrained_gets_no_prof_or_tier(self):
         mod = skill_modifier(SAMPLE_PLAYER, "arcana")
-        # INT 10 → +0, not in proficiencies, untrained: no prof, no tier = 0
         assert mod == 0
-
-
-# --- skills ---
 
 
 class TestSkills:
@@ -152,9 +133,6 @@ class TestSkills:
         assert SKILLS["crafting"] == ("intelligence", "wisdom")
 
 
-# --- dc_for_tier ---
-
-
 class TestDcForTier:
     def test_all_tiers(self):
         assert dc_for_tier("trivial") == 5
@@ -180,20 +158,12 @@ class TestDcForTier:
         assert len(DC_TIERS) == 8  # 7 canonical + 1 deprecated alias
 
 
-# --- type aliases ---
-
-
 class TestTypeAliases:
     def test_dc_tier_type_exists(self):
-        # DcTier should be a Literal type alias importable from rules_engine
         assert DcTier is not None
 
     def test_skill_tier_type_exists(self):
-        # SkillTier should be a Literal type alias importable from rules_engine
         assert SkillTier is not None
-
-
-# --- proficiency_bonus ---
 
 
 class TestProficiencyBonus:
@@ -216,9 +186,6 @@ class TestProficiencyBonus:
         assert proficiency_bonus(14) == 3
 
 
-# --- skill_tier_bonus ---
-
-
 class TestSkillTierBonus:
     def test_all_tiers(self):
         assert SKILL_TIER_BONUS["untrained"] == 0
@@ -234,9 +201,6 @@ class TestSkillTierBonus:
             lower = SKILL_TIER_ORDER[i]
             higher = SKILL_TIER_ORDER[i + 1]
             assert SKILL_TIER_BONUS[lower] < SKILL_TIER_BONUS[higher]
-
-
-# --- narrative_hint ---
 
 
 class TestNarrativeHint:

@@ -11,8 +11,6 @@ class TestWorkspaceAccessible:
         assert workspace_accessible("forge", ["field", "workshop"]) is False
 
     def test_exact_type_not_rank(self):
-        # A laboratory must NOT satisfy a forge recipe even though they share a
-        # basic-vs-advanced rank — access is exact-type (workspace-check3-access).
         assert workspace_accessible("forge", ["field", "laboratory"]) is False
 
     def test_field_floor(self):
@@ -39,7 +37,6 @@ class TestTaintedBlocksCrafter:
         assert tainted_blocks_crafter("master", True) is False
 
     def test_untainted_never_blocks(self):
-        # Not tainted → never blocked, regardless of tier.
         assert tainted_blocks_crafter("untrained", False) is False
         assert tainted_blocks_crafter("master", False) is False
 

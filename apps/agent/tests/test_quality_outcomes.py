@@ -24,8 +24,6 @@ import pytest
 
 import quality_outcomes
 
-# A valid quality_outcomes-table row `data` payload (the non-id fields; id is the
-# row key = crafting category, passed separately to parse_quality_outcome_row).
 VALID_DATA = {
     "bonus_properties": [
         {"id": "keen_edge", "name": "Keen Edge", "description": "The blade hums when it cuts the air."},
@@ -37,7 +35,6 @@ VALID_DATA = {
     ],
 }
 
-# The 6 crafting categories, matching recipes.py _CATEGORIES / recipe.ts.
 ALL_CATEGORIES = {"weapon", "armor", "consumable", "tool", "enchantment", "ammunition"}
 
 CONTENT_FILE = Path(__file__).resolve().parents[3] / "content" / "quality_outcomes.json"

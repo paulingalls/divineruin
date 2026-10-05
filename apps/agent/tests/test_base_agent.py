@@ -102,7 +102,6 @@ class TestBaseGameAgentInit:
         ctx = ChatContext()
         ctx.add_message(role="user", content="test message")
         agent = BaseGameAgent(instructions="prompt", chat_ctx=ctx)
-        # LiveKit wraps chat_ctx; verify the message was carried through
         assert len(agent.chat_ctx.items) > 0
 
 

@@ -59,8 +59,6 @@ async def test_publishes_an_active_encounter_ward_with_its_scope():
 
 
 async def test_unwarded_publishes_active_false_and_names_no_scope():
-    # There is no scope to name when nothing wards the party; the descriptive keys are null
-    # rather than a stale scope the client might latch onto.
     pub = await _publish(_session(), None, None)
     assert pub.call_args.args[2] == {
         "active": False,

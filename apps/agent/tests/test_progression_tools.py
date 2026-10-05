@@ -76,40 +76,26 @@ async def test_level_up_hp_gains_resolve_from_chassis_for_diverging_archetype():
     assert payload["hp_gains"] == [{"level": 2, "hp_gain": expected_gain}]
 
 
-# --- Auto-grant side-effects: L10/15/20 milestone grants resolve inside the Resolve
-# (story-007). The warrior ladder + fork options + mock factory live in sample_fixtures
-# (shared with test_quest_tools); _PATRON_FORK_MILESTONES below is progression-only.
-# These drove the award_xp wrapper until M28 story-003 deleted it; they reach the Resolve
-# directly now, via the same _core_for_levels helper the rest of the file uses. ---
-
-
 @pytest.mark.asyncio
 async def test_l10_auto_grant_sets_extra_attack_flag_in_code():
-    # L9 (2900 xp) -> L10 (3450) crosses warrior_power: the extra_attack flag is set
-    # deterministically inside the Resolve, with no LLM resolve_milestone call.
     _, mutations, conn, _ = await _core_for_levels(from_level=9, from_xp=2900, amount=550)
     mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
 
 
 @pytest.mark.asyncio
 async def test_multi_level_jump_still_applies_crossed_auto_grant():
-    # L9 (2900) -> L11 (4050) jumps two levels, crossing L10 — the grant still fires.
     _, mutations, conn, _ = await _core_for_levels(from_level=9, from_xp=2900, amount=1150)
     mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
 
 
 @pytest.mark.asyncio
 async def test_narrative_only_grant_writes_no_flag():
-    # L14 (6000) -> L15 (6750): warrior_mastery is narrative-only (flag=None) — no flag write.
     _, mutations, _, _ = await _core_for_levels(from_level=14, from_xp=6000, amount=750)
     mutations.set_player_flag.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_auto_grant_surfaces_narration_in_response():
-    # The DM voices the grant: the Resolve surfaces the crossed auto-grant's name + narration
-    # cue (concern 4bf3efecdc8a — the cue is no longer returned via resolve_milestone), and the
-    # caller forwards it into its own tool response.
     _, _, _, result = await _core_for_levels(from_level=9, from_xp=2900, amount=550)
     assert result.milestone_grants == [
         {"name": "Extra Attack", "effect": "Your blade strikes twice.", "narration_cue": "cue"}
@@ -118,7 +104,6 @@ async def test_auto_grant_surfaces_narration_in_response():
 
 @pytest.mark.asyncio
 async def test_narrative_only_grant_is_still_surfaced_for_voicing():
-    # L14 -> L15: even though warrior_mastery sets no flag, its narration must reach the DM.
     _, _, _, result = await _core_for_levels(from_level=14, from_xp=6000, amount=750)
     assert result.milestone_grants == [
         {"name": "Indomitable", "effect": "Reroll a failed save.", "narration_cue": "cue"}
@@ -127,24 +112,15 @@ async def test_narrative_only_grant_is_still_surfaced_for_voicing():
 
 @pytest.mark.asyncio
 async def test_no_milestone_crossed_surfaces_empty_grants():
-    # L1 -> L2 crosses no auto-grant milestone — milestone_grants is an empty list.
     _, _, _, result = await _core_for_levels(from_level=1, from_xp=250, amount=100, archetype="artificer")
     assert result.milestone_grants == []
 
 
 @pytest.mark.asyncio
 async def test_l5_fork_surfaced_in_response_for_dm_cue():
-    # Crossing into L5 must cue the DM to present the specialization fork (concern
-    # c515f47bf2c5) — symmetric to milestone_grants for the auto-grant tiers. The caller
-    # forwards this flag into its tool response.
     _, _, _, result = await _core_for_levels(from_level=4, from_xp=750, amount=300)
     assert result.result.specialization_fork is True
 
-
-# --- _award_xp_core primitive (story-001): the shared XP/grant Resolve that update_quest
-# (story-002) and the combat-end pass route through. Since M28 story-003 removed the award_xp
-# tool it is the ONLY way XP is granted — including the L5-fork presentation that moved off
-# resolve_milestone onto the level-up path. ---
 
 # Patron-deferred L5 fork (Oracle/Cleric/Paladin) — `select` rejects these pending Phase 8,
 # so the core must not present a choice it cannot resolve.
@@ -212,16 +188,12 @@ async def test_core_l5_fork_emits_specialization_choice_event():
 
 @pytest.mark.asyncio
 async def test_core_l5_fork_persists_nothing():
-    # Presenting the fork writes no state — the choice stays unresolved until select
-    # round-trips it (no flag write, no specialization persisted by the core).
     _, mutations, _, _ = await _core_for_levels(from_level=4, from_xp=750, amount=300)
     mutations.set_player_flag.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_core_l5_fork_still_emits_xp_awarded_and_level_up():
-    # The fork event is additive — XP_AWARDED and LEVEL_UP still fire, and the
-    # SPECIALIZATION_CHOICE cue is ordered after LEVEL_UP.
     pending_events, _, _, _ = await _core_for_levels(from_level=4, from_xp=750, amount=300)
     types = _event_types(pending_events)
     assert E.XP_AWARDED in types
@@ -231,8 +203,6 @@ async def test_core_l5_fork_still_emits_xp_awarded_and_level_up():
 
 @pytest.mark.asyncio
 async def test_core_non_fork_levelup_surfaces_no_fork():
-    # L9 (2900) -> L10 (3450) crosses the auto-grant tier, not a fork — no
-    # SPECIALIZATION_CHOICE event and no fork cue on the result.
     pending_events, _, _, result = await _core_for_levels(from_level=9, from_xp=2900, amount=550)
     assert result.result.specialization_fork is False
     assert E.SPECIALIZATION_CHOICE not in _event_types(pending_events)
@@ -263,8 +233,6 @@ async def test_core_patron_deferred_fork_surfaces_no_choice():
 
 @pytest.mark.asyncio
 async def test_core_multilevel_jump_crossing_l5_surfaces_exactly_one_choice():
-    # A jump from L4 spanning L5 and L10 surfaces the L5 fork exactly once AND fires the
-    # L10 auto-grant — the "one choice per crossing" invariant holds across multi-level gains.
     pending_events, mutations, conn, _ = await _core_for_levels(from_level=4, from_xp=750, amount=5000)
     forks = [p for et, p in pending_events if et == E.SPECIALIZATION_CHOICE]
     assert len(forks) == 1
@@ -272,16 +240,8 @@ async def test_core_multilevel_jump_crossing_l5_surfaces_exactly_one_choice():
     mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
 
 
-# --- Migrated from tests/mutation_tools/test_award_xp.py (M28 story-003), which died with the
-# award_xp TOOL. These three pinned concerns that no core test covered; they are reframed onto
-# _award_xp_core, the surviving grant path. (The rest of that file duplicated coverage here or
-# pinned the tool wrapper's own argument guards, which are deliberately gone.) ---
-
-
 @pytest.mark.asyncio
 async def test_core_writes_the_new_xp_total():
-    # The NON-level-up path: every other core test drives a level crossing, so without this
-    # nothing pins the plain "add XP, persist the total" case.
     _, mutations, conn, result = await _core_for_levels(from_level=1, from_xp=0, amount=50)
     assert result.result.new_xp == 50
     assert result.result.leveled_up is False
@@ -303,19 +263,12 @@ async def test_core_buffers_xp_awarded_with_the_recipient_stamp():
 
 @pytest.mark.asyncio
 async def test_core_at_max_level_grants_xp_without_leveling():
-    # L20 is the cap: XP still accrues, but no level-up fires and no milestone resolves.
     pending_events, _, _, result = await _core_for_levels(from_level=20, from_xp=355000, amount=1000)
     assert result.result.new_level == 20
     assert result.result.leveled_up is False
     assert result.result.new_xp == 356000
     assert E.LEVEL_UP not in _event_types(pending_events)
 
-
-# ── _award_divine_favor_core (story-002) ──────────────────────────────────────
-# The favor Resolve: runs inside the CALLER's transaction and buffers its event into a
-# caller-owned list, mirroring _award_xp_core, so a quest stage can grant favor in the same
-# transaction as its XP. Since M28 story-003 removed the award_divine_favor tool it is the
-# ONLY way favor is granted.
 
 _FAVOR = {"patron": "kaelen", "level": 10, "max": 100, "last_whisper_level": 4}
 

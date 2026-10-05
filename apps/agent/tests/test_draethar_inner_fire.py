@@ -114,9 +114,6 @@ async def _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod):
     return json.loads(raw)
 
 
-# --- happy path: drop Resonance, take fire damage, spend the once-per-encounter use ---
-
-
 async def test_inner_fire_drops_resonance_and_applies_fire_damage():
     ctx = _combat_ctx(resonance=9, hp_current=20)
     session = ctx.userdata
@@ -124,16 +121,12 @@ async def test_inner_fire_drops_resonance_and_applies_fire_damage():
 
     result = await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
 
-    # Resonance 9 -> 6 (-3), persisted + session synced; HUD state event pushed.
     res_mut.update_player_resonance.assert_awaited_once_with("player_1", 6, conn=ANY)
     assert session.resonance.current == 6
     res_events.publish_resonance_changed.assert_awaited_once()
-    # 1d6 = 4 fire damage applied to the participant + persisted (dual HP write).
     hp_mut.update_player_hp.assert_awaited_once_with("player_1", 16, conn=ANY)
     assert session.combat_state.get_participant("player_1").hp_current == 16
-    # Once-per-encounter flag spent.
     assert session.party.primary.draethar_inner_fire_used is True
-    # Packet shape.
     assert result["resonance_reduced"] == 3
     assert result["fire_damage"] == 4
     assert result["hp_remaining"] == 16
@@ -175,9 +168,6 @@ async def test_hp_floors_at_zero():
     assert result["hp_remaining"] == 0
 
 
-# --- the zero-HP transition goes through the one door (story-026) ----------------
-
-
 async def test_burn_to_zero_falls_and_is_death_save_eligible():
     """Bug 16c5f8a0: the burn drove HP to 0 without knocking on _handle_hp_zero, so `is_fallen`
     stayed False and the Draethar was invisible to every consumer of that flag — un-downable AND
@@ -198,10 +188,7 @@ async def test_burn_to_zero_falls_and_is_death_save_eligible():
     assert p.is_fallen is True
     assert p.is_dead is False  # overkill 3 < hp_max 20 — a burn-out is not instant death
     assert SOUND_PLAYER_FALLEN in _sounds(room)
-    # AC 4: the HP-derived hot-line token and the flag report the same thing, and cannot diverge.
     assert "Varr(fallen)" in (format_combat_hot_line(session.combat_state) or "")
-    # The flag's consumers: the phase wrap owes them a death save, and the tool accepts them —
-    # named or not.
     assert combat_phase._wrap(session.combat_state).death_saves_due == ["player_1"]
     assert combat_death_save._resolve_faller(session.combat_state, None) is p
     assert combat_death_save._resolve_faller(session.combat_state, "player_1") is p
@@ -240,10 +227,8 @@ async def test_burn_to_zero_raises_a_stage2_hollowed_draethar():
     assert result["rose_hollowed"] is True
     assert result["hp_remaining"] == 10  # the echo's HP, not the player's 0
     assert SOUND_HOLLOW_RISE in _sounds(room)
-    # The rise suppresses both player-scoped writes, exactly as the attack path does.
     hp_mut.update_player_hp.assert_not_awaited()
     break_mod.break_concentration_on_damage.assert_not_awaited()
-    # The flipped type is what the phase engine reloads, so it has to be persisted.
     assert hp_mut.save_combat_state.await_args.args[1]["participants"][0]["type"] == "temporary_hollowed"
 
 
@@ -258,11 +243,7 @@ async def test_persists_combat_state_after_self_damage():
     await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
 
     hp_mut.save_combat_state.assert_awaited_once_with("c1", session.combat_state.to_dict(), conn=ANY)
-    # The persisted state carries the damaged participant HP (20 - 4 = 16), not the stale value.
     assert hp_mut.save_combat_state.await_args.args[1]["participants"][0]["hp_current"] == 16
-
-
-# --- concentration break on the self-damage (story-008) --------------------------
 
 
 def _break_mod(return_value):
@@ -272,7 +253,6 @@ def _break_mod(return_value):
 
 
 async def test_inner_fire_runs_concentration_break_on_self_damage():
-    # The 1d6 self-damage is routed through the concentration break-check, and any break is reported.
     ctx = _combat_ctx(resonance=9, hp_current=20)
     session = ctx.userdata
     session.concentration.spell_id = "arcane_fly"
@@ -297,7 +277,6 @@ async def test_inner_fire_runs_concentration_break_on_self_damage():
     assert args[0] is session
     assert args[1] == 4  # the 1d6 fire damage
     assert kwargs["incapacitated"] is False  # 20 - 4 = 16 HP remaining
-    # AC 3: the break resolves against the CASTER's own concentration (M18 story-004).
     assert kwargs["damaged_player_id"] == "player_1"
     assert result["concentration_broken"] == "arcane_fly"
 
@@ -334,7 +313,6 @@ async def test_inner_fire_persists_combat_state_after_concentration_condition_dr
 
 
 async def test_inner_fire_self_damage_to_zero_passes_incapacitated():
-    # Self-damage that drops the Draethar to 0 HP marks the break-check incapacitated.
     ctx = _combat_ctx(hp_current=3)
     mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(hp_current=3), roll_total=6)
     break_mod = _break_mod(None)
@@ -352,9 +330,6 @@ async def test_inner_fire_self_damage_to_zero_passes_incapacitated():
 
     _args, kwargs = break_mod.break_concentration_on_damage.call_args
     assert kwargs["incapacitated"] is True
-
-
-# --- rejections: ToolError before any write -------------------------------------
 
 
 async def test_non_draethar_rejected():
@@ -386,9 +361,6 @@ async def test_no_combat_rejected():
     queries.get_player.assert_not_awaited()  # combat gate fires before the player fetch
     res_mut.update_player_resonance.assert_not_awaited()
     hp_mut.update_player_hp.assert_not_awaited()
-
-
-# --- the seam: Inner Fire spent at a Beat-3 pause, against a real held blow (story-016 + -026) ---
 
 
 async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():

@@ -28,9 +28,6 @@ _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "npcs.json"
 
 _CANONICAL_DISPOSITIONS = {"hostile", "unfriendly", "neutral", "friendly", "trusted"}
 
-# The 6 NPCs whose off-ladder default_disposition was reconciled in story-004.
-# old -> new must yield identical filter_knowledge output (AC-4: gated knowledge
-# resolves unchanged). All sit below the friendly gate, so both yield free-only.
 _DISPOSITION_REMAP = {
     "elder_yanna": ("wary", "unfriendly"),
     "scholar_emris": ("cautious", "unfriendly"),
@@ -51,7 +48,6 @@ def _parsed() -> dict[str, dict]:
 
 def test_every_npc_parses_fail_loud():
     parsed = _parsed()
-    # 17 npcs since story-004 moved companion_kael out to companions.json (dedicated Companion).
     assert len(parsed) == 17
 
 
@@ -69,7 +65,6 @@ def test_every_npc_binds_a_role_archetype():
 
 
 def test_every_role_archetype_resolves_in_catalog():
-    # seed_role_archetypes autouse fixture has populated the catalog.
     for npc_id, npc in _parsed().items():
         archetype = get_role_archetype(npc["role_archetype"])
         assert archetype.id == npc["role_archetype"], f"{npc_id} -> unknown archetype"

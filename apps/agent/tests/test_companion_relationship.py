@@ -31,19 +31,16 @@ class TestEffectiveRank:
         assert effective_tier_rank(21, 0) == 5
 
     def test_affinity_nudges_one_band_at_threshold(self):
-        # session_count 6 -> floor 3; affinity 3 nudges to 4.
         assert effective_tier_rank(6, AFFINITY_PER_TIER) == 4
         assert effective_tier_rank(6, AFFINITY_PER_TIER - 1) == 3
 
     def test_never_below_floor(self):
-        # low session, high affinity -> still at least the floor, at most +1.
         assert effective_tier_rank(0, 100) == 2  # floor 1 + 1
 
     def test_capped_at_5(self):
         assert effective_tier_rank(21, 100) == 5  # floor 5, nudge can't exceed 5
 
     def test_nudge_is_single_band(self):
-        # affinity never adds more than one band regardless of magnitude.
         assert effective_tier_rank(3, 999) == 3  # floor 2 + 1
 
 
@@ -74,7 +71,6 @@ class TestApplyRelationshipChange:
 
 
 class TestUnlocksUpTo:
-    # Kael-shaped relationship_unlocks (story-001): only trusted/bonded/legendary have reveals.
     UNLOCKS = {
         "trusted": ["first hint of his past"],
         "bonded": ["full secret"],

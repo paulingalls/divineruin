@@ -384,8 +384,3 @@ class TestSpellTrainingStartWall:
         assert data["spell_id"] == "arcane_hold_person"
         assert data["program_id"] == "arcane_study"
         assert data["skill"] == "arcana"
-
-
-# Training-tool registration moved to DispatchAgent in story-011 (CityAgent
-# decomposition). The wiring is now pinned by tests/test_training_agent.py
-# (TestDispatchAgentRegistration + TestCityToolBudget).

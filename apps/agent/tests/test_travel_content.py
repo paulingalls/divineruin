@@ -18,8 +18,6 @@ _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 _LOCATIONS = _REPO_ROOT / "content" / "locations.json"
 _MIGRATION_055 = _REPO_ROOT / "scripts" / "migrations" / "055_travel_state.sql"
 
-# A location is travel-reachable (needs an explicit navigation terrain) when it is a wilderness
-# region or carries a road/travel tag. City/dungeon locations are not navigated and omit terrain.
 _TRAVEL_TAGS = {"road", "travel"}
 
 
@@ -36,11 +34,7 @@ def _travel_locations() -> list[dict]:
     return out
 
 
-# --- Terrain conformance (content vs the travel.NAVIGATION_DC SSOT) ---
-
-
 def test_travel_locations_exist():
-    # Guard the selector itself: if this ever empties, the conformance tests below pass vacuously.
     assert _travel_locations(), "no travel-reachable locations matched the selector"
 
 
@@ -70,9 +64,6 @@ def test_non_travel_locations_need_no_terrain():
     travel_ids = {loc.get("id") for loc in _travel_locations()}
     non_travel = [loc for loc in _load_locations() if loc.get("id") not in travel_ids]
     assert any("terrain" not in loc for loc in non_travel)
-
-
-# --- Migration 055 shape guard (follows the 051-053 idempotent jsonb_set pattern) ---
 
 
 def test_migration_055_exists():

@@ -21,7 +21,6 @@ class TestRegionTypeWarmLayer:
             location=city_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
         )
-        # §7: NPCs present are `address` affordances (gate sourced from the Stage region_type).
         assert "address:" in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
@@ -38,7 +37,6 @@ class TestRegionTypeWarmLayer:
             location=wild_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
         )
-        # Wilderness Stage: no commerce gate, so NPCs present do NOT surface as address affordances.
         assert "address:" not in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
@@ -55,7 +53,6 @@ class TestRegionTypeWarmLayer:
             location=dungeon_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
         )
-        # Dungeon Stage: no commerce gate, so NPCs present do NOT surface as address affordances.
         assert "address:" not in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})

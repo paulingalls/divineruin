@@ -94,7 +94,6 @@ class _FakeCompleted:
 def test_ensure_db_up_starts_compose_when_unreachable(monkeypatch):
     calls: list[tuple[str, ...]] = []
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    # Port unreachable -> start compose; readiness gated on pg_isready, not TCP.
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
     monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
 
@@ -112,7 +111,6 @@ def test_ensure_db_up_raises_when_compose_up_fails(monkeypatch):
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
 
     def fake_compose_non_conflict(*args):
-        # Generic (non-conflict) failure — not retried.
         result = _FakeCompleted(returncode=1)
         result.stderr = "image pull failed"
         return result
@@ -150,7 +148,6 @@ def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
         assert "docker compose up" in str(exc)
     else:
         raise AssertionError("expected RuntimeError when `docker compose up` fails")
-    # Exactly one `up` — no `down`, no retry.
     assert calls == [("up", "-d", "--remove-orphans")]
 
 

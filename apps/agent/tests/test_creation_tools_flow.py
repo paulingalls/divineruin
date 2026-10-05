@@ -162,9 +162,6 @@ class TestFinalizeCharacter:
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_starting_hp_from_chassis(self, mock_create_player, mock_get_payload):
-        # story-004: a finalized character's starting HP derives end-to-end from
-        # the chassis (hp_base), not the legacy ClassData.hit_die. Warrior diverges
-        # (hp_base 12 vs the old hit_die 10), so this would fail under the old path.
         mock_get_payload.return_value = {
             "character": {},
             "location": None,
@@ -266,39 +263,30 @@ class TestFullCreationFlow:
         cs = CreationState()
         ctx = _make_context(cs)
 
-        # Push race cards
         result = json.loads(await _push_cards(ctx, category="race"))
         assert result["count"] == 6
 
-        # Choose race
         result = json.loads(await _set_choice(ctx, category="race", value="elari"))
         assert result["confirmed"] == "race"
 
-        # Push class cards
         result = json.loads(await _push_cards(ctx, category="class"))
         assert result["count"] == len(CLASSES)
 
-        # Choose class
         result = json.loads(await _set_choice(ctx, category="class", value="mage"))
         assert result["confirmed"] == "class"
 
-        # Push deity cards
         result = json.loads(await _push_cards(ctx, category="deity"))
         assert result["count"] == len(DEITIES)
 
-        # Choose deity
         result = json.loads(await _set_choice(ctx, category="deity", value="veythar"))
         assert result["confirmed"] == "deity"
 
-        # Set name
         result = json.loads(await _set_choice(ctx, category="name", value="Seraphina"))
         assert cs.name == "Seraphina"
 
-        # Set backstory
         result = json.loads(await _set_choice(ctx, category="backstory", value="A scholar of the diaspora."))
         assert cs.backstory == "A scholar of the diaspora."
 
-        # Finalize
         agent, json_str = await _finalize(ctx)
         result = json.loads(json_str)
         from onboarding_agent import OnboardingAgent

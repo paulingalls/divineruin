@@ -39,7 +39,6 @@ class TestWriteWard:
         await db_mutations_veil_ward.write_ward(_LOCATION, "cleric", expires, dismissible=True, conn=conn)
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO veil_wards" in sql
-        # ward_id is never supplied — the DB default (gen_random_uuid) generates it.
         assert "ward_id" not in sql
         assert params == ["location", "thornwatch_keep", "cleric", expires, True]
 
@@ -75,7 +74,6 @@ class TestReadActiveWard:
         sql, *params = conn.fetchrow.call_args.args
         assert "FROM veil_wards" in sql
         assert "scope_kind = $1" in sql and "scope_id = $2" in sql
-        # Lazy expiry: NULL never expires, otherwise compare against NOW(). Nothing sweeps.
         assert "expires_at IS NULL OR expires_at > NOW()" in sql
         assert params == ["location", "thornwatch_keep"]
 

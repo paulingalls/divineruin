@@ -106,7 +106,6 @@ class TestAbilityLockOrder:
     async def test_self_cast_locks_only_the_caster(self):
         _result, queries = await _activate(caster="alice", party=[], ability_id="bard_inspire", target_id=None)
         assert _first_lock_ids(queries) == ["alice"]
-        # Only the caster union lock — no non-caster target batch inside produce_ooc_condition.
         assert queries.get_players_for_update.call_count == 1
 
     @pytest.mark.asyncio
@@ -158,11 +157,6 @@ class TestAbilityLockOrder:
         queries.get_players_for_update.assert_not_called()
         persistence.update_player_resources.assert_not_called()
         assert not reaction_spend.is_spent(state.reactions_available["player_1"])
-
-
-# --- Spell path (scope expansion, decision story-008-scope-both-paths): _resolve_cast's OOC entry
-# imposes the SAME global id-order union lock, so spell-vs-spell and ability-vs-spell cross-player
-# casts acquire the identical order as ability-vs-ability. ---
 
 
 def _bless_spell() -> Spell:

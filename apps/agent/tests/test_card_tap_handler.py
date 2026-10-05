@@ -20,10 +20,6 @@ from creation_deities import DEITIES
 from creation_races import RACES
 from session_data import CreationState, SessionData
 
-# ---------------------------------------------------------------------------
-# build_hint_instruction — pure function tests
-# ---------------------------------------------------------------------------
-
 
 class TestBuildHintInstruction:
     @pytest.mark.parametrize("race_id", list(RACES.keys()))
@@ -65,11 +61,6 @@ class TestBuildHintInstruction:
 
     def test_invalid_category_returns_none(self):
         assert build_hint_instruction("warrior", "weapon") is None
-
-
-# ---------------------------------------------------------------------------
-# CardTapHandler — integration tests
-# ---------------------------------------------------------------------------
 
 
 # ``identity`` defaults to the same id _make_handler/_make_spec_handler give SessionData, so
@@ -156,7 +147,6 @@ class TestCardTapHandler:
         handler._on_data_received(pkt)
         assert session.generate_reply.call_count == 1
 
-        # Second tap within cooldown window
         handler._on_data_received(pkt)
         assert session.generate_reply.call_count == 1  # still 1
 
@@ -167,7 +157,6 @@ class TestCardTapHandler:
         handler._on_data_received(pkt)
         assert session.generate_reply.call_count == 1
 
-        # Simulate cooldown expiry
         handler._last_hint_time = time.time() - HINT_COOLDOWN_S - 1
         handler._on_data_received(pkt)
         assert session.generate_reply.call_count == 2
@@ -185,11 +174,6 @@ class TestCardTapHandler:
         room_mock.off.assert_called_once_with("data_received", handler._on_data_received)
 
 
-# ---------------------------------------------------------------------------
-# build_specialization_instruction — pure function tests
-# ---------------------------------------------------------------------------
-
-
 class TestBuildSpecializationInstruction:
     def test_includes_both_ids(self):
         result = build_specialization_instruction("warrior_identity", "warrior_battle_master")
@@ -200,10 +184,6 @@ class TestBuildSpecializationInstruction:
         result = build_specialization_instruction("warrior_identity", "warrior_berserker")
         assert "select" in result
 
-
-# ---------------------------------------------------------------------------
-# SpecializationTapHandler — gameplay L5 tap consumer
-# ---------------------------------------------------------------------------
 
 SPEC_TAP = {
     "type": "specialization_choice_tap",
@@ -240,7 +220,6 @@ class TestSpecializationTapHandler:
         handler._on_data_received(_make_data_packet(SPEC_TAP))
         kwargs = session.generate_reply.call_args[1]
         assert kwargs.get("tool_choice") != "none"
-        # ...and the instruction must actually direct the tool call, not merely leave it allowed.
         assert "select" in kwargs["instructions"]
 
     def test_ignores_wrong_topic(self):
@@ -283,8 +262,6 @@ class TestSpecializationTapHandler:
         session.generate_reply.assert_called_once()
 
     def test_ignores_missing_milestone_id(self):
-        # select needs the choice_id (milestone_id); a tap without it is dropped (the
-        # client echoes the milestone_id it received in SPECIALIZATION_CHOICE).
         handler, session = _make_spec_handler()
         handler._on_data_received(
             _make_data_packet({"type": "specialization_choice_tap", "specialization_id": "warrior_battle_master"})
@@ -292,8 +269,6 @@ class TestSpecializationTapHandler:
         session.generate_reply.assert_not_called()
 
     def test_ignores_malformed_id(self):
-        # Defense-in-depth (debt 9a6b6e5dc762): the untrusted ids are validated before
-        # interpolation into the LLM instruction — a malformed id is dropped, not voiced.
         handler, session = _make_spec_handler()
         handler._on_data_received(
             _make_data_packet(

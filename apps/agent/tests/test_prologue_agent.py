@@ -54,10 +54,8 @@ class TestPrologueAgentOnEnter:
         ):
             await agent.on_enter()
 
-            # Verify prologue was played
             mock_play.assert_called_once_with(mock_session, mock_session.userdata.room)
 
-            # Verify handoff to CreationAgent
             mock_session.update_agent.assert_called_once()
             from creation_agent import CreationAgent
 

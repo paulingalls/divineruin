@@ -65,13 +65,10 @@ class TestCompanionCombatProfile:
         assert comp.level == scaled.level
         assert comp.attributes == scaled.attributes
         assert comp.action_pool == companion_attacks_to_action_pool(profile)
-        # Sourced from companions.json — the legacy npcs.json get_npc path is never consulted.
         content.get_npc.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_companion_carries_save_proficiencies_from_profile(self):
-        # M13 close-fix: an enemy-inflicted save-based condition must honor the companion's save
-        # proficiencies too (symmetric with the player), so they ride onto the participant.
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
         profile = get_companion_profile("companion_kael")
         assert comp.saving_throw_proficiencies == list(profile.save_proficiencies)
@@ -80,7 +77,6 @@ class TestCompanionCombatProfile:
     async def test_action_pool_is_mechanical_dice_notation(self):
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
         longsword = next(a for a in comp.action_pool if a["name"] == "Longsword")
-        # Narrative "1d8+STR" became plain dice the resolver can roll; attributes supply the mod.
         assert longsword["damage"] == "1d8"
         assert "STR" not in longsword["damage"]
 
@@ -139,7 +135,6 @@ class TestCompanionCombatProfile:
 
     @pytest.mark.asyncio
     async def test_combat_stat_block_independent_of_relationship(self):
-        # Identical companions differing ONLY in the relationship inputs (session_count/affinity).
         early = CompanionState(id="companion_kael", name="Kael", session_count=0, affinity=0)
         bonded = CompanionState(id="companion_kael", name="Kael", session_count=50, affinity=100)
         comp_early, _ = await _run_combat_with_companion(early)

@@ -178,17 +178,14 @@ class TestQueryInfoE2E:
     async def test_recipe_route_returns_valid_json(self, mock_context, dev_db_pool):
         import recipes
 
-        # Get first recipe from seeded data
         recipe_list = await recipes.list_recipes()
         if not recipe_list:
             pytest.skip("No recipes in test DB")
 
         recipe_id = recipe_list[0]["id"]
 
-        # Call query_info with real _impl (no mocks)
         result = await _query_info_impl(mock_context, kind="recipe", target_id=recipe_id)
 
-        # Verify JSON shape and contents
         parsed = json.loads(result)
         assert parsed["recipe_id"] == recipe_id
         assert "name" in parsed
@@ -216,10 +213,8 @@ class TestQueryInfoE2E:
 
     @pytest.mark.asyncio
     async def test_workspaces_route_returns_valid_json(self, mock_context, dev_db_pool):
-        # Call query_info with real _impl (no mocks)
         result = await _query_info_impl(mock_context, kind="workspaces")
 
-        # Verify JSON shape
         parsed = json.loads(result)
         assert "accessible" in parsed
         assert "rentable" in parsed

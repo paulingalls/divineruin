@@ -219,7 +219,6 @@ class TestResolveCompanionErrand:
                 now_fn=_resolve_now,
                 sleep_fn=sleep_fn,
             )
-        # Re-read in a fresh transaction every attempt; sleep between attempts only.
         assert activity_mod.get_activity.await_count == _RESOLVE_POLL_ATTEMPTS
         assert sleep_fn.await_count == _RESOLVE_POLL_ATTEMPTS - 1
         resolve_fn.assert_not_awaited()
@@ -237,7 +236,6 @@ class TestResolveCompanionErrand:
             "decision_options": [{"id": "thank", "label": "Thank them"}],
         }
         activity_mod = MagicMock()
-        # First read: worker still resolving (no outcome). Second read: outcome landed.
         activity_mod.get_activity = AsyncMock(
             side_effect=[_resolving_activity(), _resolving_activity(outcome=worker_outcome)]
         )

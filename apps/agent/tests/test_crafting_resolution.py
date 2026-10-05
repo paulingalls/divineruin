@@ -12,7 +12,6 @@ PLAYER = {
     "proficiencies": ["arcana"],
 }
 
-# arcana mod = +3; dc=11 -> margin = d20 - 8, so a d20 of 20 lands Exceptional.
 PARAMETERS = {
     "recipe_id": "iron_sword",
     "result_item_id": "iron_sword",

@@ -178,7 +178,6 @@ class TestCrossLanguageParity:
             base = durability.calculate_repair_cost(rarity, cost_table=costs)
             return ws.compute_rental_price(base, disposition, multipliers=mults).price_sp
 
-        # Mirrors repair.test.ts: neutral=flat, friendly 0.8x, trusted 0.6x.
         assert charge_sp("common", "neutral") == 2
         assert charge_sp("rare", "neutral") == 50
         assert charge_sp("legendary", "neutral") == 200

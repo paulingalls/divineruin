@@ -10,8 +10,6 @@ import event_types as E
 from asset_utils import compute_item_image_url
 from session_data import SessionData
 
-# --- compute_item_image_url ---
-
 
 class TestComputeItemImageUrl:
     def test_returns_none_without_art_template(self):
@@ -92,9 +90,6 @@ class TestComputeItemImageUrl:
             },
         }
         assert compute_item_image_url(item1) != compute_item_image_url(item2)
-
-
-# --- record_story_moment ---
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None, session_id="session_abc"):
@@ -201,9 +196,6 @@ class TestRecordStoryMoment:
         ctx = _make_context()
         with pytest.raises(ToolError, match="exceeds maximum length"):
             await record_story_moment._func(ctx, moment_key="combat", description="x" * 600)
-
-
-# --- transact (gain) sends full inventory + item_acquired ---
 
 
 def _make_mock_room():

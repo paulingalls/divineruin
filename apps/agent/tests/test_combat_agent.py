@@ -26,10 +26,6 @@ class TestCombatAgentConfig:
         from query_tools import query_info
         from spell_info_tools import get_spell_info
 
-        # The phase-loop verbs (declare_phase/resolve_phase) replaced the old per-actor
-        # resolve_enemy_turn + request_attack (story-003, unified packet resolution).
-        # Phase 5 (story-002, M25) folded cast_spell/request_ability_activation/
-        # activate_veil_ward/inner_fire into the single polymorphic activate verb.
         expected = {
             declare_phase,
             resolve_phase,
@@ -44,8 +40,6 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_activate_and_get_spell_info_registered(self):
-        # story-004 M3: the cast path is callable from the combat agent. Phase 5
-        # (story-002) folded cast_spell into activate.
         from activate_tools import activate
         from spell_info_tools import get_spell_info
 
@@ -53,8 +47,6 @@ class TestCombatAgentConfig:
         assert get_spell_info in COMBAT_AGENT_TOOLS
 
     def test_demoted_capability_wrappers_not_registered(self):
-        # Phase 5 (story-002): the four folded wrappers are no longer @function_tool
-        # entries at all, so checking the registered tool names is sufficient.
         registered_names = {getattr(t, "__name__", None) for t in COMBAT_AGENT_TOOLS}
         for name in (
             "cast_spell",
@@ -128,7 +120,6 @@ class TestCombatBeatContract:
         assert "defend" in low[start : start + 200], "hesitation instruction does not fall back to defend"
 
     def test_resolution_is_silent_before_narration(self):
-        # Beat 2 resolves silently; the Beat-3 narration instruction comes after.
         p = COMBAT_SYSTEM_PROMPT.lower()
         assert "silent" in p
         assert p.index("silent") < p.index("now narrate")
@@ -145,10 +136,8 @@ class TestCombatBeatContract:
         assert "window_id" in low and "never invent one" in low
         assert "next.waiting_on.action" in low
         assert low.index("next.waiting_on.action") < low.index("the pause is the mechanic")
-        # The pause is the mechanic, and both stages are named so the DM knows what it may voice.
         assert "the pause is the mechanic" in low
         assert "pre_roll" in low and "post_roll" in low
-        # Reading `next` is taught before Beat 3 needs it.
         assert low.index('every resolve_phase result carries a "next" block') < low.index("next.waiting_on")
 
     def test_next_verbs_is_taught_as_the_advance_verb_not_a_whitelist(self):
@@ -162,7 +151,6 @@ class TestCombatBeatContract:
         assert "which verb advances the beat" in low
         assert "still call request_death_save when death_saves_due names someone" in low
         assert "only the verbs in next.verbs are legal" not in low, "the whitelist reading is back"
-        # Beat 4 still asks for both verbs `next.verbs` omits — that is what makes the above true.
         assert "call request_death_save" in low
         assert "call consume_legendary_action" in low
 
@@ -186,8 +174,6 @@ class TestCombatBeatContract:
         assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_player_action_must_be_equipped_weapon_name(self):
-        # Concern 4fa8d5aedce6: the player's Attack action is the exact name of an equipped
-        # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
         attack_kind = low[low.index("attack — action is") : low.index("ability — action is")]
         assert "exact name" in attack_kind and "equipped weapon" in attack_kind
@@ -197,10 +183,6 @@ class TestCombatBeatContract:
         assert "start_combat's participants" not in low and "from their action_pool" not in low
 
     def test_in_combat_ability_is_a_declaration_not_activate(self):
-        # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
-        # a free cast via activate is the OUT-OF-COMBAT entry only (story-002 folded cast_spell into
-        # activate). The prompt must teach the new shape so the DM routes casting through the phase
-        # loop (Focus/Resonance accounted) instead of a free activate cast.
         prompt = COMBAT_SYSTEM_PROMPT
         assert "ability — action is the EXACT id of a spell" in prompt
         assert "activate" in prompt
@@ -274,9 +256,6 @@ class TestCombatBeatContract:
         assert "not a report" in teaching
 
     def test_combat_only_capabilities_still_use_activate(self):
-        # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
-        # enter through activate (the reserved tokens), so the blanket "never activate in combat"
-        # rule would silently forbid them mid-fight. The prompt must carve out the exception.
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "draethar_inner_fire" in low
         assert "veil_ward" in low

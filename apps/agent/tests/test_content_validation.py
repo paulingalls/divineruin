@@ -113,9 +113,6 @@ class TestContentCrossReferences:
         assert not is_valid_disposition_target("companion", npc_ids, set())
 
     def test_companions_are_not_npcs_json_rows(self):
-        # story-004: companions are a dedicated entity (companions.json), never npcs.json rows.
-        # All four, not just Kael: activity_templates' errand personas stay inlined precisely
-        # because _npc_persona has no row to derive any of them from.
         npc_ids, companion_ids = _load_ids("npcs.json"), _load_ids("companions.json")
         assert companion_ids
         assert not (companion_ids & npc_ids)
@@ -133,8 +130,6 @@ class TestContentCrossReferences:
                 )
 
     def test_faction_leaders_resolve_to_real_npc_or_null(self):
-        # A faction's leader is either null (leader not modeled as an NPC yet) or a real
-        # npcs.json id — no dangling references (story-005 close-review concern 34d6eb85a088).
         npc_ids = _load_ids("npcs.json")
         for faction in _load_json("factions.json"):
             leader = faction.get("leader")
@@ -157,9 +152,6 @@ class TestContentIntegrity:
             assert len(enc.get("enemies", [])) > 0, f"Encounter '{enc['id']}' has no enemies"
 
     def test_enemy_resistance_tags_are_canonical(self):
-        # M15 story-002: authored Tier-3 de-escalation resistance_tags must be canonical
-        # social_resolution.RESISTANCE_TAGS — combat_init fails loud on a bad tag, and this pins
-        # the content so drift is caught in the fast lane, not only at combat entry.
         from social_resolution import RESISTANCE_TAGS
 
         for enc in _load_json("encounter_templates.json"):
@@ -219,8 +211,6 @@ class TestContentIntegrity:
             )
 
 
-# Phase 6 / M6.2 (story-005): the 4 humanoid-faction hostile encounters + the Ashmark Patrol
-# reputation-gated stance.
 _ENEMY_REQUIRED_FIELDS = (
     "id",
     "name",
@@ -291,8 +281,6 @@ class TestM62HostileEncounters:
         assert resolve_encounter_stance(gate, -10, tiers) == "hostile"
 
 
-# M4.7 (story-002): role-scaled loot + currency. Mirrors scripts/seed_content.py's strict
-# load-time validation so a bad reference fails the fast lane, not just at seed time.
 _VALID_ENEMY_CATEGORIES = {
     "humanoid",
     "beast",
@@ -362,9 +350,6 @@ class TestLootAndCurrencyContent:
                 _assert_loot_drop_owner(table, drop, item_ids, material_ids)
 
     def test_material_sell_value_below_craft_value(self):
-        # D78: selling a raw material is always worth less than crafting with it — the crafting
-        # loop must stay the more rewarding path. Every material that pins a craft_value must have
-        # value_base (the merchant sell floor) strictly below it.
         materials = [i for i in _load_json("items.json") if "craft_value" in i]
         assert materials, "expected at least one material item carrying a craft_value"
         for mat in materials:
@@ -374,8 +359,6 @@ class TestLootAndCurrencyContent:
             )
 
 
-# M4.8 (story-015): gathering node + resource_table refs. Mirrors scripts/seed_content.py's strict
-# load-time validation so a bad gathering reference fails the fast lane, not just at seed time.
 class TestGatheringContent:
     def test_gathering_node_location_ids_resolve(self):
         location_ids = _load_ids("locations.json")
@@ -401,8 +384,6 @@ class TestGatheringContent:
                     )
 
 
-# M13 (sprint-030 story-001): enemy hostile-condition content. Mirrors combat_init's fail-loud
-# guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
 _HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned", "prone", "paralyzed"})
 
 

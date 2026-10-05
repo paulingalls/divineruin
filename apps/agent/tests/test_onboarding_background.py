@@ -109,11 +109,9 @@ class TestCheckNudge:
             onboarding_beat=4,
             last_player_speech=now - 60,
         )
-        # First nudge
         await bg._check_nudge()
         assert bg._hint_index == 1
 
-        # Reset timing for second nudge
         bg._last_hint_time = now - 60
         await bg._check_nudge()
         assert bg._hint_index == 2
@@ -128,11 +126,9 @@ class TestCheckNudge:
             onboarding_beat=4,
             last_player_speech=now - 60,
         )
-        # Deliver first nudge for beat 4
         await bg._check_nudge()
         assert bg._hint_index == 1
 
-        # Beat changes to 5
         sd.onboarding_beat = 5
         bg._last_hint_time = now - 60
         await bg._check_nudge()

@@ -20,7 +20,6 @@ import player_session
 
 class TestHydratePlayerSession:
     async def test_increments_session_count_via_atomic_update_returning(self):
-        # Single statement: read (COALESCE default 0), increment, persist, and return — race-safe.
         conn = AsyncMock()
         conn.fetchrow.return_value = {"session_count": 1}
         count = await player_session.hydrate_player_session("p1", conn=conn)
@@ -36,7 +35,6 @@ class TestHydratePlayerSession:
         assert count == 1
 
     async def test_returns_the_db_computed_count_at_n(self):
-        # The function returns the DB's computed count, not a Python-side guess.
         conn = AsyncMock()
         conn.fetchrow.return_value = {"session_count": 6}
         count = await player_session.hydrate_player_session("p1", conn=conn)
@@ -50,15 +48,12 @@ class TestHydratePlayerSession:
         assert "{resonance" not in sql and "{hp" not in sql and "{focus" not in sql
 
     async def test_fails_loud_when_player_row_missing(self):
-        # No row matched the player_id (RETURNING yields nothing) -> ValueError, never a silent 0/1.
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         with pytest.raises(ValueError):
             await player_session.hydrate_player_session("ghost", conn=conn)
 
     async def test_falls_back_to_shared_pool_when_conn_omitted(self):
-        # The caller (story-004 session-init) may omit conn -> acquire the shared pool via
-        # db.get_pool(), the same `conn or await db.get_pool()` idiom as db_mutations_resonance.
         pool = AsyncMock()
         pool.fetchrow.return_value = {"session_count": 1}
         with patch.object(player_session.db, "get_pool", AsyncMock(return_value=pool)):

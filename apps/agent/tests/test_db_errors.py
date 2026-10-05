@@ -180,7 +180,6 @@ class TestDbToolDecorator:
 
         @db_tool
         async def buggy_tool():
-            # This is a programming error, not a database error
             raise KeyError("Oops")
 
         with pytest.raises(KeyError):

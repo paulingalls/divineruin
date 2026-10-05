@@ -5,8 +5,6 @@ from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from system_prompts import build_system_prompt
 from warm_prompts import build_warm_layer
 
-# A minimal Stage. region_type is injected per-test so the register is provably
-# sourced from the location dict, not a function parameter.
 BASE_LOCATION = {
     "id": "test_loc",
     "name": "Test Location",
@@ -45,11 +43,9 @@ class TestSystemPromptRegionAgnostic:
     to the warm-layer Stage register, so the cached static layer survives region moves."""
 
     def test_no_region_type_param(self):
-        # A region-agnostic function must not advertise a region argument.
         assert "region_type" not in inspect.signature(build_system_prompt).parameters
 
     def test_byte_identical_for_same_location(self):
-        # No region input can vary the prompt — there is no region branch left.
         assert build_system_prompt("loc") == build_system_prompt("loc")
 
     def test_omits_region_prose(self):

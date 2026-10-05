@@ -337,14 +337,6 @@ class TestToolRegistration:
         assert not is_raw_function_tool(resolve_activity)
 
 
-# --- AC4, against real SQL -----------------------------------------------------
-#
-# begin_activity(kind='training') must produce the same training_activities row the pre-fold
-# initiate_training_cycle wrapper did. Drives the real training_tools._initiate_training_cycle_impl
-# (no seam overrides) against the shared dev DB, unique player id + cleanup (the _db_lifecycle /
-# dev_db_pool pattern).
-
-
 class TestBeginTrainingAgainstRealSql:
     async def _seed_player(self, pool, player_id: str) -> None:
         await pool.execute(
@@ -379,9 +371,6 @@ class TestBeginTrainingAgainstRealSql:
 
     @pytest.mark.usefixtures("dev_db_pool")
     async def test_begin_activity_training_matches_direct_initiate_training_cycle_call(self):
-        # The router is a pass-through: driving it must persist the same row the pre-fold wrapper
-        # (a direct _initiate_training_cycle_impl call) did. Run both against separate players and
-        # assert the persisted rows and returns are equivalent -- this is what proves the fold.
         pool = await db.get_pool()
         routed_player = f"test_player_{uuid.uuid4().hex}"
         direct_player = f"test_player_{uuid.uuid4().hex}"

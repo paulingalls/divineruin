@@ -198,7 +198,6 @@ class TestUpdateActivity:
         with patch("db.get_pool", return_value=mock_pool):
             await db_mutations.update_activity("act_1", {"status": "resolved", "outcome": {"tier": "success"}})
 
-        # Single merged query instead of N separate calls
         mock_pool.execute.assert_awaited_once()
         call_args = mock_pool.execute.call_args[0]
         merged = json.loads(call_args[2])
@@ -212,7 +211,3 @@ class TestUpdateActivity:
 
         await db_mutations.update_activity("act_1", {"status": "resolved"}, conn=mock_conn)
         mock_conn.execute.assert_awaited_once()
-
-
-# count_active_by_slot tests live in tests/test_db_activity_queries.py (dedicated
-# home for slot accounting + the TS-twin SQL parity guards).

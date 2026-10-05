@@ -108,7 +108,6 @@ class TestCombatStartLoad:
 
     @pytest.mark.asyncio
     async def test_iron_constitution_clamps_loaded_exhausted_to_three(self):
-        # AC3: a stored Exhausted at 5 stacks loads clamped to 3 for an Iron Constitution character.
         stored = [{"type": "exhausted", "duration": None, "source": "march", "stacks": 5}]
         iron_player = _player(stored_conditions=stored, skill_tiers={"endurance": "master"})
         player_part = await _run_start(iron_player)
@@ -137,9 +136,6 @@ class TestCombatStartE2E:
         stored = conditions.apply_condition([], "exhausted", source="forced_march")  # 1 stack, -1
         player_part = await _run_start(_player(stored_conditions=stored))
 
-        # The in-combat check path builds player_data from the participant's conditions
-        # (combat_turn). Resolve a check both with and without the loaded conditions: the
-        # Exhausted -1/stack penalty must land on the modifier.
         baseline = resolve_skill_check(
             {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False, hearing_only=False
         )

@@ -51,7 +51,6 @@ def _mutations(inserted=True):
     return m
 
 
-# Slot caps as recipe_slots.get_recipe_slots returns them (DB-loaded, migration 019).
 SLOTS = {
     "untrained": {"max_recipe_tier": "basic", "known_recipe_slots": 3},
     "trained": {"max_recipe_tier": "trained", "known_recipe_slots": 8},
@@ -85,10 +84,8 @@ class TestLearnRecipe:
                 slots_mod=_slots(),
             )
         )
-        # Player row locked FOR UPDATE on the txn conn (serializes per-player learns).
         assert queries.get_player.await_args.kwargs.get("for_update") is True
         assert queries.get_player.await_args.kwargs.get("conn") is conn
-        # Write threaded through the same conn, with the supplied learned_via.
         add_kwargs = mutations.add_player_known_recipe.await_args
         assert add_kwargs.args[:3] == ("player_1", "iron_sword", "npc_teaching")
         assert add_kwargs.kwargs.get("conn") is conn
@@ -163,7 +160,6 @@ class TestLearnRecipe:
         ctx = make_context()
         db_mod, _ = make_db_mod()
         mutations = _mutations()
-        # trained cap is 8; known=8 -> full.
         with pytest.raises(ToolError, match="slots full"):
             await _learn_recipe_impl(
                 ctx,
@@ -181,7 +177,6 @@ class TestLearnRecipe:
     async def test_recipe_tier_above_crafting_tier_raises(self):
         ctx = make_context()
         db_mod, _ = make_db_mod()
-        # untrained can only learn 'basic'; iron_sword is 'trained'.
         with pytest.raises(ToolError, match="too advanced"):
             await _learn_recipe_impl(
                 ctx,
@@ -253,7 +248,6 @@ class TestLearn:
                 slots_mod=_slots(),
             )
         )
-        # Delegates to the recipe sub-path: same write + JSON as _learn_recipe_impl.
         assert result["learned"] == "iron_sword"
         assert result["learned_via"] == "npc_teaching"
         add_kwargs = mutations.add_player_known_recipe.await_args
@@ -262,8 +256,6 @@ class TestLearn:
 
     @pytest.mark.asyncio
     async def test_variant_kind_delegates_to_variant_path(self, monkeypatch):
-        # kind="variant" (M9) routes to mentor_variant_tools._learn_variant_impl,
-        # which INITIATES mentor training rather than acquiring instantly.
         ctx = make_context()
         import mentor_variant_tools
 

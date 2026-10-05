@@ -97,7 +97,6 @@ class TestParse:
 
 class TestAccessors:
     def test_get_role_archetype_returns_loaded(self):
-        # The autouse seed_role_archetypes fixture (conftest) populated the catalog.
         assert is_loaded()
         guard = get_role_archetype("guard")
         assert guard.id == "guard"
@@ -114,7 +113,6 @@ class TestAccessors:
         assert get_role_archetype("guard").id == "guard"
         with pytest.raises(ValueError):
             get_role_archetype("blacksmith")
-        # restore the full catalog for any later test in this module
         set_role_archetypes({e["id"]: parse_role_archetype_row(e["id"], e) for e in _RAW})
 
     def test_module_globals_present(self):
@@ -138,7 +136,6 @@ class TestCreateNpcFromArchetype:
             npc = create_npc_from_archetype(rid)
             cs = npc["combat_stats"]
             assert isinstance(cs, dict)  # plain dict, not a dataclass
-            # combat_init.py-style consumption must work.
             assert isinstance(cs.get("hp"), int)
             assert isinstance(cs.get("ac"), int)
             assert isinstance(cs.get("attributes"), dict)
@@ -149,7 +146,6 @@ class TestCreateNpcFromArchetype:
             assert create_npc_from_archetype(rid)["combat_stats"] is None
 
     def test_combat_variants_propagated_when_present(self):
-        # guard carries an Elite Guard combat_variant; it must survive into the stat block.
         npc = create_npc_from_archetype("guard")
         assert isinstance(npc["combat_variants"], list)
         assert any(v["name"] == "Elite Guard" for v in npc["combat_variants"])
@@ -165,8 +161,6 @@ class TestCreateNpcFromArchetype:
         assert npc["role_archetype"] == "blacksmith"  # archetype link still recorded
 
     def test_tuple_carrying_override_normalizes_to_list(self):
-        # _jsonable must run AFTER the override merge: a tuple supplied by an override
-        # is normalized to a list, honoring the docstring's normalize-to-lists promise.
         npc = create_npc_from_archetype("guard", {"knowledge_domains": ("a", "b")})
         assert npc["knowledge_domains"] == ["a", "b"]
         assert isinstance(npc["knowledge_domains"], list)
@@ -197,7 +191,6 @@ class TestShiftDisposition:
             shift_disposition("wary", 1)
 
     def test_off_ladder_raise_is_the_default(self):
-        # The default contract (trusted inputs) is fail-loud — no keyword needed.
         with pytest.raises(ValueError):
             shift_disposition("wary", 1, off_ladder="raise")
 
@@ -217,12 +210,10 @@ class TestShiftDispositionNeutralMode:
         assert shift_disposition("hostile", -1, off_ladder="neutral") == "hostile"
 
     def test_unknown_base_defaults_to_neutral(self):
-        # retired aliases ("wary"/"cautious") and any unknown value all rank as neutral.
         assert shift_disposition("unknown", 1, off_ladder="neutral") == "friendly"
         assert shift_disposition("cautious", 1, off_ladder="neutral") == "friendly"
 
     def test_case_insensitive(self):
-        # live DB values are lowercased before ranking, mirroring _disposition_rank.
         assert shift_disposition("Neutral", 1, off_ladder="neutral") == "friendly"
 
 
@@ -254,8 +245,6 @@ class TestVoiceIds:
             parse_role_archetype_row("guard", bad)
 
     def test_stat_block_carries_the_role_voice_and_an_override_beats_it(self):
-        # The instantiated NPC needs the tag too, not just the roster entry — this stat block
-        # is what becomes a persisted NPC. A named NPC keeps its authored voice.
         assert create_npc_from_archetype("guard")["voice_id"] == "ROLE_GUARD"
         override = create_npc_from_archetype("blacksmith", {"voice_id": "GRIMJAW_BLACKSMITH"})
         assert override["voice_id"] == "GRIMJAW_BLACKSMITH"

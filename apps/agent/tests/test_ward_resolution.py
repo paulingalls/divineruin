@@ -123,7 +123,6 @@ class TestResolveScopeWardWithScope:
     producer that re-derived them would re-derive resolution — the duplication this module prevents."""
 
     async def test_unwarded_names_no_scope(self):
-        # (None, None): an unwarded party has no scope to name. Never a bare scope with no ward.
         ward, scope = await ward_resolution.resolve_scope_ward_with_scope(
             _session(), conn=MagicMock(), ward_mutations_mod=_ward_mod(None)
         )
@@ -145,7 +144,6 @@ class TestResolveScopeWardWithScope:
         assert scope == WardScope.location("thornwatch_keep")
 
     async def test_encounter_scope_wins_over_a_covering_location(self):
-        # Effects don't stack; the first covering scope wins, and it must NAME itself.
         ward, scope = await ward_resolution.resolve_scope_ward_with_scope(
             _session(encounter_ward=_ENCOUNTER_WARD),
             conn=MagicMock(),
@@ -156,14 +154,12 @@ class TestResolveScopeWardWithScope:
         assert scope.kind == "encounter"
 
     async def test_location_id_override_names_the_destination(self):
-        # Arrival resolves the DESTINATION before session.location_id is updated.
         _ward, scope = await ward_resolution.resolve_scope_ward_with_scope(
             _session(), conn=MagicMock(), location_id="emberfall", ward_mutations_mod=_ward_mod(_LOCATION_WARD)
         )
         assert scope == WardScope.location("emberfall")
 
     async def test_resolve_scope_ward_delegates_and_drops_the_scope(self):
-        # The covering-scope OR must exist in exactly one place.
         mod = _ward_mod(_LOCATION_WARD)
         assert await ward_resolution.resolve_scope_ward(_session(), conn=MagicMock(), ward_mutations_mod=mod) == (
             _LOCATION_WARD

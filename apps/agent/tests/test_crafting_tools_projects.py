@@ -9,7 +9,6 @@ from sample_fixtures import make_context, make_db_mod
 
 from crafting_tools import _resolve_crafting_slot, _start_crafting_project_impl
 
-# Real materials catalog the pure pre-flight + allocator run against (slices 1/3/4).
 _CATALOG = {
     "iron_ingot": {"id": "iron_ingot", "category": "metal", "tier": 1},
     "steel_ingot": {"id": "steel_ingot", "category": "metal", "tier": 2},
@@ -47,7 +46,6 @@ def _craft_queries(
     mod.get_player_known_recipe_ids = AsyncMock(return_value={"iron_sword"} if recipe_known else set())
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field", "forge"})
     mod.get_player_materials = AsyncMock(return_value=materials or {"iron_ingot": 2})
-    # Portable-Lab ownership read (Commit 3): None = not owned; a stack row with quantity.
     mod.get_inventory_item = AsyncMock(return_value={"quantity": 1} if has_lab else None)
     return mod
 
@@ -117,10 +115,8 @@ class TestStartCraftingProject:
             )
         )
         assert result["activity_id"] == "activity_xyz"
-        # consumed the allocated materials
         mutations.consume_player_materials.assert_awaited_once()
         assert mutations.consume_player_materials.call_args.args[1] == {"iron_ingot": 2}
-        # created an in_progress crafting activity with the TS-identical parameters shape
         data = mutations.create_async_activity.call_args.args[1]
         assert data["status"] == "in_progress"
         assert data["activity_type"] == "crafting"
@@ -139,7 +135,6 @@ class TestStartCraftingProject:
             "crafting_tier": "expert",
             "tainted_materials": False,
         }
-        # async_cycles=0 -> 900s floor, max 2x
         assert data["duration_min_seconds"] == 900
         assert data["duration_max_seconds"] == 1800
 
@@ -158,7 +153,6 @@ class TestStartCraftingProject:
             )
 
     async def test_preflight_gate_failure_raises_with_reason(self):
-        # Unknown recipe to the player -> Check 1 (Knowledge) fails.
         db_mod, _ = make_db_mod()
         with pytest.raises(ToolError, match="not known"):
             await _start_crafting_project_impl(
@@ -173,7 +167,6 @@ class TestStartCraftingProject:
             )
 
     async def test_slot_full_raises(self):
-        # Non-Artificer (no class) with the crafting slot full -> refused by the cap.
         db_mod, _ = make_db_mod()
         with pytest.raises(ToolError):
             await _start_crafting_project_impl(
@@ -203,7 +196,6 @@ class TestStartCraftingProject:
             materials_mod=_materials_mod(),
             rng=random.Random(1),
         )
-        # data.slot stamped so count_active_by_slot (COALESCE) buckets it as crafting (TS parity).
         assert mutations.create_async_activity.call_args.args[1]["slot"] == "crafting"
 
     async def test_locks_slot_rows_before_counting(self):
@@ -249,7 +241,6 @@ class TestStartCraftingProject:
             rng=random.Random(1),
         )
         assert mutations.create_async_activity.call_args.args[1]["slot"] == "training"
-        # Lab ownership is read once and fed to the workspace grant too.
         assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is True
 
     async def test_artificer_with_lab_both_slots_full_raises(self):
@@ -267,10 +258,6 @@ class TestStartCraftingProject:
             )
 
     async def test_off_tier_recipe_raises_toolerror(self):
-        # A recipe whose tier is not a canonical RECIPE_TIER (content/migration bug)
-        # makes run_preflight Check 2 raise ValueError; start_crafting_project must
-        # surface it as ToolError (ADR 0002), not leak the raw exception, and must
-        # not consume materials or create an activity.
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
         mutations.consume_player_materials = AsyncMock()

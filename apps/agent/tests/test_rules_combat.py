@@ -10,8 +10,6 @@ from combat_resolution import (
     roll_initiative,
 )
 
-# --- roll_initiative ---
-
 
 class TestRollInitiative:
     PARTICIPANTS = [
@@ -55,9 +53,6 @@ class TestRollInitiative:
     def test_empty_list(self):
         entries = roll_initiative([], rng=random.Random(1))
         assert entries == []
-
-
-# --- resolve_death_save ---
 
 
 class TestResolveDeathSave:
@@ -173,9 +168,6 @@ class TestResolveDeathSave:
         assert result.context == "death_save"
 
 
-# --- hp_threshold_status ---
-
-
 class TestHpThresholdStatus:
     def test_healthy(self):
         assert hp_threshold_status(20, 20) == "healthy"
@@ -203,9 +195,6 @@ class TestHpThresholdStatus:
 
     def test_just_above_50(self):
         assert hp_threshold_status(11, 20) == "healthy"
-
-
-# --- calculate_combat_xp ---
 
 
 class TestCalculateCombatXp:

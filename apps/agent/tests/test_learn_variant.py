@@ -130,7 +130,6 @@ class TestLearnVariant:
         assert result["activity_id"] == "train_var1"
         assert result["state"] == "running_first_half"
         ctx.disallow_interruptions.assert_called_once()
-        # Progress seeded at 0 before the activity is created.
         progress.seed_progress.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian", 3, conn=conn)
         kwargs = training.create_training_activity.await_args.kwargs
         assert kwargs["activity_type"] == "technique_mentor_variant"
@@ -143,8 +142,6 @@ class TestLearnVariant:
 
     @pytest.mark.asyncio
     async def test_uses_per_mentor_training_cycles(self):
-        # Per-mentor training length (story-001 mentor{}.training_cycles, wired at sprint-011
-        # close): a mentor declaring 4 cycles seeds the progress row at 4, not the flat default.
         ctx = make_context()
         db_mod, conn = make_db_mod()
         progress = _progress_mod(unlocked=False)
@@ -174,8 +171,6 @@ class TestLearnVariant:
 
     @pytest.mark.asyncio
     async def test_rejects_when_base_not_owned(self):
-        # Own-the-base gate (story-006): you cannot train a variant of a technique
-        # you don't own. Rejects without seeding progress or creating an activity.
         ctx = make_context()
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
@@ -204,8 +199,6 @@ class TestLearnVariant:
 
     @pytest.mark.asyncio
     async def test_rejects_when_base_ability_not_elective(self):
-        # A variant whose base is core/reaction is unmodeled — reject loud rather
-        # than train a variant of an always-known ability.
         ctx = make_context()
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
@@ -336,9 +329,6 @@ class TestLearnVariant:
 
     @pytest.mark.asyncio
     async def test_rejects_when_mentor_not_co_located(self):
-        # Co-location gate (story-003): training can't begin unless the bound mentor is
-        # present at the player's location. It runs BEFORE the requirement check — even
-        # with requirements unmet, the co-location ToolError wins and the check is skipped.
         ctx = make_context()
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)
@@ -368,8 +358,6 @@ class TestLearnVariant:
 
     @pytest.mark.asyncio
     async def test_rejects_when_requirements_unmet(self):
-        # Requirement gate (story-003): co-located but the player doesn't meet the mentor's
-        # disposition/quest/gold/skill — the specific unmet labels surface in the refusal.
         ctx = make_context()
         db_mod, _ = make_db_mod()
         progress = _progress_mod(unlocked=False)

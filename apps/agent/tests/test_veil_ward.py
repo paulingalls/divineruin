@@ -23,8 +23,6 @@ import pytest
 import veil_ward
 from veil_ward import WardDuration, WardDurationKind, WardScope, WardScopeKind
 
-# --- WardDuration: legal construction of each kind (story-002) ----------------
-
 
 def test_ward_duration_encounter():
     duration = WardDuration(WardDurationKind.ENCOUNTER)
@@ -66,9 +64,6 @@ def test_ward_duration_fails_loud_on_malformed_combos(kind, rounds, seconds):
         WardDuration(kind, rounds=rounds, seconds=seconds)
 
 
-# --- halve_generation: round down (spec 197) ---------------------------------
-
-
 @pytest.mark.parametrize(
     "generated,expected",
     [
@@ -89,16 +84,10 @@ def test_halve_generation_fails_loud_on_negative():
         veil_ward.halve_generation(-1)
 
 
-# --- ward modifier constants (spec 195-200) ----------------------------------
-
-
 def test_ward_modifier_constants():
     assert veil_ward.WARD_ECHO_BONUS == 4
     assert veil_ward.WARD_DAMAGE_DIE_PENALTY == -1
     assert veil_ward.WARD_DC_PENALTY == -1
-
-
-# --- WARD_SOURCES: per-archetype level + cost (spec 204-210) ------------------
 
 
 @pytest.mark.parametrize(
@@ -133,9 +122,6 @@ def test_ward_sources_table_has_exactly_five_keys():
     }
 
 
-# --- WARD_SOURCES: per-archetype duration + tool_raisable (story-002) ---------
-
-
 @pytest.mark.parametrize(
     "archetype,kind,rounds",
     [
@@ -164,8 +150,6 @@ def test_ward_sources_tool_raisable(archetype):
 
 @pytest.mark.parametrize("archetype", ["artificer", "sacred_site"])
 def test_non_tool_sources_are_not_tool_raisable(archetype):
-    # The load-bearing pin. Artificer is a real playable class costing 0 Focus/0 Stamina —
-    # were it tool_raisable, any L7 artificer could raise a free ward through activate_veil_ward.
     assert veil_ward.WARD_SOURCES[archetype].tool_raisable is False
 
 
@@ -182,11 +166,7 @@ def test_sacred_site_source_is_a_free_permanent_hook():
     assert source.focus == 0
     assert source.stamina == 0
     assert source.duration == WardDuration(WardDurationKind.PERMANENT)
-    # Never a player class, so the level gate can never fire on it.
     assert source.min_level == 0
-
-
-# --- tick_ward_rounds: decrement, floor at 0, None passthrough (story-002) ----
 
 
 def test_tick_ward_rounds_none_passes_through():
@@ -210,9 +190,6 @@ def test_tick_ward_rounds_fails_loud_on_negative():
         veil_ward.tick_ward_rounds(-1)
 
 
-# --- ward_rounds_expired (story-002) ------------------------------------------
-
-
 def test_ward_rounds_expired_none_never_expires():
     assert veil_ward.ward_rounds_expired(None) is False
 
@@ -228,8 +205,6 @@ def test_ward_rounds_expired_none_never_expires():
 def test_ward_rounds_expired(rounds_remaining, expected):
     assert veil_ward.ward_rounds_expired(rounds_remaining) == expected
 
-
-# --- location_expires_at (story-002) -------------------------------------------
 
 _NOW = datetime(2026, 7, 8, 12, 0, 0, tzinfo=UTC)
 
@@ -259,14 +234,6 @@ def test_location_expires_at_fails_loud_on_naive_now():
         veil_ward.location_expires_at(duration, datetime(2026, 7, 8, 12, 0, 0))
 
 
-# location_ward_expired's tests lived here. The function had no production caller -- lazy expiry is
-# enforced in read_active_ward's WHERE clause -- so these pinned a rule nothing consulted. Removed
-# with it; tests/test_db_mutations_veil_ward_db.py proves expiry against the real SQL predicate.
-
-
-# --- regression pin: effect constants + halve_generation unchanged (story-002) -
-
-
 def test_ward_effect_constants_unchanged_by_m24():
     assert veil_ward.WARD_ECHO_BONUS == 4
     assert veil_ward.WARD_DAMAGE_DIE_PENALTY == -1
@@ -279,9 +246,6 @@ def test_ward_effect_constants_unchanged_by_m24():
 )
 def test_halve_generation_unchanged_by_m24(generated, expected):
     assert veil_ward.halve_generation(generated) == expected
-
-
-# --- WardScope: a ward is owned by a scope, never by a caster (story-003) -----
 
 
 def test_ward_scope_kinds():
@@ -334,9 +298,6 @@ def test_ward_scope_fails_loud_on_empty_id(bad_id):
         WardScope.encounter(bad_id)
 
 
-# --- VEIL_ANCHORS: what kind of ward each crafted anchor makes (story-012) -----
-
-
 class TestVeilAnchors:
     """The item -> ward join. Both anchors are sourced to the artificer; their DURATIONS differ.
 
@@ -363,7 +324,6 @@ class TestVeilAnchors:
         anchor = veil_ward.VEIL_ANCHORS["veil_ward_anchor_large"]
         assert anchor.duration.kind is veil_ward.WardDurationKind.PERMANENT
         assert anchor.consumed is False
-        # dismiss_ward's DELETE carries `AND dismissible`, so False is what makes it unremovable.
         assert anchor.dismissible is False
 
     def test_small_anchor_expiry_is_an_hour_out_large_anchor_has_none(self):
@@ -376,7 +336,6 @@ class TestVeilAnchors:
         assert veil_ward.location_expires_at(large.duration, now) is None
 
     def test_the_artificer_source_row_still_carries_the_small_anchors_hour(self):
-        # Unchanged by this story; test_recipes_ward_anchor pins it to the item's "1 hour" prose.
         source = veil_ward.WARD_SOURCES["artificer"]
         assert source.duration.kind is veil_ward.WardDurationKind.REAL_TIME
         assert source.duration.seconds == 3600

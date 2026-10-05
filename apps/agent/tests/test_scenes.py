@@ -13,8 +13,6 @@ from quest_tools import _update_quest_impl
 from session_data import SessionData
 from warm_prompts import build_warm_layer
 
-# === Centralized scene resolution (standalone scenes) ===
-
 SCENE_CACHE = {
     "scene_wild": {
         "id": "scene_wild",
@@ -157,8 +155,6 @@ class TestDetectSceneTransition:
         assert result is None
 
 
-# === Greyvale quest content validation ===
-
 CONTENT_DIR = pathlib.Path(__file__).resolve().parents[3] / "content"
 
 
@@ -260,8 +256,6 @@ class TestGreyvaleSceneGraph:
         assert "scenes" not in self.greyvale, "Embedded scenes should be removed — use scene_graph"
 
 
-# === Warm layer scene injection ===
-
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
     "name": "Guild Hall",
@@ -313,13 +307,10 @@ class TestWarmLayerSceneInjection:
             quests=[quest_with_graph],
             scene_cache=scene_cache,
         )
-        # §7: scene.instructions are promoted to the REGISTER block (DM persona guidance).
         assert "REGISTER" in result
         assert "Road to Millhaven" in result
         assert "Narrate the journey with growing unease." in result
 
-
-# === update_quest scene-triggered region changes (in-place, no handoff) ===
 
 _mock_conn = MagicMock(name="mock_txn_conn")
 
@@ -379,10 +370,8 @@ class TestUpdateQuestSceneRegionChange:
             content=mock_content,
         )
         assert isinstance(result, str), f"Expected str (no handoff), got {type(result)}"
-        # Same agent persists; its region is updated in place to the new scene's region.
         assert ctx.session.current_agent is agent
         assert agent._agent_type == "city"
-        # The transition rides the response so the DM can narrate it without a handoff.
         payload = json.loads(result)
         assert payload["scene_transition"] == {"from": "Wild", "to": "City", "region": "city"}
 

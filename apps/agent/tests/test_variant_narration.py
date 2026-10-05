@@ -36,13 +36,11 @@ class TestCulturalAttributionInNarration:
         assert "Drathian Clans technique" in prompt
 
     def test_plain_training_has_no_cultural_line_or_placeholder(self):
-        # No cultural_attribution (stat/skill training) → no attribution line, no leftover placeholder.
         prompt, _voices = build_narration_prompt("training_completion", _variant_outcome(cultural_attribution=None))
         assert "cultural" not in prompt.lower()
         assert "{cultural_attribution_line}" not in prompt
 
     def test_in_progress_training_prompt_also_carries_attribution(self):
-        # The midpoint "training" template shares the mentor branch; attribution renders there too.
         outcome = _variant_outcome()
         outcome["narrative_context"]["roll"] = 14
         prompt, _voices = build_narration_prompt("training", outcome)
@@ -51,8 +49,6 @@ class TestCulturalAttributionInNarration:
 
 class TestReplacementNotice:
     def test_completion_prompt_notes_the_replaced_variant(self):
-        # concern 25b663d3e245: when a newly-trained variant supplants the active one on the
-        # same technique, the DM must voice the swap (audio-first), not change it silently.
         outcome = _variant_outcome()
         outcome["narrative_context"]["replaced_cultural_attribution"] = "Keldaran Holds technique"
         prompt, _voices = build_narration_prompt("training_completion", outcome)
@@ -84,8 +80,6 @@ class TestOutcomeCarriesCulturalAttribution:
         assert outcome["narrative_context"]["cultural_attribution"] is None
 
     def test_replaced_attribution_propagates_when_present(self):
-        # The worker stashes replaced_cultural_attribution into data when a prior active variant
-        # is supplanted; build_training_completion_outcome carries it into narrative_context.
         completion = CompletionResult(state="complete", counter_increment=0, micro_bonus={})
         data = {
             "variant_id": "warrior_cleaving_blow_drathian",

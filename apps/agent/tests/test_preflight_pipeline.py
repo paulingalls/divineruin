@@ -4,7 +4,6 @@ import preflight_pipeline as pf
 from recipe_validation import RECIPE_TIER_ORDER
 from rules_engine import SKILL_TIER_ORDER
 
-# materials catalog: material_id -> {category, tier} (mirrors test_recipe_validation).
 CATALOG = {
     "iron_ingot": {"category": "metal", "tier": 1},
     "steel_ingot": {"category": "metal", "tier": 2},
@@ -66,14 +65,12 @@ class TestKnowledgeGate:
 
 class TestSkillTierGate:
     def test_crafting_tier_equal_to_recipe_tier_passes(self):
-        # trained crafter, trained recipe.
         assert _run(crafting_tier="trained").passed is True
 
     def test_crafting_tier_above_recipe_tier_passes(self):
         assert _run(crafting_tier="master").passed is True
 
     def test_crafting_tier_below_recipe_tier_fails(self):
-        # untrained crafter (caps at basic) cannot craft a trained recipe.
         result = _run(crafting_tier="untrained")
         assert result.passed is False
         assert result.failed_check == "skill_tier"
@@ -95,13 +92,11 @@ class TestWorkspaceGate:
         assert _run(accessible_workspaces={"field", "forge"}).passed is True
 
     def test_inaccessible_workspace_fails(self):
-        # Player has only field/workshop; the recipe needs a forge.
         result = _run(accessible_workspaces={"field", "workshop"})
         assert result.passed is False
         assert result.failed_check == "workspace"
 
     def test_lab_does_not_satisfy_a_forge_recipe(self):
-        # Exact-type access, not rank >=: a laboratory is not a forge.
         result = _run(accessible_workspaces={"field", "laboratory"})
         assert result.passed is False
         assert result.failed_check == "workspace"
@@ -121,17 +116,14 @@ class TestMaterialsGate:
         assert result.failed_check == "materials"
 
     def test_substitutable_material_satisfies(self):
-        # A substitutable metal req is met by a same-category, tier-sufficient sub.
         recipe = _recipe(
             materials=[{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": True}]
         )
-        # No iron on hand, but 2 steel (metal, tier 2 >= 1) substitutes.
         assert _run(recipe=recipe, available_materials={"steel_ingot": 2}).passed is True
 
 
 class TestGateOrdering:
     def test_knowledge_checked_before_skill_tier(self):
-        # Unknown recipe AND tier too low → the FIRST failure (knowledge) wins.
         result = _run(known_recipe_ids=set(), crafting_tier="untrained")
         assert result.failed_check == "knowledge"
 
@@ -144,8 +136,6 @@ class TestGateOrdering:
         assert result.failed_check == "workspace"
 
     def test_materials_checked_before_tainted(self):
-        # Tainted recipe + sub-Expert crafter + missing materials → materials wins
-        # (Check 4 precedes Check 5).
         result = _run(
             recipe=_recipe(tainted_materials=True),
             crafting_tier="trained",
@@ -180,5 +170,4 @@ class TestTaintedExpertGate:
         assert result.failed_check == "tainted_expert"
 
     def test_untainted_recipe_unaffected(self):
-        # A plain untainted basic recipe by an untrained crafter passes Check 5.
         assert _run(recipe=_recipe(tier="basic", tainted_materials=False), crafting_tier="untrained").passed is True

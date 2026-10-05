@@ -67,7 +67,6 @@ class TestFullPipeline:
                 "skill": "arcana",
                 "dc": 13,
                 "npc_id": "grimjaw_blacksmith",
-                # story-005 resolution gate inputs (captured at creation).
                 "workspace_required": "forge",
                 "workspace_access": ["field", "forge"],
                 "crafting_tier": "expert",
@@ -92,8 +91,6 @@ class TestFullPipeline:
                 claim_p,
                 revert_p,
                 patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-                # story-003: the crafting branch delegates to crafting_resolution, which
-                # fetches the recipe category + quality tables. Stub both (no DB in this test).
                 patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value={"category": "weapon"}),
                 patch(
                     "crafting_resolution.get_quality_outcomes",
@@ -134,7 +131,6 @@ class TestFullPipeline:
                 await _resolve_single_activity(activity)
 
         assert len(update_calls) == 2
-        # First call: cache outcome + narration
         cache_id, cached = update_calls[0]
         assert cache_id == "activity_e2e_craft"
         assert cached["narration_text"] is not None
@@ -143,7 +139,6 @@ class TestFullPipeline:
         assert isinstance(cached["narration_segments"], list)
         assert cached["outcome"]["tier"] in ("exceptional", "success", "partial", "failure")
         assert len(cached["decision_options"]) >= 2
-        # Second call: mark resolved with audio
         _, resolved = update_calls[1]
         assert resolved["status"] == "resolved"
         assert resolved["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
@@ -319,9 +314,7 @@ class TestCostVerification:
         assert isinstance(narration_text, str)
         assert isinstance(summary, str)
 
-        # Haiku pricing: $0.80/M input, $4/M output
         input_cost = mock_response.usage.input_tokens * 0.80 / 1_000_000
         output_cost = mock_response.usage.output_tokens * 4.0 / 1_000_000
         total_cost = input_cost + output_cost
-        # Should be well under $0.005
         assert total_cost < 0.005, f"Cost too high: ${total_cost:.6f}"

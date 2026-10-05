@@ -40,8 +40,6 @@ class TestFormatTrainingSection:
         section = format_training_section([SAMPLE_AWAITING_TRAINING])
         assert section is not None
         assert section.startswith("ACTIVE TRAINING")
-        # The training_id must be unambiguous so the DM can pass it to
-        # resolve_training_midpoint.
         assert "train_mid01" in section
         assert "awaiting_decision" in section
         assert "Combat Fundamentals" in section
@@ -139,7 +137,6 @@ class TestBuildWarmLayerExits:
         mock_npcs.return_value = []
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        # §7: ungated exits are `go` affordances.
         assert "go:" in result
         assert "south" in result
         assert "accord_market_square" in result
@@ -178,8 +175,6 @@ class TestBuildWarmLayerExits:
     async def test_blocked_exit_uses_blocked_hint_when_present(
         self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
     ):
-        # When content gives a DM-safe blocked_hint, the locked label surfaces it (still no
-        # raw requires).
         location_with_hint = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -206,7 +201,6 @@ class TestBuildWarmLayerExits:
     async def test_met_requirement_promotes_exit_check_to_go(
         self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
     ):
-        # §7 (story-004): once the requirement is MET, the gated exit promotes check -> go.
         location_with_gate = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -261,22 +255,8 @@ class TestNavigationPromptIncluded:
         assert "Navigation" in prompt
 
     def test_navigation_prompt_nudges_scene_transition_narration(self):
-        # update_quest carries a quest-driven region move in response["scene_transition"];
-        # the DM needs a cue to voice it, since NAVIGATION otherwise only covers move_player
-        # (concern c7c8d6acb6ec).
         prompt = build_system_prompt("accord_guild_hall")
         assert "scene_transition" in prompt
-
-
-# NOTE: region-specific system-prompt assertions moved to tests/test_region_register.py.
-# After M7 story-002, build_system_prompt is region-agnostic — wilderness/dungeon/city
-# narration flavor now rides the warm-layer Stage register (REGION_REGISTER), so the
-# per-region prose is asserted there (TestWarmLayerRegionRegister), not here.
-
-
-# NOTE: the training-hall referral moved from the city system prompt to the city
-# REGION_REGISTER (warm layer) in M7 story-002 — asserted in
-# tests/test_region_register.py::TestWarmLayerRegionRegister.test_city_location_yields_city_register.
 
 
 class TestTrainingMidpointNarration:

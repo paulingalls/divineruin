@@ -40,7 +40,6 @@ class TestValidateConditionDict:
             conditions.validate_condition_dict({"type": "stunned", "duration": "soon", "stacks": 1})
 
     def test_allows_absent_optional_fields(self):
-        # stacks/stage/duration are validated only when present (well-formed dicts vary by type).
         c = {"type": "blinded"}
         assert conditions.validate_condition_dict(c) is c
 
@@ -110,7 +109,6 @@ class TestResolversTolerateJsonNullConditions:
         from check_resolution import resolve_skill_check_dc
 
         player = {"attributes": self._ATTRS, "level": 3, "conditions": None}
-        # No crash; returns a result (rng-free path is fine — we assert it doesn't raise).
         result = resolve_skill_check_dc(player, "athletics", 10, ally_present=False, hearing_only=False)
         assert result is not None
 

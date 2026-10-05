@@ -30,8 +30,6 @@ class TestBlacksmithAgentConfig:
         assert repair_item in BLACKSMITH_TOOLS
 
     def test_blacksmith_tools_exclude_combat_exploration_and_session(self):
-        # The forge is a sub-context: the only exit is conclude_blacksmith (mirrors
-        # CombatAgent, which omits move_player/end_session and exits via end_combat).
         from mode_tools import enter_mode
         from movement_tools import move_player
         from scene_tools import enter_location
@@ -54,6 +52,4 @@ class TestBlacksmithSystemPrompt:
         assert "[CHARACTER_NAME" in BLACKSMITH_SYSTEM_PROMPT
 
     def test_instructs_conclude_as_the_exit(self):
-        # conclude_blacksmith is the sole way back to region play — the prompt must
-        # tell the LLM to call it when the player is done, or the player gets stranded.
         assert "conclude_blacksmith" in BLACKSMITH_SYSTEM_PROMPT

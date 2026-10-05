@@ -25,7 +25,6 @@ class TestRecordLearned:
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO character_spells" in sql
         assert "ON CONFLICT (player_id, spell_id) DO NOTHING" in sql
-        # bonus_variant defaults to None (no training decision on the discovery track).
         assert params == ["p1", "arcane_fireball", "discovery", True, None]
 
     async def test_defaults_unprepared(self):
@@ -35,8 +34,6 @@ class TestRecordLearned:
         assert params == ["p1", "arcane_fireball", "training", False, None]
 
     async def test_persists_bonus_variant(self):
-        # AC3: a spell learned via training carries the midpoint decision as its
-        # bonus_variant, so the learned spell reflects the choice made while training.
         conn = AsyncMock()
         await character_spells.record_learned("p1", "arcane_fireball", "training", bonus_variant="power", conn=conn)
         sql, *params = conn.execute.call_args.args
@@ -45,8 +42,6 @@ class TestRecordLearned:
 
     @pytest.mark.parametrize("track", ["training", "discovery", "npc_teaching"])
     async def test_accepts_each_valid_track(self, track):
-        # story-005: npc_teaching joins {training, discovery} — mentor-taught spells
-        # record their own acquisition track (supersedes the 2-track vocab).
         conn = AsyncMock()
         await character_spells.record_learned("p1", "arcane_fireball", track, conn=conn)
         _sql, *params = conn.execute.call_args.args
@@ -54,7 +49,6 @@ class TestRecordLearned:
 
     @pytest.mark.parametrize("bad_track", ["core", "scroll", "", "Training"])
     async def test_rejects_invalid_acquisition_track(self, bad_track):
-        # Electives-only contract: only {training, discovery, npc_teaching} (story-005 vocab).
         conn = AsyncMock()
         with pytest.raises(ValueError, match=bad_track or "acquisition_track"):
             await character_spells.record_learned("p1", "arcane_fireball", bad_track, conn=conn)
@@ -121,11 +115,8 @@ class TestAdvanceLearningCycle:
         sql, *params = conn.fetchrow.call_args.args
         assert "INSERT INTO spell_learning_progress" in sql
         assert "ON CONFLICT (player_id, spell_id) DO UPDATE" in sql
-        # The increment is gated on a new activity id (idempotency, debt b20815f92023).
         assert "last_activity_id IS NOT DISTINCT FROM" in sql
-        # The decision is returned so the caller can carry it onto the learned spell (AC3).
         assert "RETURNING cycles_completed, cycles_required, midpoint_decision_id" in sql
-        # activity_id defaults to None (unconditional increment for direct callers).
         assert params == ["p1", "arcane_fireball", 5, "power", None]
         assert result == {
             "cycles_completed": 3,
@@ -150,7 +141,6 @@ class TestAdvanceLearningCycle:
 
     @pytest.mark.parametrize("bad_required", [0, -1])
     async def test_rejects_non_positive_cycles_required(self, bad_required):
-        # Fail-loud: 0 would complete on the first cycle, negative is unreachable.
         conn = AsyncMock()
         with pytest.raises(ValueError, match="cycles_required"):
             await character_spells.advance_learning_cycle("p1", "arcane_fireball", bad_required, conn=conn)
@@ -163,7 +153,6 @@ class TestAdvanceLearningCycle:
         )
         result = await character_spells.advance_learning_cycle("p1", "arcane_fireball", 5, conn=conn)
         _sql, *params = conn.fetchrow.call_args.args
-        # midpoint_decision_id + activity_id both default to None when not supplied.
         assert params == ["p1", "arcane_fireball", 5, None, None]
         assert result["completed"] is True
         assert result["midpoint_decision_id"] is None

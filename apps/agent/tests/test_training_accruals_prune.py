@@ -45,6 +45,5 @@ class TestPruneSql:
 
     @pytest.mark.asyncio
     async def test_returns_zero_when_nothing_expired(self):
-        # AC #2 (idempotency): a run with no expired rows deletes nothing, so re-running is a no-op.
         conn = _mock_conn("DELETE 0")
         assert await db_training.prune_training_cycle_accruals(conn=conn) == 0

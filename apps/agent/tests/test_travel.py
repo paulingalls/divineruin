@@ -2,8 +2,6 @@ import pytest
 
 import travel
 
-# --- Travel mode table (spec L852-860) ---
-
 
 def test_three_spec_modes_present():
     assert set(travel.TRAVEL_MODE_NAMES) == {"compressed", "scenic", "dangerous"}
@@ -35,9 +33,6 @@ def test_unknown_mode_fails_loud():
         travel.travel_mode_params("teleport")
 
 
-# --- Navigation DC table (spec L922-929) ---
-
-
 def test_navigation_dc_matches_spec_terrain_table():
     assert travel.navigation_dc("established_road") is None  # auto-success
     assert travel.navigation_dc("known_trail") == 8
@@ -52,16 +47,12 @@ def test_unknown_terrain_fails_loud():
         travel.navigation_dc("the_moon")
 
 
-# --- resolve_travel_segment: established road auto-success (spec L924) ---
-
-
 def test_established_road_auto_succeeds_regardless_of_roll():
     result = travel.resolve_travel_segment(mode="compressed", terrain="established_road", roll_total=1)
     assert result.success is True
     assert result.dc is None
     assert result.margin is None
     assert result.wrong_area is False
-    # compressed montage time: base * 0.5
     assert result.time_cost == pytest.approx(4 * travel.travel_mode_params("compressed").time_multiplier)
 
 
@@ -69,9 +60,6 @@ def test_established_road_carries_mode_encounter_and_foraging():
     result = travel.resolve_travel_segment(mode="scenic", terrain="established_road", roll_total=10)
     assert result.encounter_rate == travel.travel_mode_params("scenic").encounter_rate
     assert result.foraging_available is True
-
-
-# --- resolve_travel_segment: navigation success / failure (spec L922-929) ---
 
 
 def test_roll_at_or_above_dc_succeeds_without_wrong_area():
@@ -103,9 +91,6 @@ def test_deep_terrain_failure_sets_wrong_area(terrain):
     assert result.wrong_area is True
 
 
-# --- Exhaustion delta (spec L938-951) ---
-
-
 def test_clean_non_forced_success_has_zero_exhaustion():
     result = travel.resolve_travel_segment(mode="scenic", terrain="known_trail", roll_total=20)
     assert result.exhaustion_delta == 0
@@ -134,12 +119,8 @@ def test_forced_march_flag_off_never_exhausts_from_hours():
 
 
 def test_underground_lost_failure_adds_exhaustion():
-    # spec L928: seriously lost underground exhausts a ration (an exhaustion bump)
     result = travel.resolve_travel_segment(mode="dangerous", terrain="underground", roll_total=1)
     assert result.exhaustion_delta >= 1
-
-
-# --- Dramatic verdict (delegated to the M4.5 SSOT) ---
 
 
 def test_natural_twenty_is_dramatic():
@@ -165,9 +146,6 @@ def test_ordinary_clear_pass_is_not_dramatic():
     result = travel.resolve_travel_segment(mode="scenic", terrain="known_trail", roll_total=20, raw_die=15)
     assert result.dramatic is False
     assert result.context == ""
-
-
-# --- Determinism (pure: no IO/RNG) ---
 
 
 def test_same_inputs_yield_identical_result():

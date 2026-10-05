@@ -363,7 +363,6 @@ class TestGenerateActivityNarration:
             with patch("narration.logger") as mock_logger:
                 await generate_activity_narration(CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data)
 
-                # Now there are two logger.info calls: token counts + segment info
                 assert mock_logger.info.call_count == 2
                 first_log_args = mock_logger.info.call_args_list[0][0]
                 assert 150 in first_log_args  # input tokens

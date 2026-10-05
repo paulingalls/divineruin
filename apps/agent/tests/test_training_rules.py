@@ -21,9 +21,6 @@ from training_rules import (
     validate_training_activity_type,
 )
 
-# ── Config validation ──────────────────────────────────────────────────
-
-
 ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
     "spell_cantrip",
     "spell_minor",
@@ -56,9 +53,6 @@ class TestConfig:
 
     def test_validate_unknown_type(self) -> None:
         assert validate_training_activity_type("unknown_thing") is False  # type: ignore[arg-type]
-
-
-# ── start_training_cycle ───────────────────────────────────────────────
 
 
 class TestStartTrainingCycle:
@@ -102,9 +96,6 @@ class TestStartTrainingCycle:
             start_training_cycle("bogus", datetime.now(UTC))  # type: ignore[arg-type]
 
 
-# ── Midpoint decisions ─────────────────────────────────────────────────
-
-
 class TestGetMidpointDecision:
     @pytest.mark.parametrize("atype", ALL_ACTIVITY_TYPES)
     def test_each_type_has_two_options(self, atype: TrainingActivityType) -> None:
@@ -127,9 +118,6 @@ class TestGetMidpointDecision:
     def test_invalid_type_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown training activity type"):
             get_midpoint_decision("bogus")  # type: ignore[arg-type]
-
-
-# ── resolve_midpoint_decision ──────────────────────────────────────────
 
 
 class TestResolveMidpointDecision:
@@ -184,13 +172,9 @@ class TestResolveMidpointDecision:
         assert r1.second_half_seconds == r2.second_half_seconds
 
 
-# ── complete_training_cycle ────────────────────────────────────────────
-
-
 class TestCompleteTrainingCycle:
     def test_skill_practice_increments_counter(self) -> None:
         decision = get_midpoint_decision("skill_practice")
-        # Both options should give counter >= 1
         for opt in decision.options:
             result = complete_training_cycle("skill_practice", opt.id)
             assert isinstance(result, CompletionResult)
@@ -212,14 +196,12 @@ class TestCompleteTrainingCycle:
 
     def test_micro_bonus_from_decision(self) -> None:
         decision = get_midpoint_decision("spell_standard")
-        # Pick second option
         result = complete_training_cycle("spell_standard", decision.options[1].id)
         assert isinstance(result.micro_bonus, dict)
 
     def test_skill_practice_fundamentals_gives_extra_counter(self) -> None:
         """Fundamentals option: +2 counter toward advancement."""
         decision = get_midpoint_decision("skill_practice")
-        # Find the fundamentals option
         fund_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "fundamentals")
         result = complete_training_cycle("skill_practice", fund_opt.id)
         assert result.counter_increment == 2
@@ -232,11 +214,7 @@ class TestCompleteTrainingCycle:
         assert result.counter_increment == 1
 
 
-# ── Duration range integration (all activity types) ───────────────────
-
-
 class TestDurationRanges:
-    # (type, min_total_seconds, max_total_seconds)
     EXPECTED_RANGES = [
         ("spell_cantrip", 5 * 3600, 9 * 3600),  # 5-9 hours
         ("spell_minor", 6 * 3600, 10 * 3600),  # 6-10 hours
@@ -263,9 +241,6 @@ class TestDurationRanges:
         assert actual_max <= max_total, f"{atype} max total too high"
 
 
-# ── cycles_required (M8 story-004: data-driven tier→cycles) ─────────────
-
-
 class TestCyclesRequired:
     """get_cycles_required surfaces the data-driven learn-cycle count per spell tier.
 
@@ -288,22 +263,16 @@ class TestCyclesRequired:
         assert get_cycles_required(activity_type) == expected
 
     def test_returns_mentor_variant_cycle_count(self) -> None:
-        # M9 story-002: the mentor-variant loop is the first NON-spell type to carry a
-        # cycle count (3 — the "2-3 session" loop), so get_cycles_required serves it too.
         assert get_cycles_required("technique_mentor_variant") == 3
 
     @pytest.mark.parametrize("activity_type", ["technique_base", "skill_practice", "recipe_study"])
     def test_raises_on_non_spell_type(self, activity_type: str) -> None:
-        # Non-spell training carries no cycle count — fail loud, never default.
         with pytest.raises(ValueError, match="cycles_required"):
             get_cycles_required(activity_type)
 
     def test_raises_on_unknown_type(self) -> None:
         with pytest.raises(ValueError, match="Unknown"):
             get_cycles_required("nonexistent")
-
-
-# ── Runtime-loaded config test seam ─────────────────────────────────────
 
 
 class TestTrainingConfigSeam:

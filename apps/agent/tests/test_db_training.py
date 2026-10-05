@@ -33,7 +33,6 @@ class TestCreateTrainingActivity:
         assert activity_id.startswith("train_")
         sql, *args = conn.execute.await_args.args
         assert "INSERT INTO training_activities" in sql
-        # Positional order: id, player_id, activity_type, state, data, transition_at
         assert args[0] == activity_id
         assert args[1] == "player_1"
         assert args[2] == "technique_base"

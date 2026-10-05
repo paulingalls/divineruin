@@ -26,8 +26,6 @@ _ATTRS = {
     "charisma": 8,
 }
 
-# Death in a still-hostile region -> tier-2 same-region settlement camp_r1. Both members are
-# co-located with no last_rested_settlement_id, so per-member resolution coincides on camp_r1.
 _LOCATIONS = {
     "battlefield_danger": {"region": "r1", "danger_level": 3},
     "camp_r1": {"region": "r1", "settlement_tier": "village", "danger_level": 1},
@@ -71,7 +69,6 @@ class TestTriggerCharacterDeathParams:
             mutations=res_mut,
             conn=object(),
         )
-        # Anchor is the supplied one, revived there — resolution was bypassed.
         assert ctx["anchor"] == "camp_r1"
         assert res_mut.revive_player.call_args.args[1] == "camp_r1"
 
@@ -88,7 +85,6 @@ class TestTriggerCharacterDeathParams:
             mutations=res_mut,
             conn=object(),
         )
-        # Waived: not recorded, not counted, no attribute/maxHP cost — but still revived.
         death_mut.record_death.assert_not_awaited()
         res_mut.apply_attribute_penalty.assert_not_awaited()
         res_mut.apply_maxhp_override_delta.assert_not_awaited()
@@ -101,7 +97,6 @@ class TestResurrectPartyOnDefeat:
     @pytest.mark.asyncio
     async def test_each_member_records_and_pays_own_tier_at_coincident_anchor(self):
         """AC1: every member's death is recorded and costed by their OWN running count."""
-        # p_a on its 1st death (gentle, no penalty); p_b on its 3rd (severe, primary -1).
         death_mut = _death_mutations({"p_a": 0, "p_b": 2})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -117,7 +112,6 @@ class TestResurrectPartyOnDefeat:
 
         assert [c["tier"] for c in contexts] == ["gentle", "severe"]
         assert death_mut.record_death.await_count == 2  # both non-patron deaths recorded
-        # Both resolve to camp_r1 independently — co-located, no divergent last-rested anchor.
         assert {c["anchor"] for c in contexts} == {"camp_r1"}
         anchors = [call.args[1] for call in res_mut.revive_player.call_args_list]
         assert anchors == ["camp_r1", "camp_r1"]
@@ -141,11 +135,8 @@ class TestResurrectPartyOnDefeat:
         )
 
         mort, non = contexts
-        # Mortaen: waived — not recorded, count UNCHANGED at 0 (the reviewer's un-counting check).
         assert mort["tier"] == "waived" and mort["death_count"] == 0
-        # Non-patron: 2nd death -> moderate, -1 to lowest attribute (charisma).
         assert non["tier"] == "moderate" and non["death_count"] == 2
-        # Only the non-patron's death is recorded (the patron's is free).
         recorded_ids = [call.args[0] for call in death_mut.record_death.call_args_list]
         assert recorded_ids == ["p_non"]
         penalized = res_mut.apply_attribute_penalty.call_args

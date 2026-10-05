@@ -13,8 +13,6 @@ from test_veil_ward_tools import (
     _player,
 )
 
-# --- raise path: scope targeting + per-source durations (story-005) --------------
-
 
 async def test_cleric_in_combat_raises_encounter_ward():
     """In a fight the ward belongs to the ENCOUNTER, which lives on CombatState — never in
@@ -28,10 +26,8 @@ async def test_cleric_in_combat_raises_encounter_ward():
     assert combat.veil_ward == {"source": "cleric", "rounds_remaining": None}
     combat_mod.save_combat_state.assert_awaited_once()
     ward_mut.write_ward.assert_not_awaited()
-    # location_ward is a LOCATION mirror; an encounter ward must never be written into it.
     assert ctx.userdata.location_ward is None
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
-    # The raiser's HUD still lights in combat (party-wide fan-out is story-008).
     pub.assert_awaited_once()
     assert pub.call_args.args[2] == _payload(True, scope_kind="encounter", scope_id=_COMBAT_ID, source="cleric")
 
@@ -62,9 +58,6 @@ async def test_cleric_out_of_combat_raises_a_location_ward():
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
     combat_mod.save_combat_state.assert_not_awaited()
     assert ctx.userdata.location_ward["source"] == "cleric"
-
-
-# --- raise path: "already active" is resolved across BOTH scopes (story-005) -----
 
 
 async def test_already_active_encounter_ward_refused():
@@ -103,15 +96,11 @@ async def test_druid_raises_ward_for_five_focus():
     assert result["deducted"] == {"focus": 5, "stamina": 0}
 
 
-# --- dismiss path: free, scope-wide ---------------------------------------------
-
-
 async def test_dismiss_active_ward():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True, remaining=None)
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
 
     assert result["active"] is False
-    # Dismissal is by SCOPE, not by player — the ward is not the raiser's to hold (§5).
     ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.location_ward is None
@@ -146,9 +135,6 @@ async def test_dismiss_when_no_dismissible_ward_rejected():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=None)
     with pytest.raises(ToolError, match="dismiss"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
-
-
-# --- dismiss path: in combat it targets the ENCOUNTER scope (story-005) ----------
 
 
 async def test_dismiss_in_combat_clears_the_encounter_ward():

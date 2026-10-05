@@ -100,8 +100,6 @@ class TestReturningPlayerCompanion:
         assert options.close_on_disconnect is False
         # Onboarding predates the transcriber: room audio is the only way it hears the player.
         assert options.get_audio_input_options() is not None
-        # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
-        # reconnect construction is the site the card names as the fault-injection target.
         instructions = agent._instructions
         assert isinstance(instructions, str)
         assert "Lira" in instructions

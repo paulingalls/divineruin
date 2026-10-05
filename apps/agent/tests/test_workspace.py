@@ -15,28 +15,22 @@ class TestWorkspaceType:
         assert names == {"field", "workshop", "forge", "laboratory"}
 
     def test_recipe_workspace_values_round_trip(self):
-        # Recipe.workspace_required uses these exact string values (recipes.py).
         for value in ("field", "workshop", "forge", "laboratory"):
             assert ws.WorkspaceType(value).value == value
 
     def test_workspace_type_rejects_unknown_string(self):
-        # The fail-loud boundary: downstream code converts a raw DB string
-        # (recipe.workspace_required) via WorkspaceType(value); an unknown
-        # workspace raises rather than silently mis-gating Check 3.
         with pytest.raises(ValueError):
             ws.WorkspaceType("smithy")
 
 
 class TestRentalPricing:
     def test_base_prices_match_spec(self):
-        # Spec §Workspace Access rental table: per calendar day, in silver.
         assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.WORKSHOP] == 2
         assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.FORGE] == 5
         assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.LABORATORY] == 10
         assert ws.COMBINED_FORGE_LAB_RENTAL_SP == 12
 
     def test_field_has_no_rental_price(self):
-        # Field is free and always available — never rented.
         assert ws.WorkspaceType.FIELD not in ws.RENTAL_BASE_PRICE_SP
 
     def test_neutral_pays_full_price(self):
@@ -64,8 +58,6 @@ class TestRentalPricing:
 
     @pytest.mark.parametrize("disposition", ["cautious", "wary"])
     def test_legacy_disposition_rejected(self, disposition):
-        # story-004 retired the wary/cautious aliases — they now raise like any
-        # unknown disposition (all writers + content emit the canonical ladder).
         with pytest.raises(ValueError):
             ws.compute_rental_price(10, disposition, multipliers=_MULT)
 
@@ -140,7 +132,6 @@ class TestSettlementAvailability:
 
     @pytest.mark.parametrize("size", list(ws.SettlementSize))
     def test_field_always_available_everywhere(self, size):
-        # Field is the universal floor — every settlement, always.
         assert ws.settlement_workspace_availability(size, ws.WorkspaceType.FIELD) == ws.Availability.ALWAYS
 
     def test_hamlet_has_no_forge_or_laboratory(self):

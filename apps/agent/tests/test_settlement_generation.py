@@ -84,8 +84,6 @@ class TestGenerate:
             assert ranges[role_id]["min"] <= n <= ranges[role_id]["max"]
 
     def test_hamlet_is_austere(self):
-        # Hamlet has only innkeeper (0-1) + guard (0-2). No personality should add a
-        # big-settlement role like scholar_sage or merchant_jeweler.
         counts = generate_settlement_npcs("hamlet", "scholarly", rng=random.Random(1))
         assert "merchant_jeweler" not in counts
         assert all(n <= 3 for n in counts.values())
@@ -96,7 +94,6 @@ class TestGenerate:
         assert a == b
 
     def test_keldaran_hold_maps_to_city(self):
-        # keldaran_hold has no tier row (City-scale per spec); generate normalizes to city.
         assert _effective_ranges("keldaran_hold", "military") == _effective_ranges("city", "military")
 
     def test_unknown_tier_and_personality_fail_loud(self):
@@ -197,23 +194,19 @@ class TestRoster:
 
 class TestEffectiveRanges:
     def test_frequency_modifier_raises_present_role(self):
-        # military guard +2: town guard 6-12 -> 8-14.
         r = _effective_ranges("town", "military")
         assert r["guard"] == {"min": 8, "max": 14}
 
     def test_positive_modifier_introduces_absent_role(self):
-        # corrupt fence+1 / merchant_black_market+1 in a hamlet (neither present) -> {0,1}.
         r = _effective_ranges("hamlet", "corrupt")
         assert r["fence"] == {"min": 0, "max": 1}
         assert r["merchant_black_market"] == {"min": 0, "max": 1}
 
     def test_negative_modifier_floors_min_at_zero(self):
-        # frontier guard -1: hamlet guard 0-2 -> 0-1 (min floored, not -1).
         r = _effective_ranges("hamlet", "frontier")
         assert r["guard"] == {"min": 0, "max": 1}
 
     def test_negative_modifier_on_absent_role_is_noop(self):
-        # frontier only carries guard-1; it must not introduce any negative-count role.
         r = _effective_ranges("village", "frontier")
         assert all(rng["max"] >= 0 and rng["min"] >= 0 for rng in r.values())
         assert "soldier_ashmark" not in r  # frontier doesn't add it
@@ -233,7 +226,6 @@ class TestInstantiate:
         assert npc["name"] == "Bran"
 
     def test_disposition_modifier_drops_guard_under_corrupt(self):
-        # guard default_disposition is neutral; corrupt guard -1 -> unfriendly.
         npc = instantiate_npc_from_template("guard", "city", "corrupt")
         assert npc["default_disposition"] == "unfriendly"
 
@@ -256,14 +248,11 @@ class TestInstantiate:
         assert struggling["inventory_richness"] == 0.8
 
     def test_keldaran_hold_tier_validates(self):
-        # keldaran_hold normalizes to city; a bogus tier fails loud.
         instantiate_npc_from_template("guard", "keldaran_hold", "military")
         with pytest.raises(ValueError):
             instantiate_npc_from_template("guard", "metropolis", "military")
 
     def test_override_wins_over_personality_modifiers(self):
-        # An explicitly pinned field is final — the personality modifier is NOT applied.
-        # corrupt would shift guard neutral->unfriendly, but the override pins it.
         npc = instantiate_npc_from_template(
             "guard", "city", "corrupt", {"default_disposition": "trusted", "inventory_richness": 5.0}
         )
@@ -275,14 +264,12 @@ class TestInstantiate:
         assert npc["price_modifier"] == 3.0  # not multiplied by 1.15
 
     def test_off_ladder_override_disposition_fails_loud(self):
-        # Overrides win, but a disposition must stay on the canonical ladder.
         with pytest.raises(ValueError, match="not in"):
             instantiate_npc_from_template("guard", "city", "military", {"default_disposition": "weird"})
 
 
 class TestCorruptAcceptance:
     def test_corrupt_raises_blackmarket_frequency_and_drops_guard_disposition(self):
-        # story-003 AC: Corrupt raises Fence/Black-Market frequency AND drops Guard disposition.
         ranges = _effective_ranges("city", "corrupt")
         plain = _effective_ranges("city", "military")  # military has no fence/blackmarket freq mod
         assert ranges["fence"]["max"] > plain.get("fence", {"max": 0})["max"]
@@ -295,9 +282,6 @@ class TestEndToEnd:
     @pytest.mark.parametrize("tier", _ALL_TIERS)
     @pytest.mark.parametrize("personality", _ALL_PERSONALITIES)
     def test_every_tier_personality_yields_valid_roles_and_dispositions(self, tier, personality):
-        # AC4: across all tier x personality combos, generated roles are real archetypes,
-        # counts fall within the spec's effective range, and every instantiated NPC has a
-        # canonical disposition.
         counts = generate_settlement_npcs(tier, personality, rng=random.Random(123))
         ranges = _effective_ranges(tier, personality)
         assert counts, f"{tier}/{personality} generated an empty population"

@@ -17,8 +17,6 @@ from npcs import get_npc_sync
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
 
-# Closed set (story-001, extended story-006): 44 martial elective techniques x 2
-# cultural variants.
 _VARIANT_COUNT = 88
 _MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy", "bard"}
 

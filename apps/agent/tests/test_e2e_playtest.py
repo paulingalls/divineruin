@@ -76,10 +76,8 @@ class TestNewPlayerHandoffChain:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
 
-        # One warm agent persists for the whole journey.
         agent = ExplorationAgent(initial_location="accord_market_square", region_type=REGION_CITY)
 
-        # Step 1: City -> Wilderness
         ctx = _make_context("accord_market_square", companion=COMPANION)
         ctx.session.current_agent = agent
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
@@ -98,7 +96,6 @@ class TestNewPlayerHandoffChain:
         assert ctx.userdata.location_id == "greyvale_south_road"
         assert ctx.userdata.companion is not None
 
-        # Step 2: Wilderness -> Dungeon
         ctx.userdata.location_id = "greyvale_south_road"
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
@@ -115,7 +112,6 @@ class TestNewPlayerHandoffChain:
         assert agent._agent_type == REGION_DUNGEON
         assert ctx.userdata.location_id == "greyvale_ruins_entrance"
 
-        # Step 3: Dungeon -> City (back through wilderness)
         locations["greyvale_ruins_exterior"] = {
             "id": "greyvale_ruins_exterior",
             "name": "Ruins Exterior",
@@ -193,7 +189,6 @@ class TestNewPlayerHandoffChain:
         assert isinstance(result, str)  # no handoff
         assert ctx.session.current_agent is agent
         assert agent._agent_type == REGION_WILDERNESS
-        # Companion still in SessionData (same agent, same session)
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Kael"
 
@@ -218,7 +213,6 @@ class TestCombatRoundTrip:
         mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
-        # Start combat from wilderness
         ctx = _make_context("greyvale_south_road", companion=COMPANION)
         ctx.session.current_agent = MagicMock()
         ctx.session.current_agent._agent_type = REGION_WILDERNESS
@@ -234,7 +228,6 @@ class TestCombatRoundTrip:
         assert isinstance(raw, tuple)
         assert ctx.userdata.pre_combat_agent_type == REGION_WILDERNESS
 
-        # End combat -- should return WildernessAgent
         ctx.userdata.combat_state = CombatState(
             combat_id="c1",
             participants=[

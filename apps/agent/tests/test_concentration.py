@@ -22,8 +22,6 @@ import concentration
 import db_mutations_concentration
 from session_data import ConcentrationState, SessionData
 
-# --- check_concentration (save DC) --------------------------------------------
-
 
 @pytest.mark.parametrize(
     "damage,expected_dc",
@@ -47,11 +45,7 @@ def test_check_concentration_rejects_negative_damage():
         concentration.check_concentration(-1)
 
 
-# --- concentration_holds (save resolution) ------------------------------------
-
-
 def test_concentration_holds_on_meeting_dc():
-    # save_total >= dc maintains concentration (a met DC succeeds).
     assert concentration.concentration_holds(15, 15) is True
     assert concentration.concentration_holds(16, 15) is True
 
@@ -61,12 +55,10 @@ def test_concentration_broken_below_dc():
 
 
 def test_incapacitation_auto_fails_regardless_of_roll():
-    # An incapacitated caster auto-fails even on an otherwise-passing roll.
     assert concentration.concentration_holds(99, 10, incapacitated=True) is False
 
 
 def test_concentration_holds_rejects_negative_save_total():
-    # A CON save total is never negative -> fail loud (symmetric with check_concentration).
     with pytest.raises(ValueError, match="save_total"):
         concentration.concentration_holds(-1, 10)
 
@@ -75,9 +67,6 @@ def test_incapacitation_short_circuits_before_save_validation():
     # Incapacitation auto-fails without consulting the roll, so a malformed (negative)
     # save_total is never validated on that path — the guard protects the comparison only.
     assert concentration.concentration_holds(-5, 10, incapacitated=True) is False
-
-
-# --- ConcentrationState (session) ---------------------------------------------
 
 
 def test_session_concentration_defaults_to_inactive():
@@ -89,9 +78,6 @@ def test_session_concentration_defaults_to_inactive():
 
 def test_concentration_state_is_active_when_spell_set():
     assert ConcentrationState(spell_id="arcane_fly").is_active is True
-
-
-# --- db_mutations_concentration: update ---------------------------------------
 
 
 class TestUpdatePlayerConcentration:
@@ -116,9 +102,6 @@ class TestUpdatePlayerConcentration:
         await db_mutations_concentration.update_player_concentration("p1", "arcane_fly", conn=conn)
         sql, *_ = conn.execute.call_args.args
         assert "{resonance" not in sql and "{veil_ward" not in sql and "{focus" not in sql
-
-
-# --- db_mutations_concentration: read -----------------------------------------
 
 
 class TestReadPlayerConcentration:

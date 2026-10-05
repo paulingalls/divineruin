@@ -48,7 +48,6 @@ async def test_expired_ward_is_not_returned_without_any_sweeper():
     try:
         await db_mutations_veil_ward.write_ward(scope, "artificer", past, dismissible=False, conn=pool)
         assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is None
-        # The row is still there — it was hidden by the read, not deleted by a tick loop.
         assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", scope.id) == 1
 
         await db_mutations_veil_ward.write_ward(scope, "cleric", future, dismissible=True, conn=pool)
@@ -73,11 +72,9 @@ async def test_a_short_ward_never_clobbers_a_permanent_one():
         await db_mutations_veil_ward.write_ward(scope, "artificer", soon, dismissible=False, conn=pool)
 
         assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", scope.id) == 2
-        # Both cover the scope; the newest wins the deterministic tie-break.
         ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
         assert ward is not None and ward["source"] == "artificer"
 
-        # Expire the anchor by hand; the permanent ward still covers the scope.
         await pool.execute(
             "UPDATE veil_wards SET expires_at = NOW() - INTERVAL '1 minute' WHERE scope_id = $1 AND source = $2",
             scope.id,
@@ -100,7 +97,6 @@ async def test_dismiss_removes_dismissible_wards_and_spares_permanent_ones():
 
         rows = await pool.fetch("SELECT source FROM veil_wards WHERE scope_id = $1", scope.id)
         assert [r["source"] for r in rows] == ["sacred_site"]
-        # The scope is still warded — the resolved state, not the dismissed scope's own toggle (§3).
         ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
         assert ward is not None and ward["source"] == "sacred_site"
     finally:
@@ -115,7 +111,6 @@ async def test_two_players_in_one_scope_are_backed_by_a_single_row():
         await db_mutations_veil_ward.write_ward(scope, "cleric", None, dismissible=True, conn=pool)
         assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", scope.id) == 1
 
-        # Every caster in the scope resolves the same ward; nothing is keyed by player_id.
         for _ in ("player_1", "player_2"):
             ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
             assert ward is not None and ward["source"] == "cleric"

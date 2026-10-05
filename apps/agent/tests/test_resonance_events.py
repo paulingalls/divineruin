@@ -40,7 +40,6 @@ async def test_payload_carries_state_and_caster_id():
 
 
 async def test_payload_omits_the_raw_number():
-    # AC4: the wire never carries the resonance number — only the qualitative state.
     payload = await _published_payload(_session(current=7))
     assert payload["state"] == "flickering"
     assert "current" not in payload
@@ -60,7 +59,6 @@ async def test_payload_state_tracks_every_band():
 
 
 async def test_caster_id_defaults_to_session_primary():
-    # An explicit caster_id override discriminates a non-primary member; the default is the primary.
     payload = await _published_payload(_session(current=0))
     assert payload["caster_id"] == "p1"
 
@@ -74,8 +72,6 @@ async def test_default_caster_and_track_follow_handoff():
 
 
 async def test_explicit_track_and_caster_id_push_that_member():
-    # M14 story-004: the phase loop pushes each member's OWN track under its OWN caster_id, so the
-    # payload's state derives from the passed track (not the session primary's) and carries that id.
     session = _session(current=0)  # primary is "stable" (0)
     member = PartyMember(
         player_id="p2",

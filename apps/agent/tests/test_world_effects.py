@@ -13,9 +13,6 @@ from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects, _update_quest_impl
 from session_data import CompanionState, SessionData
 
-# --- Helpers ---
-
-
 _mock_conn = MagicMock(name="mock_txn_conn")
 
 
@@ -51,9 +48,6 @@ def _make_bg(session_data=None):
     session.generate_reply = AsyncMock()
     bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
-
-
-# --- _apply_world_effects ---
 
 
 class TestApplyWorldEffects:
@@ -148,9 +142,7 @@ class TestApplyWorldEffects:
         session = _make_session()
         pending: list[tuple[str, dict]] = []
 
-        # Should not raise
         await _apply_world_effects(["this_is_not_a_valid_effect", ""], session, pending)
-        # No events from malformed strings
         assert len(pending) == 0
 
     @pytest.mark.asyncio
@@ -162,9 +154,6 @@ class TestApplyWorldEffects:
         await _apply_world_effects(["greyvale_corruption -1"], session, pending)
 
         assert session.corruption_level == 0
-
-
-# --- _check_exit_requirement ---
 
 
 class TestCheckExitRequirement:
@@ -224,9 +213,6 @@ class TestCheckExitRequirement:
         assert result is True
 
 
-# --- discover_hidden_element sets player flag ---
-
-
 class TestDiscoverSetsFlag:
     @pytest.mark.asyncio
     async def test_successful_discovery_sets_flag(self):
@@ -265,9 +251,6 @@ class TestDiscoverSetsFlag:
 
         if result.get("outcome") == "discovered":
             mock_mutations.set_player_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
-
-
-# --- update_quest calls _apply_world_effects ---
 
 
 QUEST_WITH_EFFECTS = {
@@ -333,9 +316,6 @@ class TestUpdateQuestWorldEffects:
         mock_mutations.set_npc_disposition.assert_called_once()
 
 
-# --- God whisper event triggers CRITICAL speech ---
-
-
 class TestGodWhisper:
     def test_god_whisper_event_triggers_speech(self):
         sd = _make_session(
@@ -397,7 +377,6 @@ class TestGodWhisper:
             )
         ]
         bg._handle_events(events)
-        # 40 - 25 = 15 < 25 cooldown
         assert len(bg._speech_queue) == 0
 
     def test_non_whisper_world_event_no_speech(self):
@@ -405,9 +384,6 @@ class TestGodWhisper:
         events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "ruins_discovery_ripple"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 0
-
-
-# --- Rider scene trigger ---
 
 
 class TestRiderScene:

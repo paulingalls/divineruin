@@ -274,9 +274,6 @@ class TestTheSystemPromptDoesNotMoveDuringAFight:
 
             assert agent.update_instructions.await_count == 0
 
-            # Byte-identical from the handoff into combat until the handback: a rebuild forced
-            # after three rounds of mutated combat state composes the same string, so it does
-            # not reach the agent either. Reds the moment combat data leaks back in.
             await bg._rebuild_warm_layer()
 
         assert bg._last_warm_layer == at_handoff

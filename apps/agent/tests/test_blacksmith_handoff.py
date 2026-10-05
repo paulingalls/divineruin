@@ -44,8 +44,6 @@ class TestEnterBlacksmith:
 
     @pytest.mark.asyncio
     async def test_derives_region_from_location_when_caller_lacks_agent_type(self):
-        # A non-region caller (no _agent_type) must NOT default to City silently —
-        # derive the return region from the current location.
         ctx = _ctx(location_id="accord_market_row")
         ctx.session.current_agent._agent_type = None
         with patch(
@@ -71,8 +69,6 @@ class TestConcludeBlacksmith:
 
     @pytest.mark.asyncio
     async def test_fallback_derives_region_from_location(self):
-        # pre_blacksmith unset: derive region from the current location, not a
-        # hardcoded City (Wisdom: never silently default region to City).
         ctx = _ctx(location_id="greyvale_ruins_entrance")
         ctx.userdata.pre_blacksmith_agent_type = None
         with patch(

@@ -44,7 +44,6 @@ def _spell(
 
 class TestComputeGeneratedResonance:
     def test_catalog_value_is_the_ssot(self):
-        # A catalog entry wins over the source*focus formula, even when they disagree.
         spell = _spell(resonance_value=6, focus_cost=10)
         assert cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod) == 6
 
@@ -70,14 +69,11 @@ class TestComputeGeneratedResonance:
         assert got == 6
 
     def test_korath_reduction_floors_at_zero_and_skips_a_cantrip(self):
-        # generated 0 must stay 0: the > 0 guard keeps a floored cantrip out of the
-        # resonance write / HUD push gates downstream.
         spell = _spell(source="primal", resonance_value=0)
         got = cast_modifiers.compute_generated_resonance(spell, "korath", resonance=resonance, racial_mod=racial_mod)
         assert got == 0
 
     def test_primal_build_without_a_catalog_entry_fails_loud(self):
-        # The one path that still reaches the terrain lookup; no runtime terrain map exists.
         spell = _spell(source="primal", resonance_value=None)
         with pytest.raises(ValueError):
             cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod)
@@ -94,11 +90,9 @@ class TestComputeEffectiveResonance:
         )
 
     def test_sheds_one_decay_round_then_accrues(self):
-        # OOC: base 5 decays by 1 -> 4, then this cast's 3 lands -> 7.
         assert self._effective(3, 5, None, False) == 7
 
     def test_human_sheds_an_extra_round(self):
-        # Adaptive Resonance: base 1/round +1 => 2/round. 5 - 2 + 3 = 6.
         assert self._effective(3, 5, "human", False) == 6
 
     def test_in_combat_suppresses_the_cast_paced_shed(self):
@@ -109,7 +103,6 @@ class TestComputeEffectiveResonance:
         assert self._effective(3, 5, "human", True) == 8
 
     def test_a_cantrip_skips_decay_entirely(self):
-        # generated 0 -> no decay, no accrual: the standing value is left exactly as it was.
         assert self._effective(0, 5, None, False) == 5
 
     def test_decay_floors_at_zero(self):
@@ -184,7 +177,6 @@ class TestResolveOverreachEcho:
         assert warned is False
 
     def test_active_ward_adds_four_and_softens_the_band(self):
-        # Same roll, same resonance: only the +4 moves 12 -> 16, veil_scar -> whisper.
         echo, warned = self._resolve(_FixedDice(12), ward_active=True)
         assert echo.band == "whisper"
         assert warned is False

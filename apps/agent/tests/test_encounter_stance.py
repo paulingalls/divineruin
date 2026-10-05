@@ -2,7 +2,6 @@ import pytest
 
 from encounter_stance import resolve_encounter_stance
 
-# Mirrors a faction's reputation_tiers in content/factions.json (friendly threshold = 5).
 _TIERS = {
     "hostile": {"threshold": -10, "effects": []},
     "unfriendly": {"threshold": -5, "effects": []},

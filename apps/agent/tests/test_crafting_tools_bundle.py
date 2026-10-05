@@ -62,7 +62,6 @@ class TestBundleWrites:
         for call in calls:
             assert call.args[:2] == ("player_1", "accord_guild_hall")
             assert call.args[3] == "rental"
-            # Same conn as the gold debit: a half-granted bundle must be impossible.
             assert call.kwargs["conn"] is conn
         assert mutations.update_player_gold.await_args.kwargs["conn"] is conn
 
@@ -83,7 +82,6 @@ class TestBundleWrites:
         days = 3
         result, mutations, _, _ = await _rent(days=days, disposition=disposition)
         assert result["price_sp"] == expected_daily * days
-        # Free must not mean access-free: trusted still gets both rows.
         assert mutations.create_workspace_rental.await_count == 2
         if expected_daily == 0:
             mutations.update_player_gold.assert_not_awaited()
@@ -203,8 +201,6 @@ class TestQuoteMatchesCharge:
         assert rental["price_sp"] == daily * 3 == 30
 
     async def test_every_quoted_token_is_rentable(self):
-        # The falsifier for the whole story: whatever query_info(kind="workspaces")
-        # quotes, begin_activity(kind="workspace") must be able to charge.
         quote = await self._quote("grimjaw")
         assert {e["workspace_type"] for e in quote["rentable"]} == {o.token for o in ws.RENTAL_OFFERS}
         for entry in quote["rentable"]:

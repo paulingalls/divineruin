@@ -32,9 +32,6 @@ def _location_ids() -> set[str]:
     return {loc["id"] for loc in _locations()}
 
 
-# --- Ambient resource_table (mirrors gathering.RARITY_ORDER, materials catalog) ---
-
-
 def test_wilderness_locations_have_a_resource_table():
     wild = [loc for loc in _locations() if loc.get("region_type") == "wilderness"]
     assert wild, "expected at least one wilderness location"
@@ -43,7 +40,6 @@ def test_wilderness_locations_have_a_resource_table():
 
 
 def test_city_and_dungeon_locations_omit_resource_table():
-    # Dungeons gather via fixed nodes; cities don't forage. Negative guard.
     offenders = [
         loc["id"] for loc in _locations() if loc.get("region_type") in ("city", "dungeon") and "resource_table" in loc
     ]
@@ -74,9 +70,6 @@ def test_resource_table_materials_exist_in_catalog():
         for ids in table.values():
             offenders.extend((loc["id"], mid) for mid in ids if mid not in materials)
     assert not offenders, f"resource_table material ids not in catalog: {offenders}"
-
-
-# --- Fixed gathering_nodes seed ---
 
 
 def test_every_node_targets_a_real_location():

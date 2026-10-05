@@ -69,12 +69,10 @@ class TestAdvanceOnboardingBeat:
 
         assert result["beat"] == 4
         assert result["beat_name"] == "kael_suggestion"
-        # Companion should be initialized
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Lira"
         assert ctx.userdata.companion.id == "companion_lira"
         mock_get_player.assert_awaited_once_with("player_1")
-        # companion_met flag should be set in DB
         calls = mock_set_player_flag.await_args_list
         flag_names = [c.args[1] for c in calls]
         assert "companion_met" in flag_names
@@ -86,7 +84,6 @@ class TestAdvanceOnboardingBeat:
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=4)
-        # Companion already set from beat 3
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
         raw = await advance_onboarding_beat._func(ctx)
@@ -106,7 +103,6 @@ class TestAdvanceOnboardingBeat:
 
         raw = await advance_onboarding_beat._func(ctx)
 
-        # Should be a tuple (Agent, json_str) for tool-return handoff
         assert isinstance(raw, tuple)
         agent, json_str = raw
         from exploration_agent import ExplorationAgent
@@ -115,9 +111,7 @@ class TestAdvanceOnboardingBeat:
         assert agent._agent_type == "city"
         result = json.loads(json_str)
         assert result["onboarding_complete"] is True
-        # onboarding_beat should be cleared
         assert ctx.userdata.onboarding_beat is None
-        # DB flag should be set to "complete"
         from onboarding_tools import ONBOARDING_COMPLETE
 
         mock_set_player_flag.assert_any_await("player_1", "onboarding_beat", ONBOARDING_COMPLETE)

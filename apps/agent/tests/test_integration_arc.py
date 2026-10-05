@@ -17,7 +17,6 @@ def _make_session(**kwargs: object) -> SessionData:
     return sd
 
 
-# Load the actual quest data
 def _load_greyvale_quest():
     import json as j
     from pathlib import Path
@@ -93,9 +92,7 @@ class TestQuestArcProgression:
             content=mock_content,
         )
 
-        # yanna disposition should be set
         mock_mutations.set_npc_disposition.assert_called_once()
-        # morale event should be logged
         morale_events = [e for e in pending if e[0] == E.WORLD_EVENT and "morale" in e[1].get("event_id", "")]
         assert len(morale_events) == 1
 

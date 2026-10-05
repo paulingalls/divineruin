@@ -27,7 +27,6 @@ class TestHotContextReveal:
         hot = agent._build_hot_context(sd)
         assert "veythar_seal_mark" in hot
         assert "ruins_journal_fragment" in hot
-        # Consumed same-turn: cleared so the reveal doesn't echo next turn.
         assert sd.recently_revealed_element_ids == []
 
     def test_no_reveal_part_when_none(self):
@@ -120,7 +119,6 @@ class TestOnExitIsAgentScoped:
 
         assert [e.event_type for e in sd.event_bus.drain()] == []
         mock_save.assert_not_awaited()
-        # Agent-scoped teardown still runs, and the session's loop outlives the agent.
         agent._spec_tap.stop.assert_called_once()
         background.stop.assert_not_awaited()
         assert sd.background is background

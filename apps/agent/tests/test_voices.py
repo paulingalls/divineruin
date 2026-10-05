@@ -59,9 +59,6 @@ def test_no_offset_for_unregistered_voice():
     assert cfg.speaking_rate == EMOTION_RATES["neutral"]
 
 
-# --- Inworld markup tests ---
-
-
 def test_markup_keys_match_emotion_rates():
     """Every emotion in EMOTION_RATES must have a markup entry (even if empty)."""
     assert set(INWORLD_MARKUPS.keys()) == set(EMOTION_RATES.keys())
@@ -104,9 +101,6 @@ def test_apply_markup_prepends_tag():
 
 def test_apply_markup_empty_passthrough():
     assert apply_markup("Hello world", "") == "Hello world"
-
-
-# --- Per-role townsfolk voices (story-014) ---
 
 
 def test_role_voice_keys_mirror_the_archetype_catalog():

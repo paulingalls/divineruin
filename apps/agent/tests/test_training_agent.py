@@ -73,8 +73,6 @@ class TestDispatchAgentRegistration:
 
 class TestCityToolBudget:
     def test_training_tools_left_city(self):
-        # Extracting these tools is what keeps City at or under the strict-tool
-        # ceiling (the count pin lives in test_strict_tool_budget.py).
         assert begin_activity not in EXPLORATION_TOOLS
         assert resolve_activity not in EXPLORATION_TOOLS
 

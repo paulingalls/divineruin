@@ -56,11 +56,8 @@ class TestTTSNode:
                         async for frame in agent.tts_node(mock_text_stream(), mock_model_settings):
                             frames.append(frame)
 
-                        # Should mark tts_start at beginning
                         assert any(call[0][0] == "tts_start" for call in mock_mark.call_args_list)
-                        # Should mark tts_first_byte when first frame arrives
                         assert any(call[0][0] == "tts_first_byte" for call in mock_mark.call_args_list)
-                        # Should finish timer at end
                         mock_finish.assert_called_once()
 
 
@@ -76,7 +73,6 @@ class TestAudioHelpers:
     def test_silence_frame_contains_zeros(self):
         frame = _silence(0.5)
 
-        # Frame data should be all zeros (silence)
         assert all(b == 0 for b in frame.data)
 
 
@@ -253,8 +249,6 @@ class TestDMSession:
 
                                                     await dm_session(mock_ctx)
 
-                                                    # Hydrated exactly once, with the gameplay
-                                                    # SessionData + the loaded player dict.
                                                     mock_hydrate.assert_awaited_once_with(
                                                         MockSD.return_value, mock_player
                                                     )

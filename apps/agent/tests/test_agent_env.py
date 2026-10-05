@@ -27,7 +27,6 @@ class TestEnvironmentValidation:
 
     def test_validate_env_raises_on_missing_vars(self):
         """validate_env should raise EnvironmentError if vars missing."""
-        # Set all but one
         env = {var: "test_value" for var in REQUIRED_ENV_VARS[1:]}
         env["OPENAI_API_KEY"] = "test_openai"
         with patch.dict(os.environ, env, clear=True):

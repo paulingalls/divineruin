@@ -16,8 +16,6 @@ import pytest
 
 import durability
 
-# --- max_hits / DURABILITY_MAX_HITS (spec Durability Tiers table) -------------
-
 
 @pytest.mark.parametrize(
     "tier,expected",
@@ -30,9 +28,6 @@ def test_max_hits_per_tier(tier, expected):
 def test_max_hits_unknown_tier_fails_loud():
     with pytest.raises(ValueError):
         durability.max_hits("indestructible")
-
-
-# --- apply_durability_damage -------------------------------------------------
 
 
 def test_apply_damage_decrements_by_exactly_hits():
@@ -77,9 +72,6 @@ def test_apply_damage_unknown_tier_fails_loud():
         durability.apply_durability_damage(item, 1, is_hollow_zone=False)
 
 
-# --- check_item_condition (broken-state penalties) ---------------------------
-
-
 def test_condition_not_broken_above_zero():
     item = {"type": "weapon", "durability_tier": "standard", "current_hits": 1}
     cond = durability.check_item_condition(item)
@@ -114,13 +106,9 @@ def test_condition_broken_tool_unusable():
 
 
 def test_condition_broken_non_equippable_type_no_penalty():
-    # consumables and the like have no broken-state penalty even at 0 hits.
     item = {"type": "consumable", "durability_tier": "fragile", "current_hits": 0}
     cond = durability.check_item_condition(item)
     assert cond == {"broken": True, "penalty": {}}
-
-
-# --- calculate_repair_cost (rarity axis, spec Repair Pricing table) ----------
 
 
 # cost_table is the rarity->sp map from the pricing SSOT (content/pricing.json's
@@ -139,9 +127,6 @@ def test_repair_cost_per_rarity(rarity, expected_sp):
 def test_repair_cost_unknown_rarity_fails_loud():
     with pytest.raises(ValueError):
         durability.calculate_repair_cost("mythic", cost_table=_COST_TABLE)
-
-
-# --- repair_skill_tier (durability-tier -> required Crafting skill tier) ------
 
 
 @pytest.mark.parametrize(

@@ -7,10 +7,8 @@ from check_resolution import resolve_skill_check, resolve_skill_check_dc
 
 class TestResolveSkillCheck:
     def test_success(self):
-        # Seed that produces d20=15
         rng = random.Random(42)
         test_roll = rng.randint(1, 20)
-        # Reset to same seed for actual call
         rng = random.Random(42)
         result = resolve_skill_check(
             SAMPLE_PLAYER, "athletics", "moderate", rng=rng, ally_present=False, hearing_only=False
@@ -52,7 +50,6 @@ class TestResolveSkillCheck:
         unprof_result = resolve_skill_check(
             SAMPLE_PLAYER, "persuasion", "moderate", rng=rng, ally_present=False, hearing_only=False
         )
-        # athletics: STR+2, trained(prof+1, tier+2) = +5; persuasion: CHA-1, untrained = -1
         assert prof_result.modifier == 5
         assert unprof_result.modifier == -1
 
@@ -107,5 +104,4 @@ class TestResolveSkillCheckDc:
         result = resolve_skill_check_dc(
             SAMPLE_PLAYER, "perception", 10, rng=rng, ally_present=False, hearing_only=False
         )
-        # WIS 11 → +0, trained: prof +1 + tier +2 = +3
         assert result.modifier == 3

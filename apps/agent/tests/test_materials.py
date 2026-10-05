@@ -14,7 +14,6 @@ import pytest
 
 import materials
 
-# A materials_catalog row's `data` payload (id is the row key, passed separately).
 VALID_MATERIAL_DATA = {
     "name": "Iron Ore",
     "category": "metal",

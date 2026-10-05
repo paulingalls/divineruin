@@ -97,7 +97,6 @@ class TestGetIdleClip:
         assert result is not None
         assert result["text"] == "The fire pops quietly."
         assert result["audio_url"] == "/api/audio/idle_abc123.mp3"
-        # Should have marked as heard
         mock_pool.execute.assert_awaited_once()
 
     @pytest.mark.asyncio

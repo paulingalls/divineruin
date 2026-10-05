@@ -31,10 +31,8 @@ class TestDeathSaveBonus:
         with _force_roll(8):
             base = combat_resolution.resolve_death_save(0, 0)
             boosted = combat_resolution.resolve_death_save(0, 0, bonus=2)
-        # Raw 8 fails on its own (8 < 10) but a +2 patron bonus clears the bar (10 >= 10).
         assert base.success is False
         assert boosted.success is True
-        # The reported roll stays the raw die for display either way.
         assert base.roll == 8 and boosted.roll == 8
 
     def test_bonus_does_not_change_crit_success_or_failure(self):

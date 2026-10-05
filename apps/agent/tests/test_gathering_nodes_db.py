@@ -53,7 +53,6 @@ async def test_restore_node_quantity_caps_at_capacity_and_is_idempotent():
         row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
         assert json.loads(row["data"])["quantity"] == 3
 
-        # A repeated restore call never exceeds capacity (idempotent cap).
         await db_mutations_gathering.restore_node_quantity(node_id, 3, conn=pool)
         row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
         assert json.loads(row["data"])["quantity"] == 3
@@ -84,7 +83,6 @@ async def test_restore_node_quantity_no_ops_on_capacity_less_row():
 
 
 async def test_deplete_quantity_and_mark_discovered_via_jsonb_set():
-    # The two mutations story-003's consumer will issue against a fixed node.
     pool = await db.get_pool()
     node_id = f"test_node_{uuid.uuid4().hex}"
     data = {

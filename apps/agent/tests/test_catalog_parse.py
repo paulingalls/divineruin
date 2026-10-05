@@ -106,7 +106,6 @@ class TestParseIntDict:
             cp.parse_int_dict(["not", "a", "dict"], "ctx")
 
     def test_rejects_non_int_value_with_key_context(self):
-        # Deep value validation: a stringly-typed value fails loud naming the key.
         with pytest.raises(ValueError, match=r"ctx\[arcane\] is not an int"):
             cp.parse_int_dict({"arcane": "high"}, "ctx")
 

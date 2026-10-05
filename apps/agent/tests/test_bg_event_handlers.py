@@ -40,7 +40,6 @@ class TestHiddenRevealed:
         assert sd.recently_revealed_element_ids == ["secret_door"]
 
     def test_missing_element_id_records_nothing(self):
-        # A reveal event without an element_id is a no-op for the signal (defensive).
         _, sd = _dispatch([GameEvent(event_type=E.HIDDEN_REVEALED, payload={})])
         assert sd.recently_revealed_element_ids == []
 

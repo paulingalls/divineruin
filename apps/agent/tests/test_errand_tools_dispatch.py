@@ -51,7 +51,6 @@ def _activity(companion_count=0):
 
 
 def _queries(player_class="mage"):
-    # The assigned companion is derived from the player's class: mage -> Kael, beastcaller -> Sable.
     mod = MagicMock()
     mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": player_class})
     return mod
@@ -86,7 +85,6 @@ class TestDispatchCompanionErrand:
         assert "resolve_at_estimate" in result
         assert result["errand_type"] == "scout"
         ctx.disallow_interruptions.assert_called_once()
-        # Row data carries the async-worker contract fields.
         data = (
             mutations.create_async_activity.await_args.kwargs.get("activity_data")
             or (mutations.create_async_activity.await_args.args[1])
@@ -94,10 +92,8 @@ class TestDispatchCompanionErrand:
         assert data["status"] == "in_progress"
         assert data["activity_type"] == "companion_errand"
         assert data["parameters"] == {"errand_type": "scout", "destination": "millhaven"}
-        # Template's spec range is recorded on the row.
         assert data["duration_min_seconds"] == 14400
         assert data["duration_max_seconds"] == 28800
-        # The sampled resolve_at duration falls within that range.
         sampled = datetime.fromisoformat(data["resolve_at"]) - FIXED_NOW
         assert timedelta(seconds=14400) <= sampled <= timedelta(seconds=28800)
 
@@ -156,7 +152,6 @@ class TestDispatchCompanionErrand:
     async def test_blocked_companion_raises(self):
         ctx = make_context()
         mutations = _mutations()
-        # A beastcaller's assigned companion IS Sable, so the gate fires on the assigned id.
         with pytest.raises(ToolError, match="companion_sable cannot perform social"):
             await _dispatch_companion_errand_impl(
                 ctx,

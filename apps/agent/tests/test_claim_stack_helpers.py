@@ -32,14 +32,10 @@ async def test_patches_wire_up_the_worker_lifecycle():
     activity = {"id": "activity_xyz", "status": "in_progress"}
     mock_conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
     with txn_p, get_p, claim_p, revert_p:
-        # FOR-UPDATE re-fetch returns the activity dict the helper was given.
         assert await async_worker.db_activity_queries.get_activity("activity_xyz") == activity
-        # claim defaults to True (claim succeeds).
         assert await async_worker.claim_resolving("activity_xyz", conn=mock_conn) is True
-        # revert is a noop AsyncMock the caller can assert on.
         await async_worker.revert_claim_safe("activity_xyz")
         async_worker.revert_claim_safe.assert_awaited_once()
-        # db.transaction() yields the same mock conn (so mark_resolved's await lands on it).
         async with async_worker.db.transaction() as conn:
             assert conn is mock_conn
 

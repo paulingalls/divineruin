@@ -98,9 +98,6 @@ async def test_remove_tolerates_null_conditions(dev_db_pool):
 
 
 async def test_consume_preserves_concurrent_condition_via_server_side_removal(dev_db_pool):
-    # End-to-end for the 4 pure-consume modes: consume_beneficial_conditions takes only the spent
-    # types (no stale player dict) and removes them server-side. The DB holds [blessed, poisoned];
-    # consuming 'blessed' leaves 'poisoned' — proving no read-modify-write clobber.
     pool = dev_db_pool
     player_id = "s013_consume_preserves_concurrent"
     await _seed_conditions(pool, player_id, [_cond("blessed"), _cond("poisoned")])

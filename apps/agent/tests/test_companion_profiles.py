@@ -98,8 +98,6 @@ class TestParse:
     def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True
-        # sound_palette is owned solely by voice_registry.json now (B1, debt eb08ad17f6e2);
-        # the companion entity no longer mirrors it.
         assert not hasattr(sable, "sound_palette")
         assert sable.reactions == ()
 
@@ -136,7 +134,6 @@ class TestParse:
 
 class TestAccessor:
     def test_get_returns_each_companion(self):
-        # autouse fixture seeds the catalog from content
         for cid in _IDS:
             assert get_companion_profile(cid).id == cid
 
@@ -149,7 +146,6 @@ class TestAccessor:
 
 
 class TestScaling:
-    # A representative player line: warrior chassis, CON +2.
     ARCHETYPE = "warrior"
     CON_MOD = 2
     LEVELS = (1, 5, 10, 15, 20)
@@ -173,7 +169,6 @@ class TestScaling:
 
     def test_kael_ac_threshold_steps_at_l10(self):
         kael = get_companion_profile("companion_kael")
-        # Kael: AC 15 base, 17 at L10+.
         assert scale_companion_stats_to_player_level(kael, 100, 1).ac == 15
         assert scale_companion_stats_to_player_level(kael, 100, 9).ac == 15
         assert scale_companion_stats_to_player_level(kael, 100, 10).ac == 17
@@ -186,7 +181,6 @@ class TestScaling:
 
     def test_kael_strength_accumulates(self):
         kael = get_companion_profile("companion_kael")
-        # Base STR 15; +1 at L4, +1 at L12.
         assert scale_companion_stats_to_player_level(kael, 100, 1).attributes["strength"] == 15
         assert scale_companion_stats_to_player_level(kael, 100, 4).attributes["strength"] == 16
         assert scale_companion_stats_to_player_level(kael, 100, 12).attributes["strength"] == 17
@@ -226,7 +220,6 @@ class TestActionPool:
     def test_kael_melee_attacks(self):
         kael = get_companion_profile("companion_kael")
         pool = companion_attacks_to_action_pool(kael)
-        # hit "STR+prof" -> governing_attribute strength.
         assert pool == [
             {
                 "name": "Longsword",
@@ -247,9 +240,6 @@ class TestActionPool:
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt and Radiant Mote are both type=ranged -> top-level ranged:True.
-        # hit "INT+prof" -> governing INT (the resolver uses INT, NOT the ranged-default
-        # DEX). damage strips +INT.
         assert pool == [
             {
                 "name": "Arcane Bolt",
@@ -276,7 +266,6 @@ class TestActionPool:
         assert by_name["Short Sword"].get("ranged") is None  # melee -> no ranged key
         assert by_name["Shortbow"]["ranged"] is True
         assert by_name["Short Sword"]["damage"] == "1d6"  # +DEX stripped
-        # Both Tam attacks are DEX (hit "DEX+prof"); the melee short sword resolves on DEX, not STR.
         assert by_name["Short Sword"]["governing_attribute"] == "dexterity"
         assert by_name["Shortbow"]["governing_attribute"] == "dexterity"
 
@@ -287,7 +276,6 @@ class TestActionPool:
                 assert action["damage"], f"{cid} {action['name']} lost its dice term"
 
     def test_malformed_damage_without_dice_term_raises(self):
-        # A pure-attribute damage expression has no dice/int term to keep -> fail loud.
         broken = copy.deepcopy(_row("companion_kael"))
         broken["attacks"][0]["damage"] = "STR"
         bad_profile = parse_companion_row("companion_kael", broken)
@@ -295,7 +283,6 @@ class TestActionPool:
             companion_attacks_to_action_pool(bad_profile)
 
     def test_malformed_hit_without_attribute_raises(self):
-        # A hit expression with no recognized attribute token can't yield a governing stat -> fail loud.
         broken = copy.deepcopy(_row("companion_kael"))
         broken["attacks"][0]["hit"] = "prof"
         bad_profile = parse_companion_row("companion_kael", broken)
@@ -318,7 +305,6 @@ class TestLoader:
         assert is_loaded()  # seeded by the autouse fixture
         with pytest.raises(ValueError, match="companion_broken"):
             await load_companion_profiles()
-        # catalog intact — the swap never happened
         assert get_companion_profile("companion_kael").name == "Kael"
 
     async def test_load_populates_from_pool(self, monkeypatch):
@@ -340,12 +326,9 @@ class TestLoader:
         assert {c for c in _IDS} <= set(companion_profiles._companion_profiles.keys())
 
 
-# --- archetype -> companion assignment (story-003) -----------------------------
-
 _ARCHETYPES_PATH = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
 _ARCHETYPE_IDS = sorted(e["id"] for e in json.loads(_ARCHETYPES_PATH.read_text()))
 
-# Derived from the content, never restated by hand: {archetype_id: companion_id}.
 _EXPECTED = {a: e["id"] for e in _RAW for a in e["complements"]}
 
 
@@ -359,8 +342,6 @@ def _catalog_with(complements_by_id: dict[str, list[str]]) -> dict[str, Companio
 
 class TestSelectCompanionForArchetype:
     def test_complements_partition_the_archetypes(self):
-        # The AC2 content guard: every archetype covered, none covered twice. Reds the day a
-        # 19th archetype ships uncovered, or an id is copied into a second companion.
         listed = [a for e in _RAW for a in e["complements"]]
         assert sorted(listed) == _ARCHETYPE_IDS
         assert len(listed) == len(set(listed))

@@ -65,7 +65,6 @@ class TestOnboardingAgentClass:
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent()
-        # Should not raise — default beat=1
         assert agent is not None
 
     def test_tool_list_has_advance_onboarding_beat(self):

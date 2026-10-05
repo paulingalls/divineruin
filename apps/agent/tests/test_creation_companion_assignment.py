@@ -24,9 +24,6 @@ from session_data import CreationState, SessionData
 _finalize: Any = finalize_character._func
 
 
-# --- the non-overwriting writer -----------------------------------------------
-
-
 class _RecordingConn:
     """Captures the statement + args instead of executing them."""
 
@@ -110,9 +107,6 @@ class TestInsertIfAbsentAgainstPostgres:
             await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)
 
 
-# --- the finalize_character hook ----------------------------------------------
-
-
 def _state(class_choice: str) -> CreationState:
     return CreationState(
         phase="identity",
@@ -167,7 +161,6 @@ class TestFinalizeAssignsCompanion:
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_grant_failure_does_not_strand_a_created_character(self, _create, payload, grant):
-        # The player row is already persisted; a grant hiccup must not fail creation.
         payload.return_value = _PAYLOAD
         cs = _state("mage")
         await _finalize(_ctx(cs))

@@ -21,11 +21,6 @@ from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from quest_tools import _update_quest_impl
 
-# ── Quest XP is party-wide (story-002, debt 6033f2bedcea) ─────────────────────
-# story-001 made combat XP party-wide, but quest XP still paid only session.player_id, so a
-# non-primary member earned combat XP and no quest XP and drifted down in level by quest volume.
-# The share must follow the SAME rule combat uses, not a second copy of it.
-
 
 def _marker_store(member_ids, progress=None):
     """A stand-in for the `player_quests` table: player_id -> stored blob. `progress` maps a
@@ -104,7 +99,6 @@ async def test_quest_xp_share_uses_the_same_party_curve_as_combat():
 
     expected = int(200 * encounter_loot.party_reward_multiplier(2) / 2)
     for call in mutations.update_player_xp.await_args_list:
-        # update_player_xp(player_id, new_xp, new_level, conn=...) — new_xp is base + share.
         assert call.args[1] == GUILD_PLAYER["xp"] + expected
 
 
@@ -114,12 +108,6 @@ async def test_solo_quest_xp_is_unchanged_by_the_party_split():
 
     assert mutations.update_player_xp.await_count == 1
     assert mutations.update_player_xp.await_args.args[1] == GUILD_PLAYER["xp"] + 200
-
-
-# ── Divine favor is a quest-completion Resolve (story-002, M28) ───────────────
-# Favor was only ever written by the award_divine_favor LLM tool; story-003 deleted it, so
-# without this path favor would be ungrantable. Party-wide at the FULL declared amount each —
-# a patron relationship is personal, not a haul to divide (unlike XP and coin).
 
 
 async def _complete_favor_stage(
@@ -226,16 +214,8 @@ async def test_a_rolled_back_stage_publishes_no_favor():
     with pytest.raises(RuntimeError):
         await _complete_favor_stage(["player_1"], 5, {"player_1": "kaelen"}, fail_after=True, room=room)
 
-    # Nothing reached the wire: publish happens only after the `async with` block returns.
     published = [json.loads(c[0][0])["type"] for c in room.local_participant.publish_data.call_args_list]
     assert E.DIVINE_FAVOR_CHANGED not in published
-
-
-# ── Every paid member gets an anti-replay marker (story-009) ──────────────────
-# story-002 made the REWARD party-wide but left the LEDGER singular: only the primary's
-# player_quests row was written. A non-primary was paid and kept no record of it, so hosting
-# their own session let them run the same quest from stage 0 — the backward guard read their
-# ABSENT row, passed, and paid them again. Every stage was farmable once per member per host.
 
 
 @pytest.mark.asyncio
@@ -399,7 +379,6 @@ async def test_a_member_behind_the_host_is_locked_out_of_the_stages_they_skipped
             {"id": 2, "objective": "three", "on_complete": {"xp": 200}},
         ],
     }
-    # player_1 is on the last stage; player_2 has NO row at all — they never started it.
     store = {"player_1": {"current_stage": 2}}
     mock_db, _ = make_db_mod()
     content = MagicMock()
@@ -417,9 +396,7 @@ async def test_a_member_behind_the_host_is_locked_out_of_the_stages_they_skipped
 
     await _update_quest_impl(ctx, "q3", 3, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
 
-    # Paid once, for the one stage they were present for.
     assert [c.args[0] for c in mutations.update_player_xp.await_args_list].count("player_2") == 1
-    # But credited with the whole quest: stages 0 and 1 are now unreachable for them.
     assert store["player_2"] == {"current_stage": 3, "quest_name": "Long Quest", "status": "completed"}
 
 
@@ -434,8 +411,6 @@ async def test_a_partially_paid_member_is_marked_but_warned_about(caplog):
     (a schema change, debt 27944a8fcd50). Until then the forfeit must be LOUD, because it only
     fires on a degraded row and it silently costs that member a reward.
     """
-    # player_2 has no patron, so the favor pass skips them; the XP pass pays them. They end up
-    # in exactly one of the two paid sets.
     with caplog.at_level("WARNING"):
         mutations, _, _ = await _complete_favor_stage(
             ["player_1", "player_2"], 5, {"player_1": "kaelen", "player_2": "none"}, xp_amount=100

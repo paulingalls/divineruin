@@ -42,7 +42,6 @@ class TestConsumer:
         assert not any(s.instructions == vaelti_echo_warning.WARNING_INSTRUCTION for s in queue)
 
     def test_warning_does_not_trigger_warm_rebuild(self):
-        # One-shot narration — no warm-layer rebuild needed (not in REBUILD_EVENT_TYPES).
         needs_rebuild, _ = handle_events(
             [GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), [], False, {}, []
         )

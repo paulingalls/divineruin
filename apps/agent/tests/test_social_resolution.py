@@ -29,7 +29,6 @@ from social_resolution import (
 
 class TestSocialDcModifier:
     def test_every_tier_maps_to_spec_value(self):
-        # Spec L668: hostile +6, unfriendly +3, neutral 0, friendly -3, trusted -6.
         assert social_dc_modifier("hostile") == 6
         assert social_dc_modifier("unfriendly") == 3
         assert social_dc_modifier("neutral") == 0
@@ -37,7 +36,6 @@ class TestSocialDcModifier:
         assert social_dc_modifier("trusted") == -6
 
     def test_modifier_decreases_monotonically_up_the_ladder(self):
-        # Friendlier disposition is always easier (a strictly smaller DC modifier).
         mods = [social_dc_modifier(tier) for tier in DISPOSITIONS]
         assert mods == sorted(mods, reverse=True)
         assert all(a > b for a, b in pairwise(mods))
@@ -64,13 +62,11 @@ class TestDispositionShift:
         assert disposition_shift("persuasion", -12) == -2  # failure by 10+
 
     def test_deception_caps_success_at_plus_one(self):
-        # Deception never wins more than +1 even on a blowout (they believe, no admiration).
         assert disposition_shift("deception", 15) == 1
         assert disposition_shift("deception", 6) == 1
         assert disposition_shift("deception", -7) == -1
 
     def test_intimidation_double_edge_penalizes_even_on_success(self):
-        # Spec L680-685: intimidation's bare success and any failure damage the relationship.
         assert disposition_shift("intimidation", 12) == 1  # respectful fear
         assert disposition_shift("intimidation", 6) == 0  # compliance without warmth
         assert disposition_shift("intimidation", 1) == -1  # resentful compliance
@@ -78,7 +74,6 @@ class TestDispositionShift:
         assert disposition_shift("intimidation", -7) == -2  # hostile now
 
     def test_band_boundaries_are_inclusive(self):
-        # Exactly +10 / +5 / 0 / -5 / -10 land in the higher-magnitude band.
         assert disposition_shift("persuasion", 10) == 2
         assert disposition_shift("persuasion", 5) == 1
         assert disposition_shift("persuasion", -5) == -1
@@ -96,7 +91,6 @@ class TestResolveSocialCheckTier1:
     """Tier 1 (spec L636-687): dc = base_dc + disposition modifier; success = roll >= dc."""
 
     def test_disposition_modifier_adds_to_base_dc(self):
-        # Same roll_total against the same base_dc: hostile (+6) is harder than friendly (-3).
         vs_hostile = resolve_social_check(disposition="hostile", skill="persuasion", roll_total=15, base_dc=12)
         vs_friendly = resolve_social_check(disposition="friendly", skill="persuasion", roll_total=15, base_dc=12)
         assert vs_hostile.dc == 18 and not vs_hostile.success  # 15 < 18
@@ -105,22 +99,18 @@ class TestResolveSocialCheckTier1:
         assert vs_friendly.margin == 6
 
     def test_returns_disposition_shift_and_clamped_new_disposition(self):
-        # Persuasion success by 6 -> +1; neutral shifts to friendly.
         r = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=18, base_dc=12)
         assert r.disposition_shift == 1
         assert r.new_disposition == "friendly"
 
     def test_new_disposition_clamps_at_ladder_ends(self):
-        # A big failure against an already-hostile NPC cannot fall off the ladder.
         r = resolve_social_check(disposition="hostile", skill="intimidation", roll_total=1, base_dc=14)
         assert r.disposition_shift < 0
         assert r.new_disposition == "hostile"
 
     def test_dramatic_routes_through_m45_ssot(self):
-        # Razor-thin margin (<=1) is dramatic via dramatic.py, labeled razor_thin.
         thin = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=12, base_dc=12)
         assert thin.dramatic and thin.context == "razor_thin"
-        # A comfortable, low-stakes win is not dramatic.
         calm = resolve_social_check(disposition="friendly", skill="persuasion", roll_total=25, base_dc=10)
         assert not calm.dramatic
 
@@ -143,24 +133,19 @@ class TestArgumentDcAdjust:
     """Tier-3 argument categories vs NPC resistance personality (spec L768-791)."""
 
     def test_no_argument_is_neutral(self):
-        # A Tier-1 simple check passes argument_type=None -> no adjustment.
         assert argument_dc_adjust(None, ()) == 0
         assert argument_dc_adjust(None, ("pragmatic",)) == 0
 
     def test_vulnerable_argument_lowers_dc(self):
-        # Pragmatic NPC is vulnerable to self-interest -> easier (negative adjust).
         assert argument_dc_adjust("self_interest", ("pragmatic",)) < 0
 
     def test_resistant_argument_raises_dc(self):
-        # Pragmatic NPC resists emotional appeals -> harder (positive adjust).
         assert argument_dc_adjust("emotion", ("pragmatic",)) > 0
 
     def test_unrelated_argument_is_neutral(self):
-        # Cowardly profile neither favors nor resists evidence -> no change.
         assert argument_dc_adjust("evidence", ("cowardly",)) == 0
 
     def test_conflicting_tags_net_out(self):
-        # An NPC both pragmatic (resists emotion) and emotional (vulnerable to emotion).
         assert argument_dc_adjust("emotion", ("pragmatic", "emotional")) == 0
 
     def test_resistance_map_uses_only_canonical_argument_types(self):
@@ -179,7 +164,6 @@ class TestArgumentDcAdjust:
 
 class TestResolveSocialCheckTier3:
     def test_matching_argument_makes_the_check_easier(self):
-        # Same roll vs same NPC: a vulnerable argument succeeds where a bare check would not.
         plain = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=14, base_dc=15)
         favored = resolve_social_check(
             disposition="neutral",
@@ -218,7 +202,6 @@ class TestResolveContestedSocial:
         assert r.margin == 0
 
     def test_contested_is_always_dramatic(self):
-        # Both a blowout win and a razor-thin loss flag dramatic via the M4.5 SSOT.
         assert resolve_contested_social(skill="intimidation", player_total=25, npc_total=8).dramatic
         assert resolve_contested_social(skill="intimidation", player_total=10, npc_total=11).dramatic
 
@@ -226,7 +209,6 @@ class TestResolveContestedSocial:
         assert resolve_contested_social(skill="deception", player_total=20, npc_total=10).consequence == ""
 
     def test_failure_consequence_varies_by_skill_and_band(self):
-        # Deception failed by 5+ is harsher than failed by 1-4, and differs from intimidation.
         mild = resolve_contested_social(skill="deception", player_total=11, npc_total=13)
         severe = resolve_contested_social(skill="deception", player_total=5, npc_total=18)
         assert mild.consequence and severe.consequence

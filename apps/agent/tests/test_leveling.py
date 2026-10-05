@@ -77,9 +77,7 @@ class TestGetLevelUpRewards:
 
     def test_multi_level_accumulation_l1_to_l8(self) -> None:
         rewards = get_level_up_rewards(1, 8)
-        # L4 = 2, L8 = 2 => 4 total
         assert rewards.attribute_points == 4
-        # L5 has specialization
         assert rewards.specialization_fork is True
 
     def test_l1_to_l20_gives_10_attribute_points(self) -> None:
@@ -88,13 +86,11 @@ class TestGetLevelUpRewards:
         assert rewards.specialization_fork is True
 
     def test_proficiency_change_detected(self) -> None:
-        # L6 -> L7: proficiency changes from +1 to +2
         rewards = get_level_up_rewards(6, 7)
         assert rewards.proficiency_changed is True
         assert rewards.new_proficiency_bonus == 2
 
     def test_no_proficiency_change(self) -> None:
-        # L1 -> L2: proficiency stays +1
         rewards = get_level_up_rewards(1, 2)
         assert rewards.proficiency_changed is False
         assert rewards.new_proficiency_bonus == 1
@@ -105,7 +101,6 @@ class TestGetLevelUpRewards:
         assert rewards.new_proficiency_bonus == 3
 
     def test_milestones_collected(self) -> None:
-        # L4->L5 should include the specialization milestone
         rewards = get_level_up_rewards(4, 5)
         assert len(rewards.milestones) == 1
         assert rewards.milestones[0]["level"] == 5
@@ -179,7 +174,6 @@ class TestCantripDamageDice:
             assert cantrip_damage_dice(level) == "4d6", f"L{level} should be 4d6"
 
     def test_bracket_boundaries(self) -> None:
-        # Lower edge stays in the prior bracket; upper edge crosses into the next.
         assert cantrip_damage_dice(4) == "1d6"
         assert cantrip_damage_dice(5) == "2d6"
         assert cantrip_damage_dice(10) == "2d6"
@@ -196,7 +190,6 @@ class TestCantripDamageDice:
             cantrip_damage_dice(21)
 
     def test_every_level_returns_rollable_spec_no_gap(self) -> None:
-        # E2E: every level 1-20 yields a dice spec the real roller accepts.
         for level in range(1, 21):
             spec = cantrip_damage_dice(level)
             result = roll(spec)

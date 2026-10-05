@@ -22,8 +22,6 @@ import pytest
 
 import resonance
 
-# --- calculate_resonance_generated: source multipliers (spec 110-124) ---------
-
 
 @pytest.mark.parametrize(
     "focus,source,expected",
@@ -42,7 +40,6 @@ def test_generation_per_source(focus, source, expected):
 
 @pytest.mark.parametrize("source", ["arcane", "divine", "bard", "primal"])
 def test_cantrip_generates_zero_for_every_source(source):
-    # focus_cost == 0 early-return (spec 112-113); terrain irrelevant for the 0 path.
     assert resonance.calculate_resonance_generated(0, source, "ancient_forest") == 0
 
 
@@ -56,9 +53,6 @@ def test_generation_negative_focus_fails_loud():
     # violating the Resonance >= 0 invariant — fail loud like durability's negative hits.
     with pytest.raises(ValueError):
         resonance.calculate_resonance_generated(-5, "arcane")
-
-
-# --- primal terrain routing (spec 71-80) -------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -85,12 +79,8 @@ def test_primal_unknown_terrain_fails_loud():
 
 
 def test_primal_default_normal_terrain_fails_loud():
-    # "normal" is the non-primal default; primal must name a real terrain.
     with pytest.raises(ValueError):
         resonance.calculate_resonance_generated(5, "primal")
-
-
-# --- get_resonance_state thresholds (spec 100-106) ---------------------------
 
 
 @pytest.mark.parametrize(
@@ -108,11 +98,6 @@ def test_resonance_state_thresholds(value, expected):
     assert resonance.get_resonance_state(value) == expected
 
 
-# --- Thessyn flickering-threshold shift (M3.4 story-003, spec 270-276) --------
-# Deep Adaptation: +1 to the Flickering threshold shifts the band 5-8 -> 6-9 (stable up to 5,
-# overreach at 10+). The bonus is a pure param; story-006 supplies it from the racial lookup.
-
-
 @pytest.mark.parametrize(
     "value,expected",
     [
@@ -128,13 +113,9 @@ def test_resonance_state_with_thessyn_flickering_bonus(value, expected):
 
 
 def test_flickering_bonus_defaults_to_zero_unchanged_bands():
-    # Regression guard: the default (no bonus) keeps the canonical 4/8 boundary.
     assert resonance.get_resonance_state(4) == "stable"
     assert resonance.get_resonance_state(5) == "flickering"
     assert resonance.get_resonance_state(9) == "overreach"
-
-
-# --- apply_resonance_decay (spec 126-131) ------------------------------------
 
 
 def test_decay_default_minus_one():
@@ -151,11 +132,6 @@ def test_decay_floors_at_zero():
 
 def test_decay_at_zero_stays_zero():
     assert resonance.apply_resonance_decay(0) == 0
-
-
-# --- apply_primal_reduction (M3.4 story-003, Korath earth-anchored, spec 254-260) ---
-# Korath generates -1 Resonance on primal spells (floor 0). Pure generation-modifier mirroring
-# veil_ward.halve_generation; the reduction value comes from the racial lookup (story-001).
 
 
 def test_primal_reduction_subtracts():
@@ -175,9 +151,6 @@ def test_primal_reduction_rejects_negative_generated():
 def test_primal_reduction_rejects_negative_reduction():
     with pytest.raises(ValueError, match="reduction"):
         resonance.apply_primal_reduction(5, -1)
-
-
-# --- get_state_modifiers (spec 100-106) --------------------------------------
 
 
 @pytest.mark.parametrize(

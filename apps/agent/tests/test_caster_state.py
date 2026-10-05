@@ -17,7 +17,6 @@ class TestResonanceTrack:
 
     def test_resonance_track_state_property(self):
         track = caster_state.ResonanceTrack(current=0)
-        # state property derives from resonance module
         assert track.state is not None
 
     def test_resonance_track_asdict_roundtrip(self):

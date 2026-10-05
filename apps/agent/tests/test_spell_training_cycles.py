@@ -24,9 +24,6 @@ from dialogue_parser import Segment
 
 SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 5}
 
-# A spell-training activity at the completion edge. spell_major carries
-# cycles_required=5 (content config, loaded by the autouse conftest fixture);
-# its midpoint decision ids are push/work_around.
 SAMPLE_SPELL_ACTIVITY = {
     "id": "train_spell1",
     "player_id": "player_1",
@@ -101,12 +98,9 @@ class TestSpellTrainingAccrual:
             count = await advance_training_cycles()
 
         assert count == 1
-        # One cycle accrued against this spell, sized by the major tier (5 cycles).
         advance.assert_awaited_once()
         assert advance.call_args.args[:2] == ("player_1", "arcane_fireball")
         assert advance.call_args.args[2] == 5  # cycles_required from content config
-        # Promotion fired, carrying the recorded midpoint decision as the spell's
-        # bonus_variant (AC3: the learned spell reflects the training decision).
         record_learned.assert_awaited_once_with("player_1", "arcane_fireball", "training", bonus_variant="push")
         delete_progress.assert_awaited_once_with("player_1", "arcane_fireball")
 
@@ -237,8 +231,6 @@ class TestSpellTrainingAccrual:
             patches[8],
             patches[9],
         ):
-            # The worker catches per-activity exceptions and retries next cycle, so it
-            # returns 0 transitions rather than raising; accrual never runs.
             count = await advance_training_cycles()
 
         assert count == 0
@@ -322,7 +314,6 @@ class TestSpellTrainingAccrual:
         ):
             count = await advance_training_cycles()
 
-        # Narration failed: no transition, no cache write, progress row preserved.
         assert count == 0
         mock_update.assert_not_awaited()
         delete_progress.assert_not_awaited()

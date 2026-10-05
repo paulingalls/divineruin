@@ -63,8 +63,6 @@ class TestCreationCardsImageUrl:
     async def test_race_cards_have_image_url(self):
         ctx = _make_context()
         await _push_cards(ctx, category="race")
-        # Verify function doesn't error out — actual image_url content tested below
-        # The unit test for the actual image_url content relies on compute_asset_id tests
 
     async def test_class_cards_have_image_url(self):
         ctx = _make_context()

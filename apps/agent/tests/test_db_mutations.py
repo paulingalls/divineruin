@@ -19,7 +19,6 @@ class TestCreateWorkspaceRental:
         assert rid.startswith("rent_")
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO workspace_rentals" in sql
-        # id, player_id, location_id, workspace_type, source, expires_at
         assert params == [rid, "p1", "millhaven", "forge", "rental", None]
 
 
@@ -76,7 +75,6 @@ class TestQuantityDeltaExpr:
         assert expr == "jsonb_set(data, '{quantity}', (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb)"
 
     def test_qualifies_the_column_for_the_on_conflict_arm(self):
-        # add_inventory_item's ON CONFLICT references the existing row as player_inventory.data.
         expr = db_mutations.quantity_delta_expr("player_inventory.data", "$4")
         assert "COALESCE((player_inventory.data->>'quantity')::int, 0) + $4" in expr
         assert expr.startswith("jsonb_set(player_inventory.data, '{quantity}',")

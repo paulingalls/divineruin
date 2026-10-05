@@ -59,7 +59,6 @@ def _queries_mod(*, level=20, archetype="mage", player_exists=True):
 class TestLearnSpell:
     @pytest.mark.asyncio
     async def test_discovery_records_track(self):
-        # AC1: a scroll learned via source='discovery' lands with track='discovery'.
         cs = MagicMock()
         cs.record_learned = AsyncMock()
         await spell_tools._learn_spell_impl(
@@ -74,7 +73,6 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_mentor_records_npc_teaching_track(self):
-        # AC4 (behavior): a mentor-taught spell at an eligible level records npc_teaching.
         cs = MagicMock()
         cs.record_learned = AsyncMock()
         await spell_tools._learn_spell_impl(
@@ -89,7 +87,6 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_tier_gate_rejects_above_level(self):
-        # AC2: a level-2 mage cannot learn a Standard spell (mage unlocks Standard at L3).
         cs = MagicMock()
         cs.record_learned = AsyncMock()
         with pytest.raises(ToolError, match="level 3"):
@@ -119,7 +116,6 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_non_caster_archetype_cannot_learn_spells(self):
-        # A non-caster (no magic source) is rejected with a clear tool error.
         cs = MagicMock()
         cs.record_learned = AsyncMock()
         with pytest.raises(ToolError, match="no magic source"):
@@ -135,7 +131,6 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_invalid_source_raises(self):
-        # AC3: an invalid spell source is rejected naming the accepted values.
         cs = MagicMock()
         cs.record_learned = AsyncMock()
         with pytest.raises(ToolError, match="source"):
@@ -186,7 +181,5 @@ class TestLearnDispatch:
 
     @pytest.mark.asyncio
     async def test_unknown_kind_names_all_kinds(self):
-        # AC3: unknown kind raises ToolError naming every accepted kind, so a
-        # regression dropping one (e.g. "variant") from the LLM-facing list is caught.
         with pytest.raises(ToolError, match="recipe, spell, variant"):
             await _learn_impl(make_context(player_id="player_1"), "potion", "healing", "discovery")

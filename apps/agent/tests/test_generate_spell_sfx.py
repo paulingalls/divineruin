@@ -14,16 +14,10 @@ from pathlib import Path
 
 from audio_bundle_stems import bundled_stems_by_dir
 
-# scripts/audio/generate_spell_sfx.py, relative to the repo root (three parents
-# up from this test file: apps/agent/tests -> apps/agent -> apps -> repo root).
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _GENERATOR_PATH = _REPO_ROOT / "scripts" / "audio" / "generate_spell_sfx.py"
 _SOUNDS_DIR = _REPO_ROOT / "apps" / "mobile" / "assets" / "sounds"
 
-# The frozen source-by-effect palette from the M17 capstone — the contract
-# story-002 (asset filenames) and story-003 (registry keys) both mirror. Must
-# match docs/audio_sfx_pipeline.md §4. Values are snapshotted below so this
-# guard also catches accidental edits to the existing 7 prompts.
 FROZEN_PROMPTS = {
     "spell_fire": (
         "Fantasy fire spell being cast and released. A soft inward whoosh as energy "

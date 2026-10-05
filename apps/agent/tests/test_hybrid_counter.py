@@ -102,8 +102,6 @@ class TestHybridCounterSharedRow:
         player_id = "player_1"
         skill = "athletics"
 
-        # Seed: counter starts at 0
-        # Path 1: session use → counter becomes 1
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
             await _check_skill_impl(
@@ -118,7 +116,6 @@ class TestHybridCounterSharedRow:
         assert "error" not in result
         assert store[(player_id, skill)]["use_counter"] == 1
 
-        # Path 2: training skill_practice (counter_increment=2 for 'fundamentals') → counter becomes 3
         adv_info = await apply_skill_practice_advancement(
             player_id,
             skill,
@@ -132,7 +129,6 @@ class TestHybridCounterSharedRow:
         assert adv_info is not None
         assert store[(player_id, skill)]["use_counter"] == 3
 
-        # Both paths read from and wrote to (player_id, skill) — exactly one row in the store.
         assert len(store) == 1
         assert (player_id, skill) in store
 
@@ -159,10 +155,8 @@ class TestHybridCounterSharedRow:
         player_id = "player_1"
         skill = "athletics"
 
-        # Pre-seed the row at counter=6, untrained tier
         store[(player_id, skill)] = {"tier": "untrained", "use_counter": 6, "narrative_moment_ready": False}
 
-        # Training skill_practice with counter_increment=2 → counter=8 → advance to trained
         adv_info = await apply_skill_practice_advancement(
             player_id,
             skill,
@@ -180,7 +174,6 @@ class TestHybridCounterSharedRow:
             "narrative_moment_ready": False,
         }
 
-        # Subsequent session-use reads the trained tier from the SAME row
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
             await _check_skill_impl(
@@ -193,7 +186,6 @@ class TestHybridCounterSharedRow:
             )
         )
         assert "error" not in result
-        # Counter advances by 1 from session-use, still on the same row
         assert store[(player_id, skill)]["use_counter"] == 9
         assert store[(player_id, skill)]["tier"] == "trained"
 

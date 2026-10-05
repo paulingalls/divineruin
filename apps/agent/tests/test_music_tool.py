@@ -70,7 +70,6 @@ class TestStartCombatDifficulty:
         result = json.loads(json_str)
         assert result["combat_id"]
 
-        # Find the combat_started event call
         combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == E.COMBAT_STARTED]
         assert len(combat_started_calls) == 1
         payload = combat_started_calls[0][0][2]

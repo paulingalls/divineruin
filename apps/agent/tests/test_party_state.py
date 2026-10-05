@@ -151,13 +151,11 @@ class TestPartyStateIsolation:
         )
         party = party_state.PartyState([p1, p2])
 
-        # Mutate member B
         member_b = party.member("p2")
         assert member_b is not None
         member_b.resonance.current = 5
         member_b.concentration.spell_id = "spell_x"
 
-        # Member A unchanged
         member_a = party.member("p1")
         assert member_a is not None
         assert member_a.resonance.current == 0
@@ -216,11 +214,9 @@ class TestPartyStateSerialize:
         party = party_state.PartyState.from_dict(data)
         member = party.members[0]
 
-        # Check that nested fields are INSTANCES, not dicts
         assert isinstance(member.resonance, caster_state.ResonanceTrack)
         assert isinstance(member.concentration, caster_state.ConcentrationState)
 
-        # Check values
         assert member.resonance.current == 5
         assert member.resonance.flickering_bonus == 1
         assert member.concentration.spell_id == "spell_123"

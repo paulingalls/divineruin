@@ -126,7 +126,6 @@ class TestApplySkillUseWithPersistence:
     @pytest.mark.asyncio
     async def test_expert_to_master_clears_narrative_moment(self) -> None:
         store, queries, mutations = _store_backed_mocks()
-        # Pre-seed at expert tier with narrative_moment_ready=True and a counter just below master threshold.
         store[("player_1", "athletics")] = {"tier": "expert", "use_counter": 31, "narrative_moment_ready": True}
 
         adv = await apply_skill_use_with_persistence(

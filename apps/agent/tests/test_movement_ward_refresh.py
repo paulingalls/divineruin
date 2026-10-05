@@ -81,7 +81,6 @@ async def test_leaving_a_warded_location_clears_the_mirror_and_darkens_the_hud()
 
     assert session.location_ward is None
     payload = next(c.args[2] for c in pub.call_args_list if c.args[1] == E.VEIL_WARD_CHANGED)
-    # No scope wards the party any more, so the event names none.
     assert payload == {"active": False, "scope_kind": None, "scope_id": None, "source": None}
 
 

@@ -5,8 +5,6 @@ import pytest
 
 import recipes
 
-# A fully-specified recipe row's `data` payload (the 15 non-id Recipe fields;
-# id is the row key, passed separately to parse_recipe_row — mirrors TS).
 VALID_RECIPE_DATA = {
     "name": "Iron Sword",
     "category": "weapon",
@@ -48,7 +46,6 @@ class TestGetRecipe:
         expected = _parsed("iron_sword", VALID_RECIPE_DATA)
         assert result == expected
         mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM recipes WHERE id = $1", "iron_sword")
-        # Caches the PARSED dict (parse-once), not the raw row data.
         mock_cache_set.assert_awaited_once_with("recipe:iron_sword", json.dumps(expected))
 
     @pytest.mark.asyncio
@@ -56,7 +53,6 @@ class TestGetRecipe:
         expected = _parsed("iron_sword", VALID_RECIPE_DATA)
         mock_pool = AsyncMock()
         mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(VALID_RECIPE_DATA)})
-        # Cache miss on first read, hit (parsed payload) on second.
         cache_get = AsyncMock(side_effect=[None, json.dumps(expected)])
 
         with patch("db._cache_get", cache_get):
@@ -199,8 +195,6 @@ class TestParseRecipeRow:
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"success": 1}})
 
     def test_rejects_non_canonical_narration_band(self):
-        # Canonical bands are exceptional|success|partial|failure (crafting-narration-bands);
-        # a typo'd band must fail loud at the load boundary, not silently miss at runtime.
         with pytest.raises(ValueError, match=r"narration_cues\[glorious\]"):
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"glorious": "shine"}})
 

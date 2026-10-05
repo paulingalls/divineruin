@@ -66,7 +66,6 @@ class TestCreationAgentInit:
 
         mock_ctx = MagicMock()
         CreationAgent(chat_ctx=mock_ctx)
-        # Agent base class copies chat_ctx, so verify copy was called
         mock_ctx.copy.assert_called_once()
 
 
@@ -186,7 +185,6 @@ class TestCreationAgentReadinessGate:
         agent = CreationAgent()
         agent._ready = True
 
-        # Should not raise StopResponse
         await agent.on_user_turn_completed(MagicMock(), MagicMock())
 
     @pytest.mark.asyncio

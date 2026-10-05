@@ -39,16 +39,12 @@ def _seed_catalogs():
 
 
 def test_inventory_richness_emitted_and_equals_personality_modifier():
-    # A generated NPC carries inventory_richness set to its settlement personality's
-    # inventory_modifier — the exact producer contract a Phase-9 economy reader will consume.
     npc = instantiate_npc_from_template("innkeeper", "village", "prosperous")
     assert "inventory_richness" in npc
     assert npc["inventory_richness"] == get_settlement_personality("prosperous")["inventory_modifier"]
 
 
 def test_inventory_richness_tracks_personality_not_constant():
-    # A second personality proves the value tracks the personality modifier (prosperous>1.0 fuller,
-    # struggling<1.0 thinner), not a hardcoded constant.
     rich = instantiate_npc_from_template("innkeeper", "village", "prosperous")["inventory_richness"]
     lean = instantiate_npc_from_template("innkeeper", "village", "struggling")["inventory_richness"]
     assert rich == get_settlement_personality("prosperous")["inventory_modifier"]
@@ -57,6 +53,5 @@ def test_inventory_richness_tracks_personality_not_constant():
 
 
 def test_inventory_richness_override_wins():
-    # An explicit caller override beats the personality default (the "overrides WIN" contract).
     npc = instantiate_npc_from_template("innkeeper", "village", "prosperous", {"inventory_richness": 3.0})
     assert npc["inventory_richness"] == 3.0

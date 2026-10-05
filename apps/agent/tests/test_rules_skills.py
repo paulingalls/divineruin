@@ -13,8 +13,6 @@ from rules_engine import (
     SkillTier,
 )
 
-# --- advancement thresholds ---
-
 
 class TestAdvancementThresholds:
     def test_three_transitions(self):
@@ -24,9 +22,6 @@ class TestAdvancementThresholds:
 
     def test_no_master_threshold(self):
         assert "master" not in ADVANCEMENT_THRESHOLDS
-
-
-# --- skill capabilities data ---
 
 
 class TestSkillCapabilitiesData:
@@ -41,9 +36,6 @@ class TestSkillCapabilitiesData:
             assert "master" in caps, f"{skill} missing master unlock"
             assert len(caps["expert"]) > 0, f"{skill} expert unlock is empty"
             assert len(caps["master"]) > 0, f"{skill} master unlock is empty"
-
-
-# --- dataclass construction ---
 
 
 class TestAdvancementResultDataclass:
@@ -95,9 +87,6 @@ class TestSkillCapabilitiesDataclass:
         )
         with pytest.raises(AttributeError):
             caps.tier = "expert"  # type: ignore[misc]
-
-
-# --- record_skill_use ---
 
 
 class TestRecordSkillUse:
@@ -174,9 +163,6 @@ class TestRecordSkillUse:
     def test_default_tier_is_untrained(self):
         result = record_skill_use({}, "stealth", {})
         assert result.old_tier == "untrained"
-
-
-# --- check_skill_capabilities ---
 
 
 class TestCheckSkillCapabilities:

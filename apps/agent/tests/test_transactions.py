@@ -83,9 +83,6 @@ def _make_failing_db():
     return mock_db
 
 
-# --- move_player: session.location_id unchanged on DB failure ---
-
-
 class TestMovePlayerAtomicity:
     @pytest.mark.asyncio
     async def test_session_location_unchanged_on_db_failure(self):
@@ -99,7 +96,6 @@ class TestMovePlayerAtomicity:
                 db_mod=_make_failing_db(),
                 content=mock_content,
             )
-        # Session location must NOT have been updated
         assert ctx.userdata.location_id == "accord_guild_hall"
 
     @pytest.mark.asyncio
@@ -118,9 +114,6 @@ class TestMovePlayerAtomicity:
         room.local_participant.publish_data.assert_not_called()
 
 
-# --- transact (loss): equipped check + decrement atomic ---
-
-
 class TestRemoveInventoryAtomicity:
     @pytest.mark.asyncio
     async def test_no_events_on_txn_failure(self):
@@ -137,9 +130,6 @@ class TestRemoveInventoryAtomicity:
                 content=mock_content,
             )
         room.local_participant.publish_data.assert_not_called()
-
-
-# --- update_quest: no partial events on mid-txn failure ---
 
 
 class TestUpdateQuestAtomicity:

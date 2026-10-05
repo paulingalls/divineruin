@@ -79,21 +79,14 @@ _BLESS_ROW = {
     "sound_id": "spell_radiant",
 }
 
-# The four M3.3 cast-time fields parse_spell_row requires (strict). Used by the
-# missing-field fail-loud parametrization.
 _M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
 
-# story-003: sound_id is a fifth strict-required field (the playable SFX key), tested
-# separately below alongside its closed-vocabulary check (mirrors source/spell_tier).
 _M33_FIELDS_WITH_SOUND_ID = (*_M33_FIELDS, "sound_id")
 
 
 def _seed_from_content() -> None:
     raw = json.loads(CONTENT_PATH.read_text())
     set_spells({row["id"]: parse_spell_row(row["id"], row) for row in raw})
-
-
-# --- parse_spell_row -----------------------------------------------------------
 
 
 def test_parse_spell_row_full_shape():
@@ -111,13 +104,11 @@ def test_parse_spell_row_exposes_m33_fields():
     assert s.terrain_effects == {}
     assert s.audio_cue == "CMB-006 (powerful)"
     assert s.concentration is False
-    # Concentration is a real bool from the row, not coerced.
     conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
     assert conc.concentration is True
 
 
 def test_parse_spell_row_max_targets_optional_and_parsed():
-    # M4.8 story-007: max_targets is optional (omitted -> None) and parsed when present.
     assert parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW).max_targets is None
     blessed = parse_spell_row(_BLESS_ROW["id"], {**_BLESS_ROW, "max_targets": 3})
     assert blessed.max_targets == 3
@@ -125,7 +116,6 @@ def test_parse_spell_row_max_targets_optional_and_parsed():
 
 @pytest.mark.parametrize("bad_value", [0, -1, "three", 2.5, True])
 def test_parse_spell_row_rejects_nonpositive_max_targets(bad_value):
-    # Strict loader: a present-but-malformed max_targets fails loud naming the row.
     bad = {**_BLESS_ROW, "max_targets": bad_value}
     with pytest.raises(ValueError, match="divine_bless"):
         parse_spell_row("divine_bless", bad)
@@ -144,7 +134,6 @@ def test_validate_target_count_over_max_raises():
 
 
 def test_validate_target_count_no_cap_is_noop():
-    # A spell with no max_targets imposes no limit.
     spell = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
     validate_target_count(spell, ["a", "b", "c", "d", "e"])  # no raise
 
@@ -180,7 +169,6 @@ def test_normalize_target_list_rejects_uncapped_spell():
 
 
 def test_normalize_target_list_dedups_before_cap():
-    # 4 ids collapsing to 3 pass a cap of 3 (dedup precedes the count check).
     assert normalize_target_list(_capped(3), None, ["a", "b", "c", "a"]) == ["a", "b", "c"]
 
 
@@ -216,8 +204,6 @@ def test_parse_spell_row_rejects_non_dict_dict_fields(field):
 
 @pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
 def test_parse_spell_row_rejects_non_int_dict_value(field):
-    # Deep value validation at the load boundary: a stringly-typed Resonance value fails
-    # loud naming the row+key, NOT downstream at cast-time int arithmetic (story-004).
     bad = {**_FIREBALL_ROW, field: {"arcane": "high"}}
     with pytest.raises(ValueError, match=field):
         parse_spell_row(_FIREBALL_ROW["id"], bad)
@@ -251,9 +237,6 @@ def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
     # than an explicit dict guard (mirroring abilities.parse_ability_row).
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", not_a_dict)
-
-
-# --- accessors -----------------------------------------------------------------
 
 
 def test_get_spell_resolves_and_unknown_raises():
@@ -294,9 +277,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- content/spells.json conformance -------------------------------------------
-
-
 def test_content_every_row_parses_and_covers_each_source_and_tier():
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
@@ -307,17 +287,12 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
         assert s.source in SPELL_SOURCES
         assert s.spell_tier in SPELL_TIERS
         pairs.add((s.source, s.spell_tier))
-    # Every source has >=1 elective per tier so downstream track/prep/gate tests have data.
     for source in SPELL_SOURCES:
         for tier in SPELL_TIERS:
             assert (source, tier) in pairs, f"missing {source}/{tier} in content/spells.json"
 
 
 def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
-    # Every content spell's tier is covered by the per-archetype level->tier gate
-    # (content/archetypes.json), validated against a representative full
-    # caster of the spell's source: unlocked exactly at that archetype's tier floor,
-    # gated one level below. This tier table is the sole ACTIVE gate.
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:
@@ -331,20 +306,11 @@ def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
 
 
 def test_content_includes_caster_core_spells():
-    # M3.3 supersedes the M8 elective-only seam (235ae150c5d3 -> decision
-    # spell-catalog-full-casting-ssot): spells.json is now the FULL 87-spell casting
-    # catalog, so cast_spell/get_spell_info have data for every castable spell — INCLUDING
-    # the caster-core cantrips/spells. archetype_abilities `core` rows remain as the
-    # ACCESS grant (which spells an archetype always-knows); the spell DATA lives here.
-    # (Core-spell data is duplicated across both for now — tracked as debt to reconcile.)
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     names = {row["name"].lower() for row in raw}
     for core in ("arcane bolt", "sacred flame", "heal wounds", "thorn whip", "healing touch"):
         assert core in names, f"M3.3 casting catalog must carry core spell {core!r}"
-
-
-# --- build-then-swap load_spells (DB path) -------------------------------------
 
 
 class _FakePool:
@@ -373,7 +339,6 @@ async def test_load_spells_malformed_row_does_not_wipe_loaded_map(monkeypatch):
     with pytest.raises(ValueError):
         await load_spells()
 
-    # Prior map survived; the well-formed row preceding the malformed one did NOT leak.
     assert get_spell("arcane_fireball").name == "Fireball"
     with pytest.raises(ValueError, match="divine_bless"):
         get_spell("divine_bless")

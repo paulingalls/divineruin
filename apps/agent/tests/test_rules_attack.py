@@ -26,8 +26,6 @@ class TestResolveAttack:
         assert result.target_hp_remaining == 20
 
     def test_role_attack_mod_raises_to_hit(self):
-        # M4.7 story-001: an Elite/Boss flat attack_mod lands a roll that misses at base. AC 18,
-        # base mod +4 → needs d20>=14; with attack_mod +5 → needs d20>=9. Same seed both runs.
         seed = 0
         base = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed))
         boosted = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed), attack_mod=5)
@@ -46,7 +44,6 @@ class TestResolveAttack:
         assert boosted.damage == int(base.damage * 1.5)
 
     def test_role_modifiers_default_to_identity(self):
-        # The player path passes no role modifiers; explicit identity must equal the bare call.
         seed = 0
         bare = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed))
         identity = resolve_attack(
@@ -61,7 +58,6 @@ class TestResolveAttack:
         result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 20, 50, rng=rng)
         assert result.critical_success is True
         assert result.hit is True
-        # Damage should be two rolls of 1d8
         assert result.damage >= 2  # minimum 1+1
 
     def test_target_killed_at_zero_hp(self):
@@ -89,8 +85,6 @@ class TestResolveAttack:
         result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
         assert result.hit is False
         assert result.roll == 1
-
-    # --- Dramatic fields (story-002) ---
 
     def test_nat_20_dramatic(self):
         seed = 5
@@ -140,7 +134,6 @@ class TestResolveAttack:
             if not (2 <= rng.randint(1, 20) <= 19):
                 continue
             rng = random.Random(seed)
-            # Small target HP so both kill and non-kill outcomes occur across seeds.
             result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 8, 5, rng=rng)
             assert (result.context == "killing_blow") == result.target_killed
             if result.hit and result.target_killed:
@@ -149,8 +142,6 @@ class TestResolveAttack:
                 checked_survive = True
         assert checked_kill, "no killing-blow seed exercised the invariant"
         assert checked_survive, "no surviving-hit seed exercised the invariant"
-
-    # --- Result type + critical-flag pinning (moved from test_rules_resolution) ---
 
     def test_returns_attack_result(self):
         from check_resolution_attack import AttackResult
@@ -191,10 +182,7 @@ class TestResolveAttack:
         assert result.dramatic is False
         assert result.context == ""
 
-    # --- Overkill (M4.4 story-002): excess damage beyond 0 HP, for the instant-death verdict ---
-
     def test_overkill_is_damage_beyond_target_hp(self):
-        # A hit on a 1-HP target: overkill = damage - 1 (the excess past 0), computed pre-floor.
         seed = 0
         rng = random.Random(seed)
         result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
@@ -205,7 +193,6 @@ class TestResolveAttack:
         pytest.fail("Could not find seed for hit")
 
     def test_overkill_zero_when_damage_below_target_hp(self):
-        # A hit that doesn't drop the target to 0 has no overkill.
         seed = 0
         rng = random.Random(seed)
         result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
@@ -226,48 +213,36 @@ class TestAttackModifier:
     def test_melee_weapon(self):
         weapon = {"damage": "1d8", "damage_type": "slashing", "properties": []}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # STR +2, prof +1 at L1 = +3
         assert mod == 3
 
     def test_ranged_weapon(self):
         weapon = {"damage": "1d8", "ranged": True, "properties": []}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # DEX +1, prof +1 at L1 = +2
         assert mod == 2
 
     def test_ranged_property_uses_dexterity(self):
-        # Enemy content marks ranged weapons only in `properties` (bug 8b167c4c).
         weapon = {"damage": "1d8", "properties": ["ranged"]}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # DEX +1, prof +1 at L1 = +2
         assert mod == 2
 
     def test_finesse_weapon_uses_higher(self):
         weapon = {"damage": "1d6", "properties": ["finesse"]}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # max(STR +2, DEX +1) + prof +1 at L1 = +3
         assert mod == 3
 
     def test_governing_attribute_uses_that_stat(self):
-        # An explicit governing_attribute (e.g. a companion's INT spell-attack) drives the hit
-        # stat directly, ignoring the melee/ranged/finesse inference (story-008).
         weapon = {"damage": "1d6", "governing_attribute": "intelligence"}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # INT +0, prof +1 at L1 = +1
         assert mod == 1
 
     def test_governing_attribute_overrides_ranged(self):
-        # Lira's ranged Arcane Bolt: ranged flag would route DEX, but governing_attribute wins -> INT.
         weapon = {"damage": "1d6", "ranged": True, "governing_attribute": "intelligence"}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # INT +0 (not DEX +1), prof +1 at L1 = +1
         assert mod == 1
 
     def test_governing_attribute_dexterity_on_melee(self):
-        # Tam's DEX finesse short sword / Sable's DEX bite: melee would default STR, governing -> DEX.
         weapon = {"damage": "1d6", "governing_attribute": "dexterity", "properties": []}
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
-        # DEX +1 (not STR +2), prof +1 at L1 = +2
         assert mod == 2
 
 
@@ -307,11 +282,9 @@ class TestNecroticRider:
         assert echo.hit is True
         assert echo.bonus_damage_type == "necrotic"
         assert 1 <= echo.bonus_damage <= 6
-        # Same seed -> identical weapon roll; the echo's extra damage IS the rider.
         assert echo.damage == baseline.damage + echo.bonus_damage
 
     def test_rider_counts_toward_overkill(self):
-        # Same seed, a 1-HP target: both kill, the echo's overkill is larger by exactly the rider.
         seed = self._hit_seed(1)
         baseline = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=random.Random(seed))
         echo = resolve_attack(self._echo_attacker(), self.WEAPON, 10, 1, rng=random.Random(seed))

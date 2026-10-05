@@ -29,7 +29,6 @@ def _ts_blocked_combos() -> frozenset[str]:
     block = _BLOCK_RE.search(source)
     assert block is not None, f"could not locate BLOCKED_DANGER_COMBOS Set block in {_ERRAND_RISK_TS}"
     tokens = frozenset(_TOKEN_RE.findall(block.group(1)))
-    # Fail loud on a parse miss rather than passing vacuously against an empty set.
     assert tokens, f"extracted no blocked-combo tokens from {_ERRAND_RISK_TS} — parser drift?"
     return tokens
 

@@ -14,7 +14,6 @@ import pytest
 
 import recipe_slots
 
-# The four seeded rows' `data` payloads (migration 019 recipe_slots seed).
 SEED_ROWS = [
     {"id": "untrained", "data": json.dumps({"max_recipe_tier": "basic", "known_recipe_slots": 3})},
     {"id": "trained", "data": json.dumps({"max_recipe_tier": "trained", "known_recipe_slots": 8})},

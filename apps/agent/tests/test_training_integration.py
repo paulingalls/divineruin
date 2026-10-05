@@ -18,7 +18,6 @@ class TestFirstHalfToAwaitingDecision:
         now = datetime(2026, 4, 5, 12, 0, 0, tzinfo=UTC)
         init = start_training_cycle("spell_cantrip", now, rng=random.Random(42))
 
-        # Simulate a DB row where transition_at has passed
         activity_row = {
             "id": "train_abc123",
             "player_id": "player_1",
@@ -43,7 +42,6 @@ class TestFirstHalfToAwaitingDecision:
             assert len(due) == 1
             assert due[0]["state"] == "running_first_half"
 
-            # Worker would transition this to awaiting_decision
             await update_training_activity(
                 due[0]["id"],
                 "awaiting_decision",
@@ -68,8 +66,6 @@ class TestAwaitingDecisionBlocks:
             "data": {"decision_presented": True},
         }
 
-        # get_due_training_transitions only returns running_first_half / running_second_half
-        # So awaiting_decision should never be returned
         mock_get_due = AsyncMock(return_value=[])
         with patch("db_training.get_due_training_transitions", mock_get_due):
             from db_training import get_due_training_transitions
@@ -142,28 +138,23 @@ class TestFullCycle:
         rng = random.Random(42)
         now = datetime(2026, 4, 5, 8, 0, 0, tzinfo=UTC)
 
-        # 1. Initiate
         init = start_training_cycle("spell_standard", now, rng=rng)
         assert init.state == "running_first_half"
         assert init.decision_at > now
 
-        # 2. Midpoint fires — get decision
         decision = get_midpoint_decision("spell_standard")
         assert len(decision.options) == 2
 
-        # 3. Player chooses
         choice_id = decision.options[0].id
         midpoint = resolve_midpoint_decision("spell_standard", choice_id, init.decision_at, rng=random.Random(99))
         assert midpoint.state == "running_second_half"
         assert midpoint.completes_at > init.decision_at
         assert midpoint.micro_bonus == decision.options[0].micro_bonus
 
-        # 4. Completion fires
         completion = complete_training_cycle("spell_standard", choice_id)
         assert completion.state == "complete"
         assert completion.counter_increment == 0  # Not skill_practice
 
-        # 5. Total duration within documented range (7-11 hours)
         total_seconds = init.first_half_seconds + midpoint.second_half_seconds
         assert 7 * 3600 <= total_seconds <= 11 * 3600
 
@@ -175,14 +166,12 @@ class TestFullCycle:
         init = start_training_cycle("skill_practice", now, rng=rng)
         decision = get_midpoint_decision("skill_practice")
 
-        # Choose fundamentals for +2 counter
         fund_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "fundamentals")
         midpoint = resolve_midpoint_decision("skill_practice", fund_opt.id, init.decision_at, rng=random.Random(42))
 
         completion = complete_training_cycle("skill_practice", fund_opt.id)
         assert completion.counter_increment == 2
 
-        # Total duration: 5-8 hours
         total = init.first_half_seconds + midpoint.second_half_seconds
         assert 5 * 3600 <= total <= 8 * 3600
 
@@ -205,9 +194,6 @@ class TestCreateAndRetrieve:
 
         assert activity_id.startswith("train_")
         mock_pool.execute.assert_called_once()
-
-
-# --- M1.5 capstone (sprint-009 story-005) ---
 
 
 class TestFullCycleViaFunctionTools:
@@ -256,7 +242,6 @@ class TestFullCycleViaFunctionTools:
         mock_db = MagicMock()
         mock_db.transaction = lambda: mock_txn(mock_conn)
 
-        # In-memory training_activities store mimicking db_training.* surface.
         rows: dict[str, dict] = {}
 
         async def create_training_activity(*, player_id, activity_type, state, data, transition_at, conn):

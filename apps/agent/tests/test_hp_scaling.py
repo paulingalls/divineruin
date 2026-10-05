@@ -42,7 +42,6 @@ EXPECTED_HP = {
 class TestSampleFixtureArchetypes:
     @pytest.mark.parametrize("player", [SAMPLE_PLAYER, GUILD_PLAYER], ids=["sample", "guild"])
     def test_class_is_a_known_archetype(self, player):
-        # get_archetype_chassis raises ValueError if the class is unknown.
         assert get_archetype_chassis(player["class"]).id == player["class"]
 
 
@@ -63,16 +62,12 @@ class TestArchetypeChassisHP:
             assert c.hp_category == "primal_divine" and c.hp_base == 10 and c.hp_growth == 4
 
     def test_arcane_shadow_category(self):
-        # oracle is spec'd at 8/3 arcane_shadow (game_mechanics_archetypes.md:828),
-        # corrected from the story-001 fold that placed it at 10/4 (story-005).
         for name in ("mage", "artificer", "seeker", "rogue", "spy", "whisper", "bard", "diplomat", "oracle"):
             c = get_archetype_chassis(name)
             assert c.hp_category == "arcane_shadow" and c.hp_base == 8 and c.hp_growth == 3
 
 
 class TestCalculateHP:
-    # --- CON +1 (round-half-up: (1+1)//2 = 1 per level) ---
-
     def test_martial_l1_con1(self):
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=1) == 13
 
@@ -100,8 +95,6 @@ class TestCalculateHP:
     def test_arcane_shadow_l20_con1(self):
         assert calculate_hp(level=20, base_hp=8, growth=3, con_mod=1) == 85
 
-    # --- CON +0 ---
-
     def test_martial_l1_con0(self):
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=0) == 12
 
@@ -117,8 +110,6 @@ class TestCalculateHP:
     def test_arcane_l20_con0(self):
         assert calculate_hp(level=20, base_hp=8, growth=3, con_mod=0) == 65
 
-    # --- CON +5 ---
-
     def test_martial_l1_con5(self):
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=5) == 17
 
@@ -128,18 +119,13 @@ class TestCalculateHP:
     def test_martial_l20_con5(self):
         assert calculate_hp(level=20, base_hp=12, growth=5, con_mod=5) == 169
 
-    # --- Edge cases ---
-
     def test_negative_con_modifier(self):
-        # CON -1, martial L1: 12 + (-1) = 11
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=-1) == 11
 
     def test_negative_con_level10(self):
-        # CON -1, martial L10: 12 + (-1) + 9*(5 + (-1+1)//2) = 11 + 9*(5 + 0) = 11 + 45 = 56
         assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=-1) == 56
 
     def test_minimum_hp_floor(self):
-        # Extreme negative CON should still yield at least 1
         assert calculate_hp(level=1, base_hp=8, growth=3, con_mod=-20) >= 1
 
     def test_minimum_hp_floor_high_level(self):

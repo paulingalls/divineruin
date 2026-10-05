@@ -86,9 +86,6 @@ def _seed_from_content() -> None:
     set_abilities({row["id"]: parse_ability_row(row["id"], row) for row in raw})
 
 
-# --- parse_ability_row ---------------------------------------------------------
-
-
 def test_parse_ability_row_full_shape():
     a = parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)
     assert isinstance(a, Ability)
@@ -105,12 +102,6 @@ def test_cost_roundtrip_preserves_scaling():
     assert a.cost.scaling is not None
 
 
-# --- spell-backed core rows compose their Focus cost from the catalog (Try 2) ---
-
-# A spell-backed core row: the archetype owns its description + narration flavor and
-# carries spell_id, but does NOT author `cost` — the Focus cost (the one number shared
-# with the cast path) composes from content/spells.json so it can't drift. effect,
-# narration_cue, and level stay per-archetype (e.g. the Seeker's reveal-on-hit clause).
 _SPELL_BACKED_SEEKER_ROW = {
     "id": "seeker_arcane_bolt",
     "archetype_id": "seeker",
@@ -128,10 +119,8 @@ def test_spell_backed_row_composes_focus_cost_from_catalog():
 
     spell = spells.get_spell("arcane_bolt")
     a = parse_ability_row(_SPELL_BACKED_SEEKER_ROW["id"], _SPELL_BACKED_SEEKER_ROW)
-    # The Focus cost is single-sourced from the catalog — no second authored copy.
     assert a.cost == Cost(stamina=0, focus=spell.focus_cost, scaling=None)
     assert a.spell_id == "arcane_bolt"
-    # Per-archetype content is KEPT, not flattened to the spell's generic text.
     assert a.effect == _SPELL_BACKED_SEEKER_ROW["effect"]  # the Seeker's reveal clause
     assert a.narration_cue == _SPELL_BACKED_SEEKER_ROW["narration_cue"]
     assert a.level_requirement == 1
@@ -142,8 +131,6 @@ def test_non_spell_row_has_no_spell_id():
     a = parse_ability_row(_CLEAVE_ROW["id"], _CLEAVE_ROW)
     assert a.spell_id is None
 
-
-# --- reaction window (story-001) ------------------------------------------------
 
 _BRACE_ROW = {
     "id": "warrior_brace_for_impact",
@@ -169,9 +156,6 @@ def test_non_reaction_row_has_no_window():
     assert a.window is None
 
 
-# --- accessors -----------------------------------------------------------------
-
-
 def test_get_archetype_abilities_filters_by_archetype():
     _seed_from_content()
     warrior = get_archetype_abilities("warrior")
@@ -179,7 +163,6 @@ def test_get_archetype_abilities_filters_by_archetype():
     assert all(a.archetype_id == "warrior" for a in warrior)
     types = {a.ability_type for a in warrior}
     assert {"core", "reaction", "elective"} <= types
-    # A pure caster has core + reaction abilities but no elective techniques (M2.2).
     mage = get_archetype_abilities("mage")
     assert mage and all(a.archetype_id == "mage" for a in mage)
     assert "elective" not in {a.ability_type for a in mage}
@@ -218,9 +201,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- build-then-swap load_abilities (DB path) ----------------------------------
-
-
 class _FakePool:
     def __init__(self, rows):
         self._rows = rows
@@ -230,8 +210,6 @@ class _FakePool:
 
 
 async def test_load_abilities_malformed_row_does_not_wipe_loaded_map(monkeypatch):
-    # Seed a known-good map, then drive load_abilities against a fake pool whose
-    # rows include a malformed one. The load must raise WITHOUT wiping the prior map.
     set_abilities({"paladin_divine_smite": parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)})
 
     import db
@@ -249,16 +227,9 @@ async def test_load_abilities_malformed_row_does_not_wipe_loaded_map(monkeypatch
     with pytest.raises(ValueError):
         await load_abilities()
 
-    # Prior map survived the failed load.
     assert get_ability("paladin_divine_smite").name == "Divine Smite"
-    # Build-then-swap: the well-formed row that preceded the malformed one in the
-    # batch must NOT have leaked into the live map (an inline-mutate load would
-    # have leaked it before the second row raised).
     with pytest.raises(ValueError, match="warrior_cleaving_blow"):
         get_ability("warrior_cleaving_blow")
-
-
-# --- owns_ability (pure ownership predicate, story-006) ------------------------
 
 
 def _ability(ability_type, archetype_id="warrior"):
@@ -276,7 +247,6 @@ def _ability(ability_type, archetype_id="warrior"):
 
 
 def test_owns_ability_core_owned_when_class_matches_archetype():
-    # Core abilities are always-known for the archetype — no character_abilities row.
     assert owns_ability("warrior", 1, _ability("core", "warrior"), owns_elective=False) is True
 
 
@@ -290,13 +260,9 @@ def test_owns_ability_reaction_follows_the_same_class_rule_as_core():
 
 
 def test_owns_ability_elective_returns_passed_flag_regardless_of_class():
-    # Electives are owned via a character_abilities row; the class is irrelevant
-    # (a player can equip an elective whose archetype_id is their own class only,
-    # but ownership is the row, supplied here as owns_elective).
     elective = _ability("elective", "warrior")
     assert owns_ability("warrior", 1, elective, owns_elective=True) is True
     assert owns_ability("warrior", 1, elective, owns_elective=False) is False
-    # Class never overrides the row result for electives.
     assert owns_ability("mage", 1, elective, owns_elective=True) is True
 
 

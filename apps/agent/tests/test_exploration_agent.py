@@ -14,8 +14,6 @@ class TestExplorationAgentConfig:
         assert agent._agent_type == REGION_CITY
 
     def test_region_type_set_per_instance(self):
-        # combat_init.py reads getattr(agent, "_agent_type") to remember the
-        # pre-combat region; the attribute must reflect the instance's region.
         for region in (REGION_CITY, REGION_WILDERNESS, REGION_DUNGEON):
             agent = ExplorationAgent(region_type=region)
             assert agent._agent_type == region
@@ -25,11 +23,6 @@ class TestExplorationToolset:
     def test_count_at_fifteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
-        # The unified list is the former CITY_TOOLS (15) + travel (M4.6b, 16) +
-        # adjust_faction_reputation (M23 story-002, 17) + deploy_veil_anchor (M24 story-012, 18).
-        # M27 story-003 tore out play_sound/set_music_state as LLM tools (18->16) — audio
-        # now derives only from deterministic Resolves and the Stage. M28 story-003 tore out
-        # award_xp/award_divine_favor (16->14) — rewards derive from Resolves the same way.
         assert len(EXPLORATION_TOOLS) == 15
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 

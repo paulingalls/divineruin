@@ -140,7 +140,6 @@ async def test_unknown_choice_id_rejects():
 
 @pytest.mark.asyncio
 async def test_wrong_archetype_rejects():
-    # warrior_identity belongs to the warrior, not a guardian — reject.
     m = _make_mocks(_player(class_="guardian", level=5))
     with pytest.raises(ToolError):
         await _select(m, "warrior_identity", "battle_master")
@@ -149,7 +148,6 @@ async def test_wrong_archetype_rejects():
 
 @pytest.mark.asyncio
 async def test_non_fork_choice_id_rejects():
-    # warrior_power is an auto_grant tier, not a selectable fork.
     m = _make_mocks(_player(level=10))
     with pytest.raises(ToolError):
         await _select(m, "warrior_power", "battle_master")
@@ -166,7 +164,6 @@ async def test_patron_deferred_rejects():
 
 @pytest.mark.asyncio
 async def test_level_too_low_rejects():
-    # A pre-L5 player (stale/replayed tap) cannot lock in the L5 fork.
     m = _make_mocks(_player(level=3))
     with pytest.raises(ToolError):
         await _select(m, "warrior_identity", "battle_master")
@@ -187,11 +184,6 @@ async def test_blank_option_rejects_before_io():
     with pytest.raises(ToolError, match="Invalid"):
         await _select(m, "warrior_identity", "")
     m.queries.get_players_for_update.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
-# Party member ownership
-# ---------------------------------------------------------------------------
 
 
 def _party_ctx():

@@ -77,11 +77,7 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
     )
 
 
-# --- gates: each refusal raises ToolError and writes nothing ------------------
-
-
 async def test_below_skill_tier_raises_no_writes():
-    # reinforced needs Expert; player is untrained. Disposition neutral, item damaged.
     kwargs, mutations, inv_mutations = _repair_kwargs(
         item=_item(tier="reinforced", current_hits=5), crafting_tier="untrained"
     )
@@ -92,8 +88,6 @@ async def test_below_skill_tier_raises_no_writes():
 
 
 async def test_absent_npc_refuses_no_writes():
-    # Co-location gate: a known npc_id who isn't at the player's location can't
-    # repair from afar (disposition alone must not gate an absent smith).
     kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), npc_present=False)
     with pytest.raises(ToolError, match="isn't here"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
@@ -110,7 +104,6 @@ async def test_below_neutral_disposition_refuses_no_writes():
 
 
 async def test_insufficient_gold_raises_no_restore():
-    # legendary = 200sp = 20gp; player has 5gp.
     kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(rarity="legendary", current_hits=3), gold=5.0)
     with pytest.raises(ToolError, match="Not enough gold"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
@@ -161,9 +154,6 @@ async def test_malformed_durability_tier_raises_toolerror_not_valueerror():
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
-# --- success: restore to max + debit disposition-adjusted gold once -----------
-
-
 async def test_trusted_common_repair_rounds_to_one_silver():
     kwargs, mutations, inv_mutations = _repair_kwargs(
         item=_item(rarity="common", tier="standard", current_hits=3), disposition="trusted", gold=15.0
@@ -187,14 +177,7 @@ async def test_friendly_discount_rounds_away_for_common_repair():
     assert mutations.update_player_gold.await_args.args[1] == pytest.approx(14.8)
 
 
-# --- _can_repair_tier (pure) -------------------------------------------------
-
-
-# --- registration -------------------------------------------------------------
-
-
 def test_repair_item_registered_on_blacksmith_not_dispatch():
-    # story-009 moved repair_item off DISPATCH_TOOLS onto a dedicated BlacksmithAgent.
     from blacksmith_agent import BLACKSMITH_TOOLS
     from dispatch_agent import DISPATCH_TOOLS
     from llm_config import MAX_STRICT_TOOLS
@@ -202,9 +185,6 @@ def test_repair_item_registered_on_blacksmith_not_dispatch():
     assert repair_item.repair_item in BLACKSMITH_TOOLS
     assert repair_item.repair_item not in DISPATCH_TOOLS
     assert len(BLACKSMITH_TOOLS) <= MAX_STRICT_TOOLS
-
-
-# --- _can_repair_tier (pure) -------------------------------------------------
 
 
 @pytest.mark.parametrize(

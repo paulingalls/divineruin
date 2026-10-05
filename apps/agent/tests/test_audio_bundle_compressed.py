@@ -25,7 +25,6 @@ from audio_bundle_stems import bundled_stems_by_dir
 
 from spells import SPELL_SOUND_KEYS
 
-# This file lives at apps/agent/tests/<this>; parents[2] is the repo's apps/ dir.
 _APPS_DIR = Path(__file__).resolve().parents[2]
 _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"
 _AUDIO_SRC_DIR = _APPS_DIR / "audio" / "spell_sfx"
@@ -59,7 +58,6 @@ def test_no_wav_files_in_spell_sfx_source_dir() -> None:
 # still-present bundled copy). The key-set assertion below is what actually enforces
 # that every customer-approved take is still on disk in the source SSOT.
 _SOURCE_MIRRORS: dict[Path, tuple[Path, frozenset[str]]] = {
-    # spell_sfx source palette -> bundled root copy; the 7 frozen spell keys must all be present.
     _AUDIO_SRC_DIR: (_SOUNDS_DIR, SPELL_SOUND_KEYS),
 }
 
@@ -107,9 +105,6 @@ def _probe(path: Path) -> tuple[int, int]:
     return sample_rate, bit_rate
 
 
-# Discovered at collection time from the bundled directory listing -- covers root
-# (legacy 20 + 7 spell stems), music, soundscapes, textures with no hand-maintained
-# key tuple. A future regenerated family auto-extends this parametrization.
 _FAMILY_DIRS = sorted(bundled_stems_by_dir(_SOUNDS_DIR).keys())
 
 

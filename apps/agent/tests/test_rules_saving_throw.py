@@ -22,8 +22,6 @@ class TestResolveSavingThrow:
         assert result.effect_applied == "charmed"
 
     def test_role_dc_mod_raises_the_dc(self):
-        # M4.7 story-001: a Boss ability's flat dc_mod makes its TARGET's save harder. STR save mod
-        # +3; a roll that clears dc=10 (total in [10,14]) fails once dc_mod=+5 lifts the DC to 15.
         seed = 3
         base = resolve_saving_throw(SAMPLE_PLAYER, "strength", 10, "prone", rng=random.Random(seed))
         harder = resolve_saving_throw(SAMPLE_PLAYER, "strength", 10, "prone", rng=random.Random(seed), dc_mod=5)
@@ -74,16 +72,13 @@ class TestResolveSavingThrow:
             resolve_saving_throw(SAMPLE_PLAYER, "luck", 10, "bad stuff")
 
     def test_proficient_save_bonus(self):
-        # Strength is a proficient save
         rng = random.Random(42)
         result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 10, "effect", rng=rng)
-        # STR +2, prof +1 at L1 = +3
         assert result.modifier == 3
 
     def test_unproficient_save(self):
         rng = random.Random(42)
         result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 10, "effect", rng=rng)
-        # CHA -1, no prof
         assert result.modifier == -1
 
     def test_nat_20_is_dramatic(self):
@@ -101,7 +96,6 @@ class TestResolveSavingThrow:
         assert result.context == "natural_1"
 
     def test_ordinary_save_not_dramatic(self):
-        # A generic save is dramatic ONLY on nat 1/20 (no roll_type passed).
         seed = 0
         rng = random.Random(seed)
         result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "knocked prone", rng=rng)

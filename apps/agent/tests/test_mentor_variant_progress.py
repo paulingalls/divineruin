@@ -23,7 +23,6 @@ class TestSeedProgress:
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO mentor_variant_learning_progress" in sql
         assert "ON CONFLICT (player_id, variant_id) DO NOTHING" in sql
-        # cycles_completed starts at 0 — learn(variant) seeds before any session completes.
         assert params == ["p1", "warrior_cleaving_blow_drathian", 3]
 
 
@@ -39,7 +38,6 @@ class TestAdvanceLearningCycle:
         sql, *params = conn.fetchrow.call_args.args
         assert "INSERT INTO mentor_variant_learning_progress" in sql
         assert "ON CONFLICT (player_id, variant_id) DO UPDATE" in sql
-        # Idempotency: the increment is gated on a new activity id (debt b20815f92023).
         assert "last_activity_id IS NOT DISTINCT FROM" in sql
         assert "last_activity_id = $5" in sql
         assert params == ["p1", "warrior_cleaving_blow_drathian", 3, None, "train_a"]
@@ -76,7 +74,6 @@ class TestRecordUnlocked:
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO character_mentor_variants" in sql
         assert "ON CONFLICT (player_id, variant_id) DO NOTHING" in sql
-        # acquisition_track is always 'mentor_training' (the only track for variants).
         assert params == ["p1", "warrior_cleaving_blow_drathian", "mentor_training", "speed"]
 
 
@@ -115,9 +112,6 @@ class TestProgressHelpers:
         assert result is True
 
     async def test_is_unlocked_false_when_absent(self):
-        # An absent variant must report False, not a truthy non-bool — the False case
-        # guards a regression where is_unlocked returns the wrong value for a variant
-        # the player has not unlocked.
         conn = AsyncMock()
         conn.fetchval = AsyncMock(return_value=False)
         result = await mvp.is_unlocked("p1", "warrior_cleaving_blow_drathian", conn=conn)

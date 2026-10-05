@@ -15,8 +15,6 @@ from spells import Spell
 
 class TestCastSpellHollowEcho:
     async def test_overreach_cast_rolls_and_returns_band(self):
-        # A cast that lands the caster at Overreach (9+) auto-rolls the Hollow Echo.
-        # resonance=9 -> new 9 -> overreach; d20=18 -> effective 18 -> "nothing".
         packet, _ctx, echo_events = await _cast_echo(_spell(resonance=9), d20=18)
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "nothing"
@@ -24,14 +22,12 @@ class TestCastSpellHollowEcho:
         echo_events.publish_hollow_echo.assert_awaited_once()
 
     async def test_below_overreach_does_not_roll(self):
-        # A cast that stays below Overreach rolls no echo and carries no band.
         packet, _ctx, echo_events = await _cast_echo(_spell(resonance=6))
         assert packet["state"] == "flickering"
         assert "hollow_echo" not in packet
         echo_events.publish_hollow_echo.assert_not_awaited()
 
     async def test_breach_on_low_roll(self):
-        # E2E: injected d20=1 on a ward-less Overreach cast -> "breach" band + published.
         packet, _ctx, echo_events = await _cast_echo(_spell(resonance=9), d20=1)
         assert packet["hollow_echo"]["band"] == "breach"
         echo_events.publish_hollow_echo.assert_awaited_once()
@@ -81,14 +77,12 @@ class TestCastSpellWardThroughRealResolver:
         )
 
     async def test_encounter_ward_halves_generation_via_real_resolver(self):
-        # resonance=6 halved to 3 by a ward this cast never injected a resolver to see.
         packet, ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=self._warded_combat())
         assert packet["ward_active"] is True
         assert packet["resonance_generated"] == 3
         assert ctx.userdata.resonance.current == 3
 
     async def test_unwarded_combat_generates_unhalved_via_real_resolver(self):
-        # Same real resolver, no ward on the scope: the stubbed leaf answers "no row".
         combat = self._warded_combat()
         combat.veil_ward = None
         packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
@@ -96,8 +90,6 @@ class TestCastSpellWardThroughRealResolver:
         assert packet["resonance_generated"] == 6
 
     async def test_ward_raised_by_another_member_halves_this_casters_generation(self):
-        # AC1: the ward is scope-owned. A Paladin raised it; the caster here is a mage
-        # (_player class="mage") and is halved anyway. Nothing keys off who raised it.
         combat = self._warded_combat()
         combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
         packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
@@ -105,15 +97,12 @@ class TestCastSpellWardThroughRealResolver:
         assert packet["resonance_generated"] == 3
 
     async def test_ward_raised_by_another_member_applies_die_and_dc_penalty(self):
-        # AC1: -1 damage die and -1 DC likewise apply per-caster-in-scope, not to the raiser.
         combat = self._warded_combat()
         combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
         packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
         assert packet["resonance_modifiers"] == {"damage_dice": -1, "dc": -1}
 
     async def test_overreach_echo_takes_ward_bonus_regardless_of_raiser(self):
-        # AC3: resonance=18 halved to 9 -> still Overreach. The Paladin's ward lends this mage
-        # the +4: d20=12 -> 16 -> "whisper". Without the bonus 12 alone would band "veil_scar".
         combat = self._warded_combat()
         combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
         packet, _ctx, echo_events = await _cast_echo(_spell(resonance=18), d20=12, combat_state=combat)
@@ -154,7 +143,6 @@ class TestCastUnderADeployedVeilAnchor:
         assert await self._generated_under(monkeypatch, self._ANCHOR_WARD) == 3
 
     async def test_it_halves_exactly_as_a_cleric_ward_does(self, monkeypatch):
-        # The ward is scope-owned; its source is narration, never mechanics.
         anchor = await self._generated_under(monkeypatch, self._ANCHOR_WARD)
         cleric = await self._generated_under(monkeypatch, self._CLERIC_WARD)
         assert anchor == cleric == 3
@@ -207,7 +195,6 @@ class TestPartyWideWardedEncounter:
         events.publish_resonance_changed = AsyncMock()
         spells_mod = MagicMock()
         spells_mod.get_spell = MagicMock(return_value=spell)
-        # The caster is the speaker, so each member casts on their own authenticated turn.
         with ctx.userdata._bind_authenticated_actor(member_id, 1, lambda *_: None):
             raw = await _cast_spell_impl(
                 ctx,
@@ -231,24 +218,20 @@ class TestPartyWideWardedEncounter:
     async def test_both_members_halved_before_expiry_and_neither_after(self):
         ctx = self._ctx_with_warded_combat(rounds_remaining=3)
 
-        # Round 1, ward standing: every caster in the scope is halved, not just the Paladin.
         for member_id in self._MEMBERS:
             packet = await self._cast_as(ctx, member_id, _spell(resonance=6))
             assert packet["ward_active"] is True, member_id
             assert packet["resonance_generated"] == 3, member_id
 
-        # Three wrap beats elapse; the 3-round ward dies at the third.
         self._tick_wraps(ctx, 3)
         assert ctx.userdata.combat_state.veil_ward is None
 
-        # Round 4, unwarded: neither caster is halved. Nothing lingers.
         for member_id in self._MEMBERS:
             packet = await self._cast_as(ctx, member_id, _spell(resonance=6))
             assert packet["ward_active"] is False, member_id
             assert packet["resonance_generated"] == 6, member_id
 
     async def test_ward_still_halves_on_the_round_it_expires(self):
-        # Two wraps leave rounds_remaining=1: the ward is still up for that round's casts.
         ctx = self._ctx_with_warded_combat(rounds_remaining=3)
         self._tick_wraps(ctx, 2)
         assert ctx.userdata.combat_state.veil_ward["rounds_remaining"] == 1
@@ -257,8 +240,6 @@ class TestPartyWideWardedEncounter:
         assert packet["resonance_generated"] == 3
 
     async def test_resonance_stays_per_caster_under_one_shared_ward(self):
-        # One ward, two independent Resonance pools. In combat the cast-paced shed is suppressed,
-        # so each member's track carries exactly their own halved generation.
         ctx = self._ctx_with_warded_combat(rounds_remaining=3)
         await self._cast_as(ctx, "player_1", _spell(resonance=6))
         assert ctx.userdata.member_state("player_1").resonance.current == 3
@@ -271,7 +252,6 @@ class TestPartyWideWardedEncounter:
 
 class TestCastSpellWard:
     async def test_active_ward_halves_generation(self):
-        # resonance=6 halved to 3 -> stable; the packet's resonance_generated reflects the halving.
         packet, ctx, _echo = await _cast_echo(_spell(resonance=6), ward_active=True)
         assert packet["resonance_generated"] == 3
         assert ctx.userdata.resonance.current == 3
@@ -279,13 +259,10 @@ class TestCastSpellWard:
         assert packet["ward_active"] is True
 
     async def test_active_ward_applies_die_and_dc_penalty(self):
-        # Ward folds -1 damage die / -1 DC into the net resonance_modifiers (stable {0,0} -> {-1,-1}).
         packet, _ctx, _echo = await _cast_echo(_spell(resonance=6), ward_active=True)
         assert packet["resonance_modifiers"] == {"damage_dice": -1, "dc": -1}
 
     async def test_ward_softens_the_echo(self):
-        # resonance=18 halved to 9 -> still Overreach, but the +4 ward bonus softens the roll:
-        # d20=12 -> effective 12+4 = 16 -> "whisper" (vs "veil_scar" without the ward).
         packet, _ctx, echo_events = await _cast_echo(_spell(resonance=18), ward_active=True, d20=12)
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "whisper"

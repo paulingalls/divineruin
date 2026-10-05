@@ -119,7 +119,6 @@ class TestWarmLayerRebuild:
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"
-                    # Verify caches were updated
                     assert mock_sd.cached_location_name == "Tavern"
                     assert mock_sd.cached_npc_names == ["Barkeep"]
 

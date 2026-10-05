@@ -49,7 +49,6 @@ def _captured_wire(pub: AsyncMock) -> dict:
 
 
 def test_fixture_event_types_match_python_constants() -> None:
-    # Pin the fixture's type strings to event_types.py (the <-> event-types.ts parity anchor).
     assert FIXTURE["events"]["resonance_changed"]["type"] == event_types.RESONANCE_CHANGED
     assert FIXTURE["events"]["hollow_echo_result"]["type"] == event_types.HOLLOW_ECHO_RESULT
     assert FIXTURE["events"]["veil_ward_changed"]["type"] == event_types.VEIL_WARD_CHANGED
@@ -137,8 +136,6 @@ async def test_hollow_echo_result_serializes_to_fixture() -> None:
 
 @pytest.mark.asyncio
 async def test_veil_ward_changed_serializes_to_fixture() -> None:
-    # story-008: {active, scope_kind, scope_id, source} — no caster_id. The ward is scope-owned, so
-    # every in-scope client lights up and there is nothing to filter on (scope_model.md §6).
     expected = FIXTURE["events"]["veil_ward_changed"]
     ward = {"source": expected["source"], "expires_at": None, "dismissible": True}
     scope = WardScope.location(expected["scope_id"])
@@ -181,25 +178,19 @@ async def _core_pending_events() -> dict[str, dict]:
 
 @pytest.mark.asyncio
 async def test_xp_awarded_serializes_to_fixture() -> None:
-    # story-001: the mobile handler read xp_gained/level_up while every Python emitter published
-    # amount/leveled_up, so a real award toasted "+0 XP". Both lanes assert this fixture now.
-    # player_id is the RECIPIENT — combat-end grants party-wide, so each client filters on it.
+    # player_id names the recipient; party-wide XP is filtered by each client.
     wire = await _core_pending_events()
     assert wire[event_types.XP_AWARDED] == FIXTURE["events"]["xp_awarded"]
 
 
 @pytest.mark.asyncio
 async def test_specialization_choice_serializes_to_fixture() -> None:
-    # The same L5 crossing surfaces the fork cue, stamped with the same recipient so a
-    # non-primary's fork does not pop the choice UI on every client.
     wire = await _core_pending_events()
     assert wire[event_types.SPECIALIZATION_CHOICE] == FIXTURE["events"]["specialization_choice"]
 
 
 @pytest.mark.asyncio
 async def test_level_up_carries_the_recipient() -> None:
-    # LEVEL_UP rides the same award; without the stamp a teammate's level-up would be
-    # indistinguishable from the local player's.
     wire = await _core_pending_events()
     assert wire[event_types.LEVEL_UP]["player_id"] == FIXTURE["events"]["xp_awarded"]["player_id"]
 
@@ -255,10 +246,7 @@ async def _favor_core_pending_events() -> dict[str, dict]:
 
 @pytest.mark.asyncio
 async def test_divine_favor_changed_serializes_to_fixture() -> None:
-    # story-002: the mobile handler reads `max` for the favor bar's denominator (falling back to
-    # 100) but no Python publisher ever sent it, so the denominator was fabricated on every real
-    # event — the same both-sides-mocked shape as story-001's xp_awarded. player_id is the
-    # RECIPIENT: quest favor is party-wide, so each client filters on it.
+    # player_id names the recipient; party-wide favor is filtered by each client.
     wire = await _favor_core_pending_events()
     assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
 

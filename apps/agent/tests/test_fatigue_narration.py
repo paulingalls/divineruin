@@ -122,7 +122,6 @@ class TestExhaustionNarrativeForConditions:
         assert exhaustion_narrative_for_conditions(conditions) == ""
 
     def test_missing_stacks_key_treated_as_zero(self) -> None:
-        # A condition dict crossing the JSONB boundary may omit stacks; fail soft to "".
         conditions = [{"type": "exhausted", "duration": 99, "source": "march"}]
         assert exhaustion_narrative_for_conditions(conditions) == ""
 
@@ -141,11 +140,9 @@ class TestEndToEnd:
             get_pool_narrative(25, 100, "stamina"),  # 25% → low
             get_pool_narrative(10, 100, "stamina"),  # 10% → critical
         ]
-        # high returns empty, low and critical return non-empty
         assert cues[0] == ""
         assert cues[1] != ""
         assert cues[2] != ""
         assert cues[3] != ""
-        # low and critical are distinct from each other
         assert cues[1] == cues[2]  # both low
         assert cues[1] != cues[3]  # low != critical

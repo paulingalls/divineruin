@@ -82,7 +82,6 @@ def test_get_variant_resolves_pair_and_fails_loud_on_mismatch():
     set_mentor_variants({"warrior_cleaving_blow_drathian": _variant("warrior_cleaving_blow_drathian")})
     found = get_variant("warrior_cleaving_blow", "warrior_cleaving_blow_drathian")
     assert found.cultural_attribution == "Drathian Clans technique"
-    # variant id exists but belongs to a different ability -> fail loud
     with pytest.raises(ValueError, match="warrior_cleaving_blow_drathian"):
         get_variant("guardian_taunt", "warrior_cleaving_blow_drathian")
 

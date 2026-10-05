@@ -67,14 +67,10 @@ async def _call(
         assert participant is not None
         participant.reaction_ids = [ability_id]
         participant.has_reaction_ability = True
-    # story-008: the caster row now comes from the id-ordered get_players_for_update batch (was a
-    # single caster get_player FOR UPDATE). These self-cast cases lock only the caster.
     queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})
     if persistence is None:
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
-    # These tests exercise the base (no active variant) path; the override path has its
-    # own suite in test_ability_variant_override.py.
     persistence.get_active_variant = AsyncMock(return_value=None)
     persistence.owns_elective = AsyncMock(return_value=owns_elective)
     # Bound unconditionally: only a reaction reads the binding, and branching on ability_type here
@@ -124,13 +120,10 @@ def _reaction_context(*, hit=True, window_open=True, target_id="player_1"):
 
 class TestVariableCost:
     async def test_pool_cost_ability_is_not_treated_as_free(self):
-        # paladin_lay_on_hands: cost{0,0} with the real cost in free-text scaling.
-        # The tool must surface the scaling rule, never report a plain free activation.
         result, persistence = await _call("paladin_lay_on_hands")
         assert result["variable_cost"] is not None
         assert "pool" in result["variable_cost"].lower()
         assert result["deducted"] == {"stamina": 0, "focus": 0}
-        # No stamina/focus to deduct, so no resource write happens.
         persistence.update_player_resources.assert_not_called()
 
     async def test_variable_cost_is_null_for_a_fixed_cost_ability(self):
@@ -219,7 +212,6 @@ class TestActivation:
         assert compared >= 15, f"declare-phase comparison set went thin ({compared})"
 
     async def test_stamina_core_ability_deducts_and_returns_cue(self):
-        # warrior_devastating_strike: stamina 3, focus 0.
         result, persistence = await _call("warrior_devastating_strike", stamina=10)
         assert result["deducted"] == {"stamina": 3, "focus": 0}
         assert result["narration_cue"]  # non-empty cue for the DM to voice
@@ -245,10 +237,6 @@ class TestActivation:
         assert result["deducted"]["stamina"] == 2
         assert result["narration_cue"]
         persistence.update_player_resources.assert_awaited_once()
-        # AC1: the spend NAMES the ability and the held action it answers. A bare False here is
-        # exactly story-018 losing the binding — it would know a reaction fired, but not which one
-        # or against which blow, so it could neither halve THIS damage nor raise AC against THIS
-        # attack. Fault-inject by writing the bool.
         window = ctx.userdata.combat_state.open_window
         assert ctx.userdata.combat_state.reactions_available["player_1"] == {
             "spent": True,
@@ -379,7 +367,6 @@ class TestActivation:
 
 class TestRejection:
     async def test_insufficient_focus_rejects_without_deducting(self):
-        # cleric_heal_wounds: focus 2. Player has only 1 focus.
         with pytest.raises(ToolError):
             await _call("cleric_heal_wounds", focus=1)
 
@@ -407,11 +394,9 @@ class TestRejection:
 
 class TestOwnershipGate:
     async def test_core_ability_rejected_when_class_mismatch(self):
-        # A paladin cannot activate a warrior core ability they don't have.
         ctx = make_context()
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
-        # story-008: caster row via the id-ordered batch (self-cast -> caster alone).
         queries.get_players_for_update = AsyncMock(return_value={"player_1": _player(class_="paladin")})
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
@@ -424,7 +409,6 @@ class TestOwnershipGate:
         persistence.update_player_resources.assert_not_called()
 
     async def test_elective_rejected_when_not_owned(self):
-        # The base elective has no character_abilities row → reject before deducting.
         result_raises = False
         try:
             await _call("warrior_cleaving_blow", owns_elective=False)
@@ -433,7 +417,6 @@ class TestOwnershipGate:
         assert result_raises, "expected ToolError for an unowned elective"
 
     async def test_elective_allowed_when_owned(self):
-        # With the character_abilities row present, the elective activates normally.
         result, persistence = await _call("warrior_cleaving_blow", owns_elective=True)
         assert result["deducted"]["stamina"] == 4  # base Cleaving Blow cost
         persistence.update_player_resources.assert_awaited_once()

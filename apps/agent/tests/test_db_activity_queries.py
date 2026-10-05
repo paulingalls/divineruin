@@ -63,8 +63,6 @@ class TestCountActiveBySlot:
 
     @patch("db_activity_queries.db")
     async def test_buckets_by_slot_coalesced_over_activity_type(self, mock_db):
-        # Parity with TS countActiveBySlot (activity_create.ts): a borrowed-training-slot
-        # craft stamps data.slot='training' and MUST count toward training, not crafting.
         pool = _pool_with_fetchrow({"training": 0, "crafting": 0, "companion": 0})
         mock_db.get_pool = AsyncMock(return_value=pool)
         await db_activity_queries.count_active_by_slot("p1")
@@ -73,7 +71,6 @@ class TestCountActiveBySlot:
 
     @patch("db_activity_queries.db")
     async def test_companion_bucket_matches_both_variants(self, mock_db):
-        # TS matches IN ('companion','companion_errand'); the Python twin must too.
         pool = _pool_with_fetchrow({"training": 0, "crafting": 0, "companion": 0})
         mock_db.get_pool = AsyncMock(return_value=pool)
         await db_activity_queries.count_active_by_slot("p1")
@@ -82,7 +79,6 @@ class TestCountActiveBySlot:
 
     @patch("db_activity_queries.db")
     async def test_query_unions_async_and_training_activities(self, mock_db):
-        # Slots are counted across both async_activities and training_activities.
         pool = _pool_with_fetchrow({"training": 0, "crafting": 0, "companion": 0})
         mock_db.get_pool = AsyncMock(return_value=pool)
         await db_activity_queries.count_active_by_slot("p1")
