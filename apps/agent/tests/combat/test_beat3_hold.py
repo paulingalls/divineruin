@@ -62,7 +62,6 @@ class TestTheHold:
         assert cs.get_participant("player_1").hp_current == 25  # the enemy blow did NOT
         assert cs.beat == "narration"
         assert [h["actor_id"] for h in cs.held_actions] == ["goblin_scout_1"]
-        # No player HP write of ANY kind reached the DB in the ally commit.
         deps["mutations"].update_player_hp.assert_not_awaited()
         deps["mutations"].save_combat_state.assert_awaited_once()  # commit 1 happened
 
@@ -84,12 +83,10 @@ class TestTheTwoWindows:
         ctx.userdata.combat_state.pending_declarations["goblin_scout_1"]["action"] = "sCiMiTaR"
         deps = _resolve_deps(damage=3)
 
-        # Call 1: the ally band resolves and commits. Nothing is held open yet.
         r0 = await _call(ctx, deps)
         assert r0["next"] == {"phase": "narration", "verbs": ["resolve_phase"], "waiting_on": None}
         assert _p(ctx).hp_current == 25
 
-        # Call 2: the machine stops on the PRE-ROLL window.
         r1 = await _call(ctx, deps)
         w1 = r1["next"]["waiting_on"]
         assert r1["next"]["phase"] == "narration"
@@ -104,7 +101,6 @@ class TestTheTwoWindows:
         assert _p(ctx).hp_current == 25
         assert ctx.userdata.combat_state.held_actions[0]["roll"] is None
 
-        # Call 2: the roll happens; the damage is STILL held (this window is pre-damage).
         r2 = await _call(ctx, deps)
         w2 = r2["next"]["waiting_on"]
         assert w2 is not None
@@ -115,7 +111,6 @@ class TestTheTwoWindows:
         assert _p(ctx).hp_current == 25
         assert ctx.userdata.combat_state.held_actions[0]["roll"]["attack_result"]["hit"] is True
 
-        # Call 3: the damage lands and the phase wraps.
         r3 = await _call(ctx, deps)
         assert _p(ctx).hp_current == 22
         assert r3["beat"] == "declaration"
@@ -218,7 +213,6 @@ class TestTheReactionBudgetGate:
         assert ctx.userdata.combat_state.open_window is None
         assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 25
 
-        # No window opens, so the held pass resolves the blow straight through — no pause.
         r2 = await _call(ctx, deps)
         assert r2["next"]["waiting_on"] is None
         assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 22
@@ -265,7 +259,6 @@ class TestTheReactionBudgetGate:
         ctx.userdata.party.members.extend(PartyState.solo("player_2", patron_id="none").members)
         cs.get_participant("player_1").reaction_ids = ["cleric_shield_of_faith"]
         cs.get_participant("player_1").is_fallen = True
-        # player_1 is down carrying a stale unspent record; player_2 stands but has already spent.
         cs.reactions_available = {
             "player_1": reaction_spend.unspent(),
             "player_2": reaction_spend.spend(
@@ -279,7 +272,6 @@ class TestTheReactionBudgetGate:
         r1 = await _call(ctx, deps)
 
         assert r1["next"]["waiting_on"] is None
-        # The blow still landed — the beat ran on, it did not stall on a no-op.
         assert _p(ctx, "player_2").hp_current == 17
 
 
@@ -303,7 +295,6 @@ class TestTrunkIdentityAndOneWrap:
         assert enemy_packet["hit"] is True
         assert enemy_packet["damage"] == 3
         assert enemy_packet["target"] == "Kael"
-        # ONE wrap: Resonance decayed a single step, not once per commit.
         assert member.resonance.current == 4
 
     @pytest.mark.asyncio
@@ -338,7 +329,6 @@ class TestUntargetedHeldActions:
 
         assert result["next"]["waiting_on"] is None
         assert result["beat"] == "declaration"
-        # It still POPPED through the ordinary resolver — no window, but no dropped turn either.
         goblin_packet = next(p for p in result["packets"] if p["actor_id"] == "goblin_scout_1")
         assert goblin_packet["declaration_type"] == "defend"
         assert _p(ctx).hp_current == 25  # a braced enemy struck nobody
@@ -357,8 +347,6 @@ class TestBandOrdering:
 
         r1 = await _call(ctx, _resolve_deps(damage=3))
 
-        # On trunk the goblin's blow landed first and the player fell at 0 before swinging.
-        # (This is the ally commit; the goblin's held turn has not run.)
         assert _p(ctx, "goblin_scout_1").hp_current == 4  # the ally swing landed
         assert _p(ctx).hp_current == 3  # untouched, still standing
         assert [p["actor_id"] for p in r1["packets"]] == ["player_1"]
@@ -388,8 +376,6 @@ class TestWastedHeldActions:
         assert r0["next"]["waiting_on"] is None
         assert [h["actor_id"] for h in ctx.userdata.combat_state.held_actions] == ["goblin_scout_1"]
 
-        # The held pass pops the wasted action WITHOUT pausing on it, and the wrap ends the fight
-        # in that same commit — an enemy blow (or its absence) is what ends the fight.
         result = await combat_turn._resolve_phase_impl(ctx, **deps)
 
         assert isinstance(result, tuple), "the wrap should have ended combat on the held pass"

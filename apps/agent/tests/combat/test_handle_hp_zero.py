@@ -98,10 +98,7 @@ class TestResolveAbilityPacket:
         assert summary["declaration_type"] == "ability"
         assert summary["action"] == "arcane_bolt"
         assert summary["cast"] == {"effect": "zap", "state": "stable"}
-        # the CastResult is handed to the loop keyed by the caster's id (in-memory sync is post-commit)
         assert outcome.results["player_1"] is result
-        # routed through the shared cast core with the cast's own RESONANCE_CHANGED suppressed —
-        # in combat the phase WRAP push is the single authoritative HUD update.
         _args, kwargs = cast_resolver._resolve_cast.call_args
         assert kwargs["suppress_resonance_changed"] is True
 
@@ -196,7 +193,6 @@ class TestHandleHpZero:
         assert rose is False
         assert released == []
         assert SOUND_PLAYER_FALLEN in sounds
-        # non-rise path passes the caller's pre-computed hp_status straight through
         assert hp_status == "defeated"
 
     def test_instant_death_when_overkill_ge_hp_max(self):
@@ -250,7 +246,6 @@ class TestHandleHpZero:
         assert rose is True
         assert released == []
         assert SOUND_HOLLOW_RISE in sounds
-        # rise restores HP, so hp_status is recomputed (no longer the caller's "defeated" sentinel)
         assert hp_status != "defeated"
 
     def test_companion_ko_marks_unconscious_and_records_memory(self):
@@ -277,7 +272,6 @@ class TestTheDoorIsTheOnlyDoor:
 
     def test_every_hp_current_writer_goes_through_the_door_or_is_named(self):
         assert _attribute_writers("hp_current") == {
-            # The blow and the burn: both drive HP down, both knock (story-026).
             ("combat_support.py", "apply_attack_result"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.

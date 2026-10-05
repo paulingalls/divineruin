@@ -47,9 +47,6 @@ async def test_victory_stabilizes_fallen_ally_without_mortaen(monkeypatch):
 
 
 async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
-    # story-004 (the character-loss fix): a destroyed temporary_hollowed echo-primary IS Mortaen-
-    # resurrected on VICTORY (an echo is a dead player, resurrected regardless of outcome), while a
-    # merely-fallen ally on the same victory is stabilized — only the echo lands in the dead-life set.
     import resurrection
 
     resurrect = AsyncMock(return_value=[{"anchor": "anchor_x", "revive_hp": 20, "hollow_killed": True}])

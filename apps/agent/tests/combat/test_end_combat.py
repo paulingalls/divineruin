@@ -62,7 +62,6 @@ class TestEndCombat:
         raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         assert isinstance(raw, tuple)
         agent_instance, _ = raw
-        # The returned agent should have a chat_ctx with a combat summary
         items = list(agent_instance.chat_ctx.items)
         assert len(items) > 0
 
@@ -106,7 +105,6 @@ class TestEndCombat:
         assert isinstance(await first, tuple)
         with pytest.raises(ToolError, match="Not in combat"):
             await second
-        # One payout: the combat row is deleted exactly once, not once per call.
         assert mock_mutations.delete_combat_state.await_count == 1
 
     @pytest.mark.asyncio
@@ -152,7 +150,6 @@ class TestEndCombat:
         assert not isinstance(await phase, tuple), "the ally commit does not end this fight"
         with pytest.raises(ToolError, match="held pending"):
             await end
-        # Nobody was paid and the fight is still on: the end is honest, not merely late.
         mock_mutations.delete_combat_state.assert_not_awaited()
         assert ctx.userdata.combat_state is not None
 
@@ -266,7 +263,6 @@ class TestPhaseLoopExit:
     async def test_victory_wrap_hands_back_to_exploration_agent(self):
         from exploration_agent import ExplorationAgent
 
-        # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
         resolver = _damage_resolver(3)
         queries = combat_end_queries()
         break_mod = MagicMock()
@@ -276,8 +272,6 @@ class TestPhaseLoopExit:
         ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=3)
 
         mutations = _make_end_combat_mocks()
-        # The ally commit persists BEFORE the wrap deletes the row (M29, story-016): the phase is
-        # two commits, and only the second one ends the fight.
         mutations.save_combat_state = AsyncMock()
 
         raw = await _resolve_round(
@@ -326,8 +320,6 @@ class TestEndCombatVeilWard:
 
     @pytest.mark.asyncio
     async def test_surviving_location_ward_keeps_the_hud_lit(self, monkeypatch):
-        # §3's whole point: the fight's ward dies, the Sacred site does not, and the party's casts
-        # are STILL halved. Publishing active=False here would darken the light while it lies.
         import db_mutations_veil_ward
 
         monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", AsyncMock(return_value=self._SACRED))
@@ -340,7 +332,6 @@ class TestEndCombatVeilWard:
 
     @pytest.mark.asyncio
     async def test_unwarded_fight_publishes_no_ward_event(self):
-        # Ending an unwarded fight changes nothing about wardedness. Say nothing.
         ctx = make_context(room=make_mock_room())
         ctx.userdata.combat_state = _make_combat_state()
         await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
@@ -386,8 +377,6 @@ class TestEndCombatPaysOnce:
 
     @pytest.mark.asyncio
     async def test_failed_flush_still_completes_teardown_and_hands_off(self, monkeypatch):
-        # Half 2: end_combat is the ONLY exit from CombatAgent. A HUD mirror that fails to update
-        # must not strand a session whose rewards are already banked.
         import combat_end
 
         monkeypatch.setattr(combat_end, "EventSink", self._ExplodingSink)

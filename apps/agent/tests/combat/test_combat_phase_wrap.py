@@ -22,7 +22,6 @@ class TestWrapBeat:
         assert advance.wrap.death_saves_due == []  # the fallen enemy owes nothing
 
     def test_schedules_death_save_decays_resonance_and_loops(self):
-        # Player fallen (not dead) + enemy alive -> combat continues, loops to declaration.
         state = _make_combat_state(player_fallen=True)
         state.beat = PhaseBeat.WRAP
         state.pending_declarations = _declarations()
@@ -62,7 +61,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_multi_player_defeat_only_when_all_down(self):
-        # Two players both terminally down + an alive enemy -> combat ends in defeat
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -111,7 +109,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_multi_player_one_down_one_standing_continues(self):
-        # Player A terminally down, Player B standing -> combat continues
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -159,7 +156,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome is None
 
     def test_multi_player_one_down_one_rolling_saves_continues(self):
-        # Player A down, Player B fallen but still rolling saves -> combat continues
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -209,8 +205,6 @@ class TestWrapBeat:
         assert "player_2" in advance.wrap.death_saves_due
 
     def test_living_echo_with_living_enemy_blocks(self):
-        # A living temporary_hollowed echo blocks combat-end while a living enemy keeps the fight
-        # going — combat cannot end while both a hostile echo and a live enemy stand.
         state = CombatState(
             combat_id="combat_echo_gate",
             participants=[
@@ -247,8 +241,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome is None
 
     def test_solo_living_echo_all_enemies_fallen_resolves_defeat(self):
-        # story-005 finding 5: a solo living echo with NO living enemy and no standing non-echo
-        # player is stranded (nobody left to destroy it) -> defeat (party lost), not a hang.
         state = CombatState(
             combat_id="combat_echo_stranded",
             participants=[
@@ -326,8 +318,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_victory_requires_a_standing_player(self):
-        # story-005: victory fires when all enemies are down AND at least one non-echo player still
-        # stands (a downed-but-savable ally does not block the win; it stabilizes at combat_end).
         state = CombatState(
             combat_id="combat_victory_standing",
             participants=[
@@ -383,7 +373,6 @@ class TestWrapTicksVeilWard:
         assert next_state.veil_ward == {"source": "paladin", "rounds_remaining": 2}
 
     def test_three_round_ward_expires_on_the_third_wrap(self):
-        # A Paladin's 3-round ward survives wraps 1 and 2 and dies at the third.
         state = self._warded(3)
         for expected in (2, 1):
             state, _ = advance_combat_phase(state, None)
@@ -409,8 +398,6 @@ class TestWrapTicksVeilWard:
         assert next_state.veil_ward is None
 
     def test_ward_ticks_even_when_combat_ends(self):
-        # Mirrors test_wrap_ticks_conditions_even_when_combat_ends: the tick is unconditional,
-        # never gated behind `if not wrap.combat_ended`.
         state = self._warded(3)
         for p in state.participants:
             if p.type == "enemy":

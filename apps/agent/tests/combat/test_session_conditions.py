@@ -15,8 +15,6 @@ from combat_packet import _resolve_tick_saves
 from conditions import apply_condition
 from session_data import SessionData
 
-# --- Slices 1 + 5: persistence round-trip (real dev DB) ---
-
 
 async def _seed_player(pool, player_id: str) -> None:
     await pool.execute(
@@ -39,8 +37,6 @@ async def test_save_then_get_player_roundtrips_conditions(dev_db_pool):
         assert player is not None
         assert player["conditions"] == exhausted
 
-        # The persisted condition flows into an out-of-combat check via the get_player dict
-        # (story-003 resolver reads player["conditions"]): Exhausted -1 lands on the modifier.
         plain = resolve_skill_check(
             {"attributes": {"strength": 14}, "level": 5},
             "athletics",
@@ -68,9 +64,6 @@ async def test_save_empty_clears_conditions(dev_db_pool):
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
 
-# --- Slice 2: Beat-4 tick-save resolution (pure helper) ---
-
-
 def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
     import check_resolution_save
 
@@ -81,12 +74,8 @@ def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
     player.conditions = apply_condition([], "frightened", source="wraith")
     due = [{"actor_id": "player_1", "type": "frightened", "save": "wis", "source": "wraith"}]
 
-    # Must not raise ValueError("Unknown save type: 'wis'"); the condition either clears or persists.
     _resolve_tick_saves(state, due, check_resolution_save)
     assert [c["type"] for c in player.conditions] in ([], ["frightened"])
-
-
-# --- Slice 3: combat-end persists only cross-encounter conditions ---
 
 
 def _end_combat_mocks():
@@ -102,7 +91,6 @@ async def test_end_combat_merges_acquired_cross_encounter_conditions(monkeypatch
     assert player is not None
     player.conditions = apply_condition(apply_condition([], "exhausted"), "prone")  # exhausted persists, prone doesn't
 
-    # A pre-combat Wounded already in the store must survive (combat only accrues; merge, not clobber).
     monkeypatch.setattr(
         db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "wounded"))
     )
@@ -118,7 +106,6 @@ async def test_end_combat_merges_acquired_cross_encounter_conditions(monkeypatch
         session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
     )
 
-    # Wounded (pre-existing) kept; exhausted (acquired) added; prone (phase-scoped) dropped.
     assert sorted(c["type"] for c in captured["conditions"]) == ["exhausted", "wounded"]
 
 
@@ -126,11 +113,9 @@ async def test_end_combat_keeps_higher_stacks_on_type_conflict(monkeypatch):
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
-    # Combat ends with Exhausted at 3 stacks.
     exhausted_3 = apply_condition(apply_condition(apply_condition([], "exhausted"), "exhausted"), "exhausted")
     player.conditions = exhausted_3
 
-    # The store already holds Exhausted at 2 stacks.
     exhausted_2 = apply_condition(apply_condition([], "exhausted"), "exhausted")
     monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=exhausted_2))
     captured = {}
@@ -167,9 +152,6 @@ async def test_end_combat_skips_store_when_no_persistent_conditions_acquired(mon
     )
 
     save_spy.assert_not_awaited()  # nothing acquired, no buff change -> reconciled == store -> no write
-
-
-# --- Slice 4: combat-end reconciles OOC beneficial dice back to players.data (concern ab37d4fc61c6) ---
 
 
 def _capture_save(monkeypatch) -> dict:

@@ -5,7 +5,6 @@ from tests.combat._helpers import _make_combat_state
 
 class TestCumulativeAccumulation:
     def test_positive_margin_round_adds_delta_to_cumulative(self):
-        # hostile dc = 15 + 6 = 21; roll_total 32 -> margin 11 -> success_10 band -> delta +2.
         out = resolve_argument_round(
             disposition="hostile",
             argument_type=None,
@@ -33,7 +32,6 @@ class TestCumulativeAccumulation:
         assert not out.surrendered
 
     def test_negative_delta_reduces_but_never_below_zero_from_low_base(self):
-        # From a small positive base, a negative delta that would cross below 0 still floors at 0.
         out = resolve_argument_round(
             disposition="hostile",
             argument_type=None,
@@ -46,8 +44,6 @@ class TestCumulativeAccumulation:
 
 class TestResistanceTagDcSwing:
     def test_vulnerable_argument_lands_with_larger_margin_than_resistant(self):
-        # neutral dc modifier 0; "greedy" tag: vulnerable to self_interest (-3), resistant to
-        # emotion (+3). Same roll_total, opposite DC swing -> different margin/delta.
         vulnerable = resolve_argument_round(
             disposition="neutral",
             argument_type="self_interest",
@@ -68,7 +64,6 @@ class TestResistanceTagDcSwing:
 
 class TestSurrenderThreshold:
     def test_cumulative_reaching_threshold_surrenders(self):
-        # neutral dc = 15; roll_total 20 -> margin 5 -> success_5 band -> delta +1.
         out = resolve_argument_round(
             disposition="neutral",
             argument_type=None,
@@ -112,7 +107,6 @@ class TestDeEscalationStateRoundTrip:
 
 class TestScriptedThreeRoundSequence:
     def test_surrender_flips_at_the_round_cumulative_first_crosses_threshold(self):
-        # Each round: neutral dc 15, roll_total 20 -> margin 5 -> success_5 -> delta +1.
         cumulative = 0
         surrendered_by_round = []
         for _ in range(3):

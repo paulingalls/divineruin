@@ -92,12 +92,10 @@ class TestInCombatAbilityResolution:
         session.combat_state = _ability_vs_attack_state(combat_id, player_id, enemy_id, spell_id)
 
         try:
-            # Deterministic enemy attack (3 dmg); the ability runs through the REAL cast_resolver.
             raw = await _resolve_round(ctx, resolver=_damage_resolver(3))
 
             assert not isinstance(raw, tuple)  # combat continues -> JSON (not the end-of-combat handoff)
             packets = raw["packets"]
-            # Initiative order: the player's ability (15) resolves before the enemy's attack (12).
             assert packets[0]["actor_id"] == player_id
             assert packets[0]["declaration_type"] == "ability"
             assert packets[0]["resolved"] is True
@@ -107,7 +105,6 @@ class TestInCombatAbilityResolution:
 
             row = await db_queries.get_player(player_id, conn=pool)
             assert row is not None
-            # Focus deducted by the spell cost (real ability_persistence write).
             assert row["focus"]["current"] == start_focus - spell.focus_cost
             # Resonance composed correctly: standing + generated (the cast) - 1 (the phase WRAP decay).
             # This single value distinguishes the correct ordering from BOTH failure modes —

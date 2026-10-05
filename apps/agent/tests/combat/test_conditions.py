@@ -12,7 +12,6 @@ from conditions import (
     tick_conditions,
 )
 
-# The 21 conditions of the spec catalog, by snake_case label.
 ALL_CONDITIONS = [
     "wounded",
     "stunned",
@@ -38,12 +37,7 @@ ALL_CONDITIONS = [
 ]
 
 
-# --- Slice 1: catalog completeness ---
-
-
 def test_catalog_has_all_21_spec_conditions():
-    # The 21 doc §Status Effects conditions are all present. The catalog also carries the
-    # engine-internal "temporary_hollowed" marker (story-008) — not a doc condition.
     assert set(ALL_CONDITIONS) <= set(CONDITION_CATALOG)
     assert len(ALL_CONDITIONS) == 21
     assert "temporary_hollowed" in CONDITION_CATALOG
@@ -54,7 +48,6 @@ def test_catalog_has_all_21_spec_conditions():
 def test_every_catalog_entry_is_a_condition_spec(condition_type):
     spec = CONDITION_CATALOG[condition_type]
     assert isinstance(spec, ConditionSpec)
-    # Each entry must declare how it clears (mirrors the doc's "Cleared By" column).
     assert spec.clearance, f"{condition_type} missing clearance"
 
 
@@ -65,14 +58,11 @@ def test_exhausted_is_stackable_with_cap_5():
 
 
 def test_consumed_conditions_persist_field_is_false_by_default():
-    # Blessed/Inspired/Shaken are consumed-on-use; they do not survive an encounter.
     for c in ("blessed", "inspired", "shaken"):
         assert CONDITION_CATALOG[c].persists_across_encounters is False
 
 
 def test_cross_encounter_conditions_persist():
-    # Wounded (until long rest), Exhausted (per long rest), Hollowed (Greater Restoration)
-    # outlive a single encounter.
     for c in ("wounded", "exhausted", "hollowed"):
         assert CONDITION_CATALOG[c].persists_across_encounters is True
 
@@ -88,9 +78,6 @@ def test_no_condition_is_both_a_persistent_and_a_bonus_die_buff():
         c for c, spec in CONDITION_CATALOG.items() if spec.bonus_die is not None and spec.persists_across_encounters
     ]
     assert both == [], f"conditions set both bonus_die and persists_across_encounters: {both}"
-
-
-# --- Slice 2: apply_condition ---
 
 
 def test_apply_adds_a_condition_with_source():
@@ -119,7 +106,6 @@ def test_apply_stacks_up_to_default_cap():
 
 
 def test_apply_honors_max_stacks_override():
-    # Iron Constitution caps exhaustion at 3 (story-003 passes the override).
     conds: list[dict] = []
     for _ in range(5):
         conds = apply_condition(conds, "exhausted", max_stacks=3)
@@ -151,9 +137,6 @@ def test_apply_unknown_condition_raises():
         apply_condition([], "confused")
 
 
-# --- Slice 3: remove_condition ---
-
-
 def test_remove_drops_named_condition_and_leaves_others():
     conds = apply_condition([], "prone")
     conds = apply_condition(conds, "blinded")
@@ -172,9 +155,6 @@ def test_remove_does_not_mutate_input():
     assert [c["type"] for c in conds] == ["prone"]
 
 
-# --- Slice 4: tick_conditions ---
-
-
 def test_tick_decrements_integer_durations():
     conds = apply_condition([], "shielded", duration=2)
     survivors, events = tick_conditions(conds)
@@ -183,7 +163,6 @@ def test_tick_decrements_integer_durations():
 
 
 def test_tick_leaves_until_cleared_conditions_alone():
-    # duration None = until explicitly cleared; tick must not touch it.
     conds = apply_condition([], "poisoned")
     survivors, _ = tick_conditions(conds)
     assert survivors == conds
@@ -200,9 +179,6 @@ def test_tick_does_not_mutate_input():
     conds = apply_condition([], "shielded", duration=2)
     tick_conditions(conds)
     assert conds[0]["duration"] == 2
-
-
-# --- Slice 5: get_condition_effects ---
 
 
 def test_effects_empty_for_no_conditions():
@@ -250,9 +226,6 @@ def test_effects_hollowed_stage_3_adds_stat_drain():
     assert "stat_drain" in effects.restrictions
 
 
-# --- hollowed_stage helper (M4.4 story-008) ---
-
-
 def test_hollowed_stage_zero_when_absent():
     assert hollowed_stage([]) == 0
     assert hollowed_stage([{"type": "exhausted", "stacks": 2}]) == 0
@@ -265,11 +238,7 @@ def test_hollowed_stage_reads_the_stage():
 
 
 def test_hollowed_stage_tolerates_json_null():
-    # players.data.conditions can be stored JSON null; the helper treats it as no Hollowed.
     assert hollowed_stage(None) == 0
-
-
-# --- temporary_hollowed condition: rider + immunities (M4.4 story-008) ---
 
 
 def test_temporary_hollowed_spec_carries_rider_and_immunities():
@@ -277,7 +246,6 @@ def test_temporary_hollowed_spec_carries_rider_and_immunities():
     assert spec.bonus_damage_dice == "1d6"
     assert spec.bonus_damage_type == "necrotic"
     assert set(spec.immunities) == {"charmed", "frightened", "poisoned"}
-    # The echo is combat-local — it never persists onto players.data.
     assert spec.persists_across_encounters is False
 
 
@@ -297,7 +265,6 @@ def test_effects_no_rider_or_immunities_by_default():
 
 
 def test_apply_condition_is_noop_for_an_immune_type():
-    # A Temporary Hollowed is immune to Charmed/Frightened/Poisoned: applying one is a no-op.
     base = apply_condition([], "temporary_hollowed")
     for immune in ("charmed", "frightened", "poisoned"):
         out = apply_condition(base, immune)
@@ -305,7 +272,6 @@ def test_apply_condition_is_noop_for_an_immune_type():
 
 
 def test_apply_condition_allows_non_immune_type_on_immune_carrier():
-    # Immunity is type-scoped: a Temporary Hollowed can still be Stunned (not on its immune list).
     base = apply_condition([], "temporary_hollowed")
     out = apply_condition(base, "stunned")
     assert any(c["type"] == "stunned" for c in out)
@@ -323,23 +289,17 @@ def test_charmed_applies_normally_without_an_immune_carrier():
     assert any(c["type"] == "charmed" for c in out)
 
 
-# --- beneficial bonus-die model: Blessed / Inspired (M4.8 story-001) ---
-
-
 def test_blessed_spec_carries_bonus_die_not_advantage():
     spec = CONDITION_CATALOG["blessed"]
     assert spec.bonus_die == "1d4"
     assert spec.bonus_die_scopes == ("attack", "save")
-    # The inert advantage_scopes=("next_roll",) mismodel is gone — +1d4 is a flat die, not advantage.
     assert spec.advantage_scopes == ()
 
 
 def test_inspired_spec_carries_any_roll_bonus_die():
     spec = CONDITION_CATALOG["inspired"]
     assert spec.bonus_die == "1d4"
-    # "Any roll" = all three roll kinds.
     assert set(spec.bonus_die_scopes) == {"attack", "save", "check"}
-    # The dead bonus_d4_creative_social restriction is replaced by the real bonus_die.
     assert "bonus_d4_creative_social" not in spec.restrictions
 
 
@@ -356,7 +316,6 @@ def test_effects_surfaces_inspired_bonus_die():
 
 
 def test_effects_surfaces_both_beneficial_dice_concurrently():
-    # A bearer can be Blessed AND Inspired; both dice surface with distinct sources (no silent drop).
     conds = apply_condition(apply_condition([], "blessed"), "inspired")
     effects = get_condition_effects(conds)
     assert {bd.source for bd in effects.bonus_dice} == {"blessed", "inspired"}

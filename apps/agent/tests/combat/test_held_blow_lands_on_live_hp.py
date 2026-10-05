@@ -32,14 +32,11 @@ class TestTheHeldBlowLandsOnLiveHp:
         await _call(ctx, deps)  # the roll happens; the damage is still held
         assert _p(ctx).hp_current == 25, "the held blow must not have landed yet"
 
-        # Inner Fire at the pause: 6 self-damage, written straight onto the live participant.
         _p(ctx).hp_current = 19
 
         await _call(ctx, deps)  # the window closes and the held blow lands
 
-        # 19 - 3, never 25 - 3: the burn is not undone by a blow rolled before it.
         assert _p(ctx).hp_current == 16
-        # ...and players.data agrees, because it is written from the same number.
         assert deps["mutations"].update_player_hp.await_args.args[1] == 16
 
     @pytest.mark.asyncio

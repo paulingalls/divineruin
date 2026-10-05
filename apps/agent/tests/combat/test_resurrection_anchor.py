@@ -31,7 +31,6 @@ class TestStarterZoneSSOT:
         assert anchor == retagged
 
     def test_tier4_falls_back_to_literal_only_when_nothing_tagged(self):
-        # No location carries the tag -> the single shared fallback literal.
         locations = {"wild_r3": {"region": "r3", "danger_level": 3}}
         anchor = resolve_resurrection_anchor("wild_r3", locations, {}, combat_cleared=False)
         assert anchor == STARTER_ZONE_ID
@@ -43,5 +42,4 @@ class TestStarterZoneSSOT:
         assert get_starter_zone_id({"wild_r3": {"region": "r3"}}) == STARTER_ZONE_ID
 
     def test_creation_default_start_location_crosslinks_to_ssot(self):
-        # The character-creation default start and the resurrection tier-4 fallback are ONE literal.
         assert creation_rules.DEFAULT_START_LOCATION == STARTER_ZONE_ID

@@ -94,7 +94,6 @@ def _attack(rider: str | None = None) -> Declaration:
 
 class TestMechanicalEnhancers:
     async def test_extra_attack_expands_to_two_attacks(self):
-        # AC1: one Attack declaration resolves as 2 attacks — no second declaration.
         cs = _player_attacking(enhancers=["extra_attack"])
         enemy = cs.get_participant("goblin_scout_1")
         assert enemy is not None
@@ -127,7 +126,6 @@ class TestMechanicalEnhancers:
         assert enemy.is_fallen is True
 
     async def test_extra_attack_stops_when_target_falls(self):
-        # The second swing is skipped once the first drops the target (no hitting a corpse).
         cs = _player_attacking(enhancers=["extra_attack"], enemy_hp=5)
         enemy = cs.get_participant("goblin_scout_1")
         assert enemy is not None
@@ -140,7 +138,6 @@ class TestMechanicalEnhancers:
 
 class TestNoEnhancer:
     async def test_no_enhancer_resolves_single_attack_no_expansion(self):
-        # AC3: exactly one base action, no phantom "attacks"/"riders" expansion.
         cs = _player_attacking(enhancers=[])
         enemy = cs.get_participant("goblin_scout_1")
         assert enemy is not None
@@ -154,8 +151,6 @@ class TestNoEnhancer:
 
 class TestNarratedRiders:
     async def test_cunning_action_attaches_chosen_rider_without_extra_attack(self):
-        # AC2: the Attack resolution also includes the chosen dash/disengage/hide rider,
-        # and the rider is narration-only — it adds no mechanical second attack.
         cs = _player_attacking(enhancers=["cunning_action"])
         summary = await _resolve(cs, _attack(rider="hide"), _fixed_resolver(5))
         assert summary["riders"] == ["cunning_action:hide"]
@@ -169,9 +164,6 @@ class TestNarratedRiders:
         summary = await _resolve(cs, decl, _fixed_resolver(5))
         assert summary["resolved"] is False
         assert summary["riders"] == ["quick_change:identity_swap"]
-
-
-# --- Capstone: each of the 6 enhancers expands its declaration through resolve_phase (AC4) ---
 
 
 def _capstone_state(enhancers: list[str], declaration: dict) -> CombatState:

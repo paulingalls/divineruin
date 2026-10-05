@@ -14,36 +14,29 @@ _CONTENT = Path(__file__).resolve().parents[4] / "content"
 # The full classification of all 25 reaction rows. Every value is justified by the row's own
 # effect prose, quoted where the reason is not the window label.
 EXPECTED: dict[str, str] = {
-    # --- pre-roll: on_targeted (4) ---
     "bard_dissonant_whisper": "reachable",
     "mage_shield_spell": "reachable",
     "skirmisher_sidestep": "reachable",
     "whisper_thought_shield": "reachable",
-    # --- pre-roll: on_ally_targeted (6) ---
     "bard_countercharm": "reachable",  # "ally targeted by fear/charm" — Hollow Shriek reaches it
     "cleric_shield_of_faith": "reachable",
     "diplomat_countercharm": "reachable",
     "marshal_interceding_order": "reachable",
     "oracle_shield_of_faith": "reachable",
     "paladin_shield_of_faith": "reachable",
-    # --- post-roll: on_hit (5) ---
     "druid_bark_skin": "reachable",
     "guardian_retaliating_shield": "reachable",
     "rogue_uncanny_dodge": "reachable",
     "warden_bark_skin": "reachable",
     "warrior_brace_for_impact": "reachable",
-    # --- post-roll: on_ally_hit (1) / on_enemy_miss (1) ---
     "guardian_intercept": "reachable",
     "skirmisher_riposte": "reachable",
-    # --- catch-all on_enemy_action (4), narrowed by held action subject ---
     "whisper_implant_doubt": "reachable",  # "when an enemy succeeds an attack or ability"
     "diplomat_objection": "reachable",  # any non-Hollow action, before it rolls
     "spy_plausible_deniability": "reachable",  # the Sergeant's accusation
     "marshal_countermand": "reachable",  # five authored commands
-    # --- on_condition_imposed (2), reached only via the `grapple` property branch ---
     "rogue_slippery": "reachable",
     "spy_slippery": "reachable",
-    # --- no producer exists under ANY design (debt: on_enemy_move, on_spell_cast) ---
     "warrior_opportunity_strike": "unproducible",  # on_enemy_move: no movement in the engine
     "mage_counterspell": "unproducible",  # on_spell_cast: no enemy casts (combat_ability.py:300)
 }

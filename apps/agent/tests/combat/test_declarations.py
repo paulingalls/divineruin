@@ -56,8 +56,6 @@ class TestResolveDeclarationValid:
         assert d.type is DeclarationType.ATTACK
 
     def test_rider_passes_through_when_present(self):
-        # The chosen enhancer rider (e.g. Cunning Action's dash/disengage/hide) is carried
-        # verbatim into the typed Declaration for downstream resolution (story-004).
         d = resolve_declaration({"type": "attack", "action": "Dagger", "target_id": "goblin_1", "rider": "hide"})
         assert d.rider == "hide"
 

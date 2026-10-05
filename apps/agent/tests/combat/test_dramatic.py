@@ -7,9 +7,6 @@ def _verdict(**signals) -> DramaticVerdict:
     return evaluate_dramatic_context(DramaticContext(**signals))
 
 
-# --- Always dramatic (engine flags automatically) -------------------------------
-
-
 def test_natural_20_is_dramatic():
     v = _verdict(raw_die=20, roll_type="attack")
     assert v.dramatic is True
@@ -29,7 +26,6 @@ def test_death_save_is_always_dramatic():
 
 
 def test_boss_attack_against_player_is_dramatic():
-    # Tier 4 == Named/boss targeting the player directly.
     v = _verdict(raw_die=12, roll_type="attack", attacker_tier=4)
     assert v.dramatic is True
     assert v.context == "boss_attack"
@@ -54,17 +50,12 @@ def test_concentration_after_major_damage_is_dramatic():
 
 
 def test_concentration_below_major_damage_threshold_is_not_dramatic():
-    # 14 < 15: a routine concentration check is bookkeeping, not drama.
     v = _verdict(raw_die=8, roll_type="concentration", damage_taken=14)
     assert v.dramatic is False
     assert v.context == ""
 
 
-# --- Contextually dramatic (engine evaluates; any true => dramatic) -------------
-
-
 def test_possible_killing_blow_is_dramatic():
-    # This hit could drop the target: damage_potential >= remaining HP.
     v = _verdict(raw_die=12, roll_type="attack", target_hp_remaining=6, damage_potential=8)
     assert v.dramatic is True
     assert v.context == "killing_blow"
@@ -83,7 +74,6 @@ def test_near_death_defense_is_dramatic_at_boundary():
 
 
 def test_near_death_only_counts_on_defense_rolls():
-    # Same low HP on a non-defense roll does not, by itself, flag dramatic.
     v = _verdict(raw_die=12, roll_type="attack", player_hp_percent=0.25)
     assert v.dramatic is False
     assert v.context == ""
@@ -143,9 +133,6 @@ def test_low_stakes_social_is_not_dramatic():
     assert v.context == ""
 
 
-# --- Never dramatic (always invisible) ------------------------------------------
-
-
 def test_minor_damage_roll_is_never_dramatic():
     v = _verdict(raw_die=7, roll_type="damage")
     assert v.dramatic is False
@@ -165,17 +152,12 @@ def test_routine_skill_check_is_never_dramatic():
 
 
 def test_easy_encounter_enemy_attack_is_never_dramatic():
-    # Tier 1 creature against a high-level player: no real threat, no tension.
     v = _verdict(raw_die=11, roll_type="attack", attacker_tier=1)
     assert v.dramatic is False
     assert v.context == ""
 
 
-# --- Severity ordering + purity -------------------------------------------------
-
-
 def test_first_matching_reason_wins_by_severity():
-    # A natural 20 that is also a killing blow surfaces the higher-severity label.
     v = _verdict(raw_die=20, roll_type="attack", target_hp_remaining=2, damage_potential=9)
     assert v.dramatic is True
     assert v.context == "natural_20"

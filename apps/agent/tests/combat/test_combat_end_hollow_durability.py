@@ -72,7 +72,6 @@ async def test_a_joiner_who_travelled_into_a_hollow_zone_takes_doubled_weapon_we
 
     seen = await _hollow_verdicts(session, monkeypatch)
 
-    # Before the fix p2's verdict was False: its weapon took 1 hit where the zone mandates 2.
     assert seen == {"p1": True, "p2": True}
 
 

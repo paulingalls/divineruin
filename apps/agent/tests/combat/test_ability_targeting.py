@@ -103,7 +103,6 @@ class TestInCombatRevivalGateE2E:
             id=caster_id, name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
         )
         try:
-            # Targeting the Hollow-killed ally — refused via the TARGET's persisted flag (caster living).
             decl_h = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=hollow_ally)
             with pytest.raises(ToolError, match="Hollow-killed"):
                 await _resolve_ability_packet(
@@ -117,7 +116,6 @@ class TestInCombatRevivalGateE2E:
                     cast_outcome=AbilityCastOutcome(),
                 )
 
-            # Targeting a living ally — resolves; the in-combat cast packet carries target_id.
             decl_l = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=living_ally)
             summary = await _resolve_ability_packet(
                 session,

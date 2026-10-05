@@ -48,7 +48,6 @@ class TestDeclarationBeat:
             advance_combat_phase(state, None)
 
     def test_declaration_beat_validates_each_declaration(self):
-        # An attack missing its required target_id fails loud at declare time, not later.
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
 
@@ -242,7 +241,6 @@ class TestFullCycle:
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
 
-        # Beat 1 -> 2 -> 3
         state, _ = advance_combat_phase(state, _declarations())
         state, res = advance_combat_phase(state, None)
         assert state.beat == PhaseBeat.NARRATION

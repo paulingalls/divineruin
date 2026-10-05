@@ -86,7 +86,6 @@ async def test_non_primary_members_fetched_in_one_batched_call():
     await _run(ctx, mock_mutations, mock_queries, mock_content)
 
     mock_queries.get_players_for_update.assert_called_once_with(["player_2"])
-    # player_2 rides the batch; only the primary is fetched via get_player (no serial 2nd query).
     fetched_ids = [call.args[0] for call in mock_queries.get_player.call_args_list]
     assert "player_2" not in fetched_ids
     assert fetched_ids == ["player_1"]
@@ -102,7 +101,6 @@ async def test_solo_party_builds_exactly_one_player_participant():
     assert len(players) == 1
     assert players[0]["id"] == "player_1"
     assert "player_1" in state_dict["initiative_order"]
-    # Byte-identical solo path: an empty non-primary set skips the batch query entirely.
     mock_queries.get_players_for_update.assert_not_called()
 
 
@@ -137,8 +135,6 @@ async def test_combat_started_event_lists_both_players():
 
 @pytest.mark.asyncio
 async def test_combat_init_resets_weapon_flags_for_every_member():
-    # M18 story-003: the per-encounter weapon-flag reset loops EVERY member, so a non-primary
-    # member's stale swing from a prior encounter can't leak into this encounter's accrual.
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)

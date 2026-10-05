@@ -188,27 +188,18 @@ class TestEndToEndAllAgree:
                     resolver=_damage_resolver(7),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # (1) in-memory: the failed WRAP commit reverted to its own pre-commit state — not to
-            # round 1's, which is durable. Round 1's companion KO stands; round 2's scratch does not.
-            # Round 2's ally commit succeeded and was adopted; only the WRAP commit rolled back.
-            # That is the replacement guarantee: ally results durable, enemy actions still pending.
             assert session.combat_state is not round_two_start
             assert session.combat_state is not None
             assert [h["actor_id"] for h in session.combat_state.held_actions] == [enemy_id]
             assert session.combat_state is not None
             fallen_enemy = session.combat_state.get_participant(enemy_id)
             assert fallen_enemy is not None and fallen_enemy.is_fallen is True
-            # weapon_used was set in round 2's ALLY commit, which succeeded — the scratch guard
-            # reverts the failing commit's scratch, not a committed one.
             assert session.party.primary.weapon_used is True
             assert session.party.primary.weapon_crit_vs_heavy is False
             assert session.companion.is_conscious is False  # round 1's committed KO
             assert list(session.companion.session_memories) == ["earlier", "Brae was knocked unconscious in combat"]
-            # (2) DB: combat row survives, weapon durability unchanged (accrual rode the failed commit).
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is not None
             assert await self._weapon_hits(pool, player_id, weapon_id) == 10
-            # (3) events: round 2's ALLY commit flushed its own (it committed); the failed WRAP
-            # commit leaked nothing — no COMBAT_ENDED, no durability hit, no stinger.
             leaked = [e.event_type for e in session.event_bus.drain()]
             assert E.COMBAT_ENDED not in leaked
             assert E.ITEM_DURABILITY_HIT not in leaked
@@ -244,16 +235,12 @@ class TestEndToEndAllAgree:
                 resolver=_damage_resolver(7),
                 concentration_break_mod=_no_concentration_break(),
             )
-            # Victory -> end_combat handoff tuple.
             assert isinstance(result, tuple)
-            # (1) in-memory: combat cleared, the committed companion KO stands.
             assert session.combat_state is None
             assert session.party.primary.weapon_used is False
             assert session.companion.is_conscious is False
-            # (2) DB: combat row deleted, weapon durability decremented once (10 -> 9).
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is None
             assert await self._weapon_hits(pool, player_id, weapon_id) == 9
-            # (3) events: the end + loop events all published, exactly once.
             kinds = [e.event_type for e in session.event_bus.drain()]
             assert kinds.count(E.COMBAT_ENDED) == 1
             assert E.DICE_ROLL in kinds
@@ -309,7 +296,6 @@ class TestPhaseEndPaysOnce:
             )
             assert await self._xp(pool, player_id) == 50, "the wrap must actually pay, else this proves nothing"
 
-            # The DM's natural recovery move. It must find no combat to end.
             with pytest.raises(ToolError, match="Not in combat"):
                 await combat_end._end_combat_impl(ctx, outcome="victory")
 
@@ -381,9 +367,6 @@ class TestPhaseEndPaysOnce:
                     resolver=_damage_resolver(7),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # Nothing was paid and the guard survives, so the end is still retryable. The state is
-            # no longer the pre-round object — round-016's ally commit succeeded and was adopted —
-            # but it is still A combat state, which is what keeps _require_combat armed.
             assert await self._xp(pool, player_id) == 0
             assert session.combat_state is not None
             assert session.combat_state.combat_id == state.combat_id

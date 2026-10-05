@@ -80,8 +80,6 @@ class TestDamageMathContract:
         pytest.fail("no normal-hit seed found for negative-modifier case")
 
     def test_damage_uses_governing_attribute_not_strength(self) -> None:
-        # An explicit governing attribute overrides STR for damage, just as it
-        # does for the attack roll — proves the attribute selection reaches damage.
         attacker = {"level": 1, "attributes": {"strength": 10, "dexterity": 18}}
         weapon = {
             "name": "Rapier",
@@ -112,7 +110,6 @@ class TestHeavyWeaponCatalog:
         assert weapon["type"] == "weapon"
         assert weapon["damage_dice"] == "1d12"
         assert "heavy" in weapon["properties"]
-        # STR governs: no finesse, not ranged, no non-STR override.
         assert "finesse" not in weapon["properties"]
         assert weapon.get("ranged", False) is False
         assert weapon.get("governing_attribute", "strength") == "strength"

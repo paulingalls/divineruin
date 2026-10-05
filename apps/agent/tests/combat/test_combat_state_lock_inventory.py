@@ -403,7 +403,6 @@ async def test_concurrent_holder_change_survives_real_full_state_mutator(writer)
     await task
 
     assert len(saved) == 2
-    # The last row written is the DB's truth, so it must carry both changes, not just memory.
     for final in (ctx.userdata.combat_state, CombatState.from_dict(saved[-1])):
         assert final.round_number == holder_state.round_number
         if writer == "veil_raise":

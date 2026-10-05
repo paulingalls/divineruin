@@ -12,8 +12,6 @@ SPELL_BUFF_CONDITIONS = combat_ability_save.BENEFICIAL_CONDITIONS
 
 
 def _assert_no_hostile_condition_ability_omits_its_save(rows: list[dict[str, object]]) -> None:
-    # A renamed key or a re-shaped file leaves the walk inspecting nothing and green forever,
-    # so an empty walk reds rather than certifying.
     condition_rows = [row for row in rows if isinstance(row, dict) and "applies_condition" in row]
     assert condition_rows, rows
     violations = {

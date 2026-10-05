@@ -64,13 +64,11 @@ async def _drain():
 
 @pytest.mark.asyncio
 async def test_second_player_joins_then_both_enter_combat_as_participants():
-    # --- Arrange: a solo session for the primary, sitting in a corrupted room ---
     ctx = make_context()  # SessionData for player_1, solo party
     ctx.userdata.corruption_level = 4
     row2 = _joiner_row()
     join_queries, res_mod, conc_mod = _join_mods(row2)
 
-    # --- Act 1: player_2 connects to the room -> the join trigger appends + hydrates them ---
     room, handlers = _recording_room()
     _setup_party_join(
         room,
@@ -83,7 +81,6 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
         handlers["participant_connected"](SimpleNamespace(identity="player_2"))
         await _drain()
 
-    # The party is now >1 member and player_2 carries its OWN per-member state (all five substates).
     assert ctx.userdata.party.member_ids == ["player_1", "player_2"]
     joined = ctx.userdata.party.member("player_2")
     assert joined is not None
@@ -92,7 +89,6 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
     assert joined.patron_id == "syrath"  # per-member, from player_2's own row
     assert joined.corruption_level == 4  # co-located with the party's location
 
-    # --- Act 2: the 2-member party enters combat together ---
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     mock_queries.get_players_for_update = AsyncMock(return_value={"player_2": row2})
     await _start_combat_impl(
@@ -104,11 +100,9 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
         content=mock_content,
     )
 
-    # --- Assert: both members are player CombatParticipants ---
     mock_mutations.save_combat_state.assert_called_once()
     state_dict = mock_mutations.save_combat_state.call_args[0][1]
     players = [p for p in state_dict["participants"] if p["type"] == "player"]
     assert {p["id"] for p in players} == {"player_1", "player_2"}
     assert next(p for p in players if p["id"] == "player_2")["name"] == "Bren"
-    # non-primary member row loaded via the ONE batched fetch, not a serial get_player
     mock_queries.get_players_for_update.assert_awaited_once()

@@ -115,11 +115,9 @@ async def test_party_wipe_resurrects_every_fallen_member_at_own_anchor(dev_db_po
 
         end_data = await _run_defeat(session, cs)
 
-        # The returned context is the primary's — its anchor is the primary's tier-3 settlement.
         assert end_data["death_context"] is not None
         assert end_data["death_context"]["anchor"] == _PRIMARY_ANCHOR
 
-        # BOTH members revived, each at their OWN divergent anchor, each death recorded.
         primary = await db_queries.get_player(_PRIMARY, conn=pool)
         second = await db_queries.get_player(_SECOND, conn=pool)
         assert primary is not None and second is not None
@@ -168,7 +166,6 @@ async def test_survivor_is_not_collected(dev_db_pool):
 
         end_data = await _run_defeat(session, cs)
 
-        # Primary fell and was resurrected; the survivor is untouched (no death, location unchanged).
         assert end_data["death_context"]["anchor"] == _PRIMARY_ANCHOR
         primary = await db_queries.get_player(_PRIMARY, conn=pool)
         second = await db_queries.get_player(_SECOND, conn=pool)
@@ -234,7 +231,6 @@ async def test_hollowed_echo_primary_still_resurrected(dev_db_pool):
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR, conditions_list=hollowed)
     try:
         session = SessionData(player_id=_PRIMARY, location_id=_OFF_CATALOG, room=None)
-        # The echo: type flipped to temporary_hollowed on the rise, is_fallen set on destruction.
         echo = _player_participant(_PRIMARY, is_fallen=True, type_="temporary_hollowed")
         cs = _combat_state([echo, _enemy(is_fallen=True)])
 

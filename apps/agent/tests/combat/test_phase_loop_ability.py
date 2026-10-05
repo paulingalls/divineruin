@@ -17,7 +17,6 @@ class TestResolvePhaseAbility:
 
     def _ability_state(self):
         state = _resolution_state()
-        # Player declares an ABILITY instead of an attack; the enemy still swings.
         state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
         return state
 
@@ -46,12 +45,10 @@ class TestResolvePhaseAbility:
 
         packets = (await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res))["packets"]
 
-        # Player (initiative 15) resolves before the enemy (initiative 12).
         assert packets[0]["actor_id"] == "player_1"
         assert packets[0]["resolved"] is True
         assert packets[0]["declaration_type"] == "ability"
         assert packets[0]["cast"]["effect"] == "A bolt of force."
-        # The enemy's attack still resolves the same phase.
         assert packets[1]["actor_id"] == "goblin_scout_1"
         cast_resolver._resolve_cast.assert_awaited_once()
 
@@ -82,7 +79,6 @@ class TestResolvePhaseAbilityResonance:
         ctx = make_context()
         ctx.userdata.resonance.current = 3  # standing
         ctx.userdata.combat_state = self._ability_state()
-        # The cast wrote standing(3)+generated(5)=8 inside the tx (mocked as new_resonance=8).
         cast_resolver = self._cast_resolver(new_resonance=8)
         deps = _resolve_deps(damage=3)
         res = _resonance_deps()
@@ -90,7 +86,6 @@ class TestResolvePhaseAbilityResonance:
         raw = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
         assert not isinstance(raw, tuple)
-        # WRAP decays the post-generation total by 1: 8 -> 7 (NOT standing 3 -> 2).
         assert ctx.userdata.resonance.current == 7
         write = res["resonance_mutations"].update_player_resonance.await_args
         assert write.args == ("player_1", 7)
@@ -105,7 +100,6 @@ class TestResolvePhaseAbilityResonance:
     async def test_killing_phase_ability_resonance_pushes_hud(self):
         ctx = make_context()
         ctx.userdata.resonance.current = 3
-        # Enemy already fallen -> the wrap reports victory THIS phase (combat ends).
         state = _resolution_state()
         enemy = state.get_participant("goblin_scout_1")
         assert enemy is not None
@@ -121,7 +115,6 @@ class TestResolvePhaseAbilityResonance:
 
         assert isinstance(raw, tuple)  # combat ended -> handoff
         assert json.loads(raw[1])["outcome"] == "victory"
-        # The generated resonance was synced AND its HUD push fired even though combat ended.
         assert ctx.userdata.resonance.current == 8
         res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
 
@@ -130,14 +123,12 @@ class TestResolvePhaseAbilityResonance:
         ctx = make_context()
         ctx.userdata.resonance.current = 3
         ctx.userdata.combat_state = self._ability_state()
-        # A cantrip generates 0 -> the cast wrote no resonance (new_resonance None).
         cast_resolver = self._cast_resolver(new_resonance=None, generated=0)
         deps = _resolve_deps(damage=3)
         res = _resonance_deps()
 
         await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # No generation to seed the base, so the phase decays the standing value: 3 -> 2.
         assert ctx.userdata.resonance.current == 2
         write = res["resonance_mutations"].update_player_resonance.await_args
         assert write.args == ("player_1", 2)
@@ -178,8 +169,6 @@ class TestResolvePhaseAbilityResonance:
 
         await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # The break (enemy attack, initiative 12) ran AFTER the ability cast (initiative 15) and saw
-        # the just-cast spell B in memory — not the stale spell A.
         assert seen == ["spell_b"]
 
     @pytest.mark.asyncio
@@ -198,7 +187,6 @@ class TestResolvePhaseAbilityResonance:
 
         await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # The cast's own deferred client events (hollow echo, Vaelti warning) fire after commit.
         assert emitted == ["hollow_echo"]
 
 
@@ -213,7 +201,6 @@ class TestResolvePhaseAbilityFocusGate:
         ctx = make_context()
         ctx.userdata.combat_state = self._ability_state()
         deps = _resolve_deps(damage=3)
-        # The player can't afford the ability; the pre-validation runs the real cast gate and raises.
         deps["queries"].get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 0}})
         res = _resonance_deps()
         cast_resolver = MagicMock()
@@ -223,7 +210,6 @@ class TestResolvePhaseAbilityFocusGate:
         with pytest.raises(ToolError, match="Focus"):
             await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # AC2: nothing was written and the loop never ran — the ability is rejected pre-loop.
         cast_resolver._resolve_cast.assert_not_called()
         deps["mutations"].update_player_hp.assert_not_called()
         deps["mutations"].save_combat_state.assert_awaited_once()
@@ -234,8 +220,6 @@ class TestResolvePhaseAbilityFocusGate:
 
     @pytest.mark.asyncio
     async def test_player_row_is_passed_through_to_the_cast(self):
-        # The pre-validation fetches the player for_update ONCE and threads it to the cast, so the
-        # cast does not re-fetch (single lock). The mock cast records the player it was handed.
         from spell_casting import _UNCHANGED, CastResult
 
         ctx = make_context()

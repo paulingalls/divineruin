@@ -76,7 +76,6 @@ class TestInstantDeathVerdict:
         attacker, target, action = _attacker_target_action(cs)
         mutations, queries = _mocks()
 
-        # Drops to 0 but overkill below max HP -> normal Fallen (death saves), not instant death.
         await _resolve_attack_packet(
             ctx.userdata,
             attacker,
@@ -160,7 +159,6 @@ class TestWrapInstantDeath:
         assert "player_1" not in wrap.death_saves_due
 
     def test_fallen_but_not_dead_player_still_rolls_death_saves(self):
-        # Control: a normally-fallen player (overkill below max HP) still enters the death-save grind.
         cs = _make_combat_state()
         player = cs.get_participant("player_1")
         assert player is not None

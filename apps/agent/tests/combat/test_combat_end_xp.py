@@ -150,12 +150,7 @@ def _xp_grants(mutations) -> dict[str, int]:
     return {c.args[0]: c.args[1] for c in mutations.update_player_xp.await_args_list}
 
 
-# --- AC1: a solo victory grants the full total in the end transaction ---
-
-
 async def test_solo_victory_grants_the_full_total():
-    # Solo N=1 -> multiplier 1.0, one seat: the primary receives the whole encounter total, exactly
-    # what the LLM used to be told to hand out by hand.
     session = _session(["p1"])
     end_data, mutations, _q, sink, _c = await _run(session, _cs([_xp_enemy("g1", 50)], ["p1"]))
 
@@ -167,8 +162,6 @@ async def test_solo_victory_grants_the_full_total():
 
 
 async def test_solo_victory_response_carries_no_award_xp_note():
-    # The DM narrates the granted XP from the tool response; there is no longer a second tool call
-    # to cue, so the note is gone (story-003 removes award_xp entirely).
     session = _session(["p1"])
     cs = _cs([_xp_enemy("g1", 50)], ["p1"])
     end_data, _m, _q, _sink, _c = await _run(session, cs)
@@ -193,12 +186,7 @@ async def test_finish_summary_reports_the_granted_share_not_the_raw_total():
     assert "XP earned: 100." not in summary
 
 
-# --- AC2: a multiplayer victory splits on the shared party curve, in seat order ---
-
-
 async def test_mp_victory_grants_each_participant_the_party_share():
-    # XP rides the SAME curve as coin (decision 91967897c88c): total * multiplier(N) / N. For 2 PCs
-    # that is 100 * 1.5 / 2 = 75 each — the party earns more than a solo, without N x farming.
     session = _session(["p1", "p2"])
     _end, mutations, _q, sink, _c = await _run(session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]))
 
@@ -279,9 +267,6 @@ async def test_empty_seat_order_grants_nothing(monkeypatch):
     assert _xp_events(sink) == []
 
 
-# --- story-011: a malformed member row must not trap the party in combat ---
-
-
 async def test_a_classless_member_leveling_up_is_skipped_others_paid_and_end_commits(warrior_ladder):
     # Pre-fix, player["class"] is indexed unguarded inside the level-up branch of
     # _award_xp_core (progression_tools.py) -> KeyError: 'class', raised INSIDE the combat-end
@@ -357,12 +342,7 @@ async def test_registry_not_loaded_does_not_silently_void_every_members_xp():
     assert _xp_grants(mutations) == {"p1": 75, "p2": 75}
 
 
-# --- AC4: a level crossing resolves in the same transaction ---
-
-
 async def test_level_crossing_publishes_level_up_and_applies_the_auto_grant(warrior_ladder):
-    # L9 (2900xp) + 550 -> L10: the auto-grant tier. The extra_attack flag write is part of THIS
-    # transaction — the single deterministic leveling chokepoint, not an LLM tool call.
     session = _session(["p1"])
     row = {**GUILD_PLAYER, "player_id": "p1", "class": "warrior", "level": 9, "xp": 2900}
     end_data, mutations, _q, sink, conn = await _run(
@@ -375,8 +355,6 @@ async def test_level_crossing_publishes_level_up_and_applies_the_auto_grant(warr
 
 
 async def test_l5_crossing_surfaces_the_specialization_fork_in_the_response(warrior_ladder):
-    # The L5 fork stays a pending-choice CUE (the generic select verb resolves it, story-003) — the
-    # combat-end response carries the flag so the DM voices the fork, and the HUD gets its overlay.
     session = _session(["p1"])
     row = {**GUILD_PLAYER, "player_id": "p1", "class": "warrior", "level": 4, "xp": 750}
     cs = _cs([_xp_enemy("g1", 300)], ["p1"])
@@ -388,9 +366,6 @@ async def test_l5_crossing_surfaces_the_specialization_fork_in_the_response(warr
     assert [e["player_id"] for e in fork_events] == ["p1"]
 
 
-# --- AC5: only a victory pays ---
-
-
 @pytest.mark.parametrize("outcome", ["defeat", "fled"])
 async def test_non_victory_grants_no_xp(outcome, monkeypatch):
     session = _session(["p1"])
@@ -400,9 +375,6 @@ async def test_non_victory_grants_no_xp(outcome, monkeypatch):
 
     mutations.update_player_xp.assert_not_awaited()
     assert _xp_events(sink) == []
-
-
-# --- AC6: the grant is a transaction participant, its events are rollback-safe ---
 
 
 async def test_xp_is_written_on_the_callers_conn_and_its_events_only_buffered():

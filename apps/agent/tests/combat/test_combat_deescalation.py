@@ -54,7 +54,6 @@ class TestWrapDeescalationEndCondition:
         return advance.wrap
 
     def test_deescalated_ends_combat_while_enemies_still_stand(self):
-        # Precedence: the enemy is alive (no victory), yet a landed argument ends combat.
         state = _make_combat_state(enemy_fallen=False)
         state.beat = PhaseBeat.WRAP
         state.deescalated = True
@@ -70,7 +69,6 @@ class TestWrapDeescalationEndCondition:
         assert wrap.outcome is None
 
     def test_no_deescalation_still_resolves_victory(self):
-        # Regression: the existing all-enemies-fallen victory path is untouched.
         state = _make_combat_state(enemy_fallen=True)
         state.beat = PhaseBeat.WRAP
         wrap = self._wrap_of(state)
@@ -90,8 +88,6 @@ class TestParticipantResistanceTags:
         assert rebuilt_enemy.resistance_tags == ["pragmatic", "suspicious"]
 
     def test_legacy_row_without_field_defaults_empty(self):
-        # A participant row written before the field existed omits it; from_dict rebuilds via
-        # CombatParticipant(**p), so the default_factory covers the missing key.
         state = _make_combat_state()
         data = state.to_dict()
         for p in data["participants"]:
@@ -188,8 +184,6 @@ class TestDeescalationBeneficialDie:
 
     @pytest.mark.asyncio
     async def test_inspired_on_participant_folds_and_is_consumed_once(self):
-        # +1d4 lifts the argument_total, so the enemy softens more than baseline (delta 0 vs -1),
-        # AND Inspired is removed from the participant exactly once (no permanent die).
         shift, attacker = await self._run_with(
             participant_conditions=apply_condition([], "inspired"),
             db_row_conditions=[],
@@ -200,8 +194,6 @@ class TestDeescalationBeneficialDie:
 
     @pytest.mark.asyncio
     async def test_no_beneficial_condition_baseline(self):
-        # Same seed, no die: bare argument 12 vs hostile DC 21 -> margin -9 -> -1; base 1 + (-1),
-        # floored, = 0. Conditions untouched.
         shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=[],

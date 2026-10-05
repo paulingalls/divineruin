@@ -16,7 +16,6 @@ from resurrection import (
     trigger_character_death,
 )
 
-# Fixture location map (id -> data), exercising each anchor tier.
 _LOCATIONS = {
     "battlefield_safe": {"region": "r1", "danger_level": 0},
     "battlefield_danger": {"region": "r1", "danger_level": 3},
@@ -76,7 +75,6 @@ class TestApplyDeathCost:
         assert out["attribute_delta"] == -1
 
     def test_severe_primary_uses_class_mapping_not_highest(self):
-        # A mage's primary is intelligence even though strength is the highest score here.
         cost = determine_death_cost(4, level=5)
         out = apply_death_cost(self._player(cls="mage"), cost)
         assert out["attribute"] == "intelligence"
@@ -105,7 +103,6 @@ class TestResolveResurrectionAnchor:
         assert anchor == "battlefield_safe"
 
     def test_tier1_skipped_when_battlefield_still_dangerous(self):
-        # combat cleared but the area is still hostile -> fall to a settlement, not the death site.
         anchor = resolve_resurrection_anchor("battlefield_danger", _LOCATIONS, {}, combat_cleared=True)
         assert anchor == "camp_r1"
 
@@ -118,7 +115,6 @@ class TestResolveResurrectionAnchor:
         assert anchor == "camp_r1"  # r1 settlement; city_r2 is a different region
 
     def test_tier3_last_rested_settlement_when_no_same_region_settlement(self):
-        # Death in r3 (no settlement there); fall to the player's last-rested settlement.
         player = {"last_rested_settlement_id": "city_r2"}
         anchor = resolve_resurrection_anchor("wild_r3", _LOCATIONS, player, combat_cleared=False)
         assert anchor == "city_r2"
@@ -165,7 +161,6 @@ class TestTriggerCharacterDeath:
         assert ctx["death_count"] == 1 and ctx["tier"] == "gentle"
         death_mut.record_death.assert_awaited_once()
         res_mut.apply_attribute_penalty.assert_not_awaited()  # gentle = no attribute cost
-        # Anchor: battlefield_danger not cleared -> same-region settlement camp_r1.
         assert ctx["anchor"] == "camp_r1"
         res_mut.revive_player.assert_awaited_once()
 
@@ -196,9 +191,7 @@ class TestTriggerCharacterDeath:
             conn=object(),
         )
         assert ctx["death_count"] == 7 and ctx["tier"] == "devastating"
-        # -1 maxHP per level at L10 = -10 override delta applied.
         assert res_mut.apply_maxhp_override_delta.call_args.args[:2] == ("p1", -10)
-        # Revive HP clamped to effective max = base 60 + override -10 = 50.
         assert ctx["revive_hp"] == 50
         assert res_mut.revive_player.call_args.args[2] == 50
 
@@ -211,8 +204,6 @@ class TestCombatEndDefeatWiring:
         from combat_events import EventSink
         from session_data import SessionData
 
-        # M14 story-006: the defeat path collects fallen players and routes them through the party
-        # engine (resurrect_party_on_defeat), not the single-player resurrect_on_defeat.
         spy = AsyncMock(return_value=[{"anchor": "camp_r1", "death_count": 1, "tier": "gentle"}])
         monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", spy)
 
@@ -229,8 +220,6 @@ class TestCombatEndDefeatWiring:
             session, cs, "defeat", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
         )
         spy.assert_awaited_once()
-        # The collected party is the single fallen player, and combat_cleared is a keyword
-        # (enemies still up on a defeat -> False).
         assert len(spy.call_args.args[0]) == 1
         assert spy.call_args.kwargs["combat_cleared"] is False
 

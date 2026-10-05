@@ -17,13 +17,10 @@ import reaction_windows
 from combat_support import deserialize_roll, roll_attack, serialize_roll
 from session_data import CombatParticipant, CombatState, SessionData
 
-# dev_db_pool is provided by tests/combat/conftest.py (shared with the tx-integrity suite).
-
 
 def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:
     enemy = _make_combat_state(enemy_fallen=True).get_participant("goblin_scout_1")
     assert enemy is not None and enemy.is_fallen is True
-    # Default leaves the enemy standing.
     standing = _make_combat_state().get_participant("goblin_scout_1")
     assert standing is not None and standing.is_fallen is False
 
@@ -39,7 +36,6 @@ def test_enhancers_field_roundtrips_and_defaults_empty() -> None:
     assert rp is not None
     assert rp.enhancers == ["extra_attack", "cunning_action"]
 
-    # Backward compat: a participant dict missing 'enhancers' falls back to the empty default.
     legacy = state.to_dict()
     for p in legacy["participants"]:
         p.pop("enhancers", None)
@@ -88,8 +84,6 @@ def test_role_fields_roundtrip_and_default_for_legacy_rows() -> None:
     assert re.legendary_actions == 1
     assert re.signature_ability == {"name": "Rally"}
 
-    # Backward compat: a row missing the new fields falls back to the identity defaults — players
-    # and pre-M4.7 enemies resolve exactly as before.
     legacy = state.to_dict()
     role_fields = ("role", "attack_mod", "damage_mult", "dc_mod", "legendary_actions", "signature_ability")
     for p in legacy["participants"]:
@@ -116,7 +110,6 @@ def test_loot_fields_roundtrip_and_default_for_legacy_rows() -> None:
     assert re.category == "humanoid"
     assert re.loot_table_id == "loot_humanoid_bandit"
 
-    # Backward compat: a row missing the loot fields falls back to "" — no loot rolled for it.
     legacy = state.to_dict()
     for p in legacy["participants"]:
         p.pop("category", None)
@@ -199,7 +192,6 @@ def test_a_pre_story_017_reaction_declaration_does_not_brick_the_round():
 
     assert "player_1" not in loaded.pending_declarations
     assert loaded.pending_declarations["goblin_scout_1"]["type"] == "attack"
-    # ...and the round it belongs to still advances, which is the harm the drop prevents.
     _next_state, adv = combat_phase.advance_combat_phase(loaded)
     assert [p.actor_id for p in adv.packets] == ["goblin_scout_1"]
 
@@ -214,9 +206,7 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
         loaded = await db_mutations.load_combat_state(combat_id, conn=pool)
 
         assert loaded is not None
-        # Participants come back as CombatParticipant instances, not raw dicts.
         assert all(isinstance(p, CombatParticipant) for p in loaded.participants)
-        # Phase fields + death-save counters survive the JSONB round-trip.
         assert loaded.beat == "resolution"
         assert loaded.pending_declarations == original.pending_declarations
         assert loaded.reactions_available == original.reactions_available
@@ -226,7 +216,6 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
         assert fallen.is_fallen is True
         assert fallen.death_save_successes == 2
         assert fallen.death_save_failures == 1
-        # Whole-state deep equality via the asdict shape (inverse of from_dict).
         assert loaded.to_dict() == original.to_dict()
     finally:
         await db_mutations.delete_combat_state(combat_id, conn=pool)
@@ -282,7 +271,6 @@ def test_held_actions_and_open_window_round_trip_through_json() -> None:
     assert reloaded.open_window["stage"] == "post_roll"
     assert reloaded.open_window["action_kind"] == "attack"
     assert reloaded.open_window["id"] == state.open_window["id"]
-    # The held roll rehydrates into a real AttackResult, not the dict it was stored as.
     restored, restored_ac = deserialize_roll(reloaded.held_actions[0]["roll"])
     original, original_ac = deserialize_roll(state.held_actions[0]["roll"])
     assert (restored, restored_ac) == (original, original_ac)
@@ -416,16 +404,11 @@ async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(d
             await combat_turn._resolve_phase_impl(
                 ctx, queries=queries, resolver=_damage_resolver(3), concentration_break_mod=break_mod
             )
-        # The enemy's 3-damage hit (25 -> 22) was rolled back with the failed save: HP is still 25.
         row = await pool.fetchrow(
             "SELECT (data->'hp'->>'current')::int AS hp FROM players WHERE player_id = $1", player_id
         )
         assert row["hp"] == 25
 
-        # In-memory state must NOT diverge from the rolled-back DB SSOT: session.combat_state is
-        # still the pristine pre-phase object (the engine deep-copies, and the post-commit
-        # session.combat_state assignment is skipped on rollback), with the player at HP 25 — so a
-        # retried turn proceeds from committed state, not the discarded mid-phase HP 22.
         assert ctx.userdata.combat_state is pre_phase_state
         player_part = next(p for p in ctx.userdata.combat_state.participants if p.id == player_id)
         assert player_part.hp_current == 25

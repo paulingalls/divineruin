@@ -53,7 +53,6 @@ class TestMultiPlayerDeathSave:
             result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db))
 
         assert "roll" in result
-        # The ALLY's counters moved; the standing primary's did not.
         ally = _participant(ctx, "player_2")
         primary = _participant(ctx, "player_1")
         assert (ally.death_save_successes, ally.death_save_failures) == (0, 1)
@@ -158,7 +157,6 @@ class TestRequestDeathSave:
         for seed in range(1000):
             rng = random.Random(seed)
             if rng.randint(1, 20) == 20:
-                # We need to patch dice.roll to use this seed
                 break
         else:
             pytest.skip("Could not find seed for nat 20")
@@ -175,10 +173,8 @@ class TestRequestDeathSave:
 
             assert result["critical_success"] is True
             assert result["revived"] is True
-            # The HP write now rides the same transaction as the combat-state save.
             mock_mutations.update_player_hp.assert_called_once_with("player_1", 1, conn=_conn)
 
-            # Player should no longer be fallen
             player = ctx.userdata.combat_state.participants[0]
             assert player.is_fallen is False
             assert player.hp_current == 1
@@ -213,7 +209,6 @@ class TestRequestDeathSave:
 
             ctx = make_context()
             cs = _make_combat_state(player_hp=0, player_fallen=True)
-            # Set 2 existing successes
             cs.participants[0].death_save_successes = 2
             ctx.userdata.combat_state = cs
 
@@ -267,7 +262,6 @@ class TestRequestDeathSave:
 
         await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db)
 
-        # dice_roll event + at least one play_sound
         assert room.local_participant.publish_data.call_count >= 2
         calls = published_payloads(room)
         types = [c["type"] for c in calls]
@@ -277,9 +271,6 @@ class TestRequestDeathSave:
 
     @pytest.mark.asyncio
     async def test_dice_roll_and_response_are_always_dramatic(self):
-        # story-004: a death save is ALWAYS dramatic — the DICE_ROLL payload and the tool
-        # response both carry dramatic=True + context="death_save" (the M4.5 contract label),
-        # so the client overlay and the DM both pause for it.
         mock_mutations = _make_death_save_mocks()
         mock_db, _conn = make_db_mod()
         room = make_mock_room()
@@ -325,8 +316,6 @@ class TestSerialisedAgainstConcurrentWriters:
             spend_reaction(),
         )
 
-        # The whole BINDING survives the rebind, not just the spent-ness: erasing it would leave
-        # story-018 unable to say which blow the reaction answered.
         assert ctx.userdata.combat_state.reactions_available == {"player_1": record}
 
     @pytest.mark.asyncio

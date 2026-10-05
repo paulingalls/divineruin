@@ -38,16 +38,12 @@ _BLESS_ROW = {
 }
 
 
-# --- Group A: catalog schema (pure parse) ---
-
-
 def test_parse_carries_applies_condition():
     spell = parse_spell_row("divine_bless", {**_BLESS_ROW, "applies_condition": "blessed"})
     assert spell.applies_condition == "blessed"
 
 
 def test_parse_without_applies_condition_defaults_none():
-    # Existing spells (no producer field) parse with applies_condition None — no condition produced.
     spell = parse_spell_row(
         "arcane_bolt", {**_BLESS_ROW, "id": "arcane_bolt", "source": "arcane", "resonance_by_source": {"arcane": 0}}
     )
@@ -55,12 +51,8 @@ def test_parse_without_applies_condition_defaults_none():
 
 
 def test_parse_unknown_applies_condition_fails_loud():
-    # Strict-loader convention: a typo'd / unknown condition type fails at parse, naming the row.
     with pytest.raises(ValueError, match="applies_condition"):
         parse_spell_row("divine_bless", {**_BLESS_ROW, "applies_condition": "not_a_condition"})
-
-
-# --- Group B: out-of-combat producer (mock-conn) ---
 
 
 def _bless_spell(applies_condition: str | None = "blessed", *, focus_cost: int = 0) -> Spell:
@@ -148,7 +140,6 @@ async def _cast_ooc(
 
 @pytest.mark.asyncio
 async def test_ooc_cast_on_ally_persists_blessed_to_target():
-    # AC1: cast Bless on an ally -> Blessed persisted to the TARGET's conditions SSOT; packet signals it.
     ally = _caster("ally_2", conditions_list=[])
     packet, cond_mut, _gp = await _cast_ooc(
         _bless_spell(),
@@ -167,7 +158,6 @@ async def test_ooc_cast_on_ally_persists_blessed_to_target():
 
 @pytest.mark.asyncio
 async def test_ooc_self_cast_applies_to_caster():
-    # AC2: a self-cast (no target_id) applies Blessed to the caster, reusing the caster row.
     packet, cond_mut, get_players_for_update = await _cast_ooc(_bless_spell(), caster=_caster("caster_1"))
 
     assert packet["condition_applied"] == "blessed"
@@ -175,14 +165,11 @@ async def test_ooc_self_cast_applies_to_caster():
     written = cond_mut.save_many_player_conditions.call_args.args[0]
     assert set(written.keys()) == {"caster_1"}
     assert "blessed" in [c["type"] for c in written["caster_1"]]
-    # story-008: self-cast locks only the caster via ONE id-ordered batch; the producer reuses that
-    # row (no non-caster target fetch) — so exactly one get_players_for_update call.
     assert get_players_for_update.await_count == 1
 
 
 @pytest.mark.asyncio
 async def test_ooc_cast_no_applies_condition_does_not_persist():
-    # AC3: a spell with no applies_condition produces nothing — existing casts unchanged.
     packet, cond_mut, _gp = await _cast_ooc(_bless_spell(applies_condition=None), caster=_caster())
 
     assert "condition_applied" not in packet
@@ -210,9 +197,6 @@ async def test_ooc_unaffordable_cast_persists_nothing():
     broke_caster["focus"] = {"current": 2, "max": 10}
     with pytest.raises(ToolError):
         await _cast_ooc(_bless_spell(focus_cost=3), caster=broke_caster)
-
-
-# --- Group C: in-combat producer (real-PG, real divine_bless catalog row) ---
 
 
 async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
@@ -292,8 +276,6 @@ async def _run_bless_phase(pool, combat_id, caster_id, ally_id, enemy_id, *, tar
 
 
 async def test_incombat_bless_applies_blessed_to_target_participant(dev_db_pool):
-    # In-combat AC: a cast Bless targeting an ally lands Blessed on the TARGET participant (the working
-    # state's SSOT), surviving to the persisted combat state (synced to session.combat_state post-commit).
     pool = dev_db_pool
     caster_id, ally_id, enemy_id = "s004_caster", "s004_ally", "s004_enemy"
     combat_id = "combat_s004_bless"
@@ -304,7 +286,6 @@ async def test_incombat_bless_applies_blessed_to_target_participant(dev_db_pool)
         blessed = [c for c in ally.conditions if c["type"] == "blessed"]
         assert len(blessed) == 1
         assert blessed[0]["source"] == "divine_bless"
-        # The caster is not the target — Blessed lands only on the declared ally.
         caster = state.get_participant(caster_id)
         assert caster is not None
         assert "blessed" not in [c["type"] for c in caster.conditions]
@@ -314,7 +295,6 @@ async def test_incombat_bless_applies_blessed_to_target_participant(dev_db_pool)
 
 
 async def test_incombat_bless_self_cast_applies_to_caster_participant(dev_db_pool):
-    # Self-cast (no target_id) lands Blessed on the caster participant via the attacker.id fallback.
     pool = dev_db_pool
     caster_id, ally_id, enemy_id = "s004_self_caster", "s004_self_ally", "s004_self_enemy"
     combat_id = "combat_s004_self"

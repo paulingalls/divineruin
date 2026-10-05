@@ -86,7 +86,6 @@ async def test_ooc_bless_via_cast_spell_lands_condition_single_batch_lock():
     cond_mut.save_many_player_conditions.assert_awaited_once()
     written = cond_mut.save_many_player_conditions.await_args.args[0]
     assert "blessed" in [c["type"] for c in written["ally_1"]]
-    # AC: no double-fetch — produce_ooc_condition reuses the caller's lock, ONE batch total.
     queries.get_players_for_update.assert_awaited_once()
 
 
@@ -98,7 +97,6 @@ async def test_ooc_inspire_via_ability_lands_condition_single_batch_lock():
     cond_mut.save_many_player_conditions.assert_awaited_once()
     written = cond_mut.save_many_player_conditions.await_args.args[0]
     assert "inspired" in [c["type"] for c in written["ally_1"]]
-    # AC: no double-fetch — produce_ooc_condition reuses the caller's lock, ONE batch total.
     queries.get_players_for_update.assert_awaited_once()
 
 

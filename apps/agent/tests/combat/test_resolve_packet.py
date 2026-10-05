@@ -99,7 +99,6 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_does_not_persist(self):
-        # The packet helper never persists — the caller saves once per phase.
         mock_mutations = _make_mocks()
         ctx = make_context()
         cs = _make_combat_state()
@@ -134,7 +133,6 @@ class TestResolveAttackPacket:
         )
 
         assert target.hp_current == 15
-        # target is the live participant reference held by cs, so the state mutated.
         in_state = cs.get_participant("player_1")
         assert in_state is not None and in_state.hp_current == 15
 
@@ -172,7 +170,6 @@ class TestResolveAttackPacket:
             queries=_make_queries(),
         )
 
-        # At minimum: dice_roll event + at least one play_sound
         assert room.local_participant.publish_data.call_count >= 2
 
     @pytest.mark.asyncio

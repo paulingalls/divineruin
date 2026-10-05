@@ -13,7 +13,6 @@ class TestPhaseLoopE2E:
     async def test_full_lifecycle_to_victory(self):
         deps = _resolve_deps(damage=4)
         ctx = make_context()
-        # Start parked at the declaration beat, as combat_init leaves a fresh encounter.
         cs = _resolution_state(player_hp=25, enemy_hp=7)
         cs.beat = "declaration"
         cs.pending_declarations = {}
@@ -24,7 +23,6 @@ class TestPhaseLoopE2E:
             "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         }
 
-        # --- Round 1: declaration -> resolution -> (combat continues) -> declaration ---
         d1 = json.loads(await _declare_phase_impl(ctx, decls, mutations=deps["mutations"]))
         assert d1["beat"] == "resolution"
 
@@ -35,7 +33,6 @@ class TestPhaseLoopE2E:
         goblin = ctx.userdata.combat_state.get_participant("goblin_scout_1")
         assert goblin is not None and goblin.hp_current == 3  # 7 - 4
 
-        # --- Round 2: declaration -> resolution -> wrap -> victory handoff ---
         await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
         r2 = await _resolve_round(ctx, **deps)
 

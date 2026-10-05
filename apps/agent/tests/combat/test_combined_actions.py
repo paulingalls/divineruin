@@ -202,8 +202,6 @@ async def test_held_combined_bite_opens_both_windows_and_rolls_with_bonuses():
 @pytest.mark.parametrize(
     ("action", "declaration_type", "rolls"),
     [
-        # The combined action rolls to hit under EITHER declaration type: _resolve_one_packet
-        # routes it on the action field, so the hold must not gate the roll on the type.
         (ACTIONS["valid_combined_bite"], "ability", True),
         (ACTIONS["valid_combined_bite"], "attack", True),
         # A plain attack row declared as an ABILITY resolves down the ability path, which never
@@ -246,7 +244,6 @@ async def test_only_a_combined_action_rolls_when_the_dm_declares_an_enemy_abilit
 
 @pytest.mark.parametrize(("damage_mult", "expected_damage"), [(1.0, 7), (1.5, 10)])
 async def test_save_damage_carries_the_attacker_role_multiplier(damage_mult, expected_damage):
-    # dc_mod already rides the save; damage must scale with the same role overlay a weapon hit gets.
     action = {**ACTIONS["valid_half_on_success"], "damage": "1d1+6"}
     state, summary, _, _ = await _resolve(action, damage_mult=damage_mult)
 

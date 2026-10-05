@@ -74,8 +74,6 @@ def _boss_combat_state(*, boss_legendary=1, boss_fallen=False, enemy_fallen=Fals
 
 class TestCombatXpAppliedOnce:
     def test_boss_xp_is_summed_not_re_multiplied(self):
-        # derive_role_stats already turned base 100 into 200 (x2). calculate_combat_xp must
-        # report 200 — NOT 400 (the double-count bug a naive re-multiply would produce).
         derived = derive_role_stats({"xp_value": 100}, EncounterRole.BOSS)
         assert derived["xp_value"] == 200
 
@@ -83,19 +81,15 @@ class TestCombatXpAppliedOnce:
         assert calculate_combat_xp(enemy_dicts) == 200
 
     def test_mixed_roster_sums_each_pre_scaled_value(self):
-        # Boss (100 base -> 200) + Minion (80 base -> 40, x0.5) + Standard (50 -> 50).
         boss = derive_role_stats({"xp_value": 100}, EncounterRole.BOSS)
         minion = derive_role_stats({"xp_value": 80}, EncounterRole.MINION)
         standard = derive_role_stats({"xp_value": 50}, EncounterRole.STANDARD)
         assert (boss["xp_value"], minion["xp_value"], standard["xp_value"]) == (200, 40, 50)
 
         roster = [{"xp_value": boss["xp_value"]}, {"xp_value": minion["xp_value"]}, {"xp_value": standard["xp_value"]}]
-        # Sum of the pre-scaled values: 200 + 40 + 50 = 290. Re-multiplying any role would break this.
         assert calculate_combat_xp(roster) == 290
 
     def test_participant_xp_value_feeds_calculate_unchanged(self):
-        # The end_combat path feeds {"xp_value": participant.xp_value} straight through; the
-        # participant already holds the scaled value, so the total equals the raw participant sum.
         state = _boss_combat_state()
         enemy_dicts = [{"xp_value": p.xp_value} for p in state.participants if p.type == "enemy"]
         assert calculate_combat_xp(enemy_dicts) == 250  # 200 (boss) + 50 (standard grunt)
@@ -103,7 +97,6 @@ class TestCombatXpAppliedOnce:
 
 class TestLegendaryActionReset:
     def test_boss_budget_resets_to_one_on_non_ending_wrap(self):
-        # Boss spent its legendary this round (budget 0); the WRAP into the next round refreshes it.
         state = _boss_combat_state(boss_legendary=0)
         next_state, advance = advance_combat_phase(state)
 
@@ -143,14 +136,12 @@ class TestLegendaryActionReset:
         assert advance.legendary_available == []
 
     def test_terminal_wrap_surfaces_no_legendary(self):
-        # All enemies down -> victory ends combat; no next round, so nothing is surfaced or reset.
         state = _boss_combat_state(boss_legendary=0, boss_fallen=True, enemy_fallen=True)
         next_state, advance = advance_combat_phase(state)
 
         assert advance.wrap is not None and advance.wrap.combat_ended is True
         assert advance.wrap.outcome == "victory"
         assert advance.legendary_available == []
-        # The ending wrap does not loop back, so it does not run the budget reset either.
         boss = next_state.get_participant("warlord_1")
         assert boss is not None and boss.legendary_actions == 0
 

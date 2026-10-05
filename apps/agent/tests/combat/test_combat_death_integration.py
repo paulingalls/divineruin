@@ -31,7 +31,6 @@ class TestCompanionAutoStabilize:
 
         combat_phase._wrap(cs)
 
-        # Clamped to the stabilized state — not dead, not still failing.
         assert companion.death_save_successes == _STABILIZE_LIMIT
         assert companion.death_save_failures == _DEATH_SAVE_LIMIT - 1
         assert companion.is_dead is False
@@ -45,7 +44,6 @@ class TestCompanionAutoStabilize:
         assert "companion_1" not in wrap.death_saves_due
 
     def test_companion_failures_do_not_end_combat(self):
-        # A downed companion at the failure limit must not trigger defeat (that's player-only).
         cs = _make_combat_state()
         _with_companion(cs, failures=_DEATH_SAVE_LIMIT)
 
@@ -104,13 +102,11 @@ class TestInstantDeathE2E:
         cs.beat = "wrap"
         next_state, advance = advance_combat_phase(cs)
 
-        # Player: instant defeat, no death-save beat.
         assert advance.wrap is not None
         assert advance.wrap.combat_ended is True
         assert advance.wrap.outcome == "defeat"
         assert "player_1" not in advance.wrap.death_saves_due
 
-        # Companion: auto-stabilized on the returned (deep-copied) state, not in death_saves_due.
         stabilized = next_state.get_participant("companion_1")
         assert stabilized is not None
         assert stabilized.death_save_successes == _STABILIZE_LIMIT

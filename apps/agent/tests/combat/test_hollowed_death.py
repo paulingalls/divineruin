@@ -36,8 +36,6 @@ async def _cast(spell: Spell, *, player: dict):
     _spell_casting_helpers._cast). Returns the parsed packet; raises ToolError on a gated cast."""
     ctx = make_context()
     mock_db, _conn = make_db_mod()
-    # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch; the
-    # revivify gate still reads the target via get_player.
     queries = MagicMock(
         get_player=AsyncMock(return_value=player),
         get_players_for_update=AsyncMock(side_effect=lambda ids, *, conn=None: {i: player for i in ids}),
@@ -98,7 +96,6 @@ class TestRevivifyGateLive:
 
     @pytest.mark.asyncio
     async def test_non_revival_spell_unaffected_by_gate(self):
-        # A hollow-killed row casting a non-revival spell is NOT gated.
         packet = await _cast(_revival_spell("divine_mend"), player=_player(hollow_killed=True))
         assert packet
 
@@ -160,7 +157,6 @@ class TestHollowedOnDeathBranch:
         )
         res_mut.set_hollow_killed.assert_awaited_once()
         assert res_mut.set_hollow_killed.call_args.args[0] == "p1"
-        # Hollowed stripped from the persisted conditions.
         saved = cond_mut.save_player_conditions.call_args
         assert saved.args[0] == "p1"
         assert all(c["type"] != "hollowed" for c in saved.args[1])
@@ -254,12 +250,10 @@ class TestHollowedDeathE2E:
             ctx = await trigger_character_death(player, _LOCATIONS, combat_cleared=False, conn=pool)
             assert ctx["hollow_killed"] is True and ctx["hollowed_cleared"] is True
 
-            # Persisted on the real row: flag set, Hollowed stripped from the stored conditions.
             assert await db_mutations_resurrection.read_hollow_killed(pid, conn=pool) is True
             stored = await db_mutations_conditions.read_player_conditions(pid, conn=pool)
             assert all(c["type"] != "hollowed" for c in stored)
 
-            # A subsequent Revivify is refused — the gate reads the persisted hollow_killed on reload.
             reloaded = await db_queries.get_player(pid, conn=pool)
             assert reloaded is not None
             assert spell_casting.revivify_refused(reloaded) is True

@@ -90,7 +90,6 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
     ctx = MagicMock()
     ctx.userdata = session
-    # Enemy starts at 1 HP; the player's 5-damage swing drops it -> wrap reports victory.
     session.combat_state = _resolution_state(combat_id=combat_id, player_id=player_id, enemy_id=enemy_id, enemy_hp=1)
 
     # end_combat reads each player's row (XP grant) + inventory (durability accrual); no items

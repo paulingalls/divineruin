@@ -99,7 +99,6 @@ async def _cast_ooc_multi(
 
 @pytest.mark.asyncio
 async def test_ooc_three_allies_each_get_blessed():
-    # AC1: name three allies -> each ally's players.data gets blessed persisted.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, cond_mut, _gp = await _cast_ooc_multi(
         _bless3(),
@@ -119,7 +118,6 @@ async def test_ooc_three_allies_each_get_blessed():
 
 @pytest.mark.asyncio
 async def test_ooc_over_cap_rejects_before_write():
-    # AC2: more than max_targets (3) is rejected with a ToolError and deducts/persists nothing.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3, 4)}
     with pytest.raises(ToolError, match="at most 3"):
         await _cast_ooc_multi(
@@ -129,7 +127,6 @@ async def test_ooc_over_cap_rejects_before_write():
 
 @pytest.mark.asyncio
 async def test_ooc_single_target_path_unchanged():
-    # AC3: a single-target cast (target_id, no target_ids) still persists to exactly the one target.
     ally = _caster("ally_2", conditions_list=[])
     packet, cond_mut, _gp = await _cast_ooc_multi(
         _bless3(),
@@ -165,7 +162,6 @@ async def test_ooc_mix_nonplayer_narrates_player_persists():
 
 @pytest.mark.asyncio
 async def test_ooc_multi_target_packet_names_voiced_allies():
-    # Per-target identity: the multi-target packet lists the blessed ally ids so the DM names each one.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, _cm, _gp = await _cast_ooc_multi(
         _bless3(),
@@ -179,7 +175,6 @@ async def test_ooc_multi_target_packet_names_voiced_allies():
 
 @pytest.mark.asyncio
 async def test_ooc_single_target_has_no_condition_targets_key():
-    # The single-target path keeps its shape — condition_targets is multi-target-only.
     ally = _caster("ally_2", conditions_list=[])
     packet, _cm, _gp = await _cast_ooc_multi(
         _bless3(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally}, party_member_ids=["caster_1", "ally_2"]
@@ -190,7 +185,6 @@ async def test_ooc_single_target_has_no_condition_targets_key():
 
 @pytest.mark.asyncio
 async def test_ooc_both_target_args_rejected():
-    # Ambiguous both-args -> ToolError before any write (gate-first), nothing persisted.
     ally = _caster("ally_1", conditions_list=[])
     with pytest.raises(ToolError, match="not both"):
         await _cast_ooc_multi(
@@ -200,14 +194,12 @@ async def test_ooc_both_target_args_rejected():
 
 @pytest.mark.asyncio
 async def test_ooc_empty_target_ids_rejected_no_self_cast():
-    # target_ids=[] must NOT silently self-cast — it raises (name at least one ally).
     with pytest.raises(ToolError, match="at least one ally"):
         await _cast_ooc_multi(_bless3(), caster=_caster(), target_ids=[])
 
 
 @pytest.mark.asyncio
 async def test_ooc_all_duplicate_targets_collapsing_to_one_persist():
-    # Dedup is order-preserving and runs before the apply loop: 3 dupes -> ONE write, not three.
     rows = {"ally_1": _caster("ally_1", conditions_list=[])}
     packet, cond_mut, _gp = await _cast_ooc_multi(
         _bless3(),
@@ -223,7 +215,6 @@ async def test_ooc_all_duplicate_targets_collapsing_to_one_persist():
 
 @pytest.mark.asyncio
 async def test_ooc_dupes_do_not_consume_the_cap():
-    # Dedup happens BEFORE the cap check: 4 ids that dedup to 3 must pass a cap of 3.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, cond_mut, _gp = await _cast_ooc_multi(
         _bless3(),
@@ -262,9 +253,6 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
         await _cast_ooc_multi(uncapped, caster=_caster(), target_ids=["ally_1"], rows={"ally_1": _caster("ally_1")})
 
 
-# --- In-combat multi-target (M4.8 story-012): land blessed on each ally participant ---
-
-
 def _combat_state_with_allies() -> CombatState:
     return place_actors(
         CombatState(
@@ -301,7 +289,6 @@ def _p(state: CombatState, pid: str) -> CombatParticipant:
 def test_resolve_declaration_parses_target_ids():
     decl = resolve_declaration({"type": "ability", "action": "divine_bless", "target_ids": ["ally_1", "ally_2"]})
     assert decl.target_ids == ["ally_1", "ally_2"]
-    # Absent -> None (single-target declarations unchanged).
     assert resolve_declaration({"type": "ability", "action": "divine_bless", "target_id": "ally_1"}).target_ids is None
 
 
@@ -334,17 +321,12 @@ def test_land_condition_on_participants_dedups_and_drops_off_state():
 def test_land_condition_on_participants_single_and_self():
     state = _combat_state_with_allies()
     caster = _p(state, "caster")
-    # single target_id (no target_ids) — back-compat with the singular path
     assert combat_ability.land_condition_on_participants(
         state, caster, _ability_decl(target_id="ally_1"), "blessed", source="x", packet={}
     ) == ["ally_1"]
-    # no target -> self-cast voices the caster
     assert combat_ability.land_condition_on_participants(
         state, caster, _ability_decl(), "blessed", source="x", packet={}
     ) == ["caster"]
-
-
-# --- In-combat resolution wiring (_resolve_ability_packet) + declare-gate (_prevalidate_ability_focus) ---
 
 
 def _cast_resolver_returning(packet: dict) -> MagicMock:
@@ -359,8 +341,6 @@ def _cast_resolver_returning(packet: dict) -> MagicMock:
 
 @pytest.mark.asyncio
 async def test_incombat_resolve_blesses_each_and_names_them():
-    # _resolve_ability_packet with a multi-target Bless declaration lands blessed on EACH target
-    # participant and surfaces the voiced ids in the packet for the DM.
     state = _combat_state_with_allies()
     caster = _p(state, "caster")
     cast_resolver = _cast_resolver_returning({"condition_applied": "blessed"})
@@ -382,7 +362,6 @@ async def test_incombat_resolve_blesses_each_and_names_them():
 
 @pytest.mark.asyncio
 async def test_incombat_resolve_drops_signal_when_none_land():
-    # All target_ids off the working state -> nothing lands -> condition_applied dropped, no targets key.
     state = _combat_state_with_allies()
     caster = _p(state, "caster")
     cast_resolver = _cast_resolver_returning({"condition_applied": "blessed"})
@@ -402,8 +381,6 @@ async def test_incombat_resolve_drops_signal_when_none_land():
 
 @pytest.mark.asyncio
 async def test_declare_gate_rejects_over_cap_multitarget():
-    # The declare-time spell-aware gate rejects an over-cap multi-target Bless (reuses the SSOT
-    # normalize_target_list) BEFORE the resolution loop — a ToolError, no state write.
     import combat_packet
 
     decl = _ability_decl(target_ids=["a", "b", "c", "d"])  # 4 > max_targets 3

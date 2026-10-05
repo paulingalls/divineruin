@@ -115,7 +115,6 @@ class TestConcentrationBreakE2E:
         assert not isinstance(raw, tuple)  # combat continues -> JSON, not the end-of-combat tuple
         packets = {p["actor_id"]: p for p in raw["packets"]}
 
-        # Only player_2's spell broke and was surfaced; player_1's is untouched.
         assert packets["goblin_1"]["concentration_broken"] == "arcane_fly"
         assert player_2.concentration.spell_id is None
         assert ctx.userdata.concentration.spell_id == "divine_bless"

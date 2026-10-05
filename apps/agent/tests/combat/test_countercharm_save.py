@@ -140,7 +140,6 @@ async def test_countercharm_spent_against_hold_person_claims_no_effect():
 
 
 def test_condition_action_inventory_stays_explicit():
-    # The window census and its totals stay pinned by test_reaction_window_census.py.
     condition_actions = sorted(
         (enemy["id"], action["name"], action.get("applies_condition"))
         for encounter in _ENCOUNTERS

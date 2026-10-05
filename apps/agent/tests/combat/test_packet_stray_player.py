@@ -57,7 +57,6 @@ async def test_a_swing_by_a_player_with_no_party_member_resolves_instead_of_rais
         initiative=20,
     )
 
-    # Before the fix: ValueError("No party member with player_id 'ghost_pc'") inside the phase tx.
     summary = await _resolve_one_packet(
         session,
         state,

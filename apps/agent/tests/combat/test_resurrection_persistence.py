@@ -39,7 +39,6 @@ class TestRevivePlayer:
     async def test_sets_hp_and_location(self):
         conn = AsyncMock()
         await dmr.revive_player("p1", "accord_market_square", 1, conn=conn)
-        # location + hp.current writes (one or two execute calls)
         calls = [c.args[0] for c in conn.execute.call_args_list]
         joined = " ".join(calls)
         assert "location_id" in joined and "hp" in joined
@@ -95,7 +94,6 @@ async def test_resurrection_writes_roundtrip(dev_db_pool):
         assert player["hp"]["current"] == 1
         assert await dmr.read_last_rested_settlement(player_id, conn=pool) == "millhaven"
 
-        # Accumulation: a second 7+ death deepens the override.
         await dmr.apply_maxhp_override_delta(player_id, -10, conn=pool)
         player2 = await db_queries.get_player(player_id, conn=pool)
         assert player2 is not None

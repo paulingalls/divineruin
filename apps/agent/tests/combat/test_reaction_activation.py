@@ -10,8 +10,6 @@ import reaction_gate
 import reaction_spend
 import reaction_windows
 
-# rogue_uncanny_dodge fires on on_hit — the POST-ROLL window, the pre-damage pause story-018
-# needs. skirmisher_sidestep fires on on_targeted, which only the PRE-ROLL window offers.
 POST_ROLL_REACTION = "rogue_uncanny_dodge"
 PRE_ROLL_REACTION = "skirmisher_sidestep"
 
@@ -117,7 +115,6 @@ class TestTheInterruptLoop:
             "held_seq": 0,
         }
 
-        # The round runs on: the reaction is spent, so the post-roll window never opens.
         after = await _call(ctx, deps)
         assert after["next"]["waiting_on"] is None
 

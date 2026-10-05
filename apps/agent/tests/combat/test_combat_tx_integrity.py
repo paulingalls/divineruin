@@ -59,7 +59,6 @@ def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> Comba
 
 
 def _no_durability_queries() -> MagicMock:
-    # no equipped items -> no durability events
     return combat_end_queries(
         get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([])
     )
@@ -100,7 +99,6 @@ class TestLoopEventBuffering:
                     resolver=_damage_resolver(3),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # The tx rolled back; the sink was dropped unflushed, so the bus saw nothing.
             assert session.event_bus.drain() == []
         finally:
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
@@ -125,7 +123,6 @@ class TestLoopEventBuffering:
                 concentration_break_mod=_no_concentration_break(),
             )
             kinds = [e.event_type for e in session.event_bus.drain()]
-            # Both swings (player+enemy) each publish one DICE_ROLL and one attack sound.
             assert kinds.count(E.DICE_ROLL) == 2
             assert kinds.count(E.PLAY_SOUND) == 2
         finally:
@@ -211,7 +208,6 @@ class TestEndCombatAcrossTheTwoCommits:
         session.combat_state = state
 
         try:
-            # The ally commit: the enemy's turn is now persisted as PENDING.
             await combat_turn._resolve_phase_impl(
                 ctx,
                 queries=_no_durability_queries(),
@@ -224,7 +220,6 @@ class TestEndCombatAcrossTheTwoCommits:
             with pytest.raises(ToolError, match="held pending"):
                 await combat_end._end_combat_impl(ctx, "fled")
 
-            # The row survives and nobody was paid — the end is still available next beat.
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is not None
             assert await self._xp(pool, player_id) == 0
             assert session.combat_state is not None
@@ -398,8 +393,6 @@ class TestScratchRollback:
                     resolver=_damage_resolver(7),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # The player's swing armed weapon_used; the enemy's blow KO'd the companion and recorded
-            # a memory. The rolled-back phase must revert all three to their pre-phase values.
             assert session.party.primary.weapon_used is False
             assert session.party.primary.weapon_crit_vs_heavy is False
             assert session.companion.is_conscious is True
