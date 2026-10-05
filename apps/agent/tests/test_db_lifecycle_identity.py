@@ -1,5 +1,3 @@
-"""Lifetime-bound teardown authority tests for ``_db_lifecycle``."""
-
 import json
 from pathlib import Path
 

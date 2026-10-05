@@ -1,13 +1,3 @@
-"""Multiplayer combat-END reconcile (M18 story-003).
-
-Per-member reconciliation: persistent conditions, beneficial dice, non-primary store merges.
-Fast-lane, mock-DI (no real DB): patches the condition read/save round-trip and asserts each
-player participant reconciles into its OWN players.data row.
-
-Solo behavior (a 1-member party) is covered byte-identically by the existing single-player
-combat-end suites; this suite adds the >1-member assertions.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -24,7 +14,6 @@ from ._end_multiplayer_helpers import (
 
 
 async def test_victory_reconciles_persistent_conditions_per_member():
-    # p1 acquired Wounded, p2 acquired Exhausted. Each must persist into its OWN players.data row.
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -48,7 +37,6 @@ async def test_victory_reconciles_persistent_conditions_per_member():
 
 
 async def test_victory_reconciles_beneficial_dice_per_member():
-    # p1 keeps a surviving Blessed die, p2 an Inspired die — each lands on its own row.
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -71,12 +59,6 @@ async def test_victory_reconciles_beneficial_dice_per_member():
 
 
 async def test_victory_drops_consumed_beneficial_die_from_row():
-    # Complement of test_victory_reconciles_beneficial_dice_per_member (the surviving direction):
-    # p1's STORED row carries a Blessed die, but the participant CONSUMED it in combat (M4.8 consume
-    # path — no longer on participant.conditions). The combat-end reconcile must DROP the consumed
-    # buff from the row, not re-persist it (AC "a consumed die is not re-persisted"). A stored
-    # non-buff (Wounded) on the same row must SURVIVE that reconcile — pins that the buff-vs-non-buff
-    # partition, not a blanket wipe, is what drops the die.
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -106,8 +88,6 @@ async def test_victory_drops_consumed_beneficial_die_from_row():
 
 
 async def test_non_primary_reconcile_reads_its_own_store():
-    # The existing-store read is keyed on the member id, so a non-primary member's prior Wounded
-    # merges with its own combat-gained Exhausted — not the primary's store.
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -129,7 +109,5 @@ async def test_non_primary_reconcile_reads_its_own_store():
     await _run_end_combat_db(session, cs, "victory", save_mock=save, read_side_effect=_read)
 
     saved = {call.args[0]: call.args[1] for call in save.await_args_list}
-    # p1's store was empty and it gained nothing -> unchanged -> no write.
     assert "p1" not in saved
-    # p2 merges its own prior Wounded with the combat-gained Exhausted.
     assert {c["type"] for c in saved["p2"]} == {"wounded", "exhausted"}

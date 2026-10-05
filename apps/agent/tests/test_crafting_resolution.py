@@ -1,11 +1,3 @@
-"""Tests for the crafting_resolution orchestrator (story-003, M5.3).
-
-The orchestrator joins the pure async_rules.resolve_crafting to the DB-loaded
-quality_outcomes tables: it fetches the recipe's category, loads that category's
-bonus/flaw row, and threads it into the resolver. resolve_crafting itself is real
-(pure); only the two DB accessors are mocked.
-"""
-
 import random
 from unittest.mock import AsyncMock, patch
 
@@ -20,7 +12,6 @@ PLAYER = {
     "proficiencies": ["arcana"],
 }
 
-# arcana mod = +3; dc=11 -> margin = d20 - 8, so a d20 of 20 lands Exceptional.
 PARAMETERS = {
     "recipe_id": "iron_sword",
     "result_item_id": "iron_sword",
@@ -69,8 +60,6 @@ _CUES = {
 
 @pytest.mark.asyncio
 async def test_threads_recipe_cue_for_resolved_band():
-    """story-005 close: the per-recipe narration_cues[band] (decision crafting-narration-ssot)
-    is threaded into narrative_context.recipe_cue for the resolved band."""
     activity = {"activity_type": "crafting", "parameters": PARAMETERS}
     recipe = {"category": "weapon", "narration_cues": _CUES}
     with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):
@@ -85,8 +74,7 @@ async def test_threads_recipe_cue_for_resolved_band():
 
 @pytest.mark.asyncio
 async def test_recipe_cue_omitted_when_band_absent():
-    """narration_cues may carry only success/failure; an exceptional roll then finds no
-    cue and recipe_cue is absent rather than None-keyed or crashing."""
+    """An unavailable crafting cue may legitimately be omitted."""
     activity = {"activity_type": "crafting", "parameters": PARAMETERS}
     recipe = {"category": "weapon", "narration_cues": {"success": "ok", "failure": "ruined"}}
     with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):

@@ -1,5 +1,3 @@
-"""Assigned-companion hydration at session start and onboarding first meeting."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -102,8 +100,6 @@ class TestReturningPlayerCompanion:
         assert options.close_on_disconnect is False
         # Onboarding predates the transcriber: room audio is the only way it hears the player.
         assert options.get_audio_input_options() is not None
-        # AC1: a reconnecting warrior resumes at beat 3 with LIRA's script, not Kael's. The
-        # reconnect construction is the site the card names as the fault-injection target.
         instructions = agent._instructions
         assert isinstance(instructions, str)
         assert "Lira" in instructions
@@ -112,7 +108,6 @@ class TestReturningPlayerCompanion:
 
     @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
-        """AC5: zero/multi-match archetype aborts session start rather than falling back."""
         player = {
             "name": "Aric",
             "class": "necromancer",
@@ -196,7 +191,6 @@ class TestFirstMeetingCompanion:
 
     @pytest.mark.asyncio
     async def test_gameplay_handoff_without_a_companion_fails_loud(self):
-        """The beat-5 guard: reached only if beat 3 persisted the advance but not the companion."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = MagicMock()
@@ -219,7 +213,6 @@ class TestFirstMeetingCompanion:
 
     @pytest.mark.asyncio
     async def test_beat_three_failure_leaves_the_beat_unadvanced(self):
-        """The assignment precedes the beat write, so a failed one stays replayable at beat 3."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = MagicMock()

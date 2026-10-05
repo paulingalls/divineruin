@@ -1,10 +1,4 @@
-"""The errand path runs the companion the player's archetype assigns.
-
-Nothing writes players.data["companion"], so every errand used to resolve, narrate and
-score against `{}` — Kael's name, Kael's voice and no affinity write at all, for all
-eighteen archetypes. These pin the derivation (errand_resolution.companion_errand_data)
-and both consumers of it: the async worker and the resolve tool.
-"""
+"""Derive the errand companion from archetype rather than an unwritten players.data companion field."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,7 +18,6 @@ from errand_tools import _resolve_companion_errand_impl
 
 pytestmark = pytest.mark.usefixtures("stub_companion_errand_affinity_io")
 
-# One archetype per companion, spanning all four assignments (companions.json complements).
 ASSIGNMENTS = [
     ("mage", "companion_kael", "Kael"),
     ("warrior", "companion_lira", "Lira"),
@@ -42,8 +35,6 @@ class TestCompanionErrandData:
 
         assert data["id"] == companion_id
         assert data["name"] == name
-        # The attributes ARE the errand check: a shared default would make every companion
-        # roll the same scout/social/acquire bonus.
         assert data["attributes"] == get_companion_profile(companion_id).base_attributes
 
     def test_classless_player_fails_loud(self):
@@ -58,8 +49,6 @@ class TestCompanionErrandData:
 class TestWorkerPath:
     @pytest.mark.asyncio
     async def test_worker_scores_affinity_against_the_assigned_companion(self):
-        """The nudge used to be skipped outright (its `if companion_id` guard never held), so
-        no errand has ever moved companion_relationships.affinity."""
         errand = {**SAMPLE_ACTIVITY, "activity_type": "companion_errand", "parameters": _ERRAND_PARAMS}
         _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(errand)
 
@@ -92,7 +81,6 @@ class TestWorkerPath:
         ):
             await _resolve_single_activity(errand)
 
-        # SAMPLE_PLAYER is a warrior; Lira is the warrior's companion.
         affinity.assert_awaited_once()
         nudge = affinity.await_args
         assert nudge is not None and nudge.args[:2] == ("player_1", "companion_lira")

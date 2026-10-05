@@ -1,11 +1,3 @@
-"""Tests for the pure reputation_shift resolver (story-002, M23).
-
-Mirrors test coverage of social_resolution.disposition_shift: a named-event -> fixed
-integer delta table, fail-loud on an unknown event. The DM tool + the quest / combat /
-de-escalation triggers all route their magnitude through this one resolver, so the
-event->delta contract is pinned here.
-"""
-
 import pytest
 
 from reputation import REPUTATION_EVENTS, reputation_shift

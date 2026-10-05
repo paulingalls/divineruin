@@ -1,5 +1,3 @@
-"""The get_spell_info tool, read against the real seeded catalog."""
-
 import json
 
 import pytest
@@ -19,7 +17,6 @@ class TestGetSpellInfo:
         assert info["source"] == "arcane"
         assert info["spell_tier"] == "cantrip"
         assert info["focus_cost"] == 0
-        # carries the full M3.3 schema
         for key in ("mechanics", "narration_cue", "audio_cue", "resonance_by_source", "concentration"):
             assert key in info
 

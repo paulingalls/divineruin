@@ -1,5 +1,3 @@
-"""Tests for scene/play-tree resolution and transitions (H.6)."""
-
 from __future__ import annotations
 
 import json
@@ -12,8 +10,6 @@ from sample_fixtures import mock_txn
 from quest_tools import _update_quest_impl
 from session_data import SessionData
 from warm_prompts import build_warm_layer
-
-# === Centralized scene resolution (standalone scenes) ===
 
 SCENE_CACHE = {
     "scene_wild": {
@@ -157,14 +153,10 @@ class TestDetectSceneTransition:
         assert result is None
 
 
-# === Greyvale quest content validation ===
-
 CONTENT_DIR = pathlib.Path(__file__).resolve().parents[3] / "content"
 
 
 class TestScenesJson:
-    """Validate the standalone scenes.json content file."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "scenes.json") as f:
@@ -214,8 +206,6 @@ class TestScenesJson:
 
 
 class TestLocationDefaultScenes:
-    """Validate locations reference valid default scenes."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "locations.json") as f:
@@ -237,8 +227,6 @@ class TestLocationDefaultScenes:
 
 
 class TestGreyvaleSceneGraph:
-    """Validate the Greyvale quest's scene_graph references."""
-
     @classmethod
     def setup_class(cls):
         with open(CONTENT_DIR / "quests.json") as f:
@@ -265,8 +253,6 @@ class TestGreyvaleSceneGraph:
     def test_no_embedded_scenes(self):
         assert "scenes" not in self.greyvale, "Embedded scenes should be removed — use scene_graph"
 
-
-# === Warm layer scene injection ===
 
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
@@ -296,7 +282,6 @@ class TestWarmLayerSceneInjection:
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_scene_from_scene_cache_via_graph(self, mock_loc, mock_npcs):
-        """When scene_cache is provided, resolves via scene_graph."""
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
         quest_with_graph = {
@@ -320,13 +305,10 @@ class TestWarmLayerSceneInjection:
             quests=[quest_with_graph],
             scene_cache=scene_cache,
         )
-        # §7: scene.instructions are promoted to the REGISTER block (DM persona guidance).
         assert "REGISTER" in result
         assert "Road to Millhaven" in result
         assert "Narrate the journey with growing unease." in result
 
-
-# === update_quest scene-triggered region changes (in-place, no handoff) ===
 
 _mock_conn = MagicMock(name="mock_txn_conn")
 
@@ -340,9 +322,6 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
 class TestUpdateQuestSceneRegionChange:
     @pytest.mark.asyncio
     async def test_scene_graph_region_change_updates_agent_in_place(self):
-        """A quest scene_graph region change updates the persisting ExplorationAgent
-        in place (M7 story-003: no handoff). The transition rides the tool response
-        so the DM can narrate it; the agent's region is kept honest."""
         from exploration_agent import ExplorationAgent
 
         quest = {
@@ -386,16 +365,13 @@ class TestUpdateQuestSceneRegionChange:
             content=mock_content,
         )
         assert isinstance(result, str), f"Expected str (no handoff), got {type(result)}"
-        # Same agent persists; its region is updated in place to the new scene's region.
         assert ctx.session.current_agent is agent
         assert agent._agent_type == "city"
-        # The transition rides the response so the DM can narrate it without a handoff.
         payload = json.loads(result)
         assert payload["scene_transition"] == {"from": "Wild", "to": "City", "region": "city"}
 
     @pytest.mark.asyncio
     async def test_no_scene_graph_returns_string(self):
-        """Quest without scene_graph returns plain json string."""
         quest = {
             "id": "plain",
             "name": "Plain",

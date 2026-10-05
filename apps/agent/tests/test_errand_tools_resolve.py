@@ -1,13 +1,3 @@
-"""Tests for resolve_companion_errand on DispatchAgent (story-009).
-
-resolve_companion_errand wraps the shared errand_resolution helper: it locks the
-activity row FOR UPDATE, returns a worker-cached outcome without re-rolling, and
-polls a 'resolving' row without ever holding the lock across a sleep. Failures
-raise LiveKit ToolError (ADR 0002). The _*_impl seam takes injected mods. Split
-from the dispatch tests (test_errand_tools_dispatch.py) to stay under the
-500-line cap.
-"""
-
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -93,8 +83,7 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_persists_outcome_and_marks_resolved(self):
-        """Resolving persists the rolled outcome + status so the worker skips it
-        and never produces a second, divergent ending."""
+        """Reuse the stored outcome so retries cannot reroll."""
         ctx = make_context()
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_due_activity())
@@ -121,8 +110,6 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_locks_row_for_update_and_threads_conn(self):
-        """Resource-row template: the row is fetched FOR UPDATE inside a transaction
-        and the write is threaded through the same connection (concern 6b223681ec4f)."""
         ctx = make_context()
         mock_db, mock_conn = make_db_mod()
         activity_mod = MagicMock()
@@ -149,8 +136,6 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_already_resolved_returns_cached_no_reroll(self):
-        """A row the worker already resolved returns its persisted outcome and
-        never re-rolls."""
         ctx = make_context()
         cached = {"tier": "complication", "narrative_context": {"risk_outcome": "injured"}, "decision_options": []}
         activity_mod = MagicMock()
@@ -179,8 +164,7 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_not_yet_due_raises_no_resolve(self):
-        """An errand resolved before resolve_at passes raises rather than
-        returning a zero-elapsed-time result."""
+        """A not-yet-due row must not acquire a result early."""
         ctx = make_context()
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_due_activity(resolve_at="2026-05-22T20:00:00+00:00"))
@@ -204,9 +188,6 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_still_resolving_after_window_polls_then_raises(self):
-        """A row stuck in 'resolving' for the whole poll window still fails closed
-        with the same ToolError — but only after re-reading it in a fresh
-        transaction each attempt (poll-then-raise, never double-rolls)."""
         ctx = make_context()
         activity_mod = MagicMock()
         activity_mod.get_activity = AsyncMock(return_value=_resolving_activity())
@@ -229,7 +210,6 @@ class TestResolveCompanionErrand:
                 now_fn=_resolve_now,
                 sleep_fn=sleep_fn,
             )
-        # Re-read in a fresh transaction every attempt; sleep between attempts only.
         assert activity_mod.get_activity.await_count == _RESOLVE_POLL_ATTEMPTS
         assert sleep_fn.await_count == _RESOLVE_POLL_ATTEMPTS - 1
         resolve_fn.assert_not_awaited()
@@ -237,9 +217,7 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_resolving_then_resolved_within_window_returns(self):
-        """If the worker finishes mid-poll (writes its outcome while still
-        'resolving', Step B), the tool returns that outcome without raising and
-        without re-rolling — the worker's single roll is authoritative (ADR 0006)."""
+        """ADR 0006 requires a single stored outcome across retries."""
         ctx = make_context()
         worker_outcome = {
             "tier": "success",
@@ -247,7 +225,6 @@ class TestResolveCompanionErrand:
             "decision_options": [{"id": "thank", "label": "Thank them"}],
         }
         activity_mod = MagicMock()
-        # First read: worker still resolving (no outcome). Second read: outcome landed.
         activity_mod.get_activity = AsyncMock(
             side_effect=[_resolving_activity(), _resolving_activity(outcome=worker_outcome)]
         )
@@ -279,9 +256,7 @@ class TestResolveCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_resolving_poll_does_not_hold_lock_across_sleep(self):
-        """The hard constraint: a FOR UPDATE transaction is never held across a
-        sleep. Each re-read opens and closes its own transaction; the sleep runs
-        with no transaction open."""
+        """Never hold FOR UPDATE while waiting for the decision clock."""
         mock_conn = MagicMock()
         open_txns = 0
         max_open_during_sleep = 0

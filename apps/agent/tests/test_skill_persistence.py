@@ -1,10 +1,3 @@
-"""Behavior tests for the shared skill-advancement persistence helper.
-
-This is the new primitive extracted from check_tools and async_worker —
-both paths now route through `apply_skill_use_with_persistence` so the
-M1.2 hybrid-counter contract is enforced by construction.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -126,7 +119,6 @@ class TestApplySkillUseWithPersistence:
     @pytest.mark.asyncio
     async def test_expert_to_master_clears_narrative_moment(self) -> None:
         store, queries, mutations = _store_backed_mocks()
-        # Pre-seed at expert tier with narrative_moment_ready=True and a counter just below master threshold.
         store[("player_1", "athletics")] = {"tier": "expert", "use_counter": 31, "narrative_moment_ready": True}
 
         adv = await apply_skill_use_with_persistence(

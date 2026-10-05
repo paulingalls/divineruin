@@ -1,23 +1,4 @@
-"""Capstone: M4.6a Social Encounter Resolution end-to-end against a real Postgres testcontainer.
-
-Stories 001-004 shipped the social surface in slices: the pure resolver (001), the check
-mode="social" tool (002), NPC resistance content (003), and Diplomat combat de-escalation (004).
-This capstone proves they COMPOSE on ONE seeded testcontainer (auto-marked `acceptance`), driving
-the REAL pipeline against real DB writes:
-
-- AC1: the check mode="social" tool reads an NPC's recorded disposition, resolves a persuasion
-  check (disposition-as-DC), and PERSISTS the clamped shift back to npc_dispositions.
-- AC2: a Diplomat declares de_escalate over several live combat phases; the M15 Tier-3 scene
-  accumulates a per-enemy disposition shift (resolve_argument_round + DeEscalationState) and combat
-  ENDS via the phase loop with outcome "deescalated" and an always-dramatic de_escalate roll on the
-  HUD once the enemy crosses the +2 surrender threshold.
-
-Determinism: the argument d20 seam is patched to face 20 (check_resolution.dice_roll). A seeded
-Diplomat with charisma 18 argues a `cowardly` foe — vulnerable to a `threat` argument (-3 DC) — down
-over a couple of rounds within the MAX_DEESCALATION_ROUNDS cap. (M15 replaced the single-round
-CHA-vs-WIS contest, so combat_ability.dice_roll is no longer a seam.) Each test uses a distinct
-player_id since the testcontainer DB is shared.
-"""
+"""Pin the argument d20; there is no separate CHA-versus-WIS contest to patch."""
 
 from __future__ import annotations
 
@@ -45,7 +26,6 @@ async def _raise_charisma(pool, player_id: str, score: int) -> None:
 
 
 async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: str) -> None:
-    """AC1: check(mode="social") reads the recorded disposition, resolves, and persists the shift."""
     pool = await db.get_pool()
     player_id = "cap_m46a_social"
     await seed_player(pool, player_id=player_id, class_="diplomat")
@@ -78,15 +58,7 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
 
 
 async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> None:
-    """AC2: a Diplomat argues an enemy down over multiple rounds; the M15 Tier-3 scene accumulates
-    a per-enemy disposition shift and combat ENDS "deescalated" once the enemy crosses +2.
-
-    M15 (story-002) replaced the single-round contested-gate MVP with a multi-round cumulative scene
-    (combat_resolution.resolve_argument_round + DeEscalationState). The Diplomat spends 3 Focus per
-    round and shifts the enemy by its own resistance profile; a `cowardly` foe is VULNERABLE to a
-    `threat` argument, so a forced 20 lands progress each round until it stands down within the
-    MAX_DEESCALATION_ROUNDS cap. Determinism: check_resolution.dice_roll (the persuasion roll) is
-    pinned to 20; there is no longer a combat_ability CHA-vs-WIS contest to patch."""
+    """Use the actual multi-round cumulative scene, with the argument d20 fixed to 20."""
     pool = await db.get_pool()
     player_id = "cap_m46a_deesc"
     # A Diplomat with enough Focus for several rounds (3/round) and the charisma to argue well.

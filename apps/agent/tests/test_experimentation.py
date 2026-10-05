@@ -1,12 +1,4 @@
-"""Tests for the experimentation system (story-004, M5.3).
-
-Pure core (resolve_experimentation, find_matching_recipe, make_combination_key) plus
-the experiment_with_materials tool. The tool resolves immediately (decision
-experimentation-immediate): roll d20+crafting-mod vs base_dc+4, consume materials, and
-either teach the matched recipe (success) or record a no-match combo. player_failed_experiments
-records/short-circuits ONLY no-match combos (decision experimentation-dedup-no-match-only);
-a roll-failure on a real recipe is retryable.
-"""
+"""No-match combinations are deduplicated; failed rolls on real recipes remain retryable."""
 
 import json
 import random
@@ -21,8 +13,6 @@ import experimentation
 import experimentation_db
 from experimentation_tools import _experiment_with_materials_impl
 
-# SAMPLE_PLAYER's arcana modifier is +3 (level 3, proficient). With base_dc=13 the
-# experimentation DC is base_dc+4 = 17, so total = d20+3 succeeds when d20 >= 14.
 SAMPLE_PLAYER = {
     "level": 3,
     "attributes": {"intelligence": 10},
@@ -59,7 +49,6 @@ class TestResolveExperimentation:
         assert out.dc == 17
 
     def test_success_when_total_meets_dc(self):
-        # d20=14 + mod 3 = 17 == dc 17 -> success (margin 0).
         out = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(_seed_for_d20(14)))
         assert out.success is True
         assert out.roll == 14
@@ -99,8 +88,6 @@ class TestFindMatchingRecipe:
         )
 
     def test_exclude_ids_reaches_later_unknown_same_output(self):
-        # A second recipe makes the same output from the same materials; excluding the first
-        # must surface the second rather than returning None.
         alt_sword = {**IRON_SWORD, "id": "iron_sword_alt"}
         recipes = [IRON_SWORD, alt_sword]
         provided = {"iron_ingot": 2, "leather_strip": 1}
@@ -278,9 +265,6 @@ class TestExperimentWithMaterials:
 
     @pytest.mark.asyncio
     async def test_unknown_match_reached_despite_earlier_known_same_output(self):
-        # IRON_SWORD (known, first in list) and an alt recipe (unknown) both make iron_sword
-        # from the same materials. The player should discover the UNKNOWN alt, not be told
-        # "you already know it".
         alt_sword = {**IRON_SWORD, "id": "iron_sword_alt"}
         kwargs, _, mods = _seams(
             recipes_list=[IRON_SWORD, alt_sword],
@@ -304,8 +288,6 @@ class TestExperimentWithMaterials:
     async def test_only_known_same_output_treated_as_already_known(self):
         from livekit.agents.llm import ToolError
 
-        # The single recipe making iron_sword is already known -> no unknown match exists,
-        # so the tool raises "already know" rather than reaching the no-match path.
         kwargs, _, mods = _seams(
             recipes_list=[IRON_SWORD], known_ids=["iron_sword"], available={"iron_ingot": 2, "leather_strip": 1}
         )
@@ -320,9 +302,6 @@ class TestExperimentWithMaterials:
     async def test_known_recipe_undersupplied_is_already_known_not_no_match(self):
         from livekit.agents.llm import ToolError
 
-        # Player KNOWS iron_sword but offers too few materials. This must NOT burn materials
-        # or record a bogus no-match for a recipe they own — it's "craft it with the right
-        # materials" (satisfaction-independent already-known check).
         kwargs, _, mods = _seams(recipes_list=[IRON_SWORD], known_ids=["iron_sword"], available={"iron_ingot": 1})
         with pytest.raises(ToolError, match="already know"):
             await _experiment_with_materials_impl(make_context(), {"iron_ingot": 1}, "iron_sword", **kwargs)

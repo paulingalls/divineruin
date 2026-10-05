@@ -1,5 +1,3 @@
-"""Tests for primary-player reconnect grace and background pause/resume."""
-
 import asyncio
 import logging
 import time
@@ -114,7 +112,7 @@ async def test_grace_expiry_closes_without_canceling_its_own_session_close():
 
 
 async def test_a_failed_reconnect_task_is_reported_rather_than_left_unretrieved(caplog) -> None:
-    """Nothing awaits close_task in production, so the cleanup failure has to reach the log here."""
+    """No production caller awaits close_task, so cleanup failures must reach the log."""
     from participant_lifecycle import _setup_reconnection
 
     caplog.set_level(logging.ERROR, logger="divineruin.dm")
@@ -143,8 +141,6 @@ async def test_a_failed_reconnect_task_is_reported_rather_than_left_unretrieved(
 
 
 class TestReconnectionSetup:
-    """Test _setup_reconnection registers handlers for any agent type."""
-
     def test_setup_reconnection_registers_handlers(self):
         from participant_lifecycle import _setup_reconnection
 
@@ -154,13 +150,11 @@ class TestReconnectionSetup:
 
         _setup_reconnection(room, session, userdata, MagicMock())
 
-        # Should register both participant_disconnected and participant_connected
         on_calls = [call.args[0] for call in room.on.call_args_list]
         assert "participant_disconnected" in on_calls
         assert "participant_connected" in on_calls
 
     def test_setup_reconnection_works_without_background(self):
-        """Creation/onboarding sessions have no background process yet."""
         from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
@@ -168,12 +162,10 @@ class TestReconnectionSetup:
         userdata = SessionData(player_id="p1", location_id="loc1")
         assert userdata.background is None
 
-        # Should not raise
         _setup_reconnection(room, session, userdata, MagicMock())
 
     async def test_drop_pauses_and_reconnect_resumes_the_sessions_process(self):
-        """The process hangs off the SESSION, so the handlers must reach it there — reading it
-        off the agent they were wired with would silently stop pausing after the first handoff."""
+        """The process belongs to the session; reading the original agent breaks pause after handoff."""
         from participant_lifecycle import _setup_reconnection
 
         room = Room()
@@ -282,8 +274,7 @@ async def test_a_repeat_disconnect_neither_re_pauses_nor_rearms_the_grace():
 
 
 async def test_a_drop_while_the_reconnect_is_settling_keeps_the_new_grace_and_never_resumes():
-    """The reconnect handler defers to a task, so the player can drop again before it runs; the
-    resume/re-greet it would have done belongs to a connection that is already gone."""
+    """The player can disconnect again before the deferred reconnect task runs."""
     from participant_lifecycle import RECONNECT_GRACE_S, _setup_reconnection
 
     room = Room()
@@ -312,8 +303,6 @@ async def test_a_drop_while_the_reconnect_is_settling_keeps_the_new_grace_and_ne
 
 
 class TestBackgroundProcessPauseResume:
-    """Test pause/resume on BackgroundProcess."""
-
     def test_pause_sets_flag(self):
         from background_process import BackgroundProcess
 
@@ -332,8 +321,6 @@ class TestBackgroundProcessPauseResume:
 
 
 class TestDisconnectFlags:
-    """Test disconnect/reconnect flags on SessionData."""
-
     def test_disconnect_sets_flags(self):
         sd = SessionData(player_id="p1", location_id="loc1")
         sd.player_disconnected = True

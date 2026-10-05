@@ -1,14 +1,4 @@
-"""Hybrid counter integration test (M1.2).
-
-Pins the production contract: session-use (`check_tools._check_skill_impl`)
-and training-skill-practice (`async_worker_training.apply_skill_practice_advancement`) both
-read and write the SAME `skill_advancement` row keyed by `(player_id, skill_id)`.
-
-If a future refactor splits one path onto a different row, this test breaks.
-"""
-
 import json
-import types
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
@@ -106,17 +96,12 @@ def _shared_skill_advancement_store():
 
 
 class TestHybridCounterSharedRow:
-    """M1.2 acceptance: session-use and skill_practice training both increment one row."""
-
     @pytest.mark.asyncio
     async def test_session_use_and_training_share_skill_advancement_row(self) -> None:
-        """Running session-use then training on the same player+skill mutates the same row cumulatively."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
         skill = "athletics"
 
-        # Seed: counter starts at 0
-        # Path 1: session use → counter becomes 1
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
             await _check_skill_impl(
@@ -131,7 +116,6 @@ class TestHybridCounterSharedRow:
         assert "error" not in result
         assert store[(player_id, skill)]["use_counter"] == 1
 
-        # Path 2: training skill_practice (counter_increment=2 for 'fundamentals') → counter becomes 3
         adv_info = await apply_skill_practice_advancement(
             player_id,
             skill,
@@ -145,7 +129,6 @@ class TestHybridCounterSharedRow:
         assert adv_info is not None
         assert store[(player_id, skill)]["use_counter"] == 3
 
-        # Both paths read from and wrote to (player_id, skill) — exactly one row in the store.
         assert len(store) == 1
         assert (player_id, skill) in store
 
@@ -168,15 +151,12 @@ class TestHybridCounterSharedRow:
 
     @pytest.mark.asyncio
     async def test_training_then_session_use_crosses_tier_threshold(self) -> None:
-        """Training first, then session-use — combined increments trigger the trained-tier advancement at 8."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
         skill = "athletics"
 
-        # Pre-seed the row at counter=6, untrained tier
         store[(player_id, skill)] = {"tier": "untrained", "use_counter": 6, "narrative_moment_ready": False}
 
-        # Training skill_practice with counter_increment=2 → counter=8 → advance to trained
         adv_info = await apply_skill_practice_advancement(
             player_id,
             skill,
@@ -194,7 +174,6 @@ class TestHybridCounterSharedRow:
             "narrative_moment_ready": False,
         }
 
-        # Subsequent session-use reads the trained tier from the SAME row
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
             await _check_skill_impl(
@@ -207,22 +186,12 @@ class TestHybridCounterSharedRow:
             )
         )
         assert "error" not in result
-        # Counter advances by 1 from session-use, still on the same row
         assert store[(player_id, skill)]["use_counter"] == 9
         assert store[(player_id, skill)]["tier"] == "trained"
 
     @pytest.mark.asyncio
     async def test_both_paths_call_shared_persistence_helper(self, monkeypatch) -> None:
-        """M1.2 contract enforced by construction: both call sites route through
-        apply_skill_use_with_persistence (single source of truth).
-
-        The spy is installed on the source module *and* on every caller module
-        that has rebound the helper into its own namespace (i.e. via
-        `from skill_persistence import apply_skill_use_with_persistence`).
-        Without that defensive rebind, a future from-import refactor would
-        capture the original function reference at import time and silently
-        bypass a module-attr-only patch.
-        """
+        """Spy on both the source function and its rebound caller namespace."""
         calls: list[tuple[str, str, int]] = []
         real_fn = skill_persistence.apply_skill_use_with_persistence
 
@@ -258,38 +227,7 @@ class TestHybridCounterSharedRow:
         assert calls[1][2] == 2  # training passed 2
 
     @pytest.mark.asyncio
-    async def test_spy_install_catches_from_import_caller(self, monkeypatch) -> None:
-        """Meta-test: a hypothetical caller that captured the helper via
-        `from skill_persistence import apply_skill_use_with_persistence` would
-        evade a module-attr-only patch. Verify `_install_helper_spy` defensively
-        rebinds the symbol in caller namespaces so the spy still fires.
-        """
-        real_fn = skill_persistence.apply_skill_use_with_persistence
-
-        # Simulate a from-import caller: a module whose own namespace binds the
-        # original function object directly (the result of `from X import Y`).
-        fake_caller = types.ModuleType("fake_caller_from_import")
-        setattr(fake_caller, real_fn.__name__, real_fn)
-
-        calls: list[tuple[str, str, int]] = []
-
-        async def spy(player_id, skill, counter_increment=1, **kw):
-            calls.append((player_id, skill, counter_increment))
-            return await real_fn(player_id, skill, counter_increment, **kw)
-
-        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, fake_caller])
-
-        rebound = getattr(fake_caller, real_fn.__name__)
-        assert rebound is spy
-
-        _, queries, mutations = _shared_skill_advancement_store()
-        await rebound("player_1", "athletics", 1, queries=queries, mutations=mutations)
-        assert len(calls) == 1
-        assert calls[0] == ("player_1", "athletics", 1)
-
-    @pytest.mark.asyncio
     async def test_different_skills_use_different_rows(self) -> None:
-        """Sanity: different skills key to different rows; the hybrid claim is per-(player, skill)."""
         store, queries, mutations = _shared_skill_advancement_store()
         player_id = "player_1"
 

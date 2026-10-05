@@ -1,5 +1,3 @@
-"""Tests for CreationAgent — creation-only voice agent."""
-
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,8 +9,6 @@ from session_data import SessionData
 
 
 class TestCreationAgentInit:
-    """CreationAgent construction."""
-
     def test_extends_base_game_agent(self):
         from creation_agent import CreationAgent
 
@@ -52,13 +48,7 @@ class TestCreationAgentInit:
         }
 
     def test_prompt_commands_no_tool_the_agent_lacks(self):
-        """A "Call <tool>" directive naming an unregistered tool is a turn the agent cannot
-        complete — the LLM is told to reach for something absent from its schema.
-
-        Derived from CREATION_TOOLS rather than listing offenders by name, so a tool added to
-        the prompt without being added to the agent reds on its own. The snake_case shape
-        keeps English ("Call BEFORE", "call when") out of the commanded set.
-        """
+        """Match removed tool identifiers, not ordinary English words in narration."""
         from creation_agent import CREATION_TOOLS
 
         commanded = set(re.findall(r"[Cc]all ([a-z]+(?:_[a-z]+)+)", CREATION_SYSTEM_PROMPT))
@@ -70,13 +60,10 @@ class TestCreationAgentInit:
 
         mock_ctx = MagicMock()
         CreationAgent(chat_ctx=mock_ctx)
-        # Agent base class copies chat_ctx, so verify copy was called
         mock_ctx.copy.assert_called_once()
 
 
 class TestCreationAgentOnEnter:
-    """CreationAgent.on_enter pushes race cards and triggers initial reply."""
-
     @pytest.mark.asyncio
     async def test_on_enter_pushes_race_cards(self):
         from creation_agent import CreationAgent
@@ -167,8 +154,6 @@ class TestCreationAgentOnEnter:
 
 
 class TestCreationAgentReadinessGate:
-    """CreationAgent ignores stale STT turns until ready."""
-
     def test_not_ready_on_init(self):
         from creation_agent import CreationAgent
 
@@ -194,7 +179,6 @@ class TestCreationAgentReadinessGate:
         agent = CreationAgent()
         agent._ready = True
 
-        # Should not raise StopResponse
         await agent.on_user_turn_completed(MagicMock(), MagicMock())
 
     @pytest.mark.asyncio
@@ -219,8 +203,6 @@ class TestCreationAgentReadinessGate:
 
 
 class TestCreationAgentOnExit:
-    """CreationAgent.on_exit stops CardTapHandler."""
-
     @pytest.mark.asyncio
     async def test_on_exit_stops_card_tap_handler(self):
         from creation_agent import CreationAgent
@@ -243,7 +225,6 @@ class TestCreationAgentOnExit:
 
     @pytest.mark.asyncio
     async def test_on_exit_handles_no_card_tap(self):
-        """on_exit should not error if CardTapHandler was never started."""
         from creation_agent import CreationAgent
 
         agent = CreationAgent()

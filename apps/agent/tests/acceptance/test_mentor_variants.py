@@ -1,25 +1,4 @@
-"""Real-DB E2E capstone for Milestone 9 — Martial Mentor System (story-004).
-
-Proves the M9 stories compose end-to-end on real infra (auto-marked `acceptance`
-by tests/acceptance/conftest.py), across both surfaces. This is where the literal
-real-Postgres E2E letter — deferred from stories 001/002/003 per ADR 0003 — lands.
-
-- **message_event** (Python agent path): against one seeded Postgres testcontainer,
-  learn(variant) initiates a mentor-training loop (story-002), the loop accrues
-  cycles and unlocks only on the final cycle, the unlocked variant becomes the active
-  learned form, and activating its variant id deducts the variant cost and surfaces
-  its narration_cue + cultural_attribution while the base id remains unchanged — all against real rows. Training is driven via
-  advance_learning_cycle directly (not the async worker) to avoid the worker's
-  TTS/LLM coupling, mirroring the M8 spell capstone.
-- **http_websocket** (TS server path): the Bun server boots bound to the SAME
-  testcontainer; its startup Promise.all runs loadMentorVariants() (story-001) over
-  the seeded mentor_variants table — a served response proves it parsed without
-  failing boot (a malformed/missing row crashes parseMentorVariantRow first).
-
-Content fixtures (seeded from content/): base warrior_cleaving_blow costs stamina 4;
-its Drathian variant costs stamina 5; its Keldaran variant costs stamina 3 + focus 1 —
-three distinct cost shapes make the selection + replacement assertions unambiguous.
-"""
+"""Advance training directly to avoid worker LLM/TTS machinery. Distinct base/variant costs prove selection and replacement."""
 
 from __future__ import annotations
 
@@ -65,7 +44,6 @@ async def _load_catalogs() -> None:
 
 @pytest.mark.asyncio
 async def test_variant_train_unlock_activate_by_variant_id(reset_db_pool: str) -> None:
-    """The headline E2E: learn -> accrue three cycles -> unlock -> activate the variant id."""
     pool = await db.get_pool()
     pid = "cap_m9_train"
     await seed_warrior_owning_base(pool, pid, _BASE)
@@ -113,7 +91,6 @@ async def test_variant_train_unlock_activate_by_variant_id(reset_db_pool: str) -
 
 @pytest.mark.asyncio
 async def test_base_activation_unchanged_with_active_focus_variant(reset_db_pool: str) -> None:
-    """The base stays affordable without Focus after learning a Focus-costing variant."""
     pool = await db.get_pool()
     pid = "cap_m9_base"
     await seed_warrior_owning_base(pool, pid, _BASE)
@@ -140,7 +117,6 @@ async def test_base_activation_unchanged_with_active_focus_variant(reset_db_pool
 
 @pytest.mark.asyncio
 async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
-    """AC3: training a second variant for the same technique replaces the active one (PK upsert)."""
     pool = await db.get_pool()
     pid = "cap_m9_replace"
     await seed_warrior_owning_base(pool, pid, _BASE)

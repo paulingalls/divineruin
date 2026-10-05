@@ -1,10 +1,4 @@
-"""Tests for the ability-system DB layer (ability_persistence).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params — exercising the dynamic-SQL construction (esp. update_player_resources'
-partial-pool param indexing). Real SQL is exercised against a testcontainer at
-the story-005 capstone (ADR 0003), mirroring test_db_mutations.py.
-"""
+"""A mock connection checks SQL construction, including partial-pool parameter indexing."""
 
 import json
 from unittest.mock import AsyncMock
@@ -20,7 +14,6 @@ class TestUpdatePlayerResources:
         assert "UPDATE players" in sql
         assert "'{stamina,current}'" in sql
         assert "'{focus,current}'" not in sql  # uncosted pool never written
-        # $1 = player_id, $2 = stamina value (no off-by-one when focus is None)
         assert sql.count("$2") == 1 and "$3" not in sql
         assert params[0] == "p1"
         assert json.loads(params[1]) == 7
@@ -31,7 +24,6 @@ class TestUpdatePlayerResources:
         sql, *params = conn.execute.call_args.args
         assert "'{focus,current}'" in sql
         assert "'{stamina,current}'" not in sql
-        # Critical: focus value is $2 (not $3) when stamina is None — param index tracks len(params).
         assert "$2::jsonb" in sql and "$3" not in sql
         assert params[0] == "p1"
         assert json.loads(params[1]) == 4
@@ -64,9 +56,6 @@ class TestSetElectiveEquipped:
 
 class TestSetActiveVariant:
     async def test_upserts_one_variant_per_technique(self):
-        # The PK (player_id, ability_id) + ON CONFLICT DO UPDATE is what makes a second
-        # set for the same technique REPLACE the first (AC3 — one variant per technique;
-        # swap requires re-training). Real replace is exercised at the story-004 capstone.
         conn = AsyncMock()
         await ability_persistence.set_active_variant(
             "p1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian", conn=conn
@@ -107,8 +96,6 @@ class TestOwnsElective:
         assert result is True
 
     async def test_false_when_absent(self):
-        # Ownership is "has a row", regardless of equipped — a swapped-out elective
-        # (equipped=FALSE) keeps its row and stays owned; no row means not owned.
         conn = AsyncMock()
         conn.fetchval = AsyncMock(return_value=False)
         result = await ability_persistence.owns_elective("p1", "warrior_cleaving_blow", conn=conn)

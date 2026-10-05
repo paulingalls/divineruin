@@ -1,5 +1,3 @@
-"""Tests for the in-process event bus."""
-
 import event_types as E
 from event_bus import EventBus, GameEvent
 
@@ -38,7 +36,6 @@ class TestEventBus:
         bus.publish(GameEvent(event_type="first", payload={}))
         bus.publish(GameEvent(event_type="second", payload={}))
         bus.publish(GameEvent(event_type="third", payload={}))
-        # Queue is full — next publish drops oldest
         bus.publish(GameEvent(event_type="fourth", payload={}))
         assert bus.qsize == 3
         events = bus.drain()

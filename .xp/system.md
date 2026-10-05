@@ -90,7 +90,7 @@ without certifying paid speech-recognition accuracy.
   focused Verify was green while `test:python` had 5 reds).
 - Checking a box in `docs/milestones/*.md` also moves the README phase count, the
   REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
-  docs pins red on all three (sprint-105).
+  review checks all three; regenerate the index with `doc_index.py --write`.
 - pytest collects only `test_*.py`. A pin module named otherwise (e.g.
   `creature_spec_pins_*.py`) may hold DATA a collected test imports, never test
   functions: sprint-062 story-130's pins ran only through its Verify, so no tier
@@ -121,14 +121,16 @@ without certifying paid speech-recognition accuracy.
   CONVENTION the xp release model enforces, not one the host enforces; don't cite
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
-  runs lint/typechecks for XP work-branch source pushes, and the complete
-  Docker/browser/acceptance gate for main, unverified tags, unknown refs, or
-  invalid work refs. Valid XP work refs use static checks for every changed path.
-  A push of ONE new version tag ALONE
-  skips suites when that tag's commit is already merged into `origin/main` and
-  the manifest there declares that version. Sprint close invokes the complete
-  gate on the merged release tree. Do not repeat an identical broad suite on an
-  unchanged tree during review without a concrete uncovered behavior. On a gate
+  scans outgoing secrets, runs lint/typechecks and service-free Bun suites for
+  every ref. Push starts no services. `.githooks/sprint` owns the complete local
+  release suite at sprint close on the trial-merged integration tree, including
+  service-backed server/Python, acceptance and Playwright. Free patches run fast
+  push checks plus focused card Acceptance at the affected behavior/integration
+  boundary on the trial-merged tree, then normal PR CI before merge. The lead
+  adds broader free-patch acceptance only when the changed behavior warrants it;
+  there is no automatic full local release suite for each free patch. Direct
+  trunk pushes are not the release workflow. Do not repeat an identical broad
+  suite on an unchanged tree during review without a concrete uncovered behavior. On a gate
   failure, read repo-root `flake-artifacts/` before calling anything a flake.
 
 **A falsifier is a path into a moving tree, and nothing re-checks it until it
@@ -246,10 +248,13 @@ combined owned inventory or failed enumeration also refuses.
 An unavailable registered worktree blocks sweep, including
 locked worktrees on unmounted volumes. Remove or prune only registrations known
 to be abandoned before sweeping their resources.
-The pre-push per-run Postgres and Valkey belong to the server and E2E lanes.
+The sprint hook’s per-run Postgres and Valkey belong to the server and E2E lanes.
 Acceptance and Python enter without those sibling-lane DSNs so their Python
 lifecycle can validate checkout-owned settings; acceptance then loads the
 checkout settings and provider credentials through its existing env file.
+The sprint hook exports `ALLOW_PAID_TESTS=` and `REQUIRE_REAL_LLM=` empty in
+all children; env files cannot restore approval. Acceptance unsets only the
+sibling-lane `DATABASE_URL` and `REDIS_URL`.
 
 **Dependency-changing landings**: before a land command that pushes automatically,
 stage installs from the reviewed manifests/locks and refresh the integration

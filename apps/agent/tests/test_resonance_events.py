@@ -1,13 +1,4 @@
-"""Wire-contract tests for the RESONANCE_CHANGED push (story-004 M4).
-
-The HUD renders only the qualitative Resonance state and MUST NOT show a number
-(no-number spec game_mechanics_magic.md:98, concern 05f). So publish_resonance_changed
-narrows its payload to {"state", "caster_id"} — the raw `current` value and the display
-`max` are dropped from the wire. The number still lives in the DB (persistence) and
-in-session (ResonanceTrack.current); it just never crosses to the client. `caster_id`
-(M14 story-004) discriminates WHICH party member the state belongs to so a multi-player
-client updates only its local player's HUD; it defaults to the session primary.
-"""
+"""The audio-first HUD shows qualitative resonance, never its number. caster_id prevents another party member updating it."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -40,7 +31,6 @@ async def test_payload_carries_state_and_caster_id():
 
 
 async def test_payload_omits_the_raw_number():
-    # AC4: the wire never carries the resonance number — only the qualitative state.
     payload = await _published_payload(_session(current=7))
     assert payload["state"] == "flickering"
     assert "current" not in payload
@@ -60,7 +50,6 @@ async def test_payload_state_tracks_every_band():
 
 
 async def test_caster_id_defaults_to_session_primary():
-    # An explicit caster_id override discriminates a non-primary member; the default is the primary.
     payload = await _published_payload(_session(current=0))
     assert payload["caster_id"] == "p1"
 
@@ -74,8 +63,6 @@ async def test_default_caster_and_track_follow_handoff():
 
 
 async def test_explicit_track_and_caster_id_push_that_member():
-    # M14 story-004: the phase loop pushes each member's OWN track under its OWN caster_id, so the
-    # payload's state derives from the passed track (not the session primary's) and carries that id.
     session = _session(current=0)  # primary is "stable" (0)
     member = PartyMember(
         player_id="p2",

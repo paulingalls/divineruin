@@ -1,9 +1,6 @@
 import { test, expect } from "bun:test";
 import { buildMetaTags, META_DESCRIPTION, SITE_NAME, OG_IMAGE_PATH } from "./seo.ts";
 
-// seo.ts is a pure builder: origin is injected (no env read here), so the meta /
-// OG / Twitter / JSON-LD output is testable without the build environment.
-// prerender.ts reads PUBLIC_SITE_ORIGIN and passes it in.
 const ORIGIN = "https://example.test";
 const tags = buildMetaTags(ORIGIN);
 

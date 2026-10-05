@@ -299,5 +299,4 @@ async def test_combined_damage_preserves_a_wasted_condition_reason():
     assert summary["damage"] == 4
     assert summary["resolved"] is True
     assert summary["condition_reason"] == "condition action requires a non-self target_id"
-    # Not under the packet-level key: that one means the whole blow was wasted.
     assert "reason" not in summary

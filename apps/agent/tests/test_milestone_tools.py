@@ -1,10 +1,3 @@
-"""Unit tests for apply_milestone_grant (milestone_tools.py).
-
-The shared grant-write primitive that award_xp's auto-grant loop (_award_xp_core)
-calls at the L10/15/20 leveling chokepoint: writes a milestone's combat flag into
-players.data.flags when present, no-op for a narrative-only (flag=None) grant.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,9 +11,6 @@ def _milestone(kind: MilestoneKind, grant: Grant | None) -> Milestone:
 
 
 class TestApplyMilestoneGrant:
-    """Direct unit tests for the shared grant-write primitive, called by
-    _award_xp_core's auto-grant loop."""
-
     @pytest.mark.asyncio
     async def test_flag_grant_writes_flag_and_returns_true(self):
         flags = MagicMock()

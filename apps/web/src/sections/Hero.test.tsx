@@ -11,7 +11,6 @@ import { Hero } from "./Hero.tsx";
 
 test("renders the brand headline with the italic 'Ruin' display treatment", () => {
   const html = renderToStaticMarkup(<Hero />);
-  // Headline is "Divine" then a break then italic "Ruin", per the mockup.
   expect(html).toContain("<h1");
   expect(html).toMatch(/Divine<br\/?><em>Ruin<\/em>/);
 });
@@ -42,9 +41,6 @@ test("renders the subhead and the real pitch copy", () => {
 
 test("renders both CTAs with the mockup labels and functional targets", () => {
   const html = renderToStaticMarkup(<Hero />);
-  // Primary -> #waitlist (lands M5; shared tracked anchor). Secondary "Enter
-  // Aethos" -> #world, the World section (re-pointed from the M3 #premise
-  // placeholder now that World ships id="world").
   expect(html).toMatch(/<a[^>]+href="#waitlist"[^>]*>[\s\S]*?Request Early Access/);
   expect(html).toMatch(/<a[^>]+href="#world"[^>]*>[\s\S]*?Enter Aethos/);
 });
@@ -57,9 +53,7 @@ test("captions the audio sample with the voice-first / headphones note (no scrol
   const html = renderToStaticMarkup(<Hero />);
   expect(html).toContain("A voice-first audio RPG");
   expect(html).toContain("Headphones recommended");
-  // The note renders after the audio card (it captions it).
   expect(html).toMatch(/audio-demo[\s\S]*hero__audio-caption/);
-  // The scroll cue is gone.
   expect(html).not.toContain("Scroll");
 });
 

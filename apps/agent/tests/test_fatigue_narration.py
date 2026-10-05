@@ -1,5 +1,3 @@
-"""Tests for fatigue narration — narrative cues for resource pool states and exhaustion."""
-
 from fatigue_narration import (
     exhaustion_narrative_for_conditions,
     get_exhaustion_narrative,
@@ -9,8 +7,6 @@ from fatigue_narration import (
 
 
 class TestGetPoolState:
-    """Threshold boundary tests for get_pool_state."""
-
     def test_empty_when_zero(self) -> None:
         assert get_pool_state(0, 20) == "empty"
 
@@ -40,8 +36,6 @@ class TestGetPoolState:
 
 
 class TestGetPoolNarrative:
-    """Narrative cue tests for stamina and focus pools."""
-
     def test_stamina_full(self) -> None:
         assert get_pool_narrative(100, 100, "stamina") == "You feel ready"
 
@@ -74,8 +68,6 @@ class TestGetPoolNarrative:
 
 
 class TestGetExhaustionNarrative:
-    """Tests for exhaustion stack narratives."""
-
     def test_stack_zero_empty_string(self) -> None:
         assert get_exhaustion_narrative(0) == ""
 
@@ -104,9 +96,6 @@ class TestGetExhaustionNarrative:
 
 
 class TestExhaustionNarrativeForConditions:
-    """Beat-3 display layer (M4.3, story-005): read Exhausted stacks out of a participant's
-    condition list and produce the matching flavor, reusing get_exhaustion_narrative."""
-
     def test_no_conditions_empty_string(self) -> None:
         assert exhaustion_narrative_for_conditions([]) == ""
 
@@ -126,7 +115,6 @@ class TestExhaustionNarrativeForConditions:
         assert exhaustion_narrative_for_conditions(conditions) == ""
 
     def test_missing_stacks_key_treated_as_zero(self) -> None:
-        # A condition dict crossing the JSONB boundary may omit stacks; fail soft to "".
         conditions = [{"type": "exhausted", "duration": 99, "source": "march"}]
         assert exhaustion_narrative_for_conditions(conditions) == ""
 
@@ -138,8 +126,6 @@ class TestExhaustionNarrativeForConditions:
 
 
 class TestEndToEnd:
-    """E2E: distinct narrative cues at different pool percentages."""
-
     def test_distinct_cues_at_varying_percentages(self) -> None:
         cues = [
             get_pool_narrative(75, 100, "stamina"),  # 75% → high → ""
@@ -147,11 +133,9 @@ class TestEndToEnd:
             get_pool_narrative(25, 100, "stamina"),  # 25% → low
             get_pool_narrative(10, 100, "stamina"),  # 10% → critical
         ]
-        # high returns empty, low and critical return non-empty
         assert cues[0] == ""
         assert cues[1] != ""
         assert cues[2] != ""
         assert cues[3] != ""
-        # low and critical are distinct from each other
         assert cues[1] == cues[2]  # both low
         assert cues[1] != cues[3]  # low != critical

@@ -1,17 +1,4 @@
-"""Tests for the Forge + Laboratory bundle rental (story-015, M5.2).
-
-The spec prices Forge + Laboratory together at 12sp/day, offered only where the
-location tags host both workspaces. The bundle is requested as the single token
-`forge_laboratory` but PERSISTS AS TWO workspace_rentals rows, one per granted
-workspace: apps/server/src/workspace.ts parseWorkspaceType re-parses every stored
-workspace_type against a closed four-member vocabulary, so a single
-"forge_laboratory"/"combined" row would hard-fail every later server-side crafting
-gate for that player at that location. Two rows also satisfy "both accessible for
-N days" literally.
-
-Split from test_crafting_tools_workspaces.py to stay under the cap; the
-_content/_pricing/_queries seams are imported from there rather than forked.
-"""
+"""Persist the bundle as two workspace rows: the server accepts only individual workspace types."""
 
 import json
 from pathlib import Path
@@ -62,7 +49,6 @@ class TestBundleWrites:
         for call in calls:
             assert call.args[:2] == ("player_1", "accord_guild_hall")
             assert call.args[3] == "rental"
-            # Same conn as the gold debit: a half-granted bundle must be impossible.
             assert call.kwargs["conn"] is conn
         assert mutations.update_player_gold.await_args.kwargs["conn"] is conn
 
@@ -83,7 +69,6 @@ class TestBundleWrites:
         days = 3
         result, mutations, _, _ = await _rent(days=days, disposition=disposition)
         assert result["price_sp"] == expected_daily * days
-        # Free must not mean access-free: trusted still gets both rows.
         assert mutations.create_workspace_rental.await_count == 2
         if expected_daily == 0:
             mutations.update_player_gold.assert_not_awaited()
@@ -173,8 +158,6 @@ class TestUnrentableTokens:
 
 
 class TestQuoteMatchesCharge:
-    """The debt in one class: a price the DM can quote but no call can charge."""
-
     async def _quote(self, npc_id=None, *, tags=("forge", "laboratory"), **kwargs):
         return json.loads(
             await _query_available_workspaces_impl(
@@ -205,8 +188,6 @@ class TestQuoteMatchesCharge:
         assert rental["price_sp"] == daily * 3 == 30
 
     async def test_every_quoted_token_is_rentable(self):
-        # The falsifier for the whole story: whatever query_info(kind="workspaces")
-        # quotes, begin_activity(kind="workspace") must be able to charge.
         quote = await self._quote("grimjaw")
         assert {e["workspace_type"] for e in quote["rentable"]} == {o.token for o in ws.RENTAL_OFFERS}
         for entry in quote["rentable"]:

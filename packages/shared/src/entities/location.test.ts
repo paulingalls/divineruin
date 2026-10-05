@@ -19,8 +19,6 @@ const catalog = (await Bun.file(
 
 const byId = new Map(catalog.map((l) => [l.id, l]));
 
-// The Accord — the surviving sunward-coast trade city. All 10 district-locations share the
-// city tier + prosperous personality of the one settlement they belong to.
 const ACCORD_IDS = [
   "accord_market_square",
   "accord_guild_hall",
@@ -34,23 +32,18 @@ const ACCORD_IDS = [
   "grimjaw_quarters",
 ];
 
-// Millhaven — the threatened Greyvale farming village (one inn, a few farmhouses).
 const MILLHAVEN_IDS = ["millhaven", "millhaven_inn", "yanna_farmhouse"];
 
-// Wilderness — open-country foraging spots. Carry an ambient resource_table (M4.6c).
 const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
   "greyvale_south_road",
 ];
 
-// Dungeon — interiors; foraged via fixed gathering_nodes, not an ambient resource_table.
 const DUNGEON_IDS = ["greyvale_ruins_entrance", "greyvale_ruins_inner", "hollow_incursion_site"];
 
-// Dungeon/wilderness — not settlements; both M6.2 fields stay absent.
 const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 
-// Canonical rarity buckets — mirrors apps/agent/gathering.py RARITY_ORDER (the SSOT).
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
@@ -121,8 +114,6 @@ describe("locations.json — settlement backfill", () => {
     }
   });
 
-  // Generic guard: any row that DOES carry the fields uses only enum-valid values, so a
-  // future settlement added with a typo'd tier/personality fails here too.
   test("any present settlement_tier/personality is enum-valid", () => {
     for (const l of catalog) {
       if (l.settlement_tier !== undefined) {
@@ -151,8 +142,6 @@ describe("locations.json — gathering resource_table (M4.6c)", () => {
     }
   });
 
-  // Generic guard: any present resource_table uses only canonical rarity keys mapping to
-  // non-empty-id string arrays, so a typo'd bucket key or a non-string material fails here.
   test("any present resource_table is rarity-keyed arrays of material-id strings", () => {
     for (const l of catalog) {
       if (l.resource_table === undefined) continue;

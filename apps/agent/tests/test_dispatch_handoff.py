@@ -1,9 +1,3 @@
-"""Intent handoff into/out of DispatchAgent (enter_dispatch / conclude_dispatch).
-
-Complements the location-route handoff in test_training_agent.py. Mirrors the
-combat start_combat/end_combat return-to-caller pattern (pre_dispatch_agent_type).
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -44,8 +38,6 @@ class TestEnterDispatch:
 
     @pytest.mark.asyncio
     async def test_derives_region_from_location_when_caller_lacks_agent_type(self):
-        # A non-region caller (no _agent_type) must NOT default to City — derive the
-        # return region from the current location so a non-city hall routes back right.
         ctx = _ctx(location_id="greyvale_ruins_entrance")
         ctx.session.current_agent._agent_type = None
         with patch(
@@ -71,8 +63,6 @@ class TestConcludeDispatch:
 
     @pytest.mark.asyncio
     async def test_fallback_derives_region_from_location(self):
-        # pre_dispatch unset (e.g. reached via the location route): derive region
-        # from the current location, not a hardcoded City.
         ctx = _ctx(location_id="greyvale_ruins_entrance")
         ctx.userdata.pre_dispatch_agent_type = None
         with patch(
@@ -90,8 +80,6 @@ class TestConcludeDispatch:
 
 class TestIntentToolRegistration:
     def test_enter_mode_in_region_agents(self):
-        # Dispatch entry now folds into the enter_mode verb (M5); the unified
-        # exploration agent holds it.
         assert enter_mode in EXPLORATION_TOOLS
 
     def test_conclude_dispatch_in_dispatch_tools(self):

@@ -1,5 +1,3 @@
-"""A held action pauses only when its exact window offers a reaction."""
-
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _call, _ctx_at_resolution, _resolution_state, _resolve_deps
 from voice_condition_fixtures import place_actors

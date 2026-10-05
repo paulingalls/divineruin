@@ -4,9 +4,8 @@
 // interleaving; a periodic one-line heartbeat per lane shows live progress so a
 // slow lane (python is the longer one) isn't a silent wait.
 //
-// The real-LLM acceptance lane is intentionally NOT here — it runs only at
-// pre-push / sprint close (see ADR 0003) to control API cost. Run it explicitly
-// with `bun run test:acceptance`.
+// Acceptance runs in the sprint hook (see ADR 0003). Paid scenarios require
+// separate approval for each specific run; sprint close does not authorize them.
 
 import { ensureDbUp, stopIfStarted } from "./ensure-db.ts";
 
@@ -24,7 +23,9 @@ async function runLane(lane: Lane): Promise<Result> {
   const proc = Bun.spawn(lane.cmd, { stdout: "pipe", stderr: "pipe" });
   const startedAt = Date.now();
   const heartbeat = setInterval(() => {
-    console.log(`... still running: ${lane.name} (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    console.log(
+      `... still running: ${lane.name} (${Math.round((Date.now() - startedAt) / 1000)}s)`,
+    );
   }, HEARTBEAT_MS);
   try {
     const [stdout, stderr, exitCode] = await Promise.all([

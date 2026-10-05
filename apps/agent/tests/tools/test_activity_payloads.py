@@ -1,10 +1,4 @@
-"""One mapping case per `begin_activity` variant.
-
-`to_impl_kwargs` is the only thing between the LLM's sum-typed argument and
-`_begin_activity_impl`, whose signature the reshape left untouched — so these cases are
-what say the reshape preserved behaviour. That the mapped kwargs actually SATISFY the
-router lives in tests/test_activity_tools.py, next to the stub impls.
-"""
+"""Payload mapping alone does not prove router acceptance; test_activity_tools drives the router."""
 
 from activity_payloads import (
     ACTIVITY_VARIANTS,
@@ -53,9 +47,7 @@ def test_workspace_variant_maps_to_the_rental_impl_kwargs():
 
 
 def test_experiment_variant_unzips_its_materials_into_the_positional_lists():
-    """The list of pairs is what makes a length mismatch unrepresentable — the check that
-    used to guard it (and its test) is deleted with this reshape. `_experiment_with_materials_impl`
-    still takes the two aligned lists, so the mapper is where the shapes meet."""
+    """The mapper unzips paired materials into the implementation's aligned lists."""
     assert to_impl_kwargs(
         Experiment(
             kind="experiment",
@@ -72,11 +64,7 @@ def test_experiment_variant_unzips_its_materials_into_the_positional_lists():
 
 
 def test_variant_optional_fields_are_pinned():
-    """ADR 0008 decision 1 says variants carry only REQUIRED fields; Training.spell_id is
-    the one sanctioned exception (story-065 card: one union slot, pinned in
-    test_strict_tool_budget). An optional is a slot the budget walker cannot explain, so
-    this inventory replaces the old blanket ban — adding another needs the same sanction.
-    """
+    """ADR 0008 permits only Training.spell_id as the sanctioned optional-field exception."""
     optional = {
         variant.__name__: {name for name, field in variant.model_fields.items() if not field.is_required()}
         for variant in ACTIVITY_VARIANTS

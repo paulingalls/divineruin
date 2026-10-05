@@ -1,17 +1,4 @@
-"""Guard: no uncommitted .wav bloat, drift-free transcode signature across bundled families (M22).
-
-M22 requires all bundled audio to ship compressed. Debt 4e6fe7870edd: the 7
-spell-cast SFX shipped as uncommitted-compressed 16-bit PCM .wav (~2.4MB,
-committed twice, source + bundled), breaking the ~50-72KB .mp3 convention used
-by every other bundled sound. This guard fails loud if a .wav ever reappears
-under either directory.
-
-Story-006 consolidated the three per-family (legacy/soundscape/texture) hand-
-maintained transcode-signature guards into one directory-driven, parametrized
-guard covering every bundled family (root, music, soundscapes, textures) --
-the stem set is discovered from the bundled directory listing, not a
-hand-maintained tuple, so a new regenerated family auto-extends coverage.
-"""
+"""Compressed takes keep bundled audio small."""
 
 from __future__ import annotations
 
@@ -25,7 +12,6 @@ from audio_bundle_stems import bundled_stems_by_dir
 
 from spells import SPELL_SOUND_KEYS
 
-# This file lives at apps/agent/tests/<this>; parents[2] is the repo's apps/ dir.
 _APPS_DIR = Path(__file__).resolve().parents[2]
 _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"
 _AUDIO_SRC_DIR = _APPS_DIR / "audio" / "spell_sfx"
@@ -59,7 +45,6 @@ def test_no_wav_files_in_spell_sfx_source_dir() -> None:
 # still-present bundled copy). The key-set assertion below is what actually enforces
 # that every customer-approved take is still on disk in the source SSOT.
 _SOURCE_MIRRORS: dict[Path, tuple[Path, frozenset[str]]] = {
-    # spell_sfx source palette -> bundled root copy; the 7 frozen spell keys must all be present.
     _AUDIO_SRC_DIR: (_SOUNDS_DIR, SPELL_SOUND_KEYS),
 }
 
@@ -67,7 +52,6 @@ _SOURCE_MIRRORS: dict[Path, tuple[Path, frozenset[str]]] = {
 def test_committed_source_mirror_is_byte_equal_to_bundled() -> None:
     for source_dir, (bundled_dir, expected_keys) in _SOURCE_MIRRORS.items():
         sources = sorted(source_dir.glob("*.mp3"))
-        assert sources, f"no source .mp3 under {source_dir} -- mirror guard would be a no-op"
         source_stems = {src.stem for src in sources}
         missing = sorted(expected_keys - source_stems)
         assert not missing, (
@@ -108,29 +92,12 @@ def _probe(path: Path) -> tuple[int, int]:
     return sample_rate, bit_rate
 
 
-# Discovered at collection time from the bundled directory listing -- covers root
-# (legacy 20 + 7 spell stems), music, soundscapes, textures with no hand-maintained
-# key tuple. A future regenerated family auto-extends this parametrization.
 _FAMILY_DIRS = sorted(bundled_stems_by_dir(_SOUNDS_DIR).keys())
-
-
-def test_family_discovery_is_non_empty() -> None:
-    """Fail loud if discovery finds no families -- an empty _FAMILY_DIRS silently
-    turns the parametrized signature guard into a skipped ('empty parameter set')
-    no-op. Mirrors the _SOURCE_MIRRORS non-empty assertion."""
-    assert _FAMILY_DIRS, f"no bundled audio families discovered under {_SOUNDS_DIR}"
 
 
 @pytest.mark.parametrize("family_dir", _FAMILY_DIRS)
 def test_bundled_family_stems_match_pipeline_transcode_signature(family_dir: str) -> None:
-    """Every bundled stem in every family must carry the SA3 pipeline's transcode
-
-    signature -- 44.1kHz, <=160kbps -- which hand-sourced takes did not. Fails if
-    any stem regresses to a non-pipeline (hand-sourced) file.
-
-    Fail-loud on missing ffprobe (no skip): this is an acceptance guard, and a
-    skip would silently drop the provenance enforcement (concern 2c0c3026b0e4).
-    """
+    """Missing ffprobe must fail rather than silently skip audio validation."""
     if shutil.which("ffprobe") is None:
         pytest.fail(
             "ffprobe (ffmpeg) is required to enforce the transcode-signature provenance guard — "

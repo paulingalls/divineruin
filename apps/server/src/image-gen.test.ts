@@ -4,7 +4,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 
-// Create a small valid PNG for mock responses
 async function makeFakeBase64Png(): Promise<string> {
   const buf = await sharp({
     create: { width: 64, height: 64, channels: 3, background: { r: 80, g: 80, b: 80 } },
@@ -30,7 +29,6 @@ afterEach(async () => {
   delete process.env.GEMINI_API_KEY;
 });
 
-// Mock @google/genai
 await mock.module("@google/genai", () => ({
   GoogleGenAI: class {
     models = {
@@ -48,7 +46,6 @@ await mock.module("@google/genai", () => ({
   },
 }));
 
-// Mock db to avoid real database connection
 await mock.module("./db.ts", () => ({
   sql: Object.assign(
     (_strings: TemplateStringsArray, ..._values: unknown[]) => Promise.resolve([]),
@@ -57,14 +54,12 @@ await mock.module("./db.ts", () => ({
 }));
 
 test("generateImage produces a PNG file and returns assetId", async () => {
-  // Re-import after mocks are set
   const { generateImage } = await import("./image-gen.ts");
 
   const result = await generateImage("ui_loading_abstract", {});
   expect(result.assetId).toMatch(/^img_[a-f0-9]{16}$/);
   expect(await Bun.file(result.path).exists()).toBe(true);
 
-  // Verify it's a valid PNG
   const meta = await sharp(result.path).metadata();
   expect(meta.format).toBe("png");
 });

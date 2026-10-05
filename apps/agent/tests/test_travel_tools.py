@@ -1,12 +1,3 @@
-"""Tests for the travel agent tool (M4.6b / story-003).
-
-`_travel_impl` reads the player + destination, rolls a Survival navigation check, drives the
-pure travel.resolve_travel_segment engine, applies exhaustion via the apply_condition SSOT
-(capped by exhaustion_stack_cap), persists travel_state, relocates on a successful journey,
-and emits a DICE_ROLL event. These tests drive the impl directly with mocked db seams + a
-fixed rng, mirroring tests/tools/test_social_tools.py.
-"""
-
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -77,9 +68,6 @@ async def _run(ctx, m, *, destination_id="dest", mode="scenic", hours=4, forced_
     )
 
 
-# --- Established road: auto-success, no roll, arrives ---
-
-
 @pytest.mark.asyncio
 async def test_established_road_auto_arrives_and_clears_travel_state():
     m = _travel_mocks()
@@ -89,18 +77,11 @@ async def test_established_road_auto_arrives_and_clears_travel_state():
     assert result["outcome"] == "success"
     assert result["arrived"] is True
     m.mutations.update_player_location.assert_awaited_once()
-    # Arrival reuses move_player's full path: map progress + the HUD LOCATION_CHANGED event
-    # (regression guard for concern 98d6c624a2f2 — the HUD must follow a travelled arrival).
     m.mutations.upsert_map_progress.assert_awaited_once()
     assert any(e.event_type == E.LOCATION_CHANGED for e in published_events(ctx))
-    # travel_state cleared to null on arrival
     m.travel_mutations.update_player_travel_state.assert_awaited_once()
     assert m.travel_mutations.update_player_travel_state.await_args.args[1] is None
-    # no roll happened → no DICE_ROLL event
     assert not any(e.event_type == E.DICE_ROLL for e in published_events(ctx))
-
-
-# --- Rolled navigation success: arrives, DICE_ROLL emitted ---
 
 
 @pytest.mark.asyncio
@@ -118,9 +99,6 @@ async def test_rolled_success_arrives_and_emits_dice_roll():
     assert dice.payload["skill"] == "survival"
 
 
-# --- Lost failure: no relocation, travel_state records wrong_area ---
-
-
 @pytest.mark.asyncio
 async def test_lost_failure_does_not_relocate_and_persists_wrong_area():
     m = _travel_mocks()
@@ -131,14 +109,10 @@ async def test_lost_failure_does_not_relocate_and_persists_wrong_area():
     assert result["wrong_area"] is True
     assert result["arrived"] is False
     m.mutations.update_player_location.assert_not_awaited()
-    # Lost → no arrival side-effects (HUD stays put, map unrecorded).
     assert not any(e.event_type == E.LOCATION_CHANGED for e in published_events(ctx))
     persisted = m.travel_mutations.update_player_travel_state.await_args.args[1]
     assert persisted is not None and persisted["wrong_area"] is True
     assert persisted["destination"] == "dest"
-
-
-# --- Exhaustion: applied via apply_condition, capped by exhaustion_stack_cap ---
 
 
 @pytest.mark.asyncio
@@ -178,13 +152,8 @@ async def test_clean_success_applies_no_exhaustion():
     m.conditions_mutations.save_player_conditions.assert_not_awaited()
 
 
-# --- Beneficial-die consume (M4.8 story-010): the nav check spends Inspired's +1d4 ---
-
-
 @pytest.mark.asyncio
 async def test_inspired_nav_consumes_die_without_exhaustion():
-    # Clean success (no exhaustion) but Inspired folded +1d4 into the nav check: the die is
-    # consumed + persisted (the single conditions write fires for the consume alone).
     m = _travel_mocks(player=_INSPIRED_PLAYER)
     m.content.get_location = AsyncMock(return_value=_location("dense_forest"))  # DC 14 -> a roll happens
     ctx = _ctx_with_bus()
@@ -239,9 +208,6 @@ async def test_travel_rebuilds_conditions_from_locked_reread_preserving_concurre
     assert "exhausted" in types  # exhaustion applied
     assert "inspired" not in types  # die consumed
     assert save.await_args.kwargs.get("conn") is captured["conn"]  # same tx connection (atomic)
-
-
-# --- Fail-loud boundaries ---
 
 
 @pytest.mark.asyncio

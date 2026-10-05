@@ -1,12 +1,3 @@
-"""Tests for creation-card asset ids and image URLs.
-
-compute_asset_id (deterministic, TS-parity hash) and the image_url stamped onto
-every creation card. Split from the creation flow tests
-(test_creation_tools_flow.py) to stay under the 500-line cap; the image_url
-tests need the same card-push machinery, so _make_context and the _push_cards
-ref are duplicated here.
-"""
-
 import hashlib
 import json
 from typing import Any
@@ -39,7 +30,6 @@ def _make_context(creation_state: CreationState | None = None) -> MagicMock:
 
 class TestComputeAssetId:
     def test_deterministic(self):
-        """Same inputs produce same output."""
         a = compute_asset_id("npc_portrait", {"description": "a guard", "features": "tall"})
         b = compute_asset_id("npc_portrait", {"description": "a guard", "features": "tall"})
         assert a == b
@@ -55,7 +45,6 @@ class TestComputeAssetId:
         assert len(result) == 4 + 16  # "img_" + 16 hex chars
 
     def test_matches_typescript_algorithm(self):
-        """Verify Python output matches the TypeScript computeAssetId logic."""
         template_id = "npc_portrait"
         vars = {"description": "a guard", "features": "tall"}
         sorted_entries = sorted(vars.items())
@@ -65,7 +54,6 @@ class TestComputeAssetId:
         assert compute_asset_id(template_id, vars) == expected
 
     def test_key_order_independent(self):
-        """Vars with different insertion order but same content produce same ID."""
         a = compute_asset_id("t", {"b": "2", "a": "1"})
         b = compute_asset_id("t", {"a": "1", "b": "2"})
         assert a == b
@@ -75,8 +63,6 @@ class TestCreationCardsImageUrl:
     async def test_race_cards_have_image_url(self):
         ctx = _make_context()
         await _push_cards(ctx, category="race")
-        # Verify function doesn't error out — actual image_url content tested below
-        # The unit test for the actual image_url content relies on compute_asset_id tests
 
     async def test_class_cards_have_image_url(self):
         ctx = _make_context()

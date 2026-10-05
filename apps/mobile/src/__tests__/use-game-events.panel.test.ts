@@ -11,8 +11,6 @@ beforeEach(() => {
   authStore.setState({ playerId: null, phase: "unauthenticated", token: null });
 });
 
-// --- handleGameEvent: quest_updated advances panelStore ---
-
 test("quest_updated advances quest in panelStore", () => {
   panelStore.getState().setQuests([
     {
@@ -91,12 +89,9 @@ test("quest_updated completion marks quest completed and clears the HUD objectiv
   expect(quest.status).toBe("completed");
   expect(quest.currentStage).toBe(2);
   expect(quest.stages.every((s) => s.completed)).toBe(true);
-  // The tracked HUD objective is cleared, not blanked to an empty-objective card.
   expect(hudStore.getState().activeObjective).toBeNull();
   expect(hudStore.getState().questObjectiveVisible).toBe(false);
 });
-
-// --- handleGameEvent: inventory_updated ---
 
 test("inventory_updated does not crash without inventory array", () => {
   expect(() => handleGameEvent({ type: "inventory_updated" })).not.toThrow();
@@ -125,8 +120,6 @@ test("inventory_updated populates panelStore inventory", () => {
   expect(inv[0].name).toBe("Steel Sword");
   expect(inv[0].equipped).toBe(true);
 });
-
-// --- handleGameEvent: session_init populates panelStore ---
 
 test("session_init populates panelStore characterDetail", () => {
   handleGameEvent({
@@ -319,8 +312,6 @@ test("session_init populates map from map_progress array", () => {
   expect(map.find((n) => n.locationId === "guild")?.visited).toBe(true);
   expect(map.find((n) => n.locationId === "market")?.visited).toBe(true);
 });
-
-// --- handleGameEvent: location_changed updates map ---
 
 test("location_changed adds visited location to panelStore map", () => {
   handleGameEvent({

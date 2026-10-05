@@ -60,8 +60,6 @@ const SAMPLE_QUEST: QuestView = {
   status: "active",
 };
 
-// --- Open / Close ---
-
 test("openPanel sets isOpen and default tab", () => {
   panelStore.getState().openPanel();
   expect(panelStore.getState().isOpen).toBe(true);
@@ -80,21 +78,15 @@ test("closePanel sets isOpen false", () => {
   expect(panelStore.getState().isOpen).toBe(false);
 });
 
-// --- Tab switching ---
-
 test("setActiveTab changes active tab", () => {
   panelStore.getState().setActiveTab("map");
   expect(panelStore.getState().activeTab).toBe("map");
 });
 
-// --- Character detail ---
-
 test("setCharacterDetail stores detail", () => {
   panelStore.getState().setCharacterDetail(SAMPLE_DETAIL);
   expect(panelStore.getState().characterDetail).toEqual(SAMPLE_DETAIL);
 });
-
-// --- Inventory ---
 
 test("setInventory stores items", () => {
   panelStore.getState().setInventory([SAMPLE_ITEM]);
@@ -102,15 +94,11 @@ test("setInventory stores items", () => {
   expect(panelStore.getState().inventory[0].name).toBe("Steel Sword");
 });
 
-// --- Quests ---
-
 test("setQuests stores quests", () => {
   panelStore.getState().setQuests([SAMPLE_QUEST]);
   expect(panelStore.getState().quests).toHaveLength(1);
   expect(panelStore.getState().quests[0].questName).toBe("Guild Initiation");
 });
-
-// --- Map progress ---
 
 test("setMapProgress replaces all map nodes", () => {
   const nodes: MapNode[] = [{ locationId: "tavern", visited: true, connections: ["market"] }];
@@ -131,7 +119,6 @@ test("addVisitedLocation deduplicates existing nodes", () => {
   panelStore.getState().addVisitedLocation("tavern", ["market"]);
   panelStore.getState().addVisitedLocation("market", ["tavern", "docks"]);
   const map = panelStore.getState().mapProgress;
-  // tavern (visited), market (now visited), docks (stub)
   expect(map).toHaveLength(3);
   const tavern = map.find((n) => n.locationId === "tavern");
   const market = map.find((n) => n.locationId === "market");
@@ -149,8 +136,6 @@ test("addVisitedLocation is no-op if already visited", () => {
   const after = panelStore.getState().mapProgress;
   expect(before).toBe(after); // same reference
 });
-
-// --- advanceQuest ---
 
 test("advanceQuest updates currentStage and marks prior stages completed", () => {
   const quest: QuestView = {
@@ -193,8 +178,6 @@ test("advanceQuest ignores non-matching questId", () => {
   panelStore.getState().advanceQuest("nonexistent", 5);
   expect(panelStore.getState().quests[0].currentStage).toBe(1);
 });
-
-// --- Reset ---
 
 test("reset clears all state", () => {
   panelStore.getState().openPanel("map");

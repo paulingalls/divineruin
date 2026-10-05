@@ -5,12 +5,6 @@ import { sendSpecializationChoice } from "@/audio/specialization-hint";
 import { characterStore, type CharacterSummary } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
 
-// M2.3 story-005: the mobile glanceable supplement for the L5 specialization fork.
-// The handler dispatches the agent's SPECIALIZATION_CHOICE event into hudStore's
-// dedicated specializationChoice field (rendered as an interactive OverlayManager
-// branch, like the creation-card row — NOT a tap-to-dismiss pushOverlay). Tapping a
-// path publishes a player_hints data-channel hint via sendSpecializationChoice.
-
 const SAMPLE_CHARACTER: CharacterSummary = {
   playerId: "player-1",
   name: "Kael",
@@ -35,8 +29,6 @@ beforeEach(() => {
   characterStore.getState().clear();
   hudStore.getState().reset();
 });
-
-// --- handler dispatch (AC1) ---
 
 test("specialization_choice event sets the choice state with both options", () => {
   handleGameEvent({
@@ -95,8 +87,6 @@ test("specialization_choice with only malformed options is a no-op", () => {
   expect(hudStore.getState().specializationChoice).toBeNull();
 });
 
-// --- independence from level-up (AC3) ---
-
 test("xp_awarded level-up pushes a level_up overlay and does NOT set the choice state", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
   handleGameEvent({
@@ -109,8 +99,6 @@ test("xp_awarded level-up pushes a level_up overlay and does NOT set the choice 
   expect(hudStore.getState().specializationChoice).toBeNull();
   expect(hudStore.getState().overlays.some((o) => o.type === "level_up")).toBe(true);
 });
-
-// --- tap-send hint (AC2) ---
 
 interface PublishCall {
   data: Uint8Array;

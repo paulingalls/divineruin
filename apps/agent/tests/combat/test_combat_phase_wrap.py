@@ -1,5 +1,3 @@
-"""Wrap-beat tests for the pure combat phase engine."""
-
 from dataclasses import replace
 
 from combat._helpers import _declarations, _make_combat_state
@@ -10,10 +8,7 @@ from session_data import CombatParticipant, CombatState
 
 class TestWrapBeat:
     def test_a_fallen_enemy_is_not_owed_a_death_save(self):
-        """Only death-save-capable participants are surfaced. An enemy dropped to 0 HP without
-        overkill is is_fallen and not is_dead, so the counter filters alone let it through -- and
-        the DM was handed an owed death save for a defeated goblin that no tool can ever roll
-        (request_death_save serves players/companions, never enemies)."""
+        """Fallen enemies owe no death save because the death-save tool serves only players and companions."""
         state = _make_combat_state()
         fallen_enemy = replace(state.participants[1], id="goblin_scout_2", hp_current=0, is_fallen=True)
         state.participants.append(fallen_enemy)  # one enemy down, one standing -> combat continues
@@ -27,7 +22,6 @@ class TestWrapBeat:
         assert advance.wrap.death_saves_due == []  # the fallen enemy owes nothing
 
     def test_schedules_death_save_decays_resonance_and_loops(self):
-        # Player fallen (not dead) + enemy alive -> combat continues, loops to declaration.
         state = _make_combat_state(player_fallen=True)
         state.beat = PhaseBeat.WRAP
         state.pending_declarations = _declarations()
@@ -67,7 +61,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_multi_player_defeat_only_when_all_down(self):
-        # Two players both terminally down + an alive enemy -> combat ends in defeat
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -116,7 +109,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_multi_player_one_down_one_standing_continues(self):
-        # Player A terminally down, Player B standing -> combat continues
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -164,7 +156,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome is None
 
     def test_multi_player_one_down_one_rolling_saves_continues(self):
-        # Player A down, Player B fallen but still rolling saves -> combat continues
         state = CombatState(
             combat_id="combat_multi",
             participants=[
@@ -214,8 +205,6 @@ class TestWrapBeat:
         assert "player_2" in advance.wrap.death_saves_due
 
     def test_living_echo_with_living_enemy_blocks(self):
-        # A living temporary_hollowed echo blocks combat-end while a living enemy keeps the fight
-        # going — combat cannot end while both a hostile echo and a live enemy stand.
         state = CombatState(
             combat_id="combat_echo_gate",
             participants=[
@@ -252,8 +241,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome is None
 
     def test_solo_living_echo_all_enemies_fallen_resolves_defeat(self):
-        # story-005 finding 5: a solo living echo with NO living enemy and no standing non-echo
-        # player is stranded (nobody left to destroy it) -> defeat (party lost), not a hang.
         state = CombatState(
             combat_id="combat_echo_stranded",
             participants=[
@@ -331,8 +318,6 @@ class TestWrapBeat:
         assert advance.wrap.outcome == "defeat"
 
     def test_victory_requires_a_standing_player(self):
-        # story-005: victory fires when all enemies are down AND at least one non-echo player still
-        # stands (a downed-but-savable ally does not block the win; it stabilizes at combat_end).
         state = CombatState(
             combat_id="combat_victory_standing",
             participants=[
@@ -375,12 +360,7 @@ class TestWrapBeat:
 
 
 class TestWrapTicksVeilWard:
-    """The encounter ward's round clock (M24 story-006).
-
-    The ward lives ON CombatState, so — exactly like participant conditions — the WRAP beat
-    advances it in place on the deep-copied next_state and expiry is the field going None.
-    Nothing is signalled through WrapOutcome; there is nothing for orchestration to apply.
-    """
+    """An encounter ward lives on the copied CombatState; expiration needs no separate orchestration write."""
 
     def _warded(self, rounds_remaining, *, source="paladin"):
         state = _make_combat_state()
@@ -393,7 +373,6 @@ class TestWrapTicksVeilWard:
         assert next_state.veil_ward == {"source": "paladin", "rounds_remaining": 2}
 
     def test_three_round_ward_expires_on_the_third_wrap(self):
-        # A Paladin's 3-round ward survives wraps 1 and 2 and dies at the third.
         state = self._warded(3)
         for expected in (2, 1):
             state, _ = advance_combat_phase(state, None)
@@ -419,8 +398,6 @@ class TestWrapTicksVeilWard:
         assert next_state.veil_ward is None
 
     def test_ward_ticks_even_when_combat_ends(self):
-        # Mirrors test_wrap_ticks_conditions_even_when_combat_ends: the tick is unconditional,
-        # never gated behind `if not wrap.combat_ended`.
         state = self._warded(3)
         for p in state.participants:
             if p.type == "enemy":

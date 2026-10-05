@@ -1,23 +1,4 @@
-"""Real-DB E2E capstone for Milestone 8 — Spell Acquisition (3 tracks + preparation).
-
-Proves the M8 stories compose end-to-end on real infra (auto-marked `acceptance` by
-tests/acceptance/conftest.py), across both surfaces. This is where the literal real-Postgres
-AC4 letter — deferred from stories 004/005/006 per ADR 0003 — finally lands.
-
-- **message_event** (Python agent path): against one seeded Postgres testcontainer,
-  starting electives are granted at creation (story-003), a spell accrues training cycles and
-  promotes to known only on the final cycle (story-004), a scroll spell is learned immediately
-  (story-005), an above-tier learn is rejected by the level gate (story-005), and a long-rest
-  loadout is prepared / over-limit selection refused (story-006) — all against real rows.
-- **http_websocket** (TS server path): the Bun server boots bound to the SAME testcontainer;
-  its startup Promise.all runs loadSpells() (story-001) over the seeded spells table — a served
-  response proves it parsed without failing boot (a malformed/missing row crashes parseSpellRow).
-
-Training (story-004) is driven through character_spells.advance_learning_cycle + record_learned
-directly — exactly the spell-promotion path async_worker_training runs (async_worker_training.py
-:180-195) — rather than the full worker, whose running_second_half path pulls in TTS/LLM/push
-machinery that is out of M8 scope and unmocked (the pre-push gate unsets the API keys).
-"""
+"""Advance learning directly rather than invoking worker speech machinery outside this capstone's scope."""
 
 from __future__ import annotations
 

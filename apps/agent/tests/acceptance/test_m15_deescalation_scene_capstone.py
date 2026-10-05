@@ -1,22 +1,4 @@
-"""Capstone: M15 Tier-3 structured de-escalation scene, end-to-end on a real Postgres testcontainer.
-
-Stories 001-003 shipped the scene in slices: 001 the pure per-round resolver + DeEscalationState,
-002 the in-combat multi-round GROUP orchestration (per-enemy resistance profiles, whole-group +2
-surrender), 003 the fallen-ally combat-end outcome (deescalated stabilizes a savable fallen ally).
-This capstone proves they COMPOSE on ONE seeded testcontainer, driving the REAL phase loop:
-
-- A Diplomat argues a 2-enemy hostile GROUP down over MULTIPLE rounds. Each enemy shifts INDEPENDENTLY
-  by its own resistance profile — a `cowardly` foe (vulnerable to a `threat` argument) folds faster
-  than a `greedy` one (unmoved by it, threat-neutral) — until the WHOLE living group crosses the +2 surrender
-  threshold and combat ends "deescalated".
-- A DOWNED savable ally, present in the party, is STABILIZED to 1 HP on that deescalated end (never
-  killed), proving the story-003 combat-end outcome fires from the real phase loop.
-
-Determinism: the argument d20 seam (check_resolution.dice_roll) is pinned to 20. The engine never
-auto-rolls death saves (only the DM request_death_save tool does, never called here) and death saves
-use a different seam (combat_resolution.dice_roll), so the fallen ally rolls ZERO death saves and
-stays savable-fallen every round. Distinct player_ids since the testcontainer DB is shared.
-"""
+"""Pin only the argument d20. Death saves use another seam and are not auto-rolled, leaving the ally savable."""
 
 from __future__ import annotations
 

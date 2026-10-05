@@ -1,26 +1,4 @@
-"""Capstone: M11 generalized spell targeting end-to-end against a real Postgres testcontainer.
-
-story-001 threaded an explicit target_id through the cast path and rerouted the Revivify
-Hollow-killed gate from the caster row to the resolved target (closing the story-007 forward-wire,
-assumption ecc7b803b9b5). This capstone proves the REAL cast entry point (spell_casting._cast_spell_impl,
-what the cast_spell @function_tool delegates to) + the REAL seeded spell catalog read a SEPARATELY
-PERSISTED target's hollow_killed flag — composing story-007's producer (set_hollow_killed on a corpse)
-with M11's rerouted consumer against one per-run testcontainer (auto-marked `acceptance` by
-tests/acceptance/conftest.py).
-
-Scenarios:
-  A — revival on a Hollow-killed TARGET is refused while the CASTER is living (the regression guard:
-      a gate re-keyed on the caster would NOT refuse), and the caster's Focus is untouched (gate
-      fires before any write).
-  B — the SAME revival on a LIVING target resolves and deducts Focus — the only difference from A is
-      the target's persisted flag, isolating the gate as target-keyed.
-  C — a NON-revival spell on a target resolves and carries target_id into the packet without a gate
-      fetch (the durable general-targeting path; non-revival skips target validation, eabd919bf1ca).
-
-Determinism: distinct player ids per test (the testcontainer DB is shared); the mock room absorbs the
-allowed cast's RESONANCE_CHANGED publish. divine_revivify (focus_cost 5) and arcane_bolt (cantrip,
-focus_cost 0) are real catalog spells.
-"""
+"""Persist target and caster separately, differing only in the target flag, so caster-keyed revival refusal cannot pass."""
 
 from __future__ import annotations
 

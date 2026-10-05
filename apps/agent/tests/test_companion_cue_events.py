@@ -1,5 +1,3 @@
-"""Failure boundaries for companion-cue HUD publication."""
-
 import asyncio
 import logging
 import time

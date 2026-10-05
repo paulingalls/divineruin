@@ -1,5 +1,3 @@
-"""A published held attack preserves its roll-time spoken reaction contribution."""
-
 import pytest
 from combat._helpers import _ac_sensitive_resolver, _ctx_at_resolution, _own_reaction, _resolve_deps
 from combat._reaction_helpers import _drain, _enemy_blow, _guarded_ally_state, _pause_at

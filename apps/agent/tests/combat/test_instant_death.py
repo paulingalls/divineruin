@@ -1,11 +1,4 @@
-"""Instant-death threshold (M4.4 story-002).
-
-Spec (game_mechanics_combat.md §The Fallen State): if a single hit drops HP to 0 AND the excess
-damage (overkill) equals or exceeds the target's max HP, the character dies instantly — no Fallen
-state, no death saves. The overkill is computed in resolve_attack (pre-floor) and the verdict is
-applied at the damage site (combat_support._resolve_attack_packet); the pure engine (combat_phase
-._wrap) then ends combat without a death-save beat. is_dead is distinct from is_fallen
-(fallen = dying/making saves; dead = gone)."""
+"""Compute overkill before flooring HP so instant death remains distinct from fallen and owed death saves."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -83,7 +76,6 @@ class TestInstantDeathVerdict:
         attacker, target, action = _attacker_target_action(cs)
         mutations, queries = _mocks()
 
-        # Drops to 0 but overkill below max HP -> normal Fallen (death saves), not instant death.
         await _resolve_attack_packet(
             ctx.userdata,
             attacker,
@@ -144,8 +136,6 @@ class TestInstantDeathVerdict:
 
 
 class TestWrapInstantDeath:
-    """The pure Beat-4 wrap ends combat on an instant-dead player without a death-save beat."""
-
     def test_instant_dead_player_ends_combat_as_defeat(self):
         cs = _make_combat_state()
         player = cs.get_participant("player_1")
@@ -169,7 +159,6 @@ class TestWrapInstantDeath:
         assert "player_1" not in wrap.death_saves_due
 
     def test_fallen_but_not_dead_player_still_rolls_death_saves(self):
-        # Control: a normally-fallen player (overkill below max HP) still enters the death-save grind.
         cs = _make_combat_state()
         player = cs.get_participant("player_1")
         assert player is not None

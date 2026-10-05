@@ -1,21 +1,4 @@
-"""Capstone: M3.3 spell casting end-to-end against a real Postgres testcontainer.
-
-stories 001-005 + 008 shipped the M3.3 catalog + cast path with mock-conn / unit
-coverage. This capstone proves the Python cast surfaces compose against ONE seeded
-testcontainer (auto-marked `acceptance` by tests/acceptance/conftest.py), catching
-loader / JSONB seams the mocked unit tests can't:
-
-- spells.load_spells reads the seeded 87-spell catalog from real PG, carrying the
-  reconciled 4-field M3.3 schema (post story-008: no per-row level_requirement).
-- spell_casting._cast_spell_impl gates + deducts Focus, accrues Resonance, and
-  persists both into players.data JSONB — composed on real PG, nothing mocked.
-- Resonance state is always DERIVED on read (resonance.get_resonance_state), never
-  stored (no-number spec, magic.md:98).
-
-Each test uses a distinct player_id since the testcontainer DB is shared across the
-session. cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any
-id without archetype/level gating.
-"""
+"""Resonance state derives from stored current; casts in this lane gate Focus rather than archetype or level."""
 
 from __future__ import annotations
 
@@ -48,7 +31,6 @@ async def _focus_current(player_id: str) -> int:
 
 
 async def test_catalog_loads_with_reconciled_m33_schema(reset_db_pool: str) -> None:
-    """All 87 spells load from real PG carrying the 4 M3.3 fields and no level_requirement."""
     await spells.load_spells()
     loaded = (
         spells.get_spells_by_source("arcane")
@@ -65,7 +47,6 @@ async def test_catalog_loads_with_reconciled_m33_schema(reset_db_pool: str) -> N
 
 
 async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> None:
-    """One cast on real PG: Focus deducts by focus_cost; generated Resonance persists; state derives."""
     pool = await db.get_pool()
     player_id = "cap_cast_single"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
@@ -89,7 +70,6 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
 
 
 async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
-    """E2E: seed -> load -> cast x3 -> re-read. Focus, Resonance value, and derived state stay consistent across bands."""
     pool = await db.get_pool()
     player_id = "cap_cast_bands"
     # 20 Focus funds 4 casts at focus 5: under per-round (cast-paced) decay (story-010) each

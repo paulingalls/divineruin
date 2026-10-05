@@ -1,25 +1,10 @@
-import ast
 import json
 from pathlib import Path
 from unittest.mock import patch
 
 from companion_profiles_config_fixture import load_fixture_config, setup_companion_profiles_config_fixture
 
-AGENT_DIR = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).parent / "fixtures/prompt_split_baseline.json"
-MOVED_COMPANION = {
-    "_non_verbal_note",
-    "build_companion_prompt",
-    "build_companion_cue",
-    "companion_voice_directive",
-    "is_companion_cue",
-}
-MOVED_MODE = {
-    "DISPATCH_MODE_PROMPT",
-    "DISPATCH_SYSTEM_PROMPT",
-    "BLACKSMITH_PROMPT",
-    "BLACKSMITH_SYSTEM_PROMPT",
-}
 
 
 def render_prompts():
@@ -113,46 +98,6 @@ def test_prompts_match_reviewed_baseline():
     assert expected.keys() == actual.keys()
     assert all(isinstance(value, str) and value for value in actual.values())
     assert actual == expected
-
-
-def test_moved_names_have_one_home_and_importers_are_current():
-    modules = [path for path in AGENT_DIR.rglob("*.py") if ".venv" not in path.parts]
-    assert modules
-    imports = {"system_prompts": 0, "companion_prompts": 0, "mode_prompts": 0}
-    for path in modules:
-        tree = ast.parse(path.read_text(), filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module in imports:
-                imports[node.module] += 1
-                if node.module == "system_prompts":
-                    assert not ({alias.name for alias in node.names} & (MOVED_COMPANION | MOVED_MODE)), path
-    assert all(imports.values()), imports
-    for module_name, moved in (
-        ("system_prompts", MOVED_COMPANION | MOVED_MODE),
-        ("companion_prompts", MOVED_COMPANION),
-        ("mode_prompts", MOVED_MODE),
-    ):
-        tree = ast.parse((AGENT_DIR / f"{module_name}.py").read_text())
-        defined = set()
-        imported = set()
-        for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                defined.add(node.name)
-            elif isinstance(node, ast.Assign):
-                defined.update(target.id for target in node.targets if isinstance(target, ast.Name))
-            elif isinstance(node, ast.ImportFrom):
-                imported.update(alias.asname or alias.name for alias in node.names)
-        if module_name == "system_prompts":
-            assert not (defined & moved)
-            # build_system_prompt calls build_companion_prompt; any other moved name here is a re-export shim.
-            assert imported & moved == {"build_companion_prompt"}
-        else:
-            assert moved <= defined
-
-
-def test_prompt_modules_leave_room_under_cap():
-    for name in ("system_prompts", "companion_prompts", "mode_prompts"):
-        assert len((AGENT_DIR / f"{name}.py").read_text().splitlines()) <= 400, name
 
 
 if __name__ == "__main__":

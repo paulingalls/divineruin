@@ -62,11 +62,8 @@ class TestQueryInfoRecipeRoute:
 
 
 class TestQueryInfoNoTargetIdKinds:
-    """AC2+AC3: training_programs and workspaces work without target_id, unknown kinds fail."""
-
     @pytest.mark.asyncio
     async def test_training_programs_no_target_id_required(self, mock_context):
-        """Test that kind='training_programs' works without target_id (no raise)."""
         mock_impl_result = json.dumps({"programs": ["Apprentice", "Scholar"]})
 
         with patch("query_tools.training_tools") as mock_training_mod:
@@ -84,7 +81,6 @@ class TestQueryInfoNoTargetIdKinds:
 
     @pytest.mark.asyncio
     async def test_workspaces_no_target_id_required(self, mock_context):
-        """Test that kind='workspaces' works without target_id (no raise)."""
         mock_impl_result = json.dumps({"workspaces": ["smithy", "alchemy_lab"]})
 
         with patch("query_tools.crafting_tools") as mock_crafting_mod:
@@ -127,7 +123,6 @@ class TestQueryInfoNoTargetIdKinds:
 
     @pytest.mark.asyncio
     async def test_unknown_kind_fails_loud(self, mock_context):
-        """Test that unknown kind still raises ToolError."""
         with pytest.raises(ToolError, match="Unknown query_info kind"):
             await _query_info_impl(
                 mock_context,
@@ -137,7 +132,6 @@ class TestQueryInfoNoTargetIdKinds:
 
     @pytest.mark.asyncio
     async def test_recipe_without_target_id_still_requires_it(self, mock_context):
-        """Test that kind='recipe' without target_id raises error (recipe needs target_id)."""
         with pytest.raises(ToolError, match="requires target_id"):
             await _query_info_impl(
                 mock_context,
@@ -180,24 +174,18 @@ def test_prompts_name_ability_id_producer():
 
 
 class TestQueryInfoE2E:
-    """AC4: E2E tests against real database and _impl functions."""
-
     @pytest.mark.asyncio
     async def test_recipe_route_returns_valid_json(self, mock_context, dev_db_pool):
-        """AC4: query_info(kind='recipe') returns JSON with expected recipe fields."""
         import recipes
 
-        # Get first recipe from seeded data
         recipe_list = await recipes.list_recipes()
         if not recipe_list:
             pytest.skip("No recipes in test DB")
 
         recipe_id = recipe_list[0]["id"]
 
-        # Call query_info with real _impl (no mocks)
         result = await _query_info_impl(mock_context, kind="recipe", target_id=recipe_id)
 
-        # Verify JSON shape and contents
         parsed = json.loads(result)
         assert parsed["recipe_id"] == recipe_id
         assert "name" in parsed
@@ -207,7 +195,6 @@ class TestQueryInfoE2E:
 
     @pytest.mark.asyncio
     async def test_training_programs_route_returns_valid_json(self, mock_context, dev_db_pool):
-        """AC4: query_info(kind='training_programs') returns JSON with programs list."""
         player_id = f"query_training_{uuid.uuid4().hex}"
         mock_context.userdata.player_id = player_id
         mock_context.userdata.acting_player_id = player_id
@@ -226,11 +213,8 @@ class TestQueryInfoE2E:
 
     @pytest.mark.asyncio
     async def test_workspaces_route_returns_valid_json(self, mock_context, dev_db_pool):
-        """AC4: query_info(kind='workspaces') returns JSON with workspace data."""
-        # Call query_info with real _impl (no mocks)
         result = await _query_info_impl(mock_context, kind="workspaces")
 
-        # Verify JSON shape
         parsed = json.loads(result)
         assert "accessible" in parsed
         assert "rentable" in parsed

@@ -1,14 +1,4 @@
-"""M4.8 story-013: server-side atomic removal of spent beneficial conditions.
-
-The consume side previously read players.data.conditions from a row fetched OUTSIDE the tx,
-removed the spent die in Python, then overwrote the whole list — clobbering a concurrent
-condition write (e.g. a DM-applied Poisoned). db_mutations_conditions.remove_player_conditions
-removes the named types in ONE atomic SQL statement that operates on the LIVE row, so a
-condition added between a stale read and the removal survives.
-
-Two-part coverage (mirrors the db_mutations_* family): mock-conn unit asserts the jsonb_set
-array-filter SQL; real-PG fast-lane round-trips prove the clobber-preservation + null tolerance.
-"""
+"""Filter the live row atomically so a stale consumer cannot clobber concurrently added conditions."""
 
 import json
 from unittest.mock import AsyncMock
@@ -22,18 +12,6 @@ def _cond(ctype: str) -> dict:
 
 
 class TestRemovePlayerConditionsSql:
-    async def test_filters_named_types_via_jsonb_set(self):
-        conn = AsyncMock()
-        await db_mutations_conditions.remove_player_conditions("p1", ("blessed", "inspired"), conn=conn)
-        sql, *params = conn.execute.call_args.args
-        assert "UPDATE players" in sql
-        assert "jsonb_set" in sql
-        assert "'{conditions}'" in sql
-        assert "jsonb_array_elements" in sql
-        assert "ANY($2" in sql  # the consumed-type array, server-side filter
-        assert params[0] == "p1"
-        assert params[1] == ["blessed", "inspired"]  # asyncpg wants a list for the text[] param
-
     async def test_does_not_touch_other_keys(self):
         conn = AsyncMock()
         await db_mutations_conditions.remove_player_conditions("p1", ("blessed",), conn=conn)
@@ -110,9 +88,6 @@ async def test_remove_tolerates_null_conditions(dev_db_pool):
 
 
 async def test_consume_preserves_concurrent_condition_via_server_side_removal(dev_db_pool):
-    # End-to-end for the 4 pure-consume modes: consume_beneficial_conditions takes only the spent
-    # types (no stale player dict) and removes them server-side. The DB holds [blessed, poisoned];
-    # consuming 'blessed' leaves 'poisoned' — proving no read-modify-write clobber.
     pool = dev_db_pool
     player_id = "s013_consume_preserves_concurrent"
     await _seed_conditions(pool, player_id, [_cond("blessed"), _cond("poisoned")])

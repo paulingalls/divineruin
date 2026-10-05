@@ -42,7 +42,6 @@ test("an env-file path reaches the subprocess only when it resolves under --cwd"
   const fromNested = await probe(["--env-file=../../.env", "run", "--cwd", "apps/server", "probe"]);
   expect(fromNested).toEqual({ marker: "from-env-file", exitCode: 0 });
 
-  // The same file, named as the launcher sees it: silently loads nothing.
   const fromLauncher = await probe(["--env-file=.env", "run", "--cwd", "apps/server", "probe"]);
   expect(fromLauncher).toEqual({ marker: "", exitCode: 0 });
 });
@@ -116,7 +115,6 @@ const SERVICE_ENTRYPOINTS = [
 // Suites whose tests connect to the services (scripts/test_content.test.ts, the
 // server db/invite lanes). The other workspaces' suites are pure.
 const SERVICE_TEST_DIRS = ["scripts", "apps/server"];
-// Floors: an empty manifest walk or an empty match set reads as green otherwise.
 const MIN_MANIFESTS = 5;
 const MIN_SERVICE_COMMANDS = 12;
 

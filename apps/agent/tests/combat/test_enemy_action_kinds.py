@@ -1,10 +1,4 @@
-"""Enemy action kinds: an order never rolls, so no authored action can crash the attack resolver.
-
-Bug 2a6d4b8a: content authored six non-damaging orders as damage "0" rows. The DM can declare an enemy
-pool action only as an attack, and a hit then rolled dice_roll("0"), which raises. An action now has
-a `kind`: absent means "attack", and a "command" resolves without a roll. Hold Person became a
-save-based condition row instead (test_hold_person_paralysis.py).
-"""
+"""Commands must not roll damage "0", which is not a valid dice expression."""
 
 import ast
 import random

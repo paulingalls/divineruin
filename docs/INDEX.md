@@ -846,7 +846,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 # Decisions
 
-## decisions/0001-patron-roster-sot.md (209 lines)
+## decisions/0001-patron-roster-sot.md (208 lines)
 
 ---
 
@@ -854,7 +854,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## decisions/0003-acceptance-llm-run-schedule.md (91 lines)
+## decisions/0003-acceptance-llm-run-schedule.md (93 lines)
 
 ---
 
@@ -936,7 +936,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (218 lines)
+## milestones/REMAINING.md (217 lines)
 
 ---
 

@@ -434,7 +434,7 @@ retain `completion: "failed"` and `passed: false`.
 Run the closed matrix with:
 
 ```sh
-uv run --project apps/agent --env-file .env pytest apps/agent/tests/strict_tools/test_gameplay_quality.py apps/agent/tests/acceptance/test_strict_luna_gameplay.py -q
+uv run --project apps/agent --env-file .env pytest apps/agent/tests/acceptance/test_strict_luna_gameplay.py -q
 ```
 
 The measured run passed all 27 rows and the report completeness guard: 56 model

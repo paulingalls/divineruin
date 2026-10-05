@@ -1,5 +1,3 @@
-"""Beat 3 drains only the engine failures explicitly declared unresolvable."""
-
 from copy import deepcopy
 
 import pytest

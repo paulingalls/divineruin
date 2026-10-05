@@ -1,5 +1,3 @@
-"""Tests for database error handling utilities."""
-
 from __future__ import annotations
 
 import json
@@ -178,11 +176,9 @@ class TestDbToolDecorator:
 
     @pytest.mark.asyncio
     async def test_non_database_errors_not_caught(self):
-        """The decorator should only catch DatabaseError types."""
 
         @db_tool
         async def buggy_tool():
-            # This is a programming error, not a database error
             raise KeyError("Oops")
 
         with pytest.raises(KeyError):
@@ -190,9 +186,7 @@ class TestDbToolDecorator:
 
     @pytest.mark.asyncio
     async def test_json_decode_error_caught_and_formatted(self):
-        """A corrupted content row (json.loads -> JSONDecodeError, a ValueError subclass)
-        is a DATA error: it must surface as a clean ToolError, not a raw stack to the LLM
-        (debt cdde4f403edf). Decision db-tool-jsondecode-catch: narrow JSONDecodeError catch."""
+        """Only JSON decoding errors belong to malformed persisted JSON."""
 
         @db_tool
         async def corrupt_data_tool():
@@ -204,9 +198,7 @@ class TestDbToolDecorator:
 
     @pytest.mark.asyncio
     async def test_non_json_valueerror_not_caught(self):
-        """Boundary guard: a non-JSON ValueError is a programming bug, not corrupted data —
-        it must keep propagating (fail-loud). The catch is JSONDecodeError-specific, never
-        broad ValueError, so logic bugs are never masked as 'data corrupted'."""
+        """A programming ValueError must escape the database-error translation."""
 
         @db_tool
         async def logic_bug_tool():

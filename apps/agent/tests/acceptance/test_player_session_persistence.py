@@ -1,13 +1,4 @@
-"""Capstone: player session_count persistence end-to-end against a real Postgres testcontainer.
-
-story-002 (M3.5) adds a per-player session counter at players.data{session_count}, consumed by
-story-003 to gate the Thessyn "Deep Adaptation" flickering bonus (10+ sessions). The mock-conn
-units assert the SQL shape; this proves the JSONB round-trip on real PG — crucially the atomic
-UPDATE...RETURNING arithmetic (absent key -> 1, then 1 -> 2), the fail-loud on a missing player
-row, and that the jsonb_set write touches ONLY {session_count} and leaves sibling keys intact.
-Auto-marked `acceptance` by tests/acceptance/conftest.py; distinct player_id since the
-testcontainer DB is shared across the session.
-"""
+"""Execute UPDATE RETURNING arithmetic; mock connections cannot certify counter accumulation or sibling preservation."""
 
 from __future__ import annotations
 

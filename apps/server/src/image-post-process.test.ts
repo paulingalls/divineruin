@@ -3,7 +3,6 @@ import sharp from "sharp";
 import { postProcessImage } from "./image-post-process.ts";
 
 test("postProcessImage outputs correct dimensions for 3:4", async () => {
-  // Create a 200x200 test image
   const input = await sharp({
     create: { width: 200, height: 200, channels: 3, background: { r: 128, g: 128, b: 128 } },
   })
@@ -64,7 +63,6 @@ test("postProcessImage returns valid PNG buffer", async () => {
     .toBuffer();
 
   const result = await postProcessImage(input, { aspectRatio: "9:16" });
-  // PNG magic bytes
   expect(result[0]).toBe(0x89);
   expect(result[1]).toBe(0x50); // P
   expect(result[2]).toBe(0x4e); // N

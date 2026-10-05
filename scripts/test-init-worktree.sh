@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unit tests for the worktree bootstrap helpers. Mirrors
-# scripts/test-precommit-worktree-skip.sh: no framework, plain asserts,
-# non-zero exit on the first failure.
-#
 # These exercise the PURE helpers (offset math, name sanitizing, override), the
 # offset-resolution path, which is context-aware: a primary checkout may set an
 # offset in .env, while a linked worktree must use a non-zero offset — and the

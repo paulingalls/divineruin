@@ -1,5 +1,3 @@
-"""Authenticated multiplayer turns cannot fall back to the primary player's resources."""
-
 import asyncio
 import dataclasses
 from unittest.mock import AsyncMock, MagicMock

@@ -1,24 +1,4 @@
-"""Capstone: M24 scope-owned, party-wide, duration-bound Veil Ward end-to-end (real Postgres).
-
-Every prior M24 story proved its own seam, mostly against mocked connections. This capstone drives
-the whole model through the REAL phase loop with a live two-member party on one seeded testcontainer,
-mocking neither half of any contract — it exists because a prior sprint shipped a feature whose two
-halves each mocked the other and passed while broken.
-
-AC1: one party member raises a Cleric ward -> every caster IN the encounter halves, not just the
-raiser, and both clients see one scope-wide (no caster_id) VEIL_WARD_CHANGED broadcast.
-AC2: the encounter ward's only home is CombatState -- combat's end IS its expiry (no veil_wards row
-ever exists for it), and the next out-of-combat cast is unhalved.
-AC3: no players row carries the legacy `data.veil_ward` key migration 057 removed.
-AC4: two independent clocks never leak into each other's scope -- a Paladin's ROUNDS(3) ward ticks
-only at the combat WRAP beat (decrement-then-test, so it survives wraps 1-2 and dies on the 3rd), and
-an Artificer anchor's REAL_TIME hour ticks only against the world clock (untouched by WRAP beats,
-expiring lazily on read once NOW() passes it).
-
-Every scope/player id here is cap_m24_-prefixed and unique per test -- the testcontainer DB is shared
-across the session, so a stray ward left at a shared location would silently halve every other test's
-casts.
-"""
+"""Use unique scope ids: a ward left at a shared location would silently halve other tests' casts."""
 
 from __future__ import annotations
 
@@ -69,9 +49,6 @@ async def _equip_weapon(pool, player_id: str) -> None:
 
 
 async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(reset_db_pool: str) -> None:
-    """AC1: a differential inside ONE encounter -- unwarded baseline, then A raises, then BOTH A (the
-    raiser) and B (not the raiser) cast halved. Party-wide, not caster-keyed. Exactly one scope-wide
-    VEIL_WARD_CHANGED broadcast, carrying no caster_id -- there is nothing for a client to filter."""
     pool = await db.get_pool()
     a, b = "cap_m24_ac1_cleric", "cap_m24_ac1_mage"
     location = "cap_m24_ac1_hall"
@@ -133,9 +110,6 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
 
 
 async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved(reset_db_pool: str) -> None:
-    """AC2: the encounter scope has exactly ONE home -- combat's row deletion IS the ward's expiry.
-    No veil_wards row is ever written for it, the combat-end broadcast reports active=False, and a
-    following out-of-combat cast generates the unhalved baseline."""
     pool = await db.get_pool()
     player_id = "cap_m24_ac2_cleric"
     location = "cap_m24_ac2_hall"
@@ -184,17 +158,7 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
 
 
 async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> None:
-    """AC3: migration 057 removed players.data.veil_ward, and raising a ward does not write it back.
-
-    Raises its OWN ward through the real tool rather than leaning on the raisers AC1/AC2 happen to
-    leave behind: a bare global count would pass in isolation against seed rows that never raised
-    anything, greening exactly the regression this guards (the raise re-writing the legacy key).
-
-    The raise happens IN COMBAT because that is the only path production can reach: activate_veil_ward
-    is registered on combat_agent alone, so its out-of-combat location-scope branch is dead code (debt
-    67ae0f87df29). A capstone that raised out of combat would green a capability no player has. The OOC
-    branch stays covered where an unreachable branch belongs -- the unit tests, not the E2E proof.
-    """
+    """Raise a real combat ward before checking the legacy key; untouched seed rows cannot reach a producer reintroducing it."""
     pool = await db.get_pool()
     player_id = "cap_m24_ac3_cleric"
     location = "cap_m24_ac3_hall"
@@ -217,13 +181,7 @@ async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> No
 
 
 async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str) -> None:
-    """AC4 (clock 1 of 2): a Paladin's ROUNDS(3) ward ticks ONLY at the combat WRAP beat, decrement-
-    then-test -- it must survive wraps 1 and 2 and die on the 3rd, never the 2nd. Cross-leak: it never
-    writes a veil_wards row for either the combat or the location scope.
-
-    The expiring wrap must also DARKEN the HUD. Asserting the mechanic alone (veil_ward is None) let a
-    real bug through: the clock cleared the ward while the client kept showing it lit, so the player
-    believed their casts were still halved while they accrued full Resonance toward an Overreach."""
+    """Check the HUD as well as the expired mechanic, otherwise a stale lit indicator can lie about halving."""
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_paladin"
     location = "cap_m24_ac4_paladin_hall"
@@ -269,11 +227,7 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
 
 
 async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_db_pool: str) -> None:
-    """AC4 (clock 2 of 2): a deployed Artificer anchor's REAL_TIME hour ticks ONLY against the world
-    clock -- the combat WRAP beat never touches it (no encounter ward is raised, so it stays halved
-    from the location scope every phase), and it never leaks a veil_wards row into the encounter
-    scope. Advancing NOW() past the anchor's expiry stops the halving; the row itself stays present
-    (lazy expiry) until a read hides it."""
+    """Expiration is lazy on read; the row may remain after its world-clock deadline."""
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_anchor"
     location = "cap_m24_ac4_anchor_hall"

@@ -1,5 +1,3 @@
-"""Failure ownership across overlapping party connection generations."""
-
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock

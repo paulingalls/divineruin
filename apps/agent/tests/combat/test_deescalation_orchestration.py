@@ -1,12 +1,4 @@
-"""Tier-3 de-escalation orchestration: the multi-round GROUP loop that wires story-001's
-pure per-round resolver into live combat (M15 story-002).
-
-A Diplomat argues over 2-4 rounds against a GROUP of enemies; each enemy's disposition shifts
-INDEPENDENTLY by its own resistance profile until the whole living group crosses +2, at which
-point ``state.deescalated`` flips and the phase _wrap ends combat "deescalated". These drive the
-packet resolver directly (mirroring test_combat_deescalation's _resolve_deescalation_packet
-driver) with a MULTI-ENEMY state builder; the end-to-end phase-loop drive lives in the E2E class.
-"""
+"""Each enemy shifts by its own resistance profile; only the whole living group surrender ends combat."""
 
 import copy
 import json
@@ -53,24 +45,17 @@ async def _resolve_round(state, player, rng, *, argument_type="reason"):
 
 
 class TestGroupIndependence:
-    """AC1: each enemy's per-enemy disposition shifts INDEPENDENTLY by its OWN resistance profile."""
-
     @pytest.mark.asyncio
     async def test_vulnerable_enemy_shifts_more_than_resistant_in_one_round(self):
-        # argument_total = 20 + 3 = 23. reason: enemy_a pragmatic -> vulnerable (-3), enemy_b
-        # suspicious -> resistant (+3). Same roll, opposite DC swing -> different delta.
         state = _make_group_state(tags_a=("pragmatic",), tags_b=("suspicious",))
         result, _persistence, _session = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
 
         scene = state.deescalation_scene
-        # enemy_a (DC 15+6-3=18): margin 5 -> +1; enemy_b (DC 15+6+3=24): margin -1 -> 0.
         assert scene.cumulative_shift["enemy_a"] == 1
         assert scene.cumulative_shift["enemy_b"] == 0
         assert scene.cumulative_shift["enemy_a"] > scene.cumulative_shift["enemy_b"]
-        # The vulnerable enemy's disposition softened; the resistant one stayed hostile.
         assert scene.enemy_dispositions["enemy_a"] == "unfriendly"
         assert scene.enemy_dispositions["enemy_b"] == "hostile"
-        # The packet reports the per-enemy breakdown for the DM.
         by_id = {pe["id"]: pe for pe in result["deescalation"]["per_enemy"]}
         assert by_id["enemy_a"]["cumulative_shift"] == 1
         assert by_id["enemy_b"]["cumulative_shift"] == 0
@@ -78,7 +63,6 @@ class TestGroupIndependence:
 
     @pytest.mark.asyncio
     async def test_only_living_enemies_are_argued(self):
-        # A fallen enemy is skipped entirely — no disposition/shift entry is written for it.
         state = _make_group_state(tags_a=("pragmatic",), enemy_a_fallen=True)
         result, _p, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
         assert "enemy_a" not in state.deescalation_scene.cumulative_shift
@@ -86,18 +70,14 @@ class TestGroupIndependence:
 
 
 class TestCrossRoundPersistence:
-    """AC2: orchestration persists DeEscalationState between rounds (round_counter + per-enemy maps)."""
-
     @pytest.mark.asyncio
     async def test_two_rounds_accumulate_and_increment_counter(self):
-        # Both enemies vulnerable to reason so both progress; thread the SAME state across two calls.
         state = _make_group_state(tags_a=("pragmatic",), tags_b=("honorable",))
         await _resolve_round(state, _DIPLOMAT, FixedRng(20))
         assert state.deescalation_scene.round_counter == 1
         assert state.deescalation_scene.cumulative_shift["enemy_a"] == 1
 
         await _resolve_round(state, _DIPLOMAT, FixedRng(20))
-        # Round 2 argues each enemy from its round-1 disposition (unfriendly), accumulating.
         assert state.deescalation_scene.round_counter == 2
         assert state.deescalation_scene.cumulative_shift["enemy_a"] == 2
         assert state.deescalation_scene.cumulative_shift["enemy_b"] == 2
@@ -106,13 +86,10 @@ class TestCrossRoundPersistence:
     async def test_focus_is_spent_each_round(self):
         state = _make_group_state()
         _r, persistence, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
-        # 20 Focus - 3 = 17 for the round.
         assert persistence.update_player_resources.await_args.kwargs["focus"] == 17
 
 
 class TestRoundCap:
-    """AC2: the scene enforces the round cap (MAX 4)."""
-
     def test_gate_raises_at_round_cap(self):
         state = _make_group_state()
         state.deescalation_scene.round_counter = MAX_DEESCALATION_ROUNDS
@@ -132,11 +109,8 @@ class TestRoundCap:
 
 
 class TestWholeGroupSurrender:
-    """AC3: the WHOLE living group must cross +2 for combat to end; a partial group keeps it alive."""
-
     @pytest.mark.asyncio
     async def test_whole_group_crossing_threshold_flips_deescalated(self):
-        # Both vulnerable to reason: +1 each round, so both cross +2 at round 2 -> deescalated.
         state = _make_group_state(tags_a=("pragmatic",), tags_b=("honorable",))
         r1, _p, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
         assert r1["deescalation"]["ends_combat"] is False  # both only at +1 after round 1
@@ -148,8 +122,6 @@ class TestWholeGroupSurrender:
 
     @pytest.mark.asyncio
     async def test_partial_group_keeps_combat_alive(self):
-        # enemy_a vulnerable (reaches +2), enemy_b resistant (stuck at 0) -> deescalated stays False
-        # even though one enemy has surrendered.
         state = _make_group_state(tags_a=("pragmatic",), tags_b=("suspicious",))
         await _resolve_round(state, _DIPLOMAT, FixedRng(20))
         await _resolve_round(state, _DIPLOMAT, FixedRng(20))
@@ -161,13 +133,10 @@ class TestWholeGroupSurrender:
 
 
 class TestSurrenderLatch:
-    """Finding #2: a surrendered enemy is LATCHED — left out of later argued rounds so a bad roll can
-    never regress it below the threshold, which is what lets the whole-group gate actually coincide."""
+    """Latch surrendered enemies so later bad rolls cannot regress them and prevent group surrender."""
 
     @pytest.mark.asyncio
     async def test_surrendered_enemy_is_not_re_argued_and_cannot_regress(self):
-        # enemy_a has already crossed +2 (latched, neutral). A later terrible-roll round that WOULD
-        # push a negative delta is simply never applied to it — it's excluded from the argued targets.
         state = _make_group_state(tags_a=("pragmatic",), tags_b=("suspicious",))
         state.deescalation_scene.cumulative_shift["enemy_a"] = combat_resolution.SURRENDER_THRESHOLD
         state.deescalation_scene.enemy_dispositions["enemy_a"] = "neutral"
@@ -182,9 +151,6 @@ class TestSurrenderLatch:
 
 
 class TestDeescalatedEarlyOut:
-    """Finding #4: once an earlier de_escalate packet this phase ended the scene, a second Diplomat's
-    packet is a no-op — no Focus spent, no roll, the round not advanced."""
-
     @pytest.mark.asyncio
     async def test_second_packet_after_group_stood_down_is_a_noop(self):
         state = _make_group_state()
@@ -197,11 +163,7 @@ class TestDeescalatedEarlyOut:
 
 
 class TestRoundCounterAdvancesOncePerPhase:
-    """Finding #3: the round_counter models SCENE rounds (phases), not de_escalate packets. Two
-    Diplomats declaring in ONE phase argue the SAME round — the counter must advance at most once, or
-    the pair would push it past the declare-time cap. ``session.combat_state`` is the pristine pre-phase
-    copy during resolution (the working ``state`` is a deep copy), so the second packet — seeing the
-    working counter already ahead of the pristine value — skips the increment."""
+    """Scene rounds count phases, not Diplomat packets; compare working and pristine counters to increment only once."""
 
     @pytest.mark.asyncio
     async def test_two_packets_in_one_phase_advance_round_once(self):
@@ -268,9 +230,6 @@ def _e2e_group_state(combat_id, player_id, enemy_ids_tags):
 
 
 class TestDeescalationE2EPhaseLoop:
-    """AC4: drive the REAL phase loop (declare_phase -> resolve_phase -> wrap) over multiple rounds
-    with a 2-enemy hostile group until both surrender -> combat ends with outcome "deescalated"."""
-
     def _deps(self):
         # A high-charisma untrained-persuasion player -> argument_total = 20 (forced d20) + 6 = 26,
         # which clears both enemies over 2 rounds regardless of enemy attack noise.
@@ -319,14 +278,12 @@ class TestDeescalationE2EPhaseLoop:
             patch("ability_persistence.update_player_resources", AsyncMock()),
             patch("db_mutations_conditions.read_player_conditions", AsyncMock(return_value=[])),
         ):
-            # Round 1: both enemies only reach +1 -> combat continues (a JSON response, not a handoff).
             await combat_turn._declare_phase_impl(ctx, decls, mutations=deps["mutations"])
             raw1 = await _resolve_combat_round(ctx, **deps)
             assert not isinstance(raw1, tuple), "round 1 does not end combat"
             assert ctx.userdata.combat_state.deescalated is False
             assert ctx.userdata.combat_state.deescalation_scene.round_counter == 1
 
-            # Round 2: both cross +2 -> the wrap ends combat with outcome "deescalated" (a handoff tuple).
             await combat_turn._declare_phase_impl(ctx, decls, mutations=deps["mutations"])
             raw2 = await _resolve_combat_round(ctx, **deps)
 

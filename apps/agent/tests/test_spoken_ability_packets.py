@@ -1,5 +1,3 @@
-"""Authored delivery policy reaches real activation packets before their debit."""
-
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock

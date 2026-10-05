@@ -1,14 +1,4 @@
-"""Contract tests for weapon damage math + the Heavy weapon catalog (story-003).
-
-Pins resolve_attack's damage formula: damage = weapon die + attribute modifier,
-using the same governing/finesse/ranged/else-STR attribute selection as the
-attack roll, with the modifier added ONCE even on a crit and NO proficiency on
-damage (proficiency applies only to the attack roll — spec
-game_mechanics_combat.md:208 vs the Weapon Damage table at 222-228).
-
-Also pins the 1d12 Heavy weapons (greataxe, halberd) in the catalog and the
-Warrior starting loadout (greataxe, shield dropped — two-handed).
-"""
+"""Add the governing attribute modifier once even on crits; proficiency belongs only to the attack roll."""
 
 import random
 
@@ -90,8 +80,6 @@ class TestDamageMathContract:
         pytest.fail("no normal-hit seed found for negative-modifier case")
 
     def test_damage_uses_governing_attribute_not_strength(self) -> None:
-        # An explicit governing attribute overrides STR for damage, just as it
-        # does for the attack roll — proves the attribute selection reaches damage.
         attacker = {"level": 1, "attributes": {"strength": 10, "dexterity": 18}}
         weapon = {
             "name": "Rapier",
@@ -122,7 +110,6 @@ class TestHeavyWeaponCatalog:
         assert weapon["type"] == "weapon"
         assert weapon["damage_dice"] == "1d12"
         assert "heavy" in weapon["properties"]
-        # STR governs: no finesse, not ranged, no non-STR override.
         assert "finesse" not in weapon["properties"]
         assert weapon.get("ranged", False) is False
         assert weapon.get("governing_attribute", "strength") == "strength"

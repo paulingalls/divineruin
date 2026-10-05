@@ -1,12 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import { parseRoleArchetypeRow } from "./role_archetypes.ts";
 
-// Drives the production fail-loud parseRoleArchetypeRow over content/role_archetypes.json,
-// proving every entry conforms to the shared RoleArchetype contract. Mirrors
-// mentor_variants-load.test.ts. The unit-level parse + accessor behavior is pinned in
-// role_archetypes.test.ts. Cardinality is a closed set (story-001): 12 base archetypes
-// (incl. Shipwright) + 7 Merchant subtypes = 19, split 11 civilian / 5 military / 3 specialist.
-
 const ROOT = new URL("../../../", import.meta.url);
 const ARCHETYPES_PATH = new URL("content/role_archetypes.json", ROOT);
 

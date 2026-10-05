@@ -1,5 +1,3 @@
-"""Live connection generations and authorization for multiplayer party members."""
-
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -254,8 +252,7 @@ async def test_close_cancels_and_joins_in_flight_hydration():
 
 
 async def test_cancelling_an_in_flight_join_reports_no_unhandled_error():
-    """_join_finished reads task.exception(), which RAISES on a cancelled task; aclose is what
-    cancels joins, so an unguarded read turns every shutdown into an unhandled-callback error."""
+    """Closing cancels joins; task.exception() raises on a cancelled task."""
     hold_lookup = asyncio.Event()
     lookup_started = asyncio.Event()
     mods = _make_mods(None)

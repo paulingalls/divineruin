@@ -13,8 +13,6 @@ test("renders a labelled play control in the paused state", () => {
   // Scope label + pressed-state to the same <button> so the assertion can't pass
   // on aria-pressed landing on some other element.
   expect(html).toMatch(/<button[^>]*aria-label="Play the sample"[^>]*aria-pressed="false"/);
-  // The play glyph (not the pause glyph) must render in the paused state — guards
-  // against a regression that keeps the paused label but shows the pause icon.
   expect(html).toContain("▶");
   expect(html).not.toContain("❚❚");
 });
@@ -38,7 +36,6 @@ test("formatTime renders whole seconds as zero-padded HH:MM:SS", () => {
   expect(formatTime(30)).toBe("00:00:30");
   expect(formatTime(65)).toBe("00:01:05");
   expect(formatTime(3661)).toBe("01:01:01");
-  // Floors fractional seconds rather than rounding (a 4.9s position is still 0:04).
   expect(formatTime(4.9)).toBe("00:00:04");
 });
 

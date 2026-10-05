@@ -221,7 +221,6 @@ describe("validateErrandDispatch", () => {
   });
 
   test("unknown destination short-circuits before companion check", () => {
-    // companion_sable would also fail social, but unknown destination should win
     const result = validateErrandDispatch("social", "nowhere_land", "companion_sable");
     expect(result.error).toContain("nowhere_land");
   });

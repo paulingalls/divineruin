@@ -114,8 +114,6 @@ describe("accessibleWorkspaceTier", () => {
     expect(lastQueryValues).toContain("greyvale_hamlet");
   });
 
-  // story-006: a Portable Lab grants Workshop + basic Laboratory anywhere (it does
-  // NOT grant Forge), independent of location-bound rentals.
   test("a Portable Lab grants workshop + laboratory (not forge)", async () => {
     setMockResults([]);
     const tiers = await accessibleWorkspaceTier("player-1", "anywhere", { hasPortableLab: true });
@@ -138,8 +136,6 @@ describe("accessibleWorkspaceTier", () => {
     );
   });
 
-  // Fault injection for the two-row decision: if the bundle ever persisted as ONE row
-  // under its own token, every later crafting gate for this player hard-fails here.
   test.each(["combined", "forge_laboratory"])(
     "a single %p bundle row fails loud rather than widening access",
     async (bad) => {

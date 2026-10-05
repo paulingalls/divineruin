@@ -28,8 +28,6 @@ test("neglect event updates the local favor bar and overlay, but not a teammate'
   expect(hudStore.getState().overlays).toHaveLength(0);
 });
 
-// --- handleGameEvent: location_changed ---
-
 test("location_changed updates session and character stores", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
   handleGameEvent({
@@ -66,8 +64,6 @@ test("location_changed without new_location is no-op", () => {
   expect(sessionStore.getState().locationContext).toBeNull();
 });
 
-// --- handleGameEvent: combat ---
-
 test("combat_started sets inCombat true and plays sfx", () => {
   handleGameEvent({ type: "combat_started" });
   expect(sessionStore.getState().inCombat).toBe(true);
@@ -78,8 +74,6 @@ test("combat_ended sets inCombat false", () => {
   handleGameEvent({ type: "combat_ended" });
   expect(sessionStore.getState().inCombat).toBe(false);
 });
-
-// --- handleGameEvent: xp_awarded ---
 
 test("xp_awarded updates character store", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
@@ -94,8 +88,6 @@ test("xp_awarded with non-number fields is no-op", () => {
   handleGameEvent({ type: "xp_awarded", new_xp: "not a number", new_level: "bad" });
   expect(characterStore.getState().character!.xp).toBe(450);
 });
-
-// --- handleGameEvent: hp_changed ---
 
 test("hp_changed updates character HP", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
@@ -118,8 +110,6 @@ test("hp_changed with non-number current is no-op", () => {
   handleGameEvent({ type: "hp_changed", current: "bad" });
   expect(characterStore.getState().character!.hpCurrent).toBe(25);
 });
-
-// --- Milestone 8.1: hollow_corruption_changed ---
 
 test("hollow_corruption_changed updates session store corruptionLevel", () => {
   handleGameEvent({ type: "hollow_corruption_changed", level: 2 });
@@ -160,8 +150,6 @@ test("hollow_corruption_changed floors float values", () => {
   expect(sessionStore.getState().corruptionLevel).toBe(2);
 });
 
-// --- handleGameEvent: combat_started difficulty ---
-
 test("combat_started with difficulty sets combatDifficulty in store", () => {
   handleGameEvent({ type: "combat_started", difficulty: "hard" });
   expect(sessionStore.getState().combatDifficulty).toBe("hard");
@@ -173,8 +161,6 @@ test("combat_started without difficulty keeps default", () => {
   expect(sessionStore.getState().combatDifficulty).toBe("moderate");
   expect(sessionStore.getState().inCombat).toBe(true);
 });
-
-// --- handleGameEvent: divine_favor_changed (character store) ---
 
 test("divine_favor_changed updates character store", () => {
   handleGameEvent({

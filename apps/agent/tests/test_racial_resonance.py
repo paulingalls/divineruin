@@ -1,20 +1,4 @@
-"""Tests for racial_resonance.py — the DB-loaded racial Resonance bonus table (M3.4 / story-001).
-
-Mirrors the spells.py loader contract (parse_*_row fail-loud shared by the DB loader
-and the JSON test fixture, set_racial_bonuses test seam, get_racial_resonance_modifier
-accessor, is_loaded, build-then-swap load_racial_resonance). The table is the M3.4
-FOUNDATION: the six racial Resonance interactions (spec game_mechanics_magic.md
-§Racial Resonance Integration, 221-293) live in their own seeded table decoupled from
-RaceData (audit guidance), and downstream stories read get_racial_resonance_modifier
-rather than hardcoding values.
-
-The table is HETEROGENEOUS — each race carries only its own modifier keys, stored in
-the exact param shapes the downstream pure engines expect, so call sites forward the
-looked-up value verbatim (human decay_bonus=1 -> apply_resonance_decay racial_modifier=1;
-vaelti echo_save_advantage=True -> resolve_hollow_echo advantage_roll=<2nd d20>; draethar 3/"1d6").
-get_racial_resonance_modifier fails loud on an unknown race or an unknown modifier_type
-for that race — never a silent default; call sites guard by race.
-"""
+"""Racial modifier rows are heterogeneous; callers forward each race-specific shape without coercion."""
 
 import json
 from pathlib import Path
@@ -33,9 +17,6 @@ from racial_resonance import (
 
 CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "racial_resonance_bonuses.json"
 
-# The spec contract (magic.md 221-293): each race's modifier keys and their values,
-# stored as the additive params downstream engines consume. This is the SSOT the
-# content file and the loader's _EXPECTED_MODIFIERS must both satisfy.
 SPEC_MODIFIERS: dict[str, dict[str, object]] = {
     "human": {"decay_bonus": 1},
     "korath": {"primal_reduction": 1},
@@ -56,9 +37,6 @@ _DRAETHAR_ROW = {
 def _seed_from_content() -> None:
     raw = json.loads(CONTENT_PATH.read_text())
     set_racial_bonuses({row["id"]: parse_racial_resonance_row(row["id"], row) for row in raw})
-
-
-# --- parse_racial_resonance_row -----------------------------------------------
 
 
 def test_parse_row_full_shape():
@@ -105,7 +83,6 @@ def test_parse_row_rejects_extra_modifier_key():
 
 
 def test_parse_row_rejects_wrong_value_type():
-    # A stringly-typed int modifier fails loud at the load boundary, not downstream.
     bad = {**_HUMAN_ROW, "modifiers": {"decay_bonus": "two"}}
     with pytest.raises(ValueError, match="human"):
         parse_racial_resonance_row("human", bad)
@@ -122,9 +99,6 @@ def test_parse_row_rejects_bool_for_int_modifier():
 def test_parse_row_rejects_non_dict_row(not_a_dict):
     with pytest.raises(ValueError, match="human"):
         parse_racial_resonance_row("human", not_a_dict)
-
-
-# --- get_racial_resonance_modifier accessor -----------------------------------
 
 
 def test_get_modifier_returns_spec_value_for_each_race():
@@ -145,7 +119,6 @@ def test_get_modifier_unknown_race_raises():
 
 def test_get_modifier_unknown_type_for_known_race_raises():
     _seed_from_content()
-    # Korath has no decay_bonus — querying it is a defect, not a 0 default.
     with pytest.raises(ValueError, match=r"primal_reduction|korath|decay_bonus"):
         get_racial_resonance_modifier("korath", "decay_bonus")
 
@@ -164,9 +137,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- content/racial_resonance_bonuses.json conformance ------------------------
-
-
 def test_content_has_exactly_the_six_races_with_spec_modifiers():
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
@@ -174,9 +144,6 @@ def test_content_has_exactly_the_six_races_with_spec_modifiers():
     for race, mods in SPEC_MODIFIERS.items():
         for modifier_type, value in mods.items():
             assert get_racial_resonance_modifier(race, modifier_type) == value
-
-
-# --- build-then-swap load_racial_resonance (DB path) --------------------------
 
 
 class _FakePool:
@@ -204,7 +171,6 @@ async def test_load_malformed_row_does_not_wipe_loaded_map(monkeypatch):
     with pytest.raises(ValueError):
         await load_racial_resonance()
 
-    # Prior map survived; the well-formed row preceding the malformed one did NOT leak.
     assert get_racial_resonance_modifier("human", "decay_bonus") == 1
     with pytest.raises(ValueError):
         get_racial_resonance_modifier("draethar", "inner_fire_self_damage")
@@ -230,31 +196,23 @@ async def test_load_populates_from_pool(monkeypatch):
     assert get_racial_resonance_modifier("draethar", "inner_fire_self_damage") == "1d6"
 
 
-# --- compute_flickering_bonus gate (Thessyn Deep Adaptation, spec 270-276) -----
-
-
 def test_flickering_bonus_thessyn_at_threshold_returns_seeded_bonus():
-    # Exactly 10 sessions meets the gate -> the seeded flickering_threshold_bonus (1).
     _seed_from_content()
     assert compute_flickering_bonus("thessyn", 10) == 1
 
 
 def test_flickering_bonus_thessyn_below_threshold_returns_zero():
-    # 9 sessions is below the gate -> no band-shift yet.
     _seed_from_content()
     assert compute_flickering_bonus("thessyn", 9) == 0
 
 
 @pytest.mark.parametrize("race", ["human", "korath", "vaelti", "draethar", "elari"])
 def test_flickering_bonus_non_thessyn_is_zero_at_any_count(race):
-    # The band-shift is Thessyn-only; a non-Thessyn never gets it regardless of session count
-    # (and the gate must not even hit the thessyn lookup for them).
     _seed_from_content()
     assert compute_flickering_bonus(race, 50) == 0
 
 
 @pytest.mark.parametrize("session_count,expected", [(0, 0), (9, 0), (10, 1), (50, 1)])
 def test_flickering_bonus_gate_flips_at_ten_for_thessyn(session_count, expected):
-    # The gate flips exactly at 10 across the loaded racial table (AC4 boundary).
     _seed_from_content()
     assert compute_flickering_bonus("thessyn", session_count) == expected

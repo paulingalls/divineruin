@@ -1,5 +1,3 @@
-"""Tests for combat resolution: initiative, death saves, HP thresholds, combat XP."""
-
 import random
 
 import pytest
@@ -11,8 +9,6 @@ from combat_resolution import (
     resolve_death_save,
     roll_initiative,
 )
-
-# --- roll_initiative ---
 
 
 class TestRollInitiative:
@@ -57,9 +53,6 @@ class TestRollInitiative:
     def test_empty_list(self):
         entries = roll_initiative([], rng=random.Random(1))
         assert entries == []
-
-
-# --- resolve_death_save ---
 
 
 class TestResolveDeathSave:
@@ -160,7 +153,6 @@ class TestResolveDeathSave:
         pytest.fail("Could not find seed for nat 1")
 
     def test_death_save_result_dramatic_default(self):
-        """The always-dramatic contract: a bare DeathSaveResult defaults dramatic."""
         result = DeathSaveResult(
             roll=12,
             success=True,
@@ -174,9 +166,6 @@ class TestResolveDeathSave:
         )
         assert result.dramatic is True
         assert result.context == "death_save"
-
-
-# --- hp_threshold_status ---
 
 
 class TestHpThresholdStatus:
@@ -206,9 +195,6 @@ class TestHpThresholdStatus:
 
     def test_just_above_50(self):
         assert hp_threshold_status(11, 20) == "healthy"
-
-
-# --- calculate_combat_xp ---
 
 
 class TestCalculateCombatXp:

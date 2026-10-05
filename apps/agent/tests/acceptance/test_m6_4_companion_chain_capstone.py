@@ -1,25 +1,4 @@
-"""Capstone: Milestone 4 companion chain end-to-end on a real Postgres testcontainer (story-005).
-
-Proves the M6.4 companion surfaces compose across one seeded DB — the cross-cutting proof the
-per-story unit tests (mocked DB) can't give:
-
-- **load** (story-002): load_companion_profiles() reads all 4 companions from the seeded
-  `companions` table; get_companion_profile resolves each.
-- **scale** (story-002): scale_companion_stats_to_player_level fed by the real loaded profile —
-  HP is a fixed fraction of the player's max HP (0.75 / Sable 0.50) at every level band, AC steps
-  by level band, action_pool is mechanical dice notation.
-- **relationship** (story-003): the HYBRID tier — session_count floor nudged by persisted
-  affinity — hydrates, advances, and PERSISTS across a reconnect against the real
-  companion_relationships table (atomic affinity UPDATE, JSONB, session_count increment); named
-  tiers gate NARRATIVE reveals only.
-- **combat** (story-004): the companion combat stat block is byte-identical regardless of the
-  persisted relationship state — combat is never relationship-gated (spec L871).
-
-Companions are a Python-only chain (no TS runtime loader / content endpoint), so this is a
-single-surface (cli/message_event) capstone — unlike the M6.1 archetype capstone's TS round-trip.
-
-Runs under `bun run test:acceptance`; skips cleanly when Docker is down.
-"""
+"""This companion chain has no TS runtime loader or endpoint; its persisted behavior is Python-only."""
 
 from __future__ import annotations
 
@@ -175,11 +154,7 @@ async def test_relationship_tiers_persist_and_gate_narrative(reset_db_pool: str)
 
 @pytest.mark.asyncio
 async def test_combat_block_is_relationship_independent(reset_db_pool: str) -> None:
-    """Drive the REAL combat-entry path (_start_combat_impl) against the seeded DB with a
-    companion whose hydrated state reflects a BONDED relationship, and assert the companion's
-    CombatParticipant equals the pure profile-scaled block. If combat ever read
-    session_count/affinity, the participant would diverge — this has teeth the pure-function
-    comparison lacks."""
+    """Enter real combat with bonded state; pure profile comparisons cannot detect combat reading relationship rank."""
     from combat_init import _start_combat_impl
     from session_data import SessionData
 

@@ -1,20 +1,4 @@
-"""M12 capstone — E2E COMBAT_UI_UPDATE round-trip (sprint-029).
-
-Exercises the full producer chain end to end:
-    apply_condition (pre-resolve) -> declare_phase -> resolve_phase
-        -> _resolve_tick_saves (Beat-4 wrap, condition cleared)
-        -> build_combat_ui_update (post-tick state)
-        -> emit_or_publish (buffered sink)
-        -> sink.flush (post-commit)
-        -> session.event_bus
-
-Locks the contract loop: the packet's field set + condition projection must
-match what story-002 pinned on the mobile parser (parseCombatant +
-parseCondition in apps/mobile/src/audio/game-event-handler.ts). A future
-producer rename or shape drift surfaces here as a red capstone.
-
-Lane: testcontainer Postgres + real combat tx (mirrors the M4.x capstones).
-"""
+"""Match the Python post-tick packet to the mobile parser contract."""
 
 from unittest.mock import patch
 
@@ -41,16 +25,7 @@ import event_types as E
 
 
 async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_pool: str) -> None:
-    """A real combat phase with a player carrying Blessed (persists) + Frightened
-    (cleared by a forced-success WIS save at the wrap) pushes a COMBAT_UI_UPDATE at every
-    pause commit and one more at the wrap.
-
-    The wrap's packet is the last: its combatant shape mirrors the mobile parseCombatant
-    contract verbatim, its conditions carry only {type, stacks, source}, and the player's
-    post-tick conditions show Blessed still present and Frightened gone — proving the
-    producer reads state AFTER the Beat-4 tick. Every earlier pause packet still carries
-    Frightened, so none of them ran the tick early.
-    """
+    """Earlier pause packets must keep Frightened; only the wrap clears it, so the same assertions also detect an early tick."""
     pool = await db.get_pool()
     player_id = "cap_m12_round_trip"
     state = _build_state("combat_cap_m12_round_trip", player_id, [_enemy("goblin_a", hp=100)])

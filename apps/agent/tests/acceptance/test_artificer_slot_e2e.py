@@ -1,18 +1,4 @@
-"""Real-DB E2E for the Artificer Portable-Lab training-slot borrow (story-006, AC#4).
-
-The slot model lives in TS (slot_validation.ts) and the live craft path is the Bun
-REST server. This proves end-to-end against one seeded testcontainer that:
-  1. An Artificer who owns a Portable Lab, with a FULL crafting slot, can POST a second
-     craft — it borrows the TRAINING slot and the row is stamped data.slot='training'.
-  2. The borrow is COUNTED: a follow-on training POST is then rejected (training slot
-     full) — the real-DB proof of the countActiveBySlot COALESCE fix (debt 95de7fa141df),
-     which mocked bun tests cannot exercise.
-  3. A non-Artificer with a full crafting slot is rejected (no exception).
-
-Spawns `bun src/index.ts` against the migrated testcontainer (mirrors story-005's
-test_crafting_resolution_gate_e2e.py + the capstone harness). Runs under
-REQUIRE_DOCKER; skips cleanly when Docker is down.
-"""
+"""Real Postgres must count the borrowed training slot; mocked slot queries cannot execute COALESCE bucketing."""
 
 from __future__ import annotations
 

@@ -1,12 +1,4 @@
-"""Tests for activate_tools.activate — the polymorphic Phase-5 dispatcher (M25 story-001).
-
-activate(id) is a pure router: it resolves an id to a kind (reserved token, Veil Anchor, spell,
-ability, or mentor variant) and dispatches to the matching pre-existing ``_impl``. No transaction
-of its own — each target ``_impl`` still opens and commits its own. Routing is mostly proven with
-injected stub impls (AsyncMock); each target ``_impl`` already has its own test suite for its own
-behavior. The one exception is the variant namespace, whose id resolution is also pinned against
-the real loaded catalog so mocking both sides cannot hide a content/routing drift.
-"""
+"""Routing uses owned stubs; variant lookup uses the real catalog so both mocked sides cannot hide drift."""
 
 import dataclasses
 from typing import Any
@@ -280,12 +272,7 @@ class TestUnknownId:
             fn.assert_not_awaited()
 
     async def test_unbound_turn_at_an_open_window_still_gets_the_plain_refusal(self):
-        """The hint is not a spend, so an unbound turn loses the hint, not the refusal.
-
-        A reconnect or card-tap reply drives the DM with no authenticated speaker. Raising the
-        binding's RuntimeError from here would reach the DM as livekit's "An internal error
-        occurred" (llm/utils.py make_function_call_output) instead of the id it got wrong.
-        """
+        """A reconnect can temporarily unbind the turn context; expose a retryable ToolError."""
         mods, fns = _mocks()
         ctx = _two_reactor_window()
 

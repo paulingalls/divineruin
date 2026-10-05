@@ -1,13 +1,3 @@
-"""Tests for break_concentration_on_damage (concentration_break.py, story-008, M3.4).
-
-The single production consumer of the concentration engine (concentration.py): when a
-concentrating player takes damage it rolls a CON save (DC scales with damage) and ends
-concentration on a failed save or incapacitation. Drives the helper directly with mock
-queries / save-resolver / concentration-mutations mods, so the save roll and the persist are
-deterministic. The pure keep/break decision (concentration_holds) and the DC (check_concentration)
-run REAL — they are pure and already covered by test_concentration.py.
-"""
-
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -55,7 +45,6 @@ def _deps(save_total: int | None = None):
 
 class TestBreakConcentrationOnDamage:
     async def test_failed_save_breaks_and_persists(self):
-        # damage 10 -> DC max(10, 5) = 10; a save total of 9 fails -> concentration ends.
         session = _session("arcane_fly")
         queries, resolver, cm = _deps(save_total=9)
 
@@ -72,12 +61,10 @@ class TestBreakConcentrationOnDamage:
         assert broken == "arcane_fly"  # the broken spell, for DM narration
         assert session.concentration.spell_id is None  # in-memory cleared
         cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=None)
-        # the CON save used the canonical resolver against the damage-scaled DC
         _args, _kwargs = resolver.resolve_saving_throw.call_args
         assert _args[1] == "constitution" and _args[2] == 10
 
     async def test_made_save_keeps_concentration(self):
-        # A save total of 10 meets the DC 10 -> concentration holds; nothing is ended or persisted.
         session = _session("arcane_fly")
         queries, resolver, cm = _deps(save_total=10)
 
@@ -96,7 +83,6 @@ class TestBreakConcentrationOnDamage:
         cm.update_player_concentration.assert_not_called()
 
     async def test_incapacitated_auto_breaks_without_rolling(self):
-        # Dropping incapacitated auto-fails the save (concentration_holds) — no player fetch, no roll.
         session = _session("arcane_fly")
         queries, resolver, cm = _deps(save_total=20)
 
@@ -136,7 +122,6 @@ class TestBreakConcentrationOnDamage:
         cm.update_player_concentration.assert_not_called()
 
     async def test_missing_player_holds_concentration(self):
-        # A vanished player row (data glitch) fails safe: no save rolled, concentration untouched.
         session = _session("arcane_fly")
         queries, resolver, cm = _deps(save_total=1)
         queries.get_player = AsyncMock(return_value=None)
@@ -157,7 +142,6 @@ class TestBreakConcentrationOnDamage:
         cm.update_player_concentration.assert_not_called()
 
     async def test_zero_damage_is_noop(self):
-        # A missed attack (0 damage) never threatens concentration — no save rolled.
         session = _session("arcane_fly")
         queries, resolver, cm = _deps(save_total=1)
 
@@ -202,13 +186,7 @@ class TestBreakConcentrationOnDamage:
 
 
 class TestBreakResolvesAgainstDamagedMember:
-    """M18 story-004: the break must key off the DAMAGED member (``damaged_player_id``), not the
-    primary — a non-primary caster's spell breaks on their own damage, and the primary's
-    concentration is untouched by a hit on someone else."""
-
     async def test_non_primary_break_leaves_primary_untouched(self):
-        # AC 1: the non-primary ("player_2") takes the damage and rolls the save; the primary's
-        # own concentration (a DIFFERENT spell) is never touched.
         session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
         queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
 
@@ -229,8 +207,6 @@ class TestBreakResolvesAgainstDamagedMember:
         cm.update_player_concentration.assert_awaited_once_with("player_2", None, conn=None)
 
     async def test_primary_break_is_unchanged_by_a_second_member(self):
-        # AC 2: the primary takes the damage — solo-path-identical break, even with a party member
-        # present whose own (untouched) concentration must survive.
         session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
         queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
 
@@ -265,10 +241,6 @@ class TestBreakResolvesAgainstDamagedMember:
 
 
 class TestBreakRemovesLinkedCondition:
-    """M4.8 story-006 (risk 0899a89ef0da): a concentration spell that grants a beneficial condition
-    (Bless -> blessed) must drop that condition when its concentration breaks, so the +1d4 does not
-    outlive the broken spell. Removal targets the in-combat participants the buff is on."""
-
     def _bless(self):
         return SimpleNamespace(applies_condition="blessed", concentration=True)
 
@@ -294,13 +266,7 @@ class TestBreakRemovesLinkedCondition:
         return conditions.has_condition(ally.conditions, "blessed")
 
     async def test_a_second_caster_still_concentrating_keeps_the_buff_alive(self):
-        """Two members concentrate on Bless. One breaks; the other still holds it, so the allies
-        stay blessed.
-
-        The strip removes the condition BY TYPE from every participant, and a condition carries its
-        spell as `source` but never its caster -- two Bless casts are indistinguishable. So A's
-        break silently negated B's still-active spell. Nothing may be stripped while another member
-        sustains a spell that grants it."""
+        """Condition source alone does not identify the caster for a multi-target Bless."""
         session = _two_pc_session("bless", "bless")  # both concentrating on Bless
         state = _make_combat_state()
         ally = state.get_participant("player_1")
@@ -322,7 +288,6 @@ class TestBreakRemovesLinkedCondition:
 
         assert broken == "bless"  # the damaged caster's own concentration did end...
         assert session.member_state("player_1").concentration.spell_id is None
-        # ...but player_2 still sustains Bless, so the blessing itself stands.
         assert session.member_state("player_2").concentration.spell_id == "bless"
         assert self._player_blessed(session)
 
@@ -388,14 +353,10 @@ class TestBreakRemovesLinkedCondition:
         )
 
         assert broken == "bless"
-        # The strip landed on the threaded WORKING state...
         assert not conditions.has_condition(w_ally.conditions, "blessed")
-        # ...and left the pristine session.combat_state untouched (it is discarded by the phase loop).
         assert self._player_blessed(session)
 
     async def test_non_condition_spell_break_is_harmless(self):
-        # A concentration spell that applies NO condition (e.g. arcane_fly) breaks without touching
-        # participant conditions and without crashing — an unrelated blessed stays put.
         session = self._bless_a_player(source="other")
         session.concentration.spell_id = "arcane_fly"
         queries, resolver, cm = _deps(save_total=1)

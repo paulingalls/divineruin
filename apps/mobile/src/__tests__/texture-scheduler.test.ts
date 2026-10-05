@@ -1,6 +1,5 @@
 import { test, expect, beforeEach, mock } from "bun:test";
 
-// Mock expo-audio
 void mock.module("expo-audio", () => ({
   createAudioPlayer: () => ({
     volume: 0,
@@ -44,7 +43,6 @@ test("startTextures clears previous timers before scheduling new ones", () => {
   startTextures("market_bustle");
   const count1 = _activeTimerCount();
   startTextures("harbor_quiet");
-  // Should have timers for harbor_quiet, not cumulative
   expect(_activeTimerCount()).toBeGreaterThan(0);
   expect(_activeTimerCount()).toBeLessThanOrEqual(count1 + 3);
 });

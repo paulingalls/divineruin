@@ -1,14 +1,5 @@
-"""Guard for the story-002 wav->mp3 transcode helper (M22 compressed-bundle fold).
-
-scripts/audio/generate_spell_sfx_stableaudio.py generates the committed spell-SFX
-palette as .wav (Stable Audio 3.0 has no native mp3 encoder); `transcode_to_mp3`
-shells out to ffmpeg to compress it to the bundle's .mp3 convention. Guarded
-here (imported by file path, same pattern as test_generate_spell_sfx.py) so the
-transcode contract stays under the fast lane without requiring torch.
-
-Skips if ffmpeg isn't on PATH (mirrors the M17 capstone's bun-skip) so an
-ffmpeg-less CI doesn't break the whole fast lane.
-"""
+"""Stable Audio has no MP3 encoder; ffmpeg transcodes its WAV output without requiring torch here.
+The existing cases skip when ffmpeg is unavailable."""
 
 from __future__ import annotations
 
@@ -42,12 +33,7 @@ def _write_silent_wav(path: Path, *, duration_s: float = 0.5, sample_rate: int =
 
 
 def test_parser_defaults_pin_the_approved_m17_recipe() -> None:
-    """steps=8 / cfg_scale=1.0 rendered the customer-approved M17 palette.
-
-    Higher cfg overdrives the output (clipping, buzz) — see
-    docs/audio_sa3_noise_investigation.md §12. Guard the defaults so a future
-    param tweak is a deliberate, test-visible decision.
-    """
+    """Use the clipped recipe to exercise audible saturation."""
     gen = _load_generator()
     args = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
     assert args.steps == 8
@@ -57,14 +43,7 @@ def test_parser_defaults_pin_the_approved_m17_recipe() -> None:
 
 
 def test_model_selector_defaults_to_small_sfx_and_accepts_music_models() -> None:
-    """--model picks the SA3 variant loaded at render time.
-
-    small-sfx (SFX palette, the default) keeps the existing behavior; small-music
-    is the music model (story-004); medium is the long-form music exploration
-    (story-008). These MUST be valid stable_audio_3.all_models keys — from_pretrained
-    rejects unknown names, so an invalid choice would fail only at torch-load time
-    (out of this fast lane). Guarding the choices here catches a name typo early.
-    """
+    """Use the installed Stable Audio model registry; guessed keys fail only at load time."""
     gen = _load_generator()
     default = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
     assert default.model == "small-sfx"
@@ -76,13 +55,7 @@ def test_model_selector_defaults_to_small_sfx_and_accepts_music_models() -> None
 
 
 def test_device_selector_defaults_to_auto_and_accepts_mps_and_cpu() -> None:
-    """--device pins where the SA3 model runs (story-008 medium spike).
-
-    auto (the default) lets from_pretrained pick — MPS on Apple Silicon; mps/cpu
-    force the backend so the medium model can be probed on the GPU and retried
-    on CPU when MPS runs out of unified memory. An unknown device must fail at
-    parse time, not at torch-load time.
-    """
+    """The MPS backend can exhaust memory where CPU succeeds."""
     gen = _load_generator()
     default = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
     assert default.device == "auto"
@@ -104,12 +77,7 @@ class _FakeTensor:
 
 
 def test_noise_guard_rejects_clamped_gaussian_renders() -> None:
-    """The SA3 transient failure emits clamped N(0,1) audio (std ~0.83); good
-
-    takes at the approved recipe measure std ~0.01-0.05. Guard aborts instead
-    of silently writing garbage for audition — see
-    docs/audio_sa3_noise_investigation.md §12.
-    """
+    """Clamped noise can conceal invalid generated audio."""
     gen = _load_generator()
     with pytest.raises(RuntimeError, match="noise"):
         gen.assert_take_is_not_noise(_FakeTensor(0.83), "spell_fire")

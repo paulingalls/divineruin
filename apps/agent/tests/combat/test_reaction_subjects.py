@@ -1,5 +1,3 @@
-"""Social reactions are offered only for the held action they can affect."""
-
 from pathlib import Path
 
 import pytest

@@ -4,7 +4,6 @@ import { injectDevFontLink } from "./dev-index.ts";
 test("injects the fonts.css link before </head>", () => {
   const out = injectDevFontLink("<html><head><title>x</title></head><body></body></html>");
   expect(out).toContain('<link rel="stylesheet" href="./src/fonts/fonts.css" />');
-  // Inserted inside <head>, before the close tag.
   expect(out.indexOf("fonts.css")).toBeLessThan(out.indexOf("</head>"));
   expect(out).toContain("</body>");
 });

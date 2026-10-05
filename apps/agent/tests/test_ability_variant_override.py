@@ -1,14 +1,4 @@
-"""Tests for explicit base and variant activation.
-
-The activation id selects the payload: the base id always uses the base technique,
-while the active variant id uses its cost, effect, narration cue, and attribution.
-Drives the tool's _impl directly with injected mock
-db/queries/persistence/variants mods, mirroring test_ability_tools.py; the autouse
-seed_abilities fixture supplies the real base-ability map so get_ability resolves.
-
-Base warrior_cleaving_blow costs stamina 4; the Drathian variant costs stamina 5 —
-the cost delta proves the explicit variant path selected its values.
-"""
+"""Different base and variant costs prove selection independently of narration."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -71,8 +61,6 @@ async def _call(
     ctx = context or make_context()
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
-    # story-008: the caster row now comes from the id-ordered get_players_for_update batch (self-cast
-    # here -> the caster alone).
     row = _player(stamina, focus)
     queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})
     persistence = MagicMock()
@@ -106,7 +94,6 @@ class TestExplicitVariantActivation:
         assert result["narration_cue"] == variant.narration_cue
         assert result["cultural_attribution"] == "Drathian Clans technique"
         assert result["effect"] == variant.effect
-        # The deducted resource write used the variant cost: 10 - 5 = 5 stamina remaining.
         _args, kwargs = persistence.update_player_resources.call_args
         assert kwargs["stamina"] == 5
 
@@ -122,9 +109,6 @@ class TestExplicitVariantActivation:
             )
 
     async def test_active_variant_with_scaling_surfaces_variant_variable_cost(self):
-        # The variable_cost contract (concern 7b34ebf86b57) must hold on the variant path:
-        # a scaling-bearing variant (cost{0,0,scaling}) is NEVER reported as a free activation,
-        # and the surfaced variable_cost is the VARIANT's scaling, not the base ability's.
         pool_variant = MentorVariant(
             id="warrior_cleaving_blow_pool",
             ability_id="warrior_cleaving_blow",
@@ -141,7 +125,6 @@ class TestExplicitVariantActivation:
             variant=pool_variant,
         )
         assert result["variable_cost"] == pool_variant.cost.scaling
-        # cost{0,0} → no fixed deduction, but the scaling rule still surfaces (not a free activation).
         assert result["deducted"] == {"stamina": 0, "focus": 0}
         persistence.update_player_resources.assert_not_called()
 

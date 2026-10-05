@@ -9,7 +9,6 @@ import { REVEALED_CLASS, type RevealEnv } from "./reveal.ts";
 // React wrapper (useReveal's useEffect/useRef) is a thin binding whose live
 // scroll behavior is covered by web-world.e2e.ts + web-above-fold.e2e.ts.
 
-// Minimal Element stand-in: only the classList surface reveal() touches.
 function fakeItem() {
   const classes = new Set<string>();
   return {
@@ -20,8 +19,6 @@ function fakeItem() {
   } as unknown as Element;
 }
 
-// Minimal section stand-in: records the armed class and the selector passed to
-// querySelectorAll, and hands back the items the test seeded.
 function fakeSection(items: Element[]) {
   const added: string[] = [];
   const selectors: string[] = [];

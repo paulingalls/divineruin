@@ -1,10 +1,3 @@
-"""Tests for the Player Affect Analyzer pure functions (Phase A: transcript-only).
-
-The stateless scoring/classification helpers — split from the stateful
-PlayerAffectAnalyzer tests (test_affect_analyzer_analyzer.py) to keep each file
-under the 500-line cap.
-"""
-
 from livekit.agents.types import TimedString
 
 from affect_analyzer import (
@@ -17,10 +10,6 @@ from affect_analyzer import (
     engagement_level,
     format_vs_baseline,
 )
-
-# ---------------------------------------------------------------------------
-# Question detection
-# ---------------------------------------------------------------------------
 
 
 class TestDetectQuestion:
@@ -44,11 +33,6 @@ class TestDetectQuestion:
 
     def test_empty_string(self):
         assert detect_question("") is False
-
-
-# ---------------------------------------------------------------------------
-# Interaction signal detection
-# ---------------------------------------------------------------------------
 
 
 class TestDetectInteractionSignals:
@@ -98,11 +82,6 @@ class TestDetectInteractionSignals:
         assert "question" in signals
 
 
-# ---------------------------------------------------------------------------
-# Speech rate computation
-# ---------------------------------------------------------------------------
-
-
 class TestComputeSpeechRate:
     def test_normal_speech(self):
         words = [
@@ -114,13 +93,11 @@ class TestComputeSpeechRate:
         ]
         rate = compute_speech_rate(words)
         assert rate is not None
-        # 5 words over 1.6 seconds = 3.125 wps
         assert abs(rate - 3.125) < 0.01
 
     def test_single_word(self):
         words = [TimedString("hello", start_time=0.0, end_time=0.5)]
         rate = compute_speech_rate(words)
-        # 1 word / 0.5s = 2.0
         assert rate is not None
         assert abs(rate - 2.0) < 0.01
 
@@ -143,7 +120,6 @@ class TestComputeSpeechRate:
         assert compute_speech_rate([]) is None
 
     def test_mixed_timestamps(self):
-        # Some words have times, some don't — should still work with available data
         words = [
             TimedString("hello", start_time=0.0, end_time=0.3),
             TimedString("um"),  # no timestamps
@@ -151,13 +127,7 @@ class TestComputeSpeechRate:
         ]
         rate = compute_speech_rate(words)
         assert rate is not None
-        # 3 words over 1.1s
         assert abs(rate - 3 / 1.1) < 0.01
-
-
-# ---------------------------------------------------------------------------
-# Engagement score computation
-# ---------------------------------------------------------------------------
 
 
 class TestComputeEngagementScore:
@@ -192,7 +162,6 @@ class TestComputeEngagementScore:
         assert 0.3 <= score <= 0.7
 
     def test_score_clamped_to_0_1(self):
-        # Even with many signals, should not exceed 1.0
         score = compute_engagement_score(
             word_count=50,
             has_question=True,
@@ -211,11 +180,6 @@ class TestComputeEngagementScore:
             baseline_speech_rate=None,
         )
         assert score > 0
-
-
-# ---------------------------------------------------------------------------
-# Engagement level from score
-# ---------------------------------------------------------------------------
 
 
 class TestEngagementLevel:
@@ -244,11 +208,6 @@ class TestEngagementLevel:
         assert engagement_level(0.0) == "minimal"
 
 
-# ---------------------------------------------------------------------------
-# Interaction mode classification
-# ---------------------------------------------------------------------------
-
-
 class TestClassifyInteractionMode:
     def test_exploratory(self):
         assert classify_interaction_mode(["exploratory", "question"]) == "exploratory"
@@ -272,11 +231,6 @@ class TestClassifyInteractionMode:
         assert classify_interaction_mode(["cautious"]) == "cautious"
 
 
-# ---------------------------------------------------------------------------
-# Engagement trend
-# ---------------------------------------------------------------------------
-
-
 class TestComputeEngagementTrend:
     def test_rising(self):
         scores = [0.2, 0.3, 0.4, 0.5, 0.6]
@@ -297,13 +251,7 @@ class TestComputeEngagementTrend:
         assert compute_engagement_trend([]) == "stable"
 
     def test_three_points_rising(self):
-        # [0.2] vs [0.5, 0.7] → avg 0.2 vs 0.6 → rising
         assert compute_engagement_trend([0.2, 0.5, 0.7]) == "rising"
-
-
-# ---------------------------------------------------------------------------
-# Metric vs baseline formatting
-# ---------------------------------------------------------------------------
 
 
 class TestFormatVsBaseline:

@@ -1,5 +1,3 @@
-"""Tests for TTS pre-rendering module."""
-
 import os
 import tempfile
 from unittest.mock import patch
@@ -11,7 +9,6 @@ from voices import VoiceConfig
 
 MP3_STUB = b"\xff\xfb" * 50
 
-# Neutral voice config for tests — no emotion markup
 _TEST_VOICE = VoiceConfig(voice="v", speaking_rate=0.8)
 _TEST_VOICE_DEFAULT = VoiceConfig(voice="v", speaking_rate=1.0)
 
@@ -210,7 +207,6 @@ class TestSynthesizeWithPauses:
             await synthesize_with_pauses("Hello.", _TEST_VOICE_DEFAULT, "/tmp/../../../etc/passwd")
 
     async def test_caches_silence_durations(self):
-        """Silence generation should be called once per unique duration, not per occurrence."""
         silence_gen_calls = []
 
         def _tracking_silence(seconds):
@@ -225,7 +221,6 @@ class TestSynthesizeWithPauses:
         assert silence_gen_calls.count(0.6) == 1
 
     async def test_emotion_markup_prepended_to_tts_text(self):
-        """When VoiceConfig has an inworld_markup, it should be prepended to each chunk."""
         tts_texts = []
 
         async def _tracking_tts(text, voice_id, *, speaking_rate=1.0, session=None):
@@ -242,7 +237,6 @@ class TestSynthesizeWithPauses:
         assert tts_texts[0] == "[sad] I miss you."
 
     async def test_no_markup_when_empty(self):
-        """When VoiceConfig has no markup, text should pass through unchanged."""
         tts_texts = []
 
         async def _tracking_tts(text, voice_id, *, speaking_rate=1.0, session=None):

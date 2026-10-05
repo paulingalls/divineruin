@@ -1,24 +1,4 @@
-"""Content tests for content/archetype_milestones.json — the M2.3 milestone SSOT.
-
-These read the raw JSON file directly (NOT a loader; the loader lives in
-apps/agent/milestones.py, story-002). This module checks the JSON's structure:
-roster coverage (every archetype has one row at each of L5/L10/L15/L20), the
-tier<->level mapping, the L5 specialization-fork shape (exactly 2 options, or a
-patron-deferred stub), the L10/L15/L20 auto-grant shape, and id well-formedness.
-Mirrors test_archetype_abilities_content.py.
-
-Schema (decision 4c0677dae1be — self-contained milestone records):
-each record embeds its granted ability text directly; milestones do NOT FK into
-archetype_abilities (which holds activatables only — these grants are passive
-combat flags / markers consumed by story-004 and Phase-4 combat).
-
-Spec-fidelity decisions (confirmed with customer):
-- Oracle has a concrete L5 fork (Fateseer/Doomcaller, spec L870) — encoded fully.
-  Only Cleric (4 patron domains) and Paladin (4 patron oaths) are patron-deferred
-  stubs pending Phase 8 (risk 5ab73bf3720a).
-- Extra Attack at L10 is assigned only to Warrior, Skirmisher, Paladin (assumption
-  69d9cf96ac16) — not all martials; Guardian etc. get archetype-specific grants.
-"""
+"""Milestones embed passive grants rather than referencing the activatable-ability catalog."""
 
 import json
 import re
@@ -28,7 +8,6 @@ import pytest
 
 MILESTONES_JSON = Path(__file__).resolve().parents[3] / "content" / "archetype_milestones.json"
 
-# The 18 chassis ids (parity with content/archetypes.json roster).
 ARCHETYPE_IDS = {
     "warrior",
     "guardian",
@@ -50,7 +29,6 @@ ARCHETYPE_IDS = {
     "marshal",
 }
 
-# Tier name <-> level. Identity is the L5 specialization fork; the rest auto-grant.
 TIER_LEVEL = {"identity": 5, "power": 10, "mastery": 15, "legend": 20}
 
 KINDS = {"specialization_fork", "auto_grant"}
@@ -58,7 +36,6 @@ KINDS = {"specialization_fork", "auto_grant"}
 # L5 forks shaped by a patron choice — stubbed (empty options) pending Phase 8.
 PATRON_DEFERRED = {"cleric", "paladin"}
 
-# Archetypes the spec grants Extra Attack at L10 (assumption 69d9cf96ac16).
 EXTRA_ATTACK_L10 = {"warrior", "skirmisher", "paladin"}
 
 REQUIRED_KEYS = {
@@ -100,15 +77,12 @@ def test_every_archetype_has_one_row_per_tier(rows):
     for aid in ARCHETYPE_IDS:
         levels = sorted(r["level"] for r in by_arch[aid])
         assert levels == [5, 10, 15, 20], f"{aid} milestone levels {levels} != [5, 10, 15, 20]"
-    # Exactly 18 archetypes x 4 tiers, no stray archetype_id.
     assert len(rows) == len(ARCHETYPE_IDS) * 4, f"expected {len(ARCHETYPE_IDS) * 4} milestone rows, found {len(rows)}"
 
 
 def test_each_row_required_keys_and_enums(rows):
     for row in rows:
         rid = row.get("id", "<no id>")
-        # Exact match, not superset — the row shape is the cross-language SSOT
-        # contract for the story-002 (Python) and story-003 (TS) parsers.
         assert set(row) == REQUIRED_KEYS, (
             f"{rid} key mismatch: missing {REQUIRED_KEYS - set(row)}, extra {set(row) - REQUIRED_KEYS}"
         )
@@ -183,7 +157,6 @@ def test_l10_extra_attack_flag(rows):
     for aid in EXTRA_ATTACK_L10:
         flag = l10[aid]["grant"]["flag"]
         assert flag == "extra_attack", f"{aid} L10 grant.flag {flag!r} should be 'extra_attack' per spec"
-    # No other archetype's L10 should claim the extra_attack flag.
     for aid, row in l10.items():
         if aid not in EXTRA_ATTACK_L10:
             assert row["grant"]["flag"] != "extra_attack", (

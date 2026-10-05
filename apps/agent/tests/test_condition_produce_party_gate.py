@@ -1,11 +1,4 @@
-"""Party-membership gate + batched locked write for produce_ooc_condition (M4.8 story-007).
-
-Debts d2316e2f74af (no party/existence gate — a non-party PC or phantom id silently "lands") and
-b0207c768743 (per-ally N round-trips) both close here. A target must be a caster's party member OR
-their present companion (allowlisted narrate-only, no players.data row) — anything else is refused
-fail-loud, no write. Party targets are fetched + written in ONE batched, id-ordered call each (was
-N per-target round-trips).
-"""
+"""Phantom or foreign targets must not land a condition; batch locking also avoids per-ally round trips."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -32,7 +25,6 @@ def _mods(table: dict):
 
 @pytest.mark.asyncio
 async def test_non_party_non_companion_target_fails_loud_no_write():
-    # AC1: target is neither a party member nor the caster's companion -> refused, no write.
     caster = _row("c1")
     queries, cond_mut = _mods({"intruder": _row("intruder")})
     with pytest.raises(ValueError):
@@ -54,7 +46,6 @@ async def test_non_party_non_companion_target_fails_loud_no_write():
 
 @pytest.mark.asyncio
 async def test_party_member_with_no_players_row_fails_loud():
-    # AC2: a3 is a party member id but has no players.data row (non-existent) -> refused.
     caster = _row("c1")
     queries, cond_mut = _mods({"a1": _row("a1")})  # a3 deliberately absent
     with pytest.raises(ValueError):
@@ -76,7 +67,6 @@ async def test_party_member_with_no_players_row_fails_loud():
 
 @pytest.mark.asyncio
 async def test_three_party_allies_batch_fetch_and_batch_write_once():
-    # AC3: 3 allies -> ONE get_players_for_update call with the id-sorted list, ONE batched write.
     caster = _row("c1")
     rows = {f"a{i}": _row(f"a{i}") for i in (3, 1, 2)}
     queries, cond_mut = _mods(rows)
@@ -126,8 +116,6 @@ async def test_companion_target_preserved_as_narrate_only_no_write():
 
 @pytest.mark.asyncio
 async def test_e2e_two_pc_party_ally_applied_non_party_rejected_single_batch_lock():
-    # AC4: the E2E acceptance-command shape — a 2-PC party where the ally lands via ONE batched
-    # lock, and a separate call against a non-party id is refused.
     caster = _row("c1")
     ally = _row("a1")
     queries, cond_mut = _mods({"a1": ally})

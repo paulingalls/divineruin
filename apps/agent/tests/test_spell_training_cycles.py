@@ -1,12 +1,4 @@
-"""Spell-training cycle accrual + promotion (M8 story-004).
-
-A completed spell-training activity = one cycle toward that spell's
-spell_learning_progress. When the tier's cycle count is reached, the worker
-promotes the spell into the known library (record_learned + clear progress).
-
-Unit tests isolate worker retry and promotion seams. The three-cycle diagnostic
-uses the real begin_activity producer, Postgres rows, progress, and known library.
-"""
+"""Mock retry seams isolate promotion; the three-cycle diagnostic uses the real producer and stored library."""
 
 import json
 import uuid
@@ -24,9 +16,6 @@ from dialogue_parser import Segment
 
 SAMPLE_PLAYER = {"player_id": "player_1", "name": "Aldric", "class": "mage", "level": 5}
 
-# A spell-training activity at the completion edge. spell_major carries
-# cycles_required=5 (content config, loaded by the autouse conftest fixture);
-# its midpoint decision ids are push/work_around.
 SAMPLE_SPELL_ACTIVITY = {
     "id": "train_spell1",
     "player_id": "player_1",
@@ -77,8 +66,6 @@ def _completion_patches(activity, *, advance_return, player=SAMPLE_PLAYER):
 class TestSpellTrainingAccrual:
     @pytest.mark.asyncio
     async def test_completed_cycle_promotes_spell_to_known_library(self):
-        """When advance_learning_cycle reports completed, the spell is recorded learned
-        with track='training' and its in-flight progress row is cleared (promotion seam)."""
         patches, advance, record_learned, delete_progress = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={
@@ -103,19 +90,14 @@ class TestSpellTrainingAccrual:
             count = await advance_training_cycles()
 
         assert count == 1
-        # One cycle accrued against this spell, sized by the major tier (5 cycles).
         advance.assert_awaited_once()
         assert advance.call_args.args[:2] == ("player_1", "arcane_fireball")
         assert advance.call_args.args[2] == 5  # cycles_required from content config
-        # Promotion fired, carrying the recorded midpoint decision as the spell's
-        # bonus_variant (AC3: the learned spell reflects the training decision).
         record_learned.assert_awaited_once_with("player_1", "arcane_fireball", "training", bonus_variant="push")
         delete_progress.assert_awaited_once_with("player_1", "arcane_fireball")
 
     @pytest.mark.asyncio
     async def test_incomplete_cycle_does_not_promote(self):
-        """A cycle that does not complete the tier accrues but never promotes —
-        no record_learned, no progress deletion (guards the strand-a-spell risk)."""
         patches, advance, record_learned, delete_progress = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={"cycles_completed": 4, "cycles_required": 5, "completed": False},
@@ -199,8 +181,6 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_midpoint_decision_threaded_to_progress(self):
-        """The recorded midpoint decision (data['decision_id']) is passed through to
-        advance_learning_cycle so the learned spell's bonus variant derives from it."""
         patches, advance, _, _ = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
             advance_return={"cycles_completed": 1, "cycles_required": 5, "completed": False},
@@ -223,8 +203,6 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_missing_spell_id_fails_loud(self):
-        """A spell-training activity without spell_id in its data is a contract
-        violation — the cycle is not silently dropped or promoted."""
         activity = {
             **SAMPLE_SPELL_ACTIVITY,
             "data": {k: v for k, v in SAMPLE_SPELL_ACTIVITY["data"].items() if k != "spell_id"},
@@ -245,8 +223,6 @@ class TestSpellTrainingAccrual:
             patches[8],
             patches[9],
         ):
-            # The worker catches per-activity exceptions and retries next cycle, so it
-            # returns 0 transitions rather than raising; accrual never runs.
             count = await advance_training_cycles()
 
         assert count == 0
@@ -255,12 +231,7 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_cached_narration_does_not_re_accrue(self):
-        """On a TTS retry the worker reuses cached narration and skips the non-cached
-        else block, so advance_learning_cycle does NOT re-run. A narration failure
-        BEFORE the cache write re-enters this block but is now safe: the progress row
-        is still present (delete is deferred until after the cache write), so advance
-        re-runs as a no-op via last_activity_id rather than re-INSERTing a phantom row —
-        see test_narration_failure_preserves_progress (debt b20815f92023, resolved)."""
+        """Cached narration must not re-accrue training on a TTS retry."""
         cached_activity = {
             **SAMPLE_SPELL_ACTIVITY,
             "data": {
@@ -293,14 +264,8 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_narration_failure_preserves_progress(self):
-        """A completed spell whose narration fails must NOT delete the progress row.
-
-        delete_learning_progress is deferred until after the narration is cached. If it
-        ran before narration, a narration-failure retry would find no progress row and
-        advance_learning_cycle would re-INSERT a phantom 1/5 row for the already-learned
-        spell (the last_activity_id guard can only protect a row that still exists) —
-        debt b20815f92023. record_learned still runs pre-narration (ON CONFLICT DO
-        NOTHING makes it idempotent); only the delete must wait."""
+        """Keep progress until narration is cached so a retry cannot insert a phantom learning row.
+        The learned-record insert is independently idempotent."""
         advance = AsyncMock(
             return_value={
                 "cycles_completed": 5,
@@ -330,7 +295,6 @@ class TestSpellTrainingAccrual:
         ):
             count = await advance_training_cycles()
 
-        # Narration failed: no transition, no cache write, progress row preserved.
         assert count == 0
         mock_update.assert_not_awaited()
         delete_progress.assert_not_awaited()

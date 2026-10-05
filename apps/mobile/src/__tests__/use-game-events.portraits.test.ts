@@ -6,8 +6,6 @@ import { SAMPLE_CHARACTER, resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
-// --- Portrait store integration ---
-
 test("session_init populates portrait store from portraits field", () => {
   handleGameEvent({
     type: "session_init",
@@ -41,12 +39,9 @@ test("session_init populates portrait store from portraits field", () => {
     url: "/api/assets/images/img_torin",
   });
 
-  // Player portrait should also be set
   const cs = characterStore.getState();
   expect(cs.character?.portraitUrl).toBe("/api/assets/images/img_player");
 });
-
-// --- Transcript entry triggers NPC portrait ---
 
 test("transcript_entry with an NPC voice tag shows the authored portrait", () => {
   portraitStore.getState().setNpcPortraitMap({
@@ -161,8 +156,6 @@ test("a display name does not show the companion — that was the dead gate", ()
 
   expect(portraitStore.getState().companionVisible).toBe(false);
 });
-
-// --- Player portrait ready event ---
 
 test("player_portrait_ready updates character store", () => {
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER });

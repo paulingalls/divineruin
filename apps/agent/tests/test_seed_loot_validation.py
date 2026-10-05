@@ -1,5 +1,3 @@
-"""Conformance of authored loot tables and seed-time loot validation."""
-
 import copy
 import json
 import sys

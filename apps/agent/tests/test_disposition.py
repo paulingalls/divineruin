@@ -1,9 +1,3 @@
-"""Tests for the shared resolve_disposition helper (fe1c95e4688c).
-
-Covers the three fallback branches: a recorded per-player disposition, the NPC's
-content default_disposition, and the final 'neutral' default.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

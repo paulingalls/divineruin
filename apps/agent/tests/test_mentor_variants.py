@@ -1,11 +1,3 @@
-"""Unit tests for the mentor_variants loader (M9 / story-001).
-
-Drives the production fail-loud parse_mentor_variant_row over inline fixtures and
-pins the accessors. The content-catalog conformance (exact count, every row
-parses, ability_id/mentor_id cross-refs) lives in test_mentor_variants_content.py
-alongside the catalog itself. Mirrors test_spells.py.
-"""
-
 import pytest
 
 from mentor_variants import (
@@ -82,7 +74,6 @@ def test_get_variant_resolves_pair_and_fails_loud_on_mismatch():
     set_mentor_variants({"warrior_cleaving_blow_drathian": _variant("warrior_cleaving_blow_drathian")})
     found = get_variant("warrior_cleaving_blow", "warrior_cleaving_blow_drathian")
     assert found.cultural_attribution == "Drathian Clans technique"
-    # variant id exists but belongs to a different ability -> fail loud
     with pytest.raises(ValueError, match="warrior_cleaving_blow_drathian"):
         get_variant("guardian_taunt", "warrior_cleaving_blow_drathian")
 

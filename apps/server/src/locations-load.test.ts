@@ -2,19 +2,8 @@ import { test, expect, describe, afterAll } from "bun:test";
 import { parseLocationRow, getLocation, listLocations, setLocations } from "./locations.ts";
 import type { Location } from "@divineruin/shared";
 
-// Drives the production fail-loud parseLocationRow (apps/server/src/locations.ts)
-// over content/locations.json, proving every entry conforms to the shared Location
-// contract. parseLocationRow is the real TS load boundary (loadLocations calls it at
-// startup); this test exercises it against the canonical content and pins its fail-loud
-// behavior on malformed rows. Locations are the M6 Stage source: hidden_element.attaches_to
-// scopes discovery (story-002) and exit.requires gates traversal (story-003); this loader
-// is the first to validate those fields, so the fail-loud cases below guard the schema.
-
 const LOCATIONS_PATH = new URL("../../../content/locations.json", import.meta.url);
 
-// content/locations.json is a closed set: 19 locations. An exact count catches both
-// silent attrition from bad merges AND accidental additions (move this literal if the
-// content changes).
 const LOCATION_COUNT = 19;
 
 async function loadLocationsJson(): Promise<Record<string, unknown>[]> {
@@ -29,7 +18,6 @@ describe("content/locations.json — parseLocationRow conformance", () => {
     expect(rows).toHaveLength(LOCATION_COUNT);
     for (const row of rows) {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
-      // Throws with the location id + field context on any malformed entry.
       expect(() => parseLocationRow(id, row)).not.toThrow();
     }
   });
@@ -57,11 +45,6 @@ describe("content/locations.json — parseLocationRow conformance", () => {
   });
 
   test("a hidden element bound to a key_feature round-trips its attaches_to id", async () => {
-    // greyvale_ruins_entrance is the M6 fixture: the ward-seal attaches to the "archway"
-    // — a distinctive noun in the advertised key_feature ("Aelindran script carved into
-    // the archway"), so check(arcana, <archway prose>) scopes to it via whole-word
-    // containment. Discovering it sets veythar_seal_mark.discovered, which the gated
-    // "deeper" exit's requires gate then satisfies (story-002/003/004).
     const rows = await loadLocationsJson();
     const ruins = rows.find((r) => r.id === "greyvale_ruins_entrance");
     const parsed = parseLocationRow("greyvale_ruins_entrance", ruins!);
@@ -75,10 +58,6 @@ describe("content/locations.json — parseLocationRow conformance", () => {
 });
 
 describe("locations accessors — loadLocations consumer chain", () => {
-  // loadLocations() reads the DB; its accessor chain (setLocations ->
-  // getLocation/listLocations) is the runtime API consumers use after startup. Drive it
-  // against the real parsed content (parseLocationRow per row, exactly as loadLocations
-  // does) without a live DB.
   async function loadParsedMap(): Promise<Map<string, Location>> {
     const rows = await loadLocationsJson();
     const map = new Map<string, Location>();

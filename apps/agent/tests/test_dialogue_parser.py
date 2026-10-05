@@ -160,12 +160,7 @@ async def test_long_narration_no_tags():
 
 @pytest.mark.asyncio
 async def test_longest_registered_tag_survives_one_character_at_a_time():
-    """A tag the buffer gives up on is narrated by the DM, not the character it named.
-
-    One character per chunk is the worst case: the buffer stops at every length, so it hits
-    MAX_TAG_LENGTH exactly. The role voices put 27-character keys in the registry, and the
-    parser must still recognise the longest one paired with an improvised emotion word.
-    """
+    """The longest single character is worse than an average-sized markup tag."""
     character = max(VOICES, key=len)
     emotion = "a" * _MAX_EMOTION_LENGTH
     text = f'[{character}, {emotion}]: "Fine wares, traveler."'

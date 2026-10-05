@@ -1,18 +1,3 @@
-"""Capstone: M25 Phase-5 verb consolidation, end-to-end.
-
-Three merged stories folded five capability tools into one polymorphic ``activate(id)``
-verb: story-001 built the dispatcher (``activate_tools.activate`` / ``_activate_impl``),
-story-002 wired it onto combat and demoted ``cast_spell``, ``request_ability_activation``,
-``activate_veil_ward``, ``inner_fire``, and story-003 wired it onto exploration and demoted
-``deploy_veil_anchor``. Each per-story review passed independently; this capstone is the
-integration net those reviews cannot see — it proves the ASSEMBLED whole holds: the verb is
-registered where it should be (and nowhere the folded nouns still are), the tool-count budget
-holds, and all five capability kinds route correctly through one real-PG seeded testcontainer
-(auto-marked ``acceptance`` by tests/acceptance/conftest.py).
-
-No production code changes — every symbol here is owned by the three merged stories.
-"""
-
 from __future__ import annotations
 
 import json
@@ -57,8 +42,6 @@ _ALL_AGENT_TOOLS = {
 
 
 def test_activate_registered_on_combat_and_exploration_folded_nouns_gone_everywhere() -> None:
-    """The highest-value catch: activate must be on combat + exploration, and none of the five
-    folded wrappers may still be registered on ANY of the six agents."""
     assert any(t.__name__ == "activate" for t in COMBAT_AGENT_TOOLS)
     assert any(t.__name__ == "activate" for t in EXPLORATION_TOOLS)
 
@@ -69,8 +52,7 @@ def test_activate_registered_on_combat_and_exploration_folded_nouns_gone_everywh
 
 
 def test_tool_budget_holds_exact_counts() -> None:
-    """Exact counts pin the fold's tool-ceiling win — a regression here silently re-inflates
-    the strict tool budget the fold exists to protect."""
+    """Exact registration counts make a tool addition deliberate even below the vendor ceiling."""
     assert len(COMBAT_AGENT_TOOLS) == 9
     assert len(COMBAT_AGENT_TOOLS) <= MAX_STRICT_TOOLS - 4
 
@@ -85,8 +67,6 @@ async def _focus_current(player_id: str) -> int:
 
 
 async def test_activate_routes_a_spell_id_and_accrues_resonance(reset_db_pool: str) -> None:
-    """Kind 1/5: a content spell id routes to _cast_spell_impl — Focus deducts, Resonance
-    accrues and persists (mirrors test_m33_casting_capstone)."""
     pool = await db.get_pool()
     player_id = "cap_m25_activate_spell"
     try:
@@ -105,8 +85,6 @@ async def test_activate_routes_a_spell_id_and_accrues_resonance(reset_db_pool: s
 
 
 async def test_activate_routes_an_ability_id_and_deducts_stamina(reset_db_pool: str) -> None:
-    """Kind 2/5: a content ability id routes to _request_ability_activation_impl — real Stamina
-    deducts (mirrors test_story_005_m22_ability_capstone)."""
     import abilities
 
     pool = await db.get_pool()
@@ -127,8 +105,6 @@ async def test_activate_routes_an_ability_id_and_deducts_stamina(reset_db_pool: 
 
 
 async def test_activate_routes_the_reserved_inner_fire_token(reset_db_pool: str) -> None:
-    """Kind 3/5: the id-less reserved token 'draethar_inner_fire' routes to _inner_fire_impl in
-    combat — Resonance drops by 3 and 1d6 self fire damage applies (mirrors test_m34)."""
     import racial_resonance
 
     pool = await db.get_pool()
@@ -166,8 +142,6 @@ async def test_activate_routes_the_reserved_inner_fire_token(reset_db_pool: str)
 
 
 async def test_activate_routes_an_anchor_item_id_and_writes_a_location_ward(reset_db_pool: str) -> None:
-    """Kind 4/5: a carried Veil Anchor item id routes to _deploy_veil_anchor_impl in exploration
-    — writes a location-scope veil_wards row, decrements inventory (mirrors test_m24)."""
     pool = await db.get_pool()
     player_id = "cap_m25_activate_anchor"
     location_id = "cap_m25_activate_anchor_hall"
@@ -198,9 +172,6 @@ async def test_activate_routes_an_anchor_item_id_and_writes_a_location_ward(rese
 
 
 async def test_activate_routes_the_reserved_veil_ward_token_ooc(reset_db_pool: str) -> None:
-    """Kind 5/5: the id-less reserved token 'veil_ward' routes to _activate_veil_ward_impl OOC
-    in exploration (combat_state is None) — a cleric level 7 raises a location-scope ward
-    (mirrors test_exploration_collapse's OOC ward test)."""
     pool = await db.get_pool()
     player_id = "cap_m25_activate_ward_ooc"
     location_id = "cap_m25_activate_ward_hall"

@@ -1,11 +1,4 @@
-"""Tests for the Python materials-catalog accessor (story-004, M5.2).
-
-Mirrors test_recipes.py's mocked-pool style: patch db._cache_get / _cache_set /
-db.get_pool. The agent reads materials from the DB (constraint 8508fdb1abc3) the
-same way it reads recipes — material:<id> and materials:all cache keys, fail-loud
-parse via parse_material_row. get_materials_catalog feeds the pre-flight pipeline's
-Check 4 + the craft-consume allocator (material_id -> {category, tier}).
-"""
+"""Read materials from the database so preflight and allocation share the catalog authority."""
 
 import json
 from unittest.mock import AsyncMock, patch
@@ -14,7 +7,6 @@ import pytest
 
 import materials
 
-# A materials_catalog row's `data` payload (id is the row key, passed separately).
 VALID_MATERIAL_DATA = {
     "name": "Iron Ore",
     "category": "metal",

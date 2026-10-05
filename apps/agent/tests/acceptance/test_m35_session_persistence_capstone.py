@@ -1,25 +1,4 @@
-"""Capstone: M3.5 session persistence + Thessyn Deep Adaptation end-to-end against a real Postgres
-testcontainer.
-
-stories 001-005 shipped the M3.5 seam with unit / mock-conn coverage: persist the flickering_bonus
-(001), a player session counter (002), the pure session-count gate (003), session-init hydration
-that sets+persists the GATED bonus (004), and removal of the cast-time re-grant (005). This capstone
-proves they COMPOSE against ONE seeded testcontainer (auto-marked `acceptance` by
-tests/acceptance/conftest.py), catching the loader / JSONB-persistence / cast seams the mocked
-units can't:
-
-- A Thessyn whose session_count reaches 10 hydrates flickering_bonus 1 (persisted), so a DB read at
-  Resonance 9 derives 'flickering' (the band shifted up a point).
-- A <10-session Thessyn hydrates bonus 0, so the same Resonance 9 derives 'overreach' (gate not met).
-- A fresh session increments players.data{session_count} by exactly 1 and persists it.
-- The full path composes: a 10+-session Thessyn casts to Resonance 9, and the cast packet, the
-  in-session derivation, and read_player_resonance all agree on 'flickering' — one persisted source,
-  no divergence (the cast no longer re-derives the bonus, story-005).
-
-Each test uses a distinct player_id since the testcontainer DB is shared across the session.
-load_racial_resonance reads the real seeded racial_resonance_bonuses table (the DB loader, not the
-JSON fixture) so compute_flickering_bonus resolves the seeded +1.
-"""
+"""Hydrate the persisted bonus once; casts must not independently grant it again."""
 
 from __future__ import annotations
 
@@ -53,8 +32,6 @@ async def _session_count(pool, player_id: str) -> int:
 
 
 async def test_thessyn_reaching_10_sessions_reads_flickering_at_9(reset_db_pool: str) -> None:
-    """A Thessyn whose session_count crosses to 10 at session-init persists flickering_bonus 1, so a
-    DB read at Resonance 9 derives 'flickering' (AC1)."""
     pool = await db.get_pool()
     player_id = "cap_m35_thessyn_at_10"
     await seed_player(pool, player_id=player_id)
@@ -78,8 +55,6 @@ async def test_thessyn_reaching_10_sessions_reads_flickering_at_9(reset_db_pool:
 
 
 async def test_thessyn_below_10_sessions_reads_overreach_at_9(reset_db_pool: str) -> None:
-    """A Thessyn still below 10 sessions hydrates bonus 0, so Resonance 9 derives 'overreach' — the
-    gate is not met and nothing is re-granted (AC2)."""
     pool = await db.get_pool()
     player_id = "cap_m35_thessyn_below_10"
     await seed_player(pool, player_id=player_id)
@@ -103,8 +78,6 @@ async def test_thessyn_below_10_sessions_reads_overreach_at_9(reset_db_pool: str
 
 
 async def test_fresh_session_increments_and_persists_session_count(reset_db_pool: str) -> None:
-    """Each fresh session-init increments players.data{session_count} by exactly one and persists
-    it (AC3)."""
     pool = await db.get_pool()
     player_id = "cap_m35_counter"
     await seed_player(pool, player_id=player_id)
@@ -121,9 +94,6 @@ async def test_fresh_session_increments_and_persists_session_count(reset_db_pool
 
 
 async def test_hydrated_thessyn_cast_and_reads_all_agree_flickering(reset_db_pool: str) -> None:
-    """E2E: a 10+-session Thessyn hydrates the gated bonus, then casts to Resonance 9. The cast
-    packet, the in-session derivation, and read_player_resonance all agree on 'flickering' — one
-    persisted/hydrated source, no divergence (AC4)."""
     pool = await db.get_pool()
     player_id = "cap_m35_e2e_thessyn"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_invisibility",))

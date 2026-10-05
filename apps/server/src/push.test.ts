@@ -114,7 +114,6 @@ describe("handleInternalPush", () => {
     expect(res.status).toBe(200);
   });
 
-  // Resolves concern 7339e3923409 (push.ts had the same live-API leak as Resend).
   test("does NOT call exp.host under bun:test even with valid push tokens", async () => {
     mockQueryResults = [
       [{ token: "ExponentPushToken[abc123]" }], // SELECT tokens

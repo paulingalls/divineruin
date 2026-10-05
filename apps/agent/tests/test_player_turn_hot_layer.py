@@ -83,8 +83,7 @@ async def test_delivered_turn_runs_the_agents_hot_layer_into_the_request_context
 
 @pytest.mark.asyncio
 async def test_hot_layer_edits_do_not_leak_into_the_agents_own_history():
-    """livekit hands the hook a throwaway copy (agent_activity:2801); the combat round line
-    must not land in the cached prefix (combat_agent.on_user_turn_completed, debt ce06dd8c)."""
+    """Use a throwaway vendor context so cache behavior is exercised by LiveKit."""
     agent = HotLayerAgent()
 
     assert await _deliver(ReplyingSession(agent)) is True
@@ -119,8 +118,7 @@ async def test_a_failing_hook_is_logged_and_does_not_reach_the_caller(caplog):
 
 @pytest.mark.asyncio
 async def test_a_session_that_has_stopped_running_skips_the_turn_instead_of_raising(caplog):
-    """`current_agent` raises its own wording, not generate_reply's — the multiplayer consumer
-    must survive a turn that arrives as the DM session closes (multiplayer_input._run)."""
+    """The installed LiveKit current_agent contract differs after shutdown."""
     session = ReplyingSession(None, agent_error=RuntimeError("VoiceAgent isn't running"))
 
     with caplog.at_level(logging.WARNING):

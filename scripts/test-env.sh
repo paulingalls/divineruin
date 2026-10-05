@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Provision a PER-RUN, isolated Postgres + Redis for the test/push gate WITHOUT
+# Provision a PER-RUN, isolated Postgres + Redis for the sprint gate WITHOUT
 # relying on a dev .env — so two overlapping runs (close-pipeline back-to-back
-# pushes) never collide on a shared DB or fixed ports.
+# releases) never collide on a shared DB or fixed ports.
 #
 # SOURCE this (do not exec) so the exported vars AND the teardown function reach
 # the caller:
@@ -13,7 +13,7 @@
 #     ports via `docker run`, waits for readiness, migrates + seeds, and exports
 #     the run's DATABASE_URL/REDIS_URL. It also defines `_te_teardown` and leaves
 #     the container ids set; the CALLER registers a trap that removes the
-#     containers on exit (see .githooks/pre-push). Requires Docker.
+#     containers on exit (see .githooks/sprint). Requires Docker.
 
 if [ -n "${DATABASE_URL:-}" ]; then
   echo "  test-env: DATABASE_URL already set — using the existing environment."
@@ -22,7 +22,7 @@ fi
 
 _te_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 # Per-run id keyed on the sourcing shell's PID — unique across overlapping
-# `git push` processes, stable for the lifetime of one run.
+# sprint-hook processes, stable for the lifetime of one run.
 _te_id="divineruin-test-$$"
 
 echo "  test-env: provisioning per-run postgres + redis (${_te_id})..."

@@ -1,9 +1,4 @@
-"""Fail-loud unit coverage for the enemy applies_condition load-boundary guard (sprint-030
-story-001). Encounter templates have no strict loader today (unlike spells.json /
-archetype_abilities.json), so this guard is the only thing standing between a typo'd
-applies_condition and a silent no-op at combat start. Pure — calls the validator directly
-against an in-memory enemies list, no DB.
-"""
+"""Encounter templates have no strict loader, so malformed conditions must fail at combat start."""
 
 import json
 from pathlib import Path
@@ -131,9 +126,7 @@ class TestValidateEnemyActionConditions:
 
 
 class TestValidateEnemyResistanceTags:
-    """M15 story-002: enemy resistance_tags are Tier-3 de-escalation content with no strict loader,
-    so this load-boundary guard fails loud on a tag outside social_resolution.RESISTANCE_TAGS
-    (mirroring npcs.py) — an unknown tag would otherwise silently no-op the argument DC swing."""
+    """Unknown resistance tags otherwise silently bypass the argument DC modifier."""
 
     def test_known_tags_do_not_raise(self):
         enemies = [{"id": "mawling_1", "resistance_tags": ["pragmatic", "suspicious"]}]

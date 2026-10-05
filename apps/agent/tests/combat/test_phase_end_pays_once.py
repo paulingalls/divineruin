@@ -1,9 +1,4 @@
-"""The whole round agrees — state, DB and events — and the ending wrap pays exactly once.
-
-Split out of test_combat_tx_integrity.py (M29 story-016). Under the restored Beat-3 model a round
-is TWO commits, so these drive two rounds: round 1 lets the enemy's HELD blow land (an enemy that
-falls in the ally band never swings), and round 2 carries the victory and the forced failure.
-"""
+"""Use two rounds: a defeated enemy never swings, so the first round must preserve a held blow before testing terminal rollback."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -119,9 +114,6 @@ def _round_two_targets(state) -> list:
 
 
 class TestEndToEndAllAgree:
-    """AC3 integration gate: after a forced end-path rollback, in-memory state, DB state, and the
-    emitted event stream all agree with the pre-phase state; a clean commit applies all three once."""
-
     async def _seed_weapon(self, pool, player_id: str, weapon_id: str) -> None:
         # player_inventory FKs both players and the items catalog, so seed a player row and use a
         # real catalog weapon id (shortsword_basic). get_player_inventory is mocked, but
@@ -196,27 +188,18 @@ class TestEndToEndAllAgree:
                     resolver=_damage_resolver(7),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # (1) in-memory: the failed WRAP commit reverted to its own pre-commit state — not to
-            # round 1's, which is durable. Round 1's companion KO stands; round 2's scratch does not.
-            # Round 2's ally commit succeeded and was adopted; only the WRAP commit rolled back.
-            # That is the replacement guarantee: ally results durable, enemy actions still pending.
             assert session.combat_state is not round_two_start
             assert session.combat_state is not None
             assert [h["actor_id"] for h in session.combat_state.held_actions] == [enemy_id]
             assert session.combat_state is not None
             fallen_enemy = session.combat_state.get_participant(enemy_id)
             assert fallen_enemy is not None and fallen_enemy.is_fallen is True
-            # weapon_used was set in round 2's ALLY commit, which succeeded — the scratch guard
-            # reverts the failing commit's scratch, not a committed one.
             assert session.party.primary.weapon_used is True
             assert session.party.primary.weapon_crit_vs_heavy is False
             assert session.companion.is_conscious is False  # round 1's committed KO
             assert list(session.companion.session_memories) == ["earlier", "Brae was knocked unconscious in combat"]
-            # (2) DB: combat row survives, weapon durability unchanged (accrual rode the failed commit).
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is not None
             assert await self._weapon_hits(pool, player_id, weapon_id) == 10
-            # (3) events: round 2's ALLY commit flushed its own (it committed); the failed WRAP
-            # commit leaked nothing — no COMBAT_ENDED, no durability hit, no stinger.
             leaked = [e.event_type for e in session.event_bus.drain()]
             assert E.COMBAT_ENDED not in leaked
             assert E.ITEM_DURABILITY_HIT not in leaked
@@ -252,16 +235,12 @@ class TestEndToEndAllAgree:
                 resolver=_damage_resolver(7),
                 concentration_break_mod=_no_concentration_break(),
             )
-            # Victory -> end_combat handoff tuple.
             assert isinstance(result, tuple)
-            # (1) in-memory: combat cleared, the committed companion KO stands.
             assert session.combat_state is None
             assert session.party.primary.weapon_used is False
             assert session.companion.is_conscious is False
-            # (2) DB: combat row deleted, weapon durability decremented once (10 -> 9).
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is None
             assert await self._weapon_hits(pool, player_id, weapon_id) == 9
-            # (3) events: the end + loop events all published, exactly once.
             kinds = [e.event_type for e in session.event_bus.drain()]
             assert kinds.count(E.COMBAT_ENDED) == 1
             assert E.DICE_ROLL in kinds
@@ -273,16 +252,7 @@ class TestEndToEndAllAgree:
 
 
 class TestPhaseEndPaysOnce:
-    """M28 story-010: the phase path's terminal wrap has the same guard window the end_combat tool
-    had, only wider — four fallible steps sit between the commit and the teardown (sink.flush, the
-    ward round-trip, every caster's flush_events, the per-member resonance publishes), and it
-    RE-ARMS the guard with ``session.combat_state = state`` right after the commit.
-
-    Combat rewards are a Resolve now (story-001), written inside that transaction. So a post-commit
-    publish failure used to leave the party paid, the combat row deleted, and combat_state still
-    set — and the DM's next end_combat("victory") paid the whole party again. Real PG here because
-    the payout has to be observed where it is durable: players.data.xp.
-    """
+    """Observe durable XP in Postgres: post-commit failures must not re-arm an already paid fight."""
 
     async def _seed_player(self, pool, player_id: str) -> None:
         await pool.execute(
@@ -326,7 +296,6 @@ class TestPhaseEndPaysOnce:
             )
             assert await self._xp(pool, player_id) == 50, "the wrap must actually pay, else this proves nothing"
 
-            # The DM's natural recovery move. It must find no combat to end.
             with pytest.raises(ToolError, match="Not in combat"):
                 await combat_end._end_combat_impl(ctx, outcome="victory")
 
@@ -336,9 +305,7 @@ class TestPhaseEndPaysOnce:
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
     async def test_publish_failure_still_completes_teardown_and_hands_off(self, dev_db_pool, monkeypatch) -> None:
-        """Half 2: end_combat is the ONLY exit from CombatAgent, and only _end_combat_finish returns
-        the handoff. A HUD mirror that fails to update must not strand a session whose rewards are
-        already banked."""
+        """Failed HUD publication must not strand CombatAgent after payout; only the finish path returns the handoff."""
         from exploration_agent import ExplorationAgent
 
         pool = dev_db_pool
@@ -370,9 +337,7 @@ class TestPhaseEndPaysOnce:
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
     async def test_rolled_back_end_retries_and_pays_exactly_once(self, dev_db_pool, monkeypatch) -> None:
-        """The complement, and the reason the guard cannot simply be released unconditionally: when
-        the TRANSACTION itself rolls back nothing was paid, so combat_state must survive and the
-        retried phase must pay — exactly once, not twice."""
+        """Keep combat_state when the transaction rolls back so a genuine unpaid retry can still succeed once."""
         pool = dev_db_pool
         player_id = "tx_s010_retry_player"
         enemy_id = "tx_s010_retry_enemy"
@@ -402,9 +367,6 @@ class TestPhaseEndPaysOnce:
                     resolver=_damage_resolver(7),
                     concentration_break_mod=_no_concentration_break(),
                 )
-            # Nothing was paid and the guard survives, so the end is still retryable. The state is
-            # no longer the pre-round object — round-016's ally commit succeeded and was adopted —
-            # but it is still A combat state, which is what keeps _require_combat armed.
             assert await self._xp(pool, player_id) == 0
             assert session.combat_state is not None
             assert session.combat_state.combat_id == state.combat_id

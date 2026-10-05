@@ -1,11 +1,3 @@
-"""Tests for the consolidated `check` verb — skill/save/dice modes + dispatch.
-
-Discovery mode is covered separately in tests/tools/test_discover.py (the §7
-visible-target path). These exercise the migrated request_skill_check /
-request_saving_throw / roll_dice behaviors through check's sub-impls, plus the
-mode dispatcher's fail-loud on an unknown mode.
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -62,7 +54,6 @@ class TestCheckSkill:
 
     @pytest.mark.asyncio
     async def test_corrupt_conditions_fail_loud_as_toolerror(self):
-        # M4.4 story-008 (concern 988e3e4f55ea): validate the stored conditions at the boundary.
         queries = _corrupt_conditions_queries()
         with pytest.raises(ToolError, match="corrupt stored conditions"):
             await _check_skill_impl(_make_context(), "athletics", "moderate", "climbing", queries=queries)

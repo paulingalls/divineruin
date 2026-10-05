@@ -1,11 +1,3 @@
-"""Tests for the character creation flow tools.
-
-finalize_character — stat generation, persistence and phase completion — plus the
-end-to-end flow through every creation tool. Split from the choice-collection tests
-(test_creation_tools_choices.py) and the asset-id / image-url tests
-(test_creation_tools_assets.py) to stay under the 500-line cap.
-"""
-
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -170,9 +162,6 @@ class TestFinalizeCharacter:
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_starting_hp_from_chassis(self, mock_create_player, mock_get_payload):
-        # story-004: a finalized character's starting HP derives end-to-end from
-        # the chassis (hp_base), not the legacy ClassData.hit_die. Warrior diverges
-        # (hp_base 12 vs the old hit_die 10), so this would fail under the old path.
         mock_get_payload.return_value = {
             "character": {},
             "location": None,
@@ -235,8 +224,6 @@ class TestFinalizeCharacter:
 
 
 class TestPushCreationMusic:
-    """push_creation_music emits the mood as a deterministic Resolve, not an LLM tool."""
-
     async def test_emits_set_music_state_on_event_bus(self):
         bus = EventBus()
 
@@ -249,16 +236,12 @@ class TestPushCreationMusic:
 
 
 class TestCreationPromptDropsMusicTools:
-    """The creation prompt no longer instructs the LLM to call audio tools (M27)."""
-
     def test_no_play_sound_or_set_music_state_bullets(self):
         assert "play_sound" not in CREATION_SYSTEM_PROMPT
         assert "set_music_state" not in CREATION_SYSTEM_PROMPT
 
 
 class TestFullCreationFlow:
-    """End-to-end flow through the creation tools."""
-
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_complete_flow(self, mock_create_player, mock_get_payload):
@@ -274,39 +257,30 @@ class TestFullCreationFlow:
         cs = CreationState()
         ctx = _make_context(cs)
 
-        # Push race cards
         result = json.loads(await _push_cards(ctx, category="race"))
         assert result["count"] == 6
 
-        # Choose race
         result = json.loads(await _set_choice(ctx, category="race", value="elari"))
         assert result["confirmed"] == "race"
 
-        # Push class cards
         result = json.loads(await _push_cards(ctx, category="class"))
         assert result["count"] == len(CLASSES)
 
-        # Choose class
         result = json.loads(await _set_choice(ctx, category="class", value="mage"))
         assert result["confirmed"] == "class"
 
-        # Push deity cards
         result = json.loads(await _push_cards(ctx, category="deity"))
         assert result["count"] == len(DEITIES)
 
-        # Choose deity
         result = json.loads(await _set_choice(ctx, category="deity", value="veythar"))
         assert result["confirmed"] == "deity"
 
-        # Set name
         result = json.loads(await _set_choice(ctx, category="name", value="Seraphina"))
         assert cs.name == "Seraphina"
 
-        # Set backstory
         result = json.loads(await _set_choice(ctx, category="backstory", value="A scholar of the diaspora."))
         assert cs.backstory == "A scholar of the diaspora."
 
-        # Finalize
         agent, json_str = await _finalize(ctx)
         result = json.loads(json_str)
         from onboarding_agent import OnboardingAgent

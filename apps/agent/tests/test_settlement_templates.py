@@ -1,17 +1,3 @@
-"""Tests for the settlement_templates content loader (Phase 6 M6.2 / story-002).
-
-The loader mirrors apps/agent/role_archetypes.py + npcs.py: fail-loud parse of the
-content/settlement_templates.json catalog, one module-global dict per kind (_tiers,
-_personalities, _name_pools) with a set_* test seam, and a build-then-swap async DB loader. The
-catalog is the template SSOT story-003 consumes — get_settlement_tier(size) for role
-counts, get_settlement_personality(trait) for modifiers.
-
-Catalog shape: a flat list of self-contained id/JSONB rows discriminated by `kind`:
-4 tier rows (id == SettlementSize, role_counts of {min,max} ranges) + 8 personality
-rows (role_frequency_modifiers, disposition_modifiers, price_modifier, inventory_modifier,
-description) + 1 name_pool row (given names + surnames for generated rosters).
-"""
-
 import json
 import re
 from pathlib import Path
@@ -122,8 +108,6 @@ class TestParse:
             parse_settlement_template_row("default_names", bad)
 
     def test_name_pool_never_collides_with_an_authored_character(self):
-        # Kael (the starting companion) and Marek (Bosun Marek Tideborn) both shipped in the
-        # first pool; either would have the DM voice a random guard as a known character.
         pool = _row("default_names")
         for generated in (*pool["names"], *pool["surnames"]):
             assert generated.lower() not in _AUTHORED_NAME_WORDS, (
@@ -153,7 +137,6 @@ class TestParse:
                     )
 
     def test_corrupt_pins(self):
-        # AC for story-003: Corrupt raises Fence/Black-Market frequency + lowers Guard disposition.
         corrupt = parse_settlement_template_row("corrupt", _row("corrupt"))
         assert corrupt["role_frequency_modifiers"]["fence"] >= 1
         assert corrupt["role_frequency_modifiers"]["merchant_black_market"] >= 1
@@ -185,8 +168,6 @@ class TestParse:
             parse_settlement_template_row("village", bad)
 
     def test_inventory_modifier_pins(self):
-        # story-003 scope expansion: prosperous = fuller (>1.0), struggling = thinner (<1.0),
-        # neutral personalities = 1.0. Forward-wired Phase-9 economy field (debt recorded).
         assert parse_settlement_template_row("prosperous", _row("prosperous"))["inventory_modifier"] > 1.0
         assert parse_settlement_template_row("struggling", _row("struggling"))["inventory_modifier"] < 1.0
         assert parse_settlement_template_row("military", _row("military"))["inventory_modifier"] == 1.0
@@ -227,7 +208,6 @@ class TestAccessors:
         assert get_settlement_tier("city")["id"] == "city"
         with pytest.raises(ValueError):
             get_settlement_tier("village")
-        # restore the full catalog for any later test in this module
         set_settlement_templates(*load_fixture_config())
 
     def test_catalog_without_name_pool_is_not_loaded(self):

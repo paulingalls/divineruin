@@ -109,9 +109,7 @@ def test_begin_activity_binds_a_raw_json_activity_to_the_impl_kwargs():
     ],
 )
 def test_an_unknown_kind_or_a_missing_required_field_is_a_self_correctable_tool_error(tool, arguments):
-    """ADR 0008 rule 2 made every variant field required, so a field the model omits is now a
-    validation failure rather than a defaulted empty string. It must reach the model as a
-    ToolError it can retry from — not as a raw ValidationError out of the tool call."""
+    """Vendor-required fields must produce a retryable ToolError when omitted."""
     with pytest.raises(ToolError):
         _bind(tool, arguments)
 

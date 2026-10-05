@@ -1,5 +1,3 @@
-"""E2E integration tests for H.8 — verify the full handoff chain."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,12 +24,8 @@ COMPANION = CompanionState(id="companion_kael", name="Kael")
 
 
 class TestNewPlayerHandoffChain:
-    """Verify the full new-player handoff chain produces correct agent types."""
-
     @pytest.mark.asyncio
     async def test_city_to_wilderness_to_dungeon_to_city(self):
-        """M7 story-003: city -> wilderness -> dungeon -> city keeps ONE warm
-        ExplorationAgent (no handoff); only its region attribute tracks the Stage."""
         from movement_tools import _move_player_impl
 
         locations = {
@@ -80,10 +74,8 @@ class TestNewPlayerHandoffChain:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
 
-        # One warm agent persists for the whole journey.
         agent = ExplorationAgent(initial_location="accord_market_square", region_type=REGION_CITY)
 
-        # Step 1: City -> Wilderness
         ctx = _make_context("accord_market_square", companion=COMPANION)
         ctx.session.current_agent = agent
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
@@ -102,7 +94,6 @@ class TestNewPlayerHandoffChain:
         assert ctx.userdata.location_id == "greyvale_south_road"
         assert ctx.userdata.companion is not None
 
-        # Step 2: Wilderness -> Dungeon
         ctx.userdata.location_id = "greyvale_south_road"
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
@@ -119,7 +110,6 @@ class TestNewPlayerHandoffChain:
         assert agent._agent_type == REGION_DUNGEON
         assert ctx.userdata.location_id == "greyvale_ruins_entrance"
 
-        # Step 3: Dungeon -> City (back through wilderness)
         locations["greyvale_ruins_exterior"] = {
             "id": "greyvale_ruins_exterior",
             "name": "Ruins Exterior",
@@ -145,8 +135,6 @@ class TestNewPlayerHandoffChain:
 
     @pytest.mark.asyncio
     async def test_companion_persists_across_handoffs(self):
-        """Companion state survives region transitions — trivially, since the same
-        agent (and its SessionData companion) persist with no handoff."""
         from movement_tools import _move_player_impl
 
         locations = {
@@ -197,20 +185,16 @@ class TestNewPlayerHandoffChain:
         assert isinstance(result, str)  # no handoff
         assert ctx.session.current_agent is agent
         assert agent._agent_type == REGION_WILDERNESS
-        # Companion still in SessionData (same agent, same session)
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Kael"
 
 
 class TestCombatRoundTrip:
-    """Verify combat handoff and return to correct agent type."""
-
     @pytest.mark.asyncio
     async def test_wilderness_combat_returns_to_wilderness(
         self,
         mock_combat_agent_factory,
     ):
-        """start_combat from wilderness, end_combat returns WildernessAgent."""
         from combat_end import _end_combat_impl
         from combat_init import _start_combat_impl
 
@@ -225,7 +209,6 @@ class TestCombatRoundTrip:
         mock_content.load_creature_enemy = load_test_creature
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
-        # Start combat from wilderness
         ctx = _make_context("greyvale_south_road", companion=COMPANION)
         ctx.session.current_agent = MagicMock()
         ctx.session.current_agent._agent_type = REGION_WILDERNESS
@@ -241,7 +224,6 @@ class TestCombatRoundTrip:
         assert isinstance(raw, tuple)
         assert ctx.userdata.pre_combat_agent_type == REGION_WILDERNESS
 
-        # End combat -- should return WildernessAgent
         ctx.userdata.combat_state = CombatState(
             combat_id="c1",
             participants=[
@@ -276,8 +258,6 @@ class TestCombatRoundTrip:
 
 
 class TestReturningPlayerDispatch:
-    """Verify returning player dispatch based on region_type."""
-
     @pytest.mark.asyncio
     async def test_dispatch_city_region(self):
         from gameplay_agent import create_gameplay_agent
@@ -312,8 +292,6 @@ class TestReturningPlayerDispatch:
 
 
 class TestOnboardingToGameplay:
-    """Verify onboarding beat 5 hands off to CityAgent."""
-
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_beat5_returns_city_agent(self, mock_flag):
@@ -335,8 +313,6 @@ class TestOnboardingToGameplay:
 
 
 class TestReconnectionAllAgentTypes:
-    """Verify _setup_reconnection works for all agent types."""
-
     def test_registers_for_prologue(self):
         from participant_lifecycle import _setup_reconnection
 

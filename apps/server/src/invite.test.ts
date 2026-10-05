@@ -139,7 +139,6 @@ describe("handleRedeemInvite", () => {
     expect(res.status).toBe(415);
   });
 
-  // Regression spy for the critical constraint: redeem must never spawn a 2nd DM.
   test("host token dispatches once; redeem dispatches zero", async () => {
     const hostRes = await handleLivekitToken(
       jsonReq("/api/livekit/token", { room_name: "room-shared" }),

@@ -6,7 +6,6 @@ import { initAnalytics, trackEvent, __resetForTest, type AnalyticsPayload } from
 // browser-global stubs. bun:test has no DOM, so `typeof window === "undefined"` is the SSR path by
 // default — exactly the prerender case AC#2 cares about.
 
-// Capture-everything fake transport.
 function recorder() {
   const calls: AnalyticsPayload[] = [];
   return { fn: (p: AnalyticsPayload) => calls.push(p), calls };
@@ -51,7 +50,6 @@ test("trackEvent passes name, props, and a numeric timestamp to the transport", 
 });
 
 test("trackEvent does not throw and dispatches nothing during prerender (no window)", () => {
-  // No window in bun by default — defaultTransport must no-op rather than crash the build.
   expect(() => trackEvent("page_view")).not.toThrow();
 });
 
@@ -83,11 +81,9 @@ test("initAnalytics tracks a cta_click via the delegated #waitlist listener", ()
   withBrowser({ document: doc, location: { pathname: "/" } }, () => {
     initAnalytics(r.fn);
   });
-  // A click whose target resolves to an a[href="#waitlist"] CTA.
   const ctaTarget = { closest: (sel: string) => (sel === 'a[href="#waitlist"]' ? {} : null) };
   clickHandler!({ target: ctaTarget });
   expect(r.calls.some((c) => c.name === "cta_click")).toBe(true);
-  // A click elsewhere does not track.
   const before = r.calls.length;
   clickHandler!({ target: { closest: () => null } });
   expect(r.calls).toHaveLength(before);
@@ -99,7 +95,6 @@ test("defaultTransport beacons to PUBLIC_ANALYTICS_URL when set, and always disp
   const navigator = { sendBeacon: (url: string, body: string) => beacons.push({ url, body }) };
   process.env.PUBLIC_ANALYTICS_URL = "https://divineruin.app/__a";
   withBrowser({ navigator }, () => {
-    // window.dispatchEvent is the in-page seam; spy on it.
     (globalThis as Record<string, unknown>).window = {
       dispatchEvent: (e: unknown) => dispatched.push(e),
     };

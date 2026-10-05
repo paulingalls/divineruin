@@ -1,19 +1,4 @@
-"""Tests for the Python quality-outcome accessors + selector (story-002, M5.3).
-
-quality_outcomes is DB-loaded content (content/quality_outcomes.json, decision
-quality-outcomes-storage) read only by the Python rules engine — mirrors the
-recipes accessor (recipes.py / test_recipes.py): a fail-loud parse_quality_outcome_row
-and a get_quality_outcomes accessor cached quality_outcome:<category>.
-
-apply_quality_outcome is the pure band-keyed selector story-003's resolve_crafting
-calls (decision apply-quality-outcome-signature): exceptional -> a bonus_property,
-partial -> a flaw, success/failure -> None. bonus/flaw entries are narration-only
-{id,name,description} (decision bonus-property-shape).
-
-Unit tests with a mocked pool, like test_recipes. The real-DB seed path (migration
-024 + seed_content -> quality_outcomes table) is exercised by the M5.3 capstone
-(story-005) on the testcontainer lane.
-"""
+"""Quality bonuses and flaws are narration descriptors, not executable modifiers."""
 
 import json
 import random
@@ -24,8 +9,6 @@ import pytest
 
 import quality_outcomes
 
-# A valid quality_outcomes-table row `data` payload (the non-id fields; id is the
-# row key = crafting category, passed separately to parse_quality_outcome_row).
 VALID_DATA = {
     "bonus_properties": [
         {"id": "keen_edge", "name": "Keen Edge", "description": "The blade hums when it cuts the air."},
@@ -37,7 +20,6 @@ VALID_DATA = {
     ],
 }
 
-# The 6 crafting categories, matching recipes.py _CATEGORIES / recipe.ts.
 ALL_CATEGORIES = {"weapon", "armor", "consumable", "tool", "enchantment", "ammunition"}
 
 CONTENT_FILE = Path(__file__).resolve().parents[3] / "content" / "quality_outcomes.json"
@@ -149,8 +131,6 @@ class TestGetQualityOutcomes:
 
 
 class TestContentFile:
-    """E2E AC: every category in content/quality_outcomes.json parses and is selectable."""
-
     def _load(self) -> list[dict]:
         return json.loads(CONTENT_FILE.read_text())
 

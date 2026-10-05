@@ -1,5 +1,3 @@
-"""Player STT observability across the multiplayer input split."""
-
 from unittest.mock import MagicMock, patch
 
 import pytest

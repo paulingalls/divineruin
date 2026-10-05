@@ -1,13 +1,4 @@
-"""Capstone: M4.8 beneficial-condition pipeline E2E (Bless + Inspire).
-
-Proves the full single-use +1d4 seam end to end against the testcontainer DB, exercising the REAL
-producers, tools, and persistence (only the d20 seam is patched): a producer applies the condition →
-the next applicable player roll folds the +1d4 and consumes it → the removal persists → a later roll
-no longer benefits → engine-auto saves never consume it → a multi-target buff names every ally →
-breaking a Bless's concentration drops the buff (risk 0899a89ef0da). Stories 004/005/007/009/011/013
-built the pieces; this is the integration capstone. Mirrors test_m43_conditions_capstone.py +
-_capstone_helpers.py.
-"""
+"""Patch only the d20; execute real producers, consumers and persistence."""
 
 from __future__ import annotations
 
@@ -75,8 +66,6 @@ async def _produce(
 
 
 async def test_bless_save_folds_consumes_and_persists_removal(reset_db_pool: str) -> None:
-    """AC1: a caster blesses an ally; the ally's save folds +1d4 AND Blessed is consumed + persisted
-    as removed (vs an unblessed baseline at the same forced d20)."""
     pool = await db.get_pool()
     caster_id, ally_id, base_id = "cap_m48_caster", "cap_m48_bless_ally", "cap_m48_bless_base"
     for pid in (caster_id, ally_id, base_id):
@@ -100,8 +89,6 @@ async def test_bless_save_folds_consumes_and_persists_removal(reset_db_pool: str
 
 
 async def test_inspire_folds_once_then_expires(reset_db_pool: str) -> None:
-    """AC2 + AC3: a Bard inspires an ally; the ally's first roll folds +1d4 once and consumes it; the
-    second roll gets no +1d4 (expired on consume). Inspired folds into any roll, so a save drives it."""
     pool = await db.get_pool()
     caster_id, ally_id, base_id = "cap_m48_bard", "cap_m48_insp_ally", "cap_m48_insp_base"
     for pid in (caster_id, ally_id, base_id):
@@ -126,8 +113,6 @@ async def test_inspire_folds_once_then_expires(reset_db_pool: str) -> None:
 
 
 async def test_bless_in_combat_attack_consumes_once(reset_db_pool: str) -> None:
-    """AC1 in-combat: a blessed combat participant's attack folds the +1d4 and consumes Blessed once
-    (rides save_combat_state); the participant is no longer blessed after the swing."""
     pool = await db.get_pool()
     player_id = "cap_m48_combat_bless"
     state = _build_state("combat_cap_m48_bless", player_id, [_enemy("goblin_a", hp=100)])
@@ -149,8 +134,7 @@ async def test_bless_in_combat_attack_consumes_once(reset_db_pool: str) -> None:
 
 
 async def test_engine_auto_save_never_consumes(reset_db_pool: str) -> None:
-    """Pipeline invariant (decision 6102eca13319): an engine-auto save (bonus_dice_eligible=False, the
-    Beat-4 tick-clear / concentration-break path) never folds or consumes the player's +1d4."""
+    """Engine-auto saves must leave the player's single-use bonus die for their next chosen roll."""
     blessed_player = {
         "attributes": {"wisdom": 14, "constitution": 14},
         "level": 3,
@@ -163,9 +147,6 @@ async def test_engine_auto_save_never_consumes(reset_db_pool: str) -> None:
 
 
 async def test_multitarget_bless_voices_every_ally(reset_db_pool: str) -> None:
-    """AC5: a multi-target Bless lands on >1 ally and the producer names EVERY landed ally
-    (condition_targets, not just the singular condition_applied), and the Beat-3 narration prompt now
-    instructs the DM to voice them — so no buffed ally is left silent on state."""
     pool = await db.get_pool()
     caster_id = "cap_m48_mt_caster"
     ally_a, ally_b = "cap_m48_mt_a", "cap_m48_mt_b"
@@ -185,9 +166,6 @@ async def test_multitarget_bless_voices_every_ally(reset_db_pool: str) -> None:
 
 
 async def test_breaking_bless_concentration_drops_blessed(reset_db_pool: str) -> None:
-    """Risk 0899a89ef0da E2E: the REAL divine_bless catalog (applies_condition=blessed, concentration)
-    drives removal — a caster concentrating on Bless whose CON save fails loses Blessed (and its +1d4)
-    on the buffed participant, so the boon never outlives the broken concentration."""
     pool = await db.get_pool()
     await spells.load_spells()  # populate the catalog from the seeded spells table
     assert spells.get_spell("divine_bless").applies_condition == "blessed"

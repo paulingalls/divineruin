@@ -1,5 +1,3 @@
-"""Tests for OnboardingBackgroundProcess — lightweight stall detection for beats 4-5."""
-
 import asyncio
 import logging
 import time
@@ -14,8 +12,6 @@ from session_data import CompanionState, SessionData
 
 
 class TestNudgeData:
-    """ONBOARDING_NUDGES data structure validation."""
-
     def test_nudges_defined_for_beat_4(self):
         from onboarding_background import ONBOARDING_NUDGES
 
@@ -59,8 +55,6 @@ def _make_bg(
 
 
 class TestCheckNudge:
-    """OnboardingBackgroundProcess._check_nudge stall detection logic."""
-
     @pytest.mark.asyncio
     async def test_no_nudge_when_beat_below_4(self):
         bg, _, mock_session = _make_bg(onboarding_beat=2)
@@ -115,11 +109,9 @@ class TestCheckNudge:
             onboarding_beat=4,
             last_player_speech=now - 60,
         )
-        # First nudge
         await bg._check_nudge()
         assert bg._hint_index == 1
 
-        # Reset timing for second nudge
         bg._last_hint_time = now - 60
         await bg._check_nudge()
         assert bg._hint_index == 2
@@ -134,11 +126,9 @@ class TestCheckNudge:
             onboarding_beat=4,
             last_player_speech=now - 60,
         )
-        # Deliver first nudge for beat 4
         await bg._check_nudge()
         assert bg._hint_index == 1
 
-        # Beat changes to 5
         sd.onboarding_beat = 5
         bg._last_hint_time = now - 60
         await bg._check_nudge()

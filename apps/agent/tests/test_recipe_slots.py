@@ -1,11 +1,4 @@
-"""Tests for the Python recipe_slots accessor (M5.1, concern d125d022f084).
-
-Mirrors test_recipes.py's mocked-pool style: patch db._cache_get / _cache_set /
-db.get_pool. recipe_slots is reference data seeded inline by migration 019;
-loading it from the DB (rather than a hardcoded Python dict) keeps the slot caps
-in one canonical place. The real-DB load path is exercised against a testcontainer
-in tests/acceptance/test_recipe_slots_loading.py.
-"""
+"""DB-loaded slot caps avoid a second hardcoded authority."""
 
 import json
 from unittest.mock import AsyncMock, patch
@@ -14,7 +7,6 @@ import pytest
 
 import recipe_slots
 
-# The four seeded rows' `data` payloads (migration 019 recipe_slots seed).
 SEED_ROWS = [
     {"id": "untrained", "data": json.dumps({"max_recipe_tier": "basic", "known_recipe_slots": 3})},
     {"id": "trained", "data": json.dumps({"max_recipe_tier": "trained", "known_recipe_slots": 8})},
@@ -64,8 +56,6 @@ class TestGetRecipeSlots:
 
 
 class TestParseRecipeSlotRow:
-    """Fail loud on any missing/invalid field — no silent default."""
-
     def test_valid_row_round_trips(self):
         assert recipe_slots.parse_recipe_slot_row(
             "untrained", {"max_recipe_tier": "basic", "known_recipe_slots": 3}

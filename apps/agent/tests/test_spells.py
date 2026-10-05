@@ -1,21 +1,4 @@
-"""Tests for spells.py — the DB-loaded ELECTIVE spell catalog (M8 / story-001).
-
-Mirrors the abilities.py loader contract (parse_spell_row fail-loud shared by the
-DB loader and the JSON test fixture, set_spells test seam, get_spell /
-get_spells_by_source accessors, is_loaded, build-then-swap load_spells) — but the
-catalog is SOURCE-keyed (arcane/divine/primal), NOT archetype-keyed: caster CORE
-spells stay archetype_abilities rows (ability_type=core, seam 235ae150c5d3), so
-content/spells.json holds only the elective library. The row shape is the
-cross-language SSOT contract; it borrows M3.3's schema minimally and stays
-forward-compatible with the full Phase-3 Magic catalog.
-
-Tier-unlock ladder (the floor character level at which a tier becomes learnable) is
-PER-ARCHETYPE (content/archetypes.json): full casters reach standard/major/
-supreme at L3/L5/L9. This tier table is the ACTIVE learn/cast gate. (The per-row
-level_requirement / catalog "Level" column was deleted as orphaned non-gating metadata
-with no reader — access is gated by the per-archetype tier tables in
-game_mechanics_archetypes.md, not per-spell level.)
-"""
+"""This elective catalog is source-keyed; core spells stay archetype abilities. Tier access belongs to the archetype, not a spell row."""
 
 import json
 from pathlib import Path
@@ -79,21 +62,14 @@ _BLESS_ROW = {
     "sound_id": "spell_radiant",
 }
 
-# The four M3.3 cast-time fields parse_spell_row requires (strict). Used by the
-# missing-field fail-loud parametrization.
 _M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
 
-# story-003: sound_id is a fifth strict-required field (the playable SFX key), tested
-# separately below alongside its closed-vocabulary check (mirrors source/spell_tier).
 _M33_FIELDS_WITH_SOUND_ID = (*_M33_FIELDS, "sound_id")
 
 
 def _seed_from_content() -> None:
     raw = json.loads(CONTENT_PATH.read_text())
     set_spells({row["id"]: parse_spell_row(row["id"], row) for row in raw})
-
-
-# --- parse_spell_row -----------------------------------------------------------
 
 
 def test_parse_spell_row_full_shape():
@@ -111,13 +87,11 @@ def test_parse_spell_row_exposes_m33_fields():
     assert s.terrain_effects == {}
     assert s.audio_cue == "CMB-006 (powerful)"
     assert s.concentration is False
-    # Concentration is a real bool from the row, not coerced.
     conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
     assert conc.concentration is True
 
 
 def test_parse_spell_row_max_targets_optional_and_parsed():
-    # M4.8 story-007: max_targets is optional (omitted -> None) and parsed when present.
     assert parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW).max_targets is None
     blessed = parse_spell_row(_BLESS_ROW["id"], {**_BLESS_ROW, "max_targets": 3})
     assert blessed.max_targets == 3
@@ -125,7 +99,6 @@ def test_parse_spell_row_max_targets_optional_and_parsed():
 
 @pytest.mark.parametrize("bad_value", [0, -1, "three", 2.5, True])
 def test_parse_spell_row_rejects_nonpositive_max_targets(bad_value):
-    # Strict loader: a present-but-malformed max_targets fails loud naming the row.
     bad = {**_BLESS_ROW, "max_targets": bad_value}
     with pytest.raises(ValueError, match="divine_bless"):
         parse_spell_row("divine_bless", bad)
@@ -144,7 +117,6 @@ def test_validate_target_count_over_max_raises():
 
 
 def test_validate_target_count_no_cap_is_noop():
-    # A spell with no max_targets imposes no limit.
     spell = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
     validate_target_count(spell, ["a", "b", "c", "d", "e"])  # no raise
 
@@ -180,7 +152,6 @@ def test_normalize_target_list_rejects_uncapped_spell():
 
 
 def test_normalize_target_list_dedups_before_cap():
-    # 4 ids collapsing to 3 pass a cap of 3 (dedup precedes the count check).
     assert normalize_target_list(_capped(3), None, ["a", "b", "c", "a"]) == ["a", "b", "c"]
 
 
@@ -199,25 +170,12 @@ def test_parse_spell_row_strict_requires_each_m33_field(missing):
         parse_spell_row("arcane_fireball", bad)
 
 
-def test_parse_spell_row_rejects_unknown_sound_id():
-    # story-003: sound_id must be one of the frozen 7-key SFX palette (SPELL_SOUND_KEYS).
-    bad = {**_FIREBALL_ROW, "sound_id": "spell_explosion"}
-    with pytest.raises(ValueError, match=r"sound_id"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
 def test_parse_spell_row_accepts_each_palette_sound_id():
     from spells import SPELL_SOUND_KEYS
 
     for key in SPELL_SOUND_KEYS:
         s = parse_spell_row(_FIREBALL_ROW["id"], {**_FIREBALL_ROW, "sound_id": key})
         assert s.sound_id == key
-
-
-def test_parse_spell_row_rejects_nonbool_concentration():
-    bad = {**_FIREBALL_ROW, "concentration": "yes"}
-    with pytest.raises(ValueError, match=r"concentration"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
 @pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
@@ -229,8 +187,6 @@ def test_parse_spell_row_rejects_non_dict_dict_fields(field):
 
 @pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
 def test_parse_spell_row_rejects_non_int_dict_value(field):
-    # Deep value validation at the load boundary: a stringly-typed Resonance value fails
-    # loud naming the row+key, NOT downstream at cast-time int arithmetic (story-004).
     bad = {**_FIREBALL_ROW, field: {"arcane": "high"}}
     with pytest.raises(ValueError, match=field):
         parse_spell_row(_FIREBALL_ROW["id"], bad)
@@ -257,12 +213,6 @@ def test_spell_defaults_allow_in_code_construction_without_m33_args():
     assert s.concentration is False
 
 
-def test_parse_spell_row_fail_loud_names_the_row():
-    bad = {k: v for k, v in _FIREBALL_ROW.items() if k != "focus_cost"}
-    with pytest.raises(ValueError, match="arcane_fireball"):
-        parse_spell_row("arcane_fireball", bad)
-
-
 @pytest.mark.parametrize("not_a_dict", [None, []])
 def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
     # Parity with the TS loader's asRecord guard (spells-load.test.ts): a non-object
@@ -270,33 +220,6 @@ def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
     # than an explicit dict guard (mirroring abilities.parse_ability_row).
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", not_a_dict)
-
-
-def test_parse_spell_row_rejects_unknown_source():
-    bad = {**_FIREBALL_ROW, "source": "shadow"}
-    with pytest.raises(ValueError, match=r"source"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_unknown_tier():
-    bad = {**_FIREBALL_ROW, "spell_tier": "legendary"}
-    with pytest.raises(ValueError, match=r"spell_tier"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_noninteger_focus_cost():
-    bad = {**_FIREBALL_ROW, "focus_cost": "5"}
-    with pytest.raises(ValueError, match=r"focus_cost"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_bool_focus_cost():
-    bad = {**_FIREBALL_ROW, "focus_cost": True}
-    with pytest.raises(ValueError, match=r"focus_cost"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-# --- accessors -----------------------------------------------------------------
 
 
 def test_get_spell_resolves_and_unknown_raises():
@@ -337,9 +260,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- content/spells.json conformance -------------------------------------------
-
-
 def test_content_every_row_parses_and_covers_each_source_and_tier():
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
@@ -350,17 +270,12 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
         assert s.source in SPELL_SOURCES
         assert s.spell_tier in SPELL_TIERS
         pairs.add((s.source, s.spell_tier))
-    # Every source has >=1 elective per tier so downstream track/prep/gate tests have data.
     for source in SPELL_SOURCES:
         for tier in SPELL_TIERS:
             assert (source, tier) in pairs, f"missing {source}/{tier} in content/spells.json"
 
 
 def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
-    # Every content spell's tier is covered by the per-archetype level->tier gate
-    # (content/archetypes.json), validated against a representative full
-    # caster of the spell's source: unlocked exactly at that archetype's tier floor,
-    # gated one level below. This tier table is the sole ACTIVE gate.
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:
@@ -374,20 +289,11 @@ def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
 
 
 def test_content_includes_caster_core_spells():
-    # M3.3 supersedes the M8 elective-only seam (235ae150c5d3 -> decision
-    # spell-catalog-full-casting-ssot): spells.json is now the FULL 87-spell casting
-    # catalog, so cast_spell/get_spell_info have data for every castable spell — INCLUDING
-    # the caster-core cantrips/spells. archetype_abilities `core` rows remain as the
-    # ACCESS grant (which spells an archetype always-knows); the spell DATA lives here.
-    # (Core-spell data is duplicated across both for now — tracked as debt to reconcile.)
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     names = {row["name"].lower() for row in raw}
     for core in ("arcane bolt", "sacred flame", "heal wounds", "thorn whip", "healing touch"):
         assert core in names, f"M3.3 casting catalog must carry core spell {core!r}"
-
-
-# --- build-then-swap load_spells (DB path) -------------------------------------
 
 
 class _FakePool:
@@ -416,7 +322,6 @@ async def test_load_spells_malformed_row_does_not_wipe_loaded_map(monkeypatch):
     with pytest.raises(ValueError):
         await load_spells()
 
-    # Prior map survived; the well-formed row preceding the malformed one did NOT leak.
     assert get_spell("arcane_fireball").name == "Fireball"
     with pytest.raises(ValueError, match="divine_bless"):
         get_spell("divine_bless")
@@ -463,3 +368,38 @@ def test_spell_speech_and_hostility_survive_loading(verbal, hostile):
     row = {**_FIREBALL_ROW, "verbal": verbal, "hostile": hostile}
     spell = parse_spell_row(row["id"], row)
     assert (spell.verbal, spell.hostile) == (verbal, hostile)
+
+
+@pytest.mark.parametrize(
+    "row,message",
+    [
+        pytest.param(
+            {**_FIREBALL_ROW, "sound_id": "spell_explosion"},
+            "sound_id",
+            id="test_parse_spell_row_rejects_unknown_sound_id",
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "concentration": "yes"},
+            "concentration",
+            id="test_parse_spell_row_rejects_nonbool_concentration",
+        ),
+        pytest.param(
+            {k: v for k, v in _FIREBALL_ROW.items() if k != "focus_cost"},
+            "arcane_fireball",
+            id="test_parse_spell_row_fail_loud_names_the_row",
+        ),
+        pytest.param({**_FIREBALL_ROW, "source": "shadow"}, "source", id="test_parse_spell_row_rejects_unknown_source"),
+        pytest.param(
+            {**_FIREBALL_ROW, "spell_tier": "legendary"}, "spell_tier", id="test_parse_spell_row_rejects_unknown_tier"
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "focus_cost": "5"}, "focus_cost", id="test_parse_spell_row_rejects_noninteger_focus_cost"
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "focus_cost": True}, "focus_cost", id="test_parse_spell_row_rejects_bool_focus_cost"
+        ),
+    ],
+)
+def test_malformed_rows_are_refused(row, message):
+    with pytest.raises(ValueError, match=message):
+        parse_spell_row(row["id"], row)

@@ -1,5 +1,3 @@
-"""Tests for async activity rules engine — pure functions, deterministic with RNG."""
-
 import random
 
 import pytest
@@ -42,11 +40,6 @@ SAMPLE_COMPANION = {
 }
 
 
-# --- resolve_crafting ---
-
-# A parsed quality_outcomes "weapon" row (story-002 shape): bonus_properties + flaws,
-# narration-only {id,name,description}. resolve_crafting draws from this on
-# exceptional/partial via apply_quality_outcome.
 QUALITY_TABLES = {
     "id": "weapon",
     "bonus_properties": [
@@ -134,7 +127,6 @@ class TestResolveCrafting:
         assert tiers_seen == {"exceptional", "success", "partial", "failure"}
 
     def test_quality_tables_none_tolerated(self):
-        # Missing content row -> no flavor attached, but the band still resolves.
         result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(20)), quality_tables=None)
         assert result.tier == "exceptional"
         assert result.bonus_property is None
@@ -165,8 +157,6 @@ class TestResolveCrafting:
                 assert "id" in opt
                 assert "label" in opt
 
-    # --- story-005: fail-loud on absent gate inputs ---
-
     def test_absent_workspace_access_raises(self):
         with pytest.raises(ValueError, match="workspace_access"):
             resolve_crafting(SAMPLE_PLAYER, self.PARAMS, crafting_tier="expert", rng=random.Random(1))
@@ -185,10 +175,7 @@ class TestResolveCrafting:
         with pytest.raises(ValueError, match="tainted_materials"):
             _resolve_craft(params, rng=random.Random(1))
 
-    # --- story-005: resolution-time gate failures (failure outcome, not a raise) ---
-
     def test_workspace_gate_failure_returns_failure_outcome(self):
-        # Forge recipe, but the player only has field access -> gate fails.
         result = _resolve_craft(self.PARAMS, workspace_access=["field"], rng=random.Random(1))
         assert result.tier == "failure"
         assert result.crafted_item_id is None
@@ -200,7 +187,6 @@ class TestResolveCrafting:
 
     def test_tainted_gate_failure_returns_failure_outcome(self):
         params = {**self.PARAMS, "tainted_materials": True}
-        # Sub-Expert crafter working tainted materials -> gate fails.
         result = _resolve_craft(params, crafting_tier="trained", rng=random.Random(1))
         assert result.tier == "failure"
         assert result.crafted_item_id is None
@@ -209,7 +195,6 @@ class TestResolveCrafting:
         assert result.narrative_context["gate"] == "tainted_expert"
 
     def test_tainted_expert_proceeds_past_gate(self):
-        # Tainted materials + Expert crafter: gate passes, the roll runs and can succeed.
         params = {**self.PARAMS, "tainted_materials": True}
         tiers_seen = set()
         for seed in range(200):
@@ -218,14 +203,10 @@ class TestResolveCrafting:
         assert "success" in tiers_seen  # the roll path was reached, not gate-blocked
 
     def test_gate_failure_is_rng_independent(self):
-        # A gate failure consumes no rng, so every seed yields the same failure outcome.
         outcomes = {
             _resolve_craft(self.PARAMS, workspace_access=["field"], rng=random.Random(seed)).tier for seed in range(50)
         }
         assert outcomes == {"failure"}
-
-
-# --- resolve_companion_errand ---
 
 
 class TestResolveCompanionErrand:
@@ -248,7 +229,6 @@ class TestResolveCompanionErrand:
         pytest.fail("Could not find seed for success")
 
     def test_relationship_tier_bonus(self):
-        """Higher relationship tier should produce generally better results."""
         low_rel = {**SAMPLE_COMPANION, "relationship_tier": 1}
         high_rel = {**SAMPLE_COMPANION, "relationship_tier": 4}
         low_totals = []
@@ -258,7 +238,6 @@ class TestResolveCompanionErrand:
             r2 = resolve_companion_errand(high_rel, self.PARAMS, rng=random.Random(seed))
             low_totals.append(r1.narrative_context["total"])
             high_totals.append(r2.narrative_context["total"])
-        # High relationship should consistently score higher
         assert sum(high_totals) > sum(low_totals)
 
     def test_all_errand_types(self):

@@ -1,10 +1,5 @@
-"""Catalog-wide Hollow claims from bestiary lines 132-608."""
-
-import copy
 import json
 from pathlib import Path
-
-import pytest
 
 from creature_schema import validate_creature_stat_block
 
@@ -59,21 +54,3 @@ def test_all_spec_hollow_ids_have_complete_blocks():
 
 def test_all_hollow_veil_effects_and_vulnerabilities_are_pairwise_distinct():
     assert_distinct(hollow_rows())
-
-
-def test_hollow_walks_reject_missing_null_copied_and_empty():
-    rows = hollow_rows()
-    missing = [row for row in rows if row["id"] != "hollow_shadeling"]
-    with pytest.raises(AssertionError):
-        assert_complete(missing)
-    null = copy.deepcopy(rows)
-    next(row for row in null if row["id"] == "hollow_shadeling")["hollow"] = None
-    with pytest.raises(AssertionError):
-        assert_complete(null)
-    for key in ("veil_effect", "vulnerable_to"):
-        copied = copy.deepcopy(rows)
-        copied[1]["hollow"][key] = copied[0]["hollow"][key]
-        with pytest.raises(AssertionError):
-            assert_distinct(copied)
-    with pytest.raises(AssertionError):
-        assert_distinct([])

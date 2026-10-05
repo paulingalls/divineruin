@@ -1,11 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import type { Item, ItemEffect } from "./item";
 
-// Tests for the M5.0 Item interface widening: tier accepts 1|2|3|4 plus 10
-// optional crafting-system fields. All new fields MUST be optional so the
-// existing content/items.json (29 entries, none of which carry these fields)
-// continues to validate as-is.
-
 describe("Item interface — M5.0 widening", () => {
   test("item effects carry structured combat protections", () => {
     const effect: ItemEffect = {

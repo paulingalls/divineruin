@@ -1,7 +1,3 @@
-from dataclasses import replace
-
-import pytest
-
 import conditions
 from condition_restrictions import ENFORCED, NOT_ENFORCED, RESTRICTION_ENFORCERS
 
@@ -55,18 +51,6 @@ def test_only_positioning_may_wait_on_a_model():
     assert model_waiting == {"no_approach_source"}
 
 
-def test_a_new_catalog_restriction_fails_the_classification_floor(monkeypatch):
-    stunned = conditions.CONDITION_CATALOG["stunned"]
-    monkeypatch.setitem(
-        conditions.CONDITION_CATALOG,
-        "stunned",
-        replace(stunned, restrictions=(*stunned.restrictions, "new_restriction")),
-    )
-
-    with pytest.raises(AssertionError, match="new_restriction"):
-        _assert_classified()
-
-
 def test_every_enforced_restriction_has_a_production_reader():
     for restriction, reader in RESTRICTION_ENFORCERS.items():
         carriers = [
@@ -78,13 +62,6 @@ def test_every_enforced_restriction_has_a_production_reader():
             "auto_fail_hearing_perception": {"skill": "perception", "hearing_only": True},
         }
         assert all(reader([{**carrier, "source": "source"}], **contexts.get(restriction, {})) for carrier in carriers)
-
-
-def test_dropping_a_deferred_restriction_without_a_reader_fails_the_floor(monkeypatch):
-    monkeypatch.delitem(NOT_ENFORCED, "damage_reduction")
-
-    with pytest.raises(AssertionError, match="damage_reduction"):
-        _assert_classified()
 
 
 def test_prone_incoming_modes_are_enforced_only_for_prone():

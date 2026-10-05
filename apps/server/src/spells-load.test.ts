@@ -15,9 +15,6 @@ import type { Spell } from "@divineruin/shared";
 
 const SPELLS_PATH = new URL("../../../content/spells.json", import.meta.url);
 
-// content/spells.json is the full M3.3 casting catalog: 87 spells across 3 sources,
-// partitioned 30 arcane / 28 divine / 29 primal (magic.md:541). Exact counts catch
-// silent attrition AND accidental additions (move these literals if the catalog changes).
 const SPELL_COUNT = 87;
 const SOURCE_COUNT = 3;
 const SOURCE_PARTITIONS: Record<string, number> = { arcane: 30, divine: 28, primal: 29 };
@@ -57,10 +54,6 @@ describe("content/spells.json — parseSpellRow conformance", () => {
   });
 
   test("the full casting catalog includes the caster core spells", async () => {
-    // M3.3 (decision spell-catalog-full-casting-ssot): cast_spell/get_spell_info need data
-    // for every castable spell, so the caster-core spells live in the catalog too;
-    // archetype_abilities `core` rows remain as the access grant. Mirrors the Python
-    // test_content_includes_caster_core_spells.
     const rows = await loadSpellsJson();
     const names = new Set(rows.map((r) => String(r.name).toLowerCase()));
     for (const core of [

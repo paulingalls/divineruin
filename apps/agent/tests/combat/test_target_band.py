@@ -70,8 +70,6 @@ def test_same_band_target_is_refused_and_names_actor_and_target(actor_id, declar
 
 
 def test_self_targeted_attack_is_refused():
-    """An ATTACK naming its own actor is a same-band target too: it would resolve as a real
-    swing against the actor's own AC. Only the stand MANEUVER may name its own actor."""
     state = _target_band_state()
 
     with pytest.raises(ValueError) as excinfo:
@@ -143,10 +141,7 @@ def _echo_state():
 
 
 def test_an_enemy_cannot_strike_a_risen_echo():
-    """The echo fights AGAINST the party (session_data.is_ally), so it shares the enemy band and an
-    enemy striking it is a same-band blow. Decided 2026-09-17 when this rule reded the M20 capstone,
-    whose phase B had an enemy destroy the echo; the party lands that blow now. Reversible: exempt
-    temporary_hollowed in combat_phase and this test is the one that says so."""
+    """A risen echo fights against the party, so the party may strike it and its enemy band may not."""
     state = _echo_state()
 
     with pytest.raises(ValueError) as excinfo:
@@ -158,7 +153,6 @@ def test_an_enemy_cannot_strike_a_risen_echo():
 
 
 def test_a_player_may_strike_a_risen_echo():
-    """The inverse, and the declaration the M20 capstone now makes: the party kills its turned member."""
     state = _echo_state()
     declaration = {"type": "attack", "action": "Longsword", "target_id": "companion_1"}
 

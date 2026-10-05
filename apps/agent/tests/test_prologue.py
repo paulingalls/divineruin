@@ -1,5 +1,3 @@
-"""Tests for prologue narration via agent audio track."""
-
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch

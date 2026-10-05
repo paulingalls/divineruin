@@ -1,6 +1,5 @@
 import { test, expect, describe, mock } from "bun:test";
 
-// Default mock returns empty (player not found)
 let mockRows: unknown[] = [];
 let boundValues: unknown[] = [];
 

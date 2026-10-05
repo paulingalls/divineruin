@@ -1,13 +1,3 @@
-"""End-to-end integration tests for the async activity pipeline.
-
-Full pipeline with mocked LLM/TTS:
-1. Create player in DB
-2. Insert activity with past resolve_at
-3. Run resolve_due_activities()
-4. Verify: outcome computed, narration generated, audio file exists, DB updated
-5. Test soft timer variance
-"""
-
 import random
 import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -62,11 +52,8 @@ def _stub_crafting_skill_counter():
 
 
 class TestFullPipeline:
-    """End-to-end: create activity -> resolve -> narrate -> audio -> DB update."""
-
     @pytest.mark.asyncio
     async def test_crafting_e2e(self):
-        """Full crafting pipeline with mocked external services."""
         activity = {
             "id": "activity_e2e_craft",
             "player_id": "player_1",
@@ -80,7 +67,6 @@ class TestFullPipeline:
                 "skill": "arcana",
                 "dc": 13,
                 "npc_id": "grimjaw_blacksmith",
-                # story-005 resolution gate inputs (captured at creation).
                 "workspace_required": "forge",
                 "workspace_access": ["field", "forge"],
                 "crafting_tier": "expert",
@@ -105,8 +91,6 @@ class TestFullPipeline:
                 claim_p,
                 revert_p,
                 patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-                # story-003: the crafting branch delegates to crafting_resolution, which
-                # fetches the recipe category + quality tables. Stub both (no DB in this test).
                 patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value={"category": "weapon"}),
                 patch(
                     "crafting_resolution.get_quality_outcomes",
@@ -147,7 +131,6 @@ class TestFullPipeline:
                 await _resolve_single_activity(activity)
 
         assert len(update_calls) == 2
-        # First call: cache outcome + narration
         cache_id, cached = update_calls[0]
         assert cache_id == "activity_e2e_craft"
         assert cached["narration_text"] is not None
@@ -156,14 +139,12 @@ class TestFullPipeline:
         assert isinstance(cached["narration_segments"], list)
         assert cached["outcome"]["tier"] in ("exceptional", "success", "partial", "failure")
         assert len(cached["decision_options"]) >= 2
-        # Second call: mark resolved with audio
         _, resolved = update_calls[1]
         assert resolved["status"] == "resolved"
         assert resolved["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
 
     @pytest.mark.asyncio
     async def test_companion_errand_e2e(self):
-        """Full companion errand pipeline."""
         activity = {
             "id": "activity_e2e_errand",
             "player_id": "player_1",
@@ -224,7 +205,6 @@ class TestFullPipeline:
 
     @pytest.mark.asyncio
     async def test_batch_resolution(self):
-        """Multiple due activities resolve in one cycle."""
         activities = [
             {
                 "id": f"activity_batch_{i}",
@@ -259,10 +239,7 @@ class TestFullPipeline:
 
 
 class TestSoftTimerVariance:
-    """Verify resolution outputs vary with RNG seed."""
-
     def test_crafting_outcomes_vary(self):
-        """Different RNG seeds produce different crafting outcomes."""
         params = {
             "recipe_id": "iron_sword",
             "result_item_id": "iron_sword",
@@ -288,11 +265,8 @@ class TestSoftTimerVariance:
 
 
 class TestCostVerification:
-    """Verify narration cost stays within budget."""
-
     @pytest.mark.asyncio
     async def test_narration_token_budget(self):
-        """Typical narration should use < 200 input tokens, < 200 output tokens."""
         # Mock Anthropic tool_use response with realistic token counts
         # Note: MagicMock(name=...) sets the mock's repr name, not an attribute,
         # so we use spec=[] and set attributes directly.
@@ -340,9 +314,7 @@ class TestCostVerification:
         assert isinstance(narration_text, str)
         assert isinstance(summary, str)
 
-        # Haiku pricing: $0.80/M input, $4/M output
         input_cost = mock_response.usage.input_tokens * 0.80 / 1_000_000
         output_cost = mock_response.usage.output_tokens * 4.0 / 1_000_000
         total_cost = input_cost + output_cost
-        # Should be well under $0.005
         assert total_cost < 0.005, f"Cost too high: ${total_cost:.6f}"

@@ -92,7 +92,6 @@ describe("formatConditionLabel", () => {
   });
 });
 
-// Type-level guard: ConditionType is the union the map is keyed on.
 const _typeGuard: ConditionType = "exhausted";
 void _typeGuard;
 

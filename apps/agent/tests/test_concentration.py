@@ -1,18 +1,4 @@
-"""Tests for the M3.4 concentration system (story-002).
-
-Two layers, both DB-free:
-- concentration.py — the pure rules engine (no IO, same discipline as resonance.py):
-  check_concentration(damage) returns the save DC; concentration_holds resolves a CON
-  save against that DC, with incapacitation an auto-fail.
-- db_mutations_concentration.py — the persistence seam (mock-conn unit tests asserting the
-  jsonb_set SQL + params, mirroring test_db_mutations_veil_ward.py). Real PG is exercised at
-  tests/acceptance/test_concentration_persistence.py (AC5 roundtrip).
-
-Storage shape: players.data.concentration = {spell_id: str|null}, a top-level JSONB key beside
-{resonance}. The single active concentration spell id; null means not
-concentrating. The cast keystone (story-006) reads spell.concentration, sets this on a
-concentration cast, and ends any prior one (single-concentration enforcement) — not this story.
-"""
+"""Mock connections certify SQL construction; the persistence acceptance test executes it."""
 
 from unittest.mock import AsyncMock
 
@@ -21,8 +7,6 @@ import pytest
 import concentration
 import db_mutations_concentration
 from session_data import ConcentrationState, SessionData
-
-# --- check_concentration (save DC) --------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -47,11 +31,7 @@ def test_check_concentration_rejects_negative_damage():
         concentration.check_concentration(-1)
 
 
-# --- concentration_holds (save resolution) ------------------------------------
-
-
 def test_concentration_holds_on_meeting_dc():
-    # save_total >= dc maintains concentration (a met DC succeeds).
     assert concentration.concentration_holds(15, 15) is True
     assert concentration.concentration_holds(16, 15) is True
 
@@ -61,12 +41,10 @@ def test_concentration_broken_below_dc():
 
 
 def test_incapacitation_auto_fails_regardless_of_roll():
-    # An incapacitated caster auto-fails even on an otherwise-passing roll.
     assert concentration.concentration_holds(99, 10, incapacitated=True) is False
 
 
 def test_concentration_holds_rejects_negative_save_total():
-    # A CON save total is never negative -> fail loud (symmetric with check_concentration).
     with pytest.raises(ValueError, match="save_total"):
         concentration.concentration_holds(-1, 10)
 
@@ -75,9 +53,6 @@ def test_incapacitation_short_circuits_before_save_validation():
     # Incapacitation auto-fails without consulting the roll, so a malformed (negative)
     # save_total is never validated on that path — the guard protects the comparison only.
     assert concentration.concentration_holds(-5, 10, incapacitated=True) is False
-
-
-# --- ConcentrationState (session) ---------------------------------------------
 
 
 def test_session_concentration_defaults_to_inactive():
@@ -89,9 +64,6 @@ def test_session_concentration_defaults_to_inactive():
 
 def test_concentration_state_is_active_when_spell_set():
     assert ConcentrationState(spell_id="arcane_fly").is_active is True
-
-
-# --- db_mutations_concentration: update ---------------------------------------
 
 
 class TestUpdatePlayerConcentration:
@@ -116,9 +88,6 @@ class TestUpdatePlayerConcentration:
         await db_mutations_concentration.update_player_concentration("p1", "arcane_fly", conn=conn)
         sql, *_ = conn.execute.call_args.args
         assert "{resonance" not in sql and "{veil_ward" not in sql and "{focus" not in sql
-
-
-# --- db_mutations_concentration: read -----------------------------------------
 
 
 class TestReadPlayerConcentration:

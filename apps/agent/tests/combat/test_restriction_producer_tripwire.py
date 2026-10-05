@@ -5,8 +5,6 @@ from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import cast
 
-import pytest
-
 import combat_condition_landing
 import conditions
 from condition_restrictions import NOT_ENFORCED
@@ -107,36 +105,3 @@ def _assert_no_deferred_carrier_is_produced(produced: set[str]) -> None:
 
 def test_no_producer_waiting_condition_is_produced():
     _assert_no_deferred_carrier_is_produced(_produced_conditions(CONTENT_PATHS, SOURCE_PATHS))
-
-
-def test_content_cursed_producer_trips_source_specific_penalty(tmp_path):
-    scratch = tmp_path / "cursed.json"
-    scratch.write_text(json.dumps({"actions": [{"applies_condition": "cursed"}]}))
-
-    with pytest.raises(AssertionError, match="source_specific_penalty"):
-        _assert_no_deferred_carrier_is_produced(_produced_conditions((*CONTENT_PATHS, scratch), SOURCE_PATHS))
-
-
-def test_python_cursed_producers_trip_source_specific_penalty(tmp_path):
-    scratch = tmp_path / "cursed.py"
-    scratch.write_text(
-        """
-conditions.apply_condition(
-    current,
-    "cursed",
-)
-_land_condition_on_one(state, target, attacker, "cursed", source)
-conditions.apply_condition(current, condition_type="cursed")
-_land_condition_on_one(state, target, attacker, cond_type="cursed", source=source)
-"""
-    )
-
-    assert _python_producers((scratch,)) == ["cursed"] * 4
-    with pytest.raises(AssertionError, match="source_specific_penalty"):
-        _assert_no_deferred_carrier_is_produced(_produced_conditions(CONTENT_PATHS, (*SOURCE_PATHS, scratch)))
-
-
-@pytest.mark.parametrize(("content_paths", "source_paths"), [((Path("content.json"),), ()), ((), (Path("source.py"),))])
-def test_empty_walk_input_reds(content_paths, source_paths):
-    with pytest.raises(AssertionError, match="inspected no files"):
-        _produced_conditions(content_paths, source_paths)

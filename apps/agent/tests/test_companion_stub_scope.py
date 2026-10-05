@@ -16,13 +16,11 @@ import companion_relationship_queries as crq
 
 
 def test_rank_and_affinity_are_not_globally_stubbed():
-    """No narrow opt-in here -> the rank/affinity queries must be the real functions, not mocks
-    forced to 1/0. (`patch` uses AsyncMock for these async fns; AsyncMock derives from Mock, so
-    checking the Mock base catches every mock variant.)"""
+    """Use AsyncMock only for the asynchronous seam."""
     assert not isinstance(crq.cached_effective_rank, Mock)
     assert not isinstance(crq.apply_errand_affinity, Mock)
 
 
 def test_session_hydrate_stays_globally_stubbed():
-    """The wide-reach hydrate stub remains global autouse — DB-free session construction."""
+    """Hydration must replace global companion defaults with the assigned companion."""
     assert isinstance(crq.hydrate_companion_state, Mock)

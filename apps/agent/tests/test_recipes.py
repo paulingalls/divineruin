@@ -1,16 +1,3 @@
-"""Tests for the Python recipe accessors (story-005, M5.1).
-
-Mirrors the mocked-pool style of tests/database/: patch db._cache_get / _cache_set /
-db.get_pool. The agent reads recipes from the DB (constraint 8508fdb1abc3) the
-same way the TS server does (apps/server/src/recipes.ts) — recipe:<id> and
-recipes:all cache keys, fail-loud parse via parse_recipe_row.
-
-These are unit tests with a mocked pool, like every other db_content_queries
-accessor. The real-DB load path (migration 019 + seed_content -> recipes table,
-parsed by get_recipe/list_recipes) is exercised end-to-end against a
-testcontainer in tests/acceptance/test_recipe_loading.py (AC4).
-"""
-
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -18,8 +5,6 @@ import pytest
 
 import recipes
 
-# A fully-specified recipe row's `data` payload (the 15 non-id Recipe fields;
-# id is the row key, passed separately to parse_recipe_row — mirrors TS).
 VALID_RECIPE_DATA = {
     "name": "Iron Sword",
     "category": "weapon",
@@ -50,7 +35,6 @@ def _parsed(recipe_id: str, data: dict) -> dict:
 class TestGetRecipe:
     @pytest.mark.asyncio
     async def test_queries_db_on_miss_and_caches_parsed(self):
-        """AC1: first call misses the cache, hits the DB, caches the parsed recipe."""
         mock_pool = AsyncMock()
         mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(VALID_RECIPE_DATA)})
 
@@ -62,16 +46,13 @@ class TestGetRecipe:
         expected = _parsed("iron_sword", VALID_RECIPE_DATA)
         assert result == expected
         mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM recipes WHERE id = $1", "iron_sword")
-        # Caches the PARSED dict (parse-once), not the raw row data.
         mock_cache_set.assert_awaited_once_with("recipe:iron_sword", json.dumps(expected))
 
     @pytest.mark.asyncio
     async def test_second_call_hits_cache_not_db(self):
-        """AC1: called twice, the second call returns from cache without a DB query."""
         expected = _parsed("iron_sword", VALID_RECIPE_DATA)
         mock_pool = AsyncMock()
         mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(VALID_RECIPE_DATA)})
-        # Cache miss on first read, hit (parsed payload) on second.
         cache_get = AsyncMock(side_effect=[None, json.dumps(expected)])
 
         with patch("db._cache_get", cache_get):
@@ -86,7 +67,6 @@ class TestGetRecipe:
 
     @pytest.mark.asyncio
     async def test_returns_cached_directly(self):
-        """AC1: a cache hit returns the parsed recipe without touching the pool."""
         expected = _parsed("iron_sword", VALID_RECIPE_DATA)
         with patch("db._cache_get", new_callable=AsyncMock, return_value=json.dumps(expected)) as cg:
             result = await recipes.get_recipe("iron_sword")
@@ -95,7 +75,6 @@ class TestGetRecipe:
 
     @pytest.mark.asyncio
     async def test_returns_none_when_absent(self):
-        """AC1b: unknown recipe id -> None (no silent default)."""
         mock_pool = AsyncMock()
         mock_pool.fetchrow = AsyncMock(return_value=None)
         with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
@@ -107,7 +86,6 @@ class TestGetRecipe:
 class TestListRecipes:
     @pytest.mark.asyncio
     async def test_queries_db_on_miss_and_caches_all(self):
-        """AC2: returns all parsed recipes and caches them under recipes:all."""
         rows = [
             {"id": "iron_sword", "data": json.dumps(VALID_RECIPE_DATA)},
             {"id": "oak_shield", "data": json.dumps({**VALID_RECIPE_DATA, "name": "Oak Shield"})},
@@ -130,7 +108,6 @@ class TestListRecipes:
 
     @pytest.mark.asyncio
     async def test_returns_cached_directly(self):
-        """AC2: a cache hit returns the parsed list without touching the pool."""
         expected = [_parsed("iron_sword", VALID_RECIPE_DATA)]
         with patch("db._cache_get", new_callable=AsyncMock, return_value=json.dumps(expected)) as cg:
             result = await recipes.list_recipes()
@@ -139,8 +116,6 @@ class TestListRecipes:
 
 
 class TestParseRecipeRow:
-    """AC3: fail loud on any missing/invalid required field — no silent default."""
-
     def test_valid_row_round_trips(self):
         assert recipes.parse_recipe_row("iron_sword", VALID_RECIPE_DATA) == _parsed("iron_sword", VALID_RECIPE_DATA)
 
@@ -220,8 +195,6 @@ class TestParseRecipeRow:
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"success": 1}})
 
     def test_rejects_non_canonical_narration_band(self):
-        # Canonical bands are exceptional|success|partial|failure (crafting-narration-bands);
-        # a typo'd band must fail loud at the load boundary, not silently miss at runtime.
         with pytest.raises(ValueError, match=r"narration_cues\[glorious\]"):
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"glorious": "shine"}})
 

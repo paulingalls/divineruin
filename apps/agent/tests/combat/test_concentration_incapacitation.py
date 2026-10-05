@@ -1,5 +1,3 @@
-"""Concentration ends when a hostile incapacitating condition lands."""
-
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 

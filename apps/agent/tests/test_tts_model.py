@@ -1,5 +1,3 @@
-"""Behavior checks for the Inworld model selected by both speech paths."""
-
 import base64
 import json
 from types import SimpleNamespace
@@ -38,12 +36,7 @@ def test_livekit_character_voice_uses_tts2_and_preserves_voice_and_rate():
 
 @pytest.mark.asyncio
 async def test_rest_request_uses_tts2_and_preserves_voice_rate_and_format(monkeypatch):
-    """Drive the real aiohttp client against a real server, not a stand-in for either.
-
-    A hand-written session double would also have to invent the chunked NDJSON
-    response ``inworld_tts`` parses, so both the request it builds and the reply it
-    reads would be checked against our own idea of aiohttp rather than aiohttp.
-    """
+    """A real aiohttp server exercises the vendor NDJSON response contract without inventing it."""
     received: dict[str, object] = {}
 
     async def handler(request: web.Request) -> web.StreamResponse:

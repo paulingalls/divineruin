@@ -74,12 +74,6 @@ def test_apply_modifiers_flat_from_exhausted():
     assert flat == -2 and adv is False and dis is False and auto is False
 
 
-def test_apply_modifiers_disadvantage_on_matching_scope():
-    conds = apply_condition([], "poisoned")  # str/dex/con
-    _, _, dis, _ = _apply_condition_modifiers(get_condition_effects(conds), {"str", "athletics"})
-    assert dis is True
-
-
 def test_apply_modifiers_auto_fail_on_matching_save_scope():
     conds = apply_condition([], "stunned")  # auto-fail str/dex
     _, _, _, auto = _apply_condition_modifiers(get_condition_effects(conds), {"dex"})

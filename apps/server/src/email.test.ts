@@ -1,9 +1,6 @@
 import { test, expect } from "bun:test";
 import { normalizeEmail, EMAIL_RE, MAX_EMAIL_LENGTH } from "./email.ts";
 
-// Shared email validator extracted from auth.ts so the auth + waitlist endpoints
-// validate identically. Pure function — no DOM, no DB — so it unit-tests directly.
-
 test("accepts a valid address and normalizes it (trim + lowercase)", () => {
   expect(normalizeEmail("  Test.User@Example.COM ")).toBe("test.user@example.com");
   expect(normalizeEmail("a@b.co")).toBe("a@b.co");

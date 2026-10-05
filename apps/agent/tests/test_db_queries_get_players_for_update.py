@@ -1,10 +1,4 @@
-"""Tests for db_queries.get_players_for_update — the id-ordered batch FOR UPDATE fetch (M4.8
-story-007), replacing N per-target get_player round-trips in the OOC condition party gate.
-
-Two-part coverage (mirrors the db_mutations_* / db_queries family): mock-conn unit asserts the
-SQL shape (ANY + ORDER BY + FOR UPDATE); real-PG fast-lane round-trips prove the batch fetch and
-the "missing id absent from the map" contract.
-"""
+"""Consistent player-id lock order prevents opposite cross-player operations from deadlocking."""
 
 import json
 from unittest.mock import AsyncMock, patch

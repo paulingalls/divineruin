@@ -18,9 +18,6 @@ const RECIPES_PATH = new URL("../../../content/recipes.json", import.meta.url);
 const MATERIALS_PATH = new URL("../../../content/materials_catalog.json", import.meta.url);
 const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
-// All 16 required Recipe fields (packages/shared/src/entities/recipe.ts). Every
-// field is required — recipes are fully-specified content (decision
-// crafting-content-required-fields cb1d48971cc2).
 const RECIPE_FIELDS = [
   "id",
   "name",
@@ -40,8 +37,6 @@ const RECIPE_FIELDS = [
   "narration_cues",
 ] as const;
 
-// Canonical narration quality bands (crafting-narration-bands). Recipes carry
-// either {success, failure} (2) or all four — the loaders fail loud on any other key.
 const CANONICAL_BANDS = new Set(["exceptional", "success", "partial", "failure"]);
 
 const ALLOWED_CATEGORIES = new Set([
@@ -61,8 +56,6 @@ const ALLOWED_TIERS = new Set(["basic", "trained", "expert", "master"]);
 const ALLOWED_WORKSPACES = new Set(["field", "workshop", "forge", "laboratory"]);
 const ALLOWED_MATERIAL_TIERS = new Set([1, 2, 3, 4]);
 
-// Floors with a small tolerance, matching items-load.test.ts attrition-guard
-// rationale: a `length > 0` smoke would tolerate a silent drop from 72 to 3.
 const MIN_RECIPE_COUNT = 70;
 const MIN_MATERIAL_COUNT = 40;
 
@@ -171,7 +164,6 @@ describe("content/recipes.json — M5.1 Recipe conformance", () => {
       }
       const cues = asRecord(r.narration_cues, `${idCtx}.narration_cues`);
       const bands = Object.keys(cues);
-      // 2 (success/failure) or all 4 canonical bands — no other cardinality (crafting-narration-bands).
       if (bands.length !== 2 && bands.length !== 4) {
         throw new Error(`${idCtx}.narration_cues has ${bands.length} bands; expected 2 or 4`);
       }
@@ -183,8 +175,6 @@ describe("content/recipes.json — M5.1 Recipe conformance", () => {
           throw new Error(`${idCtx}.narration_cues[${band}] is not a string`);
         }
       }
-      // success+failure always required; the 2-band case must be exactly that pair
-      // (exceptional+partial are all-or-nothing), matching the loader invariant.
       if (!("success" in cues) || !("failure" in cues)) {
         throw new Error(`${idCtx}.narration_cues must include both success and failure bands`);
       }

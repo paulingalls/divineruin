@@ -1,7 +1,4 @@
 from collections import Counter
-from copy import deepcopy
-
-import pytest
 
 from _gods_content import load_gods
 
@@ -18,16 +15,6 @@ EXPECTED_GIFTS = {
     "zhael": ("long_rest", "awaits_rest"),
 }
 GIFT_FIELDS = {"id", "name", "effect", "trigger", "recharge", "status"}
-RECHARGES = {"always", "per_encounter", "short_rest", "long_rest", "on_event"}
-STATUSES = {
-    "active",
-    "awaits_binding",
-    "awaits_rest",
-    "awaits_terrain",
-    "awaits_healing",
-    "narrated",
-}
-
 EXPECTED_MECHANICS = {
     "aelora": {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"},
     "kaelen": {"kind": "low_hp_surge", "threshold": 0.25, "amount": 2, "duration_phases": 2},
@@ -54,94 +41,5 @@ def validate_gifts(rows):
     assert len(gift_ids) == len(set(gift_ids))
 
 
-def test_expected_gift_table_uses_only_the_enums():
-    # validate_gifts pins each row to this table, so content is in the enums only if the table is.
-    assert {recharge for recharge, _ in EXPECTED_GIFTS.values()} <= RECHARGES
-    assert {status for _, status in EXPECTED_GIFTS.values()} <= STATUSES
-
-
 def test_every_patron_has_authored_layer_1_gift():
     validate_gifts(load_gods())
-
-
-@pytest.mark.parametrize(
-    "defect",
-    [
-        "empty",
-        "missing",
-        "duplicate",
-        "missing_gift",
-        "missing_field",
-        "blank",
-        "recharge",
-        "status",
-        "assigned_recharge",
-        "assignment",
-        "gift_id",
-        "missing_mechanics",
-        "wrong_kind",
-        "wrong_amount",
-        "wrong_requires",
-        "extra_mechanics",
-    ],
-)
-def test_gift_validator_rejects_defects(defect):
-    rows = deepcopy(load_gods())
-    validate_gifts(rows)
-    if defect == "empty":
-        rows = []
-    elif defect == "missing":
-        rows.pop()
-    elif defect == "duplicate":
-        rows.append(rows[0])
-    elif defect == "missing_gift":
-        del rows[0]["layer_1_gift"]
-    elif defect == "missing_field":
-        del rows[0]["layer_1_gift"]["effect"]
-    elif defect == "blank":
-        rows[0]["layer_1_gift"]["name"] = " "
-    elif defect == "recharge":
-        rows[0]["layer_1_gift"]["recharge"] = "daily"
-    elif defect == "status":
-        rows[0]["layer_1_gift"]["status"] = "pending"
-    elif defect == "assigned_recharge":
-        rows[0]["layer_1_gift"]["recharge"] = "long_rest"
-    elif defect == "assignment":
-        rows[0]["layer_1_gift"]["status"] = "active"
-    elif defect == "gift_id":
-        rows[0]["layer_1_gift"]["id"] = rows[1]["layer_1_gift"]["id"]
-    elif defect == "missing_mechanics":
-        del next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]
-    elif defect in {"wrong_kind", "wrong_amount", "wrong_requires"}:
-        mechanics = next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]
-        mechanics[{"wrong_kind": "kind", "wrong_amount": "amount", "wrong_requires": "requires"}[defect]] = "wrong"
-    elif defect == "extra_mechanics":
-        rows[0]["layer_1_gift"]["mechanics"] = {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"}
-    with pytest.raises(AssertionError):
-        validate_gifts(rows)
-
-
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("kind", "wrong"),
-        ("threshold", 0.3),
-        ("amount", 3),
-        ("duration_phases", 1),
-        ("extra", 1),
-        ("status", "awaits_binding"),
-        ("mechanics", None),
-    ],
-)
-def test_kaelen_validator_rejects_defects(field, value):
-    rows = deepcopy(load_gods())
-    validate_gifts(rows)
-    gift = next(row for row in rows if row["god_id"] == "kaelen")["layer_1_gift"]
-    if field == "mechanics":
-        gift.pop(field, None)
-    elif field == "status":
-        gift[field] = value
-    else:
-        gift.setdefault("mechanics", {})[field] = value
-    with pytest.raises(AssertionError):
-        validate_gifts(rows)

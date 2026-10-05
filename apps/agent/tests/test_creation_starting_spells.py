@@ -1,15 +1,3 @@
-"""Tests for starting elective-spell assignment at character creation (M8 story-003).
-
-Caster CORE spells are archetype_abilities rows (seam 235ae150c5d3); story-003
-auto-assigns STARTING ELECTIVE spells (spec L1253: pre-game training) to the 9
-single-source casters — 1 cantrip + 1 minor from the archetype's magic source,
-recorded prepared in character_spells. Martials and cross/hybrid/social casters
-get none at L1.
-
-Covers: select_starting_spells (pure, deterministic), the finalize_character grant
-hook, and the new magic_source chassis field's fail-loud parse.
-"""
-
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,9 +11,6 @@ from session_data import CreationState, SessionData
 from spells import get_spell
 
 _finalize: Any = finalize_character._func
-
-
-# --- select_starting_spells (pure) --------------------------------------------
 
 
 class TestSelectStartingSpells:
@@ -53,7 +38,6 @@ class TestSelectStartingSpells:
         assert {get_spell(i).source for i in ids} == {"primal"}
 
     def test_deterministic_pick_is_lowest_id_per_tier(self):
-        # Stable across runs: lowest spell id within each tier of the source.
         first = select_starting_spells("mage", "arcane")
         second = select_starting_spells("mage", "arcane")
         assert first == second
@@ -95,9 +79,6 @@ class TestSelectStartingSpells:
     def test_cross_hybrid_social_get_nothing_at_l1(self, archetype_id, source):
         # Spec L1 elective tables grant L1 electives only to the 9 single-source casters.
         assert select_starting_spells(archetype_id, source) == []
-
-
-# --- finalize_character grant hook --------------------------------------------
 
 
 def _caster_state(archetype_id: str = "mage") -> CreationState:
@@ -149,7 +130,6 @@ class TestFinalizeGrantsStartingSpells:
         assert mock_record.await_count == 2
         for call in mock_record.await_args_list:
             assert call.kwargs["is_prepared"] is True
-            # acquisition_track passed positionally (player_id, spell_id, track) or kw.
             args = call.args
             assert "training" in (list(args) + list(call.kwargs.values()))
 
@@ -195,8 +175,6 @@ class TestFinalizeGrantsStartingSpells:
         mock_select.assert_called_once_with("cleric", "divine")
         mock_record.assert_not_awaited()
 
-
-# --- magic_source chassis field -----------------------------------------------
 
 _MAGE_ROW = {
     "id": "mage",

@@ -1,5 +1,3 @@
-"""Strict spell contracts and complete authored area/hostility audit."""
-
 import json
 from pathlib import Path
 

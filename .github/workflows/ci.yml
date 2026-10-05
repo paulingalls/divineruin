@@ -4,19 +4,17 @@ name: CI
 # post-merge `push: [main]` run was removed rather than kept as a backstop:
 #   1. `pull_request` already builds refs/pull/N/merge, so a main-push run re-tests
 #      a tree byte-identical to what the PR just proved.
-#   2. main carries no branch protection, so no required check depended on it.
-#   3. .githooks/pre-push runs everything below PLUS the acceptance lane, locally,
-#      before anything reaches GitHub. CI is a clean-machine second opinion, not
-#      the first line.
+#   2. main has no required PR/status check, so none depended on that run.
+#   3. Sprint close runs the complete local release suite on the integration tree.
+#      Push runs secrets, static checks and service-free Bun suites; CI supplies
+#      the normal PR checks, including for focused free patches.
 # Measured before the change: sprint-044 burned 7 runs (6 PR + 1 main push) at
 # ~12 billed minutes each, and 5 of the 6 PR runs were testing superseded commits.
-# TRADE-OFF ACCEPTED: a direct push to main now gets no CI. The pre-push hook covers
-# it from a hooked clone; a push from an unhooked clone would be unverified.
+# Direct trunk pushes are not the release workflow and receive no CI here.
 on:
   pull_request:
     branches: [main]
-    # Mirrors the docs-only short-circuit in .githooks/pre-push:254 so the two
-    # gates cannot disagree about what counts as a docs-only change.
+    # Documentation-only PRs do not need the runtime CI jobs.
     paths-ignore:
       - '**.md'
       - 'docs/**'

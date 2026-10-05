@@ -1,5 +1,3 @@
-"""Tests for onboarding tools — advance_onboarding_beat."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,8 +20,6 @@ def _make_context(onboarding_beat: int = 1, location_id: str = "accord_market_sq
 
 
 class TestAdvanceOnboardingBeat:
-    """advance_onboarding_beat tool tests."""
-
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_beat_1_to_2(self, mock_set_player_flag):
@@ -63,7 +59,6 @@ class TestAdvanceOnboardingBeat:
         return_value={"name": "Aric", "class": "warrior", "level": 1},
     )
     async def test_advance_beat_3_initializes_companion(self, mock_get_player, mock_set_player_flag):
-        """Advancing past beat 3 (companion meeting) initializes CompanionState."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=3)
@@ -74,12 +69,10 @@ class TestAdvanceOnboardingBeat:
 
         assert result["beat"] == 4
         assert result["beat_name"] == "kael_suggestion"
-        # Companion should be initialized
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Lira"
         assert ctx.userdata.companion.id == "companion_lira"
         mock_get_player.assert_awaited_once_with("player_1")
-        # companion_met flag should be set in DB
         calls = mock_set_player_flag.await_args_list
         flag_names = [c.args[1] for c in calls]
         assert "companion_met" in flag_names
@@ -91,7 +84,6 @@ class TestAdvanceOnboardingBeat:
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=4)
-        # Companion already set from beat 3
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
         raw = await advance_onboarding_beat._func(ctx)
@@ -104,7 +96,6 @@ class TestAdvanceOnboardingBeat:
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_beat_5_returns_city_agent_handoff(self, mock_set_player_flag):
-        """Advancing past beat 5 returns (CityAgent, json) tuple for tool-return handoff."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=5, location_id="accord_guild_hall")
@@ -112,7 +103,6 @@ class TestAdvanceOnboardingBeat:
 
         raw = await advance_onboarding_beat._func(ctx)
 
-        # Should be a tuple (Agent, json_str) for tool-return handoff
         assert isinstance(raw, tuple)
         agent, json_str = raw
         from exploration_agent import ExplorationAgent
@@ -121,9 +111,7 @@ class TestAdvanceOnboardingBeat:
         assert agent._agent_type == "city"
         result = json.loads(json_str)
         assert result["onboarding_complete"] is True
-        # onboarding_beat should be cleared
         assert ctx.userdata.onboarding_beat is None
-        # DB flag should be set to "complete"
         from onboarding_tools import ONBOARDING_COMPLETE
 
         mock_set_player_flag.assert_any_await("player_1", "onboarding_beat", ONBOARDING_COMPLETE)
@@ -141,7 +129,6 @@ class TestAdvanceOnboardingBeat:
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_advance_preserves_location(self, mock_set_player_flag):
-        """Beat advancement doesn't change location."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = _make_context(onboarding_beat=1, location_id="accord_market_square")

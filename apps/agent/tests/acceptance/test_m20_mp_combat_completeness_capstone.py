@@ -1,23 +1,4 @@
-"""Capstone: M20 multiplayer combat-completeness E2E (auto-marked acceptance, per-run Postgres
-testcontainer). Drives the REAL phase-loop flow for a live 2-PC party — NOT
-`combat_end._end_combat_db` directly — so the engine's wrap gate + end-combat orchestration decide
-the outcome, exactly as prod hits them once a real 2nd player joins (M19).
-
-Proves the three M20 gaps compose through the real flow:
-- Scenario A (loot attribution + primary haul, story-001): a real 2-PC VICTORY over a multi-enemy
-  humanoid group emits one ITEM_ACQUIRED per fallen enemy, each carrying the round-robin recipient
-  `player_id` (seat parity a,b,a,b,a); the victory handoff's `loot`/`currency_gold` are the PRIMARY's
-  own share, never the summed party haul.
-- Scenario B (multi-PC echo-defeat gate, story-002): a Stage-2 Hollowed PC falls and rises as a
-  temporary_hollowed echo; destroying the echo while the OTHER PC still stands does NOT end combat
-  (the M20 gate) — combat only reaches DEFEAT once the standing PC is also down, and each member
-  then resurrects at its own divergent tier-3 anchor.
-
-Determinism comes from an injected resolver (never real dice) + a patched loot table (chance 1.0 so
-every standard/elite enemy drops exactly one entry) + a seeded `combat_end` RNG for currency. Each
-scenario uses its own id set so the session-scoped migrated container stays isolated (reset_db_pool
-is function-scoped).
-"""
+"""Declare only PC attacks for the victory case; injected damage and guaranteed loot isolate recipient attribution."""
 
 from __future__ import annotations
 
@@ -117,10 +98,6 @@ def _participants(ctx):
 
 
 async def test_real_2pc_victory_attributes_loot_and_scopes_primary_haul(reset_db_pool):
-    """Scenario A: a live 2-PC party fights a multi-enemy humanoid group to VICTORY through the real
-    phase loop. Only PC attacks are declared (the enemies never swing), so the PCs down every enemy
-    over a few phases and survive. Assert each ITEM_ACQUIRED carries the round-robin recipient
-    player_id (seat parity), and the victory handoff's loot/currency are the PRIMARY's own share."""
     pool = await db.get_pool()
     pc_a, pc_b = "cap_m20_vic_pc_a", "cap_m20_vic_pc_b"  # pc_a < pc_b so seat_order == [pc_a, pc_b]
     await _seed_pc(pool, pc_a, location_id="accord_guild_hall", hp_current=40)
@@ -174,10 +151,6 @@ async def test_real_2pc_victory_attributes_loot_and_scopes_primary_haul(reset_db
 
 
 async def test_real_echo_destroyed_while_ally_stands_defers_defeat(reset_db_pool):
-    """Scenario B: a Stage-2 Hollowed PC falls and rises as a temporary_hollowed echo through the real
-    resolver. Destroying the echo while the ally still stands must NOT end combat (the M20 gate,
-    story-002); combat only reaches DEFEAT once the ally is also down, then each member resurrects at
-    its own divergent tier-3 anchor."""
     pool = await db.get_pool()
     pc_a, pc_b = "cap_m20_echo_pc_a", "cap_m20_echo_pc_b"
     await _seed_pc(

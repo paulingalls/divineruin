@@ -207,7 +207,6 @@ function* keyPaths(node: unknown, prefix: Path = []): Generator<Path> {
   for (const [key, child] of entries) {
     const path = [...prefix, key];
     if (!Array.isArray(node)) yield path;
-    // audio.special keys are free-form, so none of them is required.
     if (typeof child === "object" && child !== null && path.join(".") !== "audio.special")
       yield* keyPaths(child, path);
   }

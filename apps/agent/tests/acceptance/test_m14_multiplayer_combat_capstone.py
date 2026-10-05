@@ -1,21 +1,4 @@
-"""Capstone: M14 multiplayer combat E2E (auto-marked acceptance, per-run Postgres testcontainer).
-
-Proves the M14 seams (stories 001-008) COMPOSE end-to-end for a TWO-PC party on one seeded
-testcontainer DB:
-
-- AC1: two PCs enter one combat -> both are player participants in initiative (combat_init reads
-  session.party.member_ids as the participation SSOT).
-- AC2: both act through the phase loop and each PC's Resonance decays against its OWN pool
-  (per-member decay, story-004).
-- AC3: the party is wiped and each fallen PC resurrects at its OWN 4-tier anchor with an independent
-  death cost (story-005/006 — divergent tier-3 last_rested_settlement_id).
-- AC4: an OOC cross-player buff lands on a party ally, and the party gate rejects a non-party target
-  (story-007 producer).
-
-Determinism: an injected damage resolver (never real dice). Each scenario uses its OWN id set so the
-shared session container stays isolated (reset_db_pool is function-scoped but the migrated container
-is session-scoped).
-"""
+"""Use distinct ids per scenario because reset_db_pool is function-scoped while its seeded database is session-scoped."""
 
 from __future__ import annotations
 
@@ -57,8 +40,6 @@ async def _seed_armed(pool, player_id: str, *, location_id: str = "accord_guild_
 
 
 async def test_two_pc_combat_init_builds_both_player_participants(reset_db_pool):
-    """AC1: a 2-PC party enters combat -> the combat state holds both PCs as player participants,
-    each armed from its own equipment."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m14_init_pc1", "cap_m14_init_pc2"
     await _seed_armed(pool, pc1)
@@ -81,8 +62,6 @@ async def test_two_pc_combat_init_builds_both_player_participants(reset_db_pool)
 
 
 async def test_two_pc_phase_loop_decays_each_resonance_independently(reset_db_pool):
-    """AC2: both PCs act over a phase; each PC's Resonance decays against its OWN pool (distinct
-    starting values stay distinct + are persisted per member)."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m14_res_pc1", "cap_m14_res_pc2"
     await _seed_armed(pool, pc1)
@@ -140,8 +119,6 @@ async def _seed_for_wipe(pool, player_id: str, last_rested: str) -> None:
 
 
 async def test_party_wipe_resurrects_each_member_at_own_anchor(reset_db_pool):
-    """AC3: a 2-PC party wipe resurrects BOTH fallen PCs, each at its own divergent tier-3 anchor,
-    with an independent death recorded."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m14_wipe_pc1", "cap_m14_wipe_pc2"
     await _seed_for_wipe(pool, pc1, "millhaven")
@@ -177,7 +154,6 @@ async def test_party_wipe_resurrects_each_member_at_own_anchor(reset_db_pool):
 
 
 async def test_ooc_buff_lands_on_ally_and_gate_rejects_non_party_target(reset_db_pool):
-    """AC4: an OOC blessed buff lands on a party ally; the party gate refuses a non-party target."""
     pool = await db.get_pool()
     caster, ally, stranger = "cap_m14_buff_caster", "cap_m14_buff_ally", "cap_m14_buff_stranger"
     await seed_player(pool, player_id=caster)

@@ -1,25 +1,4 @@
-"""Capstone: Milestone 6 stage-schema, system-wide (story-004).
-
-Proves all four M6 done-criteria hold end-to-end against ONE seeded location —
-the §7 Stage the per-story tests (001-003) can't prove whole individually:
-
-  - AC1: the warm layer's AFFORDANCES are grouped by verb and the danger is a
-    BAND word (not a raw integer); a gated exit renders as a `check` target,
-    a hidden element never leaks into narration;
-  - AC2: a successful discover check against the attached element emits
-    E.HIDDEN_REVEALED AND surfaces the revealed id in the hot layer same-turn,
-    then clears it;
-  - AC3: once the gated exit's requirement is MET, a warm rebuild moves the exit
-    from `check` to `go` (the gate-evaluation edge story-003 left open);
-  - AC4: the full Stage pipeline — assemble → discover → rebuild — runs green as
-    one loop, the discovery's own reveal flag unlocking the gated exit.
-
-Runs over the seeded testcontainer DB (`reset_db_pool`); skips cleanly when
-Docker is down (postgres_container fixture). The discover roll is made
-deterministic by pinning the d20 via the `check_resolution.dice_roll` seam — the
-element's anti-grind gate consumes the roll once, so a natural-1 auto-fail would
-otherwise flake AC2/AC4.
-"""
+"""Pin the d20 because the one-use anti-grind gate would otherwise consume a natural-1 failure."""
 
 from __future__ import annotations
 
@@ -128,8 +107,6 @@ async def _warm(location_id: str) -> str:
 
 
 async def test_ac1_affordances_verb_grouped_and_banded(m6_world: str) -> None:
-    """AC1: affordances are verb-grouped, danger is a band, the gated exit is a
-    `check` target, and the hidden element never reaches narration."""
     warm = await _warm(m6_world)
 
     assert "AFFORDANCES" in warm
@@ -155,8 +132,6 @@ async def test_ac1_affordances_verb_grouped_and_banded(m6_world: str) -> None:
 async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
     m6_world: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """AC2: a successful discover emits E.HIDDEN_REVEALED, and the revealed id is
-    in the hot layer the same turn, then cleared."""
     _force_discovery_success(monkeypatch)
     ctx = make_context(player_id=_PLAYER_ID, location_id=m6_world)
     sd = ctx.userdata
@@ -185,7 +160,6 @@ async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
 
 
 async def test_ac3_met_requirement_promotes_exit_check_to_go(m6_world: str) -> None:
-    """AC3: once the gated exit's requirement is met, a rebuild moves it check -> go."""
     # Pre-condition: the gate is locked (sanitized label, no raw requires leak).
     before = await _warm(m6_world)
     assert "deeper (locked)" in before
@@ -200,8 +174,6 @@ async def test_ac3_met_requirement_promotes_exit_check_to_go(m6_world: str) -> N
 
 
 async def test_ac4_full_stage_pipeline_e2e(m6_world: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """AC4: the whole §7 loop green — assemble (locked) -> discover (reveal) ->
-    rebuild (unlocked), the discovery's own flag unlocking the gated exit."""
     _force_discovery_success(monkeypatch)
     ctx = make_context(player_id=_PLAYER_ID, location_id=m6_world)
     sd = ctx.userdata

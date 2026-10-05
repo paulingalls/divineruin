@@ -1,12 +1,3 @@
-"""Integration coverage: combat init applies encounter-role derivation (M4.7, story-001 slice 3).
-
-Models test_start_combat.py — mock mutations/queries/content DI, a role-tagged encounter — and
-asserts the persisted CombatParticipants carry role-derived stats (not raw base stats): a Minion is
-halved with its actives stripped, a Boss is doubled with a signature + one legendary action, and the
-resolver modifier fields (attack_mod/dc_mod/damage_mult) are populated. Fast lane: the DB layer is
-mocked, no real PG.
-"""
-
 from copy import deepcopy
 
 import pytest
@@ -115,8 +106,6 @@ async def test_player_participant_keeps_identity_role_defaults():
 
 @pytest.mark.asyncio
 async def test_enemy_participants_carry_category_and_loot_table_id():
-    # story-002: combat_init carries the template enemy's category + loot_table_id onto the
-    # participant so _end_combat_db can roll role-scaled loot/currency on victory.
     parts = await _run_and_get_participants()
     assert parts["shadeling_1"]["category"] == "hollow_drift"
     assert parts["shadeling_1"]["loot_table_id"] == "loot_hollow_drift"
@@ -126,9 +115,6 @@ async def test_enemy_participants_carry_category_and_loot_table_id():
 
 @pytest.mark.asyncio
 async def test_enemy_participants_carry_resistance_tags():
-    # M15 story-002: combat_init carries the template enemy's Tier-3 resistance_tags onto the
-    # participant so the de-escalation orchestrator shifts each enemy's disposition by its own
-    # profile. An untagged enemy defaults to [] (un-de-escalatable).
     parts = await _run_and_get_participants()
     assert parts["shadeling_1"]["resistance_tags"] == ["cowardly"]
     assert parts["warden_1"]["resistance_tags"] == []
@@ -136,7 +122,6 @@ async def test_enemy_participants_carry_resistance_tags():
 
 @pytest.mark.asyncio
 async def test_player_participant_has_empty_loot_fields():
-    # The player carries no loot table — the loot/currency overlay is enemy-only.
     player = (await _run_and_get_participants())[SAMPLE_PLAYER["player_id"]]
     assert player["category"] == ""
     assert player["loot_table_id"] == ""

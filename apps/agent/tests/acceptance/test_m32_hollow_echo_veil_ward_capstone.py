@@ -1,18 +1,4 @@
-"""Capstone: M3.2 Hollow Echo + Veil Ward end-to-end against a real Postgres testcontainer.
-
-stories 001-005/008 shipped the M3.2 Hollow Echo + Veil Ward seam with unit / mock-conn
-coverage. This capstone proves they COMPOSE against ONE seeded testcontainer (auto-marked
-`acceptance` by tests/acceptance/conftest.py), catching the loader / JSONB persistence
-seams the mocked unit tests can't:
-
-- An Overreach cast (Resonance 9+) auto-rolls a Hollow Echo, and the accrued Resonance
-  persists into players.data JSONB on real PG.
-- An active Veil Ward halves the Resonance a cast generates (round down, spec magic.md:197),
-  persisted — so a warded caster reaches Overreach less often.
-
-Each test uses a distinct player_id since the testcontainer DB is shared across the session.
-cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any id.
-"""
+"""Use distinct player ids because the seeded database is shared."""
 
 from __future__ import annotations
 
@@ -50,8 +36,6 @@ async def _focus_current(player_id: str) -> int:
 
 
 async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str) -> None:
-    """3 casts drive Resonance to Overreach (9); the 3rd auto-rolls a Hollow Echo. The
-    persisted Resonance and the cast packet agree at every step (AC1 + AC3 E2E)."""
     pool = await db.get_pool()
     player_id = "cap_m32_overreach"
     # 20 Focus funds 4 casts at focus 5: per-round decay (story-010) makes each post-first cast
@@ -89,8 +73,6 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
 
 
 async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) -> None:
-    """An active Veil Ward halves the Resonance a non-cantrip cast generates (round down),
-    persisted, versus the unwarded baseline (AC2)."""
     pool = await db.get_pool()
     player_id = "cap_m32_warded"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=(_SPELL_ID,))
@@ -123,12 +105,7 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
 
 
 async def test_expired_ward_does_not_halve_the_cast(reset_db_pool: str) -> None:
-    """Lazy expiry, proven at the cast: an elapsed ward stops halving. Nothing sweeps veil_wards.
-
-    This is the property M24 story-004 exists to deliver. Before it, the cast path read an
-    in-memory boolean that no expiry could ever clear, so an Artificer's 1-hour anchor would keep
-    halving for the rest of the session. Asserted directly, not inferred from the read layer.
-    """
+    """Wards expire lazily; certify the next cast stops halving rather than inferring it from a separate reader."""
     pool = await db.get_pool()
     player_id = "cap_m32_expired"
     location = "cap_m32_expired_hall"
@@ -157,7 +134,6 @@ async def test_expired_ward_does_not_halve_the_cast(reset_db_pool: str) -> None:
 
 
 async def test_walking_out_of_a_warded_location_stops_the_halving(reset_db_pool: str) -> None:
-    """The party leaves the warded hall; the very next cast is no longer halved."""
     pool = await db.get_pool()
     player_id = "cap_m32_walker"
     warded, plain = "cap_m32_walk_warded", "cap_m32_walk_plain"

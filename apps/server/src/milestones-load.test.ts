@@ -7,19 +7,8 @@ import {
 } from "./milestones.ts";
 import type { Milestone } from "@divineruin/shared";
 
-// Drives the production fail-loud parseMilestoneRow (apps/server/src/milestones.ts)
-// over content/archetype_milestones.json, proving every entry conforms to the shared
-// Milestone contract. parseMilestoneRow is the real TS load boundary (loadMilestones calls
-// it at startup); this test exercises it against the canonical content, pins its fail-loud
-// behavior on malformed rows, and mirrors the Python loader's vocab/level assertions
-// (apps/agent/milestones.py) so the cross-language contract is enforced on both sides.
-// Records are self-contained (decision 4c0677dae1be): grants embed name/effect/flag.
-
 const MILESTONES_PATH = new URL("../../../content/archetype_milestones.json", import.meta.url);
 
-// content/archetype_milestones.json is a closed set (story-001): 72 milestones = 18
-// archetypes x 4 tiers (L5/10/15/20). Exact counts catch both silent attrition from bad
-// merges AND accidental additions (move these literals if story-001's content changes).
 const MILESTONE_COUNT = 72;
 const ARCHETYPE_COUNT = 18;
 
@@ -35,7 +24,6 @@ describe("content/archetype_milestones.json — parseMilestoneRow conformance", 
     expect(rows).toHaveLength(MILESTONE_COUNT);
     for (const row of rows) {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
-      // Throws with the milestone id + field context on any malformed entry.
       expect(() => parseMilestoneRow(id, row)).not.toThrow();
     }
   });
@@ -76,10 +64,6 @@ describe("content/archetype_milestones.json — parseMilestoneRow conformance", 
 });
 
 describe("milestones accessors — loadMilestones consumer chain", () => {
-  // loadMilestones() reads the DB; its accessor chain (setMilestones ->
-  // getMilestone/getArchetypeMilestones) is the runtime API consumers use after startup.
-  // Drive it against the real parsed content (parseMilestoneRow per row, exactly as
-  // loadMilestones does) without a live DB.
   async function loadParsedMap(): Promise<Map<string, Milestone>> {
     const rows = await loadMilestonesJson();
     const map = new Map<string, Milestone>();
@@ -158,9 +142,6 @@ describe("parseMilestoneRow — fail-loud validation", () => {
   });
 
   test("rejects a non-integer level (parity with the Python int requirement)", () => {
-    // Python parse_milestone_row requires int level (concern f499a5c2d1dd); a float like
-    // 10.5 must fail on the TS side too, so the same shared row can't pass one loader and
-    // fail the other (the cross-language parity discipline from f3f1560feb6b).
     expect(() => parseMilestoneRow("x", { ...base, level: 10.5 })).toThrow(
       /milestones\[x\]\.level/,
     );
@@ -179,8 +160,6 @@ describe("parseMilestoneRow — fail-loud validation", () => {
   });
 
   test("rejects a grant.flag that is neither string nor null", () => {
-    // flag is the combat-math marker; a numeric flag must fail loud rather than silently
-    // coerce, mirroring the abilities loader's scaling-not-string branch.
     expect(() =>
       parseMilestoneRow("x", { ...base, grant: { name: "X", effect: "Y", flag: 7 } }),
     ).toThrow(/milestones\[x\]\.grant\.flag/);

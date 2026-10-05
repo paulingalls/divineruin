@@ -1,9 +1,4 @@
-"""Which message of a turn the judge reads (sprint-048 land, note 020c90c6's sibling).
-
-Pure, so its falsifiers live in the fast lane (``tests/test_judged_turn.py``) rather than behind
-an API key — the split ``_m29_guards.py`` takes, for the same reason: this selection has been
-wrong twice, and both times it was a real-LLM run that paid to discover it.
-"""
+"""Select the assistant narration event to judge."""
 
 from __future__ import annotations
 

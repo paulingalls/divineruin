@@ -1,9 +1,6 @@
 import { test, expect } from "bun:test";
 import { buildRobotsTxt, buildSitemapXml } from "./crawl.ts";
 
-// crawl text is built from the production origin (prerender passes
-// PUBLIC_SITE_ORIGIN), so robots/sitemap track the deploy origin the same way
-// story-002's canonical/og:url do. Pure builders — origin injected.
 const ORIGIN = "https://example.test";
 
 test("robots.txt allows all crawlers and points at the sitemap", () => {
@@ -19,7 +16,6 @@ test("sitemap.xml is well-formed and lists the home URL at the origin", () => {
   expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
   expect(xml).toContain(`<loc>${ORIGIN}/</loc>`);
   expect(xml.trimEnd().endsWith("</urlset>")).toBe(true);
-  // Single-page site: exactly one <url> entry (anchors are fragments, not URLs).
   expect([...xml.matchAll(/<url>/g)]).toHaveLength(1);
 });
 

@@ -1,12 +1,3 @@
-"""Tests for dispatch_companion_errand on DispatchAgent (story-009).
-
-dispatch_companion_errand validates (template, destination, blocked companion,
-blocked danger combo, free slot) then creates an async_activities row. Failures
-raise LiveKit ToolError (ADR 0002). The _*_impl seam takes injected mods. Split
-from the resolve-path tests (test_errand_tools_resolve.py) to stay under the
-500-line cap; the DispatchAgent registration smoke test rides with dispatch.
-"""
-
 import json
 import random
 from datetime import datetime, timedelta
@@ -60,7 +51,6 @@ def _activity(companion_count=0):
 
 
 def _queries(player_class="mage"):
-    # The assigned companion is derived from the player's class: mage -> Kael, beastcaller -> Sable.
     mod = MagicMock()
     mod.get_player = AsyncMock(return_value={"player_id": "player_1", "class": player_class})
     return mod
@@ -95,7 +85,6 @@ class TestDispatchCompanionErrand:
         assert "resolve_at_estimate" in result
         assert result["errand_type"] == "scout"
         ctx.disallow_interruptions.assert_called_once()
-        # Row data carries the async-worker contract fields.
         data = (
             mutations.create_async_activity.await_args.kwargs.get("activity_data")
             or (mutations.create_async_activity.await_args.args[1])
@@ -103,10 +92,8 @@ class TestDispatchCompanionErrand:
         assert data["status"] == "in_progress"
         assert data["activity_type"] == "companion_errand"
         assert data["parameters"] == {"errand_type": "scout", "destination": "millhaven"}
-        # Template's spec range is recorded on the row.
         assert data["duration_min_seconds"] == 14400
         assert data["duration_max_seconds"] == 28800
-        # The sampled resolve_at duration falls within that range.
         sampled = datetime.fromisoformat(data["resolve_at"]) - FIXED_NOW
         assert timedelta(seconds=14400) <= sampled <= timedelta(seconds=28800)
 
@@ -165,7 +152,6 @@ class TestDispatchCompanionErrand:
     async def test_blocked_companion_raises(self):
         ctx = make_context()
         mutations = _mutations()
-        # A beastcaller's assigned companion IS Sable, so the gate fires on the assigned id.
         with pytest.raises(ToolError, match="companion_sable cannot perform social"):
             await _dispatch_companion_errand_impl(
                 ctx,
@@ -181,7 +167,6 @@ class TestDispatchCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_malformed_danger_level_raises_toolerror_not_valueerror(self):
-        """A typo'd danger_level surfaces a clean ToolError, not a raw ValueError."""
         ctx = make_context()
         mutations = _mutations()
         with pytest.raises(ToolError, match="danger level"):
@@ -231,12 +216,7 @@ class TestDispatchToolRegistration:
 
 
 class TestDispatchGatesTheAssignedCompanion:
-    """The block rule is enforced against the companion the errand will actually resolve for.
-
-    Resolution derives the companion from the player's archetype (errand_resolution
-    .companion_errand_data); a caller-named companion that differs used to walk a Sable player
-    past a Sable-only block with no error and an empty errand frame downstream.
-    """
+    """Assignment must resolve each player's companion independently."""
 
     @pytest.mark.asyncio
     async def test_caller_naming_kael_cannot_smuggle_sable_past_a_block(self):
@@ -289,11 +269,7 @@ class TestDispatchGatesTheAssignedCompanion:
 
     @pytest.mark.asyncio
     async def test_archetype_matching_no_companion_is_a_tool_error(self):
-        """A class in no companion's `complements` reaches the LLM as a narratable ToolError.
-
-        `select_companion_for_archetype` raises ValueError, and @db_tool only catches
-        DatabaseError/Timeout/Connection — unwrapped, the raw ValueError escapes the tool.
-        """
+        """A raw ValueError must escape db_tool rather than masquerade as a database failure."""
         ctx = make_context()
         with pytest.raises(ToolError, match="matches 0 companions"):
             await _dispatch_companion_errand_impl(

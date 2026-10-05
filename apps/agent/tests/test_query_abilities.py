@@ -167,8 +167,6 @@ class TestQueryAbilities:
 
     @pytest.mark.asyncio
     async def test_class_with_no_catalog_abilities_fails_loud(self, mock_context):
-        # An empty payload would read to the DM as "you own no reactions" — a wrong answer that
-        # sounds like an answer, which is what this kind exists to remove.
         queries, persistence, library = self._dependencies(player={"class": "not_an_archetype", "level": 1})
 
         with pytest.raises(ToolError, match="not_an_archetype"):

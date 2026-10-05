@@ -119,8 +119,6 @@ class RecordingSession:
     def generate_reply(self, **kwargs):
         if self.generate_errors:
             raise self.generate_errors.pop(0)
-        # The verbatim text is what these tests are about; the per-turn hot context that
-        # rides alongside it has its own suite (tests/test_player_turn_hot_layer.py).
         self.contexts.append(kwargs["chat_ctx"])
         self.calls.append({"user_input": kwargs["user_input"].text_content})
 

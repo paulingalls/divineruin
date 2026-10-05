@@ -1,16 +1,4 @@
-"""Real-PG integration: handle savable fallen allies on deescalation/fled outcomes.
-
-When combat ends with a deescalated or fled outcome, a savable fallen ally (is_fallen=True,
-hp_current=0, NOT terminally down) was previously stranded at 0 HP with no recovery and no death.
-
-New contract (sprint-start decision 498f0df12b14):
-- deescalated: stabilize fallen allies to 1 HP (peaceful win, party holds the field)
-- fled: fallen allies die → Mortaen (left behind, NOT stabilized)
-- victory/defeat: unchanged regression guard
-
-Mirrors test_combat_end_party_wipe.py for structure: seeds players via dev_db_pool,
-calls _end_combat_db in a real transaction, and asserts the persisted outcome.
-"""
+"""De-escalation leaves the party holding the field; fleeing leaves downed allies behind."""
 
 from __future__ import annotations
 
@@ -112,7 +100,6 @@ async def _run_outcome(session: SessionData, cs: CombatState, outcome: str) -> d
 
 @pytest.mark.asyncio
 async def test_deescalated_stabilizes_savable_fallen_ally(dev_db_pool):
-    """AC1: outcome='deescalated' with a savable fallen ally -> ally is stabilized to 1 HP."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _ALLY, _ALLY_ANCHOR)
@@ -128,14 +115,12 @@ async def test_deescalated_stabilizes_savable_fallen_ally(dev_db_pool):
 
         await _run_outcome(session, cs, "deescalated")
 
-        # Both fallen allies should be stabilized to 1 HP.
         primary = await db_queries.get_player(_PRIMARY, conn=pool)
         ally = await db_queries.get_player(_ALLY, conn=pool)
         assert primary is not None
         assert ally is not None
         assert primary["hp"]["current"] == 1, "Primary fallen ally should stabilize to 1 HP"
         assert ally["hp"]["current"] == 1, "Secondary fallen ally should stabilize to 1 HP"
-        # No death should be recorded.
         assert primary["death_history"]["count"] == 0
         assert ally["death_history"]["count"] == 0
     finally:
@@ -144,7 +129,6 @@ async def test_deescalated_stabilizes_savable_fallen_ally(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_fled_kills_savable_fallen_ally(dev_db_pool):
-    """AC2: outcome='fled' with a savable fallen ally -> ally dies and returns via Mortaen."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _ALLY, _ALLY_ANCHOR)
@@ -160,7 +144,6 @@ async def test_fled_kills_savable_fallen_ally(dev_db_pool):
 
         end_data = await _run_outcome(session, cs, "fled")
 
-        # Both fallen allies should be resurrected (death recorded, moved to anchor).
         primary = await db_queries.get_player(_PRIMARY, conn=pool)
         ally = await db_queries.get_player(_ALLY, conn=pool)
         assert primary is not None
@@ -169,7 +152,6 @@ async def test_fled_kills_savable_fallen_ally(dev_db_pool):
         assert ally["location_id"] == _ALLY_ANCHOR, "Ally should be resurrected at own anchor"
         assert primary["death_history"]["count"] == 1
         assert ally["death_history"]["count"] == 1
-        # The returned death_context is the primary's.
         assert end_data["death_context"] is not None
         assert end_data["death_context"]["anchor"] == _PRIMARY_ANCHOR
     finally:
@@ -178,8 +160,6 @@ async def test_fled_kills_savable_fallen_ally(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_fled_primary_standing_not_force_resurrected(dev_db_pool):
-    """AC3: outcome='fled' with a standing primary (not fallen) -> primary is NOT force-resurrected.
-    Only downed (fallen) allies die on a flee."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _ALLY, _ALLY_ANCHOR)
@@ -187,7 +167,6 @@ async def test_fled_primary_standing_not_force_resurrected(dev_db_pool):
         session = SessionData(player_id=_PRIMARY, location_id=_OFF_CATALOG, room=None)
         cs = _combat_state(
             [
-                # Primary is standing (not fallen).
                 CombatParticipant(
                     id=_PRIMARY,
                     name=_PRIMARY,
@@ -201,7 +180,6 @@ async def test_fled_primary_standing_not_force_resurrected(dev_db_pool):
                     is_fallen=False,
                     is_dead=False,
                 ),
-                # Ally is fallen.
                 _savable_fallen_participant(_ALLY),
                 _enemy(is_fallen=True),
             ]
@@ -213,13 +191,10 @@ async def test_fled_primary_standing_not_force_resurrected(dev_db_pool):
         ally = await db_queries.get_player(_ALLY, conn=pool)
         assert primary is not None
         assert ally is not None
-        # Primary survived, NOT resurrected (location unchanged, no death recorded).
         assert primary["location_id"] == _OFF_CATALOG
         assert primary["death_history"]["count"] == 0
-        # Ally fled while downed, so they die and are resurrected.
         assert ally["location_id"] == _ALLY_ANCHOR
         assert ally["death_history"]["count"] == 1
-        # No death_context for the primary (it survived).
         assert end_data["death_context"] is None
     finally:
         await _cleanup(pool, _PRIMARY, _ALLY)
@@ -227,7 +202,6 @@ async def test_fled_primary_standing_not_force_resurrected(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_victory_still_stabilizes_fallen_ally_regression(dev_db_pool):
-    """AC4: outcome='victory' with a savable fallen ally -> unchanged behavior (stabilize to 1 HP)."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _ALLY, _ALLY_ANCHOR)
@@ -249,7 +223,6 @@ async def test_victory_still_stabilizes_fallen_ally_regression(dev_db_pool):
         assert ally is not None
         assert primary["hp"]["current"] == 1
         assert ally["hp"]["current"] == 1
-        # No death recorded on victory.
         assert primary["death_history"]["count"] == 0
         assert ally["death_history"]["count"] == 0
     finally:
@@ -258,7 +231,6 @@ async def test_victory_still_stabilizes_fallen_ally_regression(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_defeat_still_kills_fallen_ally_regression(dev_db_pool):
-    """AC5: outcome='defeat' with a savable fallen ally -> unchanged behavior (die → Mortaen)."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _ALLY, _ALLY_ANCHOR)
@@ -278,7 +250,6 @@ async def test_defeat_still_kills_fallen_ally_regression(dev_db_pool):
         ally = await db_queries.get_player(_ALLY, conn=pool)
         assert primary is not None
         assert ally is not None
-        # Both resurrected at their anchors.
         assert primary["location_id"] == _PRIMARY_ANCHOR
         assert ally["location_id"] == _ALLY_ANCHOR
         assert primary["death_history"]["count"] == 1
@@ -291,7 +262,6 @@ async def test_defeat_still_kills_fallen_ally_regression(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_deescalated_single_fallen_ally_e2e(dev_db_pool):
-    """AC6: E2E round-trip with a single fallen ally on deescalated outcome."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     try:

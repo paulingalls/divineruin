@@ -1,14 +1,4 @@
-"""Tests for companion assignment at character creation (story-003).
-
-The companion stack (profiles, scaling, 5 relationship tiers, affinity, errands, combat)
-was fully built but DARK for a new character: nothing created the first
-`companion_relationships` row. finalize_character now binds the one companion whose
-`complements` lists the character's archetype, mirroring the M8 starting-spell grant —
-after the player is persisted, non-fatal, logged.
-
-Covers the non-overwriting writer (unit + real-PG), and the finalize_character hook.
-The archetype -> companion selection itself is owned by tests/test_companion_profiles.py.
-"""
+"""Create the first relationship only after the player exists, without overwriting an existing assignment."""
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,9 +12,6 @@ from db_mutations_companion import insert_companion_relationship_if_absent
 from session_data import CreationState, SessionData
 
 _finalize: Any = finalize_character._func
-
-
-# --- the non-overwriting writer -----------------------------------------------
 
 
 class _RecordingConn:
@@ -65,8 +52,7 @@ class TestInsertIfAbsent:
 
 @pytest.mark.usefixtures("dev_db_pool")
 class TestInsertIfAbsentAgainstPostgres:
-    """The both-sides-real falsifier: a recorded SQL string proves nothing about what the
-    table ends up holding. Single-table round-trip, so the fast lane per apps/agent/CLAUDE.md."""
+    """Use PostgreSQL rather than a model of its SQL semantics."""
 
     async def _row(self, pool, player_id):
         return await pool.fetchrow(
@@ -108,9 +94,6 @@ class TestInsertIfAbsentAgainstPostgres:
             assert count == 1
         finally:
             await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)
-
-
-# --- the finalize_character hook ----------------------------------------------
 
 
 def _state(class_choice: str) -> CreationState:
@@ -167,7 +150,6 @@ class TestFinalizeAssignsCompanion:
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_grant_failure_does_not_strand_a_created_character(self, _create, payload, grant):
-        # The player row is already persisted; a grant hiccup must not fail creation.
         payload.return_value = _PAYLOAD
         cs = _state("mage")
         await _finalize(_ctx(cs))
@@ -191,9 +173,7 @@ class TestFinalizeAssignsCompanion:
 
 @pytest.mark.usefixtures("dev_db_pool")
 class TestUnmockedFinalizeWritesNothing:
-    """The grant is wrapped in a broad `except Exception`, so an UNMOCKED test does not fail —
-    it silently performs real I/O into the shared dev DB. The stub is therefore global autouse
-    in tests/conftest.py, not a per-module opt-in a new module can forget."""
+    """Stub external I/O before creation, whose broad error handler can otherwise hide a request."""
 
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)

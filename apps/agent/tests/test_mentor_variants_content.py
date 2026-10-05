@@ -1,11 +1,4 @@
-"""Catalog conformance for content/mentor_variants.json (M9 / story-001).
-
-Drives the production fail-loud parse_mentor_variant_row over the real catalog,
-proving every entry conforms to the MentorVariant contract and cross-references a
-real martial elective + an existing mentor NPC. Mirrors the TS conformance test
-(apps/server/src/mentor_variants-load.test.ts); the unit-level parse/accessor
-behavior lives in test_mentor_variants.py.
-"""
+"""Both languages parse the same authored catalog; this lane executes the Python parser."""
 
 import json
 from collections import Counter, defaultdict
@@ -17,8 +10,6 @@ from npcs import get_npc_sync
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
 
-# Closed set (story-001, extended story-006): 44 martial elective techniques x 2
-# cultural variants.
 _VARIANT_COUNT = 88
 _MARTIAL_ARCHETYPES = {"warrior", "guardian", "skirmisher", "rogue", "spy", "bard"}
 
@@ -71,10 +62,7 @@ def test_every_martial_elective_has_exactly_two_variants():
 
 
 def test_variant_effect_contains_base_ability_effect():
-    """Parity guard (concern dbc689 / retro Try): a variant's effect is its base ability's
-    full effect text plus a cultural suffix (decision m9 override shape). If a base ability's
-    effect is later edited, this catches the silent desync of its two variant rows — there is
-    no other guard binding the duplicated copy to its source."""
+    """Variants and bases must not become independent sources of the same authored contract."""
     abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
     for row in _variants():
         variant = parse_mentor_variant_row(row["id"], row)
@@ -112,11 +100,7 @@ def _expected_cost(base: dict, culture: str) -> tuple[int, int]:
 
 
 def test_variant_cost_follows_its_culture_delta():
-    """A variant's cost must move in the direction its own effect text claims (story-006).
-
-    Nothing else binds the two: a row can read "Keldaran discipline trades raw power for
-    flawless control" while charging MORE stamina and LESS focus, and every other guard stays
-    green. Three of the bard rows did exactly that before this test existed."""
+    """Cultural modifiers change resource costs as well as effect values."""
     abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
     offenders = {}
     for row in _variants():
@@ -130,12 +114,7 @@ def test_variant_cost_follows_its_culture_delta():
 
 
 def test_no_variant_costs_exactly_its_base():
-    """Independent of the delta table: a variant priced identically to its base is not a variant.
-
-    story-004 made base and variant separately activatable, so the player's choice between them
-    is only real when they cost differently. Kept separate from the delta guard on purpose —
-    _expected_cost's zero-stamina clamp can DEGENERATE to the base cost and then demand it, so
-    the delta guard cannot be the thing that catches this."""
+    """A zero clamp can hide an incorrectly equal base and variant cost."""
     abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
     offenders = {}
     for row in _variants():
@@ -147,8 +126,7 @@ def test_no_variant_costs_exactly_its_base():
 
 
 def test_each_culture_is_taught_by_exactly_one_mentor():
-    """Concern 603af: the catalog must not alternate generic mentors across cultures. Each
-    cultural martial style is taught by a single coherent mentor NPC (audio-first / dm-is-the-game)."""
+    """Mentor voice must remain coherent across the learning interaction."""
     culture_mentors: dict[str, set[str]] = defaultdict(set)
     for row in _variants():
         variant = parse_mentor_variant_row(row["id"], row)
@@ -158,9 +136,7 @@ def test_each_culture_is_taught_by_exactly_one_mentor():
 
 
 def test_every_mentor_id_resolves_in_npc_catalog():
-    """The narration prompt derives the variant's mentor persona via npcs.get_npc_sync; an
-    unknown id silently falls back to guildmaster_torin, breaking mentor-culture coherence in
-    the DM voice (concern 603af). Every variant mentor must be a real, migrated NPC."""
+    """An unknown mentor must not silently become the guild master."""
     for row in _variants():
         variant = parse_mentor_variant_row(row["id"], row)
         assert get_npc_sync(variant.mentor_id) is not None, (
@@ -169,8 +145,7 @@ def test_every_mentor_id_resolves_in_npc_catalog():
 
 
 def test_narration_cues_vary_within_each_culture():
-    """Concern 603af: narration_cue was one fixed string repeated 20x per culture, making the
-    DM voice robotic when it narrates a variant. Each culture's variants must read distinctly."""
+    """A shared generic cue makes otherwise distinct techniques sound identical."""
     culture_cues: dict[str, list[str]] = defaultdict(list)
     for row in _variants():
         variant = parse_mentor_variant_row(row["id"], row)
@@ -180,9 +155,7 @@ def test_narration_cues_vary_within_each_culture():
 
 
 def test_all_narration_cues_are_unique():
-    """Stronger guard than per-culture variety: every variant gets its own cue, so no two
-    learned variants ever make the DM voice the exact same line. Catches same-named techniques
-    (e.g. warrior vs skirmisher 'Whirlwind') colliding under a shared cue template."""
+    """Same-named techniques still need distinct cues."""
     cues = [parse_mentor_variant_row(r["id"], r).narration_cue for r in _variants()]
     dupes = {c: n for c, n in Counter(cues).items() if n > 1}
     assert not dupes, f"narration_cues must be unique across the catalog; collisions: {dupes}"
