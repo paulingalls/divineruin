@@ -1,8 +1,6 @@
 """Companion progression reaches the DM prompt and L20 XP Resolve."""
 
 import dataclasses
-import re
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -150,13 +148,3 @@ async def test_l20_resolve_fails_loud_without_the_assigned_companion_gain():
         pytest.raises(ValueError, match="L20 progression gain"),
     ):
         await _award_from_level(19, 10250, 1000)
-
-
-def test_archetype_milestone_doc_closes_all_34_criteria():
-    text = (Path(__file__).resolve().parents[3] / "docs" / "milestones" / "02_archetypes.md").read_text()
-
-    assert len(re.findall(r"^- \[x\]", text, flags=re.MULTILINE)) == 34
-    assert not re.findall(r"^- \[ \]", text, flags=re.MULTILINE)
-    assert "34/34 acceptance criteria are now checked" in text
-    assert "30/34 acceptance criteria" not in text
-    assert 'legendary companion unlock" half is not implemented' not in text

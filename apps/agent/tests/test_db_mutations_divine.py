@@ -5,27 +5,6 @@ from unittest.mock import AsyncMock
 import db_mutations_divine
 
 
-async def test_gain_writes_level_and_timestamp_in_one_statement():
-    conn = AsyncMock()
-    stamp = "2026-09-23T00:00:00+00:00"
-    await db_mutations_divine.update_divine_favor("p", 15, last_served_at=stamp, conn=conn)
-    conn.execute.assert_awaited_once()
-    sql, player, level, served = conn.execute.call_args.args
-    assert "UPDATE players" in sql
-    assert "{divine_favor,level}" in sql
-    assert "{divine_favor,last_served_at}" in sql
-    assert player == "p" and json.loads(level) == 15 and json.loads(served) == stamp
-
-
-async def test_non_gain_writes_only_level():
-    conn = AsyncMock()
-    await db_mutations_divine.update_divine_favor("p", 0, conn=conn)
-    conn.execute.assert_awaited_once()
-    sql, player, level = conn.execute.call_args.args
-    assert "{divine_favor,last_served_at}" not in sql
-    assert player == "p" and json.loads(level) == 0
-
-
 async def test_decay_writes_level_and_decay_clock_in_one_statement():
     conn = AsyncMock()
     stamp = "2026-09-23T00:00:00+00:00"

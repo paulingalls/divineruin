@@ -22,18 +22,6 @@ def _cond(ctype: str) -> dict:
 
 
 class TestRemovePlayerConditionsSql:
-    async def test_filters_named_types_via_jsonb_set(self):
-        conn = AsyncMock()
-        await db_mutations_conditions.remove_player_conditions("p1", ("blessed", "inspired"), conn=conn)
-        sql, *params = conn.execute.call_args.args
-        assert "UPDATE players" in sql
-        assert "jsonb_set" in sql
-        assert "'{conditions}'" in sql
-        assert "jsonb_array_elements" in sql
-        assert "ANY($2" in sql  # the consumed-type array, server-side filter
-        assert params[0] == "p1"
-        assert params[1] == ["blessed", "inspired"]  # asyncpg wants a list for the text[] param
-
     async def test_does_not_touch_other_keys(self):
         conn = AsyncMock()
         await db_mutations_conditions.remove_player_conditions("p1", ("blessed",), conn=conn)

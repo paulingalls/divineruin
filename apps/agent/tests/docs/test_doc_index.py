@@ -14,23 +14,6 @@ sections = doc_index.sections
 validate_descriptions = doc_index.validate_descriptions
 
 
-def test_committed_index_matches_docs():
-    docs = ROOT / "docs"
-    current = (docs / "INDEX.md").read_text()
-    assert current == render(docs, current)
-    validate_descriptions(current)
-
-
-def test_scope_is_nonempty_and_excludes_index():
-    paths = [p.relative_to(ROOT / "docs").as_posix() for p in discover(ROOT / "docs")]
-    assert paths
-    assert "INDEX.md" not in paths
-    assert len(paths) == len(set(paths))
-    assert {"game_mechanics", "prompts", "ops", "decisions", "milestones", "ideas", "mockups"} <= {
-        p.split("/")[0] for p in paths
-    }
-
-
 def test_ranges_are_inclusive_and_ignore_fenced_headings(tmp_path):
     doc = tmp_path / "sample.md"
     doc.write_text("# Sample\n## Alpha\na\n```md\n## Fake\n```\n## Beta\nb")

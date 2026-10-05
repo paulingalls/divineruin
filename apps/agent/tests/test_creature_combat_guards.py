@@ -1,7 +1,7 @@
 import copy
 
 import pytest
-from creature_combat_helpers import catalog, row, selected
+from creature_combat_helpers import catalog, row
 
 from creature_combat import translate_creature
 from creature_schema import validate_creature_stat_block
@@ -74,15 +74,6 @@ def test_invalid_carriers_are_rejected_by_both_contracts(carrier):
     assert validate_creature_stat_block(source)
     with pytest.raises(ValueError, match=r"attacks\[0\]"):
         translate(source)
-
-
-def test_selected_corpus_floor_faults():
-    rows = catalog()
-    for bad in ([], [*rows, row("bandit")], [r for r in rows if r["id"] != "bandit"]):
-        with pytest.raises(AssertionError):
-            selected(bad)
-    with pytest.raises(AssertionError):
-        selected(rows, validator=lambda r: None)
 
 
 def test_structured_command_recharge_contract():

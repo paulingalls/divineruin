@@ -180,8 +180,7 @@ out-of-scope sections record the scope of sprint-003 story-006.
 Authored gifts now live in `content/gods.json`. Each `layer_1_gift` has six required,
 nonempty string fields and an optional `mechanics` block. The executable authority
 for the shape, enums, and exact mechanics is
-`apps/agent/tests/test_patron_gift_content.py`; the amendment's parity guard is
-`apps/agent/tests/docs/test_adr_0001_gift_shape.py`.
+`apps/agent/tests/test_patron_gift_content.py`.
 
 ```text layer_1_gift
 fields: id, name, effect, trigger, recharge, status

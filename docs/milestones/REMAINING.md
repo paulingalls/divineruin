@@ -6,7 +6,7 @@ per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
 **Position: 313 / 538 acceptance criteria — 58%** (the sum of the per-phase counts in
-`README.md`, pinned by `apps/agent/tests/docs/test_milestone_counts.py`). Phases 1, 2, 4, 5 and 6 have their recorded criteria delivered. M33 remains partial despite its checked catalog/infrastructure criteria: deferred spell effects remain. M7.3 remains partial: Still, Architect and remaining troop/Tier3 effects remain open; Choir native encounter certification remains pending. Sprints 001–044 delivered 28 milestones across five execution plans;
+`README.md`). Phases 1, 2, 4, 5 and 6 have their recorded criteria delivered. M33 remains partial despite its checked catalog/infrastructure criteria: deferred spell effects remain. M7.3 remains partial: Still, Architect and remaining troop/Tier3 effects remain open; Choir native encounter certification remains pending. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
 
@@ -115,7 +115,6 @@ names the shipped Ashmark and Cultist stat blocks while retaining the missing
 Cult Acolyte. Phase 1's M1.6 says 7/7 and its moved code/test pointers are
 updated. ADR 0005 and Crafting record the fulfilled Portable Lab exception;
 Economy's inventory pointers now name `transact` and the mutation substrate.
-The README rows and this Position are pinned by `test_milestone_counts.py`.
 
 **Still open:** Three ACs name artifacts absent under their original names but
 shipped by decision: `spell_catalog` → `spells`, `character_conditions` →

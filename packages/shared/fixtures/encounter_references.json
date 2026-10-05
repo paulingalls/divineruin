@@ -1013,7 +1013,6 @@
     }
   ],
   "consumer_inventory": [
-    "apps/agent/tests/_encounter_reference_proofs.py",
     "apps/agent/tests/acceptance/_catalog_cutover_helpers.py",
     "apps/agent/tests/acceptance/choir_capstone_harness.py",
     "apps/agent/tests/acceptance/test_catalog_action_runtime.py",
@@ -1062,7 +1061,6 @@
     "apps/agent/tests/combat/test_start_combat.py",
     "apps/agent/tests/combat/test_weapon_damage.py",
     "apps/agent/tests/companion/test_combat_memory.py",
-    "apps/agent/tests/docs/test_bestiary_authored_blocks.py",
     "apps/agent/tests/handoff/test_combat_handoff.py",
     "apps/agent/tests/handoff/test_roundtrip.py",
     "apps/agent/tests/rules/test_incoming_attack_conditions.py",

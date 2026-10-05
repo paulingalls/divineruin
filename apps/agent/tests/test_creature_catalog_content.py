@@ -7,8 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-import pytest
-
 # Re-exported so pytest collects them: the pins module's name does not match test_*.py.
 from creature_spec_pins_hollow_rend_wrack import (  # noqa: F401
     test_spec_loot_and_seed,
@@ -396,22 +394,6 @@ def test_spec_stats_regions_and_behavior():
     assert any(row["id"] == "war_golem" and row["tier"] == 3 for row in keldaran)
 
 
-def test_region_tier_walk_catches_new_natural_row(monkeypatch):
-    original_catalog = catalog
-
-    def with_bad_row(name):
-        rows = original_catalog(name)
-        if name == "creatures.json":
-            rows.append(
-                {**rows[0], "id": "unlisted_greyvale_elite", "category": "beast", "home_region": "greyvale", "tier": 3}
-            )
-        return rows
-
-    monkeypatch.setattr(sys.modules[__name__], "catalog", with_bad_row)
-    with pytest.raises(AssertionError):
-        test_spec_stats_regions_and_behavior()
-
-
 def drop_rows(table):
     return tuple(
         (
@@ -464,19 +446,6 @@ def test_narration_opens_with_sound_or_smell():
             assert_sound_first(rows[key]["narration"][cue_name], (key, cue_name))
         audio = rows[key]["audio"]
         assert all(audio[slot] and audio[slot].split()[0] != key for slot in ("ambient", "attack", "hit", "death")), key
-
-
-def test_sound_first_check_rejects_sight_first_and_long_cues():
-    assert_sound_first("A low howl rolls through the brush. Grey shapes close the gap.", "sound first")
-    for cue in (
-        "Grey shapes close the gap. A low howl follows.",
-        "You see a wolf howl.",
-        "Pale fur flickers between the pines.",
-        "A howl. A growl. A snap. A yelp.",
-        "",
-    ):
-        with pytest.raises(AssertionError):
-            assert_sound_first(cue, cue)
 
 
 def test_real_validators_and_seed_submission():

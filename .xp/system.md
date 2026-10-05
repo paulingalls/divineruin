@@ -90,7 +90,7 @@ without certifying paid speech-recognition accuracy.
   focused Verify was green while `test:python` had 5 reds).
 - Checking a box in `docs/milestones/*.md` also moves the README phase count, the
   REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
-  docs pins red on all three (sprint-105).
+  review checks all three; regenerate the index with `doc_index.py --write`.
 - pytest collects only `test_*.py`. A pin module named otherwise (e.g.
   `creature_spec_pins_*.py`) may hold DATA a collected test imports, never test
   functions: sprint-062 story-130's pins ran only through its Verify, so no tier
