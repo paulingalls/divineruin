@@ -1,21 +1,4 @@
-"""Real-DB acceptance proof for migration 057's scope table + legacy-key removal.
-
-Migration 057 creates `veil_wards` (the home of location-scoped wards) and removes the
-per-player `data.veil_ward` key that migration 045 seeded. It is the FIRST migration in
-this codebase to remove a `players.data` key — every prior one only added — so the drop
-deserves a direct proof rather than trust.
-
-The testcontainer harness replays every migration BEFORE any player is seeded, so 057's
-UPDATE runs against an empty players table there and its actual mutation is never
-exercised by the other ward tests. This test closes that gap the way
-test_migration_044_resonance_backfill does: it applies 057's SQL to a hand-crafted
-pre-state and asserts the drop, the untouched sibling keys, and the idempotency guard
-(`WHERE data ? 'veil_ward'`).
-
-This proof lives in the ACCEPTANCE lane, not the fast lane: `UPDATE players SET data =
-data - 'veil_ward'` is a global mutation that would corrupt the shared dev DB at :55432
-for every concurrently-running fast-lane test.
-"""
+"""Use an isolated acceptance database: global legacy-key removal would corrupt a shared database's concurrent tests."""
 
 from __future__ import annotations
 
@@ -41,7 +24,6 @@ async def _has_ward_key(pool, player_id: str) -> bool:
 
 
 async def test_migration_057_creates_veil_wards_table(reset_db_pool: str) -> None:
-    """The scope table exists after the harness replays the migrations, with its lookup index."""
     pool = await db.get_pool()
 
     assert await pool.fetchval("SELECT to_regclass('public.veil_wards')") is not None
@@ -67,7 +49,6 @@ async def test_migration_057_creates_veil_wards_table(reset_db_pool: str) -> Non
 
 
 async def test_migration_057_drops_legacy_veil_ward_key(reset_db_pool: str) -> None:
-    """The legacy per-player ward key is removed; sibling keys and ward-less rows are untouched."""
     pool = await db.get_pool()
     # Pre-057 states: a player carrying the migration-045 key beside siblings, and one without it.
     await _insert_player(
@@ -97,7 +78,6 @@ async def test_migration_057_drops_legacy_veil_ward_key(reset_db_pool: str) -> N
 
 
 async def test_migration_057_is_idempotent(reset_db_pool: str) -> None:
-    """A second run succeeds unchanged — the `WHERE data ? 'veil_ward'` guard makes the drop a no-op."""
     pool = await db.get_pool()
     await _insert_player(pool, "mig057_twice", {"name": "Druid", "veil_ward": {"active": False, "source": None}})
 

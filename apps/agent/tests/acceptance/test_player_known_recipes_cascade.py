@@ -1,12 +1,4 @@
-"""Real-DB acceptance proof for the player_known_recipes CASCADE FK (story-008).
-
-Migration 020 adds FK player_id -> players(player_id) ON DELETE CASCADE so deleting
-a player removes their known-recipe rows instead of orphaning them (concern
-fc0ecdcd1766). The testcontainer harness replays every scripts/migrations/*.sql in
-order, so this exercises 020 against the real schema. Without the migration the
-DELETE leaves an orphan row and the assertion fails (genuine TDD red). Runs under
-REQUIRE_DOCKER; skips clean when Docker is down.
-"""
+"""Execute the known-recipe cascade against the real schema."""
 
 from __future__ import annotations
 

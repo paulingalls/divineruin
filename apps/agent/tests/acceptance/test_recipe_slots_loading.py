@@ -1,13 +1,4 @@
-"""Real-DB acceptance proof for the Python recipe_slots accessor (story-007, M5.1).
-
-Migrates a Postgres testcontainer (migration 019 seeds recipe_slots inline), then
-drives recipe_slots.get_recipe_slots against it via the reset_db_pool fixture. This
-is the load-path half of concern d125d022f084: it pins the LOADED caps to the actual
-migration-019 INSERT, not a hand-typed in-test copy. If someone edits the migration
-seed (expert 15->12, master null->20, an untrained null typo), this fails where the
-mocked unit test cannot. Runs on pre-push under REQUIRE_DOCKER; skips when Docker is
-down (see tests/acceptance/conftest.py).
-"""
+"""Load caps from the actual migration seed rather than a hand-transcribed table."""
 
 from __future__ import annotations
 
@@ -38,7 +29,6 @@ def _seeded_caps_from_migration() -> dict[str, dict]:
 
 
 async def test_get_recipe_slots_loads_migration_seed(reset_db_pool: str) -> None:
-    """Loaded caps equal the migration-019 seed exactly — every tier, every cap."""
     expected = _seeded_caps_from_migration()
 
     loaded = await recipe_slots.get_recipe_slots()
@@ -47,7 +37,6 @@ async def test_get_recipe_slots_loads_migration_seed(reset_db_pool: str) -> None
 
 
 async def test_master_cap_is_unlimited_and_others_capped(reset_db_pool: str) -> None:
-    """Master loads as null (unlimited); the lower tiers load as concrete int caps."""
     loaded = await recipe_slots.get_recipe_slots()
 
     assert loaded["master"]["known_recipe_slots"] is None

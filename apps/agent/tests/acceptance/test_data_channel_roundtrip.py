@@ -1,16 +1,4 @@
-"""Acceptance: LiveKit data-channel round-trip via two participants.
-
-Production publishes via `publish_game_event` -> `room.local_participant.publish_data`
-on topic "game_events" with a FLAT wire format: json.dumps({"type": event_type, **payload}).
-The unit-test layer mocks `publish_data`; this test is the only place that exercises
-the actual SFU path with a real second participant receiving the bytes.
-
-Two participants are required: LiveKit data-channel packets are NOT delivered back
-to the publishing participant, so a single-room test would silently no-op.
-
-Gated by the `livekit_server` fixture's REQUIRE_DOCKER pattern — skips cleanly when
-Docker is unavailable and hard-fails when REQUIRE_DOCKER=1.
-"""
+"""LiveKit does not deliver data packets back to their publisher, so use two participants."""
 
 from __future__ import annotations
 
@@ -29,7 +17,6 @@ from game_events import publish_game_event
 
 
 def test_livekit_server_reachable(livekit_server: dict[str, str]) -> None:
-    """Smoke check: LiveKit dev server starts and answers HTTP on the WS port."""
     response = httpx.get(livekit_server["http_url"], timeout=5.0)
     # Any 2xx-4xx response proves the server is up and routing requests.
     assert 200 <= response.status_code < 500
@@ -39,7 +26,6 @@ def test_livekit_server_reachable(livekit_server: dict[str, str]) -> None:
 async def test_session_init_event_round_trips(
     async_room_pair: tuple,
 ) -> None:
-    """A SESSION_INIT event published by one participant reaches the other byte-exact."""
     publisher, subscriber, _room_name = async_room_pair
 
     queue: asyncio.Queue = asyncio.Queue()

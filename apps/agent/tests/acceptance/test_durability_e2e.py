@@ -1,17 +1,4 @@
-"""M5.4 capstone — durability surfaces compose end-to-end on real Postgres.
-
-Proves, against one seeded testcontainer, that the Milestone-4 durability work
-(stories 001/002/003/004/006/008/009/010/011) composes across both surfaces:
-
-- message_event (Python agent): durability accrual across all 4 tiers, Hollow 2x
-  corrosion driven by session state, the blacksmith repair tool (restore + debit),
-  and the magic-item craft-tier content invariant.
-- http_websocket (Bun REST): the repair price quote, proving it prices off the same
-  rarity SSOT the agent uses (parity) and that the rarity tier is load-bearing.
-
-Auto-marked `acceptance` (under tests/acceptance/); runs via
-`cd apps/agent && uv run pytest -m acceptance tests/acceptance/test_durability_e2e.py`.
-"""
+"""Compare stored agent charges to the Bun quote against the same database; the language boundary prevents shared code."""
 
 from __future__ import annotations
 
@@ -91,7 +78,6 @@ async def _set_gold_and_crafting(pool, player_id: str, gold: int, tier: str) -> 
 
 
 async def test_durability_accrues_across_all_four_tiers(reset_db_pool: str) -> None:
-    """One base hit drops the PERSISTED current_hits by 1 on every durability tier."""
     player_id = "player_durab_tiers"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)
@@ -106,10 +92,7 @@ async def test_durability_accrues_across_all_four_tiers(reset_db_pool: str) -> N
 
 
 async def test_hollow_zone_doubles_durability_loss_via_session_state(reset_db_pool: str) -> None:
-    """corruption_level >= 2 makes the same base hit cost 2 durability; below it, 1.
-
-    The 2x flows from session.corruption_level through is_hollow_zone — not a hardcoded flag.
-    """
+    """Drive corruption through session state rather than precomputing a hollow-zone flag."""
     player_id = "player_hollow"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)
@@ -136,8 +119,6 @@ async def test_hollow_zone_doubles_durability_loss_via_session_state(reset_db_po
 
 
 async def test_blacksmith_repair_restores_durability_and_debits_gold(reset_db_pool: str) -> None:
-    """The repair tool restores durability to the tier max, prices off the rarity
-    SSOT, and debits gold — the full blacksmith path against the seeded DB."""
     player_id = "player_repair_msg"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)
@@ -159,8 +140,6 @@ async def test_blacksmith_repair_restores_durability_and_debits_gold(reset_db_po
 
 
 async def test_seeded_magic_items_satisfy_craft_tier_gate(reset_db_pool: str) -> None:
-    """Every craftable Rare/Legendary item in the SEEDED catalog joins a tier-correct
-    recipe (rare->expert+, legendary->master) — the magic gate against real content."""
     pool = await db.get_pool()
     item_rarity = {r["id"]: json.loads(r["data"]).get("rarity") for r in await pool.fetch("SELECT id, data FROM items")}
     checked = 0
@@ -182,7 +161,6 @@ async def test_seeded_magic_items_satisfy_craft_tier_gate(reset_db_pool: str) ->
 async def test_rest_repair_quote_matches_agent_price_and_scales_with_rarity(
     durability_server: dict[str, str], reset_db_pool: str
 ) -> None:
-    """The REST and agent repair paths share the rounded trusted price and real DB row."""
     player_id = "player_repair_http"
     pool = await db.get_pool()
     await seed_player(pool, player_id=player_id, location_id=FORGE)

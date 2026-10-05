@@ -1,25 +1,4 @@
-"""Capstone: M18 multiplayer combat completeness E2E (auto-marked acceptance, per-run Postgres
-testcontainer). Drives the REAL phase-loop-to-defeat flow for a live 2-PC party — NOT
-`combat_end._end_combat_db` directly (the milestone constraint the M14 wipe capstone violated).
-
-Every scenario enters combat via `combat_init._start_combat_impl` and advances it with the
-production `combat_turn._declare_phase_impl` / `_resolve_phase_impl`, so the engine's wrap gate is
-what decides the outcome. Determinism comes from an injected resolver (never real dice): PCs are
-seeded at 3 HP so one forced enemy hit drops each. For the wipe, the PCs DEFEND (deal no damage) so
-the enemy never falls and the run ends in DEFEAT — not victory — while a `_lethal_resolver` lands
-instant-death overkill blows (is_dead), which also exercises story-003's is_dead resurrection
-collector through the real flow. The gate/concentration scenarios use `_damage_resolver(3)`.
-
-Proves M18 stories 002-004 compose through the real flow:
-- AC1: the all-players-down gate (story-002) — one member falls, one stands -> combat CONTINUES.
-- AC2: the phase loop reaches a full wipe -> per-member resurrection (story-003/005) fires through
-  the real defeat path, each PC revived at its OWN divergent tier-3 anchor.
-- AC3: a non-primary concentrating member takes the breaking hit -> only THAT member's spell breaks
-  (story-004), keyed on the damaged member through the production `combat_support` damage site.
-
-Each scenario uses its OWN id set so the shared session container stays isolated (reset_db_pool is
-function-scoped; the migrated container is session-scoped).
-"""
+"""Enter via combat init and resolve the real phase loop. Defend to preserve the enemy; use lethal blows to reach instant-dead collection."""
 
 from __future__ import annotations
 
@@ -100,9 +79,6 @@ def _attack(action: str, target_id: str) -> dict:
 
 
 async def test_all_players_down_gate_holds_one_down_one_up(reset_db_pool):
-    """AC1: driving the REAL phase loop, when ONE member falls but ONE still stands, combat does NOT
-    end (the all-players-down gate, story-002) — resolve_phase returns a continuing str and keeps
-    session.combat_state set."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m18_gate_pc1", "cap_m18_gate_pc2"
     await _seed_pc(pool, pc1, location_id="accord_guild_hall", hp_current=3)
@@ -131,11 +107,6 @@ async def test_all_players_down_gate_holds_one_down_one_up(reset_db_pool):
 
 
 async def test_real_phase_loop_wipe_resurrects_each_member(reset_db_pool):
-    """AC2: drive the phase loop to a FULL wipe through the real flow — phase 1 drops pc1 (combat
-    continues), phase 2 drops pc2 (all players down -> the wrap gate reports DEFEAT). The real defeat
-    path (_end_combat_db, reached from inside resolve_phase) resurrects EACH member per-member at its
-    OWN divergent tier-3 anchor. Per-member loot/currency/conditions reconcile is pinned by
-    story-003's fast-lane tests; this capstone proves the defeat FLOW composes + per-member revive."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m18_wipe_pc1", "cap_m18_wipe_pc2"
     await _seed_pc(pool, pc1, location_id="off_catalog_wilds", last_rested="millhaven", hp_current=3)
@@ -179,10 +150,6 @@ async def test_real_phase_loop_wipe_resurrects_each_member(reset_db_pool):
 
 
 async def test_non_primary_concentration_breaks_through_real_flow(reset_db_pool):
-    """AC3: both PCs concentrate; the enemy incapacitates the NON-primary pc2 (0 HP auto-fails the
-    CON save) through the production combat_support damage site, which calls
-    break_concentration_on_damage(damaged_player_id=pc2). Only pc2's spell breaks; the untouched
-    primary's concentration survives — proving story-004's per-member break through the real flow."""
     pool = await db.get_pool()
     pc1, pc2 = "cap_m18_conc_pc1", "cap_m18_conc_pc2"
     await _seed_pc(pool, pc1, location_id="accord_guild_hall", hp_current=28)  # primary, healthy, not targeted

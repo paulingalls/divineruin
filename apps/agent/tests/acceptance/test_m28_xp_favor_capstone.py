@@ -1,35 +1,4 @@
-"""Capstone: M28 XP and divine favor hold together as Resolves (story-004).
-
-M28 shipped across stories 001-003 (all merged): combat exit grants XP party-wide
-(story-001), quest completion grants XP and favor (story-002), and both `award_xp`
-and `award_divine_favor` were torn out as LLM tools along with their `_impl` bodies
-(story-003, exploration 16 -> 14). Quest and combat rewards use deterministic
-Resolves. Patron actions now use an authored action id and the same favor Resolve.
-
-Each story was reviewed against its own diff. This capstone is the integration net
-those reviews could not see (auto-marked ``acceptance`` by tests/acceptance/conftest.py):
-
-  1. No agent's tool registry re-admits award_xp/award_divine_favor.
-  2. The tool-ceiling win holds — exploration has 15 verbs after patron actions spent one slot.
-  3. A real quest completion pays the party: XP SPLIT by the party multiplier, favor
-     UNDIVIDED to every member, and the primary's L10 auto-grant fires on the boundary.
-  4. Combat exit still grants XP with no award tool in reach.
-  5. A member with no patron is skipped, not fatal — the stage completes for the rest.
-  6. Nothing reaches the client before the transaction commits.
-
-Tests 3 and 5 are the discriminating pair; both were mutation-checked before landing.
-Forcing ``party_reward_multiplier`` to 1.0 reds BOTH (each pins a split share, not a
-whole-total grant), and stubbing ``_award_divine_favor_core`` to ``None`` reds BOTH (each
-pins a full undivided favor gain). Test 6 was mutation-checked too: publishing the reward
-cues before the stage write — instead of buffering into pending_events — reds it. Tests 1
-and 2 assert absence and a count; they hold against a reward tree that grants nothing.
-
-The L5 specialization-fork cue is deliberately NOT asserted here: M28's `done` names it,
-but it is already pinned in the fast lane by test_progression_tools.py's
-``test_core_l5_fork_emits_specialization_choice_event``, and this net pins the L10
-auto-grant boundary instead. No production behaviour changes — every symbol here is owned
-by the merged stories.
-"""
+"""The L5 fork cue has focused progression coverage; this capstone reaches the L10 auto-grant boundary."""
 
 from __future__ import annotations
 
@@ -122,7 +91,6 @@ async def _cleanup(pool, *player_ids: str) -> None:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
-    """The M28 tear-out remains absent from every discovered agent."""
     retired = {"award_xp", "award_divine_favor"}
     assert all(RETIRED_TOOL_REPLACEMENTS[tool] is None for tool in retired)
     leaked = retired & {t.__name__ for t in tools}
@@ -133,9 +101,6 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
 
 
 def test_exploration_keeps_five_free_slots() -> None:
-    """M28's stated payoff is verb budget: dropping both award verbs took exploration 16 -> 14,
-    widening the headroom under the strict-tool ceiling from 4 slots to 6. The patron action
-    verb now spends one freed slot, leaving 5. Re-adding either retired award verb reds here."""
     assert len(EXPLORATION_TOOLS) == 15
     assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 5
 
@@ -144,9 +109,7 @@ def test_exploration_keeps_five_free_slots() -> None:
 
 
 async def test_the_authored_stage_still_declares_the_seed(reset_db_pool: str) -> None:
-    """The exact-boundary seed below is derived by hand from authored content. Pin the authored
-    side too, so a rebalance of greyvale_anomaly reds HERE with a legible message instead of
-    surfacing as an unexplained off-by-N in the reward assertions."""
+    """Anchor the hand-derived boundary seed to authored content so rebalance failures explain the changed reward."""
     import db_content_queries
 
     quest = await db_content_queries.get_quest(_QUEST_ID)
@@ -164,14 +127,7 @@ async def test_the_authored_stage_still_declares_the_seed(reset_db_pool: str) ->
 
 
 async def test_quest_completion_splits_xp_and_pays_favor_undivided(reset_db_pool: str) -> None:
-    """The discriminating test. One REAL authored quest completion proves the whole M28
-    reward classification at once: XP is SHARED (the 200 becomes 150 each under the 2-seat
-    multiplier, not 200 each and not 100 each), divine favor is PERSONAL (the full declared 5
-    to every member, undivided), and the primary's crossing into L10 applies its auto-grant.
-
-    The seed is chosen so the authored 200 lands exactly on 3450 — no mocked catalog, because
-    exercising real content is most of what a capstone is for.
-    """
+    """Choose a seed that lands authored XP exactly on the level boundary without mocking the catalog."""
     pool = await db.get_pool()
     primary, second = "cap_m28_primary", "cap_m28_second"
     try:
@@ -213,9 +169,6 @@ async def test_quest_completion_splits_xp_and_pays_favor_undivided(reset_db_pool
 
 
 async def test_combat_victory_grants_xp_through_the_resolve(reset_db_pool: str) -> None:
-    """The other grant path. _end_combat_db pays XP inside its own transaction and buffers the
-    cue into the sink — the response no longer cues the DM to call anything, because there is
-    nothing left to call."""
     pool = await db.get_pool()
     fighter = "cap_m28_fighter"
     try:
@@ -267,9 +220,7 @@ async def test_combat_victory_grants_xp_through_the_resolve(reset_db_pool: str) 
 
 
 async def test_a_member_without_a_patron_is_skipped_not_fatal(reset_db_pool: str) -> None:
-    """Favor is a relationship with a specific god, so a member who has none simply receives
-    nothing. That must not abort the stage for everyone else — the grant is a reward, not a
-    precondition."""
+    """Favor needs a patron; missing relationships must not abort the party reward."""
     pool = await db.get_pool()
     primary, godless = "cap_m28_faithful", "cap_m28_godless"
     try:
@@ -298,13 +249,7 @@ async def test_a_member_without_a_patron_is_skipped_not_fatal(reset_db_pool: str
 
 
 async def test_a_rolled_back_stage_grants_and_publishes_nothing(reset_db_pool: str) -> None:
-    """Every Resolve buffers into pending_events and releases only after the commit. Injecting
-    a failure AFTER the reward passes have run (set_player_quest writes at the end of the
-    transaction) must leave the database unmoved and the client told nothing — a player who
-    saw "+150 XP" for a stage that never landed would be worse than one who saw nothing.
-
-    The mock here injects a FAILURE; it does not stand in for any seam under test.
-    """
+    """Inject failure after rewards run. Real rollback must undo their writes and drop unflushed events."""
     pool = await db.get_pool()
     primary = "cap_m28_rollback"
     try:

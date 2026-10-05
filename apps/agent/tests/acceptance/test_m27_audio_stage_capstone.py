@@ -1,26 +1,4 @@
-"""Capstone: M27 audio-out-of-the-tool-surface holds together (story-005).
-
-M27 shipped across stories 001-004 (all merged): location tags -> Stage music
-(story-001), the creation Awakening `wonder` Resolve (story-002), the audio-tool
-teardown that DELETED environment_tools.py (story-003), and dispatch narration for
-begin_activity kinds (story-004). Audio now derives ONLY from deterministic Resolves
-and the location Stage — no `play_sound`/`set_music_state` LLM tool exists anymore;
-the client infers soundscape/music from the data the Resolves already carry.
-
-The client-side derivation (mobile `inferExplorationState`, in `src/audio/music-player.ts`)
-is proven by story-001's mobile bun test (`src/__tests__/use-game-events.audio.test.ts`
-sibling suite); this file asserts the PYTHON emit side only — that the seams which feed
-the client's Stage still fire, and that no agent re-registers an audio tool.
-
-This capstone proves those seams hold TOGETHER (auto-marked ``acceptance`` by
-tests/acceptance/conftest.py):
-
-  1. No agent's tool registry re-admits play_sound/set_music_state.
-  2. A player move emits LOCATION_CHANGED carrying non-empty tags + ambient_sounds
-     -- the data the client Stage derives exploration/tension music from.
-  3. Creation Awakening fires SET_MUSIC_STATE{wonder} via a deterministic Resolve.
-  4. Combat/spell SFX still emit PLAY_SOUND -- no regression from the story-003 teardown.
-"""
+"""This lane certifies Python emissions; client-side music derivation runs in the mobile event suite."""
 
 from __future__ import annotations
 
@@ -67,7 +45,6 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_agent_registers_audio_tools(name: str, tools: list) -> None:
-    """The M27 tear-out remains absent from every discovered agent."""
     retired = {"play_sound", "set_music_state"}
     assert all(RETIRED_TOOL_REPLACEMENTS[tool] is None for tool in retired)
     leaked = retired & {t.__name__ for t in tools}
@@ -111,14 +88,7 @@ async def test_location_move_emits_stage_audio_data(reset_db_pool: str) -> None:
 
 
 async def test_creation_awakening_emits_wonder_resolve() -> None:
-    """Driven from CreationAgent.on_enter, the real awakening entry point, with
-    push_creation_music UNPATCHED — so this asserts the wiring, not just the leaf.
-
-    Its siblings above drive real entry points (apply_arrival, _cast_spell_impl); calling the
-    leaf directly made this edge shallower than the section header claims, and left
-    creation_agent.py's call site unpinned by anything that reaches a real payload
-    (test_creation_agent.py pins it, but by patching the very function under test).
-    """
+    """Leave push_creation_music unpatched to reach the payload through CreationAgent.on_enter."""
     agent = CreationAgent()
     mock_session = MagicMock()  # NOT AsyncMock: generate_reply is called un-awaited, and an
     # un-awaited coroutine raises RuntimeWarning, which pyproject escalates to an error.

@@ -1,5 +1,3 @@
-"""Condition resolution on Postgres with a test-authored catalog action."""
-
 from __future__ import annotations
 
 import json
@@ -58,7 +56,6 @@ async def _start_and_declare(ctx, player_id: str) -> None:
 
 
 async def test_m13_hostile_condition_lands_through_real_combat_phase(reset_db_pool: str) -> None:
-    """AC1: seeded encounter enemy action inflicts a hostile condition via a real combat phase."""
     pool = await db.get_pool()
     player_id = "cap_m13_lands"
     await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
@@ -87,7 +84,6 @@ async def test_m13_hostile_condition_lands_through_real_combat_phase(reset_db_po
 
 
 async def test_m13_temporary_hollowed_target_no_ops_the_immunity_gate(reset_db_pool: str) -> None:
-    """AC2 (debt f9a5d1e88432): a temporary_hollowed target no-ops the frightened inflict."""
     pool = await db.get_pool()
     player_id = "cap_m13_immune"
     await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")

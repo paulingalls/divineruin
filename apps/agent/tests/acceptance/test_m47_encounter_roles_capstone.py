@@ -1,27 +1,5 @@
-"""Capstone: M4.7 Encounter Role Overlay end-to-end against a real Postgres testcontainer.
-
-Stories 001-004 shipped the overlay in slices with unit / mock-conn coverage: role derivation +
-combat-init application (001), role-scaled loot/currency (002), Boss legendary + role XP multiplier
-(003), encounter budget + role narration (004). This capstone proves they COMPOSE on ONE seeded
-testcontainer (auto-marked `acceptance`), driving the REAL pipeline — combat_init applies role
-derivation, the declare/resolve loop runs the real role-scaled resolvers (post story-007 split:
-combat_durability + combat_ability), and combat_end grants role-scaled loot/currency + role XP.
-
-Fixture: the seeded `cult_cell` encounter (content/encounter_templates.json) is the role-varied
-roster — 2x standard (cult_fanatic), 4x minion (cultist), 1x boss (cult_leader), all `humanoid`
-(currency-bearing). Determinism: the only seam patched is the d20 (check_resolution.dice_roll ->
-face 20, so every attack hits); damage rolls run real through check_resolution_attack.dice_roll. The
-player carries an oversized one-shot weapon (60d6, min 60 > the boss's 56 HP) so each declared attack
-fells its target — a deterministic, bounded loop — and a huge HP pool so it survives the multi-enemy
-crossfire. Each test uses a distinct player_id since the testcontainer DB is shared.
-
-Note on "Boss used a legendary action": the live combat_turn loop grants/maintains the Boss's
-per-round legendary budget (_reset_legendary_actions inside advance_combat_phase); story-009 also
-surfaces `legendary_available` in the resolve response so the DM can spend it via
-consume_legendary_action. Actually consuming it is DM-driven (out of scope for an automated e2e),
-so the observable here is the Boss participant's legendary_actions budget held through the rounds
-it is alive.
-"""
+"""Oversized weapon dice guarantee one-shot kills without mocking damage; large HP preserves the player through crossfire.
+This observes the legendary budget, not a DM-driven legendary spend."""
 
 from __future__ import annotations
 
@@ -69,9 +47,6 @@ def _by_id(cs, enemy_id: str):
 
 
 async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -> None:
-    """AC1/AC2 (init seam): starting the role-varied encounter applies real role derivation to every
-    participant; the encounter budget validates; a Minion has no active abilities and drops no
-    currency."""
     pool = await db.get_pool()
     player_id = "cap_m47_init"
     await _seed_capstone_player(pool, player_id)
@@ -119,9 +94,6 @@ async def test_m47_init_derivation_budget_and_minion_floor(reset_db_pool: str) -
 
 
 async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_pool: str) -> None:
-    """AC1/AC3 (full pipeline): the role-varied encounter runs start -> victory; awarded XP reflects
-    the role multipliers (applied once), role-scaled currency is granted and persisted, the Boss
-    holds its legendary budget while alive, and the combat SSOT is cleaned up."""
     pool = await db.get_pool()
     player_id = "cap_m47_victory"
     await _seed_capstone_player(pool, player_id)

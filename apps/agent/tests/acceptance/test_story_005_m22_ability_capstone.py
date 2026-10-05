@@ -1,19 +1,4 @@
-"""Real-DB E2E capstone for M2.2 Ability System (Core & Elective).
-
-Proves the four M2.2 stories compose end-to-end on real infra (auto-marked
-`acceptance` by tests/acceptance/conftest.py), across both surfaces:
-
-- **message_event** (Python agent path): against a real Postgres testcontainer
-  seeded from content/archetype_abilities.json, `load_abilities()` (story-002)
-  loads the catalog, `request_ability_activation` (story-004) deducts real
-  Stamina/Focus and rejects when insufficient, the variable/pool-cost ability is
-  surfaced (never free — closes concern 7b34ebf86b57), and the long-rest elective
-  swap persists to character_abilities under a transaction (concern 598dceba2f3e).
-- **http_websocket** (TS server path): the Bun server boots bound to the SAME
-  seeded testcontainer; its startup Promise.all runs loadAbilities() (story-003)
-  over all 18 archetypes — a served response proves it parsed without failing
-  boot (closes story-003's deferred live-boot E2E).
-"""
+"""Use the same seeded database for agent resource writes and strict Bun startup loading."""
 
 from __future__ import annotations
 

@@ -1,23 +1,4 @@
-"""Capstone: Settlement Templates & NPC Population end-to-end (story-006, M6.2).
-
-Proves the M6.2 settlement surfaces compose across BOTH language surfaces against one
-seeded testcontainer, catching cross-language seam breaks the per-story tests miss
-(auto-marked `acceptance` by tests/acceptance/conftest.py):
-
-- **message_event** (Python rules engine): `load_settlement_templates()` resolves the 4
-  tiers + 8 personalities from the real DB; every role a settlement can spawn (the union of
-  tier `role_counts` keys + personality `role_frequency_modifiers` keys) binds to a real
-  `role_archetypes` row — the load-bearing seam, since a population referencing a missing
-  archetype would break NPC instantiation. `generate_settlement_npcs` over a real seeded
-  settlement location yields only catalog-resolvable roles, and `instantiate_npc_from_template`
-  composes a valid stat block (disposition on the canonical 5-tier ladder).
-- **http_websocket** (TS load path): the Bun server, booted against the SAME testcontainer,
-  serves its role-archetype catalog over `GET /api/content/role-archetypes`. The served
-  catalog must COVER every role the settlement data references — the cross-language parity
-  letter for M6.2, the population analogue of M6.1's NPC->archetype binding.
-
-Runs under `bun run test:acceptance`; skips cleanly when Docker is down.
-"""
+"""The served TS role catalog must resolve every role the Python settlement generator uses."""
 
 from __future__ import annotations
 
@@ -62,7 +43,6 @@ def _referenced_role_ids() -> set[str]:
 
 @pytest.mark.asyncio
 async def test_settlement_catalog_loads_from_real_db(reset_db_pool: str) -> None:
-    """The 4 tiers + 8 personalities load fail-loud from the testcontainer."""
     await settlement_templates.load_settlement_templates()
     assert settlement_templates.is_loaded()
     assert len(settlement_templates._tiers) == _EXPECTED_TIERS
@@ -72,9 +52,6 @@ async def test_settlement_catalog_loads_from_real_db(reset_db_pool: str) -> None
 
 @pytest.mark.asyncio
 async def test_every_referenced_role_binds_a_real_archetype(reset_db_pool: str) -> None:
-    """The load-bearing seam: every role the settlement catalog references resolves in the
-    role-archetype catalog (both loaded from the same testcontainer) — a population pointing
-    at a missing archetype would fail instantiation."""
     await settlement_templates.load_settlement_templates()
     await role_archetypes.load_role_archetypes()
     referenced = _referenced_role_ids()
@@ -86,8 +63,6 @@ async def test_every_referenced_role_binds_a_real_archetype(reset_db_pool: str) 
 
 @pytest.mark.asyncio
 async def test_generate_and_instantiate_over_real_settlement(reset_db_pool: str) -> None:
-    """generate_settlement_npcs over a real seeded settlement yields only catalog-resolvable
-    roles, and instantiate_npc_from_template composes a valid stat block (story-003/004)."""
     await settlement_templates.load_settlement_templates()
     await role_archetypes.load_role_archetypes()
 
@@ -127,8 +102,6 @@ async def test_generate_and_instantiate_over_real_settlement(reset_db_pool: str)
 
 @pytest.mark.asyncio
 async def test_served_role_catalog_covers_settlement_roles(capstone_server: dict[str, str], reset_db_pool: str) -> None:
-    """The Bun server serves a role-archetype catalog that COVERS every role the settlement
-    data references — the cross-language parity letter for M6.2's NPC population."""
     await settlement_templates.load_settlement_templates()
     referenced = _referenced_role_ids()
     assert referenced

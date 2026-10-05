@@ -1,28 +1,4 @@
-"""Capstone: NPC Stat Block Schema & Role Archetypes end-to-end (story-005, M6.1).
-
-Proves the M6.1 NPC-schema surfaces compose across BOTH language surfaces against
-one seeded testcontainer, catching cross-language seam breaks the per-story tests
-miss (auto-marked `acceptance` by tests/acceptance/conftest.py):
-
-- **message_event** (Python load path): `load_role_archetypes()` resolves all 19
-  catalog rows via `get_role_archetype`; `load_npcs()` resolves all 17 NPCs, and
-  every NPC's `role_archetype` binding resolves in the archetype catalog (the
-  load-bearing schema seam — a migrated NPC pointing at a missing archetype would
-  break narration/combat). `parse_role_archetype_row` re-parses a real DB row, and
-  `create_npc_from_archetype` composes a stat block from the real catalog.
-- **http_websocket** (TS load path): the Bun server boots bound to the SAME seeded
-  testcontainer, then serves its loaded catalog over `GET /api/content/role-archetypes`.
-  A real endpoint round-trip (story-006) replaces the old boot-green stand-in: the
-  response carries all 19 archetypes the TS `loadRoleArchetypes` parsed, so a row the
-  TS `parseRoleArchetypeRow` rejects fails boot before `_wait_ready` returns, and a
-  served-but-mismatched catalog fails the count/id assertions. The endpoint is the
-  TS loader's production consumer (closes concern ae5f95ca2156).
-
-The gate work (story-006) is a different subsystem (mentor variants / abilities);
-story-005 depends on it for ordering only, not coverage.
-
-Runs under `bun run test:acceptance`; skips cleanly when Docker is down.
-"""
+"""A served role-archetype response reaches the TS loader's actual consumer; boot alone would not certify its contents."""
 
 from __future__ import annotations
 
@@ -53,7 +29,6 @@ def capstone_server(migrated_db: str) -> Iterator[dict[str, str]]:
 
 @pytest.mark.asyncio
 async def test_role_archetype_catalog_loads_from_real_db(reset_db_pool: str) -> None:
-    """All 19 archetypes load from the testcontainer and resolve by id."""
     await role_archetypes.load_role_archetypes()
     assert role_archetypes.is_loaded()
 
@@ -67,8 +42,6 @@ async def test_role_archetype_catalog_loads_from_real_db(reset_db_pool: str) -> 
 
 @pytest.mark.asyncio
 async def test_every_npc_binds_a_resolvable_role_archetype_on_real_db(reset_db_pool: str) -> None:
-    """The load-bearing schema seam: every migrated NPC's role_archetype resolves
-    in the role-archetype catalog (both loaded from the same testcontainer)."""
     await npcs.load_npcs()
     await role_archetypes.load_role_archetypes()
     assert npcs.is_loaded()
@@ -85,9 +58,7 @@ async def test_every_npc_binds_a_resolvable_role_archetype_on_real_db(reset_db_p
 
 @pytest.mark.asyncio
 async def test_parse_role_archetype_row_accepts_a_real_db_row(reset_db_pool: str) -> None:
-    """The Python parser accepts a real seeded JSONB row, returning a RoleArchetype
-    with a closed-vocab role_type and a 5-tier disposition — the honest
-    Python-parse-of-real-row letter, read directly from the testcontainer."""
+    """Read a real JSONB row rather than inventing the other side's parser input shape."""
     import json
 
     pool = await db.get_pool()
@@ -109,8 +80,6 @@ async def test_parse_role_archetype_row_accepts_a_real_db_row(reset_db_pool: str
 
 @pytest.mark.asyncio
 async def test_create_npc_from_archetype_over_real_catalog(reset_db_pool: str) -> None:
-    """create_npc_from_archetype composes a stat block from the real catalog, with
-    per-NPC overrides winning (shallow merge, M6.1)."""
     await role_archetypes.load_role_archetypes()
 
     npc = role_archetypes.create_npc_from_archetype("blacksmith", {"id": "npc_cap_smith", "name": "Cap Smith"})
