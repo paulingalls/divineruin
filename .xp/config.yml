@@ -10,12 +10,12 @@ codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-a
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
 
-roles:  # All Codex / GPT-6.1 Sol until the human changes this; preserve effort
+roles:
   lead: codex/gpt-6.1-sol/medium
-  planner: codex/gpt-6.1-sol/medium
-  executor: codex/gpt-6.1-sol/medium
-  reviewer: codex/gpt-6.1-sol/medium
-  plan-reviewer: codex/gpt-6.1-sol/medium
-  slate-reviewer: codex/gpt-6.1-sol/medium
-  angle-reviewer: codex/gpt-6.1-sol/medium
-  fixer: codex/gpt-6.1-sol/medium
+  planner: codex/gpt-6.1-sol/low
+  executor: codex/gpt-6.1-sol/low
+  reviewer: codex/gpt-6-astra/medium
+  plan-reviewer: codex/gpt-6-astra/medium
+  slate-reviewer: codex/gpt-6-astra/medium
+  angle-reviewer: codex/gpt-6-astra/low
+  fixer: codex/gpt-6.1-sol/low
