@@ -1,6 +1,185 @@
-#!/bin/sh
-# The release suite. Sprint land runs it on the trial-merged tree: the full pre-push
-# suite, unconditionally (no docs-only or work-branch routing).
+#!/usr/bin/env bash
 set -e
 cd "$(git rev-parse --show-toplevel)"
-exec bash .githooks/pre-push __release_suite__
+
+# Git's checkout variables would redirect fixture repositories into this tree.
+while IFS= read -r git_var; do unset "$git_var"; done \
+  < <(git rev-parse --local-env-vars)
+
+# Empty exports prevent explicit env files from restoring paid approval.
+export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
+
+mask_external_api_environment() {
+  for var in LIVEKIT_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET ANTHROPIC_API_KEY DEEPGRAM_API_KEY INWORLD_API_KEY INWORLD_WORKSPACE_ID; do
+    export "$var="
+  done
+}
+
+mask_python_test_environment() {
+  mask_external_api_environment
+  export DATABASE_URL= REDIS_URL=
+}
+
+wait_all_lanes() {
+  local failed=0 spec pid name rc tracked
+  local remaining=()
+  for spec in "$@"; do
+    pid="${spec%%:*}"
+    name="${spec#*:}"
+    if wait "$pid"; then rc=0; else rc=$?; fi
+    remaining=()
+    for tracked in "${bg_pids[@]}"; do
+      [ "$tracked" = "$pid" ] || remaining+=("$tracked")
+    done
+    bg_pids=("${remaining[@]}")
+    if [ "$rc" -ne 0 ]; then
+      echo "ERROR: ${name} lane failed (exit $rc)." >&2
+      [ "$failed" -ne 0 ] || failed="$rc"
+    fi
+  done
+  return "$failed"
+}
+
+# Diagnostics must not replace the suite's failure status.
+snapshot_lane_logs() {
+  local dest="$1" f
+  shift
+  mkdir -p "$dest" || return 0
+  for f in "$@"; do
+    [ -f "$f" ] && { cp "$f" "$dest/" || true; }
+  done
+  return 0
+}
+
+echo "  Pre-commit hook self-test..."
+bash "scripts/test-precommit-worktree-skip.sh"
+echo "  Fast-tier selector self-test..."
+bash "scripts/test-fast-tier.sh"
+
+echo "  Worktree bootstrap offset self-test..."
+bash "scripts/test-init-worktree.sh"
+echo "  Worktree .env value self-test..."
+bash "scripts/test-worktree-env-value.sh"
+echo "  Prepare hooksPath self-test..."
+bash "scripts/test-prepare-hookspath.sh"
+bash "scripts/test-local-service-host.sh"
+bash "scripts/test-worktree-sweep-livekit.sh"
+
+echo "  Lint + typecheck (root, mobile, server, web, python)..."
+bun run lint
+echo "  Lint + typecheck (e2e)..."
+bun run lint:e2e
+
+echo "  Acceptance prerequisite: Docker..."
+if ! docker info >/dev/null 2>&1; then
+  echo "ERROR: Docker must be running for sprint acceptance tests." >&2
+  exit 1
+fi
+
+echo "  Worktree ownership self-test..."
+bash "scripts/test-worktree-ownership.sh"
+bash "scripts/test-worktree-url-ownership.sh"
+bash "scripts/test-worktree-sweep-livekit-docker.sh"
+echo "  Worktree listener ownership self-test..."
+bash "scripts/test-worktree-listener-ownership.sh"
+
+bash scripts/test-sweep-test-containers.sh
+bash scripts/sweep-test-containers.sh || true
+
+bg_pids=()
+_terminate_lane_tree() {
+  local parent="$1" child
+  for child in $(pgrep -P "$parent" 2>/dev/null); do
+    _terminate_lane_tree "$child"
+  done
+  kill "$parent" 2>/dev/null || true
+}
+_cleanup() {
+  for pid in "${bg_pids[@]}"; do _terminate_lane_tree "$pid"; done
+  for pid in "${bg_pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
+}
+trap _cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+caller_db="${DATABASE_URL-}" caller_redis="${REDIS_URL-}" caller_db_set="${DATABASE_URL+x}" caller_redis_set="${REDIS_URL+x}"
+# Acceptance/Python use checkout services; server/E2E use per-run services.
+source "scripts/worktree-common.sh"
+wt_expected_env
+export PORT="$E2E_API_PORT"
+if [ "$caller_db_set" = x ]; then export DATABASE_URL="$caller_db"; else unset DATABASE_URL; fi
+if [ "$caller_redis_set" = x ]; then export REDIS_URL="$caller_redis"; else unset REDIS_URL; fi
+source scripts/test-env.sh
+
+ART="$PWD/flake-artifacts"
+mkdir -p "$ART"
+snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse --short HEAD)"; }
+
+( set -o pipefail; unset DATABASE_URL REDIS_URL; \
+  REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
+  bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
+acc_pid=$!
+bg_pids+=("$acc_pid")
+
+echo "  Bun + Python unit lanes (parallel: scripts, server, mobile, web, shared, design tokens, e2e environment, python)..."
+unit_specs=()
+( set -o pipefail; mask_external_api_environment; \
+  bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
+( set -o pipefail; bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
+( set -o pipefail; bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
+( set -o pipefail; bun --env-file=.env test ./scripts 2>&1 | tee "$ART/last-scripts.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:scripts")
+( set -o pipefail; bun test --cwd packages/design-tokens 2>&1 | tee "$ART/last-design-tokens.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:design-tokens")
+( set -o pipefail; bun test --cwd apps/web 2>&1 | tee "$ART/last-web.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:web")
+( set -o pipefail; bun test e2e/ports.test.ts e2e/require-environment.test.ts 2>&1 | tee "$ART/last-e2e-environment.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:e2e-environment")
+( set -o pipefail; mask_python_test_environment; \
+  bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
+p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
+
+if wait_all_lanes "${unit_specs[@]}"; then unit_rc=0; else unit_rc=$?; fi
+if [ "$unit_rc" -ne 0 ]; then
+  snap="$(snap_dir)"
+  snapshot_lane_logs "$snap" \
+    "$ART/last-server.log" "$ART/last-mobile.log" "$ART/last-shared.log" "$ART/last-scripts.log" \
+    "$ART/last-design-tokens.log" "$ART/last-web.log" "$ART/last-e2e-environment.log" "$ART/last-python.log"
+  echo "ERROR: one or more unit lanes failed. Logs preserved at:" >&2
+  echo "    $snap" >&2
+  exit "$unit_rc"
+fi
+
+echo "  E2E tests (local Playwright)..."
+e2e_dir="$PWD/e2e"
+e2e_log="$ART/last-e2e.log"
+(cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
+e2e_rc=${PIPESTATUS[0]}
+if [ "$e2e_rc" -ne 0 ]; then
+  snap="$(snap_dir)"
+  snapshot_lane_logs "$snap" "$e2e_log"
+  cp -R "$e2e_dir/test-results" "$snap/test-results" 2>/dev/null || true
+  echo "ERROR: E2E tests failed. Artifacts preserved at:" >&2
+  echo "    $snap" >&2
+  echo "  Inspect a trace with: bunx playwright show-trace $snap/test-results/<test-dir>/trace.zip" >&2
+  exit "$e2e_rc"
+fi
+
+echo "  Acceptance tests (waiting)..."
+if wait "$acc_pid"; then acc_rc=0; else acc_rc=$?; fi
+bg_pids=()  # acceptance reaped — trap now only tears down the test-env containers
+if [ "$acc_rc" -ne 0 ]; then
+  snap="$(snap_dir)"
+  snapshot_lane_logs "$snap" "$ART/last-acceptance.log"
+  docker ps -a > "$snap/docker-ps.log" 2>&1 || true
+  docker logs "$LIVEKIT_ACCEPTANCE_CONTAINER" > "$snap/livekit-container.log" 2>&1 || true
+  echo "ERROR: acceptance tests failed. Logs preserved at:" >&2
+  echo "    $snap" >&2
+  exit "$acc_rc"
+fi
+
+echo "All tests passed."
