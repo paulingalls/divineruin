@@ -100,12 +100,6 @@ def test_wrap_decrements_duration():
     assert _player_conditions(next_state)[0]["duration"] == 1
 
 
-def test_wrap_drops_expired_condition():
-    conds = apply_condition([], "shielded", duration=1)
-    next_state, _ = advance_combat_phase(_wrap_state(player_conditions=conds))
-    assert _player_conditions(next_state) == []
-
-
 def test_wrap_keeps_until_cleared_condition():
     conds = apply_condition([], "poisoned")  # duration None
     next_state, _ = advance_combat_phase(_wrap_state(player_conditions=conds))

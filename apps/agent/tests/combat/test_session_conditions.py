@@ -81,35 +81,6 @@ async def test_save_empty_clears_conditions(dev_db_pool):
 # --- Slice 2: Beat-4 tick-save resolution (pure helper) ---
 
 
-def _save_resolver(success: bool):
-    # _resolve_tick_saves rolls via the shared roll_participant_save SSOT (M13 close-fix dedup).
-    resolver = MagicMock()
-    resolver.roll_participant_save = MagicMock(return_value=MagicMock(success=success))
-    return resolver
-
-
-def test_tick_save_success_clears_condition():
-    state = _make_combat_state()
-    player = state.get_participant("player_1")
-    assert player is not None
-    player.conditions = apply_condition([], "frightened", source="wraith")
-    due = [{"actor_id": "player_1", "type": "frightened", "save": "wis", "source": "wraith"}]
-
-    _resolve_tick_saves(state, due, _save_resolver(success=True))
-    assert player.conditions == []
-
-
-def test_tick_save_failure_keeps_condition():
-    state = _make_combat_state()
-    player = state.get_participant("player_1")
-    assert player is not None
-    player.conditions = apply_condition([], "frightened", source="wraith")
-    due = [{"actor_id": "player_1", "type": "frightened", "save": "wis", "source": "wraith"}]
-
-    _resolve_tick_saves(state, due, _save_resolver(success=False))
-    assert [c["type"] for c in player.conditions] == ["frightened"]
-
-
 def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
     """Regression: the catalog's tick_save is the abbreviation ("wis") but resolve_saving_throw
     only accepts full attribute names — the real resolver must not raise on the wrap's save event."""

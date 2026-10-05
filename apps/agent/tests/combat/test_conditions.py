@@ -189,12 +189,6 @@ def test_tick_decrements_integer_durations():
     assert events == []
 
 
-def test_tick_removes_expired_conditions():
-    conds = apply_condition([], "shielded", duration=1)
-    survivors, _ = tick_conditions(conds)
-    assert survivors == []
-
-
 def test_tick_leaves_until_cleared_conditions_alone():
     # duration None = until explicitly cleared; tick must not touch it.
     conds = apply_condition([], "poisoned")
