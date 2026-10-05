@@ -1,6 +1,8 @@
 # xp project config (xp-plugin 1.0.0)
 versioning: on       # each release is tagged; the tag must match version_files
 version_files: package.json  # comma-separated JSON manifests
+worktree_setup: bash scripts/init-worktree.sh   # new story/free worktree, before agents
+worktree_teardown: bash scripts/teardown-worktree.sh   # before removal; red warns, removes anyway
 debt_budget: 0.2     # max share of sprint stories that are scheduled debt
 codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-access
 #                    # This posture governs all Codex roles.

@@ -7,9 +7,9 @@
 # and brings up an ISOLATED per-worktree docker stack (own ports + project name,
 # see scripts/worktree-common.sh), then migrates + seeds it.
 #
-# Declared as system_context stack.worktree_bootstrap = "bash scripts/init-worktree.sh".
-# The xp-agents runner runs it with cwd = the new worktree and treats a non-zero
-# exit as FATAL — no agent starts, the worktree is left standing for inspection.
+# Declared as .xp/config.yml's worktree_setup = "bash scripts/init-worktree.sh".
+# The xp-plugin runs it with cwd = the new worktree and treats a non-zero exit
+# as FATAL — no agent starts, and the worktree and its new branch are removed.
 #
 #   * Idempotent — every step is a safe no-op or safe regenerate on a warm
 #     checkout, so re-running is always safe.
