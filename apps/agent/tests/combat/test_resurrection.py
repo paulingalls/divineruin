@@ -1,10 +1,4 @@
-"""Resurrection: cost application + 4-tier anchors (M4.4 story-003).
-
-Pure pieces of the core resurrection loop: attribute selectors that resolve a DeathCost's
-attribute_target (lowest/primary/highest) to a concrete attribute, apply_death_cost which turns a
-DeathCost into the persistence deltas, and resolve_resurrection_anchor's 4-tier hierarchy. The
-orchestration (trigger_character_death) and real-PG round-trip live alongside / in the persistence
-suite. Spec: docs/game_mechanics/game_mechanics_combat.md §The Cost Engine + §Resurrection Location."""
+"""Resolve attribute selectors before persisting death costs; orchestration and stored round-trips have separate owners."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -210,8 +204,6 @@ class TestTriggerCharacterDeath:
 
 
 class TestCombatEndDefeatWiring:
-    """combat_end wires trigger_character_death into the defeat path (auto-return), not victory."""
-
     @pytest.mark.asyncio
     async def test_defeat_triggers_character_death(self, monkeypatch):
         import resurrection
@@ -243,8 +235,6 @@ class TestCombatEndDefeatWiring:
         assert spy.call_args.kwargs["combat_cleared"] is False
 
     def test_finish_syncs_session_location_to_anchor(self, monkeypatch):
-        """AC3: after a defeat-resurrection, the post-death handoff agent is built at the anchor
-        (where the player was revived), not the stale death site."""
         import gameplay_agent
         from combat_end import _end_combat_finish
         from session_data import SessionData
@@ -297,8 +287,7 @@ class TestCombatEndDefeatWiring:
 
 
 class TestRecordLastRestedSettlement:
-    """The long-rest hook records the current settlement as the anchor tier-3 last-rested location.
-    (apply_long_rest has no production caller yet, so this is a wired-but-dormant forward-seam.)"""
+    """The long-rest hook is forward-wired; apply_long_rest has no production caller yet."""
 
     @pytest.mark.asyncio
     async def test_records_when_resting_in_a_settlement(self):
@@ -328,8 +317,6 @@ class TestRecordLastRestedSettlement:
 
 
 class TestMortaensDomainScene:
-    """The Mortaen's Domain scene exists in content with the shape the scene loader expects."""
-
     def test_mortaens_domain_scene_is_present_and_wellformed(self):
         import json
         import pathlib

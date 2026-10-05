@@ -1,10 +1,3 @@
-"""resolve_phase's dramatic-dice surface: the encounter-context promotions the phase loop supplies.
-
-Split out of test_phase_loop.py (M29 story-016) for the 500-line cap. The band split moved two of
-these signals between bands — `first_attack_resolved` and `enemies_remaining` are read fresh per
-packet, and the ally band now resolves first — which test_beat3_hold.TestBandOrdering pins.
-"""
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,10 +10,7 @@ from session_data import CombatParticipant
 
 
 class TestResolvePhaseDramatic:
-    """story-004: the phase loop surfaces the M4.5 dramatic verdict on each packet summary,
-    layering the encounter-context signals (first_attack, last_enemy) the per-attack resolver
-    can't see. _damage_resolver returns a non-dramatic intrinsic verdict, so a dramatic packet
-    here is purely the emission-site promotion."""
+    """Use an intrinsically undramatic resolver so only phase-context promotion explains the emitted dramatic verdict."""
 
     @pytest.mark.asyncio
     async def test_opening_strike_is_dramatic_and_flips_the_flag(self):

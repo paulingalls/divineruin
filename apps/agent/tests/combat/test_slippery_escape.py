@@ -130,12 +130,7 @@ async def test_slippery_reports_surviving_grappler_when_second_grab_is_blocked()
 
 @pytest.mark.asyncio
 async def test_slippery_on_a_sourceless_grapple_is_loud_but_does_not_wedge_combat(caplog):
-    """`validate_condition_dict` PERMITS a grappled row with no source, so this shape reaches here
-    through the read boundary rather than being corruption. The label must still tell the truth
-    (the reactor is held), the missing holder must be LOUD in the log, and the phase must keep
-    resolving: raising here escapes pump() past its HeldActionUnresolvable catch (a ValueError
-    SUBCLASS), rolls the phase back, and re-raises on the persisted row on every retry — a wedged
-    combat, which is worse than the wrong label this card set out to fix."""
+    """A source-less grapple is valid persisted input. Raising outside the pump's narrow catch would wedge every retry."""
     state = _state(enemy_id="mawling_2")
     player = state.get_participant("player_1")
     assert player is not None

@@ -1,11 +1,3 @@
-"""Multiplayer combat-END loot and currency distribution (M18 story-003).
-
-Shared loot pool, round-robin distribution across party members, party-wide currency multiplier
-with even split, isolation from mid-combat joiners.
-
-Fast-lane, mock-DI (no real DB): drives the victory path with mocked content/pricing/queries.
-"""
-
 from __future__ import annotations
 
 import random

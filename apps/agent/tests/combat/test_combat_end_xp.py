@@ -1,12 +1,4 @@
-"""Combat-end XP is a party-wide Resolve, not an LLM tool call (M28 story-001).
-
-Until M28 _end_combat_db only CALCULATED xp_total and the response told the LLM to "call award_xp
-with the xp_total". story-003 removed award_xp from the tool surface, so without this in-transaction grant every
-combat reward would silently vanish. The grant rides the same seat_order the loot and currency passes
-walk, shares the party curve with coin, and buffers its events into the caller's sink so a rolled-back
-phase un-grants the XP and drops the unflushed event.
-
-"""
+"""Buffer XP events until commit so rollback removes both the grant and its client announcement."""
 
 from __future__ import annotations
 

@@ -1,5 +1,3 @@
-"""Closed inventory and concurrency guards for full CombatState persistence."""
-
 import ast
 import asyncio
 import subprocess

@@ -1,11 +1,4 @@
-"""A stray player participant must not abort a resolved phase over a durability scratch flag.
-
-The two ends of the weapon-durability feature disagreed on fail-loud vs fail-safe for identical
-input. combat_end skips a player participant with no PartyMember behind it -- explicitly "a fail-safe
-for a non-critical accrual rather than aborting the whole combat-end tx". The swing path used the
-RAISING session.member_state(), so the same stray participant raised ValueError inside the phase
-transaction and rolled back an entire resolved round.
-"""
+"""Skip noncritical durability accrual for a stray participant rather than rolling back their resolved swing."""
 
 from __future__ import annotations
 
@@ -40,7 +33,6 @@ def _mutations():
 
 @pytest.mark.asyncio
 async def test_a_swing_by_a_player_with_no_party_member_resolves_instead_of_raising():
-    """`ghost_pc` is a type="player" participant absent from PartyState. Its swing must resolve."""
     session = make_context().userdata
     state = _make_combat_state()
     enemy = state.get_participant("goblin_scout_1")

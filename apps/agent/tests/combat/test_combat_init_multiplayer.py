@@ -1,10 +1,3 @@
-"""Integration coverage: combat init builds one CombatParticipant PER party member (M14
-story-003). Today combat_init always builds a single type="player" participant from
-session.player_id; this suite locks in the multiplayer loop over session.party.member_ids
-while guaranteeing a solo (1-member) party still produces a byte-identical single-player
-build. Models test_combat_init_roles.py — mock mutations/queries/content DI, no real DB.
-"""
-
 import copy
 from unittest.mock import AsyncMock
 
@@ -85,8 +78,6 @@ async def test_two_member_party_builds_two_player_participants():
 
 @pytest.mark.asyncio
 async def test_non_primary_members_fetched_in_one_batched_call():
-    """The non-primary rows load via a SINGLE get_players_for_update(non_primary_ids) call,
-    not a serial get_player per member — and the primary is never re-fetched through the batch."""
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)

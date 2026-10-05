@@ -1,5 +1,3 @@
-"""Tests for request_death_save: success/stabilize/death, nat-20 revive, nat-1, errors, events."""
-
 import asyncio
 import json
 from dataclasses import replace
@@ -40,15 +38,8 @@ def _participant(ctx, player_id: str):
 
 
 class TestMultiPlayerDeathSave:
-    """M14+ built a type="player" CombatParticipant per party member, but the death save still
-    looked up session.player_id. A fallen non-primary could never roll their own save."""
-
     @pytest.mark.asyncio
     async def test_non_primary_rolls_its_own_save_while_the_primary_stands(self):
-        """The primary is upright; the ally is down. The save belongs to the ally.
-
-        Before: cs.get_participant(session.player_id) found the standing primary and raised
-        "Player has not fallen" -- the surfaced death save could never be resolved."""
         mock_mutations = _make_death_save_mocks()
         mock_db, _conn = make_db_mod()
         ctx = make_context("player_1", party_member_ids=["player_2"])
@@ -70,7 +61,6 @@ class TestMultiPlayerDeathSave:
 
     @pytest.mark.asyncio
     async def test_two_fallen_members_require_naming_who_rolls(self):
-        """Both down: rolling "the player" silently double-rolled the primary. Make the DM name one."""
         mock_mutations = _make_death_save_mocks()
         mock_db, _conn = make_db_mod()
         ctx = make_context("player_1", party_member_ids=["player_2"])
@@ -84,7 +74,6 @@ class TestMultiPlayerDeathSave:
 
     @pytest.mark.asyncio
     async def test_named_member_rolls_and_its_nat20_revives_that_member(self):
-        """A nat-20 restores the NAMED member's HP row, never the primary's."""
         mock_mutations = _make_death_save_mocks()
         mock_db, conn = make_db_mod()
         ctx = make_context("player_1", party_member_ids=["player_2"])
@@ -101,7 +90,6 @@ class TestMultiPlayerDeathSave:
 
     @pytest.mark.asyncio
     async def test_a_fallen_enemy_can_never_be_named(self):
-        """Enemies have no death-save loop; naming one is a DM error, not a silent roll."""
         mock_mutations = _make_death_save_mocks()
         mock_db, _conn = make_db_mod()
         ctx = make_context()
@@ -115,9 +103,7 @@ class TestMultiPlayerDeathSave:
 class TestDeathSaveAtomicity:
     @pytest.mark.asyncio
     async def test_a_failed_persist_leaves_no_advanced_counters_in_memory(self):
-        """The live CombatState must not run ahead of the DB. Previously the participant was mutated
-        in place BEFORE save_combat_state, so a failed write stranded an advanced counter in memory
-        that the next reload silently lost."""
+        """Failed persistence must leave in-memory counters aligned with the stored combat."""
         mock_mutations = _make_death_save_mocks()
         mock_mutations.save_combat_state = AsyncMock(side_effect=RuntimeError("db down"))
         mock_db, _conn = make_db_mod()
@@ -133,8 +119,7 @@ class TestDeathSaveAtomicity:
 
     @pytest.mark.asyncio
     async def test_the_hp_and_state_writes_share_one_transaction(self):
-        """A nat-20 writes players.data HP and the combat_instances SSOT. Split across two
-        transactions, a crash between them leaves a live 1-HP player the combat row calls fallen."""
+        """A nat-20 HP write and combat-state revival must commit together or a crash can leave a live player marked fallen."""
         mock_mutations = _make_death_save_mocks()
         mock_db, conn = make_db_mod()
         ctx = make_context()
@@ -165,7 +150,6 @@ class TestRequestDeathSave:
 
     @pytest.mark.asyncio
     async def test_nat_20_restores_hp(self):
-        """If we get a nat 20, player should be revived with 1 HP."""
         mock_mutations = _make_death_save_mocks()
         mock_db, _conn = make_db_mod()
 
@@ -260,8 +244,6 @@ class TestRequestDeathSave:
 
     @pytest.mark.asyncio
     async def test_error_if_not_fallen(self):
-        """Nobody is down, so there is no save to roll. Refused before any write, so this needs no
-        db mock -- the guard runs ahead of the transaction."""
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=25, player_fallen=False)
 
@@ -315,16 +297,11 @@ class TestRequestDeathSave:
 
 
 class TestSerialisedAgainstConcurrentWriters:
-    """The death save snapshots the whole CombatState, awaits its transaction, then REBINDS
-    session.combat_state to that snapshot — so anything another path commits on the live state
-    during the await is erased on adoption unless the two are serialised."""
+    """A post-await snapshot rebind erases concurrent live-state writes unless both writers share the lock."""
 
     @pytest.mark.asyncio
     async def test_a_reaction_spent_during_the_transaction_is_not_erased(self):
-        """The concrete loss: ability_tools deducts Stamina/Focus, commits, then records the spend
-        as a spend RECORD on the LIVE state (under this same lock). Unlocked,
-        the death save's post-commit rebind restores True over it — charged and still holding the
-        round's reaction. Fault-inject by dropping the lock from _request_death_save_impl."""
+        """Inject a spend during the transaction: an unlocked rebind would charge resources but erase the spend record."""
         mock_mutations = _make_death_save_mocks()
 
         # Yield inside the transaction, the window the competing writer needs.

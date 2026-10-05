@@ -1,5 +1,3 @@
-"""Tests for start_combat: state creation, initiative, durability reset, handoff, errors."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -107,10 +105,6 @@ def _stance_mocks(reputation, faction=_THORNWATCH):
 
 
 class TestStartCombatStanceGate:
-    """story-008: _start_combat_impl is resolve_encounter_stance's first production caller.
-    A gated encounter resolves allied (avert combat, narration string) or hostile (combat)
-    from the player's reputation with the gate faction."""
-
     @pytest.mark.asyncio
     async def test_allied_reputation_averts_combat(self):
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)  # >= friendly(5)

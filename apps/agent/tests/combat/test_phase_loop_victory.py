@@ -9,10 +9,6 @@ from combat_turn import _declare_phase_impl
 
 
 class TestPhaseLoopE2E:
-    """AC4: a live encounter advances declaration -> resolution -> narration -> wrap
-    across rounds to victory through the phase tools (declare_phase + resolve_phase),
-    with the engine firing the end-of-combat handoff itself."""
-
     @pytest.mark.asyncio
     async def test_full_lifecycle_to_victory(self):
         deps = _resolve_deps(damage=4)

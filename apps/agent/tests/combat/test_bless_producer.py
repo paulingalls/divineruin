@@ -1,17 +1,4 @@
-"""M4.8 story-004: Bless spell producer — apply Blessed on cast.
-
-Stories 001-003 built the CONSUMER side (BonusDie model, +1d4 fold, consume-on-roll). This
-story is the PRODUCER: a spell whose catalog row carries a structured `applies_condition`
-lands that condition on the cast's target. Single-target (multi-target is story-007). Both
-paths wired (customer decision story-004-in-combat-scope):
-
-- A) catalog schema: Spell.applies_condition, parsed + fail-loud validated against the
-     condition catalog.
-- B) out-of-combat producer: _resolve_cast applies + persists the condition to the target's
-     players.data SSOT (gated on not session.in_combat) and surfaces it in the cast packet.
-- C) in-combat producer: _resolve_one_packet applies the produced condition to the target
-     CombatParticipant on the working state (rides save_combat_state).
-"""
+"""Apply out-of-combat conditions to players.data and in-combat conditions to the working CombatState."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock

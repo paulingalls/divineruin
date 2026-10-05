@@ -1,9 +1,4 @@
-"""Resurrection persistence (M4.4 story-003).
-
-Mock-conn unit tests assert the jsonb_set construction + params for the resurrection writes, and a
-real-PG fast-lane round-trip (dev_db_pool) proves the cost deltas + revive persist on the dev DB.
-Storage: players.data.attributes.<attr> (penalty), data.maxhp_override (negative, accumulates),
-data.hp.current + data.location_id (revive), data.last_rested_settlement_id (anchor tier-3)."""
+"""Mock connections check SQL construction; real Postgres executes accumulated costs and revival."""
 
 import json
 from unittest.mock import AsyncMock
@@ -110,9 +105,6 @@ async def test_resurrection_writes_roundtrip(dev_db_pool):
 
 
 async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(dev_db_pool):
-    """AC4: death -> escalating cost persisted (death_history + attribute) -> revived at the correct
-    anchor, end-to-end on the real evaluator (only the death-location is off-catalog so the anchor
-    falls through to the deterministic starter zone)."""
     import resurrection
 
     pool = dev_db_pool

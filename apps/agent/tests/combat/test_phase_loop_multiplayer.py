@@ -1,14 +1,4 @@
-"""Multi-player combat phase-loop tests (M14 story-004).
-
-The phase loop resolves N player declarations per phase: each player's ability Focus is
-pre-validated against its OWN for_update row, each cast resolves against the declaring
-member's OWN caster pool, and the WRAP Resonance decay sheds from EACH member's own pool
-(once per phase, never shared, never double). Solo (1-member) parity is guarded by the
-existing tests/combat/test_phase_loop.py — here every party has ≥2 members.
-
-The casts themselves are mocked (cast_resolver._resolve_cast); the wiring/identity/decay is
-under test, not the spell internals (covered by the tests/test_spell_cast_* modules).
-"""
+"""Mock casting to isolate per-member identity and decay; spell internals have separate checks."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -148,9 +138,6 @@ def _cast_resolver_recording(new_resonance_by_id=None):
 
 
 class TestMultiplayerPrevalidation:
-    """AC1: two players each declare an ability → each is prevalidated against its OWN for_update
-    row (get_player once per id), both resolve, and _resolve_cast is handed the matching caster."""
-
     @pytest.mark.asyncio
     async def test_each_player_ability_prevalidated_and_resolved_against_own_caster(self):
         ctx = make_context(party_member_ids=["player_2"])
@@ -205,9 +192,6 @@ class TestMultiplayerPrevalidation:
 
 
 class TestMultiplayerWrapDecay:
-    """AC2: the WRAP decays EACH member's own standing Resonance once per phase — one write + one
-    push per member that actually moved, keyed to that member's pool, never a shared value."""
-
     @pytest.mark.asyncio
     async def test_each_member_decays_own_pool_with_conn_and_pushes(self):
         ctx = make_context(party_member_ids=["player_2"])
@@ -252,9 +236,6 @@ class TestMultiplayerWrapDecay:
 
 
 class TestSoloRegression:
-    """AC3: the per-member phase loop collapses to exactly ONE write + ONE push for a solo party —
-    byte-identical to the single-player decay path."""
-
     @pytest.mark.asyncio
     async def test_solo_decay_is_one_write_and_one_push(self):
         ctx = make_context()  # 1-member party (player_1 only)
@@ -275,9 +256,6 @@ class TestSoloRegression:
 
 
 class TestMultiplayerGenerationDecayE2E:
-    """AC4: across two rounds, two players each cast a GENERATING ability with a distinct per-caster
-    new_resonance; each member nets generated - decay against its OWN pool with no cross-leak."""
-
     @pytest.mark.asyncio
     async def test_two_rounds_net_per_pool_with_no_cross_leak(self):
         from combat_turn import _declare_phase_impl

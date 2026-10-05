@@ -1,15 +1,3 @@
-"""E2E acceptance (M18 story-001): a live 2nd-player LiveKit join produces a >1-member party
-that combat_init then builds into two player CombatParticipants, each carrying its own
-per-member session state.
-
-This is the story's declared acceptance path (AC4). It exercises the full seam the story ships:
-the participant-join trigger (participant_lifecycle._setup_party_join) appends + hydrates a
-PartyMember, and combat_init (_start_combat_impl) loops session.party.member_ids to build one
-type="player" participant per member. The unit suites cover each half in isolation
-(tests/session_lifecycle/test_party_join.py, tests/combat/test_combat_init_multiplayer.py); this
-drives them end-to-end: player B joins, then both enter combat together.
-"""
-
 import asyncio
 import copy
 from types import SimpleNamespace

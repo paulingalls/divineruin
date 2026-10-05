@@ -1,5 +1,3 @@
-"""Strict shapes for authored and persisted geometry."""
-
 from copy import deepcopy
 
 import pytest

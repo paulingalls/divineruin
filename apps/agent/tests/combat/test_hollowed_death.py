@@ -1,14 +1,4 @@
-"""M4.4 story-007 — Hollowed death, resurrection/spell side.
-
-A death under any Hollowed stage sets a permanent players.data.hollow_killed mark and clears the
-Hollowed condition (purged past Mortaen's threshold); a divine_revivify cast on a hollow-killed
-corpse is refused. The gate keys on the cast TARGET (M11) — these cases exercise the self-cast
-branch (caster is the target); the rerouted target-vs-caster coverage lives in test_spell_targeting.
-
-Mock-conn unit tests for the DB layer + pure gate; the death branch with injected mutations; one
-real-PG E2E (dev DB) for the full resurrection/spell path. The combat-engine Temporary Hollowed
-ride-along is story-008.
-"""
+"""Use self-cast cases here; target-versus-caster routing has its own persisted targeting checks."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -83,8 +73,6 @@ def _player(*, hollow_killed: bool = False) -> dict:
 
 
 class TestRevivifyRefused:
-    """The pure gate helper + REVIVAL_SPELL_IDS membership (target-agnostic; reused unchanged by M11)."""
-
     def test_refused_when_hollow_killed(self):
         assert spell_casting.revivify_refused({"hollow_killed": True}) is True
 
@@ -98,9 +86,6 @@ class TestRevivifyRefused:
 
 
 class TestRevivifyGateLive:
-    """The gate wired into the cast path, self-cast branch: a revival spell self-cast on a
-    hollow-killed caster (caster IS the target) is refused."""
-
     @pytest.mark.asyncio
     async def test_revivify_on_hollow_killed_is_refused(self):
         with pytest.raises(ToolError, match="Hollow-killed"):
@@ -157,8 +142,6 @@ def _death_mocks(death_count_before=0):
 
 
 class TestHollowedOnDeathBranch:
-    """trigger_character_death marks + clears Hollowed when the dying character is Hollowed."""
-
     @pytest.mark.asyncio
     async def test_hollowed_death_sets_flag_and_clears_condition(self):
         import conditions
@@ -244,9 +227,6 @@ class TestHollowedOnDeathBranch:
 
 
 class TestHollowedDeathE2E:
-    """Real-PG (dev DB) capstone for the resurrection/spell path: a Hollowed death persists
-    hollow_killed, clears the Hollowed condition, and a subsequent Revivify is refused."""
-
     @pytest.mark.asyncio
     async def test_hollowed_death_persists_flag_clears_condition_refuses_revivify(self, dev_db_pool):
         import db_mutations_conditions
@@ -288,8 +268,6 @@ class TestHollowedDeathE2E:
 
 
 class TestHollowKilledReadWrite:
-    """db_mutations_resurrection.set_hollow_killed / read_hollow_killed (mock-conn units)."""
-
     @pytest.mark.asyncio
     async def test_set_hollow_killed_writes_true(self):
         import db_mutations_resurrection

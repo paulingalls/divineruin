@@ -1,10 +1,3 @@
-"""Multiplayer combat-END outcome-scoped stabilize and resurrect (story-005).
-
-Fled abandons, defeat with standing primary, echo resurrection on any outcome, empty seat order.
-
-Fast-lane, mock-DI (no real DB): drives outcome paths with mocked content/pricing/queries.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock

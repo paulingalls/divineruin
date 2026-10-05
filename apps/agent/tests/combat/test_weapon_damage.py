@@ -1,14 +1,4 @@
-"""Contract tests for weapon damage math + the Heavy weapon catalog (story-003).
-
-Pins resolve_attack's damage formula: damage = weapon die + attribute modifier,
-using the same governing/finesse/ranged/else-STR attribute selection as the
-attack roll, with the modifier added ONCE even on a crit and NO proficiency on
-damage (proficiency applies only to the attack roll — spec
-game_mechanics_combat.md:208 vs the Weapon Damage table at 222-228).
-
-Also pins the 1d12 Heavy weapons (greataxe, halberd) in the catalog and the
-Warrior starting loadout (greataxe, shield dropped — two-handed).
-"""
+"""Add the governing attribute modifier once even on crits; proficiency belongs only to the attack roll."""
 
 import random
 

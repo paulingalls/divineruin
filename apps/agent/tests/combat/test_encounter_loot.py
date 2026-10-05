@@ -1,6 +1,3 @@
-"""Pure-logic tests for the role loot & currency overlay (M4.7, story-002). No DB, no RNG luck:
-a FakeRng injects exact dice/chance values so every assertion is deterministic."""
-
 import importlib
 import json
 import random

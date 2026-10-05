@@ -1,5 +1,3 @@
-"""Each live boundary rejects before delegating to another owned guard."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

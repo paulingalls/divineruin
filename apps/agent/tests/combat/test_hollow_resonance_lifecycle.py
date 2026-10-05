@@ -1,5 +1,3 @@
-"""Hollow generation through committed spell and damage consumers."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

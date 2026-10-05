@@ -1,11 +1,4 @@
-"""Beat 3 holds the enemy blows behind two real reaction windows (M29, story-016).
-
-decision 46 (game_mechanics_decisions.md:61) and game_mechanics_combat.md:182-187 specify the
-loop: the DM narrates each enemy action, PAUSES for a reaction window, and "the engine holds enemy
-damage until each reaction window closes". Sprint 45 shipped the opposite — every packet, ally and
-enemy alike, resolved in one transaction, so the enemy's blow was written to hp_current before the
-DM said a word. These are the guards for the restored model.
-"""
+"""Hold enemy damage until the DM narrates the action and closes the reaction windows."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -57,8 +50,6 @@ async def _call(ctx, deps) -> dict:
 
 
 class TestTheHold:
-    """AC1 — the resolution beat resolves the ALLY band only."""
-
     @pytest.mark.asyncio
     async def test_the_resolution_beat_resolves_allies_and_writes_no_enemy_damage(self):
         ctx = _ctx_at_resolution(player_hp=25, enemy_hp=7)
@@ -77,8 +68,6 @@ class TestTheHold:
 
     @pytest.mark.asyncio
     async def test_the_held_action_carries_its_declaration_unrolled(self):
-        """The hold is a QUEUE of pending turns, not a discarded one: the declaration survives
-        and no roll has been made yet (AC7's "still pending" is this shape)."""
         ctx = _ctx_at_resolution()
         await _call(ctx, _resolve_deps())
 
@@ -89,13 +78,8 @@ class TestTheHold:
 
 
 class TestTheTwoWindows:
-    """AC2/AC4 — pause, roll, pause, and the DM reads the window out of `next`."""
-
     @pytest.mark.asyncio
     async def test_pause_roll_pause_over_one_enemy_swing(self):
-        """The beat is pause -> roll -> pause. The ally band commits FIRST and on its own (AC1),
-        so the enemy blow cannot have landed when the DM starts narrating Beat 3; each subsequent
-        call steps the held queue by one stage."""
         ctx = _ctx_at_resolution(player_hp=25)
         ctx.userdata.combat_state.pending_declarations["goblin_scout_1"]["action"] = "sCiMiTaR"
         deps = _resolve_deps(damage=3)
@@ -182,9 +166,6 @@ class TestTheTwoWindows:
 
     @pytest.mark.asyncio
     async def test_the_window_id_is_only_reachable_through_next(self):
-        """constraint 6 / AC4's fault-injection, as a positive claim: everything the DM needs to
-        close the window — the phase, the legal verbs, the window id — is in `next`, structured.
-        A window id the DM has to mine out of prose is not shipped."""
         ctx, deps = _ctx_at_resolution(), _resolve_deps()
         await _call(ctx, deps)  # the ally commit
         r1 = await _call(ctx, deps)  # the pre-roll window
@@ -227,8 +208,6 @@ class TestTheTwoWindows:
 
 
 class TestTheReactionBudgetGate:
-    """Missing, spent, and fallen-player budgets cannot hold the beat open."""
-
     @pytest.mark.asyncio
     async def test_no_window_opens_when_no_reaction_is_available(self):
         ctx = _ctx_at_resolution(player_hp=25, reactions=False)
@@ -247,12 +226,7 @@ class TestTheReactionBudgetGate:
 
     @pytest.mark.asyncio
     async def test_a_spend_record_reopens_no_window(self):
-        """THE TRUTHINESS TRAP. The gate used to read `reactions_available.get(pid, False)` as a
-        boolean, and a spend RECORD is a truthy object — so the naive reshape leaves a spent
-        reaction still holding the beat, opening a window the party cannot consume for the rest of
-        the round. The gate has to read the record's spent-ness.
-
-        Fault-inject by making is_spent return the entry's truthiness."""
+        """Spend records are truthy even when spent. Inject truthiness to prove the gate reads spent-ness."""
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.reactions_available = {
@@ -270,10 +244,7 @@ class TestTheReactionBudgetGate:
 
     @pytest.mark.asyncio
     async def test_a_fallen_players_stale_availability_does_not_hold_the_beat(self):
-        """A downed player cannot react, so their leftover True must not pause a whole round.
-
-        The blow lands on a SECOND, standing player: felling the one the enemy swings at makes the
-        held action wasted, which suppresses the window for a different reason entirely."""
+        """Hit a second, standing player so the wasted-action gate cannot hide a fallen reactor bug."""
         ctx = _ctx_at_resolution()
         cs = ctx.userdata.combat_state
         cs.participants.append(
@@ -313,10 +284,7 @@ class TestTheReactionBudgetGate:
 
 
 class TestTrunkIdentityAndOneWrap:
-    """AC6 — an enemy action nobody reacts to resolves exactly as on trunk, and the phase wraps
-    ONCE. Scoped honestly: identity holds WITHIN a band. The ally-first reorder (see
-    TestBandOrdering) moves `first_attack_resolved` and `enemies_remaining` between bands, so a
-    cross-band dramatic promotion can legitimately land on the other side of the round."""
+    """Identity holds within bands; ally-first ordering can legitimately change cross-band dramatic promotion."""
 
     @pytest.mark.asyncio
     async def test_an_unreacted_enemy_action_resolves_and_wraps_exactly_once(self):
@@ -352,13 +320,7 @@ class TestTrunkIdentityAndOneWrap:
 
 
 class TestUntargetedHeldActions:
-    """An enemy declaration that names NO target opens no window.
-
-    declare_phase accepts defend/interact/maneuver/retreat for any actor, enemies included, and
-    the DM is told to cover "every enemy that acts this round". Every trigger the pre-roll window
-    emits claims someone was targeted, so pausing on a braced enemy would ship a descriptor that
-    contradicts itself — triggers announcing a blow beside a null target_id — and story-018 would
-    spend the round's one reaction on it (constraint 6)."""
+    """Untargeted actions must not open a window claiming somebody was targeted."""
 
     @pytest.mark.asyncio
     async def test_a_held_enemy_defend_never_pauses_and_still_resolves(self):
@@ -384,10 +346,7 @@ class TestUntargetedHeldActions:
 
 
 class TestBandOrdering:
-    """D4, pinned rather than discovered in a capstone diff. Beats 2/3 (gm_combat:154-187) resolve
-    the ally band fully before any enemy acts; initiative still orders WITHIN each band. Trunk
-    interleaved the two and let a higher-initiative enemy drop the player before their declared
-    swing landed — that cross-band pre-emption is what the hold abolishes."""
+    """Resolve the ally band first so a higher-initiative enemy cannot pre-empt an already declared ally action."""
 
     @pytest.mark.asyncio
     async def test_a_higher_initiative_enemy_no_longer_preempts_the_player(self):
@@ -406,7 +365,6 @@ class TestBandOrdering:
 
     @pytest.mark.asyncio
     async def test_the_first_attack_dramatic_promotion_now_falls_to_the_ally_band(self):
-        """The opening strike of round 1 is an ally's even when an enemy outrolled them."""
         ctx = _ctx_at_resolution(enemy_hp=20, reactions=False)
         cs = ctx.userdata.combat_state
         cs.get_participant("goblin_scout_1").initiative = 20
@@ -420,9 +378,6 @@ class TestBandOrdering:
 
 
 class TestWastedHeldActions:
-    """A held action whose actor or target is gone never opens a window — pausing on a no-op is
-    the same noise AC9 exists to prevent."""
-
     @pytest.mark.asyncio
     async def test_a_held_action_whose_actor_fell_to_the_ally_band_never_pauses(self):
         ctx = _ctx_at_resolution(player_hp=25, enemy_hp=3)  # the ally swing kills the goblin
@@ -458,8 +413,6 @@ class TestBeatGuards:
 class TestMidWindowPersistence:
     @pytest.mark.asyncio
     async def test_every_pause_commits_so_a_reload_finds_the_window_open(self):
-        """Each pause is its own commit — the window is not a bubble in memory. A crash during a
-        pause reloads to the same paused state, not to a lost enemy turn (AC7's premise)."""
         ctx = _ctx_at_resolution()
         deps = _resolve_deps()
         saves: list[dict] = []

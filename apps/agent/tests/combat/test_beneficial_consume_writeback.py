@@ -1,10 +1,4 @@
-"""M4.8 story-003: consumer write-back — consume + persist the beneficial die.
-
-The single-use +1d4 (Blessed/Inspired, story-001/002) is now made live: player-initiated rolls
-consume it and persist the removal, while engine-auto saves (Beat-4 tick-clear, concentration-break)
-suppress it via the new bonus_dice_eligible flag (customer decision 6102eca13319). In-combat the die
-is consumed ONCE per multi-swing declaration. Grouped: A) eligibility flag + engine-auto suppression,
-B) in-combat consume-once, C) out-of-combat persist."""
+"""Engine-auto saves suppress bonus dice; a multi-swing declaration consumes its bonus only once."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch

@@ -1,13 +1,3 @@
-"""Multiplayer combat-END reconcile (M18 story-003).
-
-Per-member reconciliation: persistent conditions, beneficial dice, non-primary store merges.
-Fast-lane, mock-DI (no real DB): patches the condition read/save round-trip and asserts each
-player participant reconciles into its OWN players.data row.
-
-Solo behavior (a 1-member party) is covered byte-identically by the existing single-player
-combat-end suites; this suite adds the >1-member assertions.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock

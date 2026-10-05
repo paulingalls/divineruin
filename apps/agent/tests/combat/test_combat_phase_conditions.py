@@ -1,11 +1,4 @@
-"""Beat-4 (WRAP) condition-tick integration in the pure phase engine (M4.3, story-002).
-
-advance_combat_phase advances conditions once per phase at the WRAP beat: durations
-decrement, expired conditions drop off the returned state, and save-to-clear conditions
-(only Frightened, per the story-001 catalog) surface a save signal in
-WrapOutcome.tick_conditions_due for orchestration to resolve. The engine stays pure — it
-ticks the deep-copied next_state and never rolls or touches the DB.
-"""
+"""Tick a copied state and surface save signals; the pure engine must not roll or persist."""
 
 import copy
 

@@ -1,11 +1,3 @@
-"""Content coverage for the role-aware narration cadence woven into COMBAT_PROMPT (M4.7, story-004).
-
-The combat system prompt must carry per-role narration cadence so the DM voices a throwaway
-Minion differently from a climactic Boss. This is additive to the existing Beat-3 dramatic-pause
-guidance — these tests pin that the three role cadences (Minion / Elite / Boss) survive future
-prompt edits. Mirrors the prompt-content assertion style of tests/test_prompts.py.
-"""
-
 from combat_prompts import COMBAT_PROMPT
 from system_prompts import COMBAT_SYSTEM_PROMPT
 
@@ -57,8 +49,6 @@ def test_buff_narration_reaches_the_assembled_system_prompt():
 
 
 def test_combat_prompt_pins_no_single_companion_voice_tag():
-    """One of the four companions is assigned per archetype; COMBAT_PROMPT is a single cached
-    constant, so a hardcoded tag in its companion instructions voices all four as that one.
-    (VOICE_STYLE_PROMPT's even enumeration of the AUTHORED voice registry is not a pin.)"""
+    """The combat prompt is cached across archetypes, so a fixed companion tag would voice all four as one."""
     for tag in ("COMPANION_KAEL", "COMPANION_LIRA", "COMPANION_TAM", "COMPANION_SABLE"):
         assert tag not in COMBAT_PROMPT, f"{tag} pinned in the shared combat prompt"

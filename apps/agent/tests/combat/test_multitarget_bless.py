@@ -1,13 +1,3 @@
-"""M4.8 story-007: multi-target Bless — OOC cast path + max_targets cap.
-
-The single-target Bless producer (story-004) lands `blessed` on ONE target. Bless is specced
-"up to three allies"; this story extends the OUT-OF-COMBAT cast (`_resolve_cast`, gated on not
-session.in_combat) to apply + persist `blessed` to EACH named ally's players.data, capped by the
-spell's `max_targets` (reject >cap with a ToolError, before any write). The shared foundation
-(`Spell.max_targets`, `spells.validate_target_count`) is reused by the in-combat path (story-012).
-The single-target path stays unchanged when `target_ids` is absent.
-"""
-
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock

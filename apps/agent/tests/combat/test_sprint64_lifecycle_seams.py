@@ -1,5 +1,3 @@
-"""Scene restoration and authored range facts use the current combat geometry."""
-
 import json
 from dataclasses import asdict
 from pathlib import Path

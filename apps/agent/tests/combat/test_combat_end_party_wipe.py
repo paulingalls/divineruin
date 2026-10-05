@@ -1,16 +1,4 @@
-"""Real-PG integration: the combat_end defeat router collects EVERY fallen player participant
-into a party and routes them through resurrection.resurrect_party_on_defeat (M14, story-006).
-
-Proves against the dev Postgres at :55432 (dev_db_pool) that a 2-PC party wipe resurrects BOTH
-members — each at their own 4-tier anchor — inside the one defeat transaction, while solo defeat
-stays unchanged (exactly one player), a survivor is left alive, and a Stage-2+ Hollowed primary
-that has transformed to a temporary_hollowed echo is still resurrected — via the M20 story-004
-outcome-independent dead-life collector (which catches any temporary_hollowed participant).
-
-Each member seeds an off-catalog death location (region-less -> no tier-2 settlement) plus a
-distinct real last_rested_settlement_id, so tier-3 gives divergent anchors. Cleanup removes the
-seeded players in a finally (unique keys, mirroring the other fast-lane real-PG tests).
-"""
+"""Use distinct last-rested settlements and region-less death sites so each member reaches a different tier-3 anchor."""
 
 from __future__ import annotations
 
@@ -112,8 +100,6 @@ async def _run_defeat(session: SessionData, cs: CombatState) -> dict:
 
 @pytest.mark.asyncio
 async def test_party_wipe_resurrects_every_fallen_member_at_own_anchor(dev_db_pool):
-    """AC1 + AC4: a 2-PC party both fallen -> both collected and revived at their OWN anchors,
-    in one defeat tx; the returned death_context is the PRIMARY's (session.player_id)."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _SECOND, _SECOND_ANCHOR)
@@ -147,7 +133,6 @@ async def test_party_wipe_resurrects_every_fallen_member_at_own_anchor(dev_db_po
 
 @pytest.mark.asyncio
 async def test_solo_defeat_resurrects_exactly_one(dev_db_pool):
-    """AC2 (regression): a solo party -> exactly one player resurrected, death_context is theirs."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     try:
@@ -168,8 +153,6 @@ async def test_solo_defeat_resurrects_exactly_one(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_survivor_is_not_collected(dev_db_pool):
-    """AC3: a party where a NON-primary member survives -> only fallen players are collected; the
-    survivor's row is untouched (a wipe requires all players down)."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _SECOND, _SECOND_ANCHOR)
@@ -199,10 +182,6 @@ async def test_survivor_is_not_collected(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_instant_dead_non_primary_member_is_resurrected(dev_db_pool):
-    """Concern ecb8bc708dc2 (M18 story-003): a NON-primary member killed OUTRIGHT (is_dead=True,
-    is_fallen=False — an overkill instant death that skips the Fallen state) in a party wipe was
-    never collected by the is_fallen-only predicate, so it was never resurrected. The collector now
-    includes is_dead, so the instant-dead member revives at its own anchor."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     await _seed_player(pool, _SECOND, _SECOND_ANCHOR)
@@ -228,9 +207,7 @@ async def test_instant_dead_non_primary_member_is_resurrected(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_missing_player_row_on_defeat_raises(dev_db_pool):
-    """Concern 2a646ecf0b4b (M18 story-003): a fallen player participant whose players.data row is
-    missing (get_player returns None) is data corruption — _end_combat_db RAISES fail-loud rather
-    than silently skipping resurrection and leaving the session stranded at the death site."""
+    """A missing fallen-player row is corruption; skipping it would strand the session at the death site."""
     pool = dev_db_pool
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR)
     # _SECOND is intentionally NOT seeded -> get_player(_SECOND) returns None.
@@ -252,10 +229,6 @@ async def test_missing_player_row_on_defeat_raises(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_hollowed_echo_primary_still_resurrected(dev_db_pool):
-    """Review concern ea3b4a268fd3: a Stage-2+ Hollowed primary whose participant has transformed
-    to a temporary_hollowed echo (type flipped, id == player_id) is NOT a `player` participant, but
-    the M20 story-004 dead-life collector catches it by its temporary_hollowed type and resurrects
-    it, marking hollow_killed (previously handled by a now-removed special-case primary fallback)."""
     pool = dev_db_pool
     hollowed = conditions.apply_condition([], "hollowed")  # stage 1; any stage marks hollow_killed
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR, conditions_list=hollowed)

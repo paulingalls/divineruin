@@ -1,20 +1,4 @@
-"""Transaction-integrity seams for combat resolution (story-005, M4.2).
-
-resolve_phase must leave DB, in-memory session state, and the client event stream all consistent
-with the pre-phase state on rollback, and publish each event exactly once after commit. Covers the
-two M4.2-owned forward-seams — end_combat's writes riding the phase's own commit, and optimistic
-loop events (concern 03f2907d9c93) — plus the in-loop session-scratch revert (weapon flags +
-companion KO).
-
-M29 story-016 REVERSED the atomicity invariant this file used to pin. A round is now TWO commits:
-the ally band, then the held enemy actions carrying the wrap. Each commit is still atomic on its
-own; what is gone is the claim that a whole round rolls back together. The replacement guarantee —
-after commit 1, ally results are durable and the enemy actions are persisted as PENDING, a legal
-resting state rather than a torn one — is pinned by TestEndCombatAcrossTheTwoCommits.
-
-Real-PG tests use the dev_db_pool fixture (shared :55432 dev DB, -n8 fast lane) with unique ids +
-finally-cleanup, mirroring test_combat_persistence.py's forced-rollback harness.
-"""
+"""A round has two atomic commits. After the ally commit, pending enemy actions are a durable resting state, not a torn round."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -88,9 +72,6 @@ def _no_concentration_break() -> MagicMock:
 
 
 class TestLoopEventBuffering:
-    """Seam 2 (concern 03f2907d9c93): loop events buffer during the tx and reach the client only
-    after commit; a rollback publishes nothing."""
-
     async def _seed_player(self, pool, player_id: str) -> None:
         await pool.execute(
             "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
@@ -100,8 +81,6 @@ class TestLoopEventBuffering:
         )
 
     async def test_resolve_phase_suppresses_loop_events_on_rollback(self, dev_db_pool, monkeypatch) -> None:
-        """A mid-phase DB failure must publish NO loop events — the client never sees a phantom
-        DICE_ROLL / attack sound from a turn that rolled back."""
         pool = dev_db_pool
         player_id = "tx_s005_suppress_player"
         combat_id = "combat_s005_suppress"
@@ -128,7 +107,6 @@ class TestLoopEventBuffering:
             await db_mutations.delete_combat_state(combat_id, conn=pool)
 
     async def test_resolve_phase_publishes_loop_events_once_after_commit(self, dev_db_pool) -> None:
-        """A clean phase publishes its loop events exactly once, after the tx commits."""
         pool = dev_db_pool
         player_id = "tx_s005_commit_player"
         combat_id = "combat_s005_commit"
@@ -200,15 +178,7 @@ def _tx_victory_state(combat_id: str, player_id: str, enemy_id: str) -> CombatSt
 
 
 class TestEndCombatAcrossTheTwoCommits:
-    """AC10. Replaces TestEndCombatInPhaseTx. The invariant changed SHAPE when the single phase
-    transaction became two commits (M29, story-016) — it did not stop being pinned.
-
-    combat_state_lock still serialises each commit against end_combat. What is new is the GAP
-    BETWEEN them, which no lock can cover: between the ally commit and the wrap commit the enemy
-    actions sit persisted as pending, and an end_combat arriving there would pay the party and
-    delete the combat row with an enemy's turn still queued. So end_combat REFUSES while actions
-    are held, naming the next action (constraint 4: raise, never a silent partial end).
-    """
+    """Between commits, end_combat must refuse held actions or it would pay out and discard a queued enemy turn."""
 
     async def _seed_player(self, pool, player_id: str) -> None:
         await pool.execute(
@@ -223,8 +193,6 @@ class TestEndCombatAcrossTheTwoCommits:
         return (row["xp"] if row and row["xp"] is not None else 0) or 0
 
     async def test_end_combat_refuses_while_enemy_actions_are_held(self, dev_db_pool) -> None:
-        """The gap between the commits. end_combat("fled") is unavailable for one beat rather than
-        force-ending and silently discarding the queued enemy turns."""
         pool = dev_db_pool
         player_id = "tx_s016_held_player"
         enemy_id = "tx_s016_held_enemy"
@@ -265,9 +233,7 @@ class TestEndCombatAcrossTheTwoCommits:
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
     async def test_end_combat_is_available_again_once_the_queue_has_drained(self, dev_db_pool) -> None:
-        """The refusal is scoped to the gap, not to combat: once the held pass has run, the DM can
-        end the fight normally. Without this the fault-injection above would be satisfied by a
-        permanent refusal."""
+        """The refusal must end when the queue drains; a permanent refusal would satisfy only the negative case."""
         pool = dev_db_pool
         player_id = "tx_s016_drained_player"
         enemy_id = "tx_s016_drained_enemy"
@@ -306,9 +272,7 @@ class TestEndCombatAcrossTheTwoCommits:
     async def test_a_failed_wrap_commit_keeps_the_ally_results_and_the_pending_enemy_turn(
         self, dev_db_pool, monkeypatch
     ) -> None:
-        """AC7, at the boundary. The wrap commit fails; commit 1's ally results stand and the
-        enemy's turn is STILL persisted as pending. A crash between commits must not silently
-        delete an enemy's turn — that is the guarantee replacing the old single-transaction one."""
+        """A failed wrap must preserve the committed ally results and the still-pending enemy turn."""
         pool = dev_db_pool
         player_id = "tx_s016_wraprb_player"
         enemy_id = "tx_s016_wraprb_enemy"
@@ -413,9 +377,6 @@ def _tx_companion_ko_state(combat_id: str, player_id: str, enemy_id: str, compan
 
 
 class TestScratchRollback:
-    """The third in-loop divergence: session scratch (weapon flags + companion KO + recent_events)
-    is reverted on rollback so AC3's in-memory parity holds for every field, not just combat_state."""
-
     async def test_rollback_reverts_weapon_flags_and_companion_ko(self, dev_db_pool, monkeypatch) -> None:
         player_id = "tx_s005_scratch_player"
         enemy_id = "tx_s005_scratch_enemy"

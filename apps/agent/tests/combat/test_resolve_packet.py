@@ -1,5 +1,3 @@
-"""Tests for per-attack resolution against CombatParticipant HP."""
-
 import json
 from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -420,11 +418,7 @@ class TestDramaticEmission:
 
 
 class TestRollThenApply:
-    """The rolled attack survives a PRE-DAMAGE tool-call boundary."""
-
     def test_roll_writes_no_hp_and_publishes_nothing(self):
-        """The HOLD itself. A rolled-but-unapplied attack leaves the target untouched: that is
-        what makes the pause between the roll and the impact a legal resting state."""
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
         sink = EventSink()
@@ -444,8 +438,6 @@ class TestRollThenApply:
 
     @pytest.mark.asyncio
     async def test_roll_then_apply_is_identical_to_the_unsplit_packet(self):
-        """_resolve_attack_packet is now the composition of the two halves, so a caller that
-        never pauses resolves exactly as on trunk (AC6). Same seeded resolver both times."""
         ctx_a, ctx_b = make_context(), make_context()
         cs_a, cs_b = _make_combat_state(player_hp=25), _make_combat_state(player_hp=25)
         att_a, tgt_a, action_a = _attacker_target_action(cs_a)
@@ -479,10 +471,7 @@ class TestRollThenApply:
         assert tgt_b.hp_current == tgt_a.hp_current == 22
 
     def test_a_held_roll_round_trips_through_json(self):
-        """The rolled AttackResult rides inside its held action across a tool-call boundary, so
-        it goes through JSONB. consumed_conditions is the one field JSON loses — it is a tuple
-        and comes back a list unless the deserializer re-tuples it, and a list would make the
-        M4.8 single-use die look unconsumed."""
+        """JSON changes tuples to lists; restore consumed_conditions so the single-use die remains marked consumed."""
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
         resolver = _fixed_resolver(damage=3, hp_remaining=22)

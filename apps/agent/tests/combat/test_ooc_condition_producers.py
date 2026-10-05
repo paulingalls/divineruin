@@ -1,16 +1,3 @@
-"""E2E acceptance: both OOC beneficial-condition producer paths through the shared helpers
-(story-005, sprint-032, M18).
-
-spell_casting._resolve_cast and ability_tools._request_ability_activation_impl each used to carry
-a byte-identical pre-lock preamble, then produce_ooc_condition re-fetched the target rows the
-caller had already locked (debts 9a4b4d89d60a / c712fb731f06). This drives BOTH real catalog
-entries (divine_bless / bard_inspire, seeded from content/*.json by the autouse conftest
-fixtures) end to end and asserts: the condition lands, and exactly ONE get_players_for_update
-batch call is made — proving the double-fetch is gone. A cross-player pair also pins the
-deadlock-safe invariant (concern 5449cc774146): the {caster} UNION {targets} lock is ONE
-ascending-player_id batch, caster NOT first, identical whether the entry is a spell or an ability.
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

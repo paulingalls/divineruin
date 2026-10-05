@@ -1,10 +1,3 @@
-"""Unit coverage for the pure encounter-role module (M4.7, story-001).
-
-The module is pure: every test constructs a plain base-enemy dict and asserts on the
-returned derived dict — no DB, no RNG, no combat state. Worked-example numbers come from
-docs/game_mechanics/game_mechanics_encounter_roles.md (Bandit / Grey Wolf / Mawling).
-"""
-
 import pytest
 
 from encounter_roles import (

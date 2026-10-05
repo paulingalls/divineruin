@@ -1,10 +1,3 @@
-"""The phase's event-buffering primitives: the EventSink and the in-loop scratch snapshot.
-
-Split out of test_combat_tx_integrity.py (M29 story-016), which took the two-commit Beat-3 hold
-and the 500-line cap in the same change. These two classes test combat_events directly and never
-drive resolve_phase, so they are the natural seam.
-"""
-
 from unittest.mock import AsyncMock
 
 import combat_events
@@ -13,8 +6,6 @@ from session_data import CompanionState, SessionData
 
 
 class TestEventSink:
-    """EventSink buffers publish_game_event calls and replays them only on flush()."""
-
     async def test_event_sink_buffers_then_flushes_in_order(self, monkeypatch) -> None:
         spy = AsyncMock()
         monkeypatch.setattr(combat_events, "publish_game_event", spy)
@@ -49,8 +40,6 @@ class TestEventSink:
 
 
 class TestCombatScratchSnapshot:
-    """The pre-tx snapshot reverts in-loop session scratch when the phase rolls back."""
-
     def _session_with_companion(self, memories: list[str]) -> tuple[SessionData, CompanionState]:
         session = SessionData(player_id="p_scratch", location_id="loc", room=None)
         companion = CompanionState(id="c1", name="Brae", session_memories=list(memories))

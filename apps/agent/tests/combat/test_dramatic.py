@@ -1,10 +1,4 @@
-"""story-001 (M4.5): the pure dramatic-dice evaluator.
-
-Covers every Always / Contextual / Never row from the canonical catalog in
-docs/game_mechanics/game_mechanics_combat.md §Dramatic Dice (L15-75). The bar is
-HIGH by design (0-2 reveals per 5-phase fight) — `evaluate_dramatic_context`
-flags a roll dramatic only when one catalog predicate holds, and returns the
-first-matching reason label (catalog order = severity order)."""
+"""Catalog order is severity order, so dramatic evaluation returns the first matching reason."""
 
 from dramatic import DramaticContext, DramaticVerdict, evaluate_dramatic_context
 

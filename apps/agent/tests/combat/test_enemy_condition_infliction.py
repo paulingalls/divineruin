@@ -1,12 +1,4 @@
-"""Tests for the enemy condition-infliction resolve path (M13 story-002).
-
-Homes debt f9a5d1e88432: the temporary_hollowed charmed/frightened/poisoned immunity
-gate in conditions.apply_condition had no live in-combat caller — this is the first one.
-An enemy action_pool entry carrying {applies_condition, save, dc} routes through
-_resolve_one_packet's dispatch to _resolve_enemy_condition_packet — for ATTACK *or* ABILITY
-declarations (the DM declares enemy pool actions as ATTACK, system_prompts.py:235) — which rolls
-the target's save and lands the condition via the immunity-gated apply_condition SSOT.
-"""
+"""Enemy pool actions can be declared as ATTACK or ABILITY; both must reach immunity-gated condition application."""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -111,8 +103,6 @@ class TestResolveEnemyConditionPacket:
         assert not any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_immune_target_no_ops_the_gate(self):
-        """Debt f9a5d1e88432 regression guard: temporary_hollowed's charmed/frightened/poisoned
-        immunity, exercised for the first time by a live in-combat caller."""
         state = _state_with_enemy_action(
             _enemy_action(cond_type="poisoned"),
             player_conditions=[{"type": "temporary_hollowed"}],

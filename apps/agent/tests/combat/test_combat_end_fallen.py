@@ -1,10 +1,3 @@
-"""Multiplayer combat-END fallen allies and echo stabilization (story-004).
-
-Echo-primary fate and fallen-ally stabilization across victory outcome.
-
-Fast-lane, mock-DI (no real DB): drives the victory path with mocked content/pricing/queries.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock

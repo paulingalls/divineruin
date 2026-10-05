@@ -1,5 +1,3 @@
-"""Countercharm changes a matching hostile save, and only that save."""
-
 import json
 import random
 from pathlib import Path

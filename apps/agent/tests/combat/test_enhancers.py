@@ -1,12 +1,3 @@
-"""Enhancer resolution through the combat packet path (M4.2, story-004).
-
-Enhancers EXPAND what one declaration resolves into — never a second declaration.
-These drive _resolve_one_packet (the per-packet resolver resolve_phase loops over):
-extra_attack/shield_bash expand the ATTACK mechanically (extra HP-dealing swings),
-the narrated riders attach a descriptive cue to the summary. A no-enhancer actor
-resolves exactly one base action with no expansion (AC3).
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

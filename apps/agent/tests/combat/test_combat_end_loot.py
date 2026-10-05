@@ -1,12 +1,4 @@
-"""Real-PG integration: _end_combat_db grants role-scaled loot + currency on victory (M4.7,
-story-002). Proves the end-to-end victory path against the dev Postgres at :55432 (dev_db_pool):
-a defeated enemy's loot table is rolled, items land in player_inventory, currency is added to
-players.data.gold, and the CURRENCY_GAINED + ITEM_ACQUIRED chips are buffered into the sink.
-
-A FakeRng pins the rolls so the grant is exact, and the loot table is injected via a content stub
-(get_loot_table) plus a self-seeded item or material row. Cleanup removes the player, its inventory,
-and the test catalog row in a finally.
-"""
+"""Inject exact loot rolls but execute grants against real Postgres; mocks cannot certify stored inventory or gold."""
 
 from __future__ import annotations
 

@@ -1,9 +1,3 @@
-"""Unit tests for the pure enhancer policy (M4.2, story-004).
-
-combat_enhancers decides (1) how many/which attack actions one ATTACK declaration
-expands into and (2) which narrated riders attach. Pure — no IO, no state.
-"""
-
 from combat_enhancers import (
     SHIELD_BASH_ACTION,
     attack_sequence,

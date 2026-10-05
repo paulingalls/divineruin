@@ -1,11 +1,3 @@
-"""Tests for the live phase-loop tools (story-003): declare_phase + resolve_phase.
-
-These drive the deterministic 4-beat engine (combat_phase.advance_combat_phase) from
-the live CombatAgent: declare_phase collects a phase's declarations (DECLARATION ->
-RESOLUTION); resolve_phase resolves the packets, narrates (engine no-op), wraps, and
-either loops to the next declaration beat or fires the end-of-combat handoff.
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -82,10 +74,6 @@ def _declarations():
 
 
 class TestResolvePhaseExhaustionNarration:
-    """M4.3 story-005: resolve_phase surfaces a Beat-3 exhaustion_narration map for the DM to
-    speak, derived from each participant's Exhausted stacks. This is the live caller for the
-    otherwise-dead get_exhaustion_narrative."""
-
     @pytest.mark.asyncio
     async def test_exhausted_participant_gets_flavor_text(self):
         deps = _resolve_deps(damage=3)

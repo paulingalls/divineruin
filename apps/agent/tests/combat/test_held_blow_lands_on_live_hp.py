@@ -1,16 +1,4 @@
-"""A held blow lands on the HP the target HAS, not the HP the roll was made against.
-
-The Beat-3 hold (M29, story-016) captures an ABSOLUTE ``target_hp_remaining`` when it rolls and
-applies it when the window closes, which is a whole DM turn later. story-018 recorded that as
-harmless on the grounds that "nothing at NARRATION mutates a standing target's HP between the
-pause and the apply" — but a pause hands the floor back to the DM, and the combat prompt names
-Inner Fire as one of exactly three things the DM may activate mid-fight. ``draethar_inner_fire``
-writes that participant's ``hp_current`` directly, so the premise is false at the seam between
-story-016's hold and story-026's self-damage door.
-
-The end-to-end version of the same claim, driving the REAL Inner Fire tool against a REAL pause,
-is ``tests/test_draethar_inner_fire.py::test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow``.
-"""
+"""A pause gives the DM a turn to change HP. Apply held damage to live HP, not the roll-time snapshot."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -32,19 +20,7 @@ def _p(ctx, participant_id="player_1"):
 
 
 class TestTheHeldBlowLandsOnLiveHp:
-    """A pause is a return to the DM, and the DM may spend the pause changing the target's HP.
-
-    The roll persists an ABSOLUTE ``target_hp_remaining`` (combat_support.serialize_roll), and the
-    apply half writes it to ``hp_current``. story-018 recorded that as harmless because "nothing at
-    NARRATION mutates a standing target's HP between the pause and the apply" — but the combat
-    prompt names Inner Fire as one of exactly three things the DM may activate mid-fight, and
-    ``draethar_inner_fire`` writes that participant's ``hp_current`` directly. So the premise is
-    false at the seam between story-016's hold and story-026's self-damage door, and the blow
-    lands from the HP the roll was made against rather than the HP the target actually has.
-
-    The lock story-026 owes changes nothing here: the pause has already returned, so Inner Fire and
-    the held blow never overlap — they are strictly ordered, and the second one overwrites.
-    """
+    """The pause and Inner Fire are sequential; a lock cannot fix a later write based on stale roll-time HP."""
 
     @pytest.mark.asyncio
     async def test_hp_spent_during_the_pause_is_not_healed_back_by_the_held_blow(self):
@@ -68,15 +44,7 @@ class TestTheHeldBlowLandsOnLiveHp:
 
     @pytest.mark.asyncio
     async def test_the_fall_verdict_is_computed_against_the_hp_the_target_actually_has(self):
-        """The sharp end of the same defect. A blow that is survivable from full HP is lethal from
-        2, and which of those it is has to be decided when the damage LANDS, not when it was rolled
-        — ``_handle_hp_zero`` only runs on the number the apply half writes. Left stale, the burned
-        Draethar is stood back up at 22 of 25 and never falls, so nothing owes them a death save.
-
-        The target is at 2 rather than 0: a target already fallen at the pause makes the held
-        action WASTED (``combat_hold._is_wasted``), which suppresses the apply for its own reason
-        and would leave this guard passing whatever the apply half does.
-        """
+        """Leave the target at 2 HP so the wasted-action gate cannot suppress the held apply and hide this defect."""
         ctx = _ctx_at_resolution(player_hp=25, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
         deps = _deps()
 

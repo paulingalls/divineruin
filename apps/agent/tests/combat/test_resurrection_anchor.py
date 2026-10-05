@@ -1,11 +1,4 @@
-"""Starter-zone SSOT guard (story-006).
-
-The tier-4 resurrection anchor and the character-creation default start location must both derive
-from ONE source of truth — the "starting_area" location tag, with a single shared fallback literal.
-These tests prove tier-4 follows the tag (not a hardcoded literal) and that both consumers cross-link
-to the same constant, so a retag can never silently diverge from a stale copy of the literal.
-
-Spec: docs/game_mechanics/game_mechanics_combat.md §Resurrection Location."""
+"""The starter tag is one authority for character creation and tier-4 resurrection; retagging must not leave a stale literal."""
 
 import creation_rules
 from resurrection import resolve_resurrection_anchor

@@ -1,12 +1,3 @@
-"""Integration coverage: combat init applies encounter-role derivation (M4.7, story-001 slice 3).
-
-Models test_start_combat.py — mock mutations/queries/content DI, a role-tagged encounter — and
-asserts the persisted CombatParticipants carry role-derived stats (not raw base stats): a Minion is
-halved with its actives stripped, a Boss is doubled with a signature + one legendary action, and the
-resolver modifier fields (attack_mod/dc_mod/damage_mult) are populated. Fast lane: the DB layer is
-mocked, no real PG.
-"""
-
 from copy import deepcopy
 
 import pytest

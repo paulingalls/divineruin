@@ -1,20 +1,4 @@
-"""Every reaction the DM can be told about, against every window the engine can open.
-
-The catalog/window VOCABULARY half. What a spent reaction then does to the blow is
-test_reaction_resolution.py — a different concern, and keeping both in one file put it over the
-500-line cap (constraint 2).
-
-story-017 made a reaction an INTERRUPT: the permission is the open Beat-3 window, not a Beat-1
-declaration. So the contract to hold is between two producers that must share one vocabulary —
-``query_tools._query_abilities_impl``, which surfaces each reaction's ``window`` to the DM, and
-``reaction_windows``, which mints the ``triggers`` a held enemy action offers. A reaction whose
-advertised window no producible window ever carries is a capability the DM can name and never
-spend (constraint 6), so this walks the WHOLE catalog rather than one class's first reaction.
-
-Two windows have no producer at all and are asserted REFUSED rather than papered over:
-``on_enemy_move`` (no movement model — debt d3ff4ff4) and ``on_spell_cast`` (no enemy casting —
-debt 08bc5548). Their reactions are unreachable by design until those land.
-"""
+"""on_enemy_move and on_spell_cast have no producer and remain refused, not silently treated as supported."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -93,11 +77,7 @@ async def _queried_reactions():
 
 @pytest.mark.asyncio
 async def test_every_queried_reaction_window_is_answered_by_a_real_open_window():
-    """The accept half, catalog-wide: each advertised window is one the engine actually opens.
-
-    A gate that read a constant "on_hit" would still accept the reactions carrying that window,
-    so the sweep has to name which producible window answered each id — and refuse to accept a
-    reaction at a window that does not carry its trigger."""
+    """Match each advertised id to its actual trigger; a constant accepting on_hit would hide other broken windows."""
     reachable = {}
     for ability_id, window in (await _queried_reactions()).items():
         if window in NO_PRODUCER:
@@ -121,8 +101,6 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
 
 @pytest.mark.asyncio
 async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
-    """Stated honestly rather than skipped: warrior_opportunity_strike (on_enemy_move) and
-    mage_counterspell (on_spell_cast) cannot be spent, at any stage, on any held action."""
     unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
     assert unreachable.keys() == {"warrior_opportunity_strike", "mage_counterspell"}
 
@@ -136,9 +114,6 @@ async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_windo
 
 @pytest.mark.asyncio
 async def test_the_two_window_vocabularies_are_one():
-    """reaction_windows emits nothing the ability catalog cannot consume, and the catalog
-    advertises nothing outside abilities.REACTION_WINDOWS. Either drift ships a window the other
-    side cannot read — the exact shape of the guess-among-nine defect constraint 6 names."""
     import abilities
 
     produced = {trigger for shape in _PRODUCIBLE.values() for trigger in shape[3]}

@@ -1,9 +1,4 @@
-"""Hold Person is a save-gated paralysis that ends on a Beat-4 WIS re-save.
-
-Authored as a damage "0" attack, it crashed on a hit (bug 2a6d4b8a). It now rides the applies_condition
-path Hollow Shriek already uses. paralyzed carries the tick_save its spell row describes ("re-saves each
-turn"): a landed condition has no duration, so without the re-save the paralysis would never end.
-"""
+"""A landed paralysis without duration needs the documented re-save or it would never end."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch

@@ -1,14 +1,4 @@
-"""Temporary Hollowed combat ride-along (M4.4 story-008).
-
-Spec (gm_combat §The Hollowed Death): a Stage-2+ Hollowed player who drops to 0 HP does NOT enter
-Fallen — their corpse rises as a Temporary Hollowed combatant (HP=50% of max, hits add 1d6
-necrotic, immune to Charmed/Frightened/Poisoned) that takes DM turns and blocks combat-end until
-destroyed. On its destruction the character enters normal Mortaen death (story-007): Hollowed
-cleared, hollow_killed recorded.
-
-Unit coverage here (rise at the death site + _wrap end-condition gating); the real-PG end-to-end
-lands in the persistence test class below (AC3).
-"""
+"""A temporary Hollowed echo must block combat end until destroyed; then normal Mortaen death applies."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -192,8 +182,6 @@ class TestRiseAtDeathSite:
 
 
 class TestWrapEchoGating:
-    """The pure Beat-4 wrap: a live echo blocks combat-end; a destroyed echo ends it as defeat."""
-
     def _state_with_echo(self, *, echo_fallen: bool, enemies_fallen: bool):
         cs = _make_combat_state(enemy_fallen=enemies_fallen)
         echo = cs.get_participant("player_1")
@@ -295,12 +283,6 @@ class TestWrapEchoGating:
 
 
 async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
-    """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->
-    the character enters Mortaen death -> resurrected with Hollowed cleared and hollow_killed
-    recorded. Drives the rise/destroy through the combat engine and routes the echo-fall death
-    through resurrect_on_defeat (M20 story-004: _end_combat_db reaches the same resurrection via its
-    outcome-independent dead-life collector, exercised end-to-end by
-    test_echo_primary_resurrected_on_victory_e2e below)."""
     import json
 
     import db_mutations_resurrection as dmr
@@ -385,11 +367,6 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
 
 
 async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
-    """M20 story-004 (real PostgreSQL): a destroyed temporary_hollowed echo-primary + a surviving
-    ally win the fight -> _end_combat_db resolves outcome='victory' yet still Mortaen-resurrects the
-    echo-primary through its outcome-independent dead-life collector (hollow_killed recorded, Hollowed
-    cleared, revived at an anchor). The living ally is untouched (no death recorded). Proves the
-    character-loss fix end-to-end through the real combat-end path — not the defeat-only branch."""
     import json
 
     from sample_fixtures import make_context, make_mock_room

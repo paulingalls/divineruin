@@ -12,9 +12,6 @@ from session_data import CombatParticipant, CombatState, SessionData
 
 
 async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
-    """The live exit path (resolve_phase -> wrap -> _end_combat_db in the PHASE transaction) writes
-    the XP to players.data once. Mock-conn tests can't see this: the grant only counts if it commits
-    with the phase, and a second grant would show up as double XP on the persisted row."""
     pool = dev_db_pool
     player_id = "m28_s001_xp_phase_player"
     combat_id = "combat_m28_s001_xp"

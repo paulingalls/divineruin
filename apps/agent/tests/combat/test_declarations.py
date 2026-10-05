@@ -1,10 +1,3 @@
-"""Tests for the typed declaration model (story-002): DeclarationType + resolve_declaration.
-
-resolve_declaration is a PURE classify+validate function: it turns a raw declaration dict
-(emitted by the DM into declare_phase) into a typed Declaration, or raises ValueError. The
-six categories mirror gm_combat §Action Economy (L99-106); explicit ``type`` is required.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -90,14 +83,7 @@ class TestResolveDeclarationValid:
 
 
 class TestReactionIsNoLongerADeclaration:
-    """story-017 / AC5. A reaction is an INTERRUPT against an open Beat-3 window, so it is not a
-    declaration at all — the category is deleted, not deprecated.
-
-    Keeping it would relocate note 0f3945fa(d) onto the player: declare_phase would still accept
-    `kind: "reaction"`, but validate_reaction_activation no longer reads pending_declarations, so
-    a pre-declared reaction becomes a packet that can never activate and still consumes the
-    actor's whole phase action.
-    """
+    """Reactions interrupt open windows; accepting them as declarations consumes an action that can never activate."""
 
     def test_a_reaction_declaration_is_no_longer_a_declaration_type(self):
         with pytest.raises(ValueError, match="unknown declaration type"):
@@ -112,14 +98,7 @@ class TestReactionIsNoLongerADeclaration:
 
     @pytest.mark.asyncio
     async def test_a_companion_reaction_declaration_burns_no_phase_action(self):
-        """AC5's phase-action clause, on the actor the old design actually harmed.
-
-        resolve_declaration never checked that the declaring actor could OWN the named reaction,
-        so a companion's REACTION was accepted at Beat 1, was unactivatable (only players spend
-        reactions), and cost the companion its entire round. advance_combat_phase validates every
-        declaration BEFORE assigning any, so the whole payload is refused here and the beat stays
-        open to re-declare — the companion loses nothing.
-        """
+        """Refuse before assigning any declarations so an invalid companion reaction loses no phase action."""
         context = make_context()
         context.userdata.combat_state = _make_combat_state()
         mutations = MagicMock()

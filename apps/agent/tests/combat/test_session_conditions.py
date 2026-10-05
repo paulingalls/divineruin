@@ -1,14 +1,4 @@
-"""Condition persistence + Beat-4 tick-save orchestration (M4.3, story-004).
-
-In-combat conditions ride combat_instances.data via save_combat_state (free, story-002). This
-suite covers the NEW work: (1) the Beat-4 save-to-clear resolution (combat_packet._resolve_tick_saves)
-that clears Frightened on a made save; (2) cross-encounter persistence — combat_end writes the
-player's persists_across_encounters conditions to players.data, and the round-trip is readable via
-db_queries.get_player so out-of-combat checks (story-003 resolvers) apply them.
-
-Real-PG tests use the shared dev DB (dev_db_pool fixture, tests/combat/conftest.py) with a unique
-player id + cleanup, per the fast-lane real-PG convention.
-"""
+"""Persist across-encounter conditions onto players.data so subsequent out-of-combat checks see them."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -82,8 +72,6 @@ async def test_save_empty_clears_conditions(dev_db_pool):
 
 
 def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
-    """Regression: the catalog's tick_save is the abbreviation ("wis") but resolve_saving_throw
-    only accepts full attribute names — the real resolver must not raise on the wrap's save event."""
     import check_resolution_save
 
     state = _make_combat_state()
@@ -135,8 +123,6 @@ async def test_end_combat_merges_acquired_cross_encounter_conditions(monkeypatch
 
 
 async def test_end_combat_keeps_higher_stacks_on_type_conflict(monkeypatch):
-    """A fight that deepens an already-persisted Exhausted must keep the higher stack count,
-    not silently drop the combat-gained accrual (code-review finding, bounded by debt 1e32d78449ef)."""
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
@@ -198,10 +184,6 @@ def _capture_save(monkeypatch) -> dict:
 
 
 async def test_end_combat_drops_ooc_buff_consumed_in_combat(monkeypatch):
-    """A Blessed/Inspired die applied out of combat, loaded onto the participant at combat-start,
-    and CONSUMED mid-fight must be removed from players.data at combat end — otherwise the player
-    keeps a spent buff post-combat (concern ab37d4fc61c6). The participant's final set (no blessed)
-    is authoritative because combat_init loaded the store's conditions in (M4.4 story-005)."""
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
@@ -221,8 +203,6 @@ async def test_end_combat_drops_ooc_buff_consumed_in_combat(monkeypatch):
 
 
 async def test_end_combat_keeps_unconsumed_ooc_buff_without_spurious_write(monkeypatch):
-    """A buff the player carried in and did NOT spend must survive combat — and, since the store
-    already holds it, no redundant write fires (change-detected reconciliation)."""
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
@@ -243,9 +223,6 @@ async def test_end_combat_keeps_unconsumed_ooc_buff_without_spurious_write(monke
 
 
 async def test_end_combat_persists_in_combat_granted_buff(monkeypatch):
-    """A buff GRANTED mid-combat (e.g. a bard Inspires the player) that survives to combat end must
-    persist onto players.data so the player keeps it out of combat — the participant's final set is
-    authoritative in both directions (consume removes, grant adds)."""
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
@@ -263,8 +240,6 @@ async def test_end_combat_persists_in_combat_granted_buff(monkeypatch):
 
 
 async def test_end_combat_drops_consumed_buff_but_keeps_acquired_persistent(monkeypatch):
-    """Combined boundary: a spent Blessed is dropped while a fight-acquired Wounded persists —
-    the two reconciliation paths compose without clobbering each other."""
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None

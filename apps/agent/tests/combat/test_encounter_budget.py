@@ -1,11 +1,4 @@
-"""Unit coverage for the pure encounter-budget validator (M4.7, story-004).
-
-The module is pure: every test builds a plain list of role-tagged enemy dicts and a
-player level, then asserts on the returned report — no DB, no RNG, no combat state. The
-validator is INFORMATIONAL: it returns a report and flags violations; it never blocks
-combat. Budget weights + difficulty thresholds + allocation rules come from
-docs/game_mechanics/game_mechanics_encounter_roles.md (L209-234).
-"""
+"""Encounter budgets are informational reports, not combat access gates."""
 
 import pytest
 

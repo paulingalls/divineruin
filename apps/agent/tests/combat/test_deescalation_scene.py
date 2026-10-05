@@ -1,8 +1,3 @@
-"""Tier-3 de-escalation scene: pure per-round argument resolver + scene-state model
-(M15 story-001). Mirrors the M4.6a MVP pure-resolver pattern (tests/combat/
-test_combat_deescalation.py) — no RNG, the caller supplies roll_total.
-"""
-
 from combat_resolution import SURRENDER_THRESHOLD, ArgumentRoundOutcome, resolve_argument_round
 from session_data import CombatState, DeEscalationState
 from tests.combat._helpers import _make_combat_state

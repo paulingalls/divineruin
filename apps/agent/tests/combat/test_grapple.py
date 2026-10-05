@@ -331,12 +331,7 @@ async def test_grappled_actor_maneuvering_on_someone_else_still_shoves():
 
 @pytest.mark.asyncio
 async def test_a_shove_declared_before_the_grab_stays_a_shove():
-    """The mirror of the stale escape (story-074): the grab lands AFTER the declaration.
-
-    Until the intent rode the declaration, resolution re-derived it from the actor still being
-    grappled by the target, so a mid-round grab silently upgraded a declared shove into a
-    break-free. It no longer does, and the actor stays held.
-    """
+    """Freeze shove intent at declaration so a later grab cannot silently turn it into escape."""
     state = _escape_round_state()
     state.pending_declarations["player_1"].pop("maneuver_intent")
     ctx = _ctx_at_resolution(state=state)

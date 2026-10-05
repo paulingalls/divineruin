@@ -1,12 +1,3 @@
-"""Tests for the pure 4-beat combat phase engine (combat_phase.advance_combat_phase).
-
-story-001 / M4.1. The engine advances ONE beat per call:
-declaration -> resolution -> narration -> wrap -> (loop to declaration | combat_end).
-Pure: no IO, no async, never mutates the input CombatState. Mechanical attack
-resolution and side-effect application live in orchestration (story-003); this
-module only computes beat transitions, ordered resolution packets, and wrap effects.
-"""
-
 import random
 
 import pytest
@@ -127,12 +118,7 @@ class TestNarrationBeat:
 
 
 class TestValidateReactionActivation:
-    """story-017: a reaction is an INTERRUPT against an open window, not a pre-declaration.
-
-    The gate reads ``state.open_window`` — the window story-016's Beat-3 pump is paused on — and
-    nothing else. It no longer reads ``pending_declarations``, and it no longer compares beats:
-    the pause sits at NARRATION, so the old RESOLUTION-beat gate refused every held window.
-    """
+    """A reaction is an interrupt at an open window, not a Beat-1 declaration."""
 
     accepts = "warrior_brace_for_impact"  # catalog window on_hit
     refuses = "warrior_opportunity_strike"  # catalog window on_enemy_move — never in a held window
@@ -159,11 +145,7 @@ class TestValidateReactionActivation:
         return state
 
     def test_accepts_a_reaction_whose_catalog_window_is_open_with_no_declaration(self):
-        """AC1's accept half. Nothing was declared at Beat 1 — the open window IS the permission.
-
-        Validation only: the caller records the spend, so a valid call changes nothing here. The
-        spend used to be a deep-copied state returned from this function; assigning that copy back
-        after the caller's await erased concurrent in-place writes (draethar_inner_fire)."""
+        """Validation must not rebind a copied state after an await, which would erase concurrent writes."""
         state = self._window_state()
         assert state.pending_declarations == {}
 
@@ -171,10 +153,7 @@ class TestValidateReactionActivation:
         assert state.reactions_available == {"player_1": reaction_spend.unspent()}
 
     def test_rejects_a_reaction_whose_window_is_not_open(self):
-        """AC3: the refusal names BOTH windows, so the DM can see why this reaction does not fit.
-
-        A message naming only one side leaves the DM re-trying the same ability — the window it
-        fires on and the windows actually offered are both needed to pick a different one."""
+        """Name both requested and offered windows so the DM can choose a different reaction."""
         state = self._window_state()
 
         with pytest.raises(ValueError) as excinfo:
@@ -185,10 +164,7 @@ class TestValidateReactionActivation:
         assert "on_hit" in message
 
     def test_rejects_when_no_window_is_open(self):
-        """AC4, and it is one check, not two: the declaration beat and a drained queue both reach
-        here as ``open_window is None``. A beat comparison would have to track the pause it guards
-        — story-016 moved that pause to NARRATION and the RESOLUTION gate silently refused every
-        held window."""
+        """Check the open window rather than a beat number; the pause may move between beats."""
         state = self._window_state()
         state.open_window = None
         state.beat = PhaseBeat.DECLARATION
@@ -207,9 +183,7 @@ class TestValidateReactionActivation:
 
     @pytest.mark.parametrize("window_open", [True, False], ids=["window_open", "no_window"])
     def test_a_player_owning_no_reaction_is_told_so_not_that_it_is_spent(self, window_open):
-        """story-030 seeds no budget entry for a class with no reaction, so is_spent(None) alone
-        would tell that player they already spent a reaction they never had. A party with no
-        owner never gets a window at all, so "no window is open" would mislead the same way."""
+        """No owned reaction is different from an already spent reaction; the refusal must distinguish them."""
         state = self._window_state()
         player = state.get_participant("player_1")
         assert player is not None
@@ -227,8 +201,6 @@ class TestValidateReactionActivation:
         assert "no reaction window" not in message
 
     def test_rejects_non_player_actor(self):
-        """The reaction economy is player-only (note 964465e5): no enemy or companion spends one,
-        even standing at a window whose triggers their ability would match."""
         state = self._window_state()
         state.reactions_available = {"goblin_scout_1": reaction_spend.unspent()}
 
@@ -236,11 +208,7 @@ class TestValidateReactionActivation:
             validate_reaction_activation(state, "goblin_scout_1", self.accepts)
 
     def test_an_actor_absent_from_the_budget_map_has_no_reaction_to_spend(self):
-        """Absent actor => no budget, never a free spend (the session_data field contract).
-
-        Reachable on a combat persisted before the budget map existed: paused at a window with an
-        empty reactions_available. Flipping the lookup default to True hands that state a free,
-        unmetered reaction."""
+        """Legacy paused states may have no budget entry; a permissive default would grant an unmetered spend."""
         state = self._window_state()
         state.reactions_available = {}
 

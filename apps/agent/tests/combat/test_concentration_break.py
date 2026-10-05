@@ -1,12 +1,3 @@
-"""E2E: per-member concentration break through the real phase loop (M18 story-004, AC #4).
-
-The unit-level coverage in ../test_concentration_break.py drives break_concentration_on_damage
-directly with mock DI. This file drives the REAL phase loop (_resolve_phase_impl) with the real
-concentration_break module wired in (no mock), for a 2-PC combat where the NON-primary caster is
-hit hard enough to incapacitate — proving the break resolves against that caster's own spell
-end-to-end, and the primary's own (different) concentration survives untouched.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

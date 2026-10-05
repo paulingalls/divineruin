@@ -1,5 +1,3 @@
-"""Tests for end_combat: state clearing, agent handoff, XP calc by outcome, events, errors."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -70,13 +68,7 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     async def test_two_overlapping_ends_pay_the_party_once(self):
-        """The LLM emitting two end_combat calls in one turn must not pay the encounter twice.
-
-        combat_state is the only re-entry guard and cannot be released before the commit, so
-        without serialisation both calls pass _require_combat while the first is still inside its
-        transaction and both run grant_victory_rewards — XP, coin, loot, level-ups and milestone
-        auto-grants, all doubled. The second call must find the fight already over.
-        """
+        """Serialize overlapping ends until the first adopts its commit; both otherwise see the same payable combat."""
         import asyncio
 
         mock_mutations = _make_end_combat_mocks()
@@ -119,19 +111,7 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     async def test_an_end_arriving_mid_phase_waits_and_finds_the_enemy_actions_held(self):
-        """story-016 AC10, the half no test executed: resolve_phase and end_combat SERIALISE.
-
-        A round is two commits, and between them the enemy actions sit persisted as pending.
-        end_combat refuses while they are held — but that refusal reads ``session.combat_state``,
-        which resolve_phase only rebinds AFTER its commit. So during the ally commit the session
-        still holds the pristine pre-call state, whose ``held_actions`` is EMPTY, and an end
-        arriving there sails through the refusal and pays the party with an enemy's turn still
-        queued. Only the lock closes that: the waiter re-reads the state the phase adopted.
-
-        The sibling of the guard above — same two-callers-one-payout shape, the other pair of
-        callers. Deleting ``async with session.combat_state_lock`` from ``_resolve_phase_impl``
-        leaves the whole combat suite green without it.
-        """
+        """During the ally commit the session still has no held actions. The lock makes an arriving end reread the adopted pending queue."""
         import asyncio
 
         from combat._helpers import _ctx_at_resolution, _resolve_deps
@@ -178,13 +158,7 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     async def test_handoff_survives_a_failing_agent_build(self):
-        """A raise while constructing the handoff agent must not strand the party in combat.
-
-        combat_state is cleared BEFORE the agent is built (it has to be — the commit banked the
-        rewards, and a retried end would pay them again), so an escaping exception here would
-        leave the session on CombatAgent with no combat and no exit. The fallback rebuilds
-        without the companion/summary rather than propagating.
-        """
+        """The payout is already durable before handoff construction; retrying end would pay twice, so build a fallback handoff."""
         from exploration_agent import ExplorationAgent
 
         mock_mutations = _make_end_combat_mocks()
@@ -288,10 +262,6 @@ class TestEndCombat:
 
 
 class TestPhaseLoopExit:
-    """Combat now exits through the phase engine's wrap end-condition (story-003):
-    resolve_phase fires end_combat when the engine reports victory/defeat, rather than
-    the LLM choosing to call end_combat itself. These pin that exit handoff."""
-
     @pytest.mark.asyncio
     async def test_victory_wrap_hands_back_to_exploration_agent(self):
         from exploration_agent import ExplorationAgent
@@ -327,17 +297,7 @@ class TestPhaseLoopExit:
 
 
 class TestEndCombatVeilWard:
-    """The encounter ward dies with the combat row — say so, resolved (M24 story-008, AC3).
-
-    scope_model.md §3: "on combat end the encounter ward dies, but if a location ward still covers
-    the party, VEIL_WARD_CHANGED carries active: true." Nothing published here before this story, so
-    a party fighting on a Sacred site watched its indicator keep whatever state the raise left it.
-
-    The ordering trap: this producer runs INSIDE the end transaction, and session.combat_state is
-    not cleared until _end_combat_finish, which is post-commit. A naive resolve_scope_ward here would
-    still see the dying encounter ward. So the producer reads the LOCATION scope explicitly, exactly
-    as the dismiss path does.
-    """
+    """Inside the end transaction the encounter state still exists. Resolve location coverage explicitly to exclude the dying ward."""
 
     _SACRED = {"source": "sacred_site", "expires_at": None, "dismissible": False}
 
@@ -388,19 +348,9 @@ class TestEndCombatVeilWard:
 
 
 class TestEndCombatPaysOnce:
-    """M28 story-010: the combat-end rewards are a Resolve now — permanent progression written
-    inside the end transaction. So the guard that stops a SECOND end (session.combat_state) has to
-    be released with the commit that made the payout durable, not after the post-commit publishes.
-
-    Before this story combat_state survived until _end_combat_finish, which ran after sink.flush().
-    A flush failure left the guard armed with the party already paid, and the DM's next
-    end_combat("victory") re-ran _end_combat_db against the same participants — a second full
-    party-wide XP/loot/coin grant. The absent second payout is the criterion here; the "Not in
-    combat" ToolError is only the mechanism that produces it."""
+    """Release the combat re-entry guard with durable payout, before fallible post-commit publishing, to prevent duplicate rewards."""
 
     class _ExplodingSink(EventSink):
-        """An EventSink whose post-commit flush raises — the failure window this story closes."""
-
         async def flush(self) -> None:
             raise RuntimeError("flush boom")
 

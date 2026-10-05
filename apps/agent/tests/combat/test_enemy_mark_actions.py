@@ -1,5 +1,3 @@
-"""Enemy commands mark a focus target for the commander's band."""
-
 from pathlib import Path
 from typing import cast
 

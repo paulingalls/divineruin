@@ -1,5 +1,3 @@
-"""Contested social reactions change the held enemy action exactly once."""
-
 import json
 from pathlib import Path
 

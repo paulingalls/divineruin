@@ -1,9 +1,4 @@
-"""The whole round agrees — state, DB and events — and the ending wrap pays exactly once.
-
-Split out of test_combat_tx_integrity.py (M29 story-016). Under the restored Beat-3 model a round
-is TWO commits, so these drive two rounds: round 1 lets the enemy's HELD blow land (an enemy that
-falls in the ally band never swings), and round 2 carries the victory and the forced failure.
-"""
+"""Use two rounds: a defeated enemy never swings, so the first round must preserve a held blow before testing terminal rollback."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -119,9 +114,6 @@ def _round_two_targets(state) -> list:
 
 
 class TestEndToEndAllAgree:
-    """AC3 integration gate: after a forced end-path rollback, in-memory state, DB state, and the
-    emitted event stream all agree with the pre-phase state; a clean commit applies all three once."""
-
     async def _seed_weapon(self, pool, player_id: str, weapon_id: str) -> None:
         # player_inventory FKs both players and the items catalog, so seed a player row and use a
         # real catalog weapon id (shortsword_basic). get_player_inventory is mocked, but
@@ -273,16 +265,7 @@ class TestEndToEndAllAgree:
 
 
 class TestPhaseEndPaysOnce:
-    """M28 story-010: the phase path's terminal wrap has the same guard window the end_combat tool
-    had, only wider — four fallible steps sit between the commit and the teardown (sink.flush, the
-    ward round-trip, every caster's flush_events, the per-member resonance publishes), and it
-    RE-ARMS the guard with ``session.combat_state = state`` right after the commit.
-
-    Combat rewards are a Resolve now (story-001), written inside that transaction. So a post-commit
-    publish failure used to leave the party paid, the combat row deleted, and combat_state still
-    set — and the DM's next end_combat("victory") paid the whole party again. Real PG here because
-    the payout has to be observed where it is durable: players.data.xp.
-    """
+    """Observe durable XP in Postgres: post-commit failures must not re-arm an already paid fight."""
 
     async def _seed_player(self, pool, player_id: str) -> None:
         await pool.execute(
@@ -336,9 +319,7 @@ class TestPhaseEndPaysOnce:
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
     async def test_publish_failure_still_completes_teardown_and_hands_off(self, dev_db_pool, monkeypatch) -> None:
-        """Half 2: end_combat is the ONLY exit from CombatAgent, and only _end_combat_finish returns
-        the handoff. A HUD mirror that fails to update must not strand a session whose rewards are
-        already banked."""
+        """Failed HUD publication must not strand CombatAgent after payout; only the finish path returns the handoff."""
         from exploration_agent import ExplorationAgent
 
         pool = dev_db_pool
@@ -370,9 +351,7 @@ class TestPhaseEndPaysOnce:
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
     async def test_rolled_back_end_retries_and_pays_exactly_once(self, dev_db_pool, monkeypatch) -> None:
-        """The complement, and the reason the guard cannot simply be released unconditionally: when
-        the TRANSACTION itself rolls back nothing was paid, so combat_state must survive and the
-        retried phase must pay — exactly once, not twice."""
+        """Keep combat_state when the transaction rolls back so a genuine unpaid retry can still succeed once."""
         pool = dev_db_pool
         player_id = "tx_s010_retry_player"
         enemy_id = "tx_s010_retry_enemy"

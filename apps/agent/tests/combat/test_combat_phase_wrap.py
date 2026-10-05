@@ -1,5 +1,3 @@
-"""Wrap-beat tests for the pure combat phase engine."""
-
 from dataclasses import replace
 
 from combat._helpers import _declarations, _make_combat_state
@@ -10,10 +8,7 @@ from session_data import CombatParticipant, CombatState
 
 class TestWrapBeat:
     def test_a_fallen_enemy_is_not_owed_a_death_save(self):
-        """Only death-save-capable participants are surfaced. An enemy dropped to 0 HP without
-        overkill is is_fallen and not is_dead, so the counter filters alone let it through -- and
-        the DM was handed an owed death save for a defeated goblin that no tool can ever roll
-        (request_death_save serves players/companions, never enemies)."""
+        """Fallen enemies owe no death save because the death-save tool serves only players and companions."""
         state = _make_combat_state()
         fallen_enemy = replace(state.participants[1], id="goblin_scout_2", hp_current=0, is_fallen=True)
         state.participants.append(fallen_enemy)  # one enemy down, one standing -> combat continues
@@ -375,12 +370,7 @@ class TestWrapBeat:
 
 
 class TestWrapTicksVeilWard:
-    """The encounter ward's round clock (M24 story-006).
-
-    The ward lives ON CombatState, so — exactly like participant conditions — the WRAP beat
-    advances it in place on the deep-copied next_state and expiry is the field going None.
-    Nothing is signalled through WrapOutcome; there is nothing for orchestration to apply.
-    """
+    """An encounter ward lives on the copied CombatState; expiration needs no separate orchestration write."""
 
     def _warded(self, rounds_remaining, *, source="paladin"):
         state = _make_combat_state()

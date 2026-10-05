@@ -1,10 +1,3 @@
-"""Unit coverage for the pure status-condition module (M4.3, story-001).
-
-Catalog and behavior mirror docs/game_mechanics/game_mechanics_combat.md
-§Status Effects (L263-322). The module is pure: every test below constructs
-plain inputs and asserts on returned values — no DB, no RNG, no combat state.
-"""
-
 import pytest
 
 from conditions import (

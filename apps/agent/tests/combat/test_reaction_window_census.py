@@ -1,13 +1,4 @@
-"""The AC5 census: every reaction row in content/archetype_abilities.json, classified against a
-LITERAL table, walked against every enemy action shape in content/encounter_templates.json.
-
-The table below is WRITTEN OUT, never recomputed from the derivation under test — a classification
-derived from the thing it classifies agrees with itself and certifies nothing (constraint 1).
-
-The three classes: `reachable` means some held enemy action opens a window whose subject the row
-can affect. `unproducible` means nothing in the combat engine can ever open it. `inapplicable`
-means the window opens but no authored action has the subject its effect needs.
-"""
+"""Keep a literal independent classification: deriving expected reach from the implementation would agree with itself."""
 
 import json
 from collections import Counter
@@ -131,8 +122,6 @@ def _produced_windows() -> set[str]:
 
 
 def test_the_table_covers_exactly_the_reaction_rows_that_exist():
-    """A new reaction row — or a deleted one — reds here rather than quietly joining the
-    unclassified. The table is the contract; content is not allowed to outgrow it in silence."""
     assert set(EXPECTED) == {row["id"] for row in _reaction_rows()}
 
 
@@ -146,7 +135,6 @@ def test_the_window_census_of_the_content_is_unchanged():
 
 
 def test_every_row_the_table_calls_producible_has_its_window_produced():
-    """The window-vocabulary walk; subject reach is pinned by the literal carriers below."""
     produced = _produced_windows()
     by_id = {row["id"]: row for row in _reaction_rows()}
     for ability_id, classification in EXPECTED.items():
@@ -164,8 +152,6 @@ def test_every_row_the_table_calls_producible_has_its_window_produced():
 
 
 def test_the_grapple_branch_carriers_are_pinned():
-    """Deleting Seizing Grab from the content strands rogue_slippery and spy_slippery: the
-    on_condition_imposed branch would still exist in code and reach nothing."""
     assert _grapple_carriers() == _GRAPPLE_CARRIERS, (
         "the only content carriers of the `grapple` property have changed — rogue_slippery and "
         "spy_slippery reach on_condition_imposed through these entries and nothing else"
@@ -182,6 +168,4 @@ def test_every_produced_trigger_is_a_member_of_the_closed_vocabulary():
 
 
 def test_the_two_unproducible_windows_are_never_opened():
-    """on_enemy_move: there is no movement in the combat engine at all. on_spell_cast: no enemy
-    casts a spell. Neither is invented here to make a count look better."""
     assert _produced_windows().isdisjoint(_NO_PRODUCER)

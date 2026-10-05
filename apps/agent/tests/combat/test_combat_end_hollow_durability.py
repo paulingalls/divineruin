@@ -1,11 +1,4 @@
-"""Combat-end weapon durability reads the party's LIVE hollow-zone corruption, not a stale copy.
-
-corruption_level is location-derived, never DB-persisted (participant_lifecycle's own note): the
-party is co-located, so one value covers everyone. But a joiner's PartyMember.corruption_level was
-snapshotted once at join and never refreshed -- movement writes only session.corruption_level, which
-the SessionData facade routes to party.primary. Travel into a hollow zone and the joiner's weapon
-accrued single wear while the primary's (and everyone's armor) correctly doubled.
-"""
+"""Corruption belongs to the co-located party; a join-time member snapshot may be stale after travel."""
 
 from __future__ import annotations
 
@@ -68,8 +61,6 @@ async def _hollow_verdicts(session, monkeypatch) -> dict[str, bool]:
 
 @pytest.mark.asyncio
 async def test_a_joiner_who_travelled_into_a_hollow_zone_takes_doubled_weapon_wear(monkeypatch):
-    """The joiner's stale corruption_level (0, from a safe-location join) must not spare their
-    weapon. Both members swung in the same hollow zone; the zone belongs to the party."""
     session = _two_pc_session()
     _armed(session, "p1")
     _armed(session, "p2")
@@ -87,8 +78,6 @@ async def test_a_joiner_who_travelled_into_a_hollow_zone_takes_doubled_weapon_we
 
 @pytest.mark.asyncio
 async def test_outside_a_hollow_zone_no_member_takes_doubled_wear(monkeypatch):
-    """Non-vacuity: the same drive at corruption 0 yields False for both, so the test above pins the
-    zone rather than merely that _accrue_durability is reached twice."""
     session = _two_pc_session()
     _armed(session, "p1")
     _armed(session, "p2")

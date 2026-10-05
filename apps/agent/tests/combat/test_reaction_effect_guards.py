@@ -1,16 +1,4 @@
-"""The guards inside a resolved reaction: whose blow it may touch, and what the rewritten roll says.
-
-``test_reaction_resolution.py`` pins the two outcomes themselves — a halved blow, a blow turned
-aside. This file pins the conditions those outcomes are gated on. Every check here exists because
-DELETING the guard it names left the whole suite green (constraint 1): a guard nothing can red is
-a guard that certifies rather than checks.
-
-``combat_reaction_effect.halve`` REWRITES the held roll, so it owns four fields besides ``damage``
-that describe the blow downstream: ``overkill`` (combat_support.py:105 turns it into INSTANT
-DEATH), the killing-blow dramatic verdict the DM voices, ``bonus_damage``, and ``target_killed``
-— which has no production reader today and is pinned only for coherence with the three that do.
-Scaling ``damage`` alone leaves each of them describing the blow that was NOT dealt.
-"""
+"""Halving must also rewrite overkill, dramatic verdict, bonus damage and target_killed so downstream reports describe the landed blow."""
 
 from unittest.mock import MagicMock
 
@@ -82,14 +70,7 @@ def _self_targeted_round(*, player_hp: int):
 
 @pytest.mark.asyncio
 async def test_halving_a_lethal_blow_fells_the_player_instead_of_killing_them_outright():
-    """Overkill is recomputed from the HALVED damage, not carried over from the roll.
-
-    Instant death (combat_support.py:105) fires when ``overkill >= hp_max`` — no Fallen grace, no
-    death saves, the character is gone. Kael is at 10 of 25 and takes 60: 50 past zero, well over
-    his maximum. Uncanny Dodge makes it 30 — still enough to drop him, but only 20 past zero, so
-    he FALLS. Carrying the roll's own 50 through the halving would end the campaign for a player
-    whose reaction was supposed to save them.
-    """
+    """Recompute overkill after halving so a survivable fallen result cannot retain an instant-death verdict."""
     ctx = _self_targeted_round(player_hp=10)
     deps = {**_resolve_deps(), "resolver": _killing_resolver(60)}
     packets: list[dict] = []
@@ -105,16 +86,7 @@ async def test_halving_a_lethal_blow_fells_the_player_instead_of_killing_them_ou
 
 @pytest.mark.asyncio
 async def test_a_killing_blow_the_halving_survives_is_no_longer_narrated_as_one():
-    """The killing-blow verdict is cleared when the halving leaves the target standing.
-
-    ``context`` rides the packet and the DICE_ROLL for the DM to voice, and the resolver set it to
-    ``killing_blow`` because at full damage this blow killed Kael. It did not, and a DM handed
-    "killing_blow" for a player on 5 HP narrates a death that did not happen.
-
-    Asserted as "not that label" rather than as an empty string: the apply half re-runs
-    roll_attack's encounter-context overlay, which promotes an undramatic blow on the last enemy
-    standing back to ``last_enemy``. That promotion is honest; only the stale kill claim is not.
-    """
+    """Allow honest encounter-context promotion; forbid only the stale killing-blow label."""
     ctx = _self_targeted_round(player_hp=15)
     deps = {**_resolve_deps(), "resolver": _killing_resolver(20)}
     packets: list[dict] = []
@@ -130,13 +102,7 @@ async def test_a_killing_blow_the_halving_survives_is_no_longer_narrated_as_one(
 
 
 def test_halve_rewrites_every_field_the_blow_is_reported_through():
-    """The arithmetic the two rounds above cannot both show at once, on one roll.
-
-    ``bonus_damage`` is a COMPONENT of ``damage`` (check_resolution_attack.py:150 does
-    ``damage += bonus_damage``) and the summary surfaces both, so a Temporary Hollowed attacker's
-    necrotic die left unhalved reports a rider larger than the whole blow. Called directly because
-    it is the arithmetic under test; the live path through it is AC1's test.
-    """
+    """bonus_damage is part of damage; leaving it whole could report a rider larger than the halved total."""
     rolled = AttackResult(
         hit=True,
         roll=15,
@@ -167,13 +133,7 @@ def test_halve_rewrites_every_field_the_blow_is_reported_through():
 
 @pytest.mark.asyncio
 async def test_uncanny_dodge_spent_by_a_bystander_leaves_the_allys_damage_whole():
-    """A reaction only halves the blow aimed at the REACTOR.
-
-    ``on_hit`` means "when YOU are hit"; taking an ally's damage is guardian_intercept's
-    ``on_ally_hit``, a different and unwired mechanic. The activation gate refuses this spend;
-    install it directly to prove the effect guard remains defense-in-depth if a bad record reaches
-    the pump by another path. Bram is the one being hit, Kael is the recorded reactor.
-    """
+    """Install the refused bystander spend directly to prove the effect guard protects against bad records from another path."""
     ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=("guardian_intercept",))
     deps = _resolve_deps(damage=6)
     packets: list[dict] = []
@@ -192,13 +152,7 @@ async def test_uncanny_dodge_spent_by_a_bystander_leaves_the_allys_damage_whole(
 
 @pytest.mark.asyncio
 async def test_a_shield_reaction_spent_by_a_bystander_wears_nobodys_shield():
-    """The shield hit comes off the TARGET's inventory, so a bystander's spend must accrue none.
-
-    combat_support reads ``get_player_inventory(target.id)``: report a shield reaction for a
-    reactor who is not the target and the wear lands on the ally's gear, billed to a reaction they
-    never spent. The activation gate refuses this case; direct installation keeps the downstream
-    guard executable. Bram is the one hit here and both players are carrying a shield.
-    """
+    """Install a bystander spend directly; target-inventory wear must not bill an ally for another player's reaction."""
     ctx = _ctx_at_resolution(state=_guarded_ally_state(), reaction_ids=("guardian_intercept",))
     deps = _shield_bearing_deps()
     packets: list[dict] = []

@@ -1,10 +1,3 @@
-"""resolve_phase's ABILITY paths: initiative ordering, per-member Resonance, and the Focus gate.
-
-Split out of test_phase_loop.py (M29 story-016), which took the Beat-3 hold sweep and the
-500-line cap in the same change. Same DI bundle, same live phase loop — only the file boundary
-moved.
-"""
-
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -20,9 +13,7 @@ _CONDITION_FREE_SPELL = SimpleNamespace(name="Arcane Bolt", applies_condition=No
 
 
 class TestResolvePhaseAbility:
-    """story-007: an in-combat ABILITY declaration resolves via the shared cast resolver and appears
-    as a resolved packet in initiative order alongside attacks. The cast itself is mocked here — the
-    wiring/ordering is under test, not the spell internals (covered by the test_spell_cast_* modules)."""
+    """Mock the cast itself to isolate phase ordering; this does not certify spell internals."""
 
     def _ability_state(self):
         state = _resolution_state()
@@ -66,11 +57,6 @@ class TestResolvePhaseAbility:
 
 
 class TestResolvePhaseAbilityResonance:
-    """story-007: an in-combat ability GENERATES resonance during resolution (beat 2); the WRAP
-    decay (beat 4) then sheds from the post-generation total, so the phase nets
-    standing + generated - 1. The generated value is persisted by the cast inside the tx (mocked
-    here); the loop seeds the WRAP base with it and syncs/pushes once post-commit."""
-
     def _ability_state(self):
         state = _resolution_state()  # enemy hp 7 -> combat continues this phase
         state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
@@ -117,9 +103,6 @@ class TestResolvePhaseAbilityResonance:
 
     @pytest.mark.asyncio
     async def test_killing_phase_ability_resonance_pushes_hud(self):
-        """Regression (story-007 finding 2): an ability that GENERATES resonance on the same phase
-        that ends combat must still push the qualitative Resonance HUD state. The sync + push run
-        BEFORE the end-of-combat handoff return, so the client never keeps a stale state."""
         ctx = make_context()
         ctx.userdata.resonance.current = 3
         # Enemy already fallen -> the wrap reports victory THIS phase (combat ends).
@@ -176,11 +159,7 @@ class TestResolvePhaseAbilityResonance:
 
     @pytest.mark.asyncio
     async def test_inphase_concentration_break_sees_just_cast_spell(self):
-        """Regression (story-007 finding 1): a player concentrating on spell A casts a concentration
-        ABILITY for spell B at HIGHER initiative; a lower-initiative enemy hits the player the SAME
-        phase. break_concentration_on_damage runs in-loop and MUST read the just-cast spell B (not the
-        stale A), or it would save against the wrong spell and clear B from the DB while the session
-        forced memory back to B — a silent divergence. The in-loop concentration sync fixes this."""
+        """A lower-initiative hit must read the just-cast concentration spell or stored and session spell state diverge."""
         ctx = make_context()
         ctx.userdata.concentration.spell_id = "spell_a"  # the prior concentration the cast replaces
         ctx.userdata.combat_state = self._ability_state()
@@ -224,9 +203,6 @@ class TestResolvePhaseAbilityResonance:
 
 
 class TestResolvePhaseAbilityFocusGate:
-    """story-007 AC2: an in-combat ability with insufficient Focus fails loud (ToolError) with NO
-    state writes, validated BEFORE the resolution loop so no other actor's HP write is rolled back."""
-
     def _ability_state(self):
         state = _resolution_state()
         state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_shield_spell"}
