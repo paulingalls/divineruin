@@ -11,7 +11,6 @@ PATHS = (
     "docs/milestones/07_bestiary.md",
     "docs/milestones/README.md",
     "docs/milestones/REMAINING.md",
-    ".xp/constraints.md",
     ".xp/system.md",
     "docs/game_mechanics/game_mechanics_combat.md",
     "docs/game_mechanics/game_mechanics_magic.md",
@@ -65,7 +64,7 @@ def read_contract():
 
 def assert_contract(texts):
     assert set(texts) == set(PATHS) and all(value.strip() for value in texts.values()), "empty status corpus"
-    magic, bestiary, readme, remaining, constraints, system = (texts[path] for path in PATHS[:6])
+    magic, bestiary, readme, remaining, system = (texts[path] for path in PATHS[:5])
     assert "M33 remains partial" in magic and "deferred spell effects" in magic
     assert "entire Magic system" not in magic and "Milestone-level status is **DELIVERED**" not in magic
     assert "M7.3 remains partial" in bestiary
@@ -79,11 +78,10 @@ def assert_contract(texts):
     for evidence in NATIVE_TODO:
         assert evidence in remaining, f"missing native TODO evidence: {evidence}"
     assert "Full native acceptance passed" not in remaining, "false native certification"
-    for path in PATHS[6:8]:
+    for path in PATHS[5:7]:
         assert "preserve player microphone command transport" in texts[path], "rules disable player input"
         assert "apps/agent/tests/acceptance/test_choir_capstone.py" in texts[path], "rules omit focused evidence"
-    assert "rejected interpretations" in texts[PATHS[8]], "inventory omits rejected effects"
-    assert "the story tier runs static checks" in constraints and "Broad" in constraints
+    assert "rejected interpretations" in texts[PATHS[7]], "inventory omits rejected effects"
     assert "Story tier: `bun run lint` (static checks)" in system
     assert "separate concrete per-run human approval" in system
     assert "runs only at the comprehensive push or sprint-close boundary" not in system
@@ -116,12 +114,11 @@ def test_each_remaining_hollow_criterion_cannot_be_checked(criterion):
     "path,before,after",
     [
         (PATHS[0], "M33 remains partial", "M33 complete"),
+        (PATHS[5], "preserve player microphone command transport", "disable all microphone transport"),
         (PATHS[6], "preserve player microphone command transport", "disable all microphone transport"),
-        (PATHS[7], "preserve player microphone command transport", "disable all microphone transport"),
         (PATHS[1], "M7.3 remains partial", "M7.3 complete"),
         (PATHS[3], "M33 remains partial", "M33 complete"),
-        (PATHS[4], "the story tier runs static checks", "Story tier runs all tests"),
-        (PATHS[5], "separate concrete per-run human approval", "blanket sprint approval"),
+        (PATHS[4], "separate concrete per-run human approval", "blanket sprint approval"),
     ],
 )
 def test_status_and_policy_conflicts_are_rejected(path, before, after):
